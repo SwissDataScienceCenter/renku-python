@@ -27,6 +27,7 @@ from werkzeug.utils import cached_property
 from renku.command.command_builder import inject
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
+from renku.core.util.datetime8601 import local_now
 from renku.core.util.git import get_entity_from_revision, get_git_user
 from renku.domain_model.entity import Collection, Entity
 from renku.domain_model.provenance.agent import Person, SoftwareAgent
@@ -91,6 +92,8 @@ class Generation(Immutable):
 class Activity(Persistent):
     """Represent an activity in the repository."""
 
+    invalidated_at: Optional[datetime] = None
+
     def __init__(
         self,
         *,
@@ -100,6 +103,7 @@ class Activity(Persistent):
         ended_at_time: datetime,
         generations: Optional[List[Generation]] = None,
         id: str,
+        invalidated_at: Optional[datetime] = None,
         invalidations: Optional[List[Entity]] = None,
         parameters: Optional[List[ParameterValue]] = None,
         project_id: Optional[str] = None,
@@ -112,6 +116,7 @@ class Activity(Persistent):
         self.ended_at_time: datetime = ended_at_time
         self.generations: List[Generation] = generations or []
         self.id: str = id
+        self.invalidated_at: Optional[datetime] = invalidated_at
         self.invalidations: List[Entity] = invalidations or []
         self.parameters: List[ParameterValue] = parameters or []
         self.project_id: Optional[str] = project_id
@@ -226,6 +231,16 @@ class Activity(Persistent):
 
         return plan
 
+    @property
+    def deleted(self) -> bool:
+        """Return if the activity was deleted."""
+        return self.invalidated_at is not None
+
+    @property
+    def is_activity_valid(self) -> bool:
+        """Return if the activity or its plan is not deleted."""
+        return not self.association.plan.deleted
+
     @staticmethod
     def generate_id(uuid: Optional[str] = None) -> str:
         """Generate an identifier for an activity."""
@@ -251,6 +266,12 @@ class Activity(Persistent):
             return 1
 
         return 0
+
+    def delete(self, when: datetime = local_now()):
+        """Mark the activity as deleted."""
+        self.unfreeze()
+        self.invalidated_at = when
+        self.freeze()
 
 
 class ActivityCollection(Persistent):

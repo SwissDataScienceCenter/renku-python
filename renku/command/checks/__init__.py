@@ -22,6 +22,7 @@ from .datasets import check_dataset_old_metadata_location, check_invalid_dataset
 from .external import check_missing_external_files
 from .githooks import check_git_hooks_installed
 from .migration import check_migration
+from .plan import check_deleted_plan_chain
 from .storage import check_lfs_info
 from .validate_shacl import check_datasets_structure, check_project_structure
 
@@ -30,6 +31,7 @@ from .validate_shacl import check_datasets_structure, check_project_structure
 __all__ = (
     "check_dataset_old_metadata_location",
     "check_datasets_structure",
+    "check_deleted_plan_chain",
     "check_git_hooks_installed",
     "check_invalid_datasets_derivation",
     "check_lfs_info",

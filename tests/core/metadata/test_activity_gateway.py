@@ -17,13 +17,43 @@
 # limitations under the License.
 """Test activity database gateways."""
 
+import pytest
 
+from renku.core import errors
 from renku.domain_model.workflow.plan import Plan
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from tests.utils import create_dummy_activity
 
 
-def test_activity_gateway_downstream_activities(dummy_database_injection_manager):
+def test_get_by_id(injected_dummy_database):
+    """Testing getting an activity by its id."""
+    plan = Plan(id=Plan.generate_id(), name="plan", command="")
+
+    activity_1 = create_dummy_activity(plan=plan, id="/activities/activity-1")
+    activity_2 = create_dummy_activity(plan=plan, id="/activities/activity-2")
+    activity_3 = create_dummy_activity(plan=plan, id="/activities/activity-3")
+
+    activity_gateway = ActivityGateway()
+
+    activity_gateway.add(activity_1)
+    activity_gateway.add(activity_2)
+    activity_gateway.add(activity_3)
+
+    activity = activity_gateway.get_by_id("/activities/activity-2")
+
+    assert activity is activity_2
+
+
+def test_get_by_id_non_existing(injected_dummy_database):
+    """Testing getting a non-existing activity id returns None."""
+    activity_gateway = ActivityGateway()
+
+    activity = activity_gateway.get_by_id("/activities/non-existing-id")
+
+    assert activity is None
+
+
+def test_activity_gateway_downstream_activities(injected_dummy_database):
     """Test getting downstream activities work."""
     plan = Plan(id=Plan.generate_id(), name="plan", command="")
 
@@ -32,23 +62,22 @@ def test_activity_gateway_downstream_activities(dummy_database_injection_manager
     following = create_dummy_activity(plan=plan, usages=["other/data"])
     unrelated = create_dummy_activity(plan=plan, usages=["unrelated_in"], generations=["unrelated_out"])
 
-    with dummy_database_injection_manager(None):
-        activity_gateway = ActivityGateway()
+    activity_gateway = ActivityGateway()
 
-        activity_gateway.add(intermediate)
-        activity_gateway.add(following)
-        activity_gateway.add(previous)
-        activity_gateway.add(unrelated)
+    activity_gateway.add(intermediate)
+    activity_gateway.add(following)
+    activity_gateway.add(previous)
+    activity_gateway.add(unrelated)
 
-        downstream = activity_gateway.get_downstream_activities(following)
+    downstream = activity_gateway.get_downstream_activities(following)
 
-        assert not downstream
+    assert not downstream
 
-        downstream = activity_gateway.get_downstream_activities(intermediate)
-        assert {following.id} == {a.id for a in downstream}
+    downstream = activity_gateway.get_downstream_activities(intermediate)
+    assert {following.id} == {a.id for a in downstream}
 
-        downstream = activity_gateway.get_downstream_activities(previous)
-        assert {following.id, intermediate.id} == {a.id for a in downstream}
+    downstream = activity_gateway.get_downstream_activities(previous)
+    assert {following.id, intermediate.id} == {a.id for a in downstream}
 
 
 def test_activity_gateway_upstream_activities(dummy_database_injection_manager):
@@ -145,3 +174,72 @@ def test_activity_gateway_upstream_activity_chains(dummy_database_injection_mana
         assert {(r3.id,), (r2.id,), (r2.id, r1.id)} == {tuple(a.id for a in chain) for chain in downstream_chains}
 
         assert [] == activity_gateway.get_upstream_activity_chains(r7)
+
+
+def test_remove_activity(injected_dummy_database):
+    """Test removing an activity."""
+    plan = Plan(id=Plan.generate_id(), name="plan", command="")
+
+    upstream = create_dummy_activity(plan=plan, generations=["input"])
+    activity = create_dummy_activity(plan=plan, usages=["input", "origin"], generations=["intermediate", "other"])
+    downstream = create_dummy_activity(plan=plan, usages=["intermediate"], generations=["output"])
+    other = create_dummy_activity(plan=plan, usages=["input"], generations=["other"])
+
+    activity_gateway = ActivityGateway()
+
+    activity_gateway.add(upstream)
+    activity_gateway.add(activity)
+    activity_gateway.add(downstream)
+    activity_gateway.add(other)
+
+    # NOTE: Remove fails if activity has downstream and force is not set
+    with pytest.raises(errors.ActivityDownstreamNotEmptyError):
+        activity_gateway.remove(activity)
+
+    assert len(activity_gateway.get_downstream_activities(activity)) > 0
+    assert len(activity_gateway.get_upstream_activities(activity)) > 0
+    assert "origin" in activity_gateway.get_all_usage_paths()
+    assert [activity] == activity_gateway.get_activities_by_usage("origin")
+    assert [activity, other] == activity_gateway.get_activities_by_usage("input")
+    assert "intermediate" in activity_gateway.get_all_generation_paths()
+    assert [activity] == activity_gateway.get_activities_by_generation("intermediate")
+    assert [activity, other] == activity_gateway.get_activities_by_generation("other")
+    assert {activity, downstream, other} == activity_gateway.get_downstream_activities(upstream)
+    assert {activity, upstream} == activity_gateway.get_upstream_activities(downstream)
+
+    activity_gateway.remove(activity, keep_reference=True, force=True)
+
+    # Deleted activity is in the list of activities if we keep its reference and request it
+    assert activity in activity_gateway.get_all_activities(include_deleted=True)
+
+    # Deleted activity won't be listed normally
+    assert activity not in activity_gateway.get_all_activities()
+
+    # Activity doesn't have upstream or downstream anymore
+    assert set() == activity_gateway.get_downstream_activities(activity)
+    assert set() == activity_gateway.get_upstream_activities(activity)
+
+    # Activity's usages are removed if it's the only user
+    assert "origin" not in activity_gateway.get_all_usage_paths()
+    assert [] == activity_gateway.get_activities_by_usage("origin")
+
+    # Activity is removed from the list of users if it's not the only user
+    assert "input" in activity_gateway.get_all_usage_paths()
+    assert [other] == activity_gateway.get_activities_by_usage("input")
+
+    # Activity's generations are removed if it's the only generator
+    assert "intermediate" not in activity_gateway.get_all_generation_paths()
+    assert [] == activity_gateway.get_activities_by_generation("intermediate")
+
+    # Activity is removed from the list of generator if it's not the only generator
+    assert "other" in activity_gateway.get_all_generation_paths()
+    assert [other] == activity_gateway.get_activities_by_generation("other")
+
+    # Relation chain of activities is cut when an activity is removed
+    assert {other} == activity_gateway.get_downstream_activities(upstream)
+    assert set() == activity_gateway.get_upstream_activities(downstream)
+
+    activity_gateway.remove(downstream, keep_reference=False)
+
+    # Activity won't be in the list of activities if we don't keep its reference
+    assert downstream not in activity_gateway.get_all_activities()

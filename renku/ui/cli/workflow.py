@@ -621,6 +621,38 @@ Use ``renku workflow visualize -h`` to see all available options.
    :extended:
 
 
+Removing Runs
+*************
+
+Renku allows you to undo a Run in a project by using ``renku workflow revert
+<activity ID>``. You can obtain <activity ID> from the ``renku log`` command.
+If the deleted run generated some files, Renku either deleted these files (in
+case there are no earlier version of them and they are not used in other
+activities) or revert them to their earlier versions. You can ask Renku to keep the
+generated files and only delete the metadata by passing the ``--metadata-only``
+option.
+
+.. warning:: Renku only checks project's runs/plans to see if files are used.
+   It doesn't check if files, that are going to be deleted, are added to a
+   dataset for example. Make sure that the project doesn't use such files in
+   other places or always use ``--metadata-only`` option when reverting a run.
+
+If you want to delete run along with its plan use the ``--plan`` option.
+This only deletes the plan if it's not used by any other activity.
+
+Renku won't remove a run if there are downstream runs that depend on it. The
+reason is that removing a run will break the link between its upstream and
+downstream runs. If this is not an issue for you or if you want to delete the
+downstream runs later, then pass the ``--force`` option to make Renku delete
+the run anyway.
+
+.. cheatsheet::
+   :group: Workflows
+   :command: $ renku workflow revert <activity ID>
+   :description: Undo a Run.
+   :extended:
+
+
 Input and output files
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -772,9 +804,9 @@ def show(name_or_id):
 @click.option("--force", is_flag=True, help="Override the existence check.")
 def remove(name, force):
     """Remove a workflow named <name>."""
-    from renku.command.workflow import remove_workflow_command
+    from renku.command.workflow import remove_plan_command
 
-    remove_workflow_command().build().execute(name=name, force=force)
+    remove_plan_command().build().execute(name_or_id=name, force=force)
 
 
 @workflow.command()
@@ -1215,3 +1247,44 @@ def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config):
         provider=provider,
         config=config,
     )
+
+
+@workflow.command()
+@click.option(
+    "-m",
+    "--metadata-only",
+    default=False,
+    help="Only undo metadata, leave generated outputs unchanged.",
+    is_flag=True,
+    show_default=True,
+)
+@click.option(
+    "-f",
+    "--force",
+    default=False,
+    help="Force-revert the activity, even if it breaks things.",
+    is_flag=True,
+    show_default=True,
+)
+@click.option(
+    "-p",
+    "--plan",
+    default=False,
+    help="Delete activity's plan if no other activity is using it.",
+    is_flag=True,
+    show_default=True,
+)
+@click.argument("activity_id", required=True)
+def revert(metadata_only, force, plan, activity_id):
+    """Revert activity metadata and generations."""
+    from renku.command.workflow import revert_activity_command
+
+    communicator = ClickCallback()
+    try:
+        revert_activity_command().with_communicator(communicator).build().execute(
+            metadata_only=metadata_only, force=force, delete_plan=plan, activity_id=activity_id
+        )
+    except errors.ActivityDownstreamNotEmptyError:
+        raise errors.ParameterError(
+            "Activity has downstream dependent activities: Pass '--force' if you want to revert the activity anyways."
+        )

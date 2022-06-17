@@ -18,9 +18,10 @@
 """Activity management."""
 
 import itertools
+import os
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, FrozenSet, List, Optional, Set, Tuple
+from typing import Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
 
 import networkx
 
@@ -28,11 +29,11 @@ from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.util import communication
+from renku.core.util.datetime8601 import local_now
+from renku.core.workflow.plan import get_activities, remove_plan
 from renku.domain_model.entity import Entity
 from renku.domain_model.provenance.activity import Activity
-from renku.domain_model.workflow.plan import AbstractPlan
 
 
 def get_activities_until_paths(
@@ -229,39 +230,6 @@ def sort_activities(activities: List[Activity], remove_overridden_parents=True) 
 
 
 @inject.autoparams()
-def is_activity_valid(activity: Activity, plan_gateway: IPlanGateway) -> bool:
-    """Return whether this plan is current and has not been deleted.
-
-    Args:
-        activity(Activity): The Activity whose Plan should be checked.
-        plan_gateway(IPlanGateway): The injected Plan gateway.
-
-    Returns:
-        bool: True if the activities' Plan is still valid, False otherwise.
-
-    """
-    plan = activity.association.plan
-
-    if plan.invalidated_at is not None:
-        return False
-
-    # get newest with same name
-    newest_plan = plan_gateway.get_by_name(plan.name)
-
-    if newest_plan is None or newest_plan.invalidated_at is not None:
-        return False
-
-    all_plans = plan_gateway.get_all_plans()
-
-    derived: Optional[AbstractPlan] = plan
-    while derived:
-        plan = derived
-        derived = next((p for p in all_plans if p.derived_from is not None and p.derived_from == plan.id), None)
-
-    return plan.invalidated_at is None
-
-
-@inject.autoparams()
 def get_all_modified_and_deleted_activities_and_entities(
     repository, activity_gateway: IActivityGateway
 ) -> Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]:
@@ -347,7 +315,7 @@ def get_downstream_generating_activities(
 
         for chain in downstream_chains:
             for activity in chain:
-                if not is_activity_valid(activity):
+                if not activity.is_activity_valid:
                     # don't process further downstream activities as the plan in question was deleted
                     break
                 include_newest_activity(activity)
@@ -435,3 +403,114 @@ def add_activity_if_recent(activity: Activity, activities: Set[Activity]):
 
     # NOTE: No similar activity was found
     activities.add(activity)
+
+
+def get_latest_activity(activities: Iterable[Activity]) -> Optional[Activity]:
+    """Return the activity that was executed after all other activities."""
+    return max(activities, key=lambda a: a.ended_at_time) if activities else None
+
+
+def get_latest_activity_before(activities: Iterable[Activity], activity: Activity) -> Optional[Activity]:
+    """Return the latest activity that was executed before the passed activity."""
+    activities_before = [a for a in activities if a.ended_at_time <= activity.ended_at_time and a.id != activity.id]
+    return get_latest_activity(activities_before)
+
+
+@inject.autoparams("activity_gateway", "client_dispatcher")
+def revert_activity(
+    *,
+    activity_gateway: IActivityGateway,
+    activity_id: str,
+    client_dispatcher: IClientDispatcher,
+    delete_plan: bool,
+    force: bool,
+    metadata_only: bool,
+) -> Activity:
+    """Revert an activity.
+
+    Args:
+        activity_gateway(IActivityGateway): The injected activity gateway.
+        activity_id(str): ID of the activity to be reverted.
+        client_dispatcher(IClientDispatcher): The injected client dispatcher.
+        delete_plan(bool): Delete the plan if it's not used by any other activity.
+        force(bool): Revert the activity even if it has some downstream activities.
+        metadata_only(bool): Only revert the metadata and don't touch generated files.
+
+    Returns:
+        The deleted activity.
+    """
+    client = client_dispatcher.current_client
+
+    delete_time = local_now()
+
+    def delete_associated_plan(activity):
+        if not delete_plan:
+            return
+
+        plan = activity.association.plan
+
+        used_by_other_activities = any(a for a in get_activities(plan) if a.id != activity.id)
+        if used_by_other_activities:
+            return
+
+        remove_plan(name_or_id=plan.id, force=True, when=delete_time)
+
+    def revert_generations(activity) -> Tuple[Set[str], Set[str]]:
+        """Either revert each generation to an older version (created by an earlier activity) or delete it."""
+        deleted_paths = set()
+        updated_paths: Dict[str, str] = {}
+
+        if metadata_only:
+            return set(), set()
+
+        for generation in activity.generations:
+            path = generation.entity.path
+
+            generator_activities = activity_gateway.get_activities_by_generation(path=path)
+            generator_activities = [a for a in generator_activities if a.is_activity_valid and not a.deleted]
+            latest_generator = get_latest_activity(generator_activities)
+            if latest_generator != activity:  # NOTE: Another activity already generated the same path
+                continue
+
+            previous_generator = get_latest_activity_before(generator_activities, activity)
+
+            if previous_generator is None:  # NOTE: The activity is the only generator
+                # NOTE: Delete the path if there are no downstreams otherwise keep it
+                downstream_activities = activity_gateway.get_activities_by_usage(path)
+                if not downstream_activities:
+                    deleted_paths.add(path)
+                elif not force:
+                    raise errors.ActivityDownstreamNotEmptyError(activity)
+            else:  # NOTE: There is a previous generation of that path, so, revert to it
+                previous_generation = next(g for g in previous_generator.generations if g.entity.path == path)
+                updated_paths[path] = previous_generation.entity.checksum
+
+        for path, previous_checksum in updated_paths.items():
+            try:
+                client.repository.copy_content_to_file(path, checksum=previous_checksum, output_path=path)
+            except errors.FileNotFound:
+                communication.warn(f"Cannot revert '{path}' to a previous version, will keep the current version")
+
+        for path in deleted_paths:
+            try:
+                os.unlink(client.path / path)
+            except OSError:
+                communication.warn(f"Cannot delete '{path}'")
+
+        return deleted_paths, set(updated_paths.keys())
+
+    activity = activity_gateway.get_by_id(activity_id)
+
+    if activity is None:
+        raise errors.ParameterError(f"Cannot find activity with ID '{activity}'")
+    if activity.deleted:
+        raise errors.ParameterError(f"Activity with ID '{activity}' is already deleted")
+
+    # NOTE: The order of removal is important here so don't change it
+    delete_associated_plan(activity)
+    revert_generations(activity)
+    activity_gateway.remove(activity, force=force)
+    # NOTE: Delete the activity after processing metadata or otherwise we won't see the activity as the latest generator
+    activity.delete(when=delete_time)
+
+    return activity

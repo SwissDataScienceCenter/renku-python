@@ -17,13 +17,14 @@
 # limitations under the License.
 """Renku activity database gateway implementation."""
 
-from itertools import chain
+import itertools
 from pathlib import Path
 from typing import List, Optional, Set, Tuple, Union
 
 from persistent.list import PersistentList
 
 from renku.command.command_builder.command import inject
+from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.interface.plan_gateway import IPlanGateway
@@ -39,11 +40,15 @@ class ActivityGateway(IActivityGateway):
 
     database_dispatcher = inject.attr(IDatabaseDispatcher)
 
+    def get_by_id(self, id: str) -> Optional[Activity]:
+        """Get an activity by id."""
+        return self.database_dispatcher.current_database["activities"].get(id)
+
     def get_all_usage_paths(self) -> List[str]:
         """Return all usage paths."""
         database = self.database_dispatcher.current_database
 
-        return list(database["activities-by-usage"].keys())
+        return list(a for a in database["activities-by-usage"].keys())
 
     def get_all_generation_paths(self) -> List[str]:
         """Return all generation paths."""
@@ -74,8 +79,10 @@ class ActivityGateway(IActivityGateway):
         by_generation = self.database_dispatcher.current_database["activities-by-generation"]
         activities = by_generation.get(str(path), [])
 
+        activities = (a for a in activities if not a.deleted)
+
         if not checksum:
-            return activities
+            return list(activities)
 
         result = []
 
@@ -130,9 +137,10 @@ class ActivityGateway(IActivityGateway):
 
         return upstream_chains
 
-    def get_all_activities(self) -> List[Activity]:
+    def get_all_activities(self, include_deleted: bool = False) -> List[Activity]:
         """Get all activities in the project."""
-        return list(self.database_dispatcher.current_database["activities"].values())
+        database = self.database_dispatcher.current_database
+        return [a for a in database["activities"].values() if not a.deleted or include_deleted]
 
     def add(self, activity: Activity):
         """Add an ``Activity`` to storage."""
@@ -184,7 +192,7 @@ class ActivityGateway(IActivityGateway):
 
         all_activities = set()
 
-        for activity_chain in chain(upstream_chains, downstream_chains):
+        for activity_chain in itertools.chain(upstream_chains, downstream_chains):
             for current_activity in activity_chain:
                 all_activities.add(current_activity)
 
@@ -200,3 +208,46 @@ class ActivityGateway(IActivityGateway):
     def get_all_activity_collections(self) -> List[ActivityCollection]:
         """Get all activity collections in the project."""
         return list(self.database_dispatcher.current_database["activity-collections"].values())
+
+    def remove(self, activity: Activity, keep_reference: bool = True, force: bool = False):
+        """Remove an activity from the storage.
+
+        Args:
+            activity(Activity): The activity to be removed.
+            keep_reference(bool): Whether to keep the activity in the ``activities`` index or not.
+            force(bool): Force-delete the activity even if it has downstream activities.
+        """
+        database = self.database_dispatcher.current_database
+
+        if not force and self.get_downstream_activities(activity):
+            raise errors.ActivityDownstreamNotEmptyError(activity)
+
+        if not keep_reference:
+            database["activities"].remove(activity)
+
+        by_usage = database["activities-by-usage"]
+        by_generation = database["activities-by-generation"]
+
+        for usage in activity.usages:
+            if usage.entity.path in by_usage:
+                activities = by_usage[usage.entity.path]
+                activities.remove(activity)
+                if len(activities) == 0:
+                    del by_usage[usage.entity.path]
+
+        for generation in activity.generations:
+            if generation.entity.path in by_generation:
+                activities = by_generation[generation.entity.path]
+                activities.remove(activity)
+                if len(activities) == 0:
+                    del by_generation[generation.entity.path]
+
+        # NOTE: Remove activity relations
+        token = database["activity-catalog"].tokenizeQuery
+        relations = itertools.chain(
+            list(database["activity-catalog"].findRelationChains(token(downstream=activity))),
+            list(database["activity-catalog"].findRelationChains(token(upstream=activity))),
+        )
+        for relation_collection in relations:
+            for r in list(relation_collection):
+                database["activity-catalog"].unindex(r)

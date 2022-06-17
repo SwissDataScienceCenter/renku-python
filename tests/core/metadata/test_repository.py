@@ -262,7 +262,7 @@ def test_contains_untracked_file(git_repository):
 def test_get_content_from_lfs(tmp_path):
     """Test can get file content from LFS."""
     url = "https://dev.renku.ch/gitlab/renku-python-integration-tests/lego-datasets.git"
-    repository = Repository.clone_from(url=url, path=tmp_path / "repo")
+    repository = Repository.clone_from(url=url, path=tmp_path / "repo", env={"GIT_LFS_SKIP_SMUDGE": "1"})
     # NOTE: Install LFS and disable LFS smudge filter to make sure that we can get valid content in that case
     repository.lfs.install(skip_smudge=True)
 
