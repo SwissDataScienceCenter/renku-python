@@ -86,7 +86,7 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
         total_chunks = self.response_builder["chunk_count"]
 
         file_path = chunks_dir / str(current_chunk)
-        relative_path = file_path.relative_to(CACHE_UPLOADS_PATH / self.user.user_id)
+        relative_path = file_path.relative_to(CACHE_UPLOADS_PATH / self.user.user_id / chunked_id)
 
         self.file.save(str(file_path))
 
