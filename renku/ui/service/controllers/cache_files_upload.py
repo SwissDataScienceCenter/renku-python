@@ -104,15 +104,15 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
         if not completed:
             return {}
 
-        file_path = user_cache_dir / self.file.filename
+        target_file_path = user_cache_dir / self.file.filename
 
-        if file_path.exists():
+        if target_file_path.exists():
             if self.response_builder.get("override_existing", False):
-                file_path.unlink()
+                target_file_path.unlink()
             else:
                 raise IntermittentFileExistsError(file_name=self.file.filename)
 
-        with open(file_path, "wb") as f:
+        with open(target_file_path, "wb") as f:
             for file_number in range(total_chunks):
                 f.write((chunks_dir / str(file_number)).read_bytes())
             shutil.rmtree(chunks_dir)
@@ -120,7 +120,7 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
 
         self.response_builder["is_archive"] = self.response_builder.get("chunked_content_type") in SUPPORTED_ARCHIVES
 
-        return self.postprocess_file(file_path, user_cache_dir)
+        return self.postprocess_file(target_file_path, user_cache_dir)
 
     def process_file(self):
         """Process uploaded file."""

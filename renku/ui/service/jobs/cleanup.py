@@ -60,7 +60,7 @@ def cache_files_cleanup():
                 chunk_folders.add(chunk.abs_path.parent)
 
         for chunk_folder in chunk_folders:
-            shutil.rmtree(chunk_folder)
+            shutil.rmtree(chunk_folder, ignore_errors=True)
 
 
 def cache_project_cleanup():

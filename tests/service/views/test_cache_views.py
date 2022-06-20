@@ -39,6 +39,7 @@ from renku.ui.service.errors import (
     UserProjectTemplateReferenceError,
     UserRepoUrlInvalidError,
 )
+from renku.ui.service.jobs.cleanup import cache_files_cleanup
 from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET
 from tests.utils import assert_rpc_response, retry_failed
 
@@ -143,6 +144,9 @@ def test_file_chunked_upload(svc_client, identity_headers, svc_cache_dir):
     assert 200 == response.status_code
     assert {"result"} == set(response.json.keys())
     assert "files" not in response.json["result"]
+
+    # NOTE: force cleanup to ensure that chunks aren't prematurely cleaned up
+    cache_files_cleanup()
 
     response = svc_client.post(
         "/cache.files_upload",

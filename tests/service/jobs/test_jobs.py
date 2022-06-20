@@ -79,14 +79,29 @@ def test_cleanup_files_old_keys(svc_client_with_user, service_job, tmp_path):
     }
     cache.set_file(user, file_upload)
 
+    chunk_id = uuid.uuid4().hex
+    chunk_folder = tmp_path / chunk_id
+    chunk_folder.mkdir()
+    chunk_data = chunk_folder / "0"
+    chunk_data.write_text("abcdefg")
+
+    chunk = {
+        "chunked_id": chunk_id,
+        "file_name": "0",
+        "relative_path": "0",
+    }
+    cache.set_file_chunk(user, chunk)
+
     response = svc_client.get("/cache.files_list", headers=headers)
     assert_rpc_response(response)
     assert 1 == len(response.json["result"]["files"])
+    assert 1 == len(list(cache.get_chunks(user, chunk_id)))
 
     cache_files_cleanup()
     response = svc_client.get("/cache.files_list", headers=headers)
     assert_rpc_response(response)
     assert 0 == len(response.json["result"]["files"])
+    assert 0 == len(list(cache.get_chunks(user, chunk_id)))
 
 
 @pytest.mark.service
