@@ -667,3 +667,11 @@ class ImageObjectRequestJson(marshmallow.Schema):
 def get_dataset_data_dir(client, dataset: Dataset) -> str:
     """Return default data directory for a dataset."""
     return os.path.join(client.data_dir, dataset.name)
+
+
+def get_file_path_in_dataset(client, dataset: Dataset, dataset_file: DatasetFile) -> Path:
+    """Return path of a file relative to dataset's data dir."""
+    try:
+        return (client.path / dataset_file.entity.path).relative_to(get_dataset_data_dir(client, dataset))
+    except ValueError:  # NOTE: File is not in the dataset's data dir
+        return Path(dataset_file.entity.path)

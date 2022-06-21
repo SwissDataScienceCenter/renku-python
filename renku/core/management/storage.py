@@ -27,21 +27,21 @@ from collections import defaultdict
 from pathlib import Path
 from shutil import move, which
 from subprocess import PIPE, STDOUT, check_output, run
-from typing import List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 import attr
 import pathspec
 from werkzeug.utils import cached_property
 
 from renku.core import errors
+from renku.core.management.git import _expand_directories
+from renku.core.management.repository import RepositoryApiMixin  # type: ignore
 from renku.core.util import communication
 from renku.core.util.file_size import parse_file_size
 from renku.core.util.git import run_command
-from renku.domain_model.entity import Entity
-from renku.domain_model.provenance.activity import Collection
 
-from .git import _expand_directories
-from .repository import RepositoryApiMixin  # type: ignore
+if TYPE_CHECKING:
+    from renku.domain_model.entity import Entity  # type: ignore
 
 
 class RenkuGitWildMatchPattern(pathspec.patterns.GitWildMatchPattern):
@@ -571,8 +571,11 @@ class StorageApiMixin(RepositoryApiMixin):
                     processed.add(path_obj)
                     path_obj = path_obj.parent
 
-        def _map_checksum(entity, checksum_mapping) -> Optional[Entity]:
+        def _map_checksum(entity, checksum_mapping) -> Optional["Entity"]:
             """Update the checksum and id of an entity based on a mapping."""
+            from renku.domain_model.entity import Entity
+            from renku.domain_model.provenance.activity import Collection
+
             if entity.checksum not in checksum_mapping:
                 return None
 

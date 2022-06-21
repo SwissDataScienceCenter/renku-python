@@ -332,7 +332,7 @@ def _print_template(template: "TemplateViewModel"):
 
 def _print_template_list(templates: List["TemplateViewModel"], verbose: bool):
     """Print a list of templates."""
-    from renku.domain_model.tabulate import tabulate
+    from renku.core.util.tabulate import tabulate
 
     for index, template in enumerate(templates, start=1):
         setattr(template, "index", index)

@@ -436,6 +436,23 @@ default to Primary/Derived. This has to adjusted manually in the OLOS
 interface after the export is done.
 
 
+Exporting data to a local directory:
+
+Renku provides a ``local`` provider that can be used to get a copy of a
+dataset. For example, the following command creates a copy of the dataset
+``my-dataset`` version ``v1`` in ``/tmp/my-dataset-v1``:
+
+.. code-block:: console
+
+    $ renku dataset export my-dataset local --tag v1 --path /tmp/my-dataset-v1
+
+This also creates a copy of dataset's metadata at the given version and puts it
+in ``<destination>/METADATA.yml``. If a destination path is not given to this
+command, it creates a directory in project's data directory using dataset's
+name and version: ``<data-dir>/<dataset-name>-<version>``. Export fails if the
+destination directory is not empty.
+
+
 Listing all files in the project associated with a dataset.
 
 .. code-block:: console
@@ -943,16 +960,16 @@ def export_provider_options(*param_decls, **attrs):
         from renku.core.dataset.providers import ProviderFactory
 
         providers = [
-            (k, v) for k, v in ProviderFactory.providers().items() if v.supports_export and v.export_parameters()
+            (k, v) for k, v in ProviderFactory.providers().items() if v.supports_export and v.get_export_parameters()
         ]
 
-        for i, (name, provider) in enumerate(providers):
-            params = provider.export_parameters()
-
-            for j, (param_name, (param_description, param_type)) in enumerate(params.items()):
+        for i, (name, provider) in enumerate(sorted(providers, reverse=True)):
+            for j, param in enumerate(provider.get_export_parameters()):
+                param_description = param.description
                 if j == 0:
-                    param_description = f"\b\n{param_description}\n "  # NOTE: add newline after a group
-                f = optgroup.option(f"--{param_name}", type=param_type, help=param_description)(f)
+                    param_description = f"\b\n{param.description}\n "  # NOTE: add newline after a group
+                args = [f"--{param.name}"] + [f"-{a}" if len(a) == 1 else f"--{a}" for a in param.aliases if a]
+                f = optgroup.option(*args, type=param.type, help=param_description, is_flag=param.is_flag)(f)
 
             name = f"{name} configuration"
             if i == len(providers) - 1:
@@ -965,13 +982,12 @@ def export_provider_options(*param_decls, **attrs):
     return wrapper
 
 
-@dataset.command("export")
+@dataset.command()
 @click.argument("name", shell_complete=_complete_datasets)
 @export_provider_argument()
-@click.option("-p", "--publish", is_flag=True, help="Automatically publish exported dataset.")
 @click.option("-t", "--tag", help="Dataset tag to export")
 @export_provider_options()
-def export_(name, provider, publish, tag, **kwargs):
+def export(name, provider, tag, **kwargs):
     """Export data to 3rd party provider."""
     from renku.command.dataset import export_dataset_command
     from renku.core import errors
@@ -980,7 +996,7 @@ def export_(name, provider, publish, tag, **kwargs):
     try:
         communicator = ClickCallback()
         export_dataset_command().lock_dataset().with_communicator(communicator).build().execute(
-            name=name, provider_name=provider, publish=publish, tag=tag, **kwargs
+            name=name, provider_name=provider, tag=tag, **kwargs
         )
     except (ValueError, errors.InvalidAccessToken, errors.DatasetNotFound, errors.RequestError) as e:
         raise click.BadParameter(e)
@@ -997,16 +1013,16 @@ def import_provider_options(*param_decls, **attrs):
         from renku.core.dataset.providers import ProviderFactory
 
         providers = [
-            (k, v) for k, v in ProviderFactory.providers().items() if v.supports_import and v.import_parameters()
+            (k, v) for k, v in ProviderFactory.providers().items() if v.supports_import and v.get_import_parameters()
         ]
 
-        for i, (name, provider) in enumerate(providers):
-            params = provider.import_parameters()
-
-            for j, (param_name, (param_description, param_type)) in enumerate(params.items()):
+        for i, (name, provider) in enumerate(sorted(providers, reverse=True)):
+            for j, param in enumerate(provider.get_import_parameters()):
+                param_description = param.description
                 if j == 0:
-                    param_description = f"\b\n{param_description}\n "  # NOTE: add newline after a group
-                f = optgroup.option(f"--{param_name}", type=param_type, help=param_description, default=None)(f)
+                    param_description = f"\b\n{param.description}\n "  # NOTE: add newline after a group
+                args = [f"--{param.name}"] + [f"-{a}" if len(a) == 1 else f"--{a}" for a in param.aliases if a]
+                f = optgroup.option(*args, type=param.type, help=param_description, is_flag=param.is_flag)(f)
 
             name = f"{name} configuration"
             if i == len(providers) - 1:

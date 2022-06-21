@@ -32,7 +32,6 @@ import attr
 
 from renku.core import errors
 from renku.core.util.os import get_absolute_path
-from renku.core.util.scm import shorten_message
 from renku.core.util.urls import remove_credentials
 
 COMMIT_DIFF_STRATEGY = "DIFF"
@@ -77,6 +76,7 @@ def finalize_commit(
     skip_staging: bool = False,
 ):
     """Commit modified/added paths."""
+    from renku.core.util.git import shorten_message
     from renku.infrastructure.repository import Actor
     from renku.version import __version__, version_url
 

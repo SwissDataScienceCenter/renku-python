@@ -34,7 +34,7 @@ def tabulate(collection, columns, columns_mapping, columns_alignments=None, sort
         sort: Whether to sort by first column or not (Default value = True).
         reverse: Whether to sort in reverse (Default value = False).
     """
-    from renku.domain_model.tabulate import tabulate as tabulate_
+    from renku.core.util.tabulate import tabulate as to_table
 
     if not columns:
         raise errors.ParameterError("Columns cannot be empty.")
@@ -54,7 +54,7 @@ def tabulate(collection, columns, columns_mapping, columns_alignments=None, sort
 
     alignments = alignments if collection else None  # To avoid a tabulate bug
 
-    return tabulate_(collection, headers=headers, colalign=alignments, disable_numparse=True)
+    return to_table(collection, headers=headers, colalign=alignments, disable_numparse=True)
 
 
 def _make_headers(columns, columns_mapping, columns_alignments):

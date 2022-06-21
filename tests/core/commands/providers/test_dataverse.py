@@ -21,15 +21,17 @@ import pytest
 from renku.core.dataset.providers.dataverse import DataverseExporter, _DataverseDeposition
 from renku.core.dataset.providers.doi import DOIProvider
 from renku.core.errors import RenkuImportError
+from renku.domain_model.dataset import Dataset
 
 
 def test_dataverse_exporter_init():
     """Check construction of a dataverse exporter."""
-    exporter = DataverseExporter(dataset="my-dataset", access_token="let-me-in")
+    dataset = Dataset(name="my-dataset")
+
+    exporter = DataverseExporter(dataset=dataset)
 
     assert exporter
-    assert "my-dataset" == exporter.dataset
-    assert "let-me-in" == exporter.access_token
+    assert dataset is exporter.dataset
 
 
 def test_dataverse_deposition_init():

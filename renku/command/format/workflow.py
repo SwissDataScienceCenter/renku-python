@@ -19,9 +19,8 @@
 import textwrap
 from typing import Callable, Dict
 
-from renku.domain_model.json import dumps
-
-from .tabulate import tabulate
+from renku.command.format.json import dumps
+from renku.command.format.tabulate import tabulate
 
 
 def tabular(workflows, *, columns=None):
