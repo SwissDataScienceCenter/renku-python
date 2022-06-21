@@ -208,6 +208,7 @@ def test_remove_activity(injected_dummy_database):
     assert {activity, upstream} == activity_gateway.get_upstream_activities(downstream)
 
     activity_gateway.remove(activity, keep_reference=True, force=True)
+    activity.delete()
 
     # Deleted activity is in the list of activities if we keep its reference and request it
     assert activity in activity_gateway.get_all_activities(include_deleted=True)
