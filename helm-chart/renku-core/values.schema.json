@@ -32,6 +32,10 @@
         "minimum": 1,
         "pattern": "^\\d+"
       },
+      "requestTimeout": {
+        "description": "Time before requests time out.",
+        "type": "integer"
+      },
       "datasetsWorkerQueues": {
         "description": "Name of the worker queue for dataset jobs",
         "type": "string"
