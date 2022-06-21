@@ -679,19 +679,14 @@ def edit(name, title, description, creators, metadata, keywords, unset):
     if list(keywords) == [NO_VALUE]:
         keywords = NO_VALUE
 
-    if "c" in unset or "creators" in unset:
-        if creators is not NO_VALUE:
-            raise click.UsageError("Cant user '--creator' together with unsetting creators")
-        creators = None
-
     if "k" in unset or "keywords" in unset:
         if keywords is not NO_VALUE:
-            raise click.UsageError("Cant user '--creator' together with unsetting creators")
+            raise click.UsageError("Cant use '--keyword' together with unsetting keyword")
         keywords = None
 
     if "m" in unset or "metadata" in unset:
         if metadata is not NO_VALUE:
-            raise click.UsageError("Cant user '--creator' together with unsetting creators")
+            raise click.UsageError("Cant use '--metadata' together with unsetting metadata")
         metadata = None
 
     if "i" in unset or "images" in unset:

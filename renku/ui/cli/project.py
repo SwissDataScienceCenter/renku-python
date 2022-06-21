@@ -115,12 +115,12 @@ def edit(description, keywords, creators, metadata, unset):
 
     if "k" in unset or "keywords" in unset:
         if keywords is not NO_VALUE:
-            raise click.UsageError("Cant user '--creator' together with unsetting creators")
+            raise click.UsageError("Cant use '--keyword' together with unsetting keywords")
         keywords = None
 
     if "m" in unset or "metadata" in unset:
         if metadata is not NO_VALUE:
-            raise click.UsageError("Cant user '--creator' together with unsetting creators")
+            raise click.UsageError("Cant use '--metadata' together with unsetting metadata")
         metadata = None
 
     custom_metadata = metadata
