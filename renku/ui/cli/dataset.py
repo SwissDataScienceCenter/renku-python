@@ -499,8 +499,8 @@ Sometimes you want to filter the files. For this we use ``--dataset``,
     my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file2  *
 
 Dataset files can be listed for a specific version (tag) of a dataset using the
-``--tag`` option. In this case, file from datasets that have that specific tag are
-displayed.
+``--tag`` option. In this case, files from datasets which have that specific
+tag are displayed.
 
 
 Unlink a file from a dataset:

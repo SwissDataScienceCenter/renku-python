@@ -23,7 +23,7 @@ import shutil
 import urllib
 from collections import OrderedDict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
 
 import patoolib
 
@@ -36,7 +36,7 @@ from renku.core.dataset.pointer_file import create_external_file, is_external_fi
 from renku.core.dataset.providers import ProviderFactory
 from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile
 from renku.core.dataset.request_model import ImageRequestModel
-from renku.core.dataset.tag import add_dataset_tag, prompt_access_token, prompt_tag_selection
+from renku.core.dataset.tag import add_dataset_tag, get_dataset_by_tag, prompt_access_token, prompt_tag_selection
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.interface.dataset_gateway import IDatasetGateway
@@ -1145,26 +1145,26 @@ def update_external_files(client: "LocalClient", records: List[DynamicProxy], dr
 def filter_dataset_files(
     client_dispatcher: IClientDispatcher,
     dataset_gateway: IDatasetGateway,
-    names=None,
+    names: Optional[List[str]] = None,
     tag: Optional[str] = None,
-    creators=None,
-    include=None,
-    exclude=None,
-    ignore=None,
-    immutable=False,
+    creators: Optional[Union[str, List[str], Tuple[str]]] = None,
+    include: Optional[List[str]] = None,
+    exclude: Optional[List[str]] = None,
+    ignore: Optional[List[str]] = None,
+    immutable: bool = False,
 ) -> List[DynamicProxy]:
     """Filter dataset files by specified filters.
 
     Args:
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
         dataset_gateway(IDatasetGateway):Injected dataset gateway.
-        names: Filter by specified dataset names (Default value = None).
+        names(Optional[List[str]]): Filter by specified dataset names (Default value = None).
         tag(Optional[str]): Filter by specified tag (Default value = None).
-        creators: Filter by creators (Default value = None).
-        include: Tuple containing patterns to which include from result (Default value = None).
-        exclude: Tuple containing patterns to which exclude from result (Default value = None).
-        ignore: Ignored datasets (Default value = None).
-        immutable: Return immutable copies of dataset objects (Default value = False).
+        creators(Optional[Union[str, List[str], Tuple[str]]]): Filter by creators (Default value = None).
+        include(Optional[List[str]]): Tuple containing patterns to which include from result (Default value = None).
+        exclude(Optional[List[str]]): Tuple containing patterns to which exclude from result (Default value = None).
+        ignore(Optional[List[str]]): Ignored datasets (Default value = None).
+        immutable(bool): Return immutable copies of dataset objects (Default value = False).
 
     Returns:
         List[DynamicProxy]: List of filtered files sorted by date added.
@@ -1188,24 +1188,23 @@ def filter_dataset_files(
     client = client_dispatcher.current_client
 
     if isinstance(creators, str):
-        creators = set(creators.split(","))
-
-    if isinstance(creators, list) or isinstance(creators, tuple):
-        creators = set(creators)
+        creators_set = set(creators.split(","))
+    elif isinstance(creators, list) or isinstance(creators, tuple):
+        creators_set = set(creators)
+    else:
+        creators_set = set()
 
     records = []
-    unused_names = set(names)
+    unused_names = set(names) if names is not None else set()
 
     for dataset in dataset_gateway.get_all_active_datasets():
         if (names and dataset.name not in names) or (ignore and dataset.name in ignore):
             continue
 
         if tag:
-            tags = dataset_gateway.get_all_tags(dataset)
-            selected_tag = next((t for t in tags if t.name == tag), None)
-            if not selected_tag:
+            dataset = get_dataset_by_tag(dataset=dataset, tag=tag)  # type: ignore
+            if not dataset:
                 continue
-            dataset = dataset_gateway.get_by_id(selected_tag.dataset_id.value)
 
         if not immutable:
             dataset = dataset.copy()
@@ -1213,9 +1212,9 @@ def filter_dataset_files(
         if unused_names:
             unused_names.remove(dataset.name)
 
-        if creators:
+        if creators_set:
             dataset_creators = {creator.name for creator in dataset.creators}
-            if not creators.issubset(dataset_creators):
+            if not creators_set.issubset(dataset_creators):
                 continue
 
         for file in dataset.files:
