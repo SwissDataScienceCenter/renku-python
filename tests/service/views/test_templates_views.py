@@ -122,8 +122,9 @@ def test_read_manifest_from_wrong_template(svc_client_with_templates, template_u
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
-def test_create_project_from_template(svc_client_templates_creation):
+def test_create_project_from_template(svc_client_templates_creation, client_database_injection_manager):
     """Check creating project from a valid template."""
+    from renku.core.management.client import LocalClient
     from renku.ui.service.serializers.headers import RenkuHeaders
     from renku.ui.service.utils import CACHE_PROJECTS_PATH
 
@@ -135,7 +136,7 @@ def test_create_project_from_template(svc_client_templates_creation):
     assert {"result"} == set(response.json.keys()), response.json["error"]
     stripped_name = normalize_to_ascii(payload["project_name"])
     assert stripped_name == response.json["result"]["slug"]
-    expected_url = "{0}/{1}/{2}".format(payload["project_repository"], payload["project_namespace"], stripped_name)
+    expected_url = f"{payload['project_repository']}/{payload['project_namespace']}/{stripped_name}"
     assert expected_url == response.json["result"]["url"]
 
     # NOTE: assert correct git user is set on new project
@@ -150,6 +151,13 @@ def test_create_project_from_template(svc_client_templates_creation):
     reader = Repository(project_path).get_configuration()
     assert reader.get_value("user", "email") == user_data["email"]
     assert reader.get_value("user", "name") == user_data["name"]
+
+    client = LocalClient(project_path)
+    with client_database_injection_manager(client):
+        project = client.project
+
+    expected_id = f"/projects/{payload['project_namespace']}/{stripped_name}"
+    assert expected_id == project.id
 
     # NOTE: Assert backwards compatibility metadata.yml was created
     old_metadata_path = project_path / ".renku/metadata.yml"
