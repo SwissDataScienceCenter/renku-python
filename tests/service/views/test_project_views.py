@@ -106,6 +106,7 @@ def test_edit_project_view_unset(svc_client_with_repo):
         "project_id": project_id,
         "description": "my new title",
         "creator": {"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"},
+        "keywords": ["keyword1", "keyword2"],
         "custom_metadata": {
             "@id": "http://example.com/metadata12",
             "@type": "https://schema.org/myType",
@@ -115,17 +116,12 @@ def test_edit_project_view_unset(svc_client_with_repo):
     }
     response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
 
-    edit_payload = {
-        "project_id": project_id,
-        "description": None,
-        "creator": None,
-        "custom_metadata": None,
-    }
+    edit_payload = {"project_id": project_id, "custom_metadata": None, "keywords": None}
     response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
 
     assert_rpc_response(response)
     assert {"warning", "edited", "remote_branch"} == set(response.json["result"])
-    assert {"description": None, "creator": None, "custom_metadata": None,} == response.json[
+    assert {"keywords": None, "custom_metadata": None,} == response.json[
         "result"
     ]["edited"]
 

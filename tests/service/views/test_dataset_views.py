@@ -791,7 +791,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
 @pytest.mark.integration
 @retry_failed
 def test_list_dataset_files(svc_client_with_repo):
-    """Check listing of dataset files"""
+    """Check listing of dataset files."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
     file_name = uuid.uuid4().hex
@@ -1272,7 +1272,6 @@ def test_edit_datasets_view_unset_values(svc_client_with_repo):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-
     assert_rpc_response(response)
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
     assert payload["name"] == response.json["result"]["name"]
@@ -1287,8 +1286,6 @@ def test_edit_datasets_view_unset_values(svc_client_with_repo):
     edit_payload = {
         "project_id": project_id,
         "name": name,
-        "creators": None,
-        "description": None,
         "keywords": None,
         "images": None,
         "custom_metadata": None,
@@ -1297,13 +1294,9 @@ def test_edit_datasets_view_unset_values(svc_client_with_repo):
 
     assert_rpc_response(response)
     assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
-    assert {
-        "keywords": [],
-        "creators": None,
-        "description": None,
-        "custom_metadata": None,
-        "images": [],
-    } == response.json["result"]["edited"]
+    assert {"keywords": [], "custom_metadata": None, "images": [],} == response.json[
+        "result"
+    ]["edited"]
 
     params_list = {
         "project_id": project_id,
@@ -1314,9 +1307,6 @@ def test_edit_datasets_view_unset_values(svc_client_with_repo):
     assert_rpc_response(response)
     ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
     assert edit_payload["name"] == ds["name"]
-    assert edit_payload["description"] == ds["description"]
-    assert 1 == len(ds["creators"])
-    assert "Renkubot" == ds["creators"][0]["name"]
     assert 0 == len(ds["keywords"])
     assert 0 == len(ds["annotations"])
     assert 0 == len(ds["images"])
