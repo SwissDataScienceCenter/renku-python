@@ -72,6 +72,8 @@ def edit_project_view(user_data, cache):
     """
     Edit project metadata view.
 
+    Not passing a field leaves it unchanged.
+
     ---
     post:
       description: Edit project metadata.
