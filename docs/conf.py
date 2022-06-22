@@ -356,6 +356,7 @@ nitpick_ignore = [
     ("py:class", "IDatasetGateway"),
     ("py:class", "IPlanGateway"),
     ("py:class", "LocalClient"),
+    ("py:class", "NoValueType"),
     ("py:class", "OID_TYPE"),
     ("py:class", "Path"),
     ("py:class", "Persistent"),

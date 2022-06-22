@@ -201,11 +201,12 @@ class DatasetEditRequest(
 ):
     """Dataset edit metadata request."""
 
-    title = fields.String(default=None)
-    description = fields.String(default=None)
-    creators = fields.List(fields.Nested(DatasetCreators))
-    keywords = fields.List(fields.String())
-    custom_metadata = fields.Dict(default=None)
+    title = fields.String(description="New title of the dataset")
+    description = fields.String(description="New description of the dataset")
+    creators = fields.List(fields.Nested(DatasetCreators), description="New creators of the dataset")
+    keywords = fields.List(fields.String(), allow_none=True, description="New keywords for the dataset")
+    images = fields.List(fields.Nested(ImageObjectRequest), allow_none=True, description="New dataset images")
+    custom_metadata = fields.Dict(allow_none=True, description="New custom metadata for the dataset")
 
 
 class DatasetEditResponse(RenkuSyncSchema):
