@@ -126,13 +126,13 @@ class Project(persistent.Persistent):
             annotations = [Annotation(id=Annotation.generate_id(), body=custom_metadata, source="renku")]
 
         if creator is None:
-            raise ValueError("Project Creator not set")
+            raise errors.ParameterError("Project Creator not set", "creator")
 
         if name is None:
-            raise ValueError("Project 'name' not set and could not be generated")
+            raise errors.ParameterError("Project 'name' not set and could not be generated", "name")
 
         if namespace is None:
-            raise ValueError("Project 'namespace' not set and could not be generated")
+            raise errors.ParameterError("Project 'namespace' not set and could not be generated", "namespace")
 
         id = cls.generate_id(namespace=namespace, name=name)
         return cls(
