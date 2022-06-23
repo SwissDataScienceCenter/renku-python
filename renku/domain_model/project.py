@@ -18,7 +18,7 @@
 """Project class."""
 
 from datetime import datetime
-from typing import Dict, List, Optional, cast
+from typing import TYPE_CHECKING, Dict, List, Optional, cast
 from urllib.parse import quote
 
 import persistent
@@ -31,6 +31,9 @@ from renku.core.util.util import NO_VALUE
 from renku.domain_model.provenance.agent import Person
 from renku.domain_model.provenance.annotation import Annotation
 from renku.version import __minimum_project_version__
+
+if TYPE_CHECKING:
+    from renku.core.management.client import LocalClient
 
 
 class Project(persistent.Persistent):
@@ -95,15 +98,28 @@ class Project(persistent.Persistent):
     @classmethod
     def from_client(
         cls,
-        client,
+        client: "LocalClient",
         name: Optional[str] = None,
+        namespace: Optional[str] = None,
         description: Optional[str] = None,
         keywords: Optional[List[str]] = None,
         custom_metadata: Optional[Dict] = None,
         creator: Optional[Person] = None,
     ) -> "Project":
-        """Create an instance from a LocalClient."""
-        namespace, name = cls.get_namespace_and_name(client=client, name=name, creator=creator)
+        """Create an instance from a LocalClient.
+
+        Args:
+            cls: The class.
+            client(LocalClient): Local client instance.
+            name(Optional[str]): Name of the project (when creating a new one) (Default value = None).
+            namespace(Optional[str]): Namespace of the project (when creating a new one) (Default value = None).
+            description(Optional[str]): Project description (when creating a new one) (Default value = None).
+            keywords(Optional[List[str]]): Keywords for the project (when creating a new one) (Default value = None).
+            custom_metadata(Optional[Dict]): Custom JSON-LD metadata (when creating a new project)
+                (Default value = None).
+            creator(Optional[Person]): The project creator.
+        """
+        namespace, name = cls.get_namespace_and_name(client=client, name=name, namespace=namespace, creator=creator)
         creator = creator or get_git_user(client.repository)
         annotations = None
 
@@ -111,10 +127,13 @@ class Project(persistent.Persistent):
             annotations = [Annotation(id=Annotation.generate_id(), body=custom_metadata, source="renku")]
 
         if creator is None:
-            raise ValueError("Project Creator not set")
+            raise errors.ParameterError("Project Creator not set", "creator")
 
         if name is None:
-            raise ValueError("Project 'name' not set and could not be generated")
+            raise errors.ParameterError("Project 'name' not set and could not be generated", "name")
+
+        if namespace is None:
+            raise errors.ParameterError("Project 'namespace' not set and could not be generated", "namespace")
 
         id = cls.generate_id(namespace=namespace, name=name)
         return cls(
@@ -122,14 +141,15 @@ class Project(persistent.Persistent):
         )
 
     @staticmethod
-    def get_namespace_and_name(*, client=None, name: Optional[str] = None, creator: Optional[Person] = None):
+    def get_namespace_and_name(
+        *, client=None, name: Optional[str] = None, namespace: Optional[str] = None, creator: Optional[Person] = None
+    ):
         """Return Project's namespace and name from various objects."""
-        namespace = None
 
         if client:
             remote = client.remote
-            namespace = remote.get("owner")
-            name = remote.get("name") or name
+            namespace = namespace or remote.get("owner")
+            name = name or remote.get("name")
 
             if not creator:
                 creator = get_git_user(client.repository)
