@@ -33,6 +33,7 @@ from renku.core.util.datetime8601 import fix_datetime, local_now, parse_date
 from renku.core.util.git import get_entity_from_revision
 from renku.core.util.metadata import is_external_file
 from renku.core.util.urls import get_path, get_slug
+from renku.core.util.util import NO_VALUE
 from renku.infrastructure.immutable import Immutable, Slots
 from renku.infrastructure.persistent import Persistent
 
@@ -554,7 +555,7 @@ class Dataset(Persistent):
         for name, value in kwargs.items():
             if name not in editable_attributes:
                 raise errors.ParameterError(f"Cannot edit field: '{name}'")
-            if value and value != getattr(self, name):
+            if value is not NO_VALUE and value != getattr(self, name):
                 setattr(self, name, value)
 
     def unlink_file(self, path, missing_ok=False) -> Optional[DatasetFile]:

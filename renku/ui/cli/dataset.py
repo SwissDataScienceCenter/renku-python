@@ -67,11 +67,13 @@ Editing a dataset's metadata:
 
 Use the ``edit`` sub-command to change metadata of a dataset. You can edit the same
 set of metadata as the create command by passing the options described in the
-table above.
+table above. You can also use the ``-u/--unset`` options with one of the values
+from ``creators`` (short ``c``), ``keywords`` (short ``k``) or ``metadata``
+(short ``m``) to delete the respective values from the dataset.
 
 .. code-block:: console
 
-    $ renku dataset edit my-dataset --title 'New title'
+    $ renku dataset edit my-dataset --title 'New title' --unset keywords
     Successfully updated: title.
 
 Listing all datasets:
@@ -548,6 +550,7 @@ import renku.ui.cli.utils.color as color
 from renku.command.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.command.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.command.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
+from renku.core.util.util import NO_VALUE
 
 
 def _complete_datasets(ctx, param, incomplete):
@@ -649,40 +652,79 @@ def create(name, title, description, creators, metadata, keyword):
 
 @dataset.command()
 @click.argument("name", shell_complete=_complete_datasets)
-@click.option("-t", "--title", default=None, type=click.STRING, help="Title of the dataset.")
-@click.option("-d", "--description", default=None, type=click.STRING, help="Dataset's description.")
+@click.option("-t", "--title", default=NO_VALUE, type=click.UNPROCESSED, help="Title of the dataset.")
+@click.option("-d", "--description", default=NO_VALUE, type=click.UNPROCESSED, help="Dataset's description.")
 @click.option(
     "-c",
     "--creator",
     "creators",
-    default=None,
+    default=[NO_VALUE],
     multiple=True,
+    type=click.UNPROCESSED,
     help="Creator's name, email, and affiliation. " "Accepted format is 'Forename Surname <email> [affiliation]'.",
 )
 @click.option(
     "-m",
     "--metadata",
-    default=None,
-    type=click.Path(exists=True, dir_okay=False),
+    default=NO_VALUE,
+    type=click.UNPROCESSED,
     help="Custom metadata to be associated with the dataset.",
 )
-@click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords or tags.")
-def edit(name, title, description, creators, metadata, keyword):
+@click.option(
+    "-k",
+    "--keyword",
+    "keywords",
+    default=[NO_VALUE],
+    multiple=True,
+    type=click.UNPROCESSED,
+    help="List of keywords or tags.",
+)
+@click.option(
+    "-u",
+    "--unset",
+    default=[],
+    multiple=True,
+    type=click.Choice(["keywords", "k", "images", "i", "metadata", "m"]),
+    help="Remove keywords from dataset.",
+)
+def edit(name, title, description, creators, metadata, keywords, unset):
     """Edit dataset metadata."""
     from renku.command.dataset import edit_dataset_command
     from renku.core.util.metadata import construct_creators
     from renku.ui.cli.utils.callback import ClickCallback
 
-    creators = creators or []
-    keywords = keyword or []
+    images = NO_VALUE
 
-    custom_metadata = None
-    no_email_warnings = None
+    if list(creators) == [NO_VALUE]:
+        creators = NO_VALUE
 
-    if creators:
+    if list(keywords) == [NO_VALUE]:
+        keywords = NO_VALUE
+
+    if "k" in unset or "keywords" in unset:
+        if keywords is not NO_VALUE:
+            raise click.UsageError("Cant use '--keyword' together with unsetting keyword")
+        keywords = None
+
+    if "m" in unset or "metadata" in unset:
+        if metadata is not NO_VALUE:
+            raise click.UsageError("Cant use '--metadata' together with unsetting metadata")
+        metadata = None
+
+    if "i" in unset or "images" in unset:
+        images = None
+
+    custom_metadata = metadata
+    no_email_warnings = False
+
+    if creators and creators is not NO_VALUE:
         creators, no_email_warnings = construct_creators(creators, ignore_email=True)
 
-    if metadata:
+    if metadata and metadata is not NO_VALUE:
+        path = Path(metadata)
+
+        if not path.exists():
+            raise click.UsageError(f"Path {path} does not exist.")
         custom_metadata = json.loads(Path(metadata).read_text())
 
     updated = (
@@ -694,7 +736,7 @@ def edit(name, title, description, creators, metadata, keyword):
             description=description,
             creators=creators,
             keywords=keywords,
-            skip_image_update=True,
+            images=images,
             custom_metadata=custom_metadata,
         )
     ).output

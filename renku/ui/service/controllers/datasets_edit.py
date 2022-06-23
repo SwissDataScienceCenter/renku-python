@@ -16,9 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service datasets edit controller."""
+from typing import Dict, cast
+
 from renku.command.dataset import edit_dataset_command
 from renku.core.dataset.request_model import ImageRequestModel
 from renku.core.util.metadata import construct_creators
+from renku.core.util.util import NO_VALUE
 from renku.ui.service.cache.models.job import Job
 from renku.ui.service.config import CACHE_UPLOADS_PATH, MESSAGE_PREFIX
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
@@ -36,7 +39,7 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets edit list controller."""
-        self.ctx = DatasetsEditCtrl.REQUEST_SERIALIZER.load(request_data)
+        self.ctx = cast(Dict, DatasetsEditCtrl.REQUEST_SERIALIZER.load(request_data))
         self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset edit {self.ctx['name']}"
 
         super(DatasetsEditCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
@@ -50,8 +53,9 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
         """Renku operation for the controller."""
         warnings = []
 
-        images = self.ctx.get("images")
-        if images:
+        if "images" in self.ctx:
+            images = self.ctx.get("images") or []
+
             user_cache_dir = CACHE_UPLOADS_PATH / self.user.user_id
 
             set_url_for_uploaded_images(images=images, cache=self.cache, user=self.user)
@@ -65,10 +69,33 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
                 )
                 for img in images
             ]
+        else:
+            images = NO_VALUE
 
-        creators = self.ctx.get("creators")
-        if creators:
-            creators, warnings = construct_creators(creators)
+        if "creators" in self.ctx:
+            creators, warnings = construct_creators(self.ctx.get("creators"))
+        else:
+            creators = NO_VALUE
+
+        if "title" in self.ctx:
+            title = self.ctx.get("title")
+        else:
+            title = NO_VALUE
+
+        if "description" in self.ctx:
+            description = self.ctx.get("description")
+        else:
+            description = NO_VALUE
+
+        if "keywords" in self.ctx:
+            keywords = self.ctx.get("keywords") or []
+        else:
+            keywords = NO_VALUE
+
+        if "custom_metadata" in self.ctx:
+            custom_metadata = self.ctx.get("custom_metadata")
+        else:
+            custom_metadata = NO_VALUE
 
         result = (
             edit_dataset_command()
@@ -76,12 +103,12 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
             .build()
             .execute(
                 self.ctx["name"],
-                self.ctx.get("title"),
-                self.ctx.get("description"),
-                creators,
-                keywords=self.ctx.get("keywords"),
+                title=title,
+                description=description,
+                creators=creators,
+                keywords=keywords,
                 images=images,
-                custom_metadata=self.ctx.get("custom_metadata"),
+                custom_metadata=custom_metadata,
             )
         )
 
