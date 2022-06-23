@@ -27,6 +27,7 @@ from renku.core.util.os import get_relative_path_to_cwd, get_relative_paths
 from renku.core.workflow.activity import (
     get_all_modified_and_deleted_activities_and_entities,
     get_downstream_generating_activities,
+    is_activity_valid,
 )
 
 
@@ -70,8 +71,8 @@ def get_status(
 
     modified, deleted = get_all_modified_and_deleted_activities_and_entities(client.repository)
 
-    modified = {(a, e) for a, e in modified if a.is_activity_valid}
-    deleted = {(a, e) for a, e in deleted if a.is_activity_valid}
+    modified = {(a, e) for a, e in modified if is_activity_valid(a)}
+    deleted = {(a, e) for a, e in deleted if is_activity_valid(a)}
 
     if not modified and not deleted:
         return StatusResult({}, {}, set(), set())

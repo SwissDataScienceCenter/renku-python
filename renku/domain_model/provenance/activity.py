@@ -236,11 +236,6 @@ class Activity(Persistent):
         """Return if the activity was deleted."""
         return self.invalidated_at is not None
 
-    @property
-    def is_activity_valid(self) -> bool:
-        """Return if the activity or its plan is not deleted."""
-        return not self.association.plan.deleted
-
     @staticmethod
     def generate_id(uuid: Optional[str] = None) -> str:
         """Generate an identifier for an activity."""

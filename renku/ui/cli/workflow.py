@@ -626,8 +626,8 @@ Removing Runs
 
 Renku allows you to undo a Run in a project by using ``renku workflow revert
 <activity ID>``. You can obtain <activity ID> from the ``renku log`` command.
-If the deleted run generated some files, Renku either deleted these files (in
-case there are no earlier version of them and they are not used in other
+If the deleted run generated some files, Renku either deletes these files (in
+case there are no earlier versions of them and they are not used in other
 activities) or revert them to their earlier versions. You can ask Renku to keep the
 generated files and only delete the metadata by passing the ``--metadata-only``
 option.
@@ -637,7 +637,7 @@ option.
    dataset for example. Make sure that the project doesn't use such files in
    other places or always use ``--metadata-only`` option when reverting a run.
 
-If you want to delete run along with its plan use the ``--plan`` option.
+If you want to delete a run along with its plan use the ``--plan`` option.
 This only deletes the plan if it's not used by any other activity.
 
 Renku won't remove a run if there are downstream runs that depend on it. The

@@ -31,7 +31,7 @@ from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
-from renku.core.workflow.plan import get_activities, remove_plan
+from renku.core.workflow.plan import get_activities, is_plan_removed, remove_plan
 from renku.domain_model.entity import Entity
 from renku.domain_model.provenance.activity import Activity
 
@@ -315,7 +315,7 @@ def get_downstream_generating_activities(
 
         for chain in downstream_chains:
             for activity in chain:
-                if not activity.is_activity_valid:
+                if not is_activity_valid(activity):
                     # don't process further downstream activities as the plan in question was deleted
                     break
                 include_newest_activity(activity)
@@ -467,9 +467,9 @@ def revert_activity(
             path = generation.entity.path
 
             generator_activities = activity_gateway.get_activities_by_generation(path=path)
-            generator_activities = [a for a in generator_activities if a.is_activity_valid and not a.deleted]
+            generator_activities = [a for a in generator_activities if is_activity_valid(a) and not a.deleted]
             latest_generator = get_latest_activity(generator_activities)
-            if latest_generator != activity:  # NOTE: Another activity already generated the same path
+            if latest_generator != activity:  # NOTE: A newer activity already generated the same path
                 continue
 
             previous_generator = get_latest_activity_before(generator_activities, activity)
@@ -514,3 +514,17 @@ def revert_activity(
     activity.delete(when=delete_time)
 
     return activity
+
+
+@inject.autoparams()
+def is_activity_valid(activity: Activity) -> bool:
+    """Return whether this plan has not been deleted.
+
+    Args:
+        activity(Activity): The Activity whose Plan should be checked.
+
+    Returns:
+        bool: True if the activities' Plan is still valid, False otherwise.
+
+    """
+    return not is_plan_removed(plan=activity.association.plan)

@@ -19,9 +19,8 @@
 from pathlib import Path
 
 from renku.domain_model.dataset import Url
-from renku.infrastructure.gateway.plan_gateway import PlanGateway
 from renku.ui.cli import cli
-from tests.utils import create_dummy_plan, format_result_exception, with_dataset
+from tests.utils import format_result_exception, with_dataset
 
 
 def test_new_project_is_ok(runner, project):
@@ -143,38 +142,3 @@ def test_fix_invalid_imported_dataset(runner, client_with_datasets, client_datab
             # NOTE: Set both same_as and derived_from for a dataset
             assert dataset.same_as.value == "http://example.com"
             assert dataset.derived_from is None
-
-
-def test_partially_deleted_plan_chain(runner, client, client_database_injection_manager):
-    """Test fixing plans that are not entirely deleted."""
-    with client_database_injection_manager(client):
-        parent = create_dummy_plan("invalid-deleted-plan")
-        plan = parent.derive()
-        child = plan.derive()
-
-        plan.delete()
-
-        plan_gateway = PlanGateway()
-
-        plan_gateway.add(parent)
-        plan_gateway.add(plan)
-        plan_gateway.add(child)
-
-        assert not parent.deleted
-        assert plan.deleted
-        assert not child.deleted
-
-    client.repository.add(all=True)
-    client.repository.commit("Added plans")
-
-    result = runner.invoke(cli, ["doctor"])
-
-    assert 1 == result.exit_code, format_result_exception(result)
-    assert "There are plans that are not deleted correctly" in result.output
-    assert "invalid-deleted-plan" in result.output
-
-    result = runner.invoke(cli, ["doctor", "--fix"])
-
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "There are plans that are not deleted correctly" not in result.output
-    assert "Fixing plan 'invalid-deleted-plan'" in result.output
