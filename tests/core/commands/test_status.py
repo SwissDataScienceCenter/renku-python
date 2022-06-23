@@ -294,8 +294,10 @@ def test_status_deleted_inputs(runner, project):
 
     write_and_commit_file(repo, source, "content")
 
-    assert 0 == runner.invoke(cli, ["run", "cp", source, intermediate]).exit_code
-    assert 0 == runner.invoke(cli, ["run", "cp", intermediate, output]).exit_code
+    result = runner.invoke(cli, ["run", "cp", source, intermediate])
+    assert 0 == result.exit_code, format_result_exception(result)
+    result = runner.invoke(cli, ["run", "cp", intermediate, output])
+    assert 0 == result.exit_code, format_result_exception(result)
 
     os.unlink(source)
 

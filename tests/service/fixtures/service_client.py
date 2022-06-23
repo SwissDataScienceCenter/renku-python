@@ -228,7 +228,7 @@ def svc_client_templates_creation(svc_client_with_templates):
         },
     }
 
-    # clenup by invoking the GitLab delete API
+    # cleanup by invoking the GitLab delete API
     # TODO: consider using the project delete endpoint once implemented
     def remove_project():
         project_slug = "{0}/{1}".format(payload["project_namespace"], normalize_to_ascii(payload["project_name"]))
