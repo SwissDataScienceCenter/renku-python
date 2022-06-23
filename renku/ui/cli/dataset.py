@@ -500,6 +500,11 @@ Sometimes you want to filter the files. For this we use ``--dataset``,
     my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file1  *
     my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file2  *
 
+Dataset files can be listed for a specific version (tag) of a dataset using the
+``--tag`` option. In this case, files from datasets which have that specific
+tag are displayed.
+
+
 Unlink a file from a dataset:
 
 .. code-block:: console
@@ -615,7 +620,7 @@ def create(name, title, description, creators, metadata, keyword):
     from renku.ui.cli.utils.callback import ClickCallback
 
     communicator = ClickCallback()
-    creators = creators or ()
+    creators = creators or []
 
     custom_metadata = None
 
@@ -822,6 +827,7 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
 
 @dataset.command("ls-files")
 @click.argument("names", nargs=-1, shell_complete=_complete_datasets)
+@click.option("-t", "--tag", default=None, type=click.STRING, help="Tag for which to show dataset files.")
 @click.option(
     "--creators",
     help="Filter files which where authored by specific creators. Multiple creators are specified by comma.",
@@ -843,7 +849,7 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
     help="Comma-separated list of column to display: {}.".format(", ".join(DATASET_FILES_COLUMNS.keys())),
     show_default=True,
 )
-def ls_files(names, creators, include, exclude, format, columns):
+def ls_files(names, tag, creators, include, exclude, format, columns):
     """List files in dataset."""
     from renku.command.dataset import list_files_command
 
@@ -854,7 +860,7 @@ def ls_files(names, creators, include, exclude, format, columns):
         list_files_command()
         .lock_dataset()
         .build()
-        .execute(datasets=names, creators=creators, include=include, exclude=exclude)
+        .execute(datasets=names, tag=tag, creators=creators, include=include, exclude=exclude)
     )
 
     click.echo(DATASET_FILES_FORMATS[format](result.output, columns=columns))
