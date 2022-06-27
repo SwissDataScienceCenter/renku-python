@@ -1236,14 +1236,14 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "poetry-dynamic-versioning"
-version = "0.14.1"
+version = "0.17.1"
 description = "Plugin for Poetry to enable dynamic versioning based on VCS tags"
 category = "main"
 optional = true
 python-versions = ">=3.5,<4.0"
 
 [package.dependencies]
-dunamai = ">=1.11.1,<2.0.0"
+dunamai = ">=1.12.0,<2.0.0"
 jinja2 = {version = ">=2.11.1,<4", markers = "python_version >= \"3.6\" and python_version < \"4.0\""}
 tomlkit = ">=0.4"
 
@@ -1730,7 +1730,7 @@ python-versions = "*"
 
 [[package]]
 name = "python-gitlab"
-version = "3.1.1"
+version = "3.5.0"
 description = "Interact with GitLab API"
 category = "main"
 optional = false
@@ -2676,7 +2676,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "ccca58319a741b239cde788d752619f0a5ffc4c3a60a27737c666c4d9c1c5f81"
+content-hash = "500681f5fca724cff1436cd954387ae8000aac422f73c36828d652e8330ced28"
 
 [metadata.files]
 addict = [
@@ -3596,8 +3596,8 @@ pluggy = [
     {file = "pluggy-1.0.0.tar.gz", hash = "sha256:4224373bacce55f955a878bf9cfa763c1e360858e330072059e10bad68531159"},
 ]
 poetry-dynamic-versioning = [
-    {file = "poetry-dynamic-versioning-0.14.1.tar.gz", hash = "sha256:01cc73a4bc4861bb91b138c235d49851d5563d373643b3f3c5cf8664d1115b5b"},
-    {file = "poetry_dynamic_versioning-0.14.1-py3-none-any.whl", hash = "sha256:29284bc6ae8c2ddde299801f174908ac864bfd8bae201a5f6e627c35d3df38c4"},
+    {file = "poetry-dynamic-versioning-0.17.1.tar.gz", hash = "sha256:304eec793e8b71e3646b365671464c935626781e92dc029e35b01e8fe8c7530c"},
+    {file = "poetry_dynamic_versioning-0.17.1-py3-none-any.whl", hash = "sha256:647d41eb554496eb657c7745ab2321b77d1f9c7cf52f7deb6ff674736fbd8ea1"},
 ]
 poetry-lock-package = [
     {file = "poetry-lock-package-0.4.4.tar.gz", hash = "sha256:32b8d3472409a84c5056c4532152854dd08cb644f5e1b2507678fdfb044812a1"},
@@ -3825,8 +3825,8 @@ python-editor = [
     {file = "python_editor-1.0.4-py3.5.egg", hash = "sha256:c3da2053dbab6b29c94e43c486ff67206eafbe7eb52dbec7390b5e2fb05aac77"},
 ]
 python-gitlab = [
-    {file = "python-gitlab-3.1.1.tar.gz", hash = "sha256:cad1338c1ff1a791a7bae7995dc621e26c77dfbf225bade456acec7512782825"},
-    {file = "python_gitlab-3.1.1-py3-none-any.whl", hash = "sha256:2a7de39c8976db6d0db20031e71b3e43d262e99e64b471ef09bf00482cd3d9fa"},
+    {file = "python-gitlab-3.5.0.tar.gz", hash = "sha256:29ae7fb9b8c9aeb2e6e19bd2fd04867e93ecd7af719978ce68fac0cf116ab30d"},
+    {file = "python_gitlab-3.5.0-py3-none-any.whl", hash = "sha256:73b5aa6502efa557ee1a51227cceb0243fac5529627da34f08c5f265bf50417c"},
 ]
 pytz = [
     {file = "pytz-2022.1-py2.py3-none-any.whl", hash = "sha256:e68985985296d9a66a881eb3193b0906246245294a881e7c8afe623866ac6a5c"},
