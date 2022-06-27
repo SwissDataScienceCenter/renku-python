@@ -41,7 +41,7 @@ def get_latest_plan(plan: Optional[AbstractPlan], plan_gateway: IPlanGateway) ->
     child_plan: Optional[AbstractPlan] = plan
     while child_plan is not None:
         plan = child_plan
-        child_plan = next((p for p in all_plans if p.derived_from is not None and p.derived_from == plan.id), None)
+        child_plan = next((p for p in all_plans if p.derived_from == plan.id), None)
 
     return plan
 
@@ -87,7 +87,7 @@ def remove_plan(name_or_id: str, force: bool, plan_gateway: IPlanGateway, when: 
         prompt_text = f"You are about to remove the following workflow '{name_or_id}'.\n\nDo you wish to continue?"
         communication.confirm(prompt_text, abort=True, warning=True)
 
-    derived_plan = plan.derive()
+    derived_plan = latest_version.derive()
     derived_plan.delete(when=when)
 
     plan_gateway.add(derived_plan)

@@ -119,7 +119,7 @@ class Plan:
 
     def get_latest_version(self) -> "Plan":
         """Return the latest version (derivative) of this plan."""
-        return cast(Plan, _get_latest_version(plan_id=self.id, type=core_plan.Plan)) or self
+        return cast(Plan, _get_latest_version(plan=self))
 
 
 class CompositePlan:
@@ -194,7 +194,7 @@ class CompositePlan:
 
     def get_latest_version(self) -> "CompositePlan":
         """Return the latest version (derivative) of this plan."""
-        return cast(CompositePlan, _get_latest_version(plan_id=self.id, type=core_composite_plan.CompositePlan)) or self
+        return cast(CompositePlan, _get_latest_version(plan=self))
 
 
 def _convert_plan(plan) -> Union[Plan, CompositePlan]:
@@ -213,7 +213,7 @@ def _convert_plans(plans: List[Union[core_plan.AbstractPlan]]) -> List[Union[Pla
 
 
 def _list_plans(
-    include_deleted: bool, type: Type[Union[core_plan.Plan, core_composite_plan.CompositePlan]]
+    include_deleted: bool, type: Optional[Type[Union[core_plan.Plan, core_composite_plan.CompositePlan]]]
 ) -> List[core_plan.AbstractPlan]:
     """List all plans in a project.
 
@@ -228,23 +228,30 @@ def _list_plans(
         return []
 
     plans = plan_gateway.get_all_plans()
+    derivatives_mapping = {p.derived_from: p for p in plans if p.derived_from is not None}
+
+    def get_latest_plan(plan):
+        while plan.id in derivatives_mapping:
+            plan = derivatives_mapping[plan.id]
+        return plan
+
+    latest_plans = {get_latest_plan(p) for p in plans}
 
     if not include_deleted:
-        plans = [p for p in plans if p.invalidated_at is None]
+        latest_plans = {p for p in latest_plans if not p.deleted}
 
-    return [p for p in plans if isinstance(p, type)]
+    return [p for p in latest_plans if type is None or isinstance(p, type)]
 
 
-def _get_latest_version(
-    plan_id: str, type: Type[Union[core_plan.Plan, core_composite_plan.CompositePlan]]
-) -> Optional[Union[Plan, CompositePlan]]:
-    """Get the latest version (derivative) of a plan or None if the plan is already the latest version."""
-    all_plans = _list_plans(include_deleted=False, type=type)
+def _get_latest_version(plan: Union[Plan, CompositePlan]) -> Union[Plan, CompositePlan]:
+    """Get the latest version (derivative) of a plan or the plan itself if it's already the latest version."""
+    all_plans = _list_plans(include_deleted=False, type=None)
     derivatives_mapping = {p.derived_from: p for p in all_plans if p.derived_from is not None}
 
-    plan = None
+    derived_plan = None
+    plan_id = plan.id
     while plan_id in derivatives_mapping:
-        plan = derivatives_mapping[plan_id]
-        plan_id = plan.id
+        derived_plan = derivatives_mapping[plan_id]
+        plan_id = derived_plan.id
 
-    return _convert_plan(plan) if plan is not None else None
+    return _convert_plan(derived_plan) if derived_plan is not None else plan

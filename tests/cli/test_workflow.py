@@ -1226,7 +1226,7 @@ def test_reverted_activity_status(client, runner, client_database_injection_mana
 
     assert 1 == runner.invoke(cli, ["status"]).exit_code
     assert "output" in runner.invoke(cli, ["update", "--all", "--dry-run"]).output
-    assert "output" in runner.invoke(cli, ["workflow", "visualize", "output"]).output
+    assert "cat input > output" in runner.invoke(cli, ["workflow", "visualize", "output"]).output
     assert activity_id in runner.invoke(cli, ["log"]).output
     assert "input" in runner.invoke(cli, ["workflow", "inputs"]).output
     assert "output" in runner.invoke(cli, ["workflow", "outputs"]).output
@@ -1237,7 +1237,7 @@ def test_reverted_activity_status(client, runner, client_database_injection_mana
 
     assert 0 == runner.invoke(cli, ["status"]).exit_code
     assert "output" not in runner.invoke(cli, ["update", "--all", "--dry-run"]).output
-    assert "output" not in runner.invoke(cli, ["workflow", "visualize", "output"]).output
+    assert "cat input > output" not in runner.invoke(cli, ["workflow", "visualize", "output"]).output
     assert activity_id not in runner.invoke(cli, ["log"]).output
     assert "input" not in runner.invoke(cli, ["workflow", "inputs"]).output
     assert "output" not in runner.invoke(cli, ["workflow", "outputs"]).output
