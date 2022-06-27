@@ -217,6 +217,8 @@ def edit_dataset_view(user_data, cache):
     """
     Edit dataset metadata view.
 
+    Not passing a field leaves it unchanged.
+
     ---
     post:
       description: Edit dataset metadata.

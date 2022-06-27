@@ -85,6 +85,46 @@ def test_edit_project_view(svc_client_with_repo):
         },
     } == response.json["result"]["edited"]
 
+    edit_payload = {
+        "project_id": project_id,
+    }
+    response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
+
+    assert_rpc_response(response)
+    assert {"warning", "edited", "remote_branch"} == set(response.json["result"])
+    assert 0 == len(response.json["result"]["edited"])
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+def test_edit_project_view_unset(svc_client_with_repo):
+    """Test editing project metadata by unsetting values."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    edit_payload = {
+        "project_id": project_id,
+        "description": "my new title",
+        "creator": {"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"},
+        "keywords": ["keyword1", "keyword2"],
+        "custom_metadata": {
+            "@id": "http://example.com/metadata12",
+            "@type": "https://schema.org/myType",
+            "https://schema.org/property1": 1,
+            "https://schema.org/property2": "test",
+        },
+    }
+    response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
+
+    edit_payload = {"project_id": project_id, "custom_metadata": None, "keywords": None}
+    response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
+
+    assert_rpc_response(response)
+    assert {"warning", "edited", "remote_branch"} == set(response.json["result"])
+    assert {"keywords": None, "custom_metadata": None,} == response.json[
+        "result"
+    ]["edited"]
+
 
 @pytest.mark.service
 @pytest.mark.integration

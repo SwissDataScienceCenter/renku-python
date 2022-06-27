@@ -24,7 +24,8 @@ from renku.command.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core import errors
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.util import communication
-from renku.domain_model.dataset import DatasetTag, Url
+from renku.domain_model.dataset import Dataset, DatasetTag, Url
+from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.immutable import DynamicProxy
 
 
@@ -92,6 +93,25 @@ def remove_dataset_tags(dataset_name: str, tags: List[str]):
     for tag in dataset_tags:
         if tag.name in tags:
             datasets_provenance.remove_tag(dataset, tag)
+
+
+def get_dataset_by_tag(dataset: Dataset, tag: str) -> Optional[Dataset]:
+    """Return a version of dataset that has a specific tag.
+
+    Args:
+        dataset(Dataset): A dataset to return its tagged version.
+        tag(str): Tag name to search for.
+
+    Returns:
+        Optional[Dataset]: The dataset pointed to by the tag or None if nothing found.
+    """
+    dataset_gateway = DatasetGateway()
+
+    tags = dataset_gateway.get_all_tags(dataset)
+    selected_tag = next((t for t in tags if t.name == tag), None)
+    if selected_tag is None:
+        return None
+    return dataset_gateway.get_by_id(selected_tag.dataset_id.value)
 
 
 def prompt_access_token(exporter):

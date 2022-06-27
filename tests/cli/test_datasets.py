@@ -1041,7 +1041,7 @@ def test_dataset_unlink_file_not_found(runner, project):
 
     result = runner.invoke(cli, ["dataset", "unlink", "my-dataset", "--include", "notthere.csv"])
 
-    assert 2 == result.exit_code
+    assert 2 == result.exit_code, format_result_exception(result)
 
 
 def test_dataset_unlink_file_abort_unlinking(tmpdir, runner, project):
@@ -1207,6 +1207,51 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory, load_dataset
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
+
+
+@pytest.mark.parametrize("dirty", [False, True])
+def test_dataset_edit_unset(runner, client, project, dirty, subdirectory, load_dataset_with_injection):
+    """Check dataset metadata editing unsetting values."""
+    if dirty:
+        (client.path / "README.md").write_text("Make repo dirty.")
+
+    metadata = {
+        "@id": "https://example.com/annotation1",
+        "@type": "https://schema.org/specialType",
+        "https://schema.org/specialProperty": "some_unique_value",
+    }
+    metadata_path = client.path / "metadata.json"
+    metadata_path.write_text(json.dumps(metadata))
+
+    result = runner.invoke(
+        cli,
+        [
+            "dataset",
+            "create",
+            "dataset",
+            "-t",
+            "original title",
+            "-c",
+            "John Doe <john@does.example.com>",
+            "-k",
+            "keyword-1",
+            "--metadata",
+            str(metadata_path),
+        ],
+    )
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(
+        cli,
+        ["dataset", "edit", "dataset", "-u", "keywords", "-u", "metadata"],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Successfully updated: keywords, custom_metadata." in result.output
+
+    dataset = load_dataset_with_injection("dataset", client)
+    assert 0 == len(dataset.keywords)
+    assert 0 == len(dataset.annotations)
 
 
 @pytest.mark.parametrize("dirty", [False, True])

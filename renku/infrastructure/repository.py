@@ -416,6 +416,48 @@ class BaseRepository:
             raise errors.GitCommitNotFoundError(f"Cannot find previous commit for '{path}' from '{revision}'")
         return commit
 
+    def get_revisions_paths(self, *checksums: str) -> List[Tuple[Optional[str], Optional[str]]]:
+        """Return a revision:path tuple for each checksum so that revision contains the given blob with the checksum."""
+
+        def parse_output(output) -> Tuple[Optional[str], Optional[str]]:
+            if output.lstrip().startswith("fatal:"):
+                return None, None
+            else:
+                return output.split(":", maxsplit=1)
+
+        outputs = []
+        for batch in split_paths(*checksums):
+            try:
+                outputs.extend(self.run_git_command("describe", "--always", *batch).split(os.linesep))
+            except errors.GitCommandError:
+                outputs.extend(["fatal:"] * len(batch))
+
+        return [parse_output(o) for o in outputs]
+
+    def get_sizes(self, *checksums: str) -> List[Optional[str]]:
+        """Return size of blobs given their checksum."""
+        revisions = []
+        for batch in split_paths(*checksums):
+            try:
+                revisions.extend(self.run_git_command("describe", "--always", *batch).split(os.linesep))
+            except errors.GitCommandError:
+                revisions.extend(["fatal:"] * len(batch))
+
+        try:
+            result = subprocess.run(
+                ["git", "cat-file", "--batch-check='%(objectsize)'"],
+                check=True,
+                input="\n".join(revisions),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                cwd=self.path,
+                text=True,
+            )
+        except subprocess.CalledProcessError:
+            return [""] * len(checksums)
+        else:
+            return ["" if "missing" in line else line.strip("\"'") for line in result.stdout.split(os.linesep)[:-1]]
+
     def iterate_commits(
         self,
         *paths: Union[Path, str],

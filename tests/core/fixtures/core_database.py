@@ -210,3 +210,18 @@ def injected_dummy_database(dummy_database_injection_manager):
     """Fixture for context manager with dummy database injection."""
     with dummy_database_injection_manager(None):
         yield
+
+
+@pytest.fixture
+def path_injection(injection_manager, database_injection_bindings, client_injection_bindings):
+    """Fixture that accepts a path and adds required renku binding."""
+
+    def create_client_and_bindings(path: Union[Path, str]):
+        from renku.core.management.client import LocalClient
+        from renku.core.util.contexts import chdir
+
+        with chdir(path):
+            client = LocalClient(path=path)
+            return injection_manager(database_injection_bindings(client_injection_bindings(client)))
+
+    return create_client_and_bindings

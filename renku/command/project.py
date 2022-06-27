@@ -17,6 +17,8 @@
 # limitations under the License.
 """Project management."""
 
+from typing import Dict, List, Optional, Union, cast
+
 from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
 from renku.command.view_model.project import ProjectViewModel
@@ -24,17 +26,25 @@ from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.management.repository import DATABASE_METADATA_PATH
 from renku.core.util.metadata import construct_creator
+from renku.core.util.util import NO_VALUE, NoValueType
+from renku.domain_model.provenance.agent import Person
 
 
 @inject.autoparams()
-def _edit_project(description, creator, keywords, custom_metadata, project_gateway: IProjectGateway):
+def _edit_project(
+    description: Optional[Union[str, NoValueType]],
+    creator: Union[Dict, str, NoValueType],
+    keywords: Optional[Union[List[str], NoValueType]],
+    custom_metadata: Optional[Union[Dict, NoValueType]],
+    project_gateway: IProjectGateway,
+):
     """Edit dataset metadata.
 
     Args:
-        description: New description.
-        creator: New creators.
-        keywords: New keywords.
-        custom_metadata: Custom JSON-LD metadata.
+        description(Union[Optional[str], NoValueType]): New description.
+        creator(Union[Dict, str, NoValueType]): New creators.
+        keywords(Union[Optional[List[str]]): New keywords.
+        custom_metadata(Union[Optional[Dict]): Custom JSON-LD metadata.
         project_gateway(IProjectGateway): Injected project gateway.
 
     Returns:
@@ -47,14 +57,18 @@ def _edit_project(description, creator, keywords, custom_metadata, project_gatew
         "custom_metadata": custom_metadata,
     }
 
-    creator, no_email_warnings = construct_creator(creator, ignore_email=True)
+    no_email_warnings: Optional[Union[Dict, str]] = None
+    parsed_creator: Optional[Union[NoValueType, Person]] = NO_VALUE
 
-    updated = {k: v for k, v in possible_updates.items() if v}
+    if creator is not NO_VALUE:
+        parsed_creator, no_email_warnings = construct_creator(cast(Union[Dict, str], creator), ignore_email=True)
+
+    updated = {k: v for k, v in possible_updates.items() if v is not NO_VALUE}
 
     if updated:
         project = project_gateway.get_project()
         project.update_metadata(
-            creator=creator, description=description, keywords=keywords, custom_metadata=custom_metadata
+            creator=parsed_creator, description=description, keywords=keywords, custom_metadata=custom_metadata
         )
         project_gateway.update_project(project)
 

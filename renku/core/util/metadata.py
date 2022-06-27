@@ -34,7 +34,9 @@ if TYPE_CHECKING:
     from renku.domain_model.provenance.agent import Person
 
 
-def construct_creators(creators: List[Union[dict, str]], ignore_email=False):
+def construct_creators(
+    creators: List[Union[dict, str]], ignore_email=False
+) -> Tuple[List["Person"], List[Union[dict, str]]]:
     """Parse input and return a list of Person."""
     creators = creators or []
 
@@ -46,7 +48,8 @@ def construct_creators(creators: List[Union[dict, str]], ignore_email=False):
     for creator in creators:
         person, no_email_warning = construct_creator(creator, ignore_email=ignore_email)
 
-        people.append(person)
+        if person:
+            people.append(person)
 
         if no_email_warning:
             no_email_warnings.append(no_email_warning)
