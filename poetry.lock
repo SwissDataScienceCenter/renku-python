@@ -2177,7 +2177,7 @@ test = ["pytest"]
 
 [[package]]
 name = "sphinxcontrib-spelling"
-version = "7.3.3"
+version = "7.6.0"
 description = "Sphinx spelling extension"
 category = "main"
 optional = true
@@ -4078,8 +4078,8 @@ sphinxcontrib-serializinghtml = [
     {file = "sphinxcontrib_serializinghtml-1.1.5-py2.py3-none-any.whl", hash = "sha256:352a9a00ae864471d3a7ead8d7d79f5fc0b57e8b3f95e9867eb9eb28999b92fd"},
 ]
 sphinxcontrib-spelling = [
-    {file = "sphinxcontrib-spelling-7.3.3.tar.gz", hash = "sha256:3819d12629d95e0c909224fa40b462a67e0adb321d50283d7fc0d11686c8ac7e"},
-    {file = "sphinxcontrib_spelling-7.3.3-py3-none-any.whl", hash = "sha256:8809d5dc175f43f00628134a41ef9fec56db9f794f4eab701f9a5a87f8c69bb0"},
+    {file = "sphinxcontrib-spelling-7.6.0.tar.gz", hash = "sha256:292cd7e1f73a763451693b4d48c9bded151084f6a91e5337733e9fa8715d20ec"},
+    {file = "sphinxcontrib_spelling-7.6.0-py3-none-any.whl", hash = "sha256:6c1313618412511109f7b76029fbd60df5aa4acf67a2dc9cd1b1016d15e882ff"},
 ]
 tabulate = [
     {file = "tabulate-0.8.9-py3-none-any.whl", hash = "sha256:d7c013fe7abbc5e491394e10fa845f8f32fe54f8dc60c6622c6cf482d25d47e4"},
