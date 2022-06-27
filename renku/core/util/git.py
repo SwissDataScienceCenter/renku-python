@@ -29,10 +29,10 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union, cast
 from uuid import uuid4
 
 from renku.core import errors
-from renku.domain_model.git import GitURL
 
 if TYPE_CHECKING:
     from renku.domain_model.entity import Collection, Entity
+    from renku.domain_model.git import GitURL
     from renku.domain_model.provenance.agent import Person, SoftwareAgent
     from renku.infrastructure.repository import Commit, Remote, Repository
 
@@ -143,7 +143,7 @@ def get_cache_directory_for_repository(client, url) -> Path:
     return client.renku_path / CACHE / get_full_repository_path(url)
 
 
-def parse_git_url(url: Optional[str]) -> GitURL:
+def parse_git_url(url: Optional[str]) -> "GitURL":
     """Return parsed git url.
 
     Args:
@@ -154,6 +154,8 @@ def parse_git_url(url: Optional[str]) -> GitURL:
         GitURL: The parsed GitURL.
 
     """
+    from renku.domain_model.git import GitURL
+
     if not url:
         raise errors.InvalidGitURL("No URL provided.")
 
@@ -790,7 +792,7 @@ def clone_repository(
         install(force=True, repository=repository)
 
     if install_lfs:
-        repository.install_lfs(skip_smudge=skip_smudge)
+        repository.lfs.install(skip_smudge=skip_smudge)
 
     return repository
 
@@ -860,3 +862,47 @@ def get_file_size(repository_path: Path, path: str) -> Optional[float]:
     # Return size of the file on disk
     full_path = repository_path / path
     return float(os.path.getsize(full_path)) if full_path.exists() else None
+
+
+def shorten_message(message: str, line_length: int = 100, body_length: int = 65000) -> str:
+    """Wraps and shortens a commit message.
+
+    Args:
+        message(str): message to adjust.
+        line_length(int, optional): maximum line length before wrapping. 0 for infinite (Default value = 100).
+        body_length(int, optional): maximum body length before cut. 0 for infinite (Default value = 65000).
+    Raises:
+        ParameterError: If line_length or body_length < 0
+    Returns:
+        message wrapped and trimmed.
+
+    """
+    if line_length < 0:
+        raise errors.ParameterError("the length can't be negative.", "line_length")
+
+    if body_length < 0:
+        raise errors.ParameterError("the length can't be negative.", "body_length")
+
+    if body_length and len(message) > body_length:
+        message = message[: body_length - 3] + "..."
+
+    if line_length == 0 or len(message) <= line_length:
+        return message
+
+    lines = message.split(" ")
+    lines = [
+        line
+        if len(line) < line_length
+        else "\n\t".join(line[o : o + line_length] for o in range(0, len(line), line_length))
+        for line in lines
+    ]
+
+    # NOTE: tries to preserve message spacing.
+    wrapped_message = reduce(
+        lambda c, x: (f"{c[0]} {x}", c[1] + len(x) + 1)
+        if c[1] + len(x) <= line_length
+        else (f"{c[0]}\n\t" + x, len(x)),
+        lines,
+        ("", 0),
+    )[0]
+    return wrapped_message[1:]

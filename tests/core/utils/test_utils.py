@@ -20,7 +20,7 @@
 import os
 
 from renku.core.errors import ParameterError
-from renku.core.util.scm import shorten_message
+from renku.core.util.git import shorten_message
 from renku.core.util.urls import get_host
 from tests.utils import raises
 

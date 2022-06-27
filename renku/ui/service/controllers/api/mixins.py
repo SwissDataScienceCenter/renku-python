@@ -25,7 +25,7 @@ from pathlib import Path
 import portalocker
 
 from renku.core.constant import RENKU_HOME
-from renku.core.errors import GitCommandError, GitConfigurationError, RenkuException, UninitializedProject
+from renku.core.errors import GitCommandError, GitConfigurationError, LockError, RenkuException, UninitializedProject
 from renku.core.util.contexts import click_context
 from renku.infrastructure.repository import Repository
 from renku.ui.service.cache.config import REDIS_NAMESPACE
@@ -279,7 +279,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                                 raise IntermittentCacheError(e)
                 project.last_fetched_at = datetime.utcnow()
                 project.save()
-        except (portalocker.LockException, portalocker.AlreadyLocked) as e:
+        except (portalocker.LockException, portalocker.AlreadyLocked, LockError) as e:
             raise IntermittentLockError() from e
 
     @local_identity
@@ -313,7 +313,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
                     with click_context(self.project_path, "renku_op"):
                         return self.renku_op()
-        except (portalocker.LockException, portalocker.AlreadyLocked) as e:
+        except (portalocker.LockException, portalocker.AlreadyLocked, LockError) as e:
             raise IntermittentLockError() from e
 
     def remote(self):

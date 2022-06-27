@@ -22,6 +22,7 @@ from .datasets import check_dataset_old_metadata_location, check_invalid_dataset
 from .external import check_missing_external_files
 from .githooks import check_git_hooks_installed
 from .migration import check_migration
+from .project import check_project_id_group
 from .storage import check_lfs_info
 from .validate_shacl import check_datasets_structure, check_project_structure
 
@@ -38,4 +39,5 @@ __all__ = (
     "check_missing_external_files",
     "check_missing_files",
     "check_project_structure",
+    "check_project_id_group",
 )

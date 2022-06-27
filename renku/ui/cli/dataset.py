@@ -67,11 +67,13 @@ Editing a dataset's metadata:
 
 Use the ``edit`` sub-command to change metadata of a dataset. You can edit the same
 set of metadata as the create command by passing the options described in the
-table above.
+table above. You can also use the ``-u/--unset`` options with one of the values
+from ``creators`` (short ``c``), ``keywords`` (short ``k``) or ``metadata``
+(short ``m``) to delete the respective values from the dataset.
 
 .. code-block:: console
 
-    $ renku dataset edit my-dataset --title 'New title'
+    $ renku dataset edit my-dataset --title 'New title' --unset keywords
     Successfully updated: title.
 
 Listing all datasets:
@@ -434,6 +436,23 @@ default to Primary/Derived. This has to adjusted manually in the OLOS
 interface after the export is done.
 
 
+Exporting data to a local directory:
+
+Renku provides a ``local`` provider that can be used to get a copy of a
+dataset. For example, the following command creates a copy of the dataset
+``my-dataset`` version ``v1`` in ``/tmp/my-dataset-v1``:
+
+.. code-block:: console
+
+    $ renku dataset export my-dataset local --tag v1 --path /tmp/my-dataset-v1
+
+This also creates a copy of dataset's metadata at the given version and puts it
+in ``<destination>/METADATA.yml``. If a destination path is not given to this
+command, it creates a directory in project's data directory using dataset's
+name and version: ``<data-dir>/<dataset-name>-<version>``. Export fails if the
+destination directory is not empty.
+
+
 Listing all files in the project associated with a dataset.
 
 .. code-block:: console
@@ -481,6 +500,11 @@ Sometimes you want to filter the files. For this we use ``--dataset``,
     my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file1  *
     my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file2  *
 
+Dataset files can be listed for a specific version (tag) of a dataset using the
+``--tag`` option. In this case, files from datasets which have that specific
+tag are displayed.
+
+
 Unlink a file from a dataset:
 
 .. code-block:: console
@@ -526,6 +550,7 @@ import renku.ui.cli.utils.color as color
 from renku.command.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.command.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.command.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
+from renku.core.util.util import NO_VALUE
 
 
 def _complete_datasets(ctx, param, incomplete):
@@ -595,7 +620,7 @@ def create(name, title, description, creators, metadata, keyword):
     from renku.ui.cli.utils.callback import ClickCallback
 
     communicator = ClickCallback()
-    creators = creators or ()
+    creators = creators or []
 
     custom_metadata = None
 
@@ -627,40 +652,79 @@ def create(name, title, description, creators, metadata, keyword):
 
 @dataset.command()
 @click.argument("name", shell_complete=_complete_datasets)
-@click.option("-t", "--title", default=None, type=click.STRING, help="Title of the dataset.")
-@click.option("-d", "--description", default=None, type=click.STRING, help="Dataset's description.")
+@click.option("-t", "--title", default=NO_VALUE, type=click.UNPROCESSED, help="Title of the dataset.")
+@click.option("-d", "--description", default=NO_VALUE, type=click.UNPROCESSED, help="Dataset's description.")
 @click.option(
     "-c",
     "--creator",
     "creators",
-    default=None,
+    default=[NO_VALUE],
     multiple=True,
+    type=click.UNPROCESSED,
     help="Creator's name, email, and affiliation. " "Accepted format is 'Forename Surname <email> [affiliation]'.",
 )
 @click.option(
     "-m",
     "--metadata",
-    default=None,
-    type=click.Path(exists=True, dir_okay=False),
+    default=NO_VALUE,
+    type=click.UNPROCESSED,
     help="Custom metadata to be associated with the dataset.",
 )
-@click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords or tags.")
-def edit(name, title, description, creators, metadata, keyword):
+@click.option(
+    "-k",
+    "--keyword",
+    "keywords",
+    default=[NO_VALUE],
+    multiple=True,
+    type=click.UNPROCESSED,
+    help="List of keywords or tags.",
+)
+@click.option(
+    "-u",
+    "--unset",
+    default=[],
+    multiple=True,
+    type=click.Choice(["keywords", "k", "images", "i", "metadata", "m"]),
+    help="Remove keywords from dataset.",
+)
+def edit(name, title, description, creators, metadata, keywords, unset):
     """Edit dataset metadata."""
     from renku.command.dataset import edit_dataset_command
     from renku.core.util.metadata import construct_creators
     from renku.ui.cli.utils.callback import ClickCallback
 
-    creators = creators or ()
-    keywords = keyword or ()
+    images = NO_VALUE
 
-    custom_metadata = None
+    if list(creators) == [NO_VALUE]:
+        creators = NO_VALUE
+
+    if list(keywords) == [NO_VALUE]:
+        keywords = NO_VALUE
+
+    if "k" in unset or "keywords" in unset:
+        if keywords is not NO_VALUE:
+            raise click.UsageError("Cant use '--keyword' together with unsetting keyword")
+        keywords = None
+
+    if "m" in unset or "metadata" in unset:
+        if metadata is not NO_VALUE:
+            raise click.UsageError("Cant use '--metadata' together with unsetting metadata")
+        metadata = None
+
+    if "i" in unset or "images" in unset:
+        images = None
+
+    custom_metadata = metadata
     no_email_warnings = False
 
-    if creators:
+    if creators and creators is not NO_VALUE:
         creators, no_email_warnings = construct_creators(creators, ignore_email=True)
 
-    if metadata:
+    if metadata and metadata is not NO_VALUE:
+        path = Path(metadata)
+
+        if not path.exists():
+            raise click.UsageError(f"Path {path} does not exist.")
         custom_metadata = json.loads(Path(metadata).read_text())
 
     updated = (
@@ -672,7 +736,7 @@ def edit(name, title, description, creators, metadata, keyword):
             description=description,
             creators=creators,
             keywords=keywords,
-            skip_image_update=True,
+            images=images,
             custom_metadata=custom_metadata,
         )
     ).output
@@ -763,6 +827,7 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
 
 @dataset.command("ls-files")
 @click.argument("names", nargs=-1, shell_complete=_complete_datasets)
+@click.option("-t", "--tag", default=None, type=click.STRING, help="Tag for which to show dataset files.")
 @click.option(
     "--creators",
     help="Filter files which where authored by specific creators. Multiple creators are specified by comma.",
@@ -784,7 +849,7 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
     help="Comma-separated list of column to display: {}.".format(", ".join(DATASET_FILES_COLUMNS.keys())),
     show_default=True,
 )
-def ls_files(names, creators, include, exclude, format, columns):
+def ls_files(names, tag, creators, include, exclude, format, columns):
     """List files in dataset."""
     from renku.command.dataset import list_files_command
 
@@ -795,7 +860,7 @@ def ls_files(names, creators, include, exclude, format, columns):
         list_files_command()
         .lock_dataset()
         .build()
-        .execute(datasets=names, creators=creators, include=include, exclude=exclude)
+        .execute(datasets=names, tag=tag, creators=creators, include=include, exclude=exclude)
     )
 
     click.echo(DATASET_FILES_FORMATS[format](result.output, columns=columns))
@@ -901,16 +966,16 @@ def export_provider_options(*param_decls, **attrs):
         from renku.core.dataset.providers import ProviderFactory
 
         providers = [
-            (k, v) for k, v in ProviderFactory.providers().items() if v.supports_export and v.export_parameters()
+            (k, v) for k, v in ProviderFactory.providers().items() if v.supports_export and v.get_export_parameters()
         ]
 
-        for i, (name, provider) in enumerate(providers):
-            params = provider.export_parameters()
-
-            for j, (param_name, (param_description, param_type)) in enumerate(params.items()):
+        for i, (name, provider) in enumerate(sorted(providers, reverse=True)):
+            for j, param in enumerate(provider.get_export_parameters()):
+                param_description = param.description
                 if j == 0:
-                    param_description = f"\b\n{param_description}\n "  # NOTE: add newline after a group
-                f = optgroup.option(f"--{param_name}", type=param_type, help=param_description)(f)
+                    param_description = f"\b\n{param.description}\n "  # NOTE: add newline after a group
+                args = [f"--{param.name}"] + [f"-{a}" if len(a) == 1 else f"--{a}" for a in param.aliases if a]
+                f = optgroup.option(*args, type=param.type, help=param_description, is_flag=param.is_flag)(f)
 
             name = f"{name} configuration"
             if i == len(providers) - 1:
@@ -923,13 +988,12 @@ def export_provider_options(*param_decls, **attrs):
     return wrapper
 
 
-@dataset.command("export")
+@dataset.command()
 @click.argument("name", shell_complete=_complete_datasets)
 @export_provider_argument()
-@click.option("-p", "--publish", is_flag=True, help="Automatically publish exported dataset.")
 @click.option("-t", "--tag", help="Dataset tag to export")
 @export_provider_options()
-def export_(name, provider, publish, tag, **kwargs):
+def export(name, provider, tag, **kwargs):
     """Export data to 3rd party provider."""
     from renku.command.dataset import export_dataset_command
     from renku.core import errors
@@ -938,7 +1002,7 @@ def export_(name, provider, publish, tag, **kwargs):
     try:
         communicator = ClickCallback()
         export_dataset_command().lock_dataset().with_communicator(communicator).build().execute(
-            name=name, provider_name=provider, publish=publish, tag=tag, **kwargs
+            name=name, provider_name=provider, tag=tag, **kwargs
         )
     except (ValueError, errors.InvalidAccessToken, errors.DatasetNotFound, errors.RequestError) as e:
         raise click.BadParameter(e)
@@ -955,16 +1019,16 @@ def import_provider_options(*param_decls, **attrs):
         from renku.core.dataset.providers import ProviderFactory
 
         providers = [
-            (k, v) for k, v in ProviderFactory.providers().items() if v.supports_import and v.import_parameters()
+            (k, v) for k, v in ProviderFactory.providers().items() if v.supports_import and v.get_import_parameters()
         ]
 
-        for i, (name, provider) in enumerate(providers):
-            params = provider.import_parameters()
-
-            for j, (param_name, (param_description, param_type)) in enumerate(params.items()):
+        for i, (name, provider) in enumerate(sorted(providers, reverse=True)):
+            for j, param in enumerate(provider.get_import_parameters()):
+                param_description = param.description
                 if j == 0:
-                    param_description = f"\b\n{param_description}\n "  # NOTE: add newline after a group
-                f = optgroup.option(f"--{param_name}", type=param_type, help=param_description, default=None)(f)
+                    param_description = f"\b\n{param.description}\n "  # NOTE: add newline after a group
+                args = [f"--{param.name}"] + [f"-{a}" if len(a) == 1 else f"--{a}" for a in param.aliases if a]
+                f = optgroup.option(*args, type=param.type, help=param_description, is_flag=param.is_flag)(f)
 
             name = f"{name} configuration"
             if i == len(providers) - 1:

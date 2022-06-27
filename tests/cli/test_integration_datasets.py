@@ -29,6 +29,7 @@ from renku.core import errors
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.util.contexts import chdir
 from renku.core.util.git import get_git_user
+from renku.core.util.os import get_files
 from renku.domain_model.dataset import Url, get_dataset_data_dir
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository
@@ -649,6 +650,51 @@ def test_dataset_export_upload_tag(
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "Exported to:" in result.output
     assert output in result.output
+
+
+@pytest.mark.integration
+def test_dataset_export_to_local(runner, tmp_path):
+    """Test exporting a version of dataset to a local directory."""
+    url = "https://dev.renku.ch/gitlab/renku-python-integration-tests/lego-datasets.git"
+    repository = Repository.clone_from(url=url, path=tmp_path / "repo")
+    # NOTE: Install LFS and disable LFS smudge filter to make sure that we can get valid content in that case
+    repository.lfs.install(skip_smudge=True)
+
+    os.chdir(repository.path)
+
+    output_path: Path = tmp_path / "exported"
+
+    result = runner.invoke(cli, ["dataset", "export", "parts", "local", "-t", "v1", "-p", output_path])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert f"Dataset metadata was copied to {output_path}/METADATA.yml" in result.output
+    assert f"Exported to: {output_path}" in result.output
+    assert {"METADATA.yml", "README.md", "part_categories.csv", "part_relationships.csv", "parts.csv"} == {
+        str(f.relative_to(output_path)) for f in get_files(output_path)
+    }
+    assert (output_path / "parts.csv").read_text().startswith("part_num,name,part_cat_id,part_material")
+    assert (output_path / "part_relationships.csv").read_text().startswith("rel_type,child_part_num,parent_part_num")
+    assert (output_path / "part_categories.csv").read_text().startswith("id,name")
+    assert (output_path / "README.md").read_text().startswith("First version updated on 27.02.2022")
+    assert "- '@id': /dataset-files/" in (output_path / "METADATA.yml").read_text()
+
+    # NOTE: Export fails if destination directory is not empty
+    result = runner.invoke(cli, ["dataset", "export", "parts", "local", "-t", "v2", "--path", output_path])
+
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert f"Destination directory is not empty: '{output_path}'" in result.output
+
+    # NOTE: Export creates a default directory inside the project is no output path is set
+    result = runner.invoke(cli, ["dataset", "export", "parts", "local"], input="2\n")  # v1
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert f"Dataset metadata was copied to {repository.path}/data/parts-v1/METADATA.yml" in result.output
+    assert f"Exported to: {repository.path}/data/parts-v1" in result.output
+    assert repository.is_dirty(untracked_files=True)
+    assert (repository.path / "data" / "parts-v1" / "part_relationships.csv").exists()
+    assert (repository.path / "data" / "parts-v1" / "parts.csv").read_text() == (
+        repository.path / "data" / "parts-v1" / "parts.csv"
+    ).read_text()
 
 
 @pytest.mark.integration
@@ -1864,3 +1910,25 @@ def test_dataset_update_removes_deleted_files(
 
     assert 2 == len(dataset.files)
     assert {"data/parts/part_categories.csv", "data/parts/parts.csv"} == {f.entity.path for f in dataset.files}
+
+
+@pytest.mark.integration
+def test_dataset_ls_with_tag(runner, tmp_path):
+    """Test listing dataset files from a given tag."""
+    url = "https://dev.renku.ch/gitlab/renku-python-integration-tests/lego-datasets.git"
+    repository = Repository.clone_from(url=url, path=tmp_path / "repo")
+
+    os.chdir(repository.path)
+
+    result = runner.invoke(cli, ["dataset", "ls-files", "--tag", "v1"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    lines = result.output.split(os.linesep)
+
+    deleted_file = next(line for line in lines if "data/parts/README.md" in line)
+    assert "36  B" in deleted_file
+    assert "*" not in deleted_file
+
+    deleted_lfs_file = next(line for line in lines if "data/parts/part_relationships.csv" in line)
+    assert "548 KB" in deleted_lfs_file
+    assert "*" in deleted_lfs_file
