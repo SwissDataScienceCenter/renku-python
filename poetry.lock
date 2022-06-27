@@ -1236,14 +1236,14 @@ testing = ["pytest", "pytest-benchmark"]
 
 [[package]]
 name = "poetry-dynamic-versioning"
-version = "0.14.1"
+version = "0.17.1"
 description = "Plugin for Poetry to enable dynamic versioning based on VCS tags"
 category = "main"
 optional = true
 python-versions = ">=3.5,<4.0"
 
 [package.dependencies]
-dunamai = ">=1.11.1,<2.0.0"
+dunamai = ">=1.12.0,<2.0.0"
 jinja2 = {version = ">=2.11.1,<4", markers = "python_version >= \"3.6\" and python_version < \"4.0\""}
 tomlkit = ">=0.4"
 
@@ -2177,7 +2177,7 @@ test = ["pytest"]
 
 [[package]]
 name = "sphinxcontrib-spelling"
-version = "7.3.3"
+version = "7.6.0"
 description = "Sphinx spelling extension"
 category = "main"
 optional = true
@@ -2676,7 +2676,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "ccca58319a741b239cde788d752619f0a5ffc4c3a60a27737c666c4d9c1c5f81"
+content-hash = "4033786ce9e4a21307e76e736c3f6ecc454b3f3f89c632febf0c4c2db25d8098"
 
 [metadata.files]
 addict = [
@@ -3596,8 +3596,8 @@ pluggy = [
     {file = "pluggy-1.0.0.tar.gz", hash = "sha256:4224373bacce55f955a878bf9cfa763c1e360858e330072059e10bad68531159"},
 ]
 poetry-dynamic-versioning = [
-    {file = "poetry-dynamic-versioning-0.14.1.tar.gz", hash = "sha256:01cc73a4bc4861bb91b138c235d49851d5563d373643b3f3c5cf8664d1115b5b"},
-    {file = "poetry_dynamic_versioning-0.14.1-py3-none-any.whl", hash = "sha256:29284bc6ae8c2ddde299801f174908ac864bfd8bae201a5f6e627c35d3df38c4"},
+    {file = "poetry-dynamic-versioning-0.17.1.tar.gz", hash = "sha256:304eec793e8b71e3646b365671464c935626781e92dc029e35b01e8fe8c7530c"},
+    {file = "poetry_dynamic_versioning-0.17.1-py3-none-any.whl", hash = "sha256:647d41eb554496eb657c7745ab2321b77d1f9c7cf52f7deb6ff674736fbd8ea1"},
 ]
 poetry-lock-package = [
     {file = "poetry-lock-package-0.4.4.tar.gz", hash = "sha256:32b8d3472409a84c5056c4532152854dd08cb644f5e1b2507678fdfb044812a1"},
@@ -4078,8 +4078,8 @@ sphinxcontrib-serializinghtml = [
     {file = "sphinxcontrib_serializinghtml-1.1.5-py2.py3-none-any.whl", hash = "sha256:352a9a00ae864471d3a7ead8d7d79f5fc0b57e8b3f95e9867eb9eb28999b92fd"},
 ]
 sphinxcontrib-spelling = [
-    {file = "sphinxcontrib-spelling-7.3.3.tar.gz", hash = "sha256:3819d12629d95e0c909224fa40b462a67e0adb321d50283d7fc0d11686c8ac7e"},
-    {file = "sphinxcontrib_spelling-7.3.3-py3-none-any.whl", hash = "sha256:8809d5dc175f43f00628134a41ef9fec56db9f794f4eab701f9a5a87f8c69bb0"},
+    {file = "sphinxcontrib-spelling-7.6.0.tar.gz", hash = "sha256:292cd7e1f73a763451693b4d48c9bded151084f6a91e5337733e9fa8715d20ec"},
+    {file = "sphinxcontrib_spelling-7.6.0-py3-none-any.whl", hash = "sha256:6c1313618412511109f7b76029fbd60df5aa4acf67a2dc9cd1b1016d15e882ff"},
 ]
 tabulate = [
     {file = "tabulate-0.8.9-py3-none-any.whl", hash = "sha256:d7c013fe7abbc5e491394e10fa845f8f32fe54f8dc60c6622c6cf482d25d47e4"},
