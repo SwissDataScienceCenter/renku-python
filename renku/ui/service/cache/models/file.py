@@ -101,7 +101,7 @@ class FileChunk(Model):
 
     created_at = DateTimeField()
 
-    file_id = TextField(primary_key=True, index=True)
+    chunk_file_id = TextField(primary_key=True, index=True)
     user_id = TextField(index=True)
     chunked_id = TextField(index=True)
 

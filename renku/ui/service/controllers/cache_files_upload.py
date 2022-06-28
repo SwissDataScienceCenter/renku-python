@@ -58,6 +58,14 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
         """Controller operation context."""
         return self.response_builder
 
+    @property
+    def user_cache_dir(self) -> Path:
+        """The cache directory for a user."""
+        directory = CACHE_UPLOADS_PATH / self.user.user_id
+        directory.mkdir(exist_ok=True)
+
+        return directory
+
     def process_upload(self):
         """Process an upload."""
         if self.response_builder.get("chunked_id", None) is None:
@@ -78,15 +86,14 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
 
         chunked_id = self.response_builder["chunked_id"]
 
-        user_cache_dir = CACHE_UPLOADS_PATH / self.user.user_id
-        chunks_dir = user_cache_dir / chunked_id
+        chunks_dir: Path = self.user_cache_dir / chunked_id
         chunks_dir.mkdir(exist_ok=True, parents=True)
 
         current_chunk = self.response_builder["chunk_index"]
         total_chunks = self.response_builder["chunk_count"]
 
         file_path = chunks_dir / str(current_chunk)
-        relative_path = file_path.relative_to(CACHE_UPLOADS_PATH / self.user.user_id / chunked_id)
+        relative_path = file_path.relative_to(chunks_dir)
 
         self.file.save(str(file_path))
 
@@ -104,7 +111,7 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
         if not completed:
             return {}
 
-        target_file_path = user_cache_dir / self.file.filename
+        target_file_path = self.user_cache_dir / self.file.filename
 
         if target_file_path.exists():
             if self.response_builder.get("override_existing", False):
@@ -112,22 +119,22 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
             else:
                 raise IntermittentFileExistsError(file_name=self.file.filename)
 
-        with open(target_file_path, "wb") as f:
+        with open(target_file_path, "wb") as target_file:
             for file_number in range(total_chunks):
-                f.write((chunks_dir / str(file_number)).read_bytes())
+                with (chunks_dir / str(file_number)).open("r") as chunk:
+                    shutil.copyfileobj(chunk, target_file)
+
             shutil.rmtree(chunks_dir)
             self.cache.invalidate_chunks(self.user, chunked_id)
 
         self.response_builder["is_archive"] = self.response_builder.get("chunked_content_type") in SUPPORTED_ARCHIVES
 
-        return self.postprocess_file(target_file_path, user_cache_dir)
+        return self.postprocess_file(target_file_path)
 
     def process_file(self):
         """Process uploaded file."""
-        user_cache_dir = CACHE_UPLOADS_PATH / self.user.user_id
-        user_cache_dir.mkdir(exist_ok=True)
 
-        file_path = user_cache_dir / self.file.filename
+        file_path = self.user_cache_dir / self.file.filename
         if file_path.exists():
             if self.response_builder.get("override_existing", False):
                 file_path.unlink()
@@ -136,9 +143,9 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
 
         self.file.save(str(file_path))
 
-        return self.postprocess_file(file_path, user_cache_dir)
+        return self.postprocess_file(file_path)
 
-    def postprocess_file(self, file_path, user_cache_dir):
+    def postprocess_file(self, file_path):
         """Postprocessing of uploaded file."""
         files = []
         if self.response_builder["unpack_archive"] and self.response_builder["is_archive"]:
@@ -154,7 +161,7 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
                 return RenkuException("unable to unpack archive")
 
             for file_ in temp_dir.glob("**/*"):
-                relative_path = file_.relative_to(user_cache_dir)
+                relative_path = file_.relative_to(self.user_cache_dir)
 
                 file_obj = {
                     "file_name": file_.name,
@@ -166,7 +173,7 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
                 files.append(file_obj)
 
         else:
-            relative_path = file_path.relative_to(CACHE_UPLOADS_PATH / self.user.user_id)
+            relative_path = file_path.relative_to(self.user_cache_dir)
 
             file_obj = {
                 "file_name": self.response_builder["file_name"],

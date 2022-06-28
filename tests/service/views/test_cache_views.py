@@ -240,7 +240,7 @@ def test_file_chunked_upload_zipped(svc_client, identity_headers, svc_cache_dir)
 
 @pytest.mark.service
 def test_file_chunked_upload_delete(svc_client, identity_headers, svc_cache_dir):
-    """Check successful file upload."""
+    """Test deleting uploaded file chunks."""
     headers = copy.deepcopy(identity_headers)
     content_type = headers.pop("Content-Type")
 

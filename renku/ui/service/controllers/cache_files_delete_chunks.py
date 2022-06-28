@@ -26,16 +26,16 @@ from renku.ui.service.serializers.cache import FileChunksDeleteRequest, FileChun
 from renku.ui.service.views import result_response
 
 
-class DeleteFileChunkssCtrl(ServiceCtrl, RenkuOperationMixin):
-    """Controller for listing uploaded files endpoint."""
+class DeleteFileChunksCtrl(ServiceCtrl, RenkuOperationMixin):
+    """Controller for deleting uploaded chunks."""
 
     REQUEST_SERIALIZER = FileChunksDeleteRequest()
     RESPONSE_SERIALIZER = FileChunksDeleteResponseRPC()
 
     def __init__(self, cache, user_data, request_data):
         """Construct list uploaded files controller."""
-        self.ctx = DeleteFileChunkssCtrl.REQUEST_SERIALIZER.load(request_data)
-        super(DeleteFileChunkssCtrl, self).__init__(cache, user_data, request_data)
+        self.ctx = DeleteFileChunksCtrl.REQUEST_SERIALIZER.load(request_data)
+        super(DeleteFileChunksCtrl, self).__init__(cache, user_data, request_data)
 
     @property
     def context(self):
@@ -54,6 +54,8 @@ class DeleteFileChunkssCtrl(ServiceCtrl, RenkuOperationMixin):
 
         shutil.rmtree(chunks_dir)
 
+        self.cache.invalidate_chunks(self.user, chunked_id)
+
         return f"Deleted chunks for {chunked_id}"
 
     def renku_op(self):
@@ -63,4 +65,4 @@ class DeleteFileChunkssCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        return result_response(DeleteFileChunkssCtrl.RESPONSE_SERIALIZER, self.delete_chunks())
+        return result_response(DeleteFileChunksCtrl.RESPONSE_SERIALIZER, self.delete_chunks())

@@ -19,7 +19,7 @@
 from flask import request
 
 from renku.ui.service.config import SERVICE_PREFIX
-from renku.ui.service.controllers.cache_files_delete_chunks import DeleteFileChunkssCtrl
+from renku.ui.service.controllers.cache_files_delete_chunks import DeleteFileChunksCtrl
 from renku.ui.service.controllers.cache_files_upload import UploadFilesCtrl
 from renku.ui.service.controllers.cache_list_projects import ListProjectsCtrl
 from renku.ui.service.controllers.cache_list_uploaded import ListUploadedFilesCtrl
@@ -125,7 +125,7 @@ def delete_file_chunks_view(user_data, cache):
       tags:
         - cache
     """
-    return DeleteFileChunkssCtrl(cache, user_data, dict(request.json)).to_response()
+    return DeleteFileChunksCtrl(cache, user_data, dict(request.json)).to_response()
 
 
 @cache_blueprint.route("/cache.project_clone", methods=["POST"], provide_automatic_options=False, versions=ALL_VERSIONS)

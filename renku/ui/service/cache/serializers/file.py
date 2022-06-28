@@ -41,7 +41,7 @@ class FileSchema(FileDetailsSchema, MandatoryUserSchema):
 class FileChunkSchema(CreationSchema, MandatoryUserSchema):
     """Schema for file model."""
 
-    file_id = fields.String(missing=lambda: uuid.uuid4().hex)
+    chunk_file_id = fields.String(missing=lambda: uuid.uuid4().hex)
     file_name = fields.String(required=True)
 
     chunked_id = fields.String(required=True)

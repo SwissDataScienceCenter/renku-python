@@ -8,7 +8,7 @@ data:
     upstream {{ $version.name }} {
       server {{ include "renku-core.fullname" $ }}-{{ $version.name }};
       keepalive 32;
-      keepalive_timeout {{ $.Values.requestTimeout }}s;
+      keepalive_timeout 60s;
     }
     {{ end }}
 
@@ -32,7 +32,6 @@ data:
         rewrite /renku/{{ $version.prefix }}/(.*) /renku/$1  break;
         proxy_set_header Host $host;
         proxy_pass http://{{ $version.name }};
-        proxy_connect_timeout {{ $.Values.requestTimeout }}s;
         proxy_send_timeout {{ $.Values.requestTimeout }}s;
         proxy_read_timeout {{ $.Values.requestTimeout }}s;
         proxy_http_version 1.1;
@@ -43,7 +42,6 @@ data:
       location /renku {
         proxy_set_header Host $host;
         proxy_pass http://{{ .Values.versions.latest.name }};
-        proxy_connect_timeout {{ $.Values.requestTimeout }}s;
         proxy_send_timeout {{ $.Values.requestTimeout }}s;
         proxy_read_timeout {{ $.Values.requestTimeout }}s;
         proxy_http_version 1.1;
