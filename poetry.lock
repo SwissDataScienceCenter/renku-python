@@ -1730,7 +1730,7 @@ python-versions = "*"
 
 [[package]]
 name = "python-gitlab"
-version = "3.1.1"
+version = "3.6.0"
 description = "Interact with GitLab API"
 category = "main"
 optional = false
@@ -2676,7 +2676,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "4033786ce9e4a21307e76e736c3f6ecc454b3f3f89c632febf0c4c2db25d8098"
+content-hash = "e30ab2add4ce065ad25d2c8e328880ea81e9608a4c2f53aef459e79cc27db4b3"
 
 [metadata.files]
 addict = [
@@ -3825,8 +3825,8 @@ python-editor = [
     {file = "python_editor-1.0.4-py3.5.egg", hash = "sha256:c3da2053dbab6b29c94e43c486ff67206eafbe7eb52dbec7390b5e2fb05aac77"},
 ]
 python-gitlab = [
-    {file = "python-gitlab-3.1.1.tar.gz", hash = "sha256:cad1338c1ff1a791a7bae7995dc621e26c77dfbf225bade456acec7512782825"},
-    {file = "python_gitlab-3.1.1-py3-none-any.whl", hash = "sha256:2a7de39c8976db6d0db20031e71b3e43d262e99e64b471ef09bf00482cd3d9fa"},
+    {file = "python-gitlab-3.6.0.tar.gz", hash = "sha256:901c54ff926f10479cb591a34d65f0a3022f2bcc41074f9a192c7fa7e4c57061"},
+    {file = "python_gitlab-3.6.0-py3-none-any.whl", hash = "sha256:b855c15e106812a4ada7c4d417def61bc211976bbf2ee1c7e0cd48a83eca4e9f"},
 ]
 pytz = [
     {file = "pytz-2022.1-py2.py3-none-any.whl", hash = "sha256:e68985985296d9a66a881eb3193b0906246245294a881e7c8afe623866ac6a5c"},
