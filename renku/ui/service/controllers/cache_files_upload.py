@@ -121,7 +121,7 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
 
         with open(target_file_path, "wb") as target_file:
             for file_number in range(total_chunks):
-                with (chunks_dir / str(file_number)).open("r") as chunk:
+                with (chunks_dir / str(file_number)).open("rb") as chunk:
                     shutil.copyfileobj(chunk, target_file)
 
             shutil.rmtree(chunks_dir)
