@@ -516,7 +516,6 @@ def revert_activity(
     return activity
 
 
-@inject.autoparams()
 def is_activity_valid(activity: Activity) -> bool:
     """Return whether this plan has not been deleted.
 
