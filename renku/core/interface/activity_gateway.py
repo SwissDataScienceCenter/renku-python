@@ -27,6 +27,10 @@ from renku.domain_model.provenance.activity import Activity, ActivityCollection
 class IActivityGateway(ABC):
     """Interface for the ActivityGateway."""
 
+    def get_by_id(self, id: str) -> Optional[Activity]:
+        """Get an activity by id."""
+        raise NotImplementedError
+
     def get_all_usage_paths(self) -> List[str]:
         """Return all usage paths."""
         raise NotImplementedError
@@ -59,7 +63,7 @@ class IActivityGateway(ABC):
         """Get a list of tuples of all upstream paths of this activity."""
         raise NotImplementedError
 
-    def get_all_activities(self) -> List[Activity]:
+    def get_all_activities(self, include_deleted: bool = False) -> List[Activity]:
         """Get all activities in the project."""
         raise NotImplementedError
 
@@ -73,4 +77,14 @@ class IActivityGateway(ABC):
 
     def get_all_activity_collections(self) -> List[ActivityCollection]:
         """Get all activity collections in the project."""
+        raise NotImplementedError
+
+    def remove(self, activity: Activity, keep_reference: bool = True, force: bool = False):
+        """Remove an activity from the storage.
+
+        Args:
+            activity(Activity): The activity to be removed.
+            keep_reference(bool): Whether to keep the activity in the ``activities`` index or not.
+            force(bool): Force-delete the activity even if it has downstream activities.
+        """
         raise NotImplementedError

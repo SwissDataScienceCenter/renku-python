@@ -174,13 +174,10 @@ def test_get_latest_version(client_with_runs):
     plan_gateway = get_plan_gateway()
     plan = next(p for p in plan_gateway.get_all_plans() if p.name == "plan-1")
     newer_plan = plan.derive()
-    newer_plan.name = "newer-plan-1"
     plan_gateway.add(newer_plan)
     plan_gateway.database_dispatcher.current_database.commit()
 
-    plan = next(p for p in Plan.list() if p.name == "plan-1")
-
-    latest_version = plan.get_latest_version()
+    latest_version = Plan.from_plan(plan).get_latest_version()
 
     assert plan.id != latest_version.id
     assert newer_plan.id == latest_version.id
@@ -190,3 +187,19 @@ def test_get_latest_version(client_with_runs):
     latest_version = plan.get_latest_version()
 
     assert plan is latest_version
+
+
+def test_list_returns_latest_versions(client_with_runs):
+    """Test Plan.list returns the latest versions of plans."""
+    plan_gateway = get_plan_gateway()
+    plan = next(p for p in plan_gateway.get_all_plans() if p.name == "plan-1")
+    newer_plan = plan.derive()
+    plan_gateway.add(newer_plan)
+    plan_gateway.database_dispatcher.current_database.commit()
+
+    plans = Plan.list()
+
+    ids = [p.id for p in plans]
+
+    assert newer_plan.id in ids
+    assert plan.id not in ids

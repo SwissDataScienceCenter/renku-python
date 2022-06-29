@@ -17,7 +17,7 @@
 # limitations under the License.
 """Checks needed to determine integrity of datasets."""
 
-from itertools import chain
+import itertools
 
 import click
 
@@ -33,7 +33,7 @@ def check_migrated_activity_ids(
     client, fix, activity_gateway: IActivityGateway, database_dispatcher: IDatabaseDispatcher
 ):
     """Check that activity ids were correctly migrated in the past."""
-    activities = activity_gateway.get_all_activities()
+    activities = activity_gateway.get_all_activities(include_deleted=True)
 
     wrong_activities = [a for a in activities if not a.id.startswith("/activities/")]
 
@@ -42,19 +42,7 @@ def check_migrated_activity_ids(
         for activity in wrong_activities:
             communication.info(f"Fixing activity '{activity.id}'")
 
-            old_id = activity.id
-
-            # NOTE: Remove activity relations
-            tok = current_database["activity-catalog"].tokenizeQuery
-            relations = chain(
-                list(current_database["activity-catalog"].findRelationChains(tok(downstream=activity))),
-                list(current_database["activity-catalog"].findRelationChains(tok(upstream=activity))),
-            )
-            for rel_collection in relations:
-                for r in list(rel_collection):
-                    current_database["activity-catalog"].unindex(r)
-
-            current_database["activities"].pop(old_id)
+            activity_gateway.remove(activity, keep_reference=False)
 
             # NOTE: Modify id on activity and children
             activity.unfreeze()
@@ -62,20 +50,8 @@ def check_migrated_activity_ids(
             activity._p_oid = current_database.hash_id(activity.id)
             activity.freeze()
 
-            for usage in activity.usages:
-                current_database["activities-by-usage"][usage.entity.path] = [
-                    a for a in current_database["activities-by-usage"][usage.entity.path] if a != activity
-                ]
-                object.__setattr__(usage, "id", f"/activities/{usage.id}")
-
-            for generation in activity.generations:
-                current_database["activities-by-generation"][generation.entity.path] = [
-                    a for a in current_database["activities-by-generation"][generation.entity.path] if a != activity
-                ]
-                object.__setattr__(generation, "id", f"/activities/{generation.id}")
-
-            for parameter in activity.parameters:
-                object.__setattr__(parameter, "id", f"/activities/{parameter.id}")
+            for attribute in itertools.chain(activity.usages, activity.generations, activity.parameters):
+                object.__setattr__(attribute, "id", f"/activities/{attribute.id}")  # type: ignore
 
             activity.association.id = f"/activities/{activity.association.id}"
 

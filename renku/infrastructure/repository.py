@@ -18,6 +18,7 @@
 """An abstraction layer for the underlying VCS."""
 
 import configparser
+import hashlib
 import math
 import os
 import subprocess
@@ -904,6 +905,13 @@ class BaseRepository:
         if result and len(result) > 0:
             return result[0]
         return None
+
+    @staticmethod
+    def hash_string(content: str) -> str:
+        """Calculate the object-hash for a blob with specified content."""
+        content_bytes = content.encode("utf-8")
+        data = f"blob {len(content_bytes)}\0".encode("utf-8") + content_bytes
+        return hashlib.sha1(data).hexdigest()
 
 
 class Repository(BaseRepository):
