@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Cleanup jobs."""
+import shutil
+
 from renku.ui.service.cache import ServiceCache
 from renku.ui.service.cache.models.job import USER_JOB_STATE_ENQUEUED, USER_JOB_STATE_IN_PROGRESS
 from renku.ui.service.logger import worker_log
@@ -40,6 +42,25 @@ def cache_files_cleanup():
                 file.purge()
             elif not file.exists():
                 file.delete()
+
+    for user, chunks in cache.user_chunks():
+        jobs = [
+            job for job in cache.get_jobs(user) if job.state in [USER_JOB_STATE_ENQUEUED, USER_JOB_STATE_IN_PROGRESS]
+        ]
+
+        chunk_folders = set()
+
+        for chunk in chunks:
+            if chunk.exists() and chunk.ttl_expired():
+                worker_log.debug(f"purging chunk {chunk.file_id}:{chunk.file_name}")
+                chunk.purge()
+                chunk_folders.add(chunk.abs_path.parent)
+            elif not chunk.exists():
+                chunk.delete()
+                chunk_folders.add(chunk.abs_path.parent)
+
+        for chunk_folder in chunk_folders:
+            shutil.rmtree(chunk_folder, ignore_errors=True)
 
 
 def cache_project_cleanup():
