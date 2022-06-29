@@ -19,6 +19,7 @@
 from flask import request
 
 from renku.ui.service.config import SERVICE_PREFIX
+from renku.ui.service.controllers.cache_files_delete_chunks import DeleteFileChunksCtrl
 from renku.ui.service.controllers.cache_files_upload import UploadFilesCtrl
 from renku.ui.service.controllers.cache_list_projects import ListProjectsCtrl
 from renku.ui.service.controllers.cache_list_uploaded import ListUploadedFilesCtrl
@@ -96,6 +97,35 @@ def upload_file_view(user_data, cache):
         - cache
     """
     return UploadFilesCtrl(cache, user_data, request).to_response()
+
+
+@cache_blueprint.route(
+    "/cache.files_delete_chunks", methods=["POST"], provide_automatic_options=False, versions=ALL_VERSIONS
+)
+@handle_common_except
+@accepts_json
+@requires_cache
+@requires_identity
+def delete_file_chunks_view(user_data, cache):
+    """
+    Delete chunks from a chunked upload.
+
+    ---
+    post:
+      description: Delete chunks from a chunked upload.
+      parameters:
+        - in: query
+          schema: FileChunksDeleteRequest
+      responses:
+        200:
+          description: Status of deletion request.
+          content:
+            application/json:
+              schema: FileChunksDeleteResponseRPC
+      tags:
+        - cache
+    """
+    return DeleteFileChunksCtrl(cache, user_data, dict(request.json)).to_response()
 
 
 @cache_blueprint.route("/cache.project_clone", methods=["POST"], provide_automatic_options=False, versions=ALL_VERSIONS)

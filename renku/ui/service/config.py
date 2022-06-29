@@ -42,6 +42,9 @@ PROJECT_CLONE_NO_DEPTH = -1
 PROJECT_CLONE_DEPTH_DEFAULT = int(os.getenv("PROJECT_CLONE_DEPTH_DEFAULT", 1))
 TEMPLATE_CLONE_DEPTH_DEFAULT = int(os.getenv("TEMPLATE_CLONE_DEPTH_DEFAULT", 0))
 
+# NOTE: Defaults to 1GB
+MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", 1073741824))
+
 CACHE_DIR = os.getenv("CACHE_DIR", os.path.realpath(tempfile.TemporaryDirectory().name))
 CACHE_UPLOADS_PATH = Path(CACHE_DIR) / Path("uploads")
 CACHE_UPLOADS_PATH.mkdir(parents=True, exist_ok=True)

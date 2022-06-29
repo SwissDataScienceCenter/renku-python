@@ -20,7 +20,7 @@ import time
 import uuid
 from urllib.parse import urlparse
 
-from marshmallow import Schema, ValidationError, fields, post_load, pre_load
+from marshmallow import Schema, ValidationError, fields, post_load, pre_load, validates_schema
 from werkzeug.utils import secure_filename
 
 from renku.core import errors
@@ -65,17 +65,43 @@ class FileUploadRequest(ArchiveSchema):
         description="Overried files. Useful when extracting from archives.",
     )
 
+    chunked_id = fields.String(data_key="dzuuid", missing=None, description="Dropzone upload id.")
+    chunk_index = fields.Integer(data_key="dzchunkindex", missing=None, description="Dropzone chunk index.")
+    chunk_count = fields.Integer(data_key="dztotalchunkcount", missing=None, description="Dropzone total chunk count.")
+    chunk_size = fields.Integer(data_key="dzchunksize", missing=None, description="Dropzone chunk size.")
+    chunk_byte_offset = fields.Integer(data_key="dzchunkbyteoffset", missing=None, description="Dropzone chunk offset.")
+    chunked_content_type = fields.String(missing=None, description="Content type of file file for chunked uploads.")
+    total_size = fields.Integer(data_key="dztotalfilesize", missing=None, description="Dropzone total file size.")
+
+    @validates_schema
+    def validate_requires(self, data, **kwargs):
+        """Validate chunk upload data."""
+        if data.get("dzuuid") is not None and ("dzchunkindex" not in data or "dztotalchunkcount" not in data):
+            raise ValidationError("'dzchunkindex' and 'dztotalchunkcount' are required when 'dzuuid' is set.")
+
 
 class FileUploadResponse(Schema):
     """Response schema for file upload."""
 
-    files = fields.List(fields.Nested(FileDetailsSchema), required=True)
+    files = fields.List(fields.Nested(FileDetailsSchema))
 
 
 class FileUploadResponseRPC(JsonRPCResponse):
     """RPC response schema for file upload response."""
 
     result = fields.Nested(FileUploadResponse)
+
+
+class FileChunksDeleteRequest(Schema):
+    """Request schema for deleting uploaded chunks."""
+
+    chunked_id = fields.String(data_key="dzuuid", missing=None, description="Dropzone upload id.")
+
+
+class FileChunksDeleteResponseRPC(JsonRPCResponse):
+    """RPC response schema for file upload response."""
+
+    result = fields.String()
 
 
 class FileListResponse(Schema):

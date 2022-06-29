@@ -26,7 +26,7 @@ def mock_redis():
 
     from renku.core.util import git
     from renku.ui.service.cache.base import BaseCache
-    from renku.ui.service.cache.models.file import File
+    from renku.ui.service.cache.models.file import File, FileChunk
     from renku.ui.service.cache.models.job import Job
     from renku.ui.service.cache.models.project import Project
     from renku.ui.service.cache.models.user import User
@@ -52,6 +52,7 @@ def mock_redis():
         m.setattr(Job, "__database__", fake_model_db)
         m.setattr(User, "__database__", fake_model_db)
         m.setattr(File, "__database__", fake_model_db)
+        m.setattr(FileChunk, "__database__", fake_model_db)
         m.setattr(Project, "__database__", fake_model_db)
 
         git.push_changes = push_changes_mock

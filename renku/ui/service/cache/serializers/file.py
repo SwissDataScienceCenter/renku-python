@@ -16,10 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service file cache serializers."""
+import uuid
+
 from marshmallow import fields, post_load
 
-from renku.ui.service.cache.models.file import File
-from renku.ui.service.serializers.common import FileDetailsSchema, MandatoryUserSchema
+from renku.ui.service.cache.models.file import File, FileChunk
+from renku.ui.service.serializers.common import CreationSchema, FileDetailsSchema, MandatoryUserSchema
 
 
 class FileSchema(FileDetailsSchema, MandatoryUserSchema):
@@ -34,3 +36,18 @@ class FileSchema(FileDetailsSchema, MandatoryUserSchema):
     def make_file(self, data, **options):
         """Construct file object."""
         return File(**data)
+
+
+class FileChunkSchema(CreationSchema, MandatoryUserSchema):
+    """Schema for file model."""
+
+    chunk_file_id = fields.String(missing=lambda: uuid.uuid4().hex)
+    file_name = fields.String(required=True)
+
+    chunked_id = fields.String(required=True)
+    relative_path = fields.String(required=True)
+
+    @post_load
+    def make_file(self, data, **options):
+        """Construct file object."""
+        return FileChunk(**data)
