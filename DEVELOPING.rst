@@ -247,8 +247,8 @@ number.
   the version number in the header and to replace the `=` underline with `-`.
 - Proof-read the changelog and adjust messages so they make sense to third
   parties reading the changelog
-- Update the version in `helm-chart/renku-core/Chart.yaml` and `helm-chart/renku-core/values.yaml`
-  (for `versions.latest.image.tag`).
+- Update the version in `helm-chart/renku-core/Chart.yaml`, `helm-chart/renku-core/values.yaml`
+  (for `versions.latest.image.tag`), and `renku/version.py`.
 - Commit the changes to the release branch, with a message like "chore: release
   v1.2.3"
 - Push the release branch and create a PR **against master**. Wait for it to be
