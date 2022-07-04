@@ -231,7 +231,7 @@ def stop(session_name, stop_all, provider):
     help="Session provider to use.",
 )
 def open(session_name, provider):
-    """Stop a interactive sessions."""
+    """Open a interactive sessions."""
     from renku.command.session import session_open_command
 
     session_open_command().build().execute(session_name=session_name, provider=provider)
