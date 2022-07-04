@@ -171,7 +171,7 @@ def list_sessions(provider, config, format):
 @click.option("--gpu", type=click.STRING, metavar="<GPU quota>", help="GPU quota for the session.")
 @click.option("--memory", type=click.STRING, metavar="<memory size>", help="Amount of memory required for the session.")
 def start(provider, config, image, cpu, disk, gpu, memory):
-    """Start a interactive sessions."""
+    """Start an interactive session."""
     from renku.command.session import session_start_command
 
     communicator = ClickCallback()
@@ -204,7 +204,7 @@ def start(provider, config, image, cpu, disk, gpu, memory):
 )
 @click.option("stop_all", "--all", is_flag=True, help="Stops all the running containers.")
 def stop(session_name, stop_all, provider):
-    """Stop a interactive sessions."""
+    """Stop an interactive session."""
     from renku.command.session import session_stop_command
 
     if not stop_all and session_name is None:
@@ -231,7 +231,7 @@ def stop(session_name, stop_all, provider):
     help="Session provider to use.",
 )
 def open(session_name, provider):
-    """Open a interactive sessions."""
+    """Open an interactive session."""
     from renku.command.session import session_open_command
 
     session_open_command().build().execute(session_name=session_name, provider=provider)
