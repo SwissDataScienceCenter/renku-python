@@ -25,7 +25,7 @@ Docker provider
 
 The ``docker`` provider will take the current state of the repository, build a ``docker``
 image (if one does not already exist) and then launch a session with this image. In
-addition to this the ``docker`` provider will mount the local repository inside
+addition to this, the ``docker`` provider will mount the local repository inside
 the ``docker`` container so that changes made in the session are immediately reflected
 on the host where the session was originally started from.
 
@@ -40,8 +40,11 @@ a session there, or in the case where they simply have no access to a Renku depl
 
     $ renku session start -p docker
 
+The command first looks for a local image to use. If a local image isn't found, it searches the remote Renku deployment
+(if any) and pulls the image if it exists. Finally, it prompts the user to build the image locally if no image is found.
+
 Renkulab provider
-~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
 
 The ``renkulab`` provider will launch a regular interactive session
 in the Renku deployment that hosts the current project. If the project has not
@@ -82,7 +85,7 @@ In order to see active sessions (from any provider) run the following command:
 
 .. code-block:: console
 
-    $ renku session start -p renkulab
+    $ renku session ls -p renkulab
     ID                   STATUS    URL
     -------------------  --------  -------------------------------------------------
     renku-test-e4fe76cc  running   https://dev.renku.ch/sessions/renku-test-e4fe76cc
@@ -119,7 +122,7 @@ def session():
     pass
 
 
-@session.command("list")
+@session.command("ls")
 @click.option(
     "provider",
     "-p",

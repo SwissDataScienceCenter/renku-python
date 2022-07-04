@@ -356,7 +356,7 @@ class RenkulabSessionProvider(ISessionProvider):
                 )
             )
             self._wait_for_session_status(session_name, "stopping")
-        return all([response.status_code == 204 for response in responses])
+        return all([response.status_code == 204 for response in responses]) if responses else False
 
     def session_url(self, session_name: str) -> str:
         """Get the URL of the interactive session."""

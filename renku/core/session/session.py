@@ -19,7 +19,7 @@
 
 import webbrowser
 from itertools import chain
-from typing import Optional
+from typing import Optional, List
 
 from renku.command.command_builder import inject
 from renku.core import errors
@@ -28,7 +28,7 @@ from renku.core.plugin.session import supported_session_providers
 from renku.core.session.utils import get_image_repository_host, get_renku_project_name
 from renku.core.util import communication
 from renku.core.util.os import safe_read_yaml
-from renku.domain_model.session import ISessionProvider
+from renku.domain_model.session import ISessionProvider, Session
 
 
 def _safe_get_provider(provider: str) -> ISessionProvider:
@@ -42,6 +42,13 @@ def _safe_get_provider(provider: str) -> ISessionProvider:
 
 def session_list(config_path: str, provider: Optional[str] = None):
     """List interactive sessions."""
+
+    def list_sessions(provider_and_name) -> List[Session]:
+        try:
+            return provider_and_name[0].session_list(config=config, project_name=project_name)
+        except errors.UsageError:
+            return []
+
     project_name = get_renku_project_name()
     config = safe_read_yaml(config_path) if config_path else dict()
 
@@ -52,7 +59,7 @@ def session_list(config_path: str, provider: Optional[str] = None):
     if len(providers) == 0:
         raise errors.ParameterError("No session provider is available!")
 
-    return list(chain(*map(lambda x: x[0].session_list(config=config, project_name=project_name), providers)))
+    return list(chain(*map(list_sessions, providers)))
 
 
 @inject.autoparams("client_dispatcher")
@@ -121,23 +128,22 @@ def session_start(
 
 def session_stop(session_name: str, stop_all: bool = False, provider: Optional[str] = None):
     """Stop interactive session."""
+
+    def stop_sessions(provider) -> bool:
+        try:
+            return provider[0].session_stop(project_name=project_name, session_name=session_name, stop_all=stop_all)
+        except errors.UsageError:
+            return False
+
     session_detail = "all sessions" if stop_all else f"session {session_name}"
     project_name = get_renku_project_name()
-    if provider:
-        p = _safe_get_provider(provider)
-        with communication.busy(msg=f"Waiting for {session_detail} to stop..."):
+    with communication.busy(msg=f"Waiting for {session_detail} to stop..."):
+        if provider:
+            p = _safe_get_provider(provider)
             is_stopped = p.session_stop(project_name=project_name, session_name=session_name, stop_all=stop_all)
-    else:
-        providers = supported_session_providers()
-        with communication.busy(msg=f"Waiting for {session_detail} to stop..."):
-            is_stopped = any(
-                map(
-                    lambda x: x[0].session_stop(
-                        project_name=project_name, session_name=session_name, stop_all=stop_all
-                    ),
-                    providers,
-                )
-            )
+        else:
+            providers = supported_session_providers()
+            is_stopped = any(map(stop_sessions, providers))
 
     if not is_stopped:
         raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")
