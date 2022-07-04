@@ -382,6 +382,25 @@ class UserProjectTemplateReferenceError(ServiceError):
         )
 
 
+class UserUploadTooLargeError(ServiceError):
+    """The user tried to upload a file that is too large.
+
+    Maximum upload size can be set with the ``maximumUploadSizeBytes`` chart value or ``MAX_CONTENT_LENGTH``
+    environment value.
+    """
+
+    code = SVC_ERROR_USER + 150
+    userMessage = "The file you are trying to upload is too large. Maximum allowed size is: {maximum_size}"
+    devMessage = "Uploaded file size was larger than ``MAX_CONTENT_LENGTH``."
+
+    def __init__(self, exception, maximum_size: str):
+        super().__init__(
+            userMessage=self.userMessage.format(maximum_size=maximum_size),
+            devMessage=self.devMessage.format(maximum_size=maximum_size),
+            exception=exception,
+        )
+
+
 class ProgramInvalidGenericFieldsError(ServiceError):
     """One or more fields are unexpected.
 

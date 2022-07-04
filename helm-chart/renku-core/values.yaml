@@ -39,6 +39,8 @@ cacheDirectory: /svc/cache
 cleanupInterval: 60  # NOTE: This needs to be a divisor of, and less than cleanupFilesTTL|cleanupProjectsTTL.
 projectCloneDepth: 1
 templateCloneDepth: 1
+maximumUploadSizeBytes: "1073741824" # 1 Gigabyte, store as string to keep Helm from converting it to scientific notation
+requestTimeout: 600
 
 datasetsWorkerQueues: datasets.jobs,delayed.ctrl.DatasetsCreateCtrl,delayed.ctrl.DatasetsAddFileCtrl,delayed.ctrl.DatasetsRemoveCtrl,delayed.ctrl.DatasetsImportCtrl,delayed.ctrl.DatasetsEditCtrl,delayed.ctrl.DatasetsUnlinkCtrl
 managementWorkerQueues: cache.cleanup.files,cache.cleanup.projects,delayed.ctrl.MigrateProjectCtrl,delayed.ctrl.SetConfigCtrl
@@ -109,7 +111,7 @@ versions:
     fullnameOverride: ""
     image:
       repository: renku/renku-core
-      tag: "v1.4.0"
+      tag: "v1.5.0"
       pullPolicy: IfNotPresent
   v8:
     name: v8

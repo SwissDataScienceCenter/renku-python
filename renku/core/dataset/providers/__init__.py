@@ -33,11 +33,18 @@ class ProviderFactory:
     def providers():
         """Returns all supported providers."""
         from renku.core.dataset.providers.dataverse import DataverseProvider
+        from renku.core.dataset.providers.local import LocalProvider
         from renku.core.dataset.providers.olos import OLOSProvider
         from renku.core.dataset.providers.renku import RenkuProvider
         from renku.core.dataset.providers.zenodo import ZenodoProvider
 
-        return {"OLOS": OLOSProvider, "Renku": RenkuProvider, "Zenodo": ZenodoProvider, "Dataverse": DataverseProvider}
+        return {
+            "Dataverse": DataverseProvider,
+            "Local": LocalProvider,
+            "OLOS": OLOSProvider,
+            "Renku": RenkuProvider,
+            "Zenodo": ZenodoProvider,
+        }
 
     @staticmethod
     def from_uri(uri) -> Tuple[Optional["ProviderApi"], str]:

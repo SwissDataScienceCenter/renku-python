@@ -35,6 +35,7 @@ from cwl_utils.parser import cwl_v1_2 as cwlgen
 from renku.core.plugin.provider import available_workflow_providers
 from renku.core.util.yaml import write_yaml
 from renku.infrastructure.database import Database
+from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 
@@ -1208,3 +1209,35 @@ def test_workflow_templated_params(runner, run_shell, client, capsys, workflow, 
 
     for o in outputs:
         assert Path(o).resolve().exists()
+
+
+def test_reverted_activity_status(client, runner, client_database_injection_manager):
+    """Test that reverted activity doesn't affect status/update/log/etc."""
+    input = client.path / "input"
+    write_and_commit_file(client.repository, input, "content")
+    output = client.path / "output"
+
+    assert 0 == runner.invoke(cli, ["run", "cat", input], stdout=output).exit_code
+    write_and_commit_file(client.repository, input, "changes")
+
+    with client_database_injection_manager(client):
+        activity_gateway = ActivityGateway()
+        activity_id = activity_gateway.get_all_activities()[0].id
+
+    assert 1 == runner.invoke(cli, ["status"]).exit_code
+    assert "output" in runner.invoke(cli, ["update", "--all", "--dry-run"]).output
+    assert "cat input > output" in runner.invoke(cli, ["workflow", "visualize", "output"]).output
+    assert activity_id in runner.invoke(cli, ["log"]).output
+    assert "input" in runner.invoke(cli, ["workflow", "inputs"]).output
+    assert "output" in runner.invoke(cli, ["workflow", "outputs"]).output
+
+    result = runner.invoke(cli, ["workflow", "revert", activity_id])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    assert 0 == runner.invoke(cli, ["status"]).exit_code
+    assert "output" not in runner.invoke(cli, ["update", "--all", "--dry-run"]).output
+    assert "cat input > output" not in runner.invoke(cli, ["workflow", "visualize", "output"]).output
+    assert activity_id not in runner.invoke(cli, ["log"]).output
+    assert "input" not in runner.invoke(cli, ["workflow", "inputs"]).output
+    assert "output" not in runner.invoke(cli, ["workflow", "outputs"]).output

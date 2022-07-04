@@ -70,6 +70,11 @@ class AbstractPlan(Persistent, ABC):
     def __repr__(self):
         return f"<{self.__class__.__name__} '{self.name}'>"
 
+    @property
+    def deleted(self) -> bool:
+        """True if plan is deleted."""
+        return self.invalidated_at is not None
+
     @staticmethod
     def generate_id(uuid: Optional[str] = None) -> str:
         """Generate an identifier for Plan."""
@@ -135,6 +140,16 @@ class AbstractPlan(Persistent, ABC):
         """Return if an ``AbstractPlan`` has correct derived_from."""
         raise NotImplementedError()
 
+    def delete(self, *, when: datetime = local_now()):
+        """Mark a plan as deleted.
+
+        NOTE: Don't call this function for deleting plans since it doesn't delete the whole plan derivatives chain. Use
+        renku.core.workflow.plan::remove_plan instead.
+        """
+        self.unfreeze()
+        self.invalidated_at = when
+        self.freeze()
+
 
 class Plan(AbstractPlan):
     """Represent a `renku run` execution template."""
@@ -195,11 +210,6 @@ class Plan(AbstractPlan):
     def keywords_csv(self) -> str:
         """Comma-separated list of keywords associated with workflow."""
         return ", ".join(self.keywords)
-
-    @property
-    def deleted(self) -> bool:
-        """True if plan is deleted."""
-        return self.invalidated_at is not None
 
     def is_similar_to(self, other: "Plan") -> bool:
         """Return true if plan has the same inputs/outputs/arguments as another plan."""
@@ -348,12 +358,6 @@ class Plan(AbstractPlan):
         Required where a plan is used several times in a workflow but we need to set different values on them.
         """
         return copy.deepcopy(self)
-
-    def delete(self, when: datetime = local_now()):
-        """Mark a plan as deleted."""
-        self.unfreeze()
-        self.invalidated_at = when
-        self.freeze()
 
     def get_field_by_id(self, id: str) -> Union[CommandInput, CommandOutput, CommandParameter]:
         """Return an in Input/Output/Parameter by its id."""

@@ -17,8 +17,9 @@
 # limitations under the License.
 """Project initialization logic."""
 
+import os
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List, Optional
 from uuid import uuid4
 
 import attr
@@ -44,6 +45,7 @@ from renku.core.template.template import (
 from renku.core.template.usecase import select_template
 from renku.core.util import communication
 from renku.core.util.os import is_path_empty
+from renku.domain_model.project import Project
 from renku.domain_model.template import Template, TemplateMetadata
 from renku.version import __version__, is_release
 
@@ -172,20 +174,23 @@ def _init(
     if template is None:
         raise errors.TemplateNotFoundError(f"Couldn't find template with id {template_id}")
 
+    namespace, name = Project.get_namespace_and_name(client=client, name=name)
+    name = name or os.path.basename(path.rstrip(os.path.sep))
+
     metadata = dict()
     # NOTE: supply metadata
     metadata["__template_source__"] = template_source
     metadata["__template_ref__"] = template_ref
     metadata["__template_id__"] = template_id
-    metadata["__namespace__"] = ""
+    metadata["__namespace__"] = namespace or ""
     metadata["__sanitized_project_name__"] = ""
     metadata["__repository__"] = ""
     metadata["__project_slug__"] = ""
     metadata["__project_description__"] = description
     if is_release() and "__renku_version__" not in metadata:
         metadata["__renku_version__"] = __version__
-    metadata["name"] = name  # NOTE: kept for backwards compatibility
     metadata["__name__"] = name
+    metadata["name"] = metadata["__name__"]  # NOTE: kept for backwards compatibility
     metadata["__template_version__"] = template.version
     metadata["__automated_update__"] = True  # TODO: This should come from a command line flag
 
@@ -225,7 +230,6 @@ def _init(
                 client=client,
                 name=name,
                 custom_metadata=custom_metadata,
-                force=force,
                 data_dir=data_dir,
                 description=description,
                 keywords=keywords,
@@ -253,15 +257,14 @@ def create_from_template(
     rendered_template: RenderedTemplate,
     actions: Dict[str, FileAction],
     client,
-    name=None,
-    custom_metadata=None,
-    force=None,
-    data_dir=None,
-    user=None,
-    commit_message=None,
-    description=None,
-    keywords=None,
-    install_mergetool=False,
+    name: Optional[str] = None,
+    namespace: Optional[str] = None,
+    custom_metadata: Optional[Dict] = None,
+    data_dir: Optional[str] = None,
+    commit_message: Optional[str] = None,
+    description: Optional[str] = None,
+    keywords: Optional[List[str]] = None,
+    install_mergetool: bool = False,
 ):
     """Initialize a new project from a template.
 
@@ -269,14 +272,13 @@ def create_from_template(
         rendered_template(RenderedTemplate): Rendered template.
         actions(Dict[str, FileAction]): mapping of paths and actions to take.
         client: ``LocalClient``.
-        name: Name of the project (Default value = None).
-        custom_metadata: Custom JSON-LD metadata (Default value = None).
-        force: Whether to overwrite files (Default value = None).
-        data_dir: Where to store dataset data (Default value = None).
-        user: Current user (Default value = None).
-        commit_message: Message for initial commit (Default value = None).
-        description: Description of the project (Default value = None).
-        keywords: Keywords for project (Default value = None).
+        name(Optional[str]): Name of the project (Default value = None).
+        namespace(Optional[str]): Namespace of the project (Default value = None).
+        custom_metadata(Optional[Dict]): Custom JSON-LD metadata (Default value = None).
+        data_dir(Optional[str]): Where to store dataset data (Default value = None).
+        commit_message(Optional[str]): Message for initial commit (Default value = None).
+        description(Optional[str]): Description of the project (Default value = None).
+        keywords(Optional[List[str]]): Keywords for project (Default value = None).
         install_mergetool(bool): Whether to setup renku metadata mergetool (Default value = False).
     """
     commit_only = [f"{RENKU_HOME}/", str(client.template_checksums)] + list(rendered_template.get_files())
@@ -301,7 +303,7 @@ def create_from_template(
 
     with client.commit(commit_message=commit_message, commit_only=commit_only, skip_dirty_checks=True):
         with client.with_metadata(
-            name=name, description=description, custom_metadata=custom_metadata, keywords=keywords
+            name=name, namespace=namespace, description=description, custom_metadata=custom_metadata, keywords=keywords
         ) as project:
             copy_template_to_client(
                 rendered_template=rendered_template, client=client, project=project, actions=actions
@@ -314,46 +316,42 @@ def create_from_template(
             client.set_value("renku", client.DATA_DIR_CONFIG_KEY, str(data_dir))
 
 
-@inject.autoparams()
+@inject.autoparams("client_dispatcher")
 def _create_from_template_local(
-    template_path,
-    name,
+    template_path: Path,
+    name: str,
+    namespace: str,
     client_dispatcher: IClientDispatcher,
-    metadata=None,
-    custom_metadata=None,
-    default_metadata=None,
-    template_version=None,
-    immutable_template_files=None,
-    automated_template_update=True,
-    user=None,
-    source=None,
-    ref=None,
-    invoked_from=None,
-    initial_branch=None,
-    commit_message=None,
-    description=None,
-    keywords=None,
+    metadata: Optional[Dict] = None,
+    custom_metadata: Optional[Dict] = None,
+    default_metadata: Optional[Dict] = None,
+    template_version: Optional[str] = None,
+    immutable_template_files: Optional[List[str]] = None,
+    automated_template_update: bool = True,
+    user: Optional[Dict[str, str]] = None,
+    initial_branch: Optional[str] = None,
+    commit_message: Optional[str] = None,
+    description: Optional[str] = None,
+    keywords: Optional[List[str]] = None,
 ):
     """Initialize a new project from a template.
 
     Args:
-        template_path: Path to template.
-        name: project name.
+        template_path(Path): Path to template.
+        name(str): project name.
+        namespace(str): project namespace.
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
-        metadata: Project metadata (Default value = None).
-        custom_metadata: Custom JSON-LD metadata (Default value = None).
-        default_metadata: Default project metadata (Default value = None).
-        template_version: Version of the template (Default value = None).
-        immutable_template_files: Immutable template files (Default value = None).
-        automated_template_update: If template can be updated automatically (Default value = True).
-        user: Git user (Default value = None).
-        source: Template source. (Default value = None).
-        ref: Template reference (Default value = None).
-        invoked_from: Where this was invoked from (Default value = None).
-        initial_branch: Name of initial/main branch (Default value = None).
-        commit_message: Message of initial commit (Default value = None).
-        description: Project description (Default value = None).
-        keywords: Project keywords (Default value = None).
+        metadata(Optional[Dict]): Project metadata (Default value = None).
+        custom_metadata(Optional[Dict]): Custom JSON-LD metadata (Default value = None).
+        default_metadata(Optional[Dict]): Default project metadata (Default value = None).
+        template_version(Optional[str]): Version of the template (Default value = None).
+        immutable_template_files(Optional[List[str]]): Immutable template files (Default value = None).
+        automated_template_update(bool): If template can be updated automatically (Default value = True).
+        user(Optional[Doct[str, str]]): Git user (Default value = None).
+        initial_branch(Optional[str]): Name of initial/main branch (Default value = None).
+        commit_message(Optional[str]): Message of initial commit (Default value = None).
+        description(Optional[str]): Project description (Default value = None).
+        keywords(Optional[List[str]]): Project keywords (Default value = None).
     """
     client = client_dispatcher.current_client
 
@@ -380,7 +378,7 @@ def _create_from_template_local(
         description="",
         parameters={},
         icon="",
-        immutable_files=immutable_template_files,
+        immutable_files=immutable_template_files or [],
         allow_update=automated_template_update,
         source=metadata["__template_source__"],
         reference=metadata["__template_ref__"],
@@ -403,9 +401,8 @@ def _create_from_template_local(
         actions=actions,
         client=client,
         name=name,
+        namespace=namespace,
         custom_metadata=custom_metadata,
-        force=False,
-        user=user,
         commit_message=commit_message,
         description=description,
         keywords=keywords,

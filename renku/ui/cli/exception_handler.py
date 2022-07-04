@@ -61,10 +61,10 @@ from urllib.parse import urlencode
 
 import click
 import filelock
-import portalocker
 
 import renku.ui.cli.utils.color as color
 from renku.command.echo import ERROR
+from renku.core import errors
 from renku.ui.service.config import SENTRY_ENABLED, SENTRY_SAMPLERATE
 
 _BUG = click.style("Ahhhhhhhh! You have found a bug. 🐞\n\n", fg=color.RED, bold=True)
@@ -91,6 +91,11 @@ class RenkuExceptionsHandler(click.Group):
 
         try:
             return super().main(*args, **kwargs)
+        except (filelock.Timeout, errors.LockError):
+            click.echo(
+                click.style("Unable to acquire lock.\n", fg=color.RED)
+                + "Hint: Please wait for another renku process to finish and then try again."
+            )
         except RenkuException as e:
             click.echo(ERROR + str(e), err=True)
             if e.__cause__ is not None:
@@ -126,15 +131,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
     def main(self, *args, **kwargs):
         """Catch all exceptions."""
         try:
-            result = super().main(*args, **kwargs)
-            return result
-
-        except (filelock.Timeout, portalocker.LockException, portalocker.AlreadyLocked):
-            click.echo(
-                click.style("Unable to acquire lock.\n", fg=color.RED) + "Hint: Please wait for another renku "
-                "process to finish and then try again."
-            )
-
+            return super().main(*args, **kwargs)
         except Exception:
             if HAS_SENTRY:
                 self._handle_sentry()

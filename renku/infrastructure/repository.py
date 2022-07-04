@@ -18,6 +18,7 @@
 """An abstraction layer for the underlying VCS."""
 
 import configparser
+import hashlib
 import math
 import os
 import subprocess
@@ -67,6 +68,7 @@ class BaseRepository:
 
         self._repository: Optional[git.Repo] = repository
         self._path = Path(path).resolve()
+        self._lfs: Optional["LFS"] = None
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} {self.path}>"
@@ -179,22 +181,17 @@ class BaseRepository:
             raise errors.ParameterError("Repository not set.")
         return [str(e[0]) for e in self._repository.index.entries]
 
+    @property
+    def lfs(self) -> "LFS":
+        """Return a Git LFS manager."""
+        if self._lfs is None:
+            self._lfs = LFS(self)
+
+        return self._lfs
+
     def is_valid(self) -> bool:
         """Return True if a valid repository exists."""
         return self._repository is not None
-
-    def install_lfs(self, skip_smudge: bool = True):
-        """Force install Git LFS in the repository."""
-        os.environ["GIT_LFS_SKIP_SMUDGE"] = "1" if skip_smudge else "0"
-
-        command = ["lfs", "install", "--local", "--force"]
-        if skip_smudge:
-            command += ["--skip-smudge"]
-
-        try:
-            self.run_git_command(*command)
-        except errors.GitCommandError as e:
-            raise errors.GitError(f"Cannot install Git LFS in {self}") from e
 
     def get_historical_changes_patch(self, path: Union[Path, str]) -> List[str]:
         """Return a patch of all changes to a file."""
@@ -419,6 +416,48 @@ class BaseRepository:
             raise errors.GitCommitNotFoundError(f"Cannot find previous commit for '{path}' from '{revision}'")
         return commit
 
+    def get_revisions_paths(self, *checksums: str) -> List[Tuple[Optional[str], Optional[str]]]:
+        """Return a revision:path tuple for each checksum so that revision contains the given blob with the checksum."""
+
+        def parse_output(output) -> Tuple[Optional[str], Optional[str]]:
+            if output.lstrip().startswith("fatal:"):
+                return None, None
+            else:
+                return output.split(":", maxsplit=1)
+
+        outputs = []
+        for batch in split_paths(*checksums):
+            try:
+                outputs.extend(self.run_git_command("describe", "--always", *batch).split(os.linesep))
+            except errors.GitCommandError:
+                outputs.extend(["fatal:"] * len(batch))
+
+        return [parse_output(o) for o in outputs]
+
+    def get_sizes(self, *checksums: str) -> List[Optional[str]]:
+        """Return size of blobs given their checksum."""
+        revisions = []
+        for batch in split_paths(*checksums):
+            try:
+                revisions.extend(self.run_git_command("describe", "--always", *batch).split(os.linesep))
+            except errors.GitCommandError:
+                revisions.extend(["fatal:"] * len(batch))
+
+        try:
+            result = subprocess.run(
+                ["git", "cat-file", "--batch-check='%(objectsize)'"],
+                check=True,
+                input="\n".join(revisions),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                cwd=self.path,
+                text=True,
+            )
+        except subprocess.CalledProcessError:
+            return [""] * len(checksums)
+        else:
+            return ["" if "missing" in line else line.strip("\"'") for line in result.stdout.split(os.linesep)[:-1]]
+
     def iterate_commits(
         self,
         *paths: Union[Path, str],
@@ -501,6 +540,7 @@ class BaseRepository:
     def copy_content_to_file(
         self,
         path: Union[Path, str],
+        *,
         revision: Optional[Union["Reference", str]] = None,
         checksum: Optional[str] = None,
         output_path: Optional[Union[Path, str]] = None,
@@ -515,9 +555,11 @@ class BaseRepository:
             checksum(Optional[str]): Git hash of the file to be retrieved. This cannot be passed with ``revision``.
             output_path(Optional[Union[Path, str]]): A path to copy the content to. A temporary file is created if it is
                 ``None``.
-            apply_filters(bool): Whether to apply Git filter on the retrieved object.Note that ``apply_filters`` doesn't
-                smudge LFS objects if repository is cloned with ``--skip-smudge`` or if ``GIT_LFS_SKIP_SMUDGE`` is set.
-                Call ``Repository.install_lfs`` before to make sure that LFS objects are pulled.
+            apply_filters(bool): Whether to apply Git filter on the retrieved object. Note that ``apply_filters`` still
+                works if repository is cloned with ``--skip-smudge`` or if ``GIT_LFS_SKIP_SMUDGE`` is set. It also works
+                if there is not entry for the file in ``.gitattributes`` (e.g. when a file was deleted). The reason is
+                that we use `git lfs smudge` command to get the file content if this option is passed and we also
+                disable ``GIT_LFS_SKIP_SMUDGE``.
 
         Returns:
             The path to the created file.
@@ -564,14 +606,26 @@ class BaseRepository:
                         path=absolute_path, checksum=checksum, revision=revision, apply_filters=apply_filters
                     )
 
+        output = None
+
         if output_path is None:
             with tempfile.NamedTemporaryFile(mode="w+b", delete=False) as temp_output_file:
                 if get_content_helper(output_file=temp_output_file):
-                    return temp_output_file.name
+                    output = temp_output_file.name
         else:
             with open(output_path, "wb") as output_file:
                 if get_content_helper(output_file):
-                    return output_file.name
+                    output = output_file.name
+
+        if output is not None:
+            if not apply_filters or not self.lfs.is_pointer_file(output):
+                return output
+
+            with tempfile.NamedTemporaryFile(mode="w+t", delete=False) as pointer:
+                pointer.write(Path(output).read_text())
+
+            self.lfs.get_content(pointer.name, output)
+            return output
 
         from_submodules = get_content_from_submodules()
         if from_submodules:
@@ -852,6 +906,13 @@ class BaseRepository:
             return result[0]
         return None
 
+    @staticmethod
+    def hash_string(content: str) -> str:
+        """Calculate the object-hash for a blob with specified content."""
+        content_bytes = content.encode("utf-8")
+        data = f"blob {len(content_bytes)}\0".encode("utf-8") + content_bytes
+        return hashlib.sha1(data).hexdigest()
+
 
 class Repository(BaseRepository):
     """Abstract Base repository."""
@@ -919,6 +980,56 @@ class Repository(BaseRepository):
             raise errors.GitError(f"Git command failed: {str(e)}") from e
         else:
             return cls(path=path, repository=repository)
+
+
+class LFS:
+    """Git LFS manager."""
+
+    def __init__(self, repository: BaseRepository):
+        self._repository: BaseRepository = repository
+
+    def install(self, skip_smudge: bool = True):
+        """Force install Git LFS in the repository."""
+        os.environ["GIT_LFS_SKIP_SMUDGE"] = "1" if skip_smudge else "0"
+
+        command = ["lfs", "install", "--local", "--force"]
+        if skip_smudge:
+            command += ["--skip-smudge"]
+
+        try:
+            self._repository.run_git_command(*command)
+        except errors.GitCommandError as e:
+            raise errors.GitError(f"Cannot install Git LFS in {self}") from e
+
+    def is_pointer_file(self, path: Union[Path, str]):
+        """Check if a file is an LFS pointer."""
+        try:
+            self._repository.run_git_command("lfs", "pointer", check=True, file=path)
+        except errors.GitError:
+            return False
+        else:
+            return True
+
+    def get_content(self, path: Union[Path, str], output_path: Union[Path, str]):
+        """Get content from a given pointer file."""
+        try:
+            with open(path) as pointer_file, open(output_path, "wb") as output_file:
+                # NOTE: This return the pointer_file content if it's not an LFS pointer file or doesn't point to a valid
+                # LFS object
+                subprocess.run(
+                    ["git", "lfs", "smudge"],
+                    check=True,
+                    stdin=pointer_file,
+                    stdout=output_file,
+                    stderr=subprocess.DEVNULL,
+                    cwd=self._repository.path,
+                    env={"GIT_LFS_SKIP_SMUDGE": "0"},
+                )
+        except subprocess.CalledProcessError:
+            return False
+        else:
+            # NOTE: No need to check the exit code since ``check=True`` takes care of non-zero exit codes
+            return True
 
 
 class Submodule(BaseRepository):

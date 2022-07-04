@@ -17,7 +17,7 @@
 # limitations under the License.
 """General utility functions."""
 
-from typing import Any, Optional
+from typing import Any, NewType, Optional
 
 from packaging.version import Version
 
@@ -33,3 +33,10 @@ def to_semantic_version(value: str) -> Optional[Version]:
         return Version(value)
     except ValueError:
         return None
+
+
+NoValueType = NewType("NoValueType", object)
+"""Type to represent a value not being set in cases where ``None`` is a valid value."""
+
+NO_VALUE = NoValueType(object())
+"""Sentinel to represent a value not being set in cases where ``None`` is a valid value."""

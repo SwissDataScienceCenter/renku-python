@@ -44,6 +44,8 @@ def run_api(addr="0.0.0.0", port=8080, timeout=600):
     svc_num_workers = os.getenv("RENKU_SVC_NUM_WORKERS", "1")
     svc_num_threads = os.getenv("RENKU_SVC_NUM_THREADS", "2")
 
+    svc_timeout = int(os.getenv("REQUEST_TIMEOUT", timeout))
+
     loading_opt = "--preload"
 
     sys.argv = [
@@ -53,7 +55,7 @@ def run_api(addr="0.0.0.0", port=8080, timeout=600):
         "-b",
         f"{addr}:{port}",
         "--timeout",
-        f"{timeout}",
+        f"{svc_timeout}",
         "--workers",
         svc_num_workers,
         "--worker-class",
@@ -251,7 +253,7 @@ def worker_start(queue):
 @click.pass_context
 def ps(ctx):
     """Check status of running services."""
-    from renku.domain_model.tabulate import tabulate
+    from renku.core.util.tabulate import tabulate
 
     processes = list_renku_processes()
     headers = [{k.upper(): v for k, v in rec.items()} for rec in processes]

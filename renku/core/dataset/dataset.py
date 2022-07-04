@@ -23,7 +23,7 @@ import shutil
 import urllib
 from collections import OrderedDict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
 
 import patoolib
 
@@ -36,7 +36,7 @@ from renku.core.dataset.pointer_file import create_external_file, is_external_fi
 from renku.core.dataset.providers import ProviderFactory
 from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile
 from renku.core.dataset.request_model import ImageRequestModel
-from renku.core.dataset.tag import add_dataset_tag, prompt_access_token, prompt_tag_selection
+from renku.core.dataset.tag import add_dataset_tag, get_dataset_by_tag, prompt_access_token, prompt_tag_selection
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.interface.dataset_gateway import IDatasetGateway
@@ -46,7 +46,9 @@ from renku.core.util.doi import is_doi
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository, get_git_user
 from renku.core.util.metadata import is_external_file
 from renku.core.util.os import delete_file
+from renku.core.util.tabulate import tabulate
 from renku.core.util.urls import get_slug, remove_credentials
+from renku.core.util.util import NO_VALUE, NoValueType
 from renku.domain_model.dataset import (
     Dataset,
     DatasetDetailsJson,
@@ -59,7 +61,6 @@ from renku.domain_model.dataset import (
 )
 from renku.domain_model.provenance.agent import Person
 from renku.domain_model.provenance.annotation import Annotation
-from renku.domain_model.tabulate import tabulate
 from renku.infrastructure.immutable import DynamicProxy
 
 if TYPE_CHECKING:
@@ -175,32 +176,37 @@ def create_dataset(
 @inject.autoparams("client_dispatcher")
 def edit_dataset(
     name: str,
-    title: str,
-    description: str,
-    creators: List[Person],
+    title: Optional[Union[str, NoValueType]],
+    description: Optional[Union[str, NoValueType]],
+    creators: Optional[Union[List[Person], NoValueType]],
     client_dispatcher: IClientDispatcher,
-    keywords: Optional[List[str]] = None,
-    images: Optional[List[ImageRequestModel]] = None,
-    skip_image_update: bool = False,
-    custom_metadata: Optional[Dict] = None,
+    keywords: Optional[Union[List[str], NoValueType]] = NO_VALUE,
+    images: Optional[Union[List[ImageRequestModel], NoValueType]] = NO_VALUE,
+    custom_metadata: Optional[Union[Dict, NoValueType]] = NO_VALUE,
 ):
     """Edit dataset metadata.
 
     Args:
         name(str): Name of the dataset to edit
-        title(str): New title for the dataset.
-        description(str): New description for the dataset.
-        creators(List[Person]): New creators for the dataset.
+        title(Optional[Union[str, NoValueType]]): New title for the dataset.
+        description(Optional[Union[str, NoValueType]]): New description for the dataset.
+        creators(Optional[Union[List[Person], NoValueType]]): New creators for the dataset.
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
-        keywords(List[str], optional): New keywords for dataset (Default value = None).
-        images(List[ImageRequestModel], optional): New images for dataset (Default value = None).
-        skip_image_update(bool, optional): Whether or not to skip updating dataset images (Default value = False).
-        custom_metadata(Dict, optional): Custom JSON-LD metadata (Default value = None).
+        keywords(Optional[Union[List[str], NoValueType]]): New keywords for dataset (Default value = ``NO_VALUE``).
+        images(Optional[Union[List[ImageRequestModel], NoValueType]]): New images for dataset
+            (Default value = ``NO_VALUE``).
+        custom_metadata(Optional[Union[Dict, NoValueType]]): Custom JSON-LD metadata (Default value = ``NO_VALUE``).
 
     Returns:
         bool: True if updates were performed.
     """
     client = client_dispatcher.current_client
+
+    if isinstance(title, str):
+        title = title.strip()
+
+    if title is None:
+        title = ""
 
     possible_updates = {
         "creators": creators,
@@ -209,29 +215,29 @@ def edit_dataset(
         "title": title,
     }
 
-    title = title.strip() if isinstance(title, str) else ""
-
     dataset_provenance = DatasetsProvenance()
     dataset = dataset_provenance.get_by_name(name=name)
 
     if dataset is None:
         raise errors.ParameterError("Dataset does not exist.")
 
-    updated: Dict[str, Any] = {k: v for k, v in possible_updates.items() if v}
+    updated: Dict[str, Any] = {k: v for k, v in possible_updates.items() if v != NO_VALUE}
 
     if updated:
         dataset.update_metadata(creators=creators, description=description, keywords=keywords, title=title)
 
-    if skip_image_update:
+    if images == NO_VALUE:
         images_updated = False
     else:
-        images_updated = set_dataset_images(client, dataset, images)
+        images_updated = set_dataset_images(client, dataset, cast(Optional[List[ImageRequestModel]], images))
 
     if images_updated:
-        updated["images"] = [{"content_url": i.content_url, "position": i.position} for i in dataset.images]
+        updated["images"] = (
+            None if images is None else [{"content_url": i.content_url, "position": i.position} for i in dataset.images]
+        )
 
-    if custom_metadata:
-        update_dataset_custom_metadata(dataset, custom_metadata)
+    if custom_metadata is not NO_VALUE:
+        update_dataset_custom_metadata(dataset, cast(Optional[Dict], custom_metadata))
         updated["custom_metadata"] = custom_metadata
 
     if not updated:
@@ -243,10 +249,11 @@ def edit_dataset(
     return updated
 
 
-@inject.autoparams()
+@inject.autoparams("client_dispatcher")
 def list_dataset_files(
     client_dispatcher: IClientDispatcher,
-    datasets=None,
+    datasets: List[str] = None,
+    tag: Optional[str] = None,
     creators=None,
     include=None,
     exclude=None,
@@ -255,7 +262,8 @@ def list_dataset_files(
 
     Args:
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
-        datasets: Datasets to list files for (Default value = None).
+        datasets(List[str]): Datasets to list files for (Default value = None).
+        tag(str): Tag to filter by (Default value = None).
         creators: Creators to filter by (Default value = None).
         include: Include filters for file paths (Default value = None).
         exclude: Exclude filters for file paths (Default value = None).
@@ -263,11 +271,13 @@ def list_dataset_files(
     Returns:
         List[DynamicProxy]: Filtered dataset files.
     """
-    from renku.command.format.dataset_files import get_lfs_file_sizes, get_lfs_tracking
+    from renku.command.format.dataset_files import get_lfs_tracking_and_file_sizes
 
     client = client_dispatcher.current_client
 
-    records = filter_dataset_files(names=datasets, creators=creators, include=include, exclude=exclude, immutable=True)
+    records = filter_dataset_files(
+        names=datasets, tag=tag, creators=creators, include=include, exclude=exclude, immutable=True
+    )
     for record in records:
         record.title = record.dataset.title
         record.dataset_name = record.dataset.name
@@ -279,8 +289,7 @@ def list_dataset_files(
         record.name = Path(record.entity.path).name
         record.added = record.date_added
 
-    get_lfs_file_sizes(records)
-    get_lfs_tracking(records)
+    get_lfs_tracking_and_file_sizes(records, has_tag=bool(tag))
 
     return records
 
@@ -344,13 +353,12 @@ def remove_dataset(name):
 
 
 @inject.autoparams()
-def export_dataset(name, provider_name, publish, tag, client_dispatcher: IClientDispatcher, **kwargs):
+def export_dataset(name, provider_name, tag, client_dispatcher: IClientDispatcher, **kwargs):
     """Export data to 3rd party provider.
 
     Args:
         name: Name of dataset to export.
         provider_name: Provider to use for export.
-        publish: Whether to export as proper version or draft.
         tag: Dataset tag from which to export.
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
     """
@@ -392,20 +400,23 @@ def export_dataset(name, provider_name, publish, tag, client_dispatcher: IClient
     dataset = cast(Dataset, DynamicProxy(dataset))
     dataset.data_dir = data_dir
 
-    access_token = client.get_value(provider_name, config_key_secret)
-    exporter = provider.get_exporter(dataset, access_token=access_token)
+    exporter = provider.get_exporter(dataset=dataset, tag=selected_tag)
 
-    if access_token is None:
-        access_token = prompt_access_token(exporter)
+    if exporter.requires_access_token():
+        access_token = client.get_value(provider_name, config_key_secret)
 
-        if access_token is None or len(access_token) == 0:
-            raise errors.InvalidAccessToken()
+        if access_token is None:
+            access_token = prompt_access_token(exporter)
 
-        client.set_value(provider_name, config_key_secret, access_token, global_only=True)
+            if access_token is None or len(access_token) == 0:
+                raise errors.InvalidAccessToken()
+
+            client.set_value(provider_name, config_key_secret, access_token, global_only=True)
+
         exporter.set_access_token(access_token)
 
     try:
-        destination = exporter.export(publish=publish, tag=selected_tag, client=client)
+        destination = exporter.export(client=client)
     except errors.AuthenticationError:
         client.remove_value(provider_name, config_key_secret, global_only=True)
         raise
@@ -838,7 +849,7 @@ def set_dataset_images(client: "LocalClient", dataset: Dataset, images: Optional
     return images_updated or dataset.images != previous_images
 
 
-def update_dataset_custom_metadata(dataset: Dataset, custom_metadata: Dict):
+def update_dataset_custom_metadata(dataset: Dataset, custom_metadata: Optional[Dict]):
     """Update custom metadata on a dataset.
 
     Args:
@@ -848,7 +859,8 @@ def update_dataset_custom_metadata(dataset: Dataset, custom_metadata: Dict):
 
     existing_metadata = [a for a in dataset.annotations if a.source != "renku"]
 
-    existing_metadata.append(Annotation(id=Annotation.generate_id(), body=custom_metadata, source="renku"))
+    if custom_metadata is not None:
+        existing_metadata.append(Annotation(id=Annotation.generate_id(), body=custom_metadata, source="renku"))
 
     dataset.annotations = existing_metadata
 
@@ -1136,90 +1148,93 @@ def update_external_files(client: "LocalClient", records: List[DynamicProxy], dr
     return updated_files
 
 
-@inject.autoparams()
+@inject.autoparams("client_dispatcher", "dataset_gateway")
 def filter_dataset_files(
     client_dispatcher: IClientDispatcher,
     dataset_gateway: IDatasetGateway,
-    names=None,
-    creators=None,
-    include=None,
-    exclude=None,
-    ignore=None,
-    immutable=False,
+    names: Optional[List[str]] = None,
+    tag: Optional[str] = None,
+    creators: Optional[Union[str, List[str], Tuple[str]]] = None,
+    include: Optional[List[str]] = None,
+    exclude: Optional[List[str]] = None,
+    ignore: Optional[List[str]] = None,
+    immutable: bool = False,
 ) -> List[DynamicProxy]:
     """Filter dataset files by specified filters.
 
     Args:
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
         dataset_gateway(IDatasetGateway):Injected dataset gateway.
-        names: Filter by specified dataset names. (Default value = None).
-        creators: Filter by creators. (Default value = None).
-        include: Include files matching file pattern. (Default value = None).
-        exclude: Exclude files matching file pattern. (Default value = None).
-        ignore: Ignored datasets. (Default value = None).
-        immutable: Return immutable copies of dataset objects. (Default value = False).
+        names(Optional[List[str]]): Filter by specified dataset names (Default value = None).
+        tag(Optional[str]): Filter by specified tag (Default value = None).
+        creators(Optional[Union[str, List[str], Tuple[str]]]): Filter by creators (Default value = None).
+        include(Optional[List[str]]): Tuple containing patterns to which include from result (Default value = None).
+        exclude(Optional[List[str]]): Tuple containing patterns to which exclude from result (Default value = None).
+        ignore(Optional[List[str]]): Ignored datasets (Default value = None).
+        immutable(bool): Return immutable copies of dataset objects (Default value = False).
 
     Returns:
         List[DynamicProxy]: List of filtered files sorted by date added.
     """
+
+    def should_include(filepath: Path) -> bool:
+        """Check if file matches one of include filters and not in exclude filter."""
+        if exclude:
+            for pattern in exclude:
+                if filepath.match(pattern):
+                    return False
+
+        if include:
+            for pattern in include:
+                if filepath.match(pattern):
+                    return True
+            return False
+
+        return True
+
     client = client_dispatcher.current_client
 
     if isinstance(creators, str):
-        creators = set(creators.split(","))
-
-    if isinstance(creators, list) or isinstance(creators, tuple):
-        creators = set(creators)
+        creators_set = set(creators.split(","))
+    elif isinstance(creators, list) or isinstance(creators, tuple):
+        creators_set = set(creators)
+    else:
+        creators_set = set()
 
     records = []
-    unused_names = set(names)
+    unused_names = set(names) if names is not None else set()
+
     for dataset in dataset_gateway.get_all_active_datasets():
+        if (names and dataset.name not in names) or (ignore and dataset.name in ignore):
+            continue
+
+        if tag:
+            dataset = get_dataset_by_tag(dataset=dataset, tag=tag)  # type: ignore
+            if not dataset:
+                continue
+
         if not immutable:
             dataset = dataset.copy()
-        if (not names or dataset.name in names) and (not ignore or dataset.name not in ignore):
-            if unused_names:
-                unused_names.remove(dataset.name)
-            for file in dataset.files:
-                record = DynamicProxy(file)
-                record.dataset = dataset
-                record.client = client
-                path = Path(record.entity.path)
-                match = _include_exclude(path, include, exclude)
 
-                if creators:
-                    c: Person
-                    dataset_creators = {c.name for c in dataset.creators}
-                    match = match and creators.issubset(dataset_creators)
+        if unused_names:
+            unused_names.remove(dataset.name)
 
-                if match:
-                    records.append(record)
+        if creators_set:
+            dataset_creators = {creator.name for creator in dataset.creators}
+            if not creators_set.issubset(dataset_creators):
+                continue
+
+        for file in dataset.files:
+            if not should_include(Path(file.entity.path)):
+                continue
+
+            record = DynamicProxy(file)
+            record.dataset = dataset
+            record.client = client
+            records.append(record)
 
     if unused_names:
         unused_names_str = ", ".join(unused_names)
-        raise errors.ParameterError(f"Dataset does not exist: {unused_names_str}")
+        raise errors.ParameterError(f"These datasets don't exist: {unused_names_str}")
 
     return sorted(records, key=lambda r: r.date_added)
-
-
-def _include_exclude(file_path, include=None, exclude=None):
-    """Check if file matches one of include filters and not in exclude filter.
-
-    Args:
-        file_path: Path to the file.
-        include: Tuple containing patterns to which include from result (Default value = None).
-        exclude: Tuple containing patterns to which exclude from result (Default value = None).
-
-    Returns:
-        bool: True if a file should be included, False otherwise.
-    """
-    if exclude is not None and exclude:
-        for pattern in exclude:
-            if file_path.match(pattern):
-                return False
-
-    if include is not None and include:
-        for pattern in include:
-            if file_path.match(pattern):
-                return True
-        return False
-
-    return True

@@ -30,7 +30,7 @@ class PlanGateway(IPlanGateway):
 
     database_dispatcher = inject.attr(IDatabaseDispatcher)
 
-    def get_by_id(self, id: str) -> Optional[AbstractPlan]:
+    def get_by_id(self, id: Optional[str]) -> Optional[AbstractPlan]:
         """Get a plan by id."""
         return self.database_dispatcher.current_database["plans"].get(id)
 
@@ -42,12 +42,12 @@ class PlanGateway(IPlanGateway):
         """Search plans by name."""
         return self.database_dispatcher.current_database["plans-by-name"].keys(min=starts_with, max=ends_with)
 
-    def get_newest_plans_by_names(self, with_invalidated: bool = False) -> Dict[str, AbstractPlan]:
-        """Return a list of all newest plans with their names."""
+    def get_newest_plans_by_names(self, include_deleted: bool = False) -> Dict[str, AbstractPlan]:
+        """Return a mapping of all plan names to their newest plans."""
         database = self.database_dispatcher.current_database
-        if with_invalidated:
+        if include_deleted:
             return dict(database["plans-by-name"])
-        return {k: v for k, v in database["plans-by-name"].items() if v.invalidated_at is None}
+        return {k: v for k, v in database["plans-by-name"].items() if not v.deleted}
 
     def get_all_plans(self) -> List[AbstractPlan]:
         """Get all plans in project."""
