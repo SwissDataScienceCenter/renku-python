@@ -19,10 +19,10 @@ content and writes it out to a different file, like
 
    input_path = sys.argv[1]
    output_path = sys.argv[2]
-   appent_text = sys.argv[3]
+   append_text = sys.argv[3]
 
    with open(input_path, "r") as input_file, open(output_path, "w") as output_file:
-       text = input_file.read() + appent_text
+       text = input_file.read() + append_text
        output_file.write(text)
 
 that you normally call like
