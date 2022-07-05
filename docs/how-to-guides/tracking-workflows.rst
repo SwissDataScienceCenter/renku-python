@@ -127,7 +127,7 @@ readable names, by prepending the name like:
 This would set the name for the input file to ``data_file`` and the name for the
 output file to ``result``.
 
-Similarily, if you had a command ``python script.py example`` and there is a
+Similarly, if you had a command ``python script.py example`` and there is a
 file named ``example`` on disk, renku would detect it as an input. But if this
 was just a coincidence and ``example`` was actually a string input unrelated to
 the file, you could run ``renku run --parameter my_param="example" -- python

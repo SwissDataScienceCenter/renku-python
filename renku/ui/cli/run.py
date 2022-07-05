@@ -96,7 +96,7 @@ The detection might not work as expected if:
    For example, ``renku run --input inputfile=data.csv -- python script.py data.csv outfile``
    would force Renku to detect ``data.csv`` as an input file and set the name
    of the input to ``inputfile``.
-   Similarily, ``renku run --input inputfile=data.csv -- python script.py``
+   Similarly, ``renku run --input inputfile=data.csv -- python script.py``
    would let Renku know that ``script.py`` reads the file ``data.csv`` even
    though it does not show up on the command line.
 
@@ -182,7 +182,7 @@ those paths. Therefore:
    For instance, ``renku run --output result=result.txt -- python script.py -o result.txt``
    would force Renku to treat the file ``result.txt`` as an output of the
    workflow and set the name of the output to ``result``.
-   Similarily, ``renku run --output result=result.txt -- python script.py``
+   Similarly, ``renku run --output result=result.txt -- python script.py``
    would let Renku know about ``result.txt`` created by ``script.py`` even
    though it does not show up on the command line command. Though Renku should
    automatically detect these cases under normal circumstances.
