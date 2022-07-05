@@ -18,7 +18,7 @@
 """Docker based interactive session provider."""
 
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
+from typing import Any, Dict, Iterable, List, Optional, cast
 from uuid import uuid4
 
 import docker
@@ -66,6 +66,10 @@ class DockerSessionProvider(ISessionProvider):
     def _get_docker_containers(self, project_name: str) -> List[docker.models.containers.Container]:
         return self.docker_client().containers.list(filters={"label": f"renku_project={project_name}"})
 
+    def get_name(self) -> str:
+        """Return session provider's name."""
+        return "docker"
+
     def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]):
         """Builds the container image."""
         self.docker_client().images.build(path=str(image_descriptor), tag=image_name)
@@ -86,13 +90,13 @@ class DockerSessionProvider(ISessionProvider):
             return True
 
     @hookimpl
-    def session_provider(self) -> Tuple[ISessionProvider, str]:
+    def session_provider(self) -> ISessionProvider:
         """Supported session provider.
 
         Returns:
-            a tuple of ``self`` and provider name.
+            a reference to ``self``.
         """
-        return self, "docker"
+        return self
 
     def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.

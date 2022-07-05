@@ -19,12 +19,12 @@
 
 import webbrowser
 from itertools import chain
-from typing import Optional, List
+from typing import List, Optional
 
 from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.plugin.session import supported_session_providers
+from renku.core.plugin.session import get_supported_session_providers
 from renku.core.session.utils import get_image_repository_host, get_renku_project_name
 from renku.core.util import communication
 from renku.core.util.os import safe_read_yaml
@@ -32,32 +32,27 @@ from renku.domain_model.session import ISessionProvider, Session
 
 
 def _safe_get_provider(provider: str) -> ISessionProvider:
-    providers = supported_session_providers()
-    p = next(filter(lambda x: x[1] == provider, providers), None)
-
-    if p is None:
+    try:
+        return next(p for p in get_supported_session_providers() if p.get_name() == provider)
+    except StopIteration:
         raise errors.ParameterError(f"Session provider '{provider}' is not available!")
-    return p[0]
 
 
 def session_list(config_path: str, provider: Optional[str] = None):
     """List interactive sessions."""
 
-    def list_sessions(provider_and_name) -> List[Session]:
+    def list_sessions(session_provider: ISessionProvider) -> List[Session]:
         try:
-            return provider_and_name[0].session_list(config=config, project_name=project_name)
-        except errors.UsageError:
+            return session_provider.session_list(config=config, project_name=project_name)
+        except errors.RenkulabSessionGetUrlError:
+            if provider:
+                raise
             return []
 
     project_name = get_renku_project_name()
     config = safe_read_yaml(config_path) if config_path else dict()
 
-    providers = supported_session_providers()
-    if provider:
-        providers = list(filter(lambda x: x[1] == provider, providers))
-
-    if len(providers) == 0:
-        raise errors.ParameterError("No session provider is available!")
+    providers = [_safe_get_provider(provider)] if provider else get_supported_session_providers()
 
     return list(chain(*map(list_sessions, providers)))
 
@@ -129,40 +124,44 @@ def session_start(
 def session_stop(session_name: str, stop_all: bool = False, provider: Optional[str] = None):
     """Stop interactive session."""
 
-    def stop_sessions(provider) -> bool:
+    def stop_sessions(session_provider: ISessionProvider) -> bool:
         try:
-            return provider[0].session_stop(project_name=project_name, session_name=session_name, stop_all=stop_all)
-        except errors.UsageError:
+            return session_provider.session_stop(
+                project_name=project_name, session_name=session_name, stop_all=stop_all
+            )
+        except errors.RenkulabSessionGetUrlError:
+            if provider:
+                raise
             return False
 
     session_detail = "all sessions" if stop_all else f"session {session_name}"
     project_name = get_renku_project_name()
+
+    providers = [_safe_get_provider(provider)] if provider else get_supported_session_providers()
+
     with communication.busy(msg=f"Waiting for {session_detail} to stop..."):
-        if provider:
-            p = _safe_get_provider(provider)
-            is_stopped = p.session_stop(project_name=project_name, session_name=session_name, stop_all=stop_all)
-        else:
-            providers = supported_session_providers()
-            is_stopped = any(map(stop_sessions, providers))
+        is_stopped = any(map(stop_sessions, providers))
 
     if not is_stopped:
+        if not session_name:
+            raise errors.ParameterError("There are no running sessions.")
         raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")
 
 
 def session_open(session_name: str, provider: Optional[str] = None):
     """Open interactive session in the browser."""
-    if provider:
-        p = _safe_get_provider(provider)
-        url = p.session_url(session_name=session_name)
-    else:
-        providers = supported_session_providers()
-        url = next(
-            filter(
-                lambda x: x is not None,
-                map(lambda p: p[0].session_url(session_name=session_name), providers),
-            ),
-            None,
-        )
+
+    def open_sessions(session_provider: ISessionProvider) -> Optional[str]:
+        try:
+            return session_provider.session_url(session_name=session_name)
+        except errors.RenkulabSessionGetUrlError:
+            if provider:
+                raise
+            return None
+
+    providers = [_safe_get_provider(provider)] if provider else get_supported_session_providers()
+
+    url = next(filter(lambda u: u is not None, map(open_sessions, providers)), None)
 
     if url is None:
         raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")

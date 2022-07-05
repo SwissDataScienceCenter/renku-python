@@ -113,7 +113,7 @@ from lazy_object_proxy import Proxy
 from renku.command.format.session import SESSION_FORMATS
 from renku.core import errors
 from renku.ui.cli.utils.callback import ClickCallback
-from renku.ui.cli.utils.plugins import supported_session_providers
+from renku.ui.cli.utils.plugins import get_supported_session_providers_names
 
 
 @click.group()
@@ -127,7 +127,7 @@ def session():
     "provider",
     "-p",
     "--provider",
-    type=click.Choice(Proxy(supported_session_providers)),
+    type=click.Choice(Proxy(get_supported_session_providers_names)),
     default=None,
     help="Backend to use for listing interactive sessions.",
 )
@@ -155,7 +155,7 @@ def list_sessions(provider, config, format):
     "provider",
     "-p",
     "--provider",
-    type=click.Choice(Proxy(supported_session_providers)),
+    type=click.Choice(Proxy(get_supported_session_providers_names)),
     default="docker",
     show_default=True,
     help="Backend to use for creating an interactive session.",
@@ -201,17 +201,19 @@ def start(provider, config, image, cpu, disk, gpu, memory):
     "provider",
     "-p",
     "--provider",
-    type=click.Choice(Proxy(supported_session_providers)),
+    type=click.Choice(Proxy(get_supported_session_providers_names)),
     default=None,
     help="Session provider to use.",
 )
-@click.option("stop_all", "--all", is_flag=True, help="Stops all the running containers.")
+@click.option("stop_all", "-a", "--all", is_flag=True, help="Stops all the running containers.")
 def stop(session_name, stop_all, provider):
     """Stop a interactive sessions."""
     from renku.command.session import session_stop_command
 
     if not stop_all and session_name is None:
-        raise errors.ParameterError("Please specify either a session ID or the '--all' flag.")
+        raise errors.ParameterError("Please specify either a session ID or the '-a/--all' flag.")
+    elif stop_all and session_name:
+        raise errors.ParameterError("Cannot specify a session ID with the '-a/--all' flag.")
 
     communicator = ClickCallback()
     session_stop_command().with_communicator(communicator).build().execute(
@@ -224,12 +226,12 @@ def stop(session_name, stop_all, provider):
 
 
 @session.command("open")
-@click.argument("session_name", metavar="<name>", required=False)
+@click.argument("session_name", metavar="<name>", required=True)
 @click.option(
     "provider",
     "-p",
     "--provider",
-    type=click.Choice(Proxy(supported_session_providers)),
+    type=click.Choice(Proxy(get_supported_session_providers_names)),
     default=None,
     help="Session provider to use.",
 )
