@@ -283,7 +283,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install system packages
         run: |
-          curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+          curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh > /tmp/lfs-setup.sh
+          sudo bash /tmp/lfs-setup.sh
           sudo apt-get update -y
           sudo apt-get install -y libyaml-0-2 libyaml-dev git-lfs=3.2.0
       - uses: actions/cache@master
@@ -342,7 +343,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install system packages
         run: |
-          curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+          curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh > /tmp/lfs-setup.sh
+          sudo bash /tmp/lfs-setup.sh
           sudo apt-get update -y
           sudo apt-get install -y libyaml-0-2 libyaml-dev git-lfs=3.2.0
       - uses: actions/cache@master
@@ -407,7 +409,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install system packages
         run: |
-          curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+          curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh > /tmp/lfs-setup.sh
+          sudo bash /tmp/lfs-setup.sh
           sudo apt-get update -y
           sudo apt-get install -y libyaml-0-2 libyaml-dev git-lfs=3.2.0
       - uses: actions/cache@master
@@ -472,7 +475,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install system packages
         run: |
-          curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+          curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh > /tmp/lfs-setup.sh
+          sudo bash /tmp/lfs-setup.sh
           sudo apt-get update -y
           sudo apt-get install -y libyaml-0-2 libyaml-dev git-lfs=3.2.0
       - uses: actions/cache@master
@@ -687,7 +691,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install system packages
         run: |
-          curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+          curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh > /tmp/lfs-setup.sh
+          sudo bash /tmp/lfs-setup.sh
           sudo apt-get update -y
           sudo apt-get install -y libyaml-0-2 libyaml-dev git-lfs=3.2.0
       - uses: actions/cache@master
@@ -767,7 +772,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install system packages
         run: |
-          curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+          curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh > /tmp/lfs-setup.sh
+          sudo bash /tmp/lfs-setup.sh
           sudo apt-get update -y
           sudo apt-get install -y libyaml-0-2 libyaml-dev git-lfs=3.2.0
       - uses: actions/cache@master
