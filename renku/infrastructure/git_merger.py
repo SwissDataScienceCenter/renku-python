@@ -255,7 +255,7 @@ class GitMerger:
                 if subkey not in local._name_TO_mapping[key]:
                     local._name_TO_mapping[key][subkey] = subvalue
 
-        for key, value in remote._reltoken_name_TO_objtokenset:
+        for key, value in remote._reltoken_name_TO_objtokenset.items():
             if key not in local._reltoken_name_TO_objtokenset:
                 local._reltoken_name_TO_objtokenset[key] = value
 
