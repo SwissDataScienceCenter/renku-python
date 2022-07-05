@@ -100,10 +100,7 @@ class RenkulabSessionProvider(ISessionProvider):
         if not self.__renku_url:
             renku_url = get_renku_url()
             if not renku_url:
-                raise errors.UsageError(
-                    "Cannot determine the renku URL to launch a session. "
-                    "Ensure your current project is a valid Renku project."
-                )
+                raise errors.RenkulabSessionGetUrlError()
             self.__renku_url = renku_url
         return self.__renku_url
 
@@ -219,6 +216,10 @@ class RenkulabSessionProvider(ISessionProvider):
             )
         return res
 
+    def get_name(self) -> str:
+        """Return session provider's name."""
+        return "renkulab"
+
     def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]):
         """Builds the container image."""
         if self.find_image(image_name, config=config):
@@ -244,13 +245,13 @@ class RenkulabSessionProvider(ISessionProvider):
         )
 
     @hookimpl
-    def session_provider(self) -> Tuple[ISessionProvider, str]:
+    def session_provider(self) -> ISessionProvider:
         """Supported session provider.
 
         Returns:
-            a tuple of ``self`` and provider name.
+            a reference to ``self``.
         """
-        return (self, "renkulab")
+        return self
 
     def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
@@ -289,7 +290,7 @@ class RenkulabSessionProvider(ISessionProvider):
         """Creates an interactive session.
 
         Returns:
-            str: a unique id for the created interactive sesssion.
+            str: a unique id for the created interactive session.
         """
         session_commit = client.repository.head.commit.hexsha
         if not self._is_user_registered():
@@ -356,7 +357,7 @@ class RenkulabSessionProvider(ISessionProvider):
                 )
             )
             self._wait_for_session_status(session_name, "stopping")
-        return all([response.status_code == 204 for response in responses])
+        return all([response.status_code == 204 for response in responses]) if responses else False
 
     def session_url(self, session_name: str) -> str:
         """Get the URL of the interactive session."""
@@ -374,6 +375,6 @@ class RenkulabSessionProvider(ISessionProvider):
             # NOTE: The sessions/show logic of the UI expects a cookie to already be present
             # with the anonymous user ID, but in this case we need to open a new browser window
             # and need to pass the token in the URL, that is why anonymous sessions will be shown
-            # and openeed in the full session view not in the i-frame view like registered sessions
+            # and opened in the full session view not in the i-frame view like registered sessions
             session_url_parts = ["sessions", f"{session_name}?token={self._token()}"]
             return urllib.parse.urljoin(self._renku_url(), "/".join(session_url_parts))
