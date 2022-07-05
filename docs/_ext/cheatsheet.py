@@ -1,3 +1,4 @@
+import json
 from collections import defaultdict
 
 from docutils import nodes
@@ -103,6 +104,23 @@ def process_latex_entries(content, entries, groups):
             content.append(nodes.raw("", f"\commandsubsection{{{command}}}{{{description}}}", format="latex"))
 
 
+def process_json_entries(content, entries, groups):
+    """Create output when building json cheatsheet."""
+    data = {"groups": []}
+    for group in groups:
+        entry_list = entries[group]
+        group_entry = {"name": group, "commands": []}
+
+        for entry in entry_list:
+            group_entry["commands"].append(
+                {"command": entry["command"], "description": entry["description"], "extended": entry["extended"]}
+            )
+
+        data["groups"].append(group_entry)
+
+    content.append(nodes.raw("", data, format="html"))
+
+
 def process_regular_entries(content, entries, groups):
     """Create output when building regular (html) cheatsheet."""
     for group in groups:
@@ -147,6 +165,8 @@ def process_cheatsheet_nodes(app, doctree, fromdocname):
 
         if app.builder.name == "latex":
             process_latex_entries(content, entries, app.config.cheatsheet_groups)
+        elif app.builder.name == "json":
+            process_json_entries(content, entries, app.config.cheatsheet_groups)
         else:
             process_regular_entries(content, entries, app.config.cheatsheet_groups)
 
