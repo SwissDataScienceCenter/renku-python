@@ -18,7 +18,7 @@
 """Plan management."""
 
 from datetime import datetime
-from typing import Generator, Optional
+from typing import Generator, List, Optional
 
 from renku.command.command_builder import inject
 from renku.core import errors
@@ -27,6 +27,7 @@ from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.domain_model.provenance.activity import Activity
+from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.plan import AbstractPlan
 
 
@@ -83,6 +84,18 @@ def remove_plan(name_or_id: str, force: bool, plan_gateway: IPlanGateway, when: 
     if latest_version.deleted:
         raise errors.ParameterError(f"The specified workflow '{name_or_id}' is already deleted.")
 
+    composites_containing_child = get_composite_plans_by_child(plan)
+
+    composite_names = "\n\t".join([c.name for c in composites_containing_child])
+
+    if composites_containing_child and not force:
+        raise errors.ParameterError(
+            f"The specified workflow '{name_or_id}' is part of the following composite workflows and won't be removed"
+            f" (use '--force' to remove anyways):\n\t{composite_names}"
+        )
+    elif composites_containing_child:
+        communication.warn(f"Removing '{name_or_id}', which is still used in these workflows:\n\t{composite_names}")
+
     if not force:
         prompt_text = f"You are about to remove the following workflow '{name_or_id}'.\n\nDo you wish to continue?"
         communication.confirm(prompt_text, abort=True, warning=True)
@@ -132,3 +145,24 @@ def is_plan_removed(plan: AbstractPlan) -> bool:
             return True
 
     return False
+
+
+@inject.autoparams()
+def get_composite_plans_by_child(plan: AbstractPlan, plan_gateway: IPlanGateway) -> List[CompositePlan]:
+    """Return all composite plans that contain a child plan."""
+
+    derivatives = {p.id for p in get_derivative_chain(plan=plan)}
+
+    all_plans = plan_gateway.get_all_plans()
+
+    child_plan: Optional[AbstractPlan] = plan
+    while child_plan is not None:
+        derivatives.add(child_plan.id)
+        plan = child_plan
+        child_plan = next((p for p in all_plans if p.derived_from == plan.id), None)
+
+    composites = (p for p in plan_gateway.get_newest_plans_by_names().values() if isinstance(p, CompositePlan))
+
+    composites_containing_child = [c for c in composites if {p.id for p in c.plans}.intersection(derivatives)]
+
+    return composites_containing_child

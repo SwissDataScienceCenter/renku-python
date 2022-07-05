@@ -806,7 +806,9 @@ def remove(name, force):
     """Remove a workflow named <name>."""
     from renku.command.workflow import remove_plan_command
 
-    remove_plan_command().build().execute(name_or_id=name, force=force)
+    communicator = ClickCallback()
+
+    remove_plan_command().with_communicator(communicator).build().execute(name_or_id=name, force=force)
 
 
 @workflow.command()
