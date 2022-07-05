@@ -283,8 +283,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install system packages
         run: |
+          curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
           sudo apt-get update -y
-          sudo apt-get install -y libyaml-0-2 libyaml-dev
+          sudo apt-get install -y libyaml-0-2 libyaml-dev git-lfs=3.2.0
       - uses: actions/cache@master
         id: dependency-cache
         with:
@@ -341,8 +342,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install system packages
         run: |
+          curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
           sudo apt-get update -y
-          sudo apt-get install -y libyaml-0-2 libyaml-dev
+          sudo apt-get install -y libyaml-0-2 libyaml-dev git-lfs=3.2.0
       - uses: actions/cache@master
         id: dependency-cache
         with:
@@ -405,8 +407,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install system packages
         run: |
+          curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
           sudo apt-get update -y
-          sudo apt-get install -y libyaml-0-2 libyaml-dev
+          sudo apt-get install -y libyaml-0-2 libyaml-dev git-lfs=3.2.0
       - uses: actions/cache@master
         id: dependency-cache
         with:
@@ -469,8 +472,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install system packages
         run: |
+          curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
           sudo apt-get update -y
-          sudo apt-get install -y libyaml-0-2 libyaml-dev
+          sudo apt-get install -y libyaml-0-2 libyaml-dev git-lfs=3.2.0
       - uses: actions/cache@master
         id: dependency-cache
         with:
@@ -529,7 +533,7 @@ jobs:
         run: |
           brew update || true
           brew unlink git-lfs || true
-          curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
+          curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/988ec687771e06f062c0f35d31afc50b0c62a7f8/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
           brew install shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
           python -m pip install wheel poetry-dynamic-versioning==0.17.1
@@ -565,7 +569,7 @@ jobs:
         run: |
           brew update || true
           brew unlink git-lfs || true
-          curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
+          curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/988ec687771e06f062c0f35d31afc50b0c62a7f8/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
           brew install shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
           python -m pip install wheel poetry-dynamic-versioning==0.17.1
@@ -608,7 +612,7 @@ jobs:
         run: |
           brew update || true
           brew unlink git-lfs || true
-          curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
+          curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/988ec687771e06f062c0f35d31afc50b0c62a7f8/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
           brew install shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
           python -m pip install wheel poetry-dynamic-versioning==0.17.1
@@ -650,7 +654,7 @@ jobs:
         run: |
           brew update || true
           brew unlink git-lfs || true
-          curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
+          curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/988ec687771e06f062c0f35d31afc50b0c62a7f8/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
           brew install shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
           python -m pip install wheel
@@ -683,8 +687,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install system packages
         run: |
+          curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
           sudo apt-get update -y
-          sudo apt-get install -y libyaml-0-2 libyaml-dev
+          sudo apt-get install -y libyaml-0-2 libyaml-dev git-lfs=3.2.0
       - uses: actions/cache@master
         id: dependency-cache
         with:
@@ -762,8 +767,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install system packages
         run: |
+          curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
           sudo apt-get update -y
-          sudo apt-get install -y libyaml-0-2 libyaml-dev
+          sudo apt-get install -y libyaml-0-2 libyaml-dev git-lfs=3.2.0
       - uses: actions/cache@master
         id: dependency-cache
         with:
@@ -844,7 +850,7 @@ jobs:
         run: |
           brew update || true
           brew unlink git-lfs || true
-          curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
+          curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/988ec687771e06f062c0f35d31afc50b0c62a7f8/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
           brew install shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
           python -m pip install wheel
