@@ -112,7 +112,7 @@ The detection might not work as expected if:
 
    For example, ``renku run --param myparam=hello -- python script.py hello outfile``
    would force Renku to detect ``hello`` as the value of a string parameter
-   with name ``myparam`` even if there is a file called ``echo`` present on the
+   with name ``myparam`` even if there is a file called ``hello`` present on the
    filesystem.
 
 .. topic:: Disabling input detection (``--no-input-detection``)

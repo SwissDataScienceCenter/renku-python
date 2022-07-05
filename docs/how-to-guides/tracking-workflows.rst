@@ -8,7 +8,7 @@ execute on the command line, rerun them, compose them into bigger pipelines and
 inspect how files were generated in your project.
 
 For any command you would usually run on the command line, you can just pass
-that command through Renku when running it to track the execution.
+that command through Renku (by prepending ``renku run``) when running it to track the execution.
 
 For instance, if we had a ``script.py`` that reads a file, appends text to the
 content and writes it out to a different file, like
@@ -102,18 +102,30 @@ Lets say our ``script.py`` looked instead like:
        text = input_file.read() + "my text"
        output_file.write()
 
-Renku doesn't know that you script reads ``data.csv`` as an input. Though it
-would still detect ``output.txt`` as an output since it monitors files on disk
-for changes.
+Renku doesn't know that you script reads ``data.csv`` as an input, because it
+does not show up on the command line. Though it would still detect
+``output.txt`` as an output since it monitors files on disk for changes.
 
 You could let renku know manually that this is the case by running
 
 .. code-block:: console
 
+   $ renku run --input data.csv --output output.txt -- python script.py
+
+This would let Renku know that this script has one input ``data.csv``  along
+with one output ``output.txt``.
+
+Renku will automatically generate names for inputs, outputs and parameters on
+the created Plan, so they can be used in other Renku commands such as ``renku
+workflow execute``. You can also specify the names directly to have more human
+readable names, by prepending the name like:
+
+.. code-block:: console
+
    $ renku run --input data_file=data.csv --output result=output.txt -- python script.py
 
-This would let Renku know that this script has one input ``data.csv`` and it
-would name the input on the plan ``data_file``, along with one output ``output.txt`` named ``result``.
+This would set the name for the input file to ``data_file`` and the name for the
+output file to ``result``.
 
 Similarily, if you had a command ``python script.py example`` and there is a
 file named ``example`` on disk, renku would detect it as an input. But if this
@@ -162,7 +174,7 @@ would the look something like this:
    from renku.api import Input, Output, Parameter
 
    with open(Input("data_file", "data.csv"), "r") as input_file, open(Output("result", "output.txt"), "w") as output_file:
-       text = input_file.read() + Parameter("append_text", "my text")
+       text = input_file.read() + Parameter("append_text", "my text").value
        output_file.write()
 
 and run it like
