@@ -160,7 +160,10 @@ def _get_graph_for_all_objects(
         List of JSON-LD metadata.
     """
     project = project_gateway.get_project()
-    objects: List[Union[Project, Dataset, DatasetTag, Activity, AbstractPlan]] = activity_gateway.get_all_activities()
+    # NOTE: Include deleted activities when exporting graph
+    objects: List[Union[Project, Dataset, DatasetTag, Activity, AbstractPlan]] = activity_gateway.get_all_activities(
+        include_deleted=True
+    )
 
     processed_plans = set()
 

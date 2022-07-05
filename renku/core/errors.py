@@ -33,6 +33,14 @@ class RenkuException(Exception):
     """
 
 
+class ActivityDownstreamNotEmptyError(RenkuException):
+    """Raised when an activity cannot be deleted because its downstream is not empty."""
+
+    def __init__(self, activity):
+        self.activity = activity
+        super().__init__(f"Activity '{activity.id}' has non-empty downstream")
+
+
 class LockError(RenkuException):
     """Raise when a project cannot be locked."""
 

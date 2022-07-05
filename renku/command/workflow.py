@@ -17,7 +17,6 @@
 # limitations under the License.
 """Renku workflow commands."""
 
-
 import itertools
 import re
 from collections import defaultdict
@@ -25,6 +24,7 @@ from functools import reduce
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
 
+from renku.core.workflow.plan import remove_plan
 from renku.domain_model.provenance.annotation import Annotation
 
 if TYPE_CHECKING:
@@ -45,7 +45,12 @@ from renku.core.plugin.provider import execute
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.os import are_paths_related, get_relative_paths, safe_read_yaml
-from renku.core.workflow.activity import create_activity_graph, get_activities_until_paths, sort_activities
+from renku.core.workflow.activity import (
+    create_activity_graph,
+    get_activities_until_paths,
+    revert_activity,
+    sort_activities,
+)
 from renku.core.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.plan_factory import delete_indirect_files_list
 from renku.core.workflow.value_resolution import CompositePlanValueResolver, ValueResolver
@@ -110,35 +115,9 @@ def list_workflows_command():
     return Command().command(_list_workflows).require_migration().with_database(write=False)
 
 
-@inject.autoparams()
-def _remove_workflow(name: str, force: bool, plan_gateway: IPlanGateway):
-    """Remove the remote named <name>.
-
-    Args:
-        name (str): The name of the Plan to remove.
-        force (bool): Whether to force removal or not.
-        plan_gateway(IPlanGateway): The injected Plan gateway.
-    Raises:
-        errors.ParameterError: If the Plan doesn't exist or was already deleted.
-    """
-    workflows = plan_gateway.get_newest_plans_by_names()
-    plan = None
-    if name.startswith("/plans/"):
-        plan = next(filter(lambda x: x.id == name, workflows.values()), None)
-    if not plan and name not in workflows:
-        raise errors.ParameterError(f'The specified workflow is "{name}" is not an active workflow.')
-
-    if not force:
-        prompt_text = f'You are about to remove the following workflow "{name}".' + "\n" + "\nDo you wish to continue?"
-        communication.confirm(prompt_text, abort=True, warning=True)
-
-    plan = plan or workflows[name]
-    plan.delete()
-
-
-def remove_workflow_command():
+def remove_plan_command():
     """Command that removes the workflow named <name>."""
-    return Command().command(_remove_workflow).require_clean().with_database(write=True).with_commit()
+    return Command().command(remove_plan).require_clean().with_database(write=True).with_commit()
 
 
 def _show_workflow(name_or_id: str):
@@ -953,4 +932,11 @@ def iterate_workflow_command():
     """Command that executes several workflows given a set of variables."""
     return (
         Command().command(_iterate_workflow).require_migration().require_clean().with_database(write=True).with_commit()
+    )
+
+
+def revert_activity_command():
+    """Command that reverts an activity."""
+    return (
+        Command().command(revert_activity).require_migration().require_clean().with_database(write=True).with_commit()
     )

@@ -26,7 +26,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import wraps
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
 import pytest
 from flaky import flaky
@@ -225,7 +225,7 @@ def injection_manager(bindings):
             remove_injector()
 
 
-def write_and_commit_file(repository: Repository, path: Union[Path, str], content: str):
+def write_and_commit_file(repository: Repository, path: Union[Path, str], content: str, commit: bool = True):
     """Write content to a given file and make a commit."""
     path = repository.path / path
 
@@ -233,7 +233,8 @@ def write_and_commit_file(repository: Repository, path: Union[Path, str], conten
     path.write_text(content)
 
     repository.add(path)
-    repository.commit(f"Updated '{path.relative_to(repository.path)}'")
+    if commit:
+        repository.commit(f"Updated '{path.relative_to(repository.path)}'")
 
 
 def delete_and_commit_file(repository: Repository, path: Union[Path, str]):
@@ -246,15 +247,28 @@ def delete_and_commit_file(repository: Repository, path: Union[Path, str]):
     repository.commit(f"Deleted '{path.relative_to(repository.path)}'")
 
 
+def create_and_commit_files(repository: Repository, *path_and_content: Union[Path, str, Tuple[str, str]]):
+    """Write content to a given file and make a commit."""
+    for file in path_and_content:
+        if isinstance(file, (Path, str)):
+            write_and_commit_file(repository, path=file, content="", commit=False)
+        else:
+            assert isinstance(file, tuple) and len(file) == 2, f"Invalid path/content: {file}"
+            path, content = file
+            write_and_commit_file(repository, path=path, content=content, commit=False)
+
+    repository.commit("Created files")
+
+
 def create_dummy_activity(
     plan: Union[Plan, str],
     *,
     ended_at_time=None,
-    generations: Iterable[Union[Path, str, Generation]] = (),
+    generations: Iterable[Union[Path, str, Generation, Tuple[str, str]]] = (),
     id: Optional[str] = None,
     index: Optional[int] = None,
     parameters: Dict[str, Any] = None,
-    usages: Iterable[Union[Path, str, Usage]] = (),
+    usages: Iterable[Union[Path, str, Usage, Tuple[str, str]]] = (),
 ) -> Activity:
     """Create a dummy activity."""
     assert id is None or index is None, "Cannot set both 'id' and 'index'"
@@ -263,13 +277,38 @@ def create_dummy_activity(
         assert isinstance(plan, str)
         plan = Plan(id=Plan.generate_id(), name=plan, command=plan)
 
-    ended_at_time = ended_at_time or (datetime.utcnow() - timedelta(hours=1))
-    checksum = "abc123"
-
+    ended_at_time = ended_at_time or datetime.utcnow()
+    empty_checksum = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"  # Git hash of an empty string/file
     activity_id = id or Activity.generate_id(uuid=None if index is None else str(index))
 
     parameters_ids = {p.name: p.id for p in itertools.chain(plan.inputs, plan.outputs, plan.parameters)}
     parameters = parameters or {}
+
+    def create_generation(generation) -> Generation:
+        if isinstance(generation, Generation):
+            return generation
+        elif isinstance(generation, (Path, str)):
+            entity = Entity(id=Entity.generate_id(empty_checksum, generation), checksum=empty_checksum, path=generation)
+            return Generation(id=Generation.generate_id(activity_id), entity=entity)
+        else:
+            assert isinstance(generation, tuple) and len(generation) == 2, f"Invalid generation: {generation}"
+            path, content = generation
+            checksum = Repository.hash_string(content=content)
+            entity = Entity(id=Entity.generate_id(checksum, path), checksum=checksum, path=path)
+            return Generation(id=Generation.generate_id(activity_id), entity=entity)
+
+    def create_usage(usage) -> Usage:
+        if isinstance(usage, Usage):
+            return usage
+        elif isinstance(usage, (Path, str)):
+            entity = Entity(id=Entity.generate_id(empty_checksum, usage), checksum=empty_checksum, path=usage)
+            return Usage(id=Usage.generate_id(activity_id), entity=entity)
+        else:
+            assert isinstance(usage, tuple) and len(usage) == 2, f"Invalid usage: {usage}"
+            path, content = usage
+            checksum = Repository.hash_string(content=content)
+            entity = Entity(id=Entity.generate_id(checksum, path), checksum=checksum, path=path)
+            return Usage(id=Usage.generate_id(activity_id), entity=entity)
 
     return Activity(
         id=activity_id,
@@ -286,24 +325,8 @@ def create_dummy_activity(
                 name="renku test", id="https://github.com/swissdatasciencecenter/renku-python/tree/test"
             ),
         ),
-        generations=[
-            Generation(
-                id=Generation.generate_id(activity_id),
-                entity=Entity(id=Entity.generate_id(checksum, g), checksum=checksum, path=g),
-            )
-            if not isinstance(g, Generation)
-            else cast(Generation, g)
-            for g in generations
-        ],
-        usages=[
-            Usage(
-                id=Usage.generate_id(activity_id),
-                entity=Entity(id=Entity.generate_id(checksum, u), checksum=checksum, path=u),
-            )
-            if not isinstance(u, Usage)
-            else cast(Usage, u)
-            for u in usages
-        ],
+        generations=[create_generation(g) for g in generations],
+        usages=[create_usage(u) for u in usages],
         parameters=[
             ParameterValue(id=ParameterValue.generate_id(activity_id), parameter_id=parameters_ids[name], value=value)
             for name, value in parameters.items()
@@ -312,20 +335,22 @@ def create_dummy_activity(
 
 
 def create_dummy_plan(
+    name: str,
     *,
-    command: str,
+    command: str = None,
     date_created: datetime = None,
     description: str = None,
-    index: int,
+    index: int = None,
     inputs: Iterable[Union[str, Tuple[str, str]]] = (),
     keywords: List[str] = None,
-    name: str,
     outputs: Iterable[Union[str, Tuple[str, str]]] = (),
     parameters: Iterable[Tuple[str, Any, str]] = (),
     success_codes: List[int] = None,
 ) -> Plan:
     """Create a dummy plan."""
-    id = Plan.generate_id(uuid=str(index))
+    command = command or name
+
+    id = Plan.generate_id(uuid=None if index is None else str(index))
 
     plan = Plan(
         command=command,

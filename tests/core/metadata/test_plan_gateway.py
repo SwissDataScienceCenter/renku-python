@@ -72,8 +72,8 @@ def test_plan_gateway_newest_plans(dummy_database_injection_manager, database):
 
         assert {plan2.id} == newest_plans_by_names
 
-        newest_plans_by_names_with_invalidated = {
-            p.id for p in plan_gateway.get_newest_plans_by_names(with_invalidated=True).values()
+        newest_plans_by_names_with_deleted = {
+            p.id for p in plan_gateway.get_newest_plans_by_names(include_deleted=True).values()
         }
 
-        assert {plan2.id, invalidated_plan2.id} == newest_plans_by_names_with_invalidated
+        assert {plan2.id, invalidated_plan2.id} == newest_plans_by_names_with_deleted

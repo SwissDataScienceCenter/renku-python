@@ -18,6 +18,36 @@
 Changes
 =======
 
+
+`1.5.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.4.0...v1.5.0>`__ (2022-07-04)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **service:** correctly use project namespace when generating project id
+   (`#2958 <https://github.com/SwissDataScienceCenter/renku-python/issues/2958>`__)
+   (`6995098 <https://github.com/SwissDataScienceCenter/renku-python/commit/69950981bc51d252d1287c254a5c2ac2a352f665>`__)
+
+Features
+~~~~~~~~
+
+-  **core:** allow partial updates on dataset and project edit
+   (`#2949 <https://github.com/SwissDataScienceCenter/renku-python/issues/2949>`__)
+   (`3daa1ec <https://github.com/SwissDataScienceCenter/renku-python/commit/3daa1ecdc803043dd7618ad7a3a1a6d3ca2897de>`__)
+-  **dataset:** export to a local directory
+   (`#2944 <https://github.com/SwissDataScienceCenter/renku-python/issues/2944>`__)
+   (`9090869 <https://github.com/SwissDataScienceCenter/renku-python/commit/9090869692d0ba24e969ce6e43a2b360a074698f>`__)
+-  **dataset:** filter ls-files by tag
+   (`#2950 <https://github.com/SwissDataScienceCenter/renku-python/issues/2950>`__)
+   (`73866f2 <https://github.com/SwissDataScienceCenter/renku-python/commit/73866f2f936fee8e037d068f64cd8ee5aa1c0a41>`__)
+-  **service:** support chunked file uploads
+   (`#2892 <https://github.com/SwissDataScienceCenter/renku-python/issues/2892>`__)
+   (`610e88a <https://github.com/SwissDataScienceCenter/renku-python/commit/610e88ab50ab13b55fb89d9643a948b6d36daa0b>`__)
+-  **workflow:** workflow revert command
+   (`#2956 <https://github.com/SwissDataScienceCenter/renku-python/issues/2956>`__)
+   (`cb0e73d <https://github.com/SwissDataScienceCenter/renku-python/commit/cb0e73d0016a344500d8829edcccd2982e929441>`__)
+
 `1.4.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.3.1...v1.4.0>`__ (2022-06-10)
 -------------------------------------------------------------------------------------------------------
 

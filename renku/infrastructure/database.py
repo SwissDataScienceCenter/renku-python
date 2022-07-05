@@ -690,6 +690,24 @@ class Index(persistent.Persistent):
         )
         self._entries[key] = object
 
+    def remove(self, object: persistent.Persistent, *, key: Optional[str] = None, key_object=None, verify=True):
+        """Remove object from the index.
+
+        If `Index._attribute` is not None then key is automatically generated.
+        Key is extracted from `key_object` if it is not None; otherwise, it's extracted from `object`.
+
+        Args:
+            object(persistent.Persistent): Object to add.
+            key(Optional[str], optional): Key to use in the index (Default value = None).
+            key_object: Object to use to extract a key from (Default value = None).
+            verify: Whether to check if the key is valid (Default value = True).
+        """
+        assert isinstance(object, self._object_type), f"Cannot remove objects of type '{type(object)}'"
+        key = self._verify_and_get_key(
+            object=object, key_object=key_object, key=key, missing_key_object_ok=False, verify=verify
+        )
+        del self._entries[key]
+
     def generate_key(self, object: persistent.Persistent, *, key_object=None):
         """Return index key for an object.
 

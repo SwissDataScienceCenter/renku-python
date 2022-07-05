@@ -20,6 +20,7 @@ import copy
 import io
 import json
 import uuid
+import zipfile
 from unittest.mock import MagicMock
 
 import jwt
@@ -38,6 +39,7 @@ from renku.ui.service.errors import (
     UserProjectTemplateReferenceError,
     UserRepoUrlInvalidError,
 )
+from renku.ui.service.jobs.cleanup import cache_files_cleanup
 from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET
 from tests.utils import assert_rpc_response, retry_failed
 
@@ -96,6 +98,210 @@ def test_file_upload(svc_client, identity_headers):
 
     assert {"result"} == set(response.json.keys())
     assert isinstance(uuid.UUID(response.json["result"]["files"][0]["file_id"]), uuid.UUID)
+
+
+@pytest.mark.service
+def test_file_chunked_upload(svc_client, identity_headers, svc_cache_dir):
+    """Check successful file upload."""
+    headers = copy.deepcopy(identity_headers)
+    headers.pop("Content-Type")
+
+    upload_id = uuid.uuid4().hex
+    filename = uuid.uuid4().hex
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"chunk1"), filename),
+            dzuuid=upload_id,
+            dzchunkindex=0,
+            dztotalchunkcount=3,
+            dztotalfilesize=18,
+            chunked_content_type="application/text",
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert "files" not in response.json["result"]
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"chunk2"), filename),
+            dzuuid=upload_id,
+            dzchunkindex=1,
+            dztotalchunkcount=3,
+            dztotalfilesize=18,
+            chunked_content_type="application/text",
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert "files" not in response.json["result"]
+
+    # NOTE: force cleanup to ensure that chunks aren't prematurely cleaned up
+    cache_files_cleanup()
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"chunk3"), filename),
+            dzuuid=upload_id,
+            dzchunkindex=2,
+            dztotalchunkcount=3,
+            dztotalfilesize=18,
+            chunked_content_type="application/text",
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert 1 == len(response.json["result"]["files"])
+    assert isinstance(uuid.UUID(response.json["result"]["files"][0]["file_id"]), uuid.UUID)
+
+    file = next(svc_cache_dir[1].rglob("*")) / filename
+
+    assert "chunk1chunk2chunk3" == file.read_text()
+
+
+@pytest.mark.service
+def test_file_chunked_upload_zipped(svc_client, identity_headers, svc_cache_dir):
+    """Check successful file upload."""
+
+    input_str = "".join(f"chunk{i}" for i in range(1000))
+
+    with io.BytesIO() as f:
+        z = zipfile.ZipFile(f, "w", zipfile.ZIP_DEFLATED)
+        z.writestr("filename", input_str.encode("utf-8"))
+        z.close()
+
+        data = f.getvalue()
+
+    headers = copy.deepcopy(identity_headers)
+    headers.pop("Content-Type")
+
+    upload_id = uuid.uuid4().hex
+    filename = uuid.uuid4().hex
+
+    filesize = len(data)
+    chunksize = filesize // 2 + 1
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(data[:chunksize]), filename),
+            dzuuid=upload_id,
+            dzchunkindex=0,
+            dztotalchunkcount=2,
+            dztotalfilesize=filesize,
+            chunked_content_type="application/zip",
+            unpack_archive=True,
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert "files" not in response.json["result"]
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(data[chunksize:]), filename),
+            dzuuid=upload_id,
+            dzchunkindex=1,
+            dztotalchunkcount=2,
+            dztotalfilesize=filesize,
+            chunked_content_type="application/zip",
+            unpack_archive=True,
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert 1 == len(response.json["result"]["files"])
+    assert isinstance(uuid.UUID(response.json["result"]["files"][0]["file_id"]), uuid.UUID)
+
+    file = next(svc_cache_dir[1].rglob("*")) / response.json["result"]["files"][0]["relative_path"]
+
+    assert input_str == file.read_text()
+
+
+@pytest.mark.service
+def test_file_chunked_upload_delete(svc_client, identity_headers, svc_cache_dir):
+    """Test deleting uploaded file chunks."""
+    headers = copy.deepcopy(identity_headers)
+    content_type = headers.pop("Content-Type")
+
+    upload_id = uuid.uuid4().hex
+    filename = uuid.uuid4().hex
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"chunk1"), filename),
+            dzuuid=upload_id,
+            dzchunkindex=0,
+            dztotalchunkcount=3,
+            dztotalfilesize=18,
+            chunked_content_type="application/text",
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert "files" not in response.json["result"]
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"chunk2"), filename),
+            dzuuid=upload_id,
+            dzchunkindex=1,
+            dztotalchunkcount=3,
+            dztotalfilesize=18,
+            chunked_content_type="application/text",
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert "files" not in response.json["result"]
+    upload_path = next(svc_cache_dir[1].rglob("*")) / upload_id
+    assert upload_path.exists()
+
+    headers["Content-Type"] = content_type
+    response = svc_client.post(
+        "/cache.files_delete_chunks",
+        data=json.dumps(
+            dict(
+                dzuuid=upload_id,
+            )
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert f"Deleted chunks for {upload_id}" == response.json["result"]
+
+    assert not upload_path.exists()
 
 
 @pytest.mark.service
