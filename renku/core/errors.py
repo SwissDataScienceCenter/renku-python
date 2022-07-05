@@ -632,6 +632,17 @@ class RenkulabSessionError(RenkuException):
     """Raised when an error occurs trying to start sessions with the notebook service."""
 
 
+class RenkulabSessionGetUrlError(RenkuException):
+    """Raised when Renku deployment's URL cannot be gotten from project's remotes or configured remotes."""
+
+    def __init__(self):
+        message = (
+            "Cannot determine the Renku deployment's URL. Ensure your current project is a valid Renku project and has "
+            "a remote URL."
+        )
+        super().__init__(message)
+
+
 class NotebookSessionNotReadyError(RenkuException):
     """Raised when a user attempts to open a session that is not ready."""
 
