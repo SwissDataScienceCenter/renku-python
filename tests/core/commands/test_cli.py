@@ -57,10 +57,8 @@ def test_version_duration(run_shell):
         assert output[1] is None
         total_duration += duration
     total_duration /= 5
-    if sys.platform == "darwin":
-        assert total_duration < 2.0
-    else:
-        assert total_duration < 1.5
+
+    assert total_duration < 2.0
 
 
 @pytest.mark.parametrize("arg", (("help",), ("-h",), ("--help",)))

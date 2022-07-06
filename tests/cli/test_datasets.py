@@ -76,7 +76,7 @@ def test_dataset_show(runner, client, subdirectory):
     """Test creating and showing a dataset with metadata."""
     result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
     assert 1 == result.exit_code, format_result_exception(result)
-    assert 'Dataset "my-dataset" is not found.' in result.output
+    assert "Dataset 'my-dataset' is not found." in result.output
 
     metadata = {
         "@id": "https://example.com/annotation1",
@@ -131,7 +131,7 @@ def test_dataset_show_tag(runner, client, subdirectory):
     """Test creating and showing a dataset with metadata."""
     result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
     assert 1 == result.exit_code, format_result_exception(result)
-    assert 'Dataset "my-dataset" is not found.' in result.output
+    assert "Dataset 'my-dataset' is not found." in result.output
 
     metadata = {
         "@id": "https://example.com/annotation1",
@@ -638,6 +638,7 @@ def test_usage_error_in_add_from_url(runner, client, params, message):
     assert message in result.output
 
 
+@pytest.mark.skip(reason="This warning is not shown anymore")
 def test_add_from_local_repo_warning(runner, client, data_repository, directory_tree):
     """Test a warning is printed when adding from a local git repository."""
     result = runner.invoke(cli, ["dataset", "add", "dataset", "--create", str(directory_tree)], catch_exceptions=False)
@@ -1279,7 +1280,7 @@ def test_dataset_edit_no_change(runner, client, project, dirty):
 )
 def test_dataset_provider_resolution_zenodo(doi_responses, uri):
     """Check that zenodo uris resolve to ZenodoProvider."""
-    provider, _ = ProviderFactory.from_uri(uri)
+    provider = ProviderFactory.get_import_provider(uri)
     assert type(provider) is ZenodoProvider
 
 
@@ -1294,7 +1295,7 @@ def test_dataset_provider_resolution_zenodo(doi_responses, uri):
 @pytest.mark.integration
 def test_dataset_provider_resolution_dataverse(doi_responses, uri):
     """Check that dataverse URIs resolve to ``DataverseProvider``."""
-    provider, _ = ProviderFactory.from_uri(uri)
+    provider = ProviderFactory.get_import_provider(uri)
     assert type(provider) is DataverseProvider
 
 

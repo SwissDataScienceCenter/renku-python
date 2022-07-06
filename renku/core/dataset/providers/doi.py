@@ -18,9 +18,10 @@
 """DOI API integration."""
 
 import urllib
+from pathlib import Path
 
-from renku.core.dataset.providers.api import ProviderApi, ProviderRecordSerializerApi
-from renku.core.errors import RenkuImportError
+from renku.core import errors
+from renku.core.dataset.providers.api import ImporterApi, ProviderApi, ProviderPriority
 from renku.core.util.doi import extract_doi, is_doi
 
 DOI_BASE_URL = "https://dx.doi.org"
@@ -35,7 +36,7 @@ def make_doi_url(doi):
     return urllib.parse.urljoin(DOI_BASE_URL, doi)
 
 
-class DOIMetadataSerializer(ProviderRecordSerializerApi):
+class DOIImporter(ImporterApi):
     """Response from `doi.org <http://doi.org>`_ for DOI metadata."""
 
     def __init__(
@@ -56,7 +57,7 @@ class DOIMetadataSerializer(ProviderRecordSerializerApi):
         type=None,
         version=None,
     ):
-        super().__init__(uri=url)
+        super().__init__(uri=url, original_uri=url)
 
         self.id = id
         self.doi = doi
@@ -82,19 +83,34 @@ class DOIMetadataSerializer(ProviderRecordSerializerApi):
     @property
     def latest_uri(self) -> str:
         """Get URI of the latest version."""
-        return self.url
+        return self.uri
 
-    def as_dataset(self, client):
+    def fetch_provider_dataset(self):
         """Deserialize this record to a ``ProviderDataset``."""
         raise NotImplementedError
 
-    def is_last_version(self, uri) -> bool:
+    def is_latest_version(self) -> bool:
         """Check if record is at last possible version."""
         return True
+
+    def download_files(self, client, destination: Path, extract: bool):
+        """Check if record is at last possible version."""
+        raise NotImplementedError
+
+    def tag_dataset(self, name: str) -> None:
+        """Create a tag for the dataset ``name`` if the remote dataset has a tag/version."""
+        raise NotImplementedError
+
+    def copy_extra_metadata(self, new_dataset) -> None:
+        """Copy provider specific metadata once the dataset is created."""
+        raise NotImplementedError
 
 
 class DOIProvider(ProviderApi):
     """`doi.org <http://doi.org>`_ registry API provider."""
+
+    priority = ProviderPriority.HIGHER
+    name = "DOI"
 
     def __init__(self, headers=None, timeout=3):
         self.timeout = timeout
@@ -105,34 +121,30 @@ class DOIProvider(ProviderApi):
         """Whether or not this provider supports a given URI."""
         return bool(is_doi(uri))
 
-    @staticmethod
-    def _serialize(response):
-        """Serialize HTTP response for DOI."""
-        data = {key.replace("-", "_").lower(): value for key, value in response.items()}
-        try:
-            serializer = DOIMetadataSerializer(**data)
-            return serializer
-        except TypeError as exp:
-            raise RenkuImportError(exp, "doi metadata could not be serialized")
-
-    def _query(self, doi):
-        """Retrieve metadata for given doi."""
+    def get_importer(self, uri, **kwargs) -> DOIImporter:
+        """Get import manager."""
         from renku.core.util import requests
 
-        doi = extract_doi(doi)
-        url = make_doi_url(doi)
+        def query(doi):
+            """Retrieve metadata for given doi."""
+            doi = extract_doi(doi)
+            url = make_doi_url(doi)
 
-        response = requests.get(url, headers=self.headers)
-        if response.status_code != 200:
-            raise LookupError("record not found. Status: {}".format(response.status_code))
+            response = requests.get(url, headers=self.headers)
 
-        return response
+            if response.status_code != 200:
+                raise LookupError("record not found. Status: {}".format(response.status_code))
 
-    def find_record(self, uri, client=None, **kwargs) -> DOIMetadataSerializer:
-        """Finds DOI record."""
-        response = self._query(uri).json()
-        return DOIProvider._serialize(response)
+            return response
 
-    def get_exporter(self, dataset, tag):
-        """Implements interface ProviderApi."""
-        pass
+        def serialize(response):
+            """Serialize HTTP response for DOI."""
+            json_data = response.json()
+            data = {key.replace("-", "_").lower(): value for key, value in json_data.items()}
+            try:
+                return DOIImporter(**data)
+            except TypeError:
+                raise errors.ImportError("doi metadata could not be serialized")
+
+        query_response = query(uri)
+        return serialize(query_response)

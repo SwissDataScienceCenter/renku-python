@@ -32,7 +32,7 @@ from renku.core.dataset.dataset import (
     show_dataset,
     update_datasets,
 )
-from renku.core.dataset.dataset_add import add_data_to_dataset
+from renku.core.dataset.dataset_add import add_to_dataset
 from renku.core.dataset.tag import add_dataset_tag, list_dataset_tags, remove_dataset_tags
 
 
@@ -65,7 +65,7 @@ def show_dataset_command():
 
 def add_to_dataset_command():
     """Create a command for adding data to datasets."""
-    command = Command().command(add_data_to_dataset).lock_dataset().with_database(write=True)
+    command = Command().command(add_to_dataset).lock_dataset().with_database(write=True)
     return command.require_migration().with_commit(raise_if_empty=True, commit_only=DATASET_METADATA_PATHS)
 
 

@@ -20,26 +20,34 @@
 import re
 import shutil
 import urllib
+from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List
 
 from renku.command.command_builder.command import inject
 from renku.command.login import read_renku_token
 from renku.core import errors
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.dataset.providers.api import ProviderApi, ProviderParameter, ProviderRecordSerializerApi
+from renku.core.dataset.providers.api import ImporterApi, ProviderApi, ProviderPriority
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.util import communication
 from renku.core.util.file_size import bytes_to_unit
 from renku.core.util.git import clone_renku_repository, get_cache_directory_for_repository, get_file_size
+from renku.core.util.metadata import is_external_file, make_project_temp_dir
+from renku.core.util.urls import remove_credentials
 
 if TYPE_CHECKING:
-    from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile
+    from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderDataset, ProviderParameter
+    from renku.core.management.client import LocalClient
+    from renku.domain_model.dataset import Dataset
 
 
 class RenkuProvider(ProviderApi):
     """Renku API provider."""
+
+    priority = ProviderPriority.HIGH
+    name = "Renku"
 
     def __init__(self, is_doi: bool = False):
         self.is_doi = is_doi
@@ -67,24 +75,23 @@ class RenkuProvider(ProviderApi):
         return True
 
     @staticmethod
-    def get_import_parameters() -> List[ProviderParameter]:
+    def get_import_parameters() -> List["ProviderParameter"]:
         """Returns parameters that can be set for import."""
-        return [ProviderParameter("tag", description="Import a specific tag instead of the latest version.", type=str)]
+        from renku.core.dataset.providers.models import ProviderParameter
 
-    def set_import_parameters(self, *, tag=None, **kwargs):
-        """Set and validate required parameters for importing for a provider."""
-        self._tag = tag
+        return [ProviderParameter("tag", help="Import a specific tag instead of the latest version.", type=str)]
 
-    def find_record(self, uri, **kwargs):
-        """Retrieves a dataset from Renku.
+    def get_importer(self, uri, tag=None, **kwargs):
+        """Retrieves a dataset import manager from Renku.
 
         Args:
             uri: URL to search for.
 
         Returns:
-            RenkuRecordSerializer: Serializer containing record data.
+            RenkuImporter: Serializer containing record data.
         """
         self._uri = uri
+        self._tag = tag
         self._gitlab_token = kwargs.get("gitlab_token")
 
         self._prepare_auth(uri)
@@ -93,7 +100,7 @@ class RenkuProvider(ProviderApi):
 
         project_url_ssh, project_url_http = self._get_project_urls(kg_url)
 
-        return RenkuRecordSerializer(
+        return RenkuImporter(
             uri=uri,
             name=name,
             identifier=identifier,
@@ -104,15 +111,6 @@ class RenkuProvider(ProviderApi):
             gitlab_token=self._gitlab_token,
             renku_token=self._renku_token,
         )
-
-    def get_exporter(self, dataset, tag):
-        """Create export manager for given dataset."""
-        raise NotImplementedError
-
-    @property
-    def supports_images(self):
-        """True if provider is a git repository."""
-        return True
 
     def _fetch_dataset_info(self, uri):
         """Return initial dataset identifier and urls of all projects that contain the dataset."""
@@ -227,7 +225,7 @@ class RenkuProvider(ProviderApi):
         self._authorization_header = {"Authorization": f"Bearer {token}"} if token else {}
 
 
-class RenkuRecordSerializer(ProviderRecordSerializerApi):
+class RenkuImporter(ImporterApi):
     """Renku record serializer."""
 
     def __init__(
@@ -242,8 +240,8 @@ class RenkuRecordSerializer(ProviderRecordSerializerApi):
         gitlab_token,
         renku_token,
     ):
-        """Create a RenkuRecordSerializer from a Dataset."""
-        super().__init__(uri=uri)
+        """Create a RenkuImporter from a Dataset."""
+        super().__init__(uri=uri, original_uri=uri)
 
         self._name = name
         self._identifier = identifier
@@ -254,41 +252,159 @@ class RenkuRecordSerializer(ProviderRecordSerializerApi):
         self._gitlab_token = gitlab_token
         self._renku_token = renku_token
 
-        self._dataset: Optional["ProviderDataset"] = None
         self._project_url = None
-        self._project_repo = None
+        self._remote_repository = None
         self._remote_client = None
-        self._files_info: List["ProviderDatasetFile"] = []
 
-    def as_dataset(self, client) -> "ProviderDataset":
+    def fetch_provider_dataset(self) -> "ProviderDataset":
         """Return encapsulated dataset instance."""
-        provider_dataset = self._fetch_dataset()
-        self._dataset = provider_dataset
-        return provider_dataset
+        self._provider_dataset = self._fetch_dataset()
+        assert self._provider_dataset is not None, "Dataset wasn't fetched."
+        return self._provider_dataset
 
-    @inject.autoparams()
-    def import_images(self, dataset, client_dispatcher: IClientDispatcher):
-        """Add images from remote dataset."""
-        assert self._dataset is not None, "Dataset was not fetched"
+    def download_files(self, client: "LocalClient", destination: Path, extract: bool) -> List["DatasetAddMetadata"]:
+        """Download dataset files."""
+        from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
+        from renku.core.management.client import LocalClient
+        from renku.domain_model.dataset import RemoteEntity
 
-        client = client_dispatcher.current_client
+        if not self.provider_dataset.data_dir:
+            raise errors.OperationError(f"Data directory for dataset must be set: {self.provider_dataset.name}")
 
-        if not self._dataset.images:
+        url = remove_credentials(self.project_url)
+        dataset_datadir = self.provider_dataset.data_dir
+        remote_repository = self.repository
+
+        if self.provider_dataset.version:  # NOTE: A tag was specified for import
+            sources, checksums = zip(*[(f.path, f.checksum) for f in self.provider_dataset_files])  # type: ignore
+        else:
+            sources = [f.path for f in self.provider_dataset_files]  # type: ignore
+            checksums = None
+
+        assert destination.exists() and destination.is_dir(), "Destination dir must exist when importing a dataset"
+        if checksums is not None:
+            assert len(checksums) == len(sources), "Each source must have a corresponding checksum"  # type: ignore
+
+        def add_file(src_entity_path: str, content_path: Path, checksum) -> None:
+            """
+            Create a DatasetAddMetadata.
+
+            Args:
+                src_entity_path: Entity path from the source dataset which is a relative path.
+                content_path: Absolute path of the file content when copied with a checksum.
+                checksum: Entity checksum.
+            """
+            try:
+                relative_path = Path(src_entity_path).relative_to(dataset_datadir)
+            except ValueError:  # Files that are not in dataset's data directory
+                relative_path = Path(src_entity_path)
+
+            dst = destination / relative_path
+            path_in_dst_repo = dst.relative_to(client.path)
+
+            already_copied = path_in_dst_repo in new_files  # A path with the same destination is already copied
+            new_files[path_in_dst_repo].append(src_entity_path)
+            if already_copied:
+                return
+
+            if is_external_file(path=src_entity_path, client_path=remote_repository.path):  # type: ignore
+                source = (remote_repository.path / src_entity_path).resolve()  # type: ignore
+                action = DatasetAddAction.SYMLINK
+            else:
+                source = content_path
+                action = DatasetAddAction.MOVE
+
+            checksum = checksum or remote_repository.get_object_hash(  # type: ignore
+                revision="HEAD", path=src_entity_path
+            )
+            if not checksum:
+                raise errors.FileNotFound(f"Cannot find '{file}' in the remote project")
+
+            new_file = DatasetAddMetadata(
+                entity_path=path_in_dst_repo,
+                url=url,
+                based_on=RemoteEntity(checksum=checksum, path=src_entity_path, url=url),
+                action=action,
+                source=source,
+                destination=dst,
+            )
+            results.append(new_file)
+
+        results: List["DatasetAddMetadata"] = []
+        new_files: Dict[Path, List[str]] = defaultdict(list)
+
+        if checksums is None:
+            LocalClient(path=remote_repository.path).pull_paths_from_storage(  # type: ignore
+                *(remote_repository.path / p for p in sources)  # type: ignore
+            )
+
+            for file in sources:
+                add_file(file, content_path=remote_repository.path / file, checksum=None)  # type: ignore
+        else:  # NOTE: Renku dataset import with a tag
+            content_path_root = make_project_temp_dir(client.path)
+            content_path_root.mkdir(parents=True, exist_ok=True)
+            filename = 1
+
+            for file, checksum in zip(sources, checksums):  # type: ignore
+                content_path = content_path_root / str(filename)
+                filename += 1
+
+                try:
+                    remote_repository.copy_content_to_file(  # type: ignore
+                        path=file, checksum=checksum, output_path=content_path
+                    )
+                except errors.FileNotFound:
+                    raise errors.FileNotFound(f"Cannot find '{file}' with hash '{checksum}' in the remote project")
+
+                add_file(file, content_path=content_path, checksum=checksum)
+
+        duplicates = [v for v in new_files.values() if len(v) > 1]
+        if duplicates:
+            files = {str(p) for paths in duplicates for p in paths}
+            files_str = "/n/t".join(sorted(files))
+            communication.warn(f"The following files overwrite each other in the destination project:/n/t{files_str}")
+
+        return results
+
+    def tag_dataset(self, name: str) -> None:
+        """Create a tag for the dataset ``name`` if the remote dataset has a tag/version."""
+        from renku.core.dataset.tag import add_dataset_tag
+
+        if self.provider_dataset.tag:
+            add_dataset_tag(
+                dataset_name=name,
+                tag=self.provider_dataset.tag.name,
+                description=self.provider_dataset.tag.description,
+            )
+        elif self.provider_dataset.version:
+            add_dataset_tag(
+                dataset_name=name,
+                tag=self.provider_dataset.version,
+                description=f"Tag {self.provider_dataset.version} created by renku import",
+            )
+
+    def copy_extra_metadata(self, new_dataset: "Dataset") -> None:
+        """Copy provider specific metadata once the dataset is created."""
+        from renku.core.util.dispatcher import get_client
+
+        if not self.provider_dataset.images:
             return
 
-        for img in self._dataset.images:
-            if img.is_absolute:
+        client = get_client()
+
+        for image in self.provider_dataset.images:
+            if image.is_absolute:
                 continue
 
-            remote_image_path = self._remote_client.path / img.content_url
-            local_image_path = client.path / img.content_url
+            remote_image_path = self._remote_client.path / image.content_url
+            local_image_path = client.path / image.content_url
             local_image_path.parent.mkdir(exist_ok=True, parents=True)
 
             shutil.copy(remote_image_path, local_image_path)
 
-        dataset.images = self._dataset.images or []
+        new_dataset.images = self.provider_dataset.images or []
 
-    def is_last_version(self, uri):
+    def is_latest_version(self):
         """Check if dataset is at last possible version."""
         return self.latest_uri.endswith(self._identifier)
 
@@ -305,7 +421,7 @@ class RenkuRecordSerializer(ProviderRecordSerializerApi):
     @property
     def repository(self):
         """The cloned repository that contains the dataset."""
-        return self._project_repo
+        return self._remote_repository
 
     @staticmethod
     def _extract_dataset_id(uri):
@@ -316,7 +432,7 @@ class RenkuRecordSerializer(ProviderRecordSerializerApi):
     @property
     def version(self):
         """Get record version."""
-        return self._dataset.version if self._dataset else None
+        return self._provider_dataset.version if self._provider_dataset else None
 
     @property
     def latest_uri(self):
@@ -326,13 +442,13 @@ class RenkuRecordSerializer(ProviderRecordSerializerApi):
     @property
     def datadir_exists(self):
         """Whether the dataset data directory exists (might be missing in git if empty)."""
-        return (self._remote_client.path / self._dataset.data_dir).exists()
+        return (self._remote_client.path / self.provider_dataset.data_dir).exists()
 
     @inject.autoparams()
     def _fetch_dataset(self, client_dispatcher: IClientDispatcher, database_dispatcher: IDatabaseDispatcher):
         from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile
         from renku.core.management.client import LocalClient
-        from renku.domain_model.dataset import get_dataset_data_dir
+        from renku.domain_model.dataset import Url, get_dataset_data_dir
 
         repository = None
         client = client_dispatcher.current_client
@@ -368,7 +484,7 @@ class RenkuRecordSerializer(ProviderRecordSerializerApi):
 
         try:
             self._migrate_project()
-            self._project_repo = repository
+            self._remote_repository = repository
 
             datasets_provenance = DatasetsProvenance()
 
@@ -398,10 +514,11 @@ class RenkuRecordSerializer(ProviderRecordSerializerApi):
             database_dispatcher.pop_database()
             client_dispatcher.pop_client()
 
-        provider_dataset.data_dir = get_dataset_data_dir(self._remote_client, provider_dataset)
+        provider_dataset.data_dir = get_dataset_data_dir(self._remote_client, provider_dataset.name)
         provider_dataset.derived_from = None
+        provider_dataset.same_as = Url(url_id=remove_credentials(self.latest_uri))
 
-        self._files_info = [
+        self._provider_dataset_files = [
             ProviderDatasetFile(
                 path=file.entity.path,
                 checksum=file.entity.checksum,
