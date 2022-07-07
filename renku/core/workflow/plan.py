@@ -86,15 +86,16 @@ def remove_plan(name_or_id: str, force: bool, plan_gateway: IPlanGateway, when: 
 
     composites_containing_child = get_composite_plans_by_child(plan)
 
-    composite_names = "\n\t".join([c.name for c in composites_containing_child])
+    if composites_containing_child:
+        composite_names = "\n\t".join([c.name for c in composites_containing_child])
 
-    if composites_containing_child and not force:
-        raise errors.ParameterError(
-            f"The specified workflow '{name_or_id}' is part of the following composite workflows and won't be removed"
-            f" (use '--force' to remove anyways):\n\t{composite_names}"
-        )
-    elif composites_containing_child:
-        communication.warn(f"Removing '{name_or_id}', which is still used in these workflows:\n\t{composite_names}")
+        if force:
+            raise errors.ParameterError(
+                f"The specified workflow '{name_or_id}' is part of the following composite workflows and won't be "
+                f"removed (use '--force' to remove anyways):\n\t{composite_names}"
+            )
+        else:
+            communication.warn(f"Removing '{name_or_id}', which is still used in these workflows:\n\t{composite_names}")
 
     if not force:
         prompt_text = f"You are about to remove the following workflow '{name_or_id}'.\n\nDo you wish to continue?"
@@ -152,14 +153,6 @@ def get_composite_plans_by_child(plan: AbstractPlan, plan_gateway: IPlanGateway)
     """Return all composite plans that contain a child plan."""
 
     derivatives = {p.id for p in get_derivative_chain(plan=plan)}
-
-    all_plans = plan_gateway.get_all_plans()
-
-    child_plan: Optional[AbstractPlan] = plan
-    while child_plan is not None:
-        derivatives.add(child_plan.id)
-        plan = child_plan
-        child_plan = next((p for p in all_plans if p.derived_from == plan.id), None)
 
     composites = (p for p in plan_gateway.get_newest_plans_by_names().values() if isinstance(p, CompositePlan))
 
