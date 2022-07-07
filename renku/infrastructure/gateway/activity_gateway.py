@@ -245,12 +245,14 @@ def _index_activity(activity: Activity, database: Database):
     activity_catalog = database["activity-catalog"]
 
     if upstreams:
-        for s in upstreams:
-            activity_catalog.index(ActivityDownstreamRelation(downstream=activity, upstream=s))
+        for a in upstreams:
+            if a != activity:
+                activity_catalog.index(ActivityDownstreamRelation(downstream=activity, upstream=a))
 
     if downstreams:
-        for s in downstreams:
-            activity_catalog.index(ActivityDownstreamRelation(downstream=s, upstream=activity))
+        for a in downstreams:
+            if a != activity:
+                activity_catalog.index(ActivityDownstreamRelation(downstream=a, upstream=activity))
 
     if upstreams or downstreams:
         activity_catalog._p_changed = True
