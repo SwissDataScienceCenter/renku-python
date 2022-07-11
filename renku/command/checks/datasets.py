@@ -30,12 +30,12 @@ from renku.core.migration.utils import get_pre_0_3_4_datasets_metadata
 from renku.core.util import communication
 
 
-def check_dataset_old_metadata_location(client, fix):
+def check_dataset_old_metadata_location(client, **kwargs):
     """Check location of dataset metadata.
 
     Args:
         client: ``LocalClient``.
-        fix: Whether to fix found issues.
+        kwargs: keyword arguments.
 
     Returns:
         Tuple of whether dataset metadata location is valid and string of found problems.
@@ -55,13 +55,13 @@ def check_dataset_old_metadata_location(client, fix):
     return False, problems
 
 
-@inject.autoparams()
-def check_missing_files(client, fix, dataset_gateway: IDatasetGateway):
+@inject.autoparams("dataset_gateway")
+def check_missing_files(client, dataset_gateway: IDatasetGateway, **kwargs):
     """Find missing files listed in datasets.
 
     Args:
         client: ``LocalClient``.
-        fix: Whether to fix found issues.
+        kwargs: keyword arguments.
 
     Returns:
         Tuple of whether all dataset files are there and string of found problems.
@@ -91,13 +91,14 @@ def check_missing_files(client, fix, dataset_gateway: IDatasetGateway):
     return False, problems
 
 
-@inject.autoparams()
-def check_invalid_datasets_derivation(client, fix, dataset_gateway: IDatasetGateway):
+@inject.autoparams("dataset_gateway")
+def check_invalid_datasets_derivation(client, fix, dataset_gateway: IDatasetGateway, **kwargs):
     """Remove ``derived_from`` from import datasets.
 
     Args:
         client: ``LocalClient``.
         fix: Whether to fix found issues.
+        kwargs: keyword arguments.
 
     Returns:
         Tuple of whether dataset derivations are valid and string of found problems.
