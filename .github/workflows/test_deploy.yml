@@ -309,6 +309,15 @@ jobs:
         run: |
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
+      - name: Set coveralls path mapping
+        run: |
+          echo "
+
+          [tool.coverage.paths]
+          source = [
+              \"renku/\",
+              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
+          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -367,6 +376,15 @@ jobs:
         run: |
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
+      - name: Set coveralls path mapping
+        run: |
+          echo "
+
+          [tool.coverage.paths]
+          source = [
+              \"renku/\",
+              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
+          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -431,6 +449,15 @@ jobs:
         run: |
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
+      - name: Set coveralls path mapping
+        run: |
+          echo "
+
+          [tool.coverage.paths]
+          source = [
+              \"renku/\",
+              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
+          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -495,6 +522,15 @@ jobs:
         run: |
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
+      - name: Set coveralls path mapping
+        run: |
+          echo "
+
+          [tool.coverage.paths]
+          source = [
+              \"renku/\",
+              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
+          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -714,6 +750,15 @@ jobs:
         with:
           path: cassettes
           key: ${{ env.NETWORK_CACHE_PREFIX }}-${{ needs.year-week.outputs.date }}-${{ hashFiles('tests') }}-${{ github.job }}
+      - name: Set coveralls path mapping
+        run: |
+          echo "
+
+          [tool.coverage.paths]
+          source = [
+              \"renku/\",
+              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
+          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -793,6 +838,15 @@ jobs:
         with:
           path: cassettes
           key: ${{ env.NETWORK_CACHE_PREFIX }}-${{ needs.year-week.outputs.date }}-${{ hashFiles('tests') }}-${{ github.job }}
+      - name: Set coveralls path mapping
+        run: |
+          echo "
+
+          [tool.coverage.paths]
+          source = [
+              \"renku/\",
+              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
+          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -1004,6 +1058,7 @@ jobs:
         test-linux-integration,
         test-linux-integration-service,
       ]
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       contents: read
