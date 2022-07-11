@@ -31,11 +31,12 @@ and if in doubt ask an expert around or file an issue. Thanks!
 
 
 @inject.autoparams()
-def _doctor_check(fix, client_dispatcher: IClientDispatcher):
+def _doctor_check(fix, force, client_dispatcher: IClientDispatcher):
     """Check your system and repository for potential problems.
 
     Args:
         fix: Whether to apply fixes or just check.
+        force: Whether to force-fix some actions.
         client_dispatcher(IClientDispatcher):  Injected client dispatcher.
 
     Returns:
@@ -50,7 +51,7 @@ def _doctor_check(fix, client_dispatcher: IClientDispatcher):
 
     for check in checks.__all__:
         try:
-            ok, problems_ = getattr(checks, check)(client=client, fix=fix)
+            ok, problems_ = getattr(checks, check)(client=client, fix=fix, force=force)
         except Exception:
             ok = False
             tb = "\n\t".join(traceback.format_exc().split("\n"))

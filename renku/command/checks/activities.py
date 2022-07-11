@@ -28,9 +28,9 @@ from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.util import communication
 
 
-@inject.autoparams()
+@inject.autoparams("activity_gateway", "database_dispatcher")
 def check_migrated_activity_ids(
-    client, fix, activity_gateway: IActivityGateway, database_dispatcher: IDatabaseDispatcher
+    client, fix, activity_gateway: IActivityGateway, database_dispatcher: IDatabaseDispatcher, **kwargs
 ):
     """Check that activity ids were correctly migrated in the past."""
     activities = activity_gateway.get_all_activities(include_deleted=True)
