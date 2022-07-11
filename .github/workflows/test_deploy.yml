@@ -330,6 +330,7 @@ jobs:
           GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
           COVERALLS_PARALLEL: true
+        if: always()
         run: coveralls --service=github-actions
         continue-on-error: true
 
@@ -403,6 +404,7 @@ jobs:
           GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
           COVERALLS_PARALLEL: true
+        if: always()
         run: coveralls --service=github-actions
         continue-on-error: true
 
@@ -476,6 +478,7 @@ jobs:
           GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
           COVERALLS_PARALLEL: true
+        if: always()
         run: coveralls --service=github-actions
         continue-on-error: true
 
@@ -543,6 +546,7 @@ jobs:
           GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
           COVERALLS_PARALLEL: true
+        if: always()
         run: coveralls --service=github-actions
         continue-on-error: true
 
@@ -787,6 +791,7 @@ jobs:
           GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
           COVERALLS_PARALLEL: true
+        if: always()
         run: coveralls --service=github-actions
         continue-on-error: true
 
@@ -875,6 +880,7 @@ jobs:
           GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
           COVERALLS_PARALLEL: true
+        if: always()
         run: coveralls --service=github-actions
         continue-on-error: true
 
