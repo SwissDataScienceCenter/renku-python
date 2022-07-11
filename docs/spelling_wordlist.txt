@@ -156,6 +156,7 @@ Postgresql
 powerline
 pre
 prepend
+prepending
 preprocessed
 preprocessing
 programmatically
