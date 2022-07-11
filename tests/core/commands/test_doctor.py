@@ -19,8 +19,9 @@
 from pathlib import Path
 
 from renku.domain_model.dataset import Url
+from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.ui.cli import cli
-from tests.utils import format_result_exception, with_dataset
+from tests.utils import create_dummy_activity, format_result_exception, with_dataset
 
 
 def test_new_project_is_ok(runner, project):
@@ -142,3 +143,44 @@ def test_fix_invalid_imported_dataset(runner, client_with_datasets, client_datab
             # NOTE: Set both same_as and derived_from for a dataset
             assert dataset.same_as.value == "http://example.com"
             assert dataset.derived_from is None
+
+
+def test_doctor_fix_activity_catalog(runner, client, client_database_injection_manager):
+    """Test detecting and fixing activity catalogs that were not persisted."""
+    with client_database_injection_manager(client):
+        upstream = create_dummy_activity(plan="p1", generations=["input"])
+        activity = create_dummy_activity(plan="p2", usages=["input"], generations=["intermediate"])
+        downstream = create_dummy_activity(plan="p3", usages=["intermediate"], generations=["output"])
+
+        activity_gateway = ActivityGateway()
+        activity_gateway.add(upstream)
+        activity_gateway.add(activity)
+        activity_gateway.add(downstream)
+
+        # Clear the activity catalog to imitate a project that hasn't persisted it
+        database = activity_gateway.database_dispatcher.current_database
+        database["activity-catalog"].clear()
+
+        database.commit()
+
+    client.repository.add(all=True)
+    client.repository.commit("Added dummy activities")
+
+    result = runner.invoke(cli, ["doctor"])
+
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "The project's workflow metadata needs to be rebuilt" in result.output
+
+    before_commit_sha = client.repository.head.commit.hexsha
+
+    result = runner.invoke(cli, ["doctor", "--fix"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Workflow metadata was rebuilt" in result.output
+    assert before_commit_sha != client.repository.head.commit.hexsha
+    assert not client.repository.is_dirty(untracked_files=True)
+
+    result = runner.invoke(cli, ["doctor", "--fix", "--force"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Workflow metadata was rebuilt" in result.output

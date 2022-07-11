@@ -24,14 +24,16 @@ from renku.core.util import communication
 from renku.domain_model.project import Project
 
 
-@inject.autoparams()
-def check_project_id_group(client, fix, project_gateway: IProjectGateway):
+@inject.autoparams("project_gateway")
+def check_project_id_group(client, fix, project_gateway: IProjectGateway, **kwargs):
     """Check that projects in groups have the correct id set.
 
     Args:
         client: ``LocalClient``.
         fix: Whether to fix found issues.
         project_gateway: Injected project gateway.
+        kwargs: keyword arguments.
+
     Returns:
         Tuple of whether project id is valid.
     """

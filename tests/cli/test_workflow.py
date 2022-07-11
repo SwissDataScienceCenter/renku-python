@@ -1245,6 +1245,54 @@ def test_workflow_templated_params(runner, run_shell, client, capsys, workflow, 
         assert Path(o).resolve().exists()
 
 
+def test_revert_activity(client, runner, client_database_injection_manager):
+    """Test reverting activities."""
+    input = client.path / "input"
+    intermediate = client.path / "intermediate"
+    output = client.path / "output"
+
+    assert 0 == runner.invoke(cli, ["run", "--name", "r1", "--", "echo", "some-data"], stdout=input).exit_code
+    assert 0 == runner.invoke(cli, ["run", "--name", "r2", "--", "head", input], stdout=intermediate).exit_code
+    assert 0 == runner.invoke(cli, ["run", "--name", "r3", "--", "tail", intermediate], stdout=output).exit_code
+
+    with client_database_injection_manager(client):
+        activity_gateway = ActivityGateway()
+        activity = next(a for a in activity_gateway.get_all_activities() if a.association.plan.name == "r1")
+
+    result = runner.invoke(cli, ["workflow", "revert", "--force", activity.id])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    with client_database_injection_manager(client):
+        activity_gateway = ActivityGateway()
+        activities = activity_gateway.get_all_activities(include_deleted=True)
+        activity_1, activity_2, activity_3 = sorted(activities, key=lambda a: a.association.plan.name)
+
+        assert set() == activity_gateway.get_upstream_activities(activity_1)
+        assert set() == activity_gateway.get_downstream_activities(activity_1)
+        assert set() == activity_gateway.get_upstream_activities(activity_2)
+        assert {activity_3} == activity_gateway.get_downstream_activities(activity_2)
+        assert {activity_2} == activity_gateway.get_upstream_activities(activity_3)
+        assert set() == activity_gateway.get_downstream_activities(activity_3)
+
+    # Force re-build the activity catalog
+    result = runner.invoke(cli, ["doctor", "--fix", "--force"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    with client_database_injection_manager(client):
+        activity_gateway = ActivityGateway()
+        activities = activity_gateway.get_all_activities(include_deleted=True)
+        activity_1, activity_2, activity_3 = sorted(activities, key=lambda a: a.association.plan.name)
+
+        assert set() == activity_gateway.get_upstream_activities(activity_1)
+        assert set() == activity_gateway.get_downstream_activities(activity_1)
+        assert set() == activity_gateway.get_upstream_activities(activity_2)
+        assert {activity_3} == activity_gateway.get_downstream_activities(activity_2)
+        assert {activity_2} == activity_gateway.get_upstream_activities(activity_3)
+        assert set() == activity_gateway.get_downstream_activities(activity_3)
+
+
 def test_reverted_activity_status(client, runner, client_database_injection_manager):
     """Test that reverted activity doesn't affect status/update/log/etc."""
     input = client.path / "input"
