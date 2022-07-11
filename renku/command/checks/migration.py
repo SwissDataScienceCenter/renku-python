@@ -20,12 +20,12 @@ from renku.command.echo import ERROR, WARNING
 from renku.core.management.migrate import is_migration_required, is_project_unsupported
 
 
-def check_migration(client, fix):
+def check_migration(client, **kwargs):
     """Check for project version.
 
     Args:
         client: ``LocalClient``.
-        fix: Whether to fix found issues.
+        kwargs: keyword arguments.
 
     Returns:
         Tuple of whether project metadata is up to date and string of found problems.

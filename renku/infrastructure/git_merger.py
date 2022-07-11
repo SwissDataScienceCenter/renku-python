@@ -166,7 +166,7 @@ class GitMerger:
 
             local_object._p_activate()
             remote_object._p_activate()
-            diff = DeepDiff(local_object, remote_object)
+            diff = DeepDiff(local_object, remote_object, exclude_types=[Database])
             pretty_diff = diff.pretty().replace("Value of root.", "local.")
             pretty_diff = "\n".join(f"\t{line}" for line in pretty_diff.splitlines())
             entry_type = str(type(local_object)).split(".")[-1][:-2]
@@ -194,7 +194,7 @@ class GitMerger:
         return local
 
     def merge_indices(self, local: Index, remote: Index) -> Index:
-        """Merge two BTrees."""
+        """Merge two Indices."""
         local_key_ids = {k: getattr(v, "_p_oid", None) for k, v in local.items()}
         remote_key_ids = {k: getattr(v, "_p_oid", None) for k, v in remote.items()}
 
@@ -218,7 +218,7 @@ class GitMerger:
 
             local_object._p_activate()
             remote_object._p_activate()
-            diff = DeepDiff(local_object, remote_object)
+            diff = DeepDiff(local_object, remote_object, exclude_types=[Database])
             pretty_diff = diff.pretty().replace("Value of root.", "local.")
             pretty_diff = "\n".join(f"\t{line}" for line in pretty_diff.splitlines())
             entry_type = str(type(local.get(common_key))).split(".")[-1][:-2]
@@ -255,7 +255,7 @@ class GitMerger:
                 if subkey not in local._name_TO_mapping[key]:
                     local._name_TO_mapping[key][subkey] = subvalue
 
-        for key, value in remote._reltoken_name_TO_objtokenset:
+        for key, value in remote._reltoken_name_TO_objtokenset.items():
             if key not in local._reltoken_name_TO_objtokenset:
                 local._reltoken_name_TO_objtokenset[key] = value
 
