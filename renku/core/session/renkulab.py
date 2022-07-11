@@ -73,7 +73,8 @@ def _get_anonymous_credentials(client: LocalClient, renku_url: str) -> str:
         if not anon_token:
             raise errors.AuthenticationError(
                 "Could not get anonymous user token from Renku. "
-                f"Ensure the Renku deployment at {renku_url} supports anonymous sessions."
+                f"Ensure the Renku deployment at {renku_url} supports anonymous sessions or use "
+                f"'renku login {renku_host}' to log in."
             )
         client.set_value(section="anonymous_token", key=renku_host, value=anon_token, global_only=True)
     return anon_token
