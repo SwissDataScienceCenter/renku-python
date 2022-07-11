@@ -58,4 +58,4 @@ def install():
     """Setup mergetool locally."""
     from renku.command.mergetool import mergetool_install_command
 
-    mergetool_install_command().with_commit().build().execute()
+    mergetool_install_command().with_commit(commit_only=[".gitattributes"]).require_clean().build().execute()

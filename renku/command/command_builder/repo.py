@@ -17,7 +17,8 @@
 # limitations under the License.
 """Command builder for repository."""
 
-from typing import Optional
+from pathlib import Path
+from typing import List, Optional, Union
 
 from renku.command.command_builder.command import Command, CommandResult, check_finalized
 from renku.core import errors
@@ -34,7 +35,7 @@ class Commit(Command):
         message: Optional[str] = None,
         commit_if_empty: Optional[bool] = False,
         raise_if_empty: Optional[bool] = False,
-        commit_only: Optional[bool] = None,
+        commit_only: Optional[Union[str, List[Union[str, Path]]]] = None,
         skip_staging: bool = False,
     ) -> None:
         """__init__ of Commit.
