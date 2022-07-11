@@ -140,7 +140,10 @@ class RenkuProvider(ProviderApi):
             kg_path = f"/knowledge-graph/projects/{project_id}"
             project_kg_url = parsed_url._replace(path=kg_path).geturl()
         elif not dataset_info:
-            raise errors.NotFound(f"Resource not found in knowledge graph: {uri}")
+            raise errors.NotFound(
+                f"Resource not found in knowledge graph: {uri}\n"
+                f"Hint: If the project is private you need to 'renku login {parsed_url.netloc}'"
+            )
         else:
             project = dataset_info.get("project", {})
             links = project.get("_links", [])
@@ -193,11 +196,13 @@ class RenkuProvider(ProviderApi):
         except errors.RequestError as e:
             raise errors.OperationError(f"Cannot access knowledge graph: {url}") from e
 
+        parsed_uri = urllib.parse.urlparse(self._uri)
         if response.status_code == 404:
-            raise errors.NotFound(f"Resource not found in knowledge graph: {url}")
+            raise errors.NotFound(
+                f"Resource not found in knowledge graph: {url}\n"
+                f"Hint: If the project is private you need to 'renku login {parsed_uri.netloc}'"
+            )
         elif response.status_code in [401, 403]:
-            parsed_uri = urllib.parse.urlparse(self._uri)
-
             raise errors.OperationError(
                 f"Unauthorized access to knowledge graph: Run 'renku login {parsed_uri.netloc}'"
             )
