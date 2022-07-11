@@ -89,7 +89,7 @@ def remove_plan(name_or_id: str, force: bool, plan_gateway: IPlanGateway, when: 
     if composites_containing_child:
         composite_names = "\n\t".join([c.name for c in composites_containing_child])
 
-        if force:
+        if not force:
             raise errors.ParameterError(
                 f"The specified workflow '{name_or_id}' is part of the following composite workflows and won't be "
                 f"removed (use '--force' to remove anyways):\n\t{composite_names}"
