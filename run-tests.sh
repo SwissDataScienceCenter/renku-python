@@ -51,7 +51,7 @@ build_docs(){
 }
 
 run_tests(){
-    pytest -v -m "not integration and not publish" -o testpaths="tests renku conftest.py" --ignore=renku/version.py
+    pytest -v -m "not integration and not publish and not redis" -o testpaths="tests renku conftest.py" --ignore=renku/version.py
 }
 
 usage(){
