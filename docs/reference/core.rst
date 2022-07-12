@@ -158,6 +158,14 @@ Workflows
    :members:
    :show-inheritance:
 
+.. automodule:: renku.core.workflow.plan
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.workflow.execute
+   :members:
+   :show-inheritance:
+
 .. automodule:: renku.core.workflow.concrete_execution_graph
    :members:
    :show-inheritance:

@@ -20,13 +20,13 @@
 from typing import List, Optional
 
 from renku.command.command_builder.command import Command, inject
-from renku.command.workflow import execute_workflow
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.util.os import get_relative_paths
 from renku.core.workflow.activity import get_activities_until_paths, sort_activities
 from renku.core.workflow.concrete_execution_graph import ExecutionGraph
+from renku.core.workflow.execute import execute_workflow_graph
 
 
 def rerun_command():
@@ -77,4 +77,4 @@ def _rerun(
         return activities, set(sources)
 
     graph = ExecutionGraph([a.plan_with_values for a in activities], virtual_links=True)
-    execute_workflow(dag=graph.workflow_graph, provider=provider, config=config)
+    execute_workflow_graph(dag=graph.workflow_graph, provider=provider, config=config)
