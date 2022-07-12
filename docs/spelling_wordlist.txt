@@ -209,6 +209,7 @@ Subclass
 subclasses
 Subclasses
 subcommand
+subcommands
 subdirectories
 subdirectory
 subfolder
@@ -218,6 +219,7 @@ Subgraph
 submodule
 submodules
 subpath
+subprocesses
 substep
 substeps
 substring
