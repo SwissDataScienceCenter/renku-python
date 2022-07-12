@@ -1631,7 +1631,7 @@ pytest = ">=3.10"
 
 [[package]]
 name = "pytest-mock"
-version = "3.7.0"
+version = "3.8.2"
 description = "Thin-wrapper around the mock package for easier use with pytest"
 category = "main"
 optional = true
@@ -2676,7 +2676,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "15d3d9353e26f319e3c68fd2270a12957477ec6e312cc371e5cc187d93127cb2"
+content-hash = "346ed57c2e68de6553df8a4748f90a28969e3612929bca72ad139a83e922eb97"
 
 [metadata.files]
 addict = [
@@ -3791,8 +3791,8 @@ pytest-forked = [
     {file = "pytest_forked-1.4.0-py3-none-any.whl", hash = "sha256:bbbb6717efc886b9d64537b41fb1497cfaf3c9601276be8da2cccfea5a3c8ad8"},
 ]
 pytest-mock = [
-    {file = "pytest-mock-3.7.0.tar.gz", hash = "sha256:5112bd92cc9f186ee96e1a92efc84969ea494939c3aead39c50f421c4cc69534"},
-    {file = "pytest_mock-3.7.0-py3-none-any.whl", hash = "sha256:6cff27cec936bf81dc5ee87f07132b807bcda51106b5ec4b90a04331cba76231"},
+    {file = "pytest-mock-3.8.2.tar.gz", hash = "sha256:77f03f4554392558700295e05aed0b1096a20d4a60a4f3ddcde58b0c31c8fca2"},
+    {file = "pytest_mock-3.8.2-py3-none-any.whl", hash = "sha256:8a9e226d6c0ef09fcf20c94eb3405c388af438a90f3e39687f84166da82d5948"},
 ]
 pytest-pep8 = [
     {file = "pytest-pep8-1.0.6.tar.gz", hash = "sha256:032ef7e5fa3ac30f4458c73e05bb67b0f036a8a5cb418a534b3170f89f120318"},
