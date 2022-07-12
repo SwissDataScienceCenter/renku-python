@@ -20,12 +20,12 @@
 from renku.command.echo import WARNING
 
 
-def check_lfs_info(client, fix):
+def check_lfs_info(client, **kwargs):
     """Checks if files in history should be in LFS.
 
     Args:
         client: ``LocalClient``
-        fix: Whether to fix found problems or not.
+        kwargs: keyword arguments.
 
     Returns:
         Tuple of whether project structure is valid and string of found problems.

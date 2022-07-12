@@ -54,6 +54,9 @@ class ActivityDownstreamRelation:
 
         self.id = f"{upstream.id}:{downstream.id}"
 
+    def __repr__(self):
+        return f"<ActivityDownstreamRelation {self.id} at 0x{id(self):0x}>"
+
 
 def dump_activity(activity: Activity, catalog, cache) -> str:
     """Get storage token for an activity."""

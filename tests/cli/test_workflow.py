@@ -350,6 +350,24 @@ def test_workflow_remove_command(runner, project):
     result = runner.invoke(cli, ["workflow", "remove", "--force", workflow_name])
     assert 0 == result.exit_code, format_result_exception(result)
 
+    result = runner.invoke(cli, ["workflow", "edit", workflow_name, "--name", "new_name"])
+    assert 2 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "execute", workflow_name])
+    assert 2 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "iterate", workflow_name])
+    assert 2 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "compose", "composite", workflow_name])
+    assert 1 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "export", workflow_name])
+    assert 2 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "show", workflow_name])
+    assert 2 == result.exit_code, format_result_exception(result)
+
 
 def test_workflow_export_command(runner, project):
     """Test workflow export with builder."""
@@ -366,7 +384,7 @@ def test_workflow_export_command(runner, project):
     assert len(workflow.outputs) == 1
 
 
-def test_workflow_edit(runner, client, run_shell):
+def test_workflow_edit(runner, client):
     """Test naming of CWL tools and workflows."""
 
     def _get_plan_id(output):
@@ -484,6 +502,22 @@ def test_workflow_edit(runner, client, run_shell):
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
+
+
+def test_workflow_edit_no_change(runner, client, run_shell):
+    """Ensure that workflow edit doesn't commit if there's no changes."""
+
+    workflow_name = "my-workflow"
+
+    result = runner.invoke(cli, ["run", "--name", workflow_name, "touch", "data.txt"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    before = client.repository.head.commit
+
+    result = runner.invoke(cli, ["workflow", "edit", workflow_name])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    assert before == client.repository.head.commit
 
 
 def test_workflow_show_outputs_with_directory(runner, client, run):
@@ -1209,6 +1243,54 @@ def test_workflow_templated_params(runner, run_shell, client, capsys, workflow, 
 
     for o in outputs:
         assert Path(o).resolve().exists()
+
+
+def test_revert_activity(client, runner, client_database_injection_manager):
+    """Test reverting activities."""
+    input = client.path / "input"
+    intermediate = client.path / "intermediate"
+    output = client.path / "output"
+
+    assert 0 == runner.invoke(cli, ["run", "--name", "r1", "--", "echo", "some-data"], stdout=input).exit_code
+    assert 0 == runner.invoke(cli, ["run", "--name", "r2", "--", "head", input], stdout=intermediate).exit_code
+    assert 0 == runner.invoke(cli, ["run", "--name", "r3", "--", "tail", intermediate], stdout=output).exit_code
+
+    with client_database_injection_manager(client):
+        activity_gateway = ActivityGateway()
+        activity = next(a for a in activity_gateway.get_all_activities() if a.association.plan.name == "r1")
+
+    result = runner.invoke(cli, ["workflow", "revert", "--force", activity.id])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    with client_database_injection_manager(client):
+        activity_gateway = ActivityGateway()
+        activities = activity_gateway.get_all_activities(include_deleted=True)
+        activity_1, activity_2, activity_3 = sorted(activities, key=lambda a: a.association.plan.name)
+
+        assert set() == activity_gateway.get_upstream_activities(activity_1)
+        assert set() == activity_gateway.get_downstream_activities(activity_1)
+        assert set() == activity_gateway.get_upstream_activities(activity_2)
+        assert {activity_3} == activity_gateway.get_downstream_activities(activity_2)
+        assert {activity_2} == activity_gateway.get_upstream_activities(activity_3)
+        assert set() == activity_gateway.get_downstream_activities(activity_3)
+
+    # Force re-build the activity catalog
+    result = runner.invoke(cli, ["doctor", "--fix", "--force"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    with client_database_injection_manager(client):
+        activity_gateway = ActivityGateway()
+        activities = activity_gateway.get_all_activities(include_deleted=True)
+        activity_1, activity_2, activity_3 = sorted(activities, key=lambda a: a.association.plan.name)
+
+        assert set() == activity_gateway.get_upstream_activities(activity_1)
+        assert set() == activity_gateway.get_downstream_activities(activity_1)
+        assert set() == activity_gateway.get_upstream_activities(activity_2)
+        assert {activity_3} == activity_gateway.get_downstream_activities(activity_2)
+        assert {activity_2} == activity_gateway.get_upstream_activities(activity_3)
+        assert set() == activity_gateway.get_downstream_activities(activity_3)
 
 
 def test_reverted_activity_status(client, runner, client_database_injection_manager):

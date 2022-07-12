@@ -29,12 +29,12 @@ except ImportError:
     import importlib.resources as importlib_resources  # type: ignore
 
 
-def check_git_hooks_installed(client, fix):
+def check_git_hooks_installed(client, **kwargs):
     """Checks if all necessary hooks are installed.
 
     Args:
         client: ``LocalClient``.
-        fix: Whether to fix found issues.
+        kwargs: keyword arguments.
 
     Returns:
         Tuple of whether git hooks are valid and string of found problems.
