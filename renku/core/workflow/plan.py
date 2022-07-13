@@ -151,6 +151,19 @@ def remove_plan(name_or_id: str, force: bool, plan_gateway: IPlanGateway, when: 
     if latest_version.deleted:
         raise errors.ParameterError(f"The specified workflow '{name_or_id}' is already deleted.")
 
+    composites_containing_child = get_composite_plans_by_child(plan)
+
+    if composites_containing_child:
+        composite_names = "\n\t".join([c.name for c in composites_containing_child])
+
+        if not force:
+            raise errors.ParameterError(
+                f"The specified workflow '{name_or_id}' is part of the following composite workflows and won't be "
+                f"removed (use '--force' to remove anyways):\n\t{composite_names}"
+            )
+        else:
+            communication.warn(f"Removing '{name_or_id}', which is still used in these workflows:\n\t{composite_names}")
+
     if not force:
         prompt_text = f"You are about to remove the following workflow '{name_or_id}'.\n\nDo you wish to continue?"
         communication.confirm(prompt_text, abort=True, warning=True)
@@ -632,3 +645,16 @@ def is_plan_removed(plan: AbstractPlan) -> bool:
             return True
 
     return False
+
+
+@inject.autoparams()
+def get_composite_plans_by_child(plan: AbstractPlan, plan_gateway: IPlanGateway) -> List[CompositePlan]:
+    """Return all composite plans that contain a child plan."""
+
+    derivatives = {p.id for p in get_derivative_chain(plan=plan)}
+
+    composites = (p for p in plan_gateway.get_newest_plans_by_names().values() if isinstance(p, CompositePlan))
+
+    composites_containing_child = [c for c in composites if {p.id for p in c.plans}.intersection(derivatives)]
+
+    return composites_containing_child
