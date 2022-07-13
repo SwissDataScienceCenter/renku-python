@@ -309,6 +309,15 @@ jobs:
         run: |
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
+      - name: Set coveralls path mapping
+        run: |
+          echo "
+
+          [tool.coverage.paths]
+          source = [
+              \"renku/\",
+              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
+          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -321,6 +330,7 @@ jobs:
           GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
           COVERALLS_PARALLEL: true
+        if: always()
         run: coveralls --service=github-actions
         continue-on-error: true
 
@@ -367,6 +377,15 @@ jobs:
         run: |
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
+      - name: Set coveralls path mapping
+        run: |
+          echo "
+
+          [tool.coverage.paths]
+          source = [
+              \"renku/\",
+              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
+          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -385,6 +404,7 @@ jobs:
           GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
           COVERALLS_PARALLEL: true
+        if: always()
         run: coveralls --service=github-actions
         continue-on-error: true
 
@@ -431,6 +451,15 @@ jobs:
         run: |
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
+      - name: Set coveralls path mapping
+        run: |
+          echo "
+
+          [tool.coverage.paths]
+          source = [
+              \"renku/\",
+              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
+          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -449,6 +478,7 @@ jobs:
           GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
           COVERALLS_PARALLEL: true
+        if: always()
         run: coveralls --service=github-actions
         continue-on-error: true
 
@@ -495,6 +525,15 @@ jobs:
         run: |
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
+      - name: Set coveralls path mapping
+        run: |
+          echo "
+
+          [tool.coverage.paths]
+          source = [
+              \"renku/\",
+              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
+          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -507,6 +546,7 @@ jobs:
           GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
           COVERALLS_PARALLEL: true
+        if: always()
         run: coveralls --service=github-actions
         continue-on-error: true
 
@@ -714,6 +754,15 @@ jobs:
         with:
           path: cassettes
           key: ${{ env.NETWORK_CACHE_PREFIX }}-${{ needs.year-week.outputs.date }}-${{ hashFiles('tests') }}-${{ github.job }}
+      - name: Set coveralls path mapping
+        run: |
+          echo "
+
+          [tool.coverage.paths]
+          source = [
+              \"renku/\",
+              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
+          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -742,6 +791,7 @@ jobs:
           GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
           COVERALLS_PARALLEL: true
+        if: always()
         run: coveralls --service=github-actions
         continue-on-error: true
 
@@ -793,6 +843,15 @@ jobs:
         with:
           path: cassettes
           key: ${{ env.NETWORK_CACHE_PREFIX }}-${{ needs.year-week.outputs.date }}-${{ hashFiles('tests') }}-${{ github.job }}
+      - name: Set coveralls path mapping
+        run: |
+          echo "
+
+          [tool.coverage.paths]
+          source = [
+              \"renku/\",
+              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
+          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -821,6 +880,7 @@ jobs:
           GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
           COVERALLS_PARALLEL: true
+        if: always()
         run: coveralls --service=github-actions
         continue-on-error: true
 
@@ -1004,6 +1064,7 @@ jobs:
         test-linux-integration,
         test-linux-integration-service,
       ]
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       contents: read
