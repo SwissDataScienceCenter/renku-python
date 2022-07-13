@@ -369,6 +369,31 @@ def test_workflow_remove_command(runner, project):
     assert 2 == result.exit_code, format_result_exception(result)
 
 
+def test_workflow_remove_with_composite_command(runner, project):
+    """Test workflow remove with builder."""
+    workflow_name = "test_workflow"
+
+    result = runner.invoke(cli, ["workflow", "remove", workflow_name])
+    assert 2 == result.exit_code
+
+    result = runner.invoke(cli, ["run", "--success-code", "0", "--no-output", "--name", workflow_name, "echo", "foo"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "compose", "composed-workflow", workflow_name])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "remove", workflow_name])
+    assert 2 == result.exit_code, format_result_exception(result)
+    assert (
+        "The specified workflow 'test_workflow' is part of the following composite workflows and won't be removed"
+        in result.stderr
+    )
+
+    result = runner.invoke(cli, ["workflow", "remove", "--force", workflow_name])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Removing 'test_workflow', which is still used in these workflows" in result.output
+
+
 def test_workflow_export_command(runner, project):
     """Test workflow export with builder."""
     result = runner.invoke(cli, ["run", "--success-code", "0", "--no-output", "--name", "run1", "touch", "data.csv"])
