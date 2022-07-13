@@ -62,7 +62,7 @@ circus = { version = "==0.17.1", optional = true }
 click = ">=8.0,<8.1.3"
 click-option-group = "<0.6.0,>=0.5.2"
 click-plugins = "==1.1.1"
-coverage = { version = "<6.4,>=4.5.3", optional = true }
+coverage = { version = "<6.4,>=4.5.3", extras=["toml"], optional = true }
 cryptography = "<37.0.0,>=3.4.1"
 cwl-utils = ">=0.12"
 cwltool = "==3.1.20211107152837"
@@ -318,7 +318,7 @@ pattern = """
 files = ["renku/version.py"]
 
 [tool.pytest.ini_options]
-addopts = "--flake8 --black --doctest-glob=\"*.rst\" --doctest-modules --cov=renku --cov-config .coveragerc --cov-report=term-missing --ignore=docs/cheatsheet/"
+addopts = "--flake8 --black --doctest-glob=\"*.rst\" --doctest-modules --cov=renku --cov-report=term-missing --ignore=docs/cheatsheet/"
 doctest_optionflags = "ALLOW_UNICODE"
 flake8-ignore = ["*.py", "E121", "E126", "E203", "E226", "E231", "W503", "W504", "docs/conf.py", "docs/cheatsheet/conf.py", "ALL"]
 flake8-max-line-length = 120
