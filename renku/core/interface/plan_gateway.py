@@ -34,6 +34,10 @@ class IPlanGateway(ABC):
         """Get a plan by name."""
         raise NotImplementedError
 
+    def get_by_name_or_id(self, name_or_id: str) -> AbstractPlan:
+        """Get a plan by name or id."""
+        raise NotImplementedError()
+
     def list_by_name(self, starts_with: str, ends_with: str = None) -> List[str]:
         """Search plans by name."""
         raise NotImplementedError

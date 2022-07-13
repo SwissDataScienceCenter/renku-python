@@ -156,6 +156,7 @@ Postgresql
 powerline
 pre
 prepend
+prepending
 preprocessed
 preprocessing
 programmatically
@@ -208,6 +209,7 @@ Subclass
 subclasses
 Subclasses
 subcommand
+subcommands
 subdirectories
 subdirectory
 subfolder
@@ -217,6 +219,7 @@ Subgraph
 submodule
 submodules
 subpath
+subprocesses
 substep
 substeps
 substring

@@ -13,3 +13,4 @@ aimed at active users of Renku CLI and target specific use-cases or common issue
    hpc
    implementing_a_provider
    shell-integration
+   tracking-workflows
