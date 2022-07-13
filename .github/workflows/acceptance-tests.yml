@@ -90,11 +90,12 @@ jobs:
     steps:
       - uses: SwissDataScienceCenter/renku-actions/test-renku@v1.0.0
         with:
-          renkubot-kubeconfig: ${{ secrets.RENKUBOT_DEV_KUBECONFIG }}
+          kubeconfig: ${{ secrets.RENKUBOT_DEV_KUBECONFIG }}
           renku-release: renku-ci-rp-${{ github.event.number }}
           gitlab-token: ${{ secrets.DEV_GITLAB_TOKEN }}
           persist: "${{ needs.check-deploy.outputs.persist }}"
-          ci-renku-values: ${{ secrets.CI_RENKU_VALUES }}
+          s3-results-access-key: ${{ secrets.ACCEPTANCE_TESTS_BUCKET_ACCESS_KEY }}
+          s3-results-secret-key: ${{ secrets.ACCEPTANCE_TESTS_BUCKET_SECRET_KEY }}
 
   cleanup:
     needs: check-deploy
