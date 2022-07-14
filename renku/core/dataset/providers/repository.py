@@ -31,10 +31,10 @@ if TYPE_CHECKING:
 
 
 class RepositoryImporter(ImporterApi, abc.ABC):
-    """Online repository  provider."""
+    """Online repository importer."""
 
     def download_files(self, client: "LocalClient", destination: Path, extract: bool) -> List["DatasetAddMetadata"]:
-        """Download dataset files."""
+        """Download dataset files from the remote provider."""
         from renku.core.dataset.providers.web import download_files
 
         urls, names = zip(*[(f.source, f.filename) for f in self.provider_dataset_files])

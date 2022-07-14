@@ -19,13 +19,13 @@
 
 import concurrent.futures
 import os
-import time
 import urllib
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Tuple
 
 from renku.core import errors
 from renku.core.constant import CACHE
+from renku.core.dataset.context import wait_for
 from renku.core.dataset.providers.api import ProviderApi, ProviderPriority
 from renku.core.util import communication
 from renku.core.util.dataset import check_url
@@ -105,6 +105,7 @@ def download_file(
     extract: bool = False,
     filename: str = None,
     multiple: bool = False,
+    delay: float = 0,
 ) -> List["DatasetAddMetadata"]:
     """Download a file from a URI and return its metadata."""
     from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
@@ -114,19 +115,13 @@ def download_file(
     uri = _provider_check(uri)
 
     try:
-        start = time.time() * 1e3
-
-        tmp_root, paths = requests.download_file(
-            base_directory=client.renku_path / CACHE, url=uri, filename=filename, extract=extract
-        )
-
-        exec_time = (time.time() * 1e3 - start) // 1e3
-        # If execution time was less or equal to zero seconds,
-        # block the thread a bit to avoid being rate limited.
-        if exec_time == 0:
-            time.sleep(min((os.cpu_count() or 1) - 1, 4) or 1)
+        # NOTE: If execution time was less than the delay, block the request until delay seconds are passed
+        with wait_for(delay):
+            tmp_root, paths = requests.download_file(
+                base_directory=client.renku_path / CACHE, url=uri, filename=filename, extract=extract
+            )
     except errors.RequestError as e:  # pragma nocover
-        raise errors.OperationError("Cannot download from {}".format(uri)) from e
+        raise errors.OperationError(f"Cannot download from {uri}") from e
 
     paths = [p for p in paths if not p.is_dir()]
 
@@ -174,7 +169,8 @@ def download_files(
                 communication.unsubscribe(communicator)
 
     files = []
-    max_workers = min((os.cpu_count() or 1) - 1, 4) or 1
+    n_cpus = os.cpu_count() or 1
+    max_workers = min(n_cpus + 4, 8)
     with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
         futures = {
             executor.submit(
@@ -186,6 +182,7 @@ def download_files(
                 extract=extract,
                 filename=name,
                 multiple=True,
+                delay=max_workers,  # NOTE: Rate limit to 1 request/second
             )
             for url, name in zip(urls, names)
         }

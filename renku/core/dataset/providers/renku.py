@@ -263,7 +263,7 @@ class RenkuImporter(ImporterApi):
         return self._provider_dataset
 
     def download_files(self, client: "LocalClient", destination: Path, extract: bool) -> List["DatasetAddMetadata"]:
-        """Download dataset files."""
+        """Download dataset files from the remote provider."""
         from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
         from renku.core.management.client import LocalClient
         from renku.domain_model.dataset import RemoteEntity

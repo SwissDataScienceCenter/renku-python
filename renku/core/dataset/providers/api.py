@@ -66,17 +66,17 @@ class ProviderApi(abc.ABC):
         raise NotImplementedError
 
     @staticmethod
-    def supports_add():
+    def supports_add() -> bool:
         """Whether this provider supports adding data to datasets."""
         return False
 
     @staticmethod
-    def supports_export():
+    def supports_export() -> bool:
         """Whether this provider supports dataset export."""
         return False
 
     @staticmethod
-    def supports_import():
+    def supports_import() -> bool:
         """Whether this provider supports dataset import."""
         return False
 
@@ -170,7 +170,7 @@ class ImporterApi(abc.ABC):
 
     @abc.abstractmethod
     def download_files(self, client: "LocalClient", destination: Path, extract: bool) -> List["DatasetAddMetadata"]:
-        """Check if record is at last possible version."""
+        """Download dataset files from the remote provider."""
         raise NotImplementedError
 
     @abc.abstractmethod

@@ -411,7 +411,6 @@ def export_dataset(name, provider_name, tag, client_dispatcher: IClientDispatche
     communication.echo(f"Exported to: {destination}")
 
 
-@inject.autoparams("database_dispatcher")
 def import_dataset(
     uri,
     name="",
@@ -452,7 +451,7 @@ def import_dataset(
         return total_size * 2**20
 
     def remove_files(dataset):
-        """Remove files that exists in ``previous_dataset`` but not in ``dataset``.
+        """Remove files that exist in ``previous_dataset`` but not in ``dataset``.
 
         Args:
             dataset(Dataset): Dataset to update.
@@ -472,16 +471,15 @@ def import_dataset(
     try:
         importer = provider.get_importer(uri, gitlab_token=gitlab_token, **kwargs)
         provider_dataset: ProviderDataset = importer.fetch_provider_dataset()
-        is_latest_version = importer.is_latest_version()
+
+        if not importer.provider_dataset_files:
+            raise errors.ParameterError(f"Dataset '{uri}' has no files.")
+        if not importer.is_latest_version():
+            communication.warn(f"Newer version found at {importer.latest_uri}")
     except KeyError as e:
         raise errors.ParameterError(f"Could not process '{uri}'.\nUnable to fetch metadata: {e}")
     except LookupError as e:
         raise errors.ParameterError(f"Could not process '{uri}'.\nReason: {e}")
-
-    if not importer.provider_dataset_files:
-        raise errors.ParameterError(f"Dataset '{uri}' has no files.")
-    if not is_latest_version:
-        communication.warn(f"Newer version found at {importer.latest_uri}")
 
     confirm_download(importer.provider_dataset_files)
 

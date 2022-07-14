@@ -18,15 +18,12 @@
 import os
 from enum import Enum, auto
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List, NamedTuple, Optional, Type
+from typing import Any, List, NamedTuple, Optional, Type
 
 from marshmallow import EXCLUDE
 
 from renku.command.schema.dataset import DatasetSchema
-from renku.domain_model.dataset import Dataset
-
-if TYPE_CHECKING:
-    from renku.domain_model.dataset import DatasetTag, RemoteEntity
+from renku.domain_model.dataset import Dataset, DatasetTag, RemoteEntity
 
 
 class DatasetAddAction(Enum):

@@ -638,14 +638,6 @@ def test_usage_error_in_add_from_url(runner, client, params, message):
     assert message in result.output
 
 
-@pytest.mark.skip(reason="This warning is not shown anymore")
-def test_add_from_local_repo_warning(runner, client, data_repository, directory_tree):
-    """Test a warning is printed when adding from a local git repository."""
-    result = runner.invoke(cli, ["dataset", "add", "dataset", "--create", str(directory_tree)], catch_exceptions=False)
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "Use remote's Git URL instead to enable lineage " in result.output
-
-
 def test_add_untracked_file(runner, project, client, load_dataset_with_injection):
     """Test adding an untracked file to a dataset."""
     untracked = client.path / "untracked"

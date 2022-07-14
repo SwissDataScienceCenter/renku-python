@@ -94,7 +94,7 @@ class DOIImporter(ImporterApi):
         return True
 
     def download_files(self, client, destination: Path, extract: bool):
-        """Check if record is at last possible version."""
+        """Download dataset files from the remote provider."""
         raise NotImplementedError
 
     def tag_dataset(self, name: str) -> None:
@@ -117,7 +117,7 @@ class DOIProvider(ProviderApi):
         self.headers = headers if headers is not None else {"accept": "application/vnd.citationstyles.csl+json"}
 
     @staticmethod
-    def supports(uri):
+    def supports(uri) -> bool:
         """Whether or not this provider supports a given URI."""
         return bool(is_doi(uri))
 
