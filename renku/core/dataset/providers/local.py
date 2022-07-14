@@ -41,7 +41,9 @@ class FilesystemProvider(ProviderApi):
     priority = ProviderPriority.LOW
     name = "Local"
 
-    def __init__(self):
+    def __init__(self, uri: str):
+        super().__init__(uri=uri)
+
         self._path: Optional[str] = None
 
     @staticmethod

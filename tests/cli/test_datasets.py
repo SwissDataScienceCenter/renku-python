@@ -237,8 +237,8 @@ def test_datasets_invalid_name(runner, client, name):
     result = runner.invoke(cli, ["dataset", "create", name])
 
     assert 2 == result.exit_code
-    assert f'Dataset name "{name}" is not valid' in result.output
-    assert f'Hint: "{get_slug(name)}" is valid' in result.output
+    assert f"Dataset name '{name}' is not valid" in result.output
+    assert f"Hint: '{get_slug(name)}' is valid" in result.output
 
 
 def test_datasets_create_dirty_exception_untracked(runner, project, client):

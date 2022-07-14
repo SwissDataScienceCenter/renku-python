@@ -59,7 +59,7 @@ class DatasetContext:
             # NOTE: Don't update provenance when creating here because it will be updated later
             self.dataset = create_dataset(name=self.name, update_provenance=False)
         elif self.create:
-            raise errors.DatasetExistsError('Dataset exists: "{}".'.format(self.name))
+            raise errors.DatasetExistsError(self.name)
 
         return self.dataset
 

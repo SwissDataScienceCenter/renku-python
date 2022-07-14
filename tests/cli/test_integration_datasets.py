@@ -1931,3 +1931,43 @@ def test_dataset_ls_with_tag(runner, tmp_path):
     deleted_lfs_file = next(line for line in lines if "data/parts/part_relationships.csv" in line)
     assert "548 KB" in deleted_lfs_file
     assert "*" in deleted_lfs_file
+
+
+@pytest.mark.integration
+@retry_failed
+@pytest.mark.vcr
+def test_create_with_s3_backend(runner, client, global_config_dir, load_dataset_with_injection):
+    """Test creating a dataset with a valid S3 backend storage."""
+    result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://giab/"], input="\n\n\n")
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    dataset = load_dataset_with_injection("s3-data", client)
+
+    assert "s3://giab/" == dataset.storage
+
+    # NOTE: Dataset's data dir is git-ignored
+    dataset_datadir = os.path.join(DATA_DIR, "s3-data")
+    assert {dataset_datadir} == set(client.repository.get_ignored_paths(dataset_datadir))
+
+
+@pytest.mark.integration
+@retry_failed
+@pytest.mark.vcr
+def test_create_with_non_existing_s3_backend(runner, client, global_config_dir, load_dataset_with_injection):
+    """Test creating a dataset with an invalid S3 backend storage."""
+    result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://no-giab/"], input="\n\n\n")
+
+    assert 2 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+    assert "S3 bucket 'no-giab' doesn't exists" in result.output
+
+
+@pytest.mark.integration
+@retry_failed
+@pytest.mark.vcr
+def test_create_with_unauthorized_s3_backend(runner, client, global_config_dir, load_dataset_with_injection):
+    """Test creating a dataset with an invalid credentials."""
+    result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://amazon/"], input="\n\n\n")
+
+    assert 1 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+    assert "Authentication failed when accessing the remote storage" in result.output

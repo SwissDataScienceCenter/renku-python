@@ -41,7 +41,7 @@ from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.dispatcher import get_client, get_database
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository, get_git_user
-from renku.core.util.metadata import is_external_file
+from renku.core.util.metadata import is_external_file, read_credentials, store_credentials
 from renku.core.util.os import delete_file
 from renku.core.util.tabulate import tabulate
 from renku.core.util.urls import get_slug
@@ -100,6 +100,7 @@ def create_dataset(
     images: Optional[List[ImageRequestModel]] = None,
     update_provenance: bool = True,
     custom_metadata: Optional[Dict[str, Any]] = None,
+    storage: Optional[str] = None,
 ):
     """Create a dataset.
 
@@ -113,6 +114,7 @@ def create_dataset(
         update_provenance(bool, optional): Whether to add this dataset to dataset provenance
             (Default value = True).
         custom_metadata(Optional[Dict[str, Any]], optional): Custom JSON-LD metadata (Default value = None).
+        storage(Optional[str], optional): Backend storage's URI (Default value = None).
 
     Returns:
         Dataset: The created dataset.
@@ -128,22 +130,21 @@ def create_dataset(
 
     if not is_dataset_name_valid(name):
         valid_name = get_slug(name, lowercase=False)
-        raise errors.ParameterError(f'Dataset name "{name}" is not valid (Hint: "{valid_name}" is valid).')
+        raise errors.ParameterError(f"Dataset name '{name}' is not valid (Hint: '{valid_name}' is valid).")
 
     datasets_provenance = DatasetsProvenance()
 
     if datasets_provenance.get_by_name(name=name):
-        raise errors.DatasetExistsError(f"Dataset exists: '{name}'")
+        raise errors.DatasetExistsError(name)
 
     if not title:
         title = name
 
     keywords = keywords or []
 
-    annotations = None
-
-    if custom_metadata:
-        annotations = [Annotation(id=Annotation.generate_id(), source="renku", body=custom_metadata)]
+    annotations = (
+        [Annotation(id=Annotation.generate_id(), source="renku", body=custom_metadata)] if custom_metadata else None
+    )
 
     dataset = Dataset(
         identifier=None,
@@ -154,10 +155,15 @@ def create_dataset(
         keywords=keywords,
         project_id=client.project.id,
         annotations=annotations,
+        storage=storage,
     )
 
     if images:
         set_dataset_images(client, dataset, images)
+
+    if storage:
+        provider = ProviderFactory.get_create_provider(uri=storage)
+        provider.on_create(dataset=dataset)
 
     if update_provenance:
         datasets_provenance.add_or_update(dataset)
@@ -390,7 +396,7 @@ def export_dataset(name, provider_name, tag, client_dispatcher: IClientDispatche
     exporter = provider.get_exporter(dataset=dataset, tag=selected_tag, **kwargs)
 
     if exporter.requires_access_token():
-        access_token = client.get_value(provider_name, config_key_secret)
+        access_token = read_credentials(section=provider_name, key=config_key_secret)
 
         if access_token is None:
             access_token = prompt_access_token(exporter)
@@ -398,7 +404,7 @@ def export_dataset(name, provider_name, tag, client_dispatcher: IClientDispatche
             if access_token is None or len(access_token) == 0:
                 raise errors.InvalidAccessToken()
 
-            client.set_value(provider_name, config_key_secret, access_token, global_only=True)
+            store_credentials(section=provider_name, key=config_key_secret, value=access_token)
 
         exporter.set_access_token(access_token)
 
@@ -412,25 +418,25 @@ def export_dataset(name, provider_name, tag, client_dispatcher: IClientDispatche
 
 
 def import_dataset(
-    uri,
-    name="",
-    extract=False,
-    yes=False,
-    previous_dataset=None,
-    delete=False,
-    gitlab_token=None,
+    uri: str,
+    name: str = "",
+    extract: bool = False,
+    yes: bool = False,
+    previous_dataset: Optional[Dataset] = None,
+    delete: bool = False,
+    gitlab_token: Optional[str] = None,
     **kwargs,
 ):
     """Import data from a 3rd party provider or another renku project.
 
     Args:
-        uri: DOI or URL of dataset to import.
-        name: Name to give imported dataset (Default value = "").
-        extract: Whether to extract compressed dataset data (Default value = False).
-        yes: Whether to skip user confirmation (Default value = False).
-        previous_dataset: Previously imported dataset version (Default value = None).
-        delete: Whether to delete files that don't exist anymore (Default value = False).
-        gitlab_token: Gitlab OAuth2 token (Default value = None).
+        uri(str): DOI or URL of dataset to import.
+        name(str): Name to give imported dataset (Default value = "").
+        extract(bool): Whether to extract compressed dataset data (Default value = False).
+        yes(bool): Whether to skip user confirmation (Default value = False).
+        previous_dataset(Optional[Dataset]): Previously imported dataset version (Default value = None).
+        delete(bool): Whether to delete files that don't exist anymore (Default value = False).
+        gitlab_token(Optional[str]): Gitlab OAuth2 token (Default value = None).
     """
     from renku.core.dataset.dataset_add import add_to_dataset
 
@@ -469,7 +475,7 @@ def import_dataset(
     provider = ProviderFactory.get_import_provider(uri)
 
     try:
-        importer = provider.get_importer(uri, gitlab_token=gitlab_token, **kwargs)
+        importer = provider.get_importer(gitlab_token=gitlab_token, **kwargs)
         provider_dataset: ProviderDataset = importer.fetch_provider_dataset()
     except KeyError as e:
         raise errors.ParameterError(f"Could not process '{uri}'.\nUnable to fetch metadata: {e}")
@@ -577,7 +583,7 @@ def update_datasets(
             except errors.DatasetProviderNotFound:
                 continue
 
-            record = provider.get_importer(uri)
+            record = provider.get_importer()
 
             if isinstance(provider, RenkuProvider) and dataset.version is not None:
                 tags = dataset_gateway.get_all_tags(dataset=dataset)

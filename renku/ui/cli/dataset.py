@@ -58,6 +58,23 @@ the dataset.
 | -m, --metadata    | Path to file containing custom JSON-LD metadata to   |
 |                   | be added to the dataset.                             |
 +-------------------+------------------------------------------------------+
+| -s, --storage     | Define a storage backend for the created dataset.    |
++-------------------+------------------------------------------------------+
+
+Creating a dataset with a storage backend:
+
+By passing a storage URI with the ``--storage`` option, you can tell Renku that
+the data for the dataset is stored in a remote storage. At the moment, Renku
+supports only S3 backends. For example:
+
+.. code-block:: console
+
+    $ renku dataset create s3-data --storage s3://bucket-name/path
+
+Renku prompts for your S3 credentials and can store them for future uses.
+
+.. note:: Data directory for datasets that have a storage backend is ignored by
+    Git. This is needed to avoid committing pulled data from a remote storage to Git.
 
 Editing a dataset's metadata:
 
@@ -616,7 +633,8 @@ def list_dataset(format, columns):
     help="Custom metadata to be associated with the dataset.",
 )
 @click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords.")
-def create(name, title, description, creators, metadata, keyword):
+@click.option("-s", "--storage", default=None, type=click.STRING, help="URI of the storage backend.")
+def create(name, title, description, creators, metadata, keyword, storage):
     """Create an empty dataset in the current repo."""
     from renku.command.dataset import create_dataset_command
     from renku.core.util.metadata import construct_creators
@@ -644,6 +662,7 @@ def create(name, title, description, creators, metadata, keyword):
             creators=creators,
             keywords=keyword,
             custom_metadata=custom_metadata,
+            storage=storage,
         )
     )
 
@@ -783,6 +802,8 @@ def show(tag, name):
     click.echo(click.style("Keywords: ", bold=True, fg=color.MAGENTA) + ", ".join(ds.get("keywords") or []))
 
     click.echo(click.style("Version: ", bold=True, fg=color.MAGENTA) + (ds.get("version") or ""))
+
+    click.echo(click.style("Storage: ", bold=True, fg=color.MAGENTA) + (ds.get("storage") or ""))
 
     click.echo(click.style("Annotations: ", bold=True, fg=color.MAGENTA))
     if ds["annotations"]:

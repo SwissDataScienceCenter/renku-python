@@ -33,7 +33,9 @@ class DOIProvider(ProviderApi):
     priority = ProviderPriority.HIGHER
     name = "DOI"
 
-    def __init__(self, headers=None, timeout=3):
+    def __init__(self, uri: str, headers=None, timeout=3):
+        super().__init__(uri=uri)
+
         self.timeout = timeout
         self.headers = headers if headers is not None else {"accept": "application/vnd.citationstyles.csl+json"}
 
@@ -42,7 +44,7 @@ class DOIProvider(ProviderApi):
         """Whether or not this provider supports a given URI."""
         return bool(is_doi(uri))
 
-    def get_importer(self, uri, **kwargs) -> "DOIImporter":
+    def get_importer(self, **kwargs) -> "DOIImporter":
         """Get import manager."""
         from renku.core.util import requests
 
@@ -67,7 +69,7 @@ class DOIProvider(ProviderApi):
             except TypeError:
                 raise errors.ImportError("doi metadata could not be serialized")
 
-        query_response = query(uri)
+        query_response = query(self.uri)
         return serialize(query_response)
 
 

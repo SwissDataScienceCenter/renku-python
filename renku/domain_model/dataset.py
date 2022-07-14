@@ -316,6 +316,7 @@ class Dataset(Persistent):
     """Represent a dataset."""
 
     date_modified: Optional[datetime] = None  # type: ignore
+    storage: Optional[str] = None
 
     def __init__(
         self,
@@ -338,6 +339,7 @@ class Dataset(Persistent):
         name: Optional[str] = None,
         project_id: Optional[str] = None,
         same_as: Optional[Url] = None,
+        storage: Optional[str] = None,
         title: Optional[str] = None,
         version: Optional[str] = None,
     ):
@@ -377,6 +379,7 @@ class Dataset(Persistent):
         self.license: Optional[str] = license
         self.project_id: Optional[str] = project_id
         self.same_as: Optional[Url] = same_as
+        self.storage: Optional[str] = storage
         self.title: Optional[str] = title
         self.version: Optional[str] = version
         self.annotations: List["Annotation"] = annotations or []
@@ -422,6 +425,12 @@ class Dataset(Persistent):
 
     def __repr__(self) -> str:
         return f"<Dataset {self.identifier} {self.name}>"
+
+    def get_datadir(self) -> str:
+        """Return dataset's data directory."""
+        from renku.core.util.dispatcher import get_client
+
+        return os.path.join(get_client().data_dir, self.name)
 
     def is_derivation(self) -> bool:
         """Return if a dataset has correct derived_from."""
@@ -628,6 +637,7 @@ class DatasetDetailsJson(marshmallow.Schema):
     description = marshmallow.fields.String()
     keywords = marshmallow.fields.List(marshmallow.fields.String())
     identifier = marshmallow.fields.String()
+    storage = marshmallow.fields.String()
 
     annotations = marshmallow.fields.List(marshmallow.fields.Nested(AnnotationJson))
 
