@@ -37,9 +37,14 @@ from renku.core.workflow.plan_factory import PlanFactory
 from renku.domain_model.provenance.activity import Activity
 
 
-def run_command():
+def run_command(skip_metadata_update: bool):
     """Tracking work on a specific problem."""
-    return Command().command(_run_command).require_migration().require_clean().with_database(write=True).with_commit()
+    command = Command().command(_run_command).require_migration().require_clean()
+    if skip_metadata_update:
+        command = command.with_database(write=False)
+    else:
+        command = command.with_database(write=True).with_commit()
+    return command
 
 
 @inject.autoparams()

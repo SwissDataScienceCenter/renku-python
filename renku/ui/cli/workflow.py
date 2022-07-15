@@ -1083,12 +1083,14 @@ def outputs(ctx, paths):
     type=click.Path(exists=True, dir_okay=False),
     help="YAML file containing parameter mappings to be used.",
 )
+@click.option("--skip-metadata-update", is_flag=True, help="Do not update the metadata store for the execution.")
 @click.argument("name_or_id", required=True, shell_complete=_complete_workflows)
 def execute(
     provider,
     config,
     set_params,
     values,
+    skip_metadata_update,
     name_or_id,
 ):
     """Execute a given workflow."""
@@ -1097,7 +1099,7 @@ def execute(
     communicator = ClickCallback()
 
     result = (
-        execute_workflow_command()
+        execute_workflow_command(skip_metadata_update=skip_metadata_update)
         .with_communicator(communicator)
         .build()
         .execute(

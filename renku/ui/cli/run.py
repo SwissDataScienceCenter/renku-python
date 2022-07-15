@@ -298,6 +298,7 @@ from renku.ui.cli.utils.callback import ClickCallback
 @click.option("--isolation", is_flag=True, default=False, help="Invoke the given command in isolation.")
 @click.argument("command_line", nargs=-1, required=True, type=click.UNPROCESSED)
 @click.option("--verbose", is_flag=True, default=False, help="Print generated plan after the execution.")
+@click.option("--skip-metadata-update", is_flag=True, help="Do not update the metadata store for the execution.")
 def run(
     name,
     description,
@@ -312,13 +313,14 @@ def run(
     isolation,
     command_line,
     verbose,
+    skip_metadata_update,
 ):
     """Tracking work on a specific problem."""
     from renku.command.run import run_command
     from renku.ui.cli.utils.terminal import print_plan
 
     communicator = ClickCallback()
-    command = run_command()
+    command = run_command(skip_metadata_update=skip_metadata_update)
 
     if isolation:
         command = command.with_git_isolation()
