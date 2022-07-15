@@ -15,12 +15,56 @@
 # limitations under the License.
 """Models for providers."""
 
-from typing import Optional
+import os
+from enum import Enum, auto
+from pathlib import Path
+from typing import Any, List, NamedTuple, Optional, Type
 
 from marshmallow import EXCLUDE
 
 from renku.command.schema.dataset import DatasetSchema
-from renku.domain_model.dataset import Dataset, DatasetTag
+from renku.domain_model.dataset import Dataset, DatasetTag, RemoteEntity
+
+
+class DatasetAddAction(Enum):
+    """Types of action when adding a file to a dataset."""
+
+    COPY = auto()
+    MOVE = auto()
+    SYMLINK = auto()
+    NONE = auto()
+
+
+class DatasetAddMetadata(NamedTuple):
+    """Metadata for a new file that will be added to a dataset."""
+
+    entity_path: Path
+    url: str
+    action: DatasetAddAction
+    source: Path
+    destination: Path
+    based_on: Optional["RemoteEntity"] = None
+
+    @property
+    def has_action(self) -> bool:
+        """Returns if file action is not NONE."""
+        return self.action != DatasetAddAction.NONE
+
+    def get_absolute_commit_path(self, client_path: Path) -> str:
+        """Return path of the file in the repository."""
+        return os.path.join(client_path, self.entity_path)
+
+
+class ProviderParameter(NamedTuple):
+    """Provider-specific parameters."""
+
+    name: str
+    default: Any = None
+    flags: List[str] = []
+    help: str = ""
+    is_flag: bool = False
+    multiple: bool = False
+    type: Optional[Type] = None
 
 
 class ProviderDataset(Dataset):
@@ -30,7 +74,7 @@ class ProviderDataset(Dataset):
         kwargs.setdefault("initial_identifier", "invalid-initial-id")
         super().__init__(**kwargs)
         self.dataset_files = []  # TODO Make this a property
-        self._tag: Optional[DatasetTag] = None
+        self._tag: Optional["DatasetTag"] = None
 
     @classmethod
     def from_jsonld(cls, data, schema_class=None) -> "ProviderDataset":
@@ -42,7 +86,7 @@ class ProviderDataset(Dataset):
         return self
 
     @classmethod
-    def from_dataset(cls, dataset: Dataset) -> "ProviderDataset":
+    def from_dataset(cls, dataset: "Dataset") -> "ProviderDataset":
         """Create an instance from a Dataset."""
         return ProviderDataset(
             annotations=dataset.annotations,
@@ -73,7 +117,7 @@ class ProviderDataset(Dataset):
         raise NotImplementedError("ProviderDataset has no files.")
 
     @property
-    def tag(self) -> Optional[DatasetTag]:
+    def tag(self) -> Optional["DatasetTag"]:
         """Return dataset's tag."""
         return self._tag
 

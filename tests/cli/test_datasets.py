@@ -31,8 +31,8 @@ from renku.command.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
 from renku.core import errors
 from renku.core.constant import RENKU_HOME
 from renku.core.dataset.constant import REFS, renku_pointers_path
-from renku.core.dataset.providers import ProviderFactory
 from renku.core.dataset.providers.dataverse import DataverseProvider
+from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.zenodo import ZenodoProvider
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.util.urls import get_slug
@@ -76,7 +76,7 @@ def test_dataset_show(runner, client, subdirectory):
     """Test creating and showing a dataset with metadata."""
     result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
     assert 1 == result.exit_code, format_result_exception(result)
-    assert 'Dataset "my-dataset" is not found.' in result.output
+    assert "Dataset 'my-dataset' is not found." in result.output
 
     metadata = {
         "@id": "https://example.com/annotation1",
@@ -131,7 +131,7 @@ def test_dataset_show_tag(runner, client, subdirectory):
     """Test creating and showing a dataset with metadata."""
     result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
     assert 1 == result.exit_code, format_result_exception(result)
-    assert 'Dataset "my-dataset" is not found.' in result.output
+    assert "Dataset 'my-dataset' is not found." in result.output
 
     metadata = {
         "@id": "https://example.com/annotation1",
@@ -636,13 +636,6 @@ def test_usage_error_in_add_from_url(runner, client, params, message):
     result = runner.invoke(cli, ["dataset", "add", "remote", "--create"] + params, catch_exceptions=False)
     assert 2 == result.exit_code
     assert message in result.output
-
-
-def test_add_from_local_repo_warning(runner, client, data_repository, directory_tree):
-    """Test a warning is printed when adding from a local git repository."""
-    result = runner.invoke(cli, ["dataset", "add", "dataset", "--create", str(directory_tree)], catch_exceptions=False)
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "Use remote's Git URL instead to enable lineage " in result.output
 
 
 def test_add_untracked_file(runner, project, client, load_dataset_with_injection):
@@ -1279,7 +1272,7 @@ def test_dataset_edit_no_change(runner, client, project, dirty):
 )
 def test_dataset_provider_resolution_zenodo(doi_responses, uri):
     """Check that zenodo uris resolve to ZenodoProvider."""
-    provider, _ = ProviderFactory.from_uri(uri)
+    provider = ProviderFactory.get_import_provider(uri)
     assert type(provider) is ZenodoProvider
 
 
@@ -1294,7 +1287,7 @@ def test_dataset_provider_resolution_zenodo(doi_responses, uri):
 @pytest.mark.integration
 def test_dataset_provider_resolution_dataverse(doi_responses, uri):
     """Check that dataverse URIs resolve to ``DataverseProvider``."""
-    provider, _ = ProviderFactory.from_uri(uri)
+    provider = ProviderFactory.get_import_provider(uri)
     assert type(provider) is DataverseProvider
 
 

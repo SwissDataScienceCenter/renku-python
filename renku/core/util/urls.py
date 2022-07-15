@@ -29,8 +29,6 @@ from renku.core import errors
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.util.git import get_remote, parse_git_url
 
-SUPPORTED_SCHEMES = ("", "file", "http", "https", "git+https", "git+ssh")
-
 
 def url_to_string(url):
     """Convert url from ``list`` or ``ParseResult`` to string."""
@@ -119,59 +117,3 @@ def get_slug(name: str, invalid_chars: Optional[List[str]] = None, lowercase: bo
     valid_end = re.sub(r"[._-]$", "", valid_start)
     no_dot_lock_at_end = re.sub(r"\.lock$", "_lock", valid_end)
     return no_dot_lock_at_end
-
-
-def check_url(url):
-    """Check if a url is local/remote and if it contains a git repository."""
-    from renku.core.util import requests
-    from renku.infrastructure.repository import Repository
-
-    u = urllib.parse.urlparse(url)
-
-    if u.scheme not in SUPPORTED_SCHEMES:
-        raise errors.UrlSchemeNotSupported('Scheme "{}" not supported'.format(u.scheme))
-
-    is_remote = u.scheme not in ("", "file") or url.startswith("git@")
-    is_git = False
-
-    if is_remote:
-        is_git = u.path.endswith(".git")
-        if not is_git:
-            url = requests.get_redirect_url(url)
-    elif os.path.isdir(u.path) or os.path.isdir(os.path.realpath(u.path)):
-        try:
-            Repository(u.path, search_parent_directories=True)
-        except errors.GitError:
-            pass
-        else:
-            is_git = True
-
-    return is_remote, is_git, url
-
-
-def _ensure_dropbox(url):
-    """Ensure dropbox url is set for file download."""
-    if not isinstance(url, urllib.parse.ParseResult):
-        url = urllib.parse.urlparse(url)
-
-    query = url.query or ""
-    if "dl=0" in url.query:
-        query = query.replace("dl=0", "dl=1")
-    else:
-        query += "dl=1"
-
-    url = url._replace(query=query)
-    return url
-
-
-def provider_check(url):
-    """Check additional provider related operations."""
-    from renku.core.util import requests
-
-    url = requests.get_redirect_url(url)
-    url = urllib.parse.urlparse(url)
-
-    if "dropbox.com" in url.netloc:
-        url = _ensure_dropbox(url)
-
-    return urllib.parse.urlunparse(url)
