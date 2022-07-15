@@ -52,113 +52,73 @@ ZENODO_FILES_URL = "depositions/{0}/files"
 ZENODO_NEW_DEPOSIT_URL = "depositions"
 
 
-def make_records_url(record_id):
-    """Create URL to access record by ID.
+class ZenodoProvider(ProviderApi):
+    """Zenodo registry API provider."""
 
-    Args:
-        record_id:  The id of the record.
+    priority = ProviderPriority.HIGH
+    name = "Zenodo"
 
-    Returns:
-        str: Full URL for the record.
-    """
-    return urllib.parse.urljoin(ZENODO_BASE_URL, pathlib.posixpath.join(ZENODO_API_PATH, "records", record_id))
+    def __init__(self, is_doi: bool = False):
+        self.is_doi = is_doi
+        self._publish: bool = False
 
+    @staticmethod
+    def supports(uri):
+        """Whether or not this provider supports a given URI."""
+        if "zenodo" in uri.lower():
+            return True
 
-class ZenodoFileSerializer:
-    """Zenodo record file."""
+        return False
 
-    def __init__(self, *, id=None, checksum=None, links=None, filename=None, filesize=None):
-        self.id = id
-        self.checksum = checksum
-        self.links = links
-        self.filename = filename
-        self.filesize = filesize
+    @staticmethod
+    def supports_export():
+        """Whether this provider supports dataset export."""
+        return True
 
-    @property
-    def remote_url(self):
-        """Get remote URL as ``urllib.ParseResult``."""
-        return urllib.parse.urlparse(self.links["download"])
+    @staticmethod
+    def supports_import():
+        """Whether this provider supports dataset import."""
+        return True
 
-    @property
-    def type(self):
-        """Get file type."""
-        return self.filename.split(".")[-1]
+    @staticmethod
+    def get_record_id(uri):
+        """Extract record id from URI."""
+        return urlparse(uri).path.split("/")[-1]
 
+    @staticmethod
+    def get_export_parameters() -> List["ProviderParameter"]:
+        """Returns parameters that can be set for export."""
+        from renku.core.dataset.providers.models import ProviderParameter
 
-class ZenodoMetadataSerializer:
-    """Zenodo metadata."""
+        return [ProviderParameter("publish", help="Publish the exported dataset.", is_flag=True)]
 
-    def __init__(
-        self,
-        *,
-        access_right=None,
-        communities=None,
-        contributors=None,
-        creators=None,
-        description=None,
-        doi=None,
-        extras=None,
-        grants=None,
-        image_type=None,
-        journal_issue=None,
-        journal_pages=None,
-        journal_title=None,
-        journal_volume=None,
-        keywords=None,
-        language=None,
-        license=None,
-        notes=None,
-        prereserve_doi=None,
-        publication_date=None,
-        publication_type=None,
-        references=None,
-        related_identifiers=None,
-        title=None,
-        upload_type=None,
-        version=None,
-    ):
-        self.access_right = access_right
-        self.communities = communities
-        self.contributors = contributors
-        self.creators = creators
-        self.description = description
-        self.doi = doi
-        self.extras = extras
-        self.grants = grants
-        self.image_type = image_type
-        self.journal_issue = journal_issue
-        self.journal_pages = journal_pages
-        self.journal_title = journal_title
-        self.journal_volume = journal_volume
-        self.keywords = keywords
-        self.language = language
-        self.license = license
-        self.notes = notes
-        self.prereserve_doi = prereserve_doi
-        self.publication_date = publication_date
-        self.publication_type = publication_type
-        self.references = references
-        self.related_identifiers = related_identifiers
-        self.title = title
-        self.upload_type = upload_type
-        self.version = version
-
-    @classmethod
-    def from_metadata(cls, metadata: Dict[str, Any]) -> "ZenodoMetadataSerializer":
-        """Create an instance from a metadata dict.
+    def get_importer(self, uri, **kwargs) -> "ZenodoImporter":
+        """Get importer for a record from Zenodo.
 
         Args:
-            metadata: The dict data to convert.
+            uri: DOI or URL.
 
         Returns:
-            ZenodoMetadataSerializer: Serializer containing data in deserialized form.
+            ZenodoImporter: Record found.
         """
-        all_keys = set(vars(ZenodoMetadataSerializer()).keys())
+        from renku.core.dataset.providers.doi import DOIProvider
 
-        data = {key: metadata.get(key) for key in all_keys}
-        data["extras"] = {key: metadata.get(key) for key in (metadata.keys() - all_keys)}
+        original_uri = uri
 
-        return ZenodoMetadataSerializer(**data)
+        if self.is_doi:
+            # NOTE: Resolve the DOI and make a record for the retrieved record id
+            doi = DOIProvider().get_importer(uri)
+            uri = doi.uri
+
+        response = _make_request(uri)
+        return ZenodoImporter(uri=uri, original_uri=original_uri, json=response.json())
+
+    def get_exporter(
+        self, dataset: "Dataset", *, tag: Optional["DatasetTag"], publish: bool = False, **kwargs
+    ) -> "ZenodoExporter":
+        """Create export manager for given dataset."""
+        self._publish = publish
+        return ZenodoExporter(dataset=dataset, publish=self._publish, tag=tag)
 
 
 class ZenodoImporter(RepositoryImporter):
@@ -274,6 +234,166 @@ class ZenodoImporter(RepositoryImporter):
 
         self._provider_dataset = dataset
         return self._provider_dataset
+
+
+class ZenodoFileSerializer:
+    """Zenodo record file."""
+
+    def __init__(self, *, id=None, checksum=None, links=None, filename=None, filesize=None):
+        self.id = id
+        self.checksum = checksum
+        self.links = links
+        self.filename = filename
+        self.filesize = filesize
+
+    @property
+    def remote_url(self):
+        """Get remote URL as ``urllib.ParseResult``."""
+        return urllib.parse.urlparse(self.links["download"])
+
+    @property
+    def type(self):
+        """Get file type."""
+        return self.filename.split(".")[-1]
+
+
+class ZenodoMetadataSerializer:
+    """Zenodo metadata."""
+
+    def __init__(
+        self,
+        *,
+        access_right=None,
+        communities=None,
+        contributors=None,
+        creators=None,
+        description=None,
+        doi=None,
+        extras=None,
+        grants=None,
+        image_type=None,
+        journal_issue=None,
+        journal_pages=None,
+        journal_title=None,
+        journal_volume=None,
+        keywords=None,
+        language=None,
+        license=None,
+        notes=None,
+        prereserve_doi=None,
+        publication_date=None,
+        publication_type=None,
+        references=None,
+        related_identifiers=None,
+        title=None,
+        upload_type=None,
+        version=None,
+    ):
+        self.access_right = access_right
+        self.communities = communities
+        self.contributors = contributors
+        self.creators = creators
+        self.description = description
+        self.doi = doi
+        self.extras = extras
+        self.grants = grants
+        self.image_type = image_type
+        self.journal_issue = journal_issue
+        self.journal_pages = journal_pages
+        self.journal_title = journal_title
+        self.journal_volume = journal_volume
+        self.keywords = keywords
+        self.language = language
+        self.license = license
+        self.notes = notes
+        self.prereserve_doi = prereserve_doi
+        self.publication_date = publication_date
+        self.publication_type = publication_type
+        self.references = references
+        self.related_identifiers = related_identifiers
+        self.title = title
+        self.upload_type = upload_type
+        self.version = version
+
+    @classmethod
+    def from_metadata(cls, metadata: Dict[str, Any]) -> "ZenodoMetadataSerializer":
+        """Create an instance from a metadata dict.
+
+        Args:
+            metadata: The dict data to convert.
+
+        Returns:
+            ZenodoMetadataSerializer: Serializer containing data in deserialized form.
+        """
+        all_keys = set(vars(ZenodoMetadataSerializer()).keys())
+
+        data = {key: metadata.get(key) for key in all_keys}
+        data["extras"] = {key: metadata.get(key) for key in (metadata.keys() - all_keys)}
+
+        return ZenodoMetadataSerializer(**data)
+
+
+class ZenodoExporter(ExporterApi):
+    """Zenodo export manager."""
+
+    HEADERS = {"Content-Type": "application/json"}
+
+    def __init__(self, dataset, publish, tag):
+        super().__init__(dataset)
+        self._access_token = None
+        self._publish = publish
+        self._tag = tag
+
+    @property
+    def zenodo_url(self):
+        """Returns correct Zenodo URL based on environment."""
+        if "ZENODO_USE_SANDBOX" in os.environ:
+            return ZENODO_SANDBOX_URL
+
+        return ZENODO_BASE_URL
+
+    def set_access_token(self, access_token):
+        """Set access token."""
+        self._access_token = access_token
+
+    def get_access_token_url(self):
+        """Endpoint for creation of access token."""
+        return urllib.parse.urlparse("https://zenodo.org/account/settings/applications/tokens/new/").geturl()
+
+    @property
+    def default_params(self):
+        """Create request default parameters."""
+        return {"access_token": self._access_token}
+
+    def dataset_to_request(self):
+        """Prepare dataset metadata for request."""
+        from renku.command.schema.dataset import dump_dataset_as_jsonld
+
+        jsonld = dump_dataset_as_jsonld(self.dataset)
+        jsonld["upload_type"] = "dataset"
+        return jsonld
+
+    def export(self, client=None, **kwargs):
+        """Execute entire export process."""
+        # Step 1. Create new deposition
+        deposition = ZenodoDeposition(exporter=self)
+
+        # Step 2. Attach metadata to deposition
+        deposition.attach_metadata(self.dataset, self._tag)
+
+        # Step 3. Upload all files to created deposition
+        with communication.progress("Uploading files ...", total=len(self.dataset.files)) as progressbar:
+            for file in self.dataset.files:
+                filepath = client.repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
+                deposition.upload_file(filepath, path_in_repo=file.entity.path)
+                progressbar.update()
+
+        # Step 4. Publish newly created deposition
+        if self._publish:
+            deposition.publish_deposition()
+            return deposition.published_at
+
+        return deposition.deposit_at
 
 
 class ZenodoDeposition:
@@ -419,141 +539,21 @@ class ZenodoDeposition:
                 raise errors.ExportError(response.content)
 
 
-class ZenodoExporter(ExporterApi):
-    """Zenodo export manager."""
-
-    HEADERS = {"Content-Type": "application/json"}
-
-    def __init__(self, dataset, publish, tag):
-        super().__init__(dataset)
-        self._access_token = None
-        self._publish = publish
-        self._tag = tag
-
-    @property
-    def zenodo_url(self):
-        """Returns correct Zenodo URL based on environment."""
-        if "ZENODO_USE_SANDBOX" in os.environ:
-            return ZENODO_SANDBOX_URL
-
-        return ZENODO_BASE_URL
-
-    def set_access_token(self, access_token):
-        """Set access token."""
-        self._access_token = access_token
-
-    def get_access_token_url(self):
-        """Endpoint for creation of access token."""
-        return urllib.parse.urlparse("https://zenodo.org/account/settings/applications/tokens/new/").geturl()
-
-    @property
-    def default_params(self):
-        """Create request default parameters."""
-        return {"access_token": self._access_token}
-
-    def dataset_to_request(self):
-        """Prepare dataset metadata for request."""
-        from renku.command.schema.dataset import dump_dataset_as_jsonld
-
-        jsonld = dump_dataset_as_jsonld(self.dataset)
-        jsonld["upload_type"] = "dataset"
-        return jsonld
-
-    def export(self, client=None, **kwargs):
-        """Execute entire export process."""
-        # Step 1. Create new deposition
-        deposition = ZenodoDeposition(exporter=self)
-
-        # Step 2. Attach metadata to deposition
-        deposition.attach_metadata(self.dataset, self._tag)
-
-        # Step 3. Upload all files to created deposition
-        with communication.progress("Uploading files ...", total=len(self.dataset.files)) as progressbar:
-            for file in self.dataset.files:
-                filepath = client.repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
-                deposition.upload_file(filepath, path_in_repo=file.entity.path)
-                progressbar.update()
-
-        # Step 4. Publish newly created deposition
-        if self._publish:
-            deposition.publish_deposition()
-            return deposition.published_at
-
-        return deposition.deposit_at
-
-
-class ZenodoProvider(ProviderApi):
-    """Zenodo registry API provider."""
-
-    priority = ProviderPriority.HIGH
-    name = "Zenodo"
-
-    def __init__(self, is_doi: bool = False):
-        self.is_doi = is_doi
-        self._publish: bool = False
-
-    @staticmethod
-    def supports(uri):
-        """Whether or not this provider supports a given URI."""
-        if "zenodo" in uri.lower():
-            return True
-
-        return False
-
-    @staticmethod
-    def supports_export():
-        """Whether this provider supports dataset export."""
-        return True
-
-    @staticmethod
-    def supports_import():
-        """Whether this provider supports dataset import."""
-        return True
-
-    @staticmethod
-    def get_record_id(uri):
-        """Extract record id from URI."""
-        return urlparse(uri).path.split("/")[-1]
-
-    @staticmethod
-    def get_export_parameters() -> List["ProviderParameter"]:
-        """Returns parameters that can be set for export."""
-        from renku.core.dataset.providers.models import ProviderParameter
-
-        return [ProviderParameter("publish", help="Publish the exported dataset.", is_flag=True)]
-
-    def get_importer(self, uri, **kwargs) -> ZenodoImporter:
-        """Get importer for a record from Zenodo.
-
-        Args:
-            uri: DOI or URL.
-
-        Returns:
-            ZenodoImporter: Record found.
-        """
-        from renku.core.dataset.providers.doi import DOIProvider
-
-        original_uri = uri
-
-        if self.is_doi:
-            # NOTE: Resolve the DOI and make a record for the retrieved record id
-            doi = DOIProvider().get_importer(uri)
-            uri = doi.uri
-
-        response = _make_request(uri)
-        return ZenodoImporter(uri=uri, original_uri=original_uri, json=response.json())
-
-    def get_exporter(
-        self, dataset: "Dataset", *, tag: Optional["DatasetTag"], publish: bool = False, **kwargs
-    ) -> "ZenodoExporter":
-        """Create export manager for given dataset."""
-        self._publish = publish
-        return ZenodoExporter(dataset=dataset, publish=self._publish, tag=tag)
-
-
 def _make_request(uri, accept: str = "application/json"):
     """Execute network request."""
     record_id = ZenodoProvider.get_record_id(uri)
     url = make_records_url(record_id)
 
     return make_request(url=url, accept=accept)
+
+
+def make_records_url(record_id):
+    """Create URL to access record by ID.
+
+    Args:
+        record_id:  The id of the record.
+
+    Returns:
+        str: Full URL for the record.
+    """
+    return urllib.parse.urljoin(ZENODO_BASE_URL, pathlib.posixpath.join(ZENODO_API_PATH, "records", record_id))

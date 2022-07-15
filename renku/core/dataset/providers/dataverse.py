@@ -72,71 +72,6 @@ DATAVERSE_SUBJECTS = [
 ]
 
 
-def check_dataverse_uri(url):
-    """Check if an URL points to a dataverse instance."""
-    from renku.core.util import requests
-
-    url_parts = list(urlparse.urlparse(url))
-    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSION_API)
-
-    url_parts[3:6] = [""] * 3
-    version_url = urlparse.urlunparse(url_parts)
-
-    response = requests.get(version_url)
-
-    if response.status_code != 200:
-        return False
-
-    version_data = response.json()
-
-    if "status" not in version_data or "data" not in version_data:
-        return False
-
-    version_info = version_data["data"]
-
-    if "version" not in version_info or "build" not in version_info:
-        return False
-
-    return True
-
-
-def check_dataverse_doi(doi):
-    """Check if a DOI points to a dataverse dataset."""
-    try:
-        doi = DOIProvider().get_importer(doi)
-    except LookupError:
-        return False
-
-    return check_dataverse_uri(doi.uri)
-
-
-def make_records_url(record_id, base_url):
-    """Create URL to access record by ID."""
-    url_parts = list(urlparse.urlparse(base_url))
-    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_METADATA_API)
-    args_dict = {"exporter": DATAVERSE_EXPORTER, "persistentId": record_id}
-    url_parts[4] = urllib.parse.urlencode(args_dict)
-    return urllib.parse.urlunparse(url_parts)
-
-
-def make_versions_url(record_id, base_url):
-    """Create URL to access the versions of a record."""
-    url_parts = list(urlparse.urlparse(base_url))
-    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSIONS_API)
-    args_dict = {"exporter": DATAVERSE_EXPORTER, "persistentId": record_id}
-    url_parts[4] = urllib.parse.urlencode(args_dict)
-    return urllib.parse.urlunparse(url_parts)
-
-
-def make_file_url(file_id, base_url):
-    """Create URL to access record by ID."""
-    url_parts = list(urlparse.urlparse(base_url))
-    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_FILE_API)
-    args_dict = {"persistentId": file_id}
-    url_parts[4] = urllib.parse.urlencode(args_dict)
-    return urllib.parse.urlunparse(url_parts)
-
-
 class DataverseProvider(ProviderApi):
     """Dataverse API provider."""
 
@@ -580,3 +515,68 @@ def _escape_json_string(value):
     if isinstance(value, str):
         return json.dumps(value)[1:-1]
     return value
+
+
+def check_dataverse_uri(url):
+    """Check if an URL points to a dataverse instance."""
+    from renku.core.util import requests
+
+    url_parts = list(urlparse.urlparse(url))
+    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSION_API)
+
+    url_parts[3:6] = [""] * 3
+    version_url = urlparse.urlunparse(url_parts)
+
+    response = requests.get(version_url)
+
+    if response.status_code != 200:
+        return False
+
+    version_data = response.json()
+
+    if "status" not in version_data or "data" not in version_data:
+        return False
+
+    version_info = version_data["data"]
+
+    if "version" not in version_info or "build" not in version_info:
+        return False
+
+    return True
+
+
+def check_dataverse_doi(doi):
+    """Check if a DOI points to a dataverse dataset."""
+    try:
+        doi = DOIProvider().get_importer(doi)
+    except LookupError:
+        return False
+
+    return check_dataverse_uri(doi.uri)
+
+
+def make_records_url(record_id, base_url):
+    """Create URL to access record by ID."""
+    url_parts = list(urlparse.urlparse(base_url))
+    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_METADATA_API)
+    args_dict = {"exporter": DATAVERSE_EXPORTER, "persistentId": record_id}
+    url_parts[4] = urllib.parse.urlencode(args_dict)
+    return urllib.parse.urlunparse(url_parts)
+
+
+def make_versions_url(record_id, base_url):
+    """Create URL to access the versions of a record."""
+    url_parts = list(urlparse.urlparse(base_url))
+    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSIONS_API)
+    args_dict = {"exporter": DATAVERSE_EXPORTER, "persistentId": record_id}
+    url_parts[4] = urllib.parse.urlencode(args_dict)
+    return urllib.parse.urlunparse(url_parts)
+
+
+def make_file_url(file_id, base_url):
+    """Create URL to access record by ID."""
+    url_parts = list(urlparse.urlparse(base_url))
+    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_FILE_API)
+    args_dict = {"persistentId": file_id}
+    url_parts[4] = urllib.parse.urlencode(args_dict)
+    return urllib.parse.urlunparse(url_parts)

@@ -27,13 +27,48 @@ from renku.core.util.doi import extract_doi, is_doi
 DOI_BASE_URL = "https://dx.doi.org"
 
 
-def make_doi_url(doi):
-    """Create URL to access DOI metadata."""
-    parsed_url = urllib.parse.urlparse(doi)
-    if parsed_url.scheme == "doi":
-        parsed_url = parsed_url._replace(scheme="")
-        doi = parsed_url.geturl()
-    return urllib.parse.urljoin(DOI_BASE_URL, doi)
+class DOIProvider(ProviderApi):
+    """`doi.org <http://doi.org>`_ registry API provider."""
+
+    priority = ProviderPriority.HIGHER
+    name = "DOI"
+
+    def __init__(self, headers=None, timeout=3):
+        self.timeout = timeout
+        self.headers = headers if headers is not None else {"accept": "application/vnd.citationstyles.csl+json"}
+
+    @staticmethod
+    def supports(uri) -> bool:
+        """Whether or not this provider supports a given URI."""
+        return bool(is_doi(uri))
+
+    def get_importer(self, uri, **kwargs) -> "DOIImporter":
+        """Get import manager."""
+        from renku.core.util import requests
+
+        def query(doi):
+            """Retrieve metadata for given doi."""
+            doi = extract_doi(doi)
+            url = make_doi_url(doi)
+
+            response = requests.get(url, headers=self.headers)
+
+            if response.status_code != 200:
+                raise LookupError("record not found. Status: {}".format(response.status_code))
+
+            return response
+
+        def serialize(response):
+            """Serialize HTTP response for DOI."""
+            json_data = response.json()
+            data = {key.replace("-", "_").lower(): value for key, value in json_data.items()}
+            try:
+                return DOIImporter(**data)
+            except TypeError:
+                raise errors.ImportError("doi metadata could not be serialized")
+
+        query_response = query(uri)
+        return serialize(query_response)
 
 
 class DOIImporter(ImporterApi):
@@ -106,45 +141,10 @@ class DOIImporter(ImporterApi):
         raise NotImplementedError
 
 
-class DOIProvider(ProviderApi):
-    """`doi.org <http://doi.org>`_ registry API provider."""
-
-    priority = ProviderPriority.HIGHER
-    name = "DOI"
-
-    def __init__(self, headers=None, timeout=3):
-        self.timeout = timeout
-        self.headers = headers if headers is not None else {"accept": "application/vnd.citationstyles.csl+json"}
-
-    @staticmethod
-    def supports(uri) -> bool:
-        """Whether or not this provider supports a given URI."""
-        return bool(is_doi(uri))
-
-    def get_importer(self, uri, **kwargs) -> DOIImporter:
-        """Get import manager."""
-        from renku.core.util import requests
-
-        def query(doi):
-            """Retrieve metadata for given doi."""
-            doi = extract_doi(doi)
-            url = make_doi_url(doi)
-
-            response = requests.get(url, headers=self.headers)
-
-            if response.status_code != 200:
-                raise LookupError("record not found. Status: {}".format(response.status_code))
-
-            return response
-
-        def serialize(response):
-            """Serialize HTTP response for DOI."""
-            json_data = response.json()
-            data = {key.replace("-", "_").lower(): value for key, value in json_data.items()}
-            try:
-                return DOIImporter(**data)
-            except TypeError:
-                raise errors.ImportError("doi metadata could not be serialized")
-
-        query_response = query(uri)
-        return serialize(query_response)
+def make_doi_url(doi):
+    """Create URL to access DOI metadata."""
+    parsed_url = urllib.parse.urlparse(doi)
+    if parsed_url.scheme == "doi":
+        parsed_url = parsed_url._replace(scheme="")
+        doi = parsed_url.geturl()
+    return urllib.parse.urljoin(DOI_BASE_URL, doi)

@@ -793,7 +793,7 @@ def show(tag, name):
 
 def add_provider_options(*param_decls, **attrs):
     """Sets dataset export provider option groups on the dataset add command."""
-    from renku.core.dataset.providers import ProviderFactory
+    from renku.core.dataset.providers.factory import ProviderFactory
     from renku.ui.cli.utils.click import create_options
 
     providers = [p for p in ProviderFactory.get_providers() if p.supports_add() and p.get_add_parameters()]
@@ -949,7 +949,7 @@ def export_provider_argument(*param_decls, **attrs):
         from click import argument
 
         def get_providers_names():
-            from renku.core.dataset.providers import ProviderFactory
+            from renku.core.dataset.providers.factory import ProviderFactory
 
             return [p.name.lower() for p in ProviderFactory.get_providers() if p.supports_export()]
 
@@ -960,7 +960,7 @@ def export_provider_argument(*param_decls, **attrs):
 
 def export_provider_options(*param_decls, **attrs):
     """Sets dataset export provider option groups on the dataset export command."""
-    from renku.core.dataset.providers import ProviderFactory
+    from renku.core.dataset.providers.factory import ProviderFactory
     from renku.ui.cli.utils.click import create_options
 
     providers = [p for p in ProviderFactory.get_providers() if p.supports_export() and p.get_export_parameters()]
@@ -991,7 +991,7 @@ def export(name, provider, tag, **kwargs):
 
 def import_provider_options(*param_decls, **attrs):
     """Sets dataset import provider option groups on the dataset import command."""
-    from renku.core.dataset.providers import ProviderFactory
+    from renku.core.dataset.providers.factory import ProviderFactory
     from renku.ui.cli.utils.click import create_options
 
     providers = [p for p in ProviderFactory.get_providers() if p.supports_import() and p.get_import_parameters()]

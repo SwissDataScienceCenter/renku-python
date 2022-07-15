@@ -27,8 +27,8 @@ from renku.core.dataset.constant import renku_pointers_path
 from renku.core.dataset.context import DatasetContext
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.pointer_file import create_external_file
-from renku.core.dataset.providers import ProviderFactory
 from renku.core.dataset.providers.api import ImporterApi
+from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.models import DatasetAddAction
 from renku.core.util import communication, requests
 from renku.core.util.dataset import check_url

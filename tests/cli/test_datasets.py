@@ -31,8 +31,8 @@ from renku.command.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
 from renku.core import errors
 from renku.core.constant import RENKU_HOME
 from renku.core.dataset.constant import REFS, renku_pointers_path
-from renku.core.dataset.providers import ProviderFactory
 from renku.core.dataset.providers.dataverse import DataverseProvider
+from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.zenodo import ZenodoProvider
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.util.urls import get_slug

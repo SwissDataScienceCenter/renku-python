@@ -31,7 +31,7 @@ from renku.core import errors
 from renku.core.dataset.constant import renku_dataset_images_path, renku_pointers_path
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.pointer_file import create_external_file, is_external_file_updated, update_external_file
-from renku.core.dataset.providers import ProviderFactory
+from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.models import ProviderDataset
 from renku.core.dataset.request_model import ImageRequestModel
 from renku.core.dataset.tag import get_dataset_by_tag, prompt_access_token, prompt_tag_selection
