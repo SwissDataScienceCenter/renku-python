@@ -24,7 +24,6 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from time import time
 
 import pytest
 
@@ -35,32 +34,13 @@ from renku.core.util.contexts import chdir
 from renku.domain_model.enums import ConfigFilter
 from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
-from tests.utils import format_result_exception, retry_failed
+from tests.utils import format_result_exception
 
 
 def test_version(runner):
     """Test cli version."""
     result = runner.invoke(cli, ["--version"])
     assert __version__ in result.output.split("\n")
-
-
-@retry_failed
-def test_version_duration(run_shell):
-    """Test duration of --version command."""
-    total_duration = 0
-
-    for _ in range(5):
-        start = time()
-        output = run_shell("time renku --version")
-        duration = time() - start
-
-        assert output[1] is None
-        total_duration += duration
-    total_duration /= 5
-    if sys.platform == "darwin":
-        assert total_duration < 2.0
-    else:
-        assert total_duration < 1.5
 
 
 @pytest.mark.parametrize("arg", (("help",), ("-h",), ("--help",)))

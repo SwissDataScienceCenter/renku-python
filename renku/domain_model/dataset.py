@@ -48,19 +48,19 @@ def is_dataset_name_valid(name: str) -> bool:
     return name is not None and name == get_slug(name, lowercase=False)
 
 
-def generate_default_name(dataset_title, dataset_version=None) -> str:
+def generate_default_name(title: str, version: str = None) -> str:
     """Get dataset name."""
     max_length = 24
     # For compatibility with older versions use title as name if it is valid; otherwise, use encoded title
-    if is_dataset_name_valid(dataset_title):
-        return dataset_title
+    if is_dataset_name_valid(title):
+        return title
 
-    slug = get_slug(dataset_title)
+    slug = get_slug(title)
     name = slug[:max_length]
 
-    if dataset_version:
+    if version:
         max_version_length = 10
-        version_slug = get_slug(dataset_version)[:max_version_length]
+        version_slug = get_slug(version)[:max_version_length]
         name = f"{name[:-(len(version_slug) + 1)]}_{version_slug}"
 
     return get_slug(name)
@@ -526,7 +526,7 @@ class Dataset(Persistent):
 
     def update_metadata_from(self, other: "Dataset", exclude=None):
         """Update metadata from another dataset."""
-        editable_fields = [
+        updatable_fields = [
             "creators",
             "date_created",
             "date_published",
@@ -540,7 +540,7 @@ class Dataset(Persistent):
             "title",
             "version",
         ]
-        for name in editable_fields:
+        for name in updatable_fields:
             value = getattr(other, name)
             if exclude and name in exclude:
                 continue
@@ -664,14 +664,14 @@ class ImageObjectRequestJson(marshmallow.Schema):
     mirror_locally = marshmallow.fields.Bool(default=False)
 
 
-def get_dataset_data_dir(client, dataset: Dataset) -> str:
+def get_dataset_data_dir(client, dataset_name: str) -> str:
     """Return default data directory for a dataset."""
-    return os.path.join(client.data_dir, dataset.name)
+    return os.path.join(client.data_dir, dataset_name)
 
 
 def get_file_path_in_dataset(client, dataset: Dataset, dataset_file: DatasetFile) -> Path:
     """Return path of a file relative to dataset's data dir."""
     try:
-        return (client.path / dataset_file.entity.path).relative_to(get_dataset_data_dir(client, dataset))
+        return (client.path / dataset_file.entity.path).relative_to(get_dataset_data_dir(client, dataset.name))
     except ValueError:  # NOTE: File is not in the dataset's data dir
         return Path(dataset_file.entity.path)
