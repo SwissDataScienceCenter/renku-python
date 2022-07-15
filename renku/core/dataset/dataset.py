@@ -471,17 +471,21 @@ def import_dataset(
     try:
         importer = provider.get_importer(uri, gitlab_token=gitlab_token, **kwargs)
         provider_dataset: ProviderDataset = importer.fetch_provider_dataset()
-
-        if not importer.provider_dataset_files:
-            raise errors.ParameterError(f"Dataset '{uri}' has no files.")
-        if not importer.is_latest_version():
-            communication.warn(f"Newer version found at {importer.latest_uri}")
     except KeyError as e:
         raise errors.ParameterError(f"Could not process '{uri}'.\nUnable to fetch metadata: {e}")
     except LookupError as e:
         raise errors.ParameterError(f"Could not process '{uri}'.\nReason: {e}")
 
+    if not importer.provider_dataset_files:
+        raise errors.ParameterError(f"Dataset '{uri}' has no files.")
+
     confirm_download(importer.provider_dataset_files)
+
+    try:
+        if not importer.is_latest_version():
+            communication.warn(f"Newer version found at {importer.latest_uri}")
+    except (KeyError, LookupError):
+        pass
 
     name = name or provider_dataset.name
 
