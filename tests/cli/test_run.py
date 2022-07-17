@@ -120,6 +120,34 @@ def test_run_metadata(renku_cli, runner, client, client_database_injection_manag
     assert 0 == result.exit_code, format_result_exception(result)
 
 
+def test_run_no_metadata(renku_cli, client, client_database_injection_manager):
+    """Test run with workflow metadata."""
+    exit_code, activity = renku_cli(
+        "run",
+        "--skip-metadata-update",
+        "--name",
+        "run-1",
+        "--description",
+        "first run",
+        "--keyword",
+        "key1",
+        "--keyword",
+        "key2",
+        "touch",
+        "foo",
+    )
+
+    assert 0 == exit_code
+    assert activity is None
+
+    with client_database_injection_manager(client):
+        plan_gateway = PlanGateway()
+        plans = plan_gateway.get_all_plans()
+        assert len(plans) == 0
+
+    assert client.repository.is_dirty()
+
+
 def test_run_with_outside_files(renku_cli, runner, client, client_database_injection_manager, tmpdir):
     """Test run with files that are outside the project."""
 
