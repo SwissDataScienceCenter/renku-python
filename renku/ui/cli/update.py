@@ -77,7 +77,7 @@ In this situation, you can do effectively three things:
    Check :program:`git status` to see details.
 
 In some cases it may be desirable to avoid updating the renku metadata
-and to avoid committing this and any other change in the repository when the update 
+and to avoid committing this and any other change in the repository when the update
 command is run. If this is the case then you can pass the ``--skip-metadata-update``
 flag (or simply ``-s``) to ``renku update``.
 
