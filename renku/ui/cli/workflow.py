@@ -152,7 +152,7 @@ Provider specific settings can be passed as file using the ``--config`` paramete
 In some cases it may be desirable to avoid updating the renku metadata
 and to avoid committing this and any other change in the repository when a workflow
 is executed. If this is the case then you can pass the ``--skip-metadata-update``
-flag (or simply ``-s``) to ``renku workflow execute``.
+flag to ``renku workflow execute``.
 
 Iterate Plans
 *************
@@ -220,7 +220,7 @@ This would execute ``my-run`` three times, where ``parameter-1`` values would be
 In some cases it may be desirable to avoid updating the renku metadata
 and to avoid committing this and any other change in the repository when a workflow
 is iterated through. If this is the case then you can pass the ``--skip-metadata-update``
-flag (or simply ``-s``) to ``renku workflow iterate``.
+flag to ``renku workflow iterate``.
 
 Exporting Plans
 ***************
@@ -1093,7 +1093,7 @@ def outputs(ctx, paths):
     type=click.Path(exists=True, dir_okay=False),
     help="YAML file containing parameter mappings to be used.",
 )
-@click.option("-s", "--skip-metadata-update", is_flag=True, help="Do not update the metadata store for the execution.")
+@click.option("--skip-metadata-update", is_flag=True, help="Do not update the metadata store for the execution.")
 @click.argument("name_or_id", required=True, shell_complete=_complete_workflows)
 def execute(
     provider,
@@ -1208,7 +1208,7 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
 
 
 @workflow.command()
-@click.option("-s", "--skip-metadata-update", is_flag=True, help="Do not update the metadata store for the execution.")
+@click.option("--skip-metadata-update", is_flag=True, help="Do not update the metadata store for the execution.")
 @click.option(
     "mapping_path",
     "--mapping",

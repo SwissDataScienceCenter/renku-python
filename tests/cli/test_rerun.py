@@ -47,7 +47,7 @@ def test_rerun(project, client, client_database_injection_manager, renku_cli, pr
     def rerun():
         cmd = ["rerun", "-p", provider]
         if skip_metadata_update:
-            cmd.append("-s")
+            cmd.append("--skip-metadata-update")
         cmd.append(output)
         assert 0 == renku_cli(*cmd).exit_code
         with client_database_injection_manager(client):

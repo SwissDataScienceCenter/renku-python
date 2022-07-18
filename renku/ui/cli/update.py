@@ -79,7 +79,7 @@ In this situation, you can do effectively three things:
 In some cases it may be desirable to avoid updating the renku metadata
 and to avoid committing this and any other change in the repository when the update
 command is run. If this is the case then you can pass the ``--skip-metadata-update``
-flag (or simply ``-s``) to ``renku update``.
+flag to ``renku update``.
 
 .. cheatsheet::
    :group: Running
@@ -172,7 +172,7 @@ from renku.ui.cli.utils.plugins import available_workflow_providers
     "config", "-c", "--config", metavar="<config file>", help="YAML file containing configuration for the provider."
 )
 @click.option("-i", "--ignore-deleted", is_flag=True, help="Ignore deleted paths.")
-@click.option("-s", "--skip-metadata-update", is_flag=True, help="Do not update the metadata store for the execution.")
+@click.option("--skip-metadata-update", is_flag=True, help="Do not update the metadata store for the execution.")
 def update(update_all, dry_run, paths, provider, config, ignore_deleted, skip_metadata_update):
     """Update existing files by rerunning their outdated workflow."""
     from renku.command.format.activity import tabulate_activities

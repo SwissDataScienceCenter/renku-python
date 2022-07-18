@@ -54,7 +54,7 @@ that the re-execution is properly tracked.
 In some cases it may be desirable to avoid updating the renku metadata
 and to avoid committing this and any other change in the repository when the rerun
 command is used. If this is the case then you can pass the ``--skip-metadata-update``
-flag (or simply ``-s``) to ``renku rerun``.
+flag to ``renku rerun``.
 
 .. cheatsheet::
    :group: Running
@@ -74,7 +74,7 @@ from renku.ui.cli.utils.plugins import available_workflow_providers
 
 @click.command()
 @click.option("--dry-run", "-n", is_flag=True, default=False, help="Show a preview of plans that will be executed.")
-@click.option("-s", "--skip-metadata-update", is_flag=True, help="Do not update the metadata store for the execution.")
+@click.option("--skip-metadata-update", is_flag=True, help="Do not update the metadata store for the execution.")
 @click.option(
     "--from",
     "sources",

@@ -48,7 +48,7 @@ def test_update(runner, client, renku_cli, client_database_injection_manager, pr
 
     cmd = ["update", "-p", provider, "--all"]
     if skip_metadata_update:
-        cmd.append("-s")
+        cmd.append("--skip-metadata-update")
     exit_code, activity = renku_cli(*cmd)
 
     assert 0 == exit_code
@@ -100,7 +100,7 @@ def test_update_multiple_steps(
 
     cmd = ["update", "-p", provider, "--all"]
     if skip_metadata_update:
-        cmd.append("-s")
+        cmd.append("--skip-metadata-update")
     exit_code, activities = renku_cli(*cmd)
 
     assert 0 == exit_code
