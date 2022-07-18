@@ -18,12 +18,13 @@
 """Merge strategies."""
 
 import os
+import shutil
 from json import JSONDecodeError
 from pathlib import Path
 from tempfile import mkdtemp
 from typing import List, NamedTuple, Optional, Union, cast
 
-from BTrees.OOBTree import BTree, TreeSet
+from BTrees.OOBTree import BTree, Bucket, TreeSet
 from deepdiff import DeepDiff
 from persistent import Persistent
 from persistent.list import PersistentList
@@ -86,6 +87,7 @@ class GitMerger:
             # NOTE: cleanup worktrees
             for entry in self.remote_entries:
                 client.repository.remove_worktree(entry.path)
+                shutil.rmtree(entry.path, ignore_errors=True)
 
         if not merged:
             raise errors.MetadataMergeError("Couldn't merge metadata: remote object not found in merge branches.")
@@ -128,7 +130,7 @@ class GitMerger:
         """Merge two database objects."""
         if type(local) != type(remote):
             raise errors.MetadataMergeError(f"Cannot merge {local} and {remote}: disparate types.")
-        if isinstance(local, (BTree, Index)):
+        if isinstance(local, (BTree, Index, Bucket)):
             return self.merge_btrees(local, remote)
         elif isinstance(local, TreeSet):
             return self.merge_treesets(local, remote)
@@ -141,7 +143,9 @@ class GitMerger:
                 f"Cannot merge {local} and {remote}: type not supported for automated merge."
             )
 
-    def merge_btrees(self, local: Union[BTree, Index], remote: Union[BTree, Index]) -> Union[BTree, Index]:
+    def merge_btrees(
+        self, local: Union[BTree, Index, Bucket], remote: Union[BTree, Index, Bucket]
+    ) -> Union[BTree, Index, Bucket]:
         """Merge two BTrees."""
         local_key_ids = {k: getattr(v, "_p_oid", None) for k, v in local.items()}
         remote_key_ids = {k: getattr(v, "_p_oid", None) for k, v in remote.items()}
