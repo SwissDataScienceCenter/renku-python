@@ -25,13 +25,16 @@ from pathlib import Path
 import pytest
 
 from renku.core.plugin.provider import available_workflow_providers
+from renku.infrastructure.gateway.activity_gateway import ActivityGateway
+from renku.infrastructure.gateway.plan_gateway import PlanGateway
 from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
-def test_rerun(project, renku_cli, provider):
+@pytest.mark.parametrize("skip_metadata_update", [True, False])
+def test_rerun(project, client, client_database_injection_manager, renku_cli, provider, skip_metadata_update):
     """Test rerun."""
     output = Path(project) / "output.txt"
 
@@ -42,7 +45,19 @@ def test_rerun(project, renku_cli, provider):
     content = output.read_text().strip()
 
     def rerun():
-        assert 0 == renku_cli("rerun", "-p", provider, output).exit_code
+        cmd = ["rerun", "-p", provider]
+        if skip_metadata_update:
+            cmd.append("-s")
+        cmd.append(output)
+        assert 0 == renku_cli(*cmd).exit_code
+        with client_database_injection_manager(client):
+            plans = PlanGateway().get_all_plans()
+            activities = ActivityGateway().get_all_activities()
+            assert len(plans) == 1
+            if skip_metadata_update:
+                assert len(activities) == 1
+            else:
+                assert len(activities) > 1
         return output.read_text().strip()
 
     for _ in range(10):

@@ -97,11 +97,14 @@ def visualize_graph_command():
     return Command().command(visualize_graph).require_migration().with_database(write=False)
 
 
-def iterate_workflow_command():
+def iterate_workflow_command(skip_metadata_update: bool):
     """Command that executes several workflows given a set of variables."""
-    return (
-        Command().command(iterate_workflow).require_migration().require_clean().with_database(write=True).with_commit()
-    )
+    command = Command().command(iterate_workflow).require_migration().require_clean()
+    if skip_metadata_update:
+        command = command.with_database(write=False)
+    else:
+        command = command.with_database(write=True).with_commit()
+    return command
 
 
 def revert_activity_command():

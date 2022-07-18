@@ -33,7 +33,8 @@ from tests.utils import delete_and_commit_file, format_result_exception, write_a
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
-def test_update(runner, client, renku_cli, client_database_injection_manager, provider):
+@pytest.mark.parametrize("skip_metadata_update", [True, False])
+def test_update(runner, client, renku_cli, client_database_injection_manager, provider, skip_metadata_update):
     """Test output is updated when source changes."""
     source = os.path.join(client.path, "source.txt")
     output = os.path.join(client.path, "output.txt")
@@ -45,17 +46,22 @@ def test_update(runner, client, renku_cli, client_database_injection_manager, pr
 
     write_and_commit_file(client.repository, source, "changed content")
 
-    exit_code, activity = renku_cli("update", "-p", provider, "--all")
+    cmd = ["update", "-p", provider, "--all"]
+    if skip_metadata_update:
+        cmd.append("-s")
+    exit_code, activity = renku_cli(*cmd)
 
     assert 0 == exit_code
-    plan = activity.association.plan
-    assert previous_activity.association.plan.id == plan.id
-    assert isinstance(plan, Plan)
-
     assert "changed content" == Path(output).read_text()
 
-    result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code, format_result_exception(result)
+    if skip_metadata_update:
+        assert activity is None
+    else:
+        plan = activity.association.plan
+        assert previous_activity.association.plan.id == plan.id
+        assert isinstance(plan, Plan)
+        result = runner.invoke(cli, ["status"])
+        assert 0 == result.exit_code, format_result_exception(result)
 
     with client_database_injection_manager(client):
         activity_gateway = ActivityGateway()
@@ -64,12 +70,20 @@ def test_update(runner, client, renku_cli, client_database_injection_manager, pr
         # NOTE: No ActivityCollection is created if update include only one activity
         assert [] == activity_collections
 
+        if skip_metadata_update:
+            assert len(activity_gateway.get_all_activities()) == 1
+        else:
+            assert len(activity_gateway.get_all_activities()) == 2
+
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
-def test_update_multiple_steps(runner, client, renku_cli, client_database_injection_manager, provider):
+@pytest.mark.parametrize("skip_metadata_update", [True, False])
+def test_update_multiple_steps(
+    runner, client, renku_cli, client_database_injection_manager, provider, skip_metadata_update
+):
     """Test update in a multi-step workflow."""
     source = os.path.join(client.path, "source.txt")
     intermediate = os.path.join(client.path, "intermediate.txt")
@@ -84,27 +98,37 @@ def test_update_multiple_steps(runner, client, renku_cli, client_database_inject
 
     write_and_commit_file(client.repository, source, "changed content")
 
-    exit_code, activities = renku_cli("update", "-p", provider, "--all")
+    cmd = ["update", "-p", provider, "--all"]
+    if skip_metadata_update:
+        cmd.append("-s")
+    exit_code, activities = renku_cli(*cmd)
 
     assert 0 == exit_code
-    plans = [a.association.plan for a in activities]
-    assert 2 == len(plans)
-    assert isinstance(plans[0], Plan)
-    assert isinstance(plans[1], Plan)
-    assert {p.id for p in plans} == {activity1.association.plan.id, activity2.association.plan.id}
-
     assert "changed content" == Path(intermediate).read_text()
     assert "changed content" == Path(output).read_text()
 
-    result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code, format_result_exception(result)
+    if skip_metadata_update:
+        assert activities is None
+    else:
+        plans = [a.association.plan for a in activities]
+        assert 2 == len(plans)
+        assert isinstance(plans[0], Plan)
+        assert isinstance(plans[1], Plan)
+        assert {p.id for p in plans} == {activity1.association.plan.id, activity2.association.plan.id}
+        result = runner.invoke(cli, ["status"])
+        assert 0 == result.exit_code, format_result_exception(result)
 
     with client_database_injection_manager(client):
         activity_gateway = ActivityGateway()
         activity_collections = activity_gateway.get_all_activity_collections()
 
-        assert 1 == len(activity_collections)
-        assert {a.id for a in activities} == {a.id for a in activity_collections[0].activities}
+        all_activities = activity_gateway.get_all_activities()
+        if skip_metadata_update:
+            assert len(all_activities) == 2
+        else:
+            assert 1 == len(activity_collections)
+            assert {a.id for a in activities} == {a.id for a in activity_collections[0].activities}
+            assert len(all_activities) == 4
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())

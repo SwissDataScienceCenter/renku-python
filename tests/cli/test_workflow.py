@@ -1072,6 +1072,7 @@ def test_workflow_compose_execute(runner, project, run_shell, client):
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
+@pytest.mark.parametrize("skip_metadata_update", [True, False])
 @pytest.mark.parametrize(
     "workflow, parameters, num_iterations",
     [
@@ -1107,7 +1108,17 @@ def test_workflow_compose_execute(runner, project, run_shell, client):
         ),
     ],
 )
-def test_workflow_iterate(runner, run_shell, client, workflow, parameters, provider, num_iterations):
+def test_workflow_iterate(
+    runner,
+    run_shell,
+    client,
+    client_database_injection_manager,
+    workflow,
+    parameters,
+    num_iterations,
+    provider,
+    skip_metadata_update,
+):
     """Test renku workflow iterate."""
 
     workflow_name = "foobar"
@@ -1119,8 +1130,11 @@ def test_workflow_iterate(runner, run_shell, client, workflow, parameters, provi
     # Assert not allocated stderr.
     assert output[1] is None
 
-    iteration_cmd = ["renku", "workflow", "iterate", "-p", provider, workflow_name]
+    iteration_cmd = ["renku", "workflow", "iterate", "-p", provider]
     outputs = []
+    if skip_metadata_update:
+        iteration_cmd.append("-s")
+    iteration_cmd.append(workflow_name)
     index_re = re.compile(r"{iter_index}")
 
     for k, v in filter(lambda x: x[0].startswith("output"), parameters.items()):
@@ -1151,6 +1165,16 @@ def test_workflow_iterate(runner, run_shell, client, workflow, parameters, provi
     # check whether parameters setting was effective
     for o in outputs:
         assert Path(o).resolve().exists()
+
+    # check that metadata update was performed or not based on CLI flag
+    with client_database_injection_manager(client):
+        plans = PlanGateway().get_all_plans()
+        activities = ActivityGateway().get_all_activities()
+        assert len(plans) == 1
+        if skip_metadata_update:
+            assert len(activities) == 1
+        else:
+            assert len(activities) == num_iterations + len(plans)
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)

@@ -36,9 +36,14 @@ from renku.core.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.execute import execute_workflow_graph
 
 
-def update_command():
+def update_command(skip_metadata_update: bool):
     """Update existing files by rerunning their outdated workflow."""
-    return Command().command(_update).require_migration().require_clean().with_database(write=True).with_commit()
+    command = Command().command(_update).require_migration().require_clean()
+    if skip_metadata_update:
+        command = command.with_database(write=False)
+    else:
+        command = command.with_database(write=True).with_commit()
+    return command
 
 
 @inject.autoparams()
