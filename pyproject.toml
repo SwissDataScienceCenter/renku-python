@@ -318,7 +318,7 @@ pattern = """
 files = ["renku/version.py"]
 
 [tool.pytest.ini_options]
-addopts = "--flake8 --black --doctest-glob=\"*.rst\" --doctest-modules --cov=renku --cov-report=term-missing --ignore=docs/cheatsheet/"
+addopts = "--flake8 --black --doctest-glob=\"*.rst\" --doctest-modules --cov --cov-report=term-missing --ignore=docs/cheatsheet/"
 doctest_optionflags = "ALLOW_UNICODE"
 flake8-ignore = ["*.py", "E121", "E126", "E203", "E226", "E231", "W503", "W504", "docs/conf.py", "docs/cheatsheet/conf.py", "ALL"]
 flake8-max-line-length = 120
@@ -392,7 +392,8 @@ module = "renku.core.migration.*"
 ignore_errors = true
 
 [tool.coverage.run]
-omit = ["renku/conftest.py", "renku/data/*"]
+omit = ["renku/conftest.py", "renku/data/*", "docs/*", "tests/*"]
+relative_files = true
 
 [tool.flakehell]
 max_line_length = 120
