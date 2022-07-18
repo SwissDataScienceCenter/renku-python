@@ -184,6 +184,42 @@ class ActivityGraphViewModel:
         existing_edges.extend(new_edges)
         return max_y, edge_color
 
+    def dot_representation(self, columns: str) -> str:
+        """Return the graph as a Graphviz Dot string.
+
+        Args:
+            columns(str): Columns to include in node text.
+
+        Returns:
+            string representing the Graphviz Dot graph
+        """
+        import tempfile
+        from pathlib import Path
+
+        import networkx
+
+        from renku.domain_model.provenance.activity import Activity
+
+        columns_callable = [ACTIVITY_GRAPH_COLUMNS[c] for c in columns.split(",")]
+        activities_text = {}
+        for node in self.graph.nodes:
+            if isinstance(node, Activity):
+                output_text = "\n".join(c(node) for c in columns_callable)
+                activities_text[str(node)] = output_text
+
+        # NOTE: this should be changed. Sadly, there are problems with solutions like io.StringIO()
+        # NOTE: nx_agraph.write_dot throws a blocking exception with StringIO
+        # NOTE: nx_pydot.write_dot works with String.IO, but it messes up with timestamps (+02:00 --> +02":"00)
+        tmp_path = Path(tempfile.mkdtemp())
+        tmp_file = tmp_path / "tmp.dot"
+        networkx.nx_agraph.write_dot(self.graph, tmp_file)
+        with open(tmp_file) as file:
+            content = file.read()
+
+        for a in list(activities_text):
+            content = content.replace(a, activities_text[a])
+        return content
+
     def text_representation(
         self, columns: str, color: bool = True, ascii=False
     ) -> Tuple[Optional[str], Optional[List[List[Tuple["Point", "Point", Any]]]]]:
