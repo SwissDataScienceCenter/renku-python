@@ -448,7 +448,7 @@ class RenkuImporter(ImporterApi):
     def _fetch_dataset(self, client_dispatcher: IClientDispatcher, database_dispatcher: IDatabaseDispatcher):
         from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile
         from renku.core.management.client import LocalClient
-        from renku.domain_model.dataset import Url, get_dataset_data_dir
+        from renku.domain_model.dataset import Url
 
         repository = None
         client = client_dispatcher.current_client
@@ -514,7 +514,7 @@ class RenkuImporter(ImporterApi):
             database_dispatcher.pop_database()
             client_dispatcher.pop_client()
 
-        provider_dataset.data_dir = get_dataset_data_dir(self._remote_client, provider_dataset.name)
+        provider_dataset.data_dir = provider_dataset.get_datadir(self._remote_client)
         provider_dataset.derived_from = None
         provider_dataset.same_as = Url(url_id=remove_credentials(self.latest_uri))
 

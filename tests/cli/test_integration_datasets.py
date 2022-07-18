@@ -30,7 +30,7 @@ from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.util.contexts import chdir
 from renku.core.util.git import get_git_user
 from renku.core.util.os import get_files
-from renku.domain_model.dataset import Url, get_dataset_data_dir
+from renku.domain_model.dataset import Url
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
@@ -396,15 +396,21 @@ def test_dataset_import_renkulab_dataset_with_image(runner, project, client, cli
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.vcr
-def test_import_renku_dataset_preserves_directory_hierarchy(runner, project, client, load_dataset_with_injection):
+@pytest.mark.parametrize(
+    "datadir_option,expected_datadir", [([], Path(DATA_DIR) / "remote"), (["--datadir", "mydir"], Path("mydir"))]
+)
+def test_import_renku_dataset_preserves_directory_hierarchy(
+    runner, project, client, load_dataset_with_injection, datadir_option, expected_datadir
+):
     """Test dataset imported from Renku projects have correct directory hierarchy."""
     url = "https://dev.renku.ch/datasets/1a637fd1a7a64d1fb9aa157e7033cd1c"
-    assert 0 == runner.invoke(cli, ["dataset", "import", "--yes", "--name", "remote", url]).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "import", "--yes", "--name", "remote", url] + datadir_option).exit_code
 
     dataset = load_dataset_with_injection("remote", client)
     paths = ["README.md", os.path.join("python", "data", "README.md"), os.path.join("r", "data", "README.md")]
 
-    data_dir = Path(get_dataset_data_dir(client, dataset.name))
+    data_dir = Path(dataset.get_datadir(client))
+    assert data_dir == expected_datadir
     for path in paths:
         assert (data_dir / path).exists()
         file = dataset.find_file(data_dir / path)
@@ -1079,7 +1085,7 @@ def test_add_data_in_multiple_places_from_git(runner, client, load_dataset_with_
     assert 0 == runner.invoke(cli, args + ["-s", "docker/base/Dockerfile", url]).exit_code
 
     dataset = load_dataset_with_injection("remote", client)
-    data_dir = Path(get_dataset_data_dir(client, dataset.name))
+    data_dir = Path(dataset.get_datadir(client))
     based_on_id = dataset.find_file(data_dir / "Dockerfile").based_on.id
 
     assert 0 == runner.invoke(cli, args + ["-s", "docker", url]).exit_code

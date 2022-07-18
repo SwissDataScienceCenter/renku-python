@@ -49,6 +49,23 @@ def test_datasets_create_clean(runner, project, client, load_dataset_with_inject
 
     dataset = load_dataset_with_injection("dataset", client)
     assert isinstance(dataset, Dataset)
+    assert Path("data/dataset/") == dataset.get_datadir(client)
+
+    assert not client.repository.is_dirty(untracked_files=True)
+
+
+def test_datasets_create_clean_with_datadir(runner, project, client, load_dataset_with_injection):
+    """Test creating a dataset in clean repository."""
+
+    datadir = Path("my/data/dir")
+
+    result = runner.invoke(cli, ["dataset", "create", "--datadir", datadir, "dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "OK" in result.output
+
+    dataset = load_dataset_with_injection("dataset", client)
+    assert isinstance(dataset, Dataset)
+    assert datadir == dataset.get_datadir(client)
 
     assert not client.repository.is_dirty(untracked_files=True)
 
@@ -439,7 +456,10 @@ def test_datasets_list_description(runner, project):
     assert description[: len(short_description) + 1] not in line
 
 
-def test_add_and_create_dataset(directory_tree, runner, project, client, subdirectory, load_dataset_with_injection):
+@pytest.mark.parametrize("datadir_option,datadir", [([], f"{DATA_DIR}/new-dataset"), (["--datadir", "mydir"], "mydir")])
+def test_add_and_create_dataset(
+    directory_tree, runner, project, client, subdirectory, load_dataset_with_injection, datadir_option, datadir
+):
     """Test add data to a non-existing dataset."""
     result = runner.invoke(cli, ["dataset", "add", "new-dataset", str(directory_tree)], catch_exceptions=False)
     assert 1 == result.exit_code
@@ -447,13 +467,13 @@ def test_add_and_create_dataset(directory_tree, runner, project, client, subdire
 
     # Add succeeds with --create
     result = runner.invoke(
-        cli, ["dataset", "add", "--create", "new-dataset", str(directory_tree)], catch_exceptions=False
+        cli, ["dataset", "add", "--create", "new-dataset", str(directory_tree)] + datadir_option, catch_exceptions=False
     )
     assert 0 == result.exit_code, format_result_exception(result)
 
-    path1 = os.path.join(client.path, DATA_DIR, "new-dataset", directory_tree.name, "file1")
-    path2 = os.path.join(client.path, DATA_DIR, "new-dataset", directory_tree.name, "dir1", "file2")
-    path3 = os.path.join(client.path, DATA_DIR, "new-dataset", directory_tree.name, "dir1", "file3")
+    path1 = os.path.join(client.path, datadir, directory_tree.name, "file1")
+    path2 = os.path.join(client.path, datadir, directory_tree.name, "dir1", "file2")
+    path3 = os.path.join(client.path, datadir, directory_tree.name, "dir1", "file3")
 
     assert os.stat(path1)
     assert os.stat(path2)
@@ -551,14 +571,15 @@ def test_multiple_file_to_dataset(tmpdir, runner, project, client, load_dataset_
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_add_with_relative_path(runner, client, directory_tree, subdirectory):
+@pytest.mark.parametrize("datadir_option,datadir", [([], f"{DATA_DIR}/local"), (["--datadir", "mydir"], "mydir")])
+def test_add_with_relative_path(runner, client, directory_tree, subdirectory, datadir_option, datadir):
     """Test adding data with relative path."""
     relative_path = os.path.relpath(directory_tree / "file1", os.getcwd())
 
-    result = runner.invoke(cli, ["dataset", "add", "--create", "local", relative_path])
+    result = runner.invoke(cli, ["dataset", "add", "--create", "local", relative_path] + datadir_option)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    path = client.path / client.data_dir / "local" / "file1"
+    path = client.path / datadir / "file1"
     assert path.exists()
     assert "file1 content" == path.read_text()
 
@@ -2313,17 +2334,18 @@ def test_authorized_import(mock_kg, client, runner):
     assert "Cannot find project in the knowledge graph" in result.output
 
 
-def test_update_local_file(runner, client, directory_tree, load_dataset_with_injection):
+@pytest.mark.parametrize("datadir_option,datadir", [([], f"{DATA_DIR}/my-data"), (["--datadir", "mydir"], "mydir")])
+def test_update_local_file(runner, client, directory_tree, load_dataset_with_injection, datadir_option, datadir):
     """Check updating local files."""
-    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)]).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)] + datadir_option).exit_code
 
-    file1 = Path(DATA_DIR) / "my-data" / directory_tree.name / "file1"
+    file1 = Path(datadir) / directory_tree.name / "file1"
     file1.write_text("some updates")
     client.repository.add(all=True)
     client.repository.commit("file1")
     new_checksum_file1 = client.repository.get_object_hash(file1)
 
-    file2 = Path(DATA_DIR) / "my-data" / directory_tree.name / "dir1" / "file2"
+    file2 = Path(datadir) / directory_tree.name / "dir1" / "file2"
     file2.write_text("some updates")
     client.repository.add(all=True)
     client.repository.commit("file2")

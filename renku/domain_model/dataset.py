@@ -340,6 +340,7 @@ class Dataset(Persistent):
         same_as: Optional[Url] = None,
         title: Optional[str] = None,
         version: Optional[str] = None,
+        datadir: Optional[Path] = None,
     ):
         if not name:
             assert title, "Either 'name' or 'title' must be set."
@@ -380,6 +381,7 @@ class Dataset(Persistent):
         self.title: Optional[str] = title
         self.version: Optional[str] = version
         self.annotations: List["Annotation"] = annotations or []
+        self._datadir: Optional[str] = str(datadir) if datadir else None
 
     @staticmethod
     def generate_id(identifier: str) -> str:
@@ -419,6 +421,13 @@ class Dataset(Persistent):
     def keywords_csv(self):
         """Comma-separated list of keywords associated with dataset."""
         return ", ".join(self.keywords)
+
+    def get_datadir(self, client) -> Path:
+        """Return dataset's data directory."""
+        if getattr(self, "_datadir", None):
+            return Path(self._datadir)
+
+        return Path(os.path.join(client.data_dir, self.name))
 
     def __repr__(self) -> str:
         return f"<Dataset {self.identifier} {self.name}>"
@@ -664,14 +673,9 @@ class ImageObjectRequestJson(marshmallow.Schema):
     mirror_locally = marshmallow.fields.Bool(default=False)
 
 
-def get_dataset_data_dir(client, dataset_name: str) -> str:
-    """Return default data directory for a dataset."""
-    return os.path.join(client.data_dir, dataset_name)
-
-
 def get_file_path_in_dataset(client, dataset: Dataset, dataset_file: DatasetFile) -> Path:
     """Return path of a file relative to dataset's data dir."""
     try:
-        return (client.path / dataset_file.entity.path).relative_to(get_dataset_data_dir(client, dataset.name))
+        return (client.path / dataset_file.entity.path).relative_to(dataset.get_datadir(client))
     except ValueError:  # NOTE: File is not in the dataset's data dir
         return Path(dataset_file.entity.path)

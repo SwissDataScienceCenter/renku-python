@@ -19,6 +19,7 @@
 
 import contextlib
 import time
+from pathlib import Path
 from typing import Optional
 
 from renku.command.command_builder.command import inject
@@ -41,6 +42,7 @@ class DatasetContext:
         create: Optional[bool] = False,
         commit_database: Optional[bool] = False,
         creator: Optional[Person] = None,
+        datadir: Optional[Path] = None,
     ) -> None:
         self.name = name
         self.create = create
@@ -48,6 +50,7 @@ class DatasetContext:
         self.creator = creator
         self.dataset_provenance = DatasetsProvenance()
         self.dataset: Optional[Dataset] = None
+        self.datadir: Optional[Path] = datadir
 
     def __enter__(self):
         """Enter context."""
@@ -57,7 +60,7 @@ class DatasetContext:
                 raise errors.DatasetNotFound(name=self.name)
 
             # NOTE: Don't update provenance when creating here because it will be updated later
-            self.dataset = create_dataset(name=self.name, update_provenance=False)
+            self.dataset = create_dataset(name=self.name, update_provenance=False, datadir=self.datadir)
         elif self.create:
             raise errors.DatasetExistsError('Dataset exists: "{}".'.format(self.name))
 
