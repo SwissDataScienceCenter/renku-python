@@ -16,6 +16,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dataset context managers."""
+
+import contextlib
+import time
 from typing import Optional
 
 from renku.command.command_builder.command import inject
@@ -71,3 +74,15 @@ class DatasetContext:
             self.datasets_provenance = DatasetsProvenance()
             self.datasets_provenance.add_or_update(self.dataset, creator=self.creator)
             self.database_dispatcher.current_database.commit()
+
+
+@contextlib.contextmanager
+def wait_for(delay: float):
+    """Make sure that at least ``delay`` seconds are passed during the execution of the wrapped code block."""
+    start = time.time()
+
+    yield
+
+    exec_time = time.time() - start
+    if exec_time < delay:
+        time.sleep(delay - exec_time)
