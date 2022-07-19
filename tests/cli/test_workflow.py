@@ -36,6 +36,7 @@ from renku.core.plugin.provider import available_workflow_providers
 from renku.core.util.yaml import write_yaml
 from renku.infrastructure.database import Database
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
+from renku.infrastructure.gateway.plan_gateway import PlanGateway
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 
@@ -573,6 +574,7 @@ def test_workflow_show_outputs_with_directory(runner, client, run):
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
 @pytest.mark.parametrize("yaml", [False, True])
+@pytest.mark.parametrize("skip_metadata_update", [False, True])
 @pytest.mark.parametrize(
     "workflows, parameters",
     [
@@ -594,7 +596,19 @@ def test_workflow_show_outputs_with_directory(runner, client, run):
         ),
     ],
 )
-def test_workflow_execute_command(runner, run_shell, project, capsys, client, provider, yaml, workflows, parameters):
+def test_workflow_execute_command(
+    runner,
+    run_shell,
+    project,
+    capsys,
+    client,
+    client_database_injection_manager,
+    provider,
+    yaml,
+    skip_metadata_update,
+    workflows,
+    parameters,
+):
     """Test workflow execute."""
 
     for wf in workflows:
@@ -625,11 +639,15 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
 
     if not parameters:
         execute_cmd = ["workflow", "execute", "-p", provider, workflow_name]
+        if skip_metadata_update:
+            execute_cmd.append("--skip-metadata-update")
         _execute(capsys, runner, execute_cmd)
     else:
         database = Database.from_path(client.database_path)
         plan = database["plans-by-name"][workflow_name]
         execute_cmd = ["workflow", "execute", "-p", provider]
+        if skip_metadata_update:
+            execute_cmd.append("--skip-metadata-update")
 
         overrides = dict()
         outputs = []
@@ -670,6 +688,15 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
+
+    if skip_metadata_update:
+        with client_database_injection_manager(client):
+            plan_gateway = PlanGateway()
+            plans = plan_gateway.get_all_plans()
+            assert len(plans) == len(workflows) + (1 if is_composite else 0)
+            activity_gateway = ActivityGateway()
+            activities = activity_gateway.get_all_activities()
+            assert len(activities) == len(workflows)
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
@@ -1045,6 +1072,7 @@ def test_workflow_compose_execute(runner, project, run_shell, client):
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
+@pytest.mark.parametrize("skip_metadata_update", [True, False])
 @pytest.mark.parametrize(
     "workflow, parameters, num_iterations",
     [
@@ -1080,7 +1108,17 @@ def test_workflow_compose_execute(runner, project, run_shell, client):
         ),
     ],
 )
-def test_workflow_iterate(runner, run_shell, client, workflow, parameters, provider, num_iterations):
+def test_workflow_iterate(
+    runner,
+    run_shell,
+    client,
+    client_database_injection_manager,
+    workflow,
+    parameters,
+    num_iterations,
+    provider,
+    skip_metadata_update,
+):
     """Test renku workflow iterate."""
 
     workflow_name = "foobar"
@@ -1092,8 +1130,11 @@ def test_workflow_iterate(runner, run_shell, client, workflow, parameters, provi
     # Assert not allocated stderr.
     assert output[1] is None
 
-    iteration_cmd = ["renku", "workflow", "iterate", "-p", provider, workflow_name]
+    iteration_cmd = ["renku", "workflow", "iterate", "-p", provider]
     outputs = []
+    if skip_metadata_update:
+        iteration_cmd.append("--skip-metadata-update")
+    iteration_cmd.append(workflow_name)
     index_re = re.compile(r"{iter_index}")
 
     for k, v in filter(lambda x: x[0].startswith("output"), parameters.items()):
@@ -1124,6 +1165,16 @@ def test_workflow_iterate(runner, run_shell, client, workflow, parameters, provi
     # check whether parameters setting was effective
     for o in outputs:
         assert Path(o).resolve().exists()
+
+    # check that metadata update was performed or not based on CLI flag
+    with client_database_injection_manager(client):
+        plans = PlanGateway().get_all_plans()
+        activities = ActivityGateway().get_all_activities()
+        assert len(plans) == 1
+        if skip_metadata_update:
+            assert len(activities) == 1
+        else:
+            assert len(activities) == num_iterations + len(plans)
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)

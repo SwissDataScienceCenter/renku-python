@@ -53,6 +53,7 @@ def test_help(arg, runner):
 
 @pytest.mark.parametrize("cwd", (DATA_DIR, "notebooks", "subdir"))
 def test_run_from_non_root(runner, client, cwd):
+    """Test running renku not from project's root."""
     path = client.path / cwd
     path.mkdir(parents=True, exist_ok=True)
     with chdir(path):
@@ -411,8 +412,7 @@ def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
 
 
 def test_status_consistency(client, runner):
-    """Test if the renku status output is consistent when running the
-    command from directories other than the repository root."""
+    """Test status consistency in subdirectories."""
     os.mkdir("somedirectory")
     with open("somedirectory/woop", "w") as fp:
         fp.write("woop")
