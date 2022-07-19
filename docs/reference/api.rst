@@ -18,6 +18,8 @@
 Renku Python API
 ================
 
+The following sections describe the Renku Python API. If you work with the R programming language, you can also use this API through the reticulate package. For more information, visit `our dedicated tutorial <https://renkulab.io/projects/learn-renku/renku-api-from-r>`_.
+
 .. _api-project:
 
 ``Project``
