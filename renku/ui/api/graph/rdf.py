@@ -15,11 +15,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku RDF Graph API."""
+"""Renku RDF Graph API.
+
+The ``RDFGraph`` class allows for the quick creation of a searchable graph object
+based on the project's metadata.
+
+To create the graph and query it:
+
+.. code-block:: python
+
+    from renku.ui.api import RDFGraph
+
+    g = RDFGraph()
+    # get a list of contributors to the project
+    list(g.subjects(object=URIRef("http://schema.org/Person")))
+
+For more information on querying the graph, see the `RDFLib
+documentation <https://rdflib.readthedocs.io/en/stable/intro_to_graphs.html>`_.
+
+"""
 
 import json
-import pyld
 
+import pyld
 from rdflib import Graph
 
 from renku.command.graph import export_graph_command
@@ -29,6 +47,12 @@ class RDFGraph(Graph):
     """RDF Graph of the project's metadata."""
 
     def __init__(self, revision_or_range=None):
+        """Instantiate the RDFGraph class.
+
+        Args:
+            revision_or_range(None): Revision or range to generate the graph from. Defaults to ``None``
+
+        """
         super().__init__()
         self.revision_or_range = revision_or_range
         self._build()

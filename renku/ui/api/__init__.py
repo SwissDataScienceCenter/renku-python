@@ -24,7 +24,6 @@ from renku.ui.api.models.parameter import Input, Link, Mapping, Output, Paramete
 from renku.ui.api.models.plan import CompositePlan, Plan
 from renku.ui.api.models.project import Project
 
-
 __all__ = (
     "Activity",
     "CompositePlan",
