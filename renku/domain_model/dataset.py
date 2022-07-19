@@ -646,6 +646,8 @@ class DatasetDetailsJson(marshmallow.Schema):
 
     annotations = marshmallow.fields.List(marshmallow.fields.Nested(AnnotationJson))
 
+    datadir = marshmallow.fields.Function(lambda d: getattr(d, "datadir_path", None) or str(d.get_datadir()))
+
 
 class DatasetFileDetailsJson(marshmallow.Schema):
     """Serialize dataset files to a response object."""
