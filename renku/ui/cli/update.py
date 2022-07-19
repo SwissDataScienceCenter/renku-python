@@ -76,6 +76,11 @@ In this situation, you can do effectively three things:
 .. note:: If there were uncommitted changes then the command fails.
    Check :program:`git status` to see details.
 
+In some cases it may be desirable to avoid updating the renku metadata
+and to avoid committing this and any other change in the repository when the update
+command is run. If this is the case then you can pass the ``--skip-metadata-update``
+flag to ``renku update``.
+
 .. cheatsheet::
    :group: Running
    :command: $ renku update [--all] [<path>...]
@@ -167,7 +172,8 @@ from renku.ui.cli.utils.plugins import available_workflow_providers
     "config", "-c", "--config", metavar="<config file>", help="YAML file containing configuration for the provider."
 )
 @click.option("-i", "--ignore-deleted", is_flag=True, help="Ignore deleted paths.")
-def update(update_all, dry_run, paths, provider, config, ignore_deleted):
+@click.option("--skip-metadata-update", is_flag=True, help="Do not update the metadata store for the execution.")
+def update(update_all, dry_run, paths, provider, config, ignore_deleted, skip_metadata_update):
     """Update existing files by rerunning their outdated workflow."""
     from renku.command.format.activity import tabulate_activities
     from renku.command.update import update_command
@@ -176,7 +182,7 @@ def update(update_all, dry_run, paths, provider, config, ignore_deleted):
 
     try:
         result = (
-            update_command()
+            update_command(skip_metadata_update=skip_metadata_update)
             .with_communicator(communicator)
             .build()
             .execute(
