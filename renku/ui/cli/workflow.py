@@ -149,6 +149,11 @@ Provider specific settings can be passed as file using the ``--config`` paramete
                  parameter <param-name>'s value.
    :extended:
 
+In some cases it may be desirable to avoid updating the renku metadata
+and to avoid committing this and any other change in the repository when a workflow
+is executed. If this is the case then you can pass the ``--skip-metadata-update``
+flag to ``renku workflow execute``.
+
 Iterate Plans
 *************
 
@@ -211,6 +216,11 @@ variable is going to be substituted with the iteration index (0, 1, 2, ...).
 This would execute ``my-run`` three times, where ``parameter-1`` values would be
 ``10``, `20`` and ``30`` and the producing output files ``output_0.txt``,
 ``output_1.txt`` and ``output_2.txt`` files in this order.
+
+In some cases it may be desirable to avoid updating the renku metadata
+and to avoid committing this and any other change in the repository when a workflow
+is iterated through. If this is the case then you can pass the ``--skip-metadata-update``
+flag to ``renku workflow iterate``.
 
 Exporting Plans
 ***************
@@ -1083,12 +1093,14 @@ def outputs(ctx, paths):
     type=click.Path(exists=True, dir_okay=False),
     help="YAML file containing parameter mappings to be used.",
 )
+@click.option("--skip-metadata-update", is_flag=True, help="Do not update the metadata store for the execution.")
 @click.argument("name_or_id", required=True, shell_complete=_complete_workflows)
 def execute(
     provider,
     config,
     set_params,
     values,
+    skip_metadata_update,
     name_or_id,
 ):
     """Execute a given workflow."""
@@ -1097,7 +1109,7 @@ def execute(
     communicator = ClickCallback()
 
     result = (
-        execute_workflow_command()
+        execute_workflow_command(skip_metadata_update=skip_metadata_update)
         .with_communicator(communicator)
         .build()
         .execute(
@@ -1196,6 +1208,7 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
 
 
 @workflow.command()
+@click.option("--skip-metadata-update", is_flag=True, help="Do not update the metadata store for the execution.")
 @click.option(
     "mapping_path",
     "--mapping",
@@ -1223,7 +1236,7 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
 @click.option("mappings", "-m", "--map", multiple=True, help="Mapping for a workflow parameter.")
 @click.option("config", "-c", "--config", metavar="<config file>", help="YAML file containing config for the provider.")
 @click.argument("name_or_id", required=True, shell_complete=_complete_workflows)
-def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config):
+def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config, skip_metadata_update):
     """Execute a workflow by iterating through a range of provided parameters."""
     from renku.command.view_model.plan import PlanViewModel
     from renku.command.workflow import iterate_workflow_command, show_workflow_command
@@ -1241,7 +1254,7 @@ def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config):
             _print_composite_plan(plan)
 
     communicator = ClickCallback()
-    iterate_workflow_command().with_communicator(communicator).build().execute(
+    iterate_workflow_command(skip_metadata_update=skip_metadata_update).with_communicator(communicator).build().execute(
         name_or_id=name_or_id,
         mapping_path=mapping_path,
         mappings=mappings,

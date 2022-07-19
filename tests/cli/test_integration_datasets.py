@@ -189,7 +189,7 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
 
     result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    assert "pyndl_naive_discr_v0.6.0" in result.output
+    assert "pyndl_naive_discr_v0.8.2" in result.output
 
 
 @pytest.mark.parametrize(

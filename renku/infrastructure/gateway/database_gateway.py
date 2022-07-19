@@ -142,8 +142,6 @@ class DatabaseGateway(IDatabaseGateway):
 
     def get_modified_objects_from_revision(self, revision_or_range: str) -> Generator[Persistent, None, None]:
         """Get all database objects modified in a revision."""
-        # TODO: use gateway once #renku-python/issues/2253 is done
-
         client_dispatcher = inject.instance(IClientDispatcher)
         client = client_dispatcher.current_client
 
