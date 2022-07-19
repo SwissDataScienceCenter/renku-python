@@ -22,6 +22,7 @@ import itertools
 import logging
 import os
 import re
+import sys
 import tempfile
 import uuid
 from pathlib import Path
@@ -1252,7 +1253,7 @@ def test_workflow_cycle_detection(run_shell, project, capsys, client):
     assert b"Cycles detected in execution graph" in result[0]
 
 
-# @pytest.mark.skipif(sys.platform == "darwin", reason="GitHub macOS image doesn't include Docker")
+@pytest.mark.skipif(sys.platform == "darwin", reason="GitHub macOS image doesn't include Docker")
 def test_workflow_execute_docker_toil(runner, client, run_shell, caplog):
     """Test workflow execute using docker with the toil provider."""
     caplog.set_level(logging.INFO)
