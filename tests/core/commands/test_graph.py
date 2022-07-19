@@ -45,7 +45,7 @@ from renku.infrastructure.database import Index
 
 @pytest.fixture()
 def input_objects(request, dataset_model, activity_model, plan_model):
-    """Use fixtures as input for paramtrize.
+    """Use fixtures as input for parametrize.
 
     Since we can't use fixtures directly, we specify them with a placeholder and `indirect` calls them here.
     """
