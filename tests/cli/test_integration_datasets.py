@@ -189,14 +189,15 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
 
     result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    assert "pyndl_naive_discr_v0.8.1" in result.output
+    assert "pyndl_naive_discr_v0.8.2" in result.output
 
 
 @pytest.mark.parametrize(
     "doi,err",
     [
         ("10.5281/zenodo.5979642342", "record not found"),
-        ("10.7910/DVN/S8MSVFXXXX", "provider DVN not found"),
+        ("10.7910/DVN/S8MSVFXXXX", "Provider not found: DVN"),
+        ("10.1371/journal.pgen.1001111", "Provider not found: journal"),
         ("10.5281/zenodo.4557383", "no files have been found"),  # A restricted dataset
         ("https://zenodo.org/record/2621201248", "record not found"),
         ("https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/F4NUMRXXXX", "record not found"),
@@ -403,7 +404,7 @@ def test_import_renku_dataset_preserves_directory_hierarchy(runner, project, cli
     dataset = load_dataset_with_injection("remote", client)
     paths = ["README.md", os.path.join("python", "data", "README.md"), os.path.join("r", "data", "README.md")]
 
-    data_dir = Path(get_dataset_data_dir(client, dataset))
+    data_dir = Path(get_dataset_data_dir(client, dataset.name))
     for path in paths:
         assert (data_dir / path).exists()
         file = dataset.find_file(data_dir / path)
@@ -838,15 +839,13 @@ def test_export_dataset_wrong_provider(runner, project, tmpdir, client):
 
 
 @pytest.mark.integration
-@retry_failed
-@pytest.mark.vcr
-@pytest.mark.parametrize("provider", ["zenodo", "dataverse", "renku", "olos"])
-def test_dataset_export(runner, client, project, provider):
+@pytest.mark.parametrize("provider", ["zenodo", "dataverse", "local", "olos"])
+def test_dataset_export_non_existing(runner, client, project, provider):
     """Check dataset not found exception raised."""
-    result = runner.invoke(cli, ["dataset", "export", "doesnotexists", provider])
+    result = runner.invoke(cli, ["dataset", "export", "non-existing", provider])
 
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
-    assert 'Dataset "doesnotexists" is not found.' in result.output
+    assert "Dataset 'non-existing' is not found." in result.output
 
 
 @pytest.mark.integration
@@ -1080,7 +1079,7 @@ def test_add_data_in_multiple_places_from_git(runner, client, load_dataset_with_
     assert 0 == runner.invoke(cli, args + ["-s", "docker/base/Dockerfile", url]).exit_code
 
     dataset = load_dataset_with_injection("remote", client)
-    data_dir = Path(get_dataset_data_dir(client, dataset))
+    data_dir = Path(get_dataset_data_dir(client, dataset.name))
     based_on_id = dataset.find_file(data_dir / "Dockerfile").based_on.id
 
     assert 0 == runner.invoke(cli, args + ["-s", "docker", url]).exit_code
@@ -1096,7 +1095,7 @@ def test_add_data_in_multiple_places_from_git(runner, client, load_dataset_with_
     [
         ([], 0, "No URL is specified"),
         (["-s", "file", "-d", "new-file"], 0, "No URL is specified"),
-        (["-s", "file"], 2, 'Cannot use "--source" with multiple URLs.'),
+        (["-s", "file"], 2, "Cannot use '--source' with multiple URLs."),
         (["-s", "non-existing"], 1, "No such file or directory"),
         (["-s", "docker/*Dockerfile"], 1, "No such file or directory"),
         (["-s", "docker", "-d", "LICENSE"], 1, "Destination is not a directory"),

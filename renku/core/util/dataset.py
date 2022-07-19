@@ -15,30 +15,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helper utilities for handling DOIs."""
+"""Helper utilities for datasets."""
 
-import re
 import urllib
-
-doi_regexp = re.compile(
-    r"(doi:\s*|(?:(?:https|http)://)?(?:(?:dx|www)\.)?doi\.org/)?" + r"(10\.\d+(.\d+)*/.+)$", flags=re.I
-)
-# NOTE: See http://en.wikipedia.org/wiki/Digital_object_identifier
+from typing import Tuple
 
 
-def is_doi(uri):
-    """Check if URI is DOI."""
-    return doi_regexp.match(uri)
+def check_url(url: str) -> Tuple[bool, bool]:
+    """Check if a url is local/remote and if it contains a git repository."""
+    # NOTE: Supported scheme before refactoring were: "", "file", "http", "https", "git+https", "git+ssh"
+    u = urllib.parse.urlparse(url)
 
+    is_remote = u.scheme not in ("", "file") or url.lower().startswith("git@")
+    is_git = is_remote and (u.path.endswith(".git") or u.scheme in ("git+https", "git+ssh") or url.startswith("git@"))
 
-def extract_doi(uri):
-    """Return the DOI in a string if there is one."""
-    match = doi_regexp.match(uri)
-
-    if match:
-        return match.group(2)
-
-
-def get_doi_url(identifier) -> str:
-    """Return DOI URL for a given id."""
-    return urllib.parse.urljoin("https://doi.org", identifier)
+    return is_remote, is_git

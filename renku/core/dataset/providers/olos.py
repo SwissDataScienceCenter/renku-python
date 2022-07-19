@@ -20,19 +20,26 @@
 import datetime
 import urllib
 from pathlib import Path
-from typing import List
+from typing import TYPE_CHECKING, List, Optional
 from urllib import parse as urlparse
 from uuid import UUID, uuid4
 
 from renku.command.command_builder import inject
 from renku.core import errors
-from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderParameter
+from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.util import communication
+
+if TYPE_CHECKING:
+    from renku.core.dataset.providers.models import ProviderParameter
+    from renku.domain_model.dataset import Dataset, DatasetTag
 
 
 class OLOSProvider(ProviderApi):
     """Provider for OLOS integration."""
+
+    priority = ProviderPriority.HIGH
+    name = "OLOS"
 
     def __init__(self, is_doi: bool = False):
         self.is_doi = is_doi
@@ -49,34 +56,36 @@ class OLOSProvider(ProviderApi):
         return True
 
     @staticmethod
-    def get_export_parameters() -> List[ProviderParameter]:
+    def get_export_parameters() -> List["ProviderParameter"]:
         """Returns parameters that can be set for export."""
-        return [ProviderParameter("dlcm-server", description="DLCM server base url.", type=str)]
+        from renku.core.dataset.providers.models import ProviderParameter
 
-    def find_record(self, uri, client=None, **kwargs):
-        """Find record by URI."""
-        return None
+        return [ProviderParameter("dlcm-server", help="DLCM server base url.", type=str)]
 
-    def get_exporter(self, dataset, tag) -> "OLOSExporter":
+    def get_exporter(
+        self, dataset: "Dataset", *, tag: Optional["DatasetTag"], dlcm_server: str = None, **kwargs
+    ) -> "OLOSExporter":
         """Create export manager for given dataset."""
+
+        @inject.autoparams()
+        def set_export_parameters(client_dispatcher: IClientDispatcher):
+            """Set and validate required parameters for exporting for a provider."""
+            client = client_dispatcher.current_client
+
+            server = dlcm_server
+            config_base_url = "server_url"
+            if not server:
+                server = client.get_value("olos", config_base_url)
+            else:
+                client.set_value("olos", config_base_url, server, global_only=True)
+
+            if not server:
+                raise errors.ParameterError("OLOS server URL is required.")
+
+            self._server_url = server  # type: ignore
+
+        set_export_parameters()
         return OLOSExporter(dataset=dataset, server_url=self._server_url)
-
-    @inject.autoparams()
-    def set_export_parameters(self, client_dispatcher: IClientDispatcher, *, dlcm_server=None, **kwargs):
-        """Set and validate required parameters for exporting for a provider."""
-        config_base_url = "server_url"
-
-        client = client_dispatcher.current_client
-
-        if not dlcm_server:
-            dlcm_server = client.get_value("olos", config_base_url)
-        else:
-            client.set_value("olos", config_base_url, dlcm_server, global_only=True)
-
-        if not dlcm_server:
-            raise errors.ParameterError("OLOS server URL is required.")
-
-        self._server_url = dlcm_server
 
 
 class OLOSExporter(ExporterApi):

@@ -28,8 +28,7 @@ from tests.utils import format_result_exception, modified_environ, with_dataset
 
 
 @pytest.mark.parametrize("revision", ["", "HEAD", "HEAD^", "HEAD^..HEAD"])
-@pytest.mark.parametrize("format", ["json-ld", "rdf", "nt"])
-def test_graph_export_validation(runner, client, directory_tree, run, revision, format):
+def test_graph_export_validation(runner, client, directory_tree, run, revision):
     """Test graph validation when exporting."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)]).exit_code
 
@@ -38,7 +37,7 @@ def test_graph_export_validation(runner, client, directory_tree, run, revision, 
     assert 0 == run(["run", "head", str(file1)], stdout="out1")
     assert 0 == run(["run", "tail", str(file2)], stdout="out2")
 
-    result = runner.invoke(cli, ["graph", "export", "--format", format, "--strict", "--revision", revision])
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict", "--revision", revision])
 
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -46,7 +45,7 @@ def test_graph_export_validation(runner, client, directory_tree, run, revision, 
     assert "https://renkulab.io" not in result.output
 
     with modified_environ(RENKU_DOMAIN="https://renkulab.io"):
-        result = runner.invoke(cli, ["graph", "export", "--format", format, "--strict", "--revision", revision])
+        result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict", "--revision", revision])
 
         assert 0 == result.exit_code, format_result_exception(result)
 
@@ -59,8 +58,7 @@ def test_graph_export_validation(runner, client, directory_tree, run, revision, 
 
 @pytest.mark.serial
 @pytest.mark.shelled
-@pytest.mark.parametrize("format", ["json-ld", "nt", "rdf"])
-def test_graph_export_strict_run(runner, project, run_shell, format):
+def test_graph_export_strict_run(runner, project, run_shell):
     """Test graph export output of run command."""
     # Run a shell command with pipe.
     assert run_shell('renku run --name run1 echo "my input string" > my_output_file')[1] is None
@@ -68,7 +66,7 @@ def test_graph_export_strict_run(runner, project, run_shell, format):
     assert run_shell("renku workflow compose my-composite-plan run1 run2")[1] is None
 
     # Assert created output file.
-    result = runner.invoke(cli, ["graph", "export", "--full", "--strict", "--format={}".format(format)])
+    result = runner.invoke(cli, ["graph", "export", "--full", "--strict", "--format=json-ld"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "my_output_file" in result.output
     assert "my input string" in result.output
@@ -79,19 +77,18 @@ def test_graph_export_strict_run(runner, project, run_shell, format):
     assert run_shell("renku workflow remove run2")[1] is None
 
     # Assert created output file.
-    result = runner.invoke(cli, ["graph", "export", "--strict", "--format={}".format(format)])
+    result = runner.invoke(cli, ["graph", "export", "--strict", "--format=json-ld"])
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-@pytest.mark.parametrize("format", ["json-ld", "nt", "rdf"])
-def test_graph_export_strict_dataset(tmpdir, runner, project, client, format, subdirectory):
+def test_graph_export_strict_dataset(tmpdir, runner, project, client, subdirectory):
     """Test output of graph export for dataset add."""
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     paths = []
     test_paths = []
     for i in range(3):
-        new_file = tmpdir.join("file_{0}".format(i))
+        new_file = tmpdir.join(f"file_{i}")
         new_file.write(str(i))
         paths.append(str(new_file))
         test_paths.append(os.path.relpath(str(new_file), str(project)))
@@ -100,14 +97,14 @@ def test_graph_export_strict_dataset(tmpdir, runner, project, client, format, su
     result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["graph", "export", "--strict", f"--format={format}"])
+    result = runner.invoke(cli, ["graph", "export", "--strict", "--format=json-ld"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert all(p in result.output for p in test_paths), result.output
 
     # check that only most recent dataset is exported
     assert 1 == result.output.count("http://schema.org/Dataset")
 
-    result = runner.invoke(cli, ["graph", "export", "--strict", f"--format={format}", "--full"])
+    result = runner.invoke(cli, ["graph", "export", "--strict", "--format=json-ld", "--full"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert all(p in result.output for p in test_paths), result.output
 
