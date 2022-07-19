@@ -56,7 +56,7 @@ class RDFGraph(Graph):
         super().__init__()
         self.revision_or_range = revision_or_range
         self._build()
-        self._bind()
+        self.bind_(self)
 
     def _build(self):
         """Construct the RDF graph representing this Renku project."""
@@ -67,10 +67,11 @@ class RDFGraph(Graph):
         )
         self.parse(data=data, format="json-ld")
 
-    def _bind(self):
-        """Bind all the usual URIs."""
-        self.bind("prov", "http://www.w3.org/ns/prov#")
-        self.bind("oa", "http://www.w3.org/ns/oa#")
-        self.bind("schema", "http://schema.org/")
-        self.bind("renku", "https://swissdatasciencecenter.github.io/renku-ontology#")
-        self.bind("foaf", "http://xmlns.com/foaf/0.1/")
+    @staticmethod
+    def bind_(graph):
+        """Bind all the usual namespaces."""
+        graph.bind("prov", "http://www.w3.org/ns/prov#")
+        graph.bind("oa", "http://www.w3.org/ns/oa#")
+        graph.bind("schema", "http://schema.org/")
+        graph.bind("renku", "https://swissdatasciencecenter.github.io/renku-ontology#")
+        graph.bind("foaf", "http://xmlns.com/foaf/0.1/")
