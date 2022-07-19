@@ -91,13 +91,14 @@ class FilesystemProvider(ProviderApi):
         """Add files from a URI to a dataset."""
         from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
 
-        assert dataset is not None, "Dataset name is not passed"
+        if dataset is None:
+            raise errors.ParameterError("Dataset is not passed")
 
         u = urllib.parse.urlparse(uri)
         path = u.path
 
         action = DatasetAddAction.SYMLINK if external else DatasetAddAction.COPY
-        absolute_dataset_data_dir = (client.path / dataset.get_datadir(client)).resolve()
+        absolute_dataset_data_dir = (client.path / dataset.get_datadir()).resolve()
         source_root = Path(get_absolute_path(path))
         is_within_repo = is_subpath(path=source_root, base=client.path)
         warnings = []
@@ -220,7 +221,7 @@ class LocalExporter(ExporterApi):
 
         dst_root.mkdir(parents=True, exist_ok=True)
 
-        data_dir = self._dataset.get_datadir(client)
+        data_dir = self._dataset.get_datadir()
 
         with communication.progress("Copying dataset files ...", total=len(self._dataset.files)) as progressbar:
             for file in self.dataset.files:
