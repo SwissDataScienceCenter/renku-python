@@ -44,16 +44,13 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]) -> Optional[str]:
+    def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]):
         """Builds the container image.
 
         Args:
             image_descriptor: Path to the container image descriptor file.
             image_name: Container image name.
             config: Path to the session provider specific configuration YAML.
-
-        Returns:
-            str: a unique id for the created interactive session.
         """
         pass
 
