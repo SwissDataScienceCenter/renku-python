@@ -1098,7 +1098,8 @@ def test_dataset_unlink_file(tmpdir, runner, client, subdirectory, load_dataset_
     assert not client.repository.is_dirty(untracked_files=True)
 
     dataset = load_dataset_with_injection("my-dataset", client)
-    assert new_file.basename in {Path(f.entity.path).name for f in dataset.files}
+    created_dataset_files = [Path(f.entity.path) for f in dataset.files]
+    assert new_file.basename in {f.name for f in created_dataset_files}
 
     commit_sha_before = client.repository.head.commit.hexsha
 
@@ -1112,6 +1113,7 @@ def test_dataset_unlink_file(tmpdir, runner, client, subdirectory, load_dataset_
     dataset = load_dataset_with_injection("my-dataset", client)
 
     assert new_file.basename not in [Path(f.entity.path).name for f in dataset.files if not f.is_removed()]
+    assert all([not f.exists() for f in created_dataset_files])
 
 
 def test_dataset_rm(runner, client, directory_tree, subdirectory, load_dataset_with_injection):
