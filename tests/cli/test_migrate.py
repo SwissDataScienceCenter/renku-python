@@ -358,7 +358,7 @@ def test_migrate_check_on_non_renku_repository(isolated_runner):
     "command",
     [
         ["config", "set", "key", "value"],
-        ["dataset", "add", "new", "README.md"],
+        ["dataset", "add", "--copy", "new", "README.md"],
         ["dataset", "create", "new"],
         ["dataset", "edit", "new"],
         ["dataset", "export", "new", "zenodo"],

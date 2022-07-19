@@ -38,13 +38,13 @@ def test_rollback(client, runner, project):
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", "foo"])
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", "foo"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", "bar"])
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", "bar"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", "input"])
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", "input"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     metadata_path.write_text("changed input")
