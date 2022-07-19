@@ -774,6 +774,8 @@ jobs:
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
         run: pytest -m "integration and not service and not serial" -v --timeout=600 -n auto
+      - name: Start Redis
+        uses: supercharge/redis-github-action@1.4.0
       - name: Test with pytest (serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -923,6 +925,8 @@ jobs:
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
         run: pytest -m "integration and not serial" -v
+      - name: Start Redis
+        uses: supercharge/redis-github-action@1.4.0
       - name: Test with pytest(serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false

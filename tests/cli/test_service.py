@@ -16,7 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test ``service`` command."""
-import time
+from pathlib import Path
+from time import sleep
 
 import pytest
 
@@ -25,45 +26,54 @@ from renku.ui.cli.service import list_renku_processes
 from tests.utils import format_result_exception, retry_failed
 
 
-@pytest.mark.skip(reason="Doesn't work: https://github.com/SwissDataScienceCenter/renku-python/issues/2064")
 @pytest.mark.serial
+@pytest.mark.redis
+@pytest.mark.integration
 @retry_failed
-def test_service_up_down(runner, svc_client_cache):
+def test_service_up_down(runner, svc_client_cache, tmpdir):
     """Check bringing service components up and down in daemon mode."""
-    result = runner.invoke(cli, ["service", "up", "--daemon"], catch_exceptions=False)
+    result = runner.invoke(cli, ["service", "up", "--daemon", "--runtime-dir", str(tmpdir)], catch_exceptions=False)
 
     assert "Using runtime directory" in result.output
     assert 0 == result.exit_code, format_result_exception(result)
 
+    # NOTE: Wait for processes to properly start
+    sleep(5)
+
     result = runner.invoke(cli, ["service", "down"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    # NOTE: Instead of booting/waiting/check/terminating, we are bringing the processes immediately
-    # down and asserting the output. This would be the same as the (1), but much quicker due to lack of waiting.
     assert "Shutting down" in result.output
 
     processes = list_renku_processes(include=["renku", "up"])
     assert not {p["pid"] for p in processes}
 
+    assert "ERROR" not in Path(tmpdir.join("renku.err")).read_text(), Path(tmpdir.join("renku.err")).read_text()
+    assert "WARN" not in Path(tmpdir.join("renku.err")).read_text()
 
-@pytest.mark.skip(reason="Doesn't work: https://github.com/SwissDataScienceCenter/renku-python/issues/2064")
+
+@pytest.mark.serial
+@pytest.mark.redis
+@pytest.mark.integration
 @retry_failed
-def test_service_up_restart(runner, svc_client_cache):
+def test_service_up_restart(runner, svc_client_cache, tmpdir):
     """Check bringing service components up in daemon mode and restarting them."""
-    result = runner.invoke(cli, ["service", "up", "--daemon"], catch_exceptions=False)
+    result = runner.invoke(cli, ["service", "up", "--daemon", "--runtime-dir", str(tmpdir)], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
+
+    sleep(5)
 
     processes = list_renku_processes(include=["renku", "up"])
     pids = {p["pid"] for p in processes}
     assert pids
     assert 0 == result.exit_code, format_result_exception(result)
 
-    time.sleep(1)
+    sleep(1)
 
     result = runner.invoke(cli, ["service", "restart"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    time.sleep(1)
+    sleep(5)
 
     processes_after_restart = list_renku_processes(include=["renku", "up"])
 
@@ -77,13 +87,20 @@ def test_service_up_restart(runner, svc_client_cache):
     processes = list_renku_processes(include=["renku", "up"])
     assert not {p["pid"] for p in processes}
 
+    assert "ERROR" not in Path(tmpdir.join("renku.err")).read_text(), Path(tmpdir.join("renku.err")).read_text()
+    assert "WARN" not in Path(tmpdir.join("renku.err")).read_text()
 
-@pytest.mark.skip(reason="Doesn't work: https://github.com/SwissDataScienceCenter/renku-python/issues/2064")
+
+@pytest.mark.serial
+@pytest.mark.redis
+@pytest.mark.integration
 @retry_failed
-def test_service_ps(runner, svc_client_cache):
+def test_service_ps(runner, svc_client_cache, tmpdir):
     """Check bringing service components up and listing them."""
-    result = runner.invoke(cli, ["service", "up", "--daemon"], catch_exceptions=False)
+    result = runner.invoke(cli, ["service", "up", "--daemon", "--runtime-dir", str(tmpdir)], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
+
+    sleep(5)
 
     processes = list_renku_processes()
     pids = {p["pid"] for p in processes}
@@ -100,13 +117,20 @@ def test_service_ps(runner, svc_client_cache):
     processes = list_renku_processes(include=["renku", "up"])
     assert not {p["pid"] for p in processes}
 
+    assert "ERROR" not in Path(tmpdir.join("renku.err")).read_text(), Path(tmpdir.join("renku.err")).read_text()
+    assert "WARN" not in Path(tmpdir.join("renku.err")).read_text()
 
-@pytest.mark.skip(reason="Doesn't work: https://github.com/SwissDataScienceCenter/renku-python/issues/2064")
+
+@pytest.mark.serial
+@pytest.mark.redis
+@pytest.mark.integration
 @retry_failed
-def test_service_logs(runner, svc_client_cache):
+def test_service_logs(runner, svc_client_cache, tmpdir):
     """Check service component logs."""
-    result = runner.invoke(cli, ["service", "up", "--daemon"], catch_exceptions=False)
+    result = runner.invoke(cli, ["service", "up", "--daemon", "--runtime-dir", str(tmpdir)], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
+
+    sleep(5)
 
     processes = list_renku_processes()
     pids = {p["pid"] for p in processes}
@@ -117,7 +141,7 @@ def test_service_logs(runner, svc_client_cache):
     for pid in pids:
         assert str(pid) in result.output
 
-    time.sleep(0.5)
+    sleep(0.5)
 
     result = runner.invoke(cli, ["service", "logs"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
@@ -128,3 +152,6 @@ def test_service_logs(runner, svc_client_cache):
 
     processes = list_renku_processes(include=["renku", "up"])
     assert not {p["pid"] for p in processes}
+
+    assert "ERROR" not in Path(tmpdir.join("renku.err")).read_text(), Path(tmpdir.join("renku.err")).read_text()
+    assert "WARN" not in Path(tmpdir.join("renku.err")).read_text()
