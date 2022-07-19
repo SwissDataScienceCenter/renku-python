@@ -270,7 +270,7 @@ class RenkuImporter(ImporterApi):
 
         url = remove_credentials(self.project_url)
 
-        dataset_datadir = self._remote_client.path / self.provider_dataset.get_datadir()
+        dataset_datadir = self.provider_dataset.get_datadir()
         remote_repository = self.repository
 
         if self.provider_dataset.version:  # NOTE: A tag was specified for import

@@ -365,7 +365,7 @@ def export_dataset(name, provider_name, tag, client_dispatcher: IClientDispatche
     # TODO: all these callbacks are ugly, improve in #737
     config_key_secret = "access_token"
 
-    dataset = cast(Dataset, datasets_provenance.get_by_name(name, strict=True, immutable=True))
+    dataset = datasets_provenance.get_by_name(name, strict=True, immutable=True)
 
     provider = ProviderFactory.from_name(provider_name)
 
@@ -386,8 +386,9 @@ def export_dataset(name, provider_name, tag, client_dispatcher: IClientDispatche
         if not dataset:
             raise errors.DatasetNotFound(message=f"Cannot find dataset with id: '{selected_tag.dataset_id.value}'")
 
-    data_dir = dataset.get_datadir()
     dataset = cast(Dataset, DynamicProxy(dataset))
+
+    data_dir = dataset.get_datadir()
     dataset.data_dir = data_dir
 
     exporter = provider.get_exporter(dataset=dataset, tag=selected_tag, **kwargs)

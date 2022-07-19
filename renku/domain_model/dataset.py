@@ -646,7 +646,16 @@ class DatasetDetailsJson(marshmallow.Schema):
 
     annotations = marshmallow.fields.List(marshmallow.fields.Nested(AnnotationJson))
 
-    datadir = marshmallow.fields.Function(lambda d: getattr(d, "datadir_path", None) or str(d.get_datadir()))
+    datadir = marshmallow.fields.Method("get_datadir")
+
+    def get_datadir(self, obj):
+        """Get data directory."""
+        if isinstance(obj, dict):
+            return str(obj.get("datadir_path", obj.get("datadir", "")))
+        if hasattr(obj, "datadir_path"):
+            return obj.datadir_path
+
+        return str(obj.get_datadir())
 
 
 class DatasetFileDetailsJson(marshmallow.Schema):
