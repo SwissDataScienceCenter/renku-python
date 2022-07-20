@@ -917,6 +917,24 @@ def test_workflow_visualize_non_interactive(runner, project, client, workflow_gr
     assert "H" in result.output
 
 
+def test_workflow_visualize_dot(runner, project, client, workflow_graph):
+    """Test renku workflow visualize dot format."""
+
+    result = runner.invoke(cli, ["workflow", "visualize", "--format", "dot", "--revision", "HEAD^", "H", "S"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    '"Y" -> "bash -c \\"cat X Y | tee R S\\"";' in result.output
+    '"X" -> "bash -c \\"cat X Y | tee R S\\"";' in result.output
+    '"bash -c \\"cat X Y | tee R S\\"" -> "R";' in result.output
+    '"bash -c \\"cat X Y | tee R S\\"" -> "S";' in result.output
+    4 == result.output.count('"bash -c \\"cat X Y | tee R S\\"')
+
+    1 == result.output.count('"echo other > H" -> "H"')
+    1 == result.output.count('-> "H"')
+    0 == result.output.count('"H" -->')
+    1 == result.output.count('"H"')
+
+
 @pytest.mark.skip(
     "Doesn't actually work, not really a tty available in github actions, "
     "see https://github.com/actions/runner/issues/241"

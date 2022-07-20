@@ -92,12 +92,17 @@ class ActivityGraphViewModel:
         Returns:
             string representation of node
         """
+        import json
+
         from renku.domain_model.provenance.activity import Activity
 
         if isinstance(node, Activity):
-            return "\n".join(c(node) for c in columns)
+            text = "\n".join(c(node) for c in columns)
+        else:
+            text = node
 
-        return node
+        # NOTE: double quotes are common in console command, repr() wouldn't escape properly
+        return json.dumps(text)
 
     def _get_lambda_columns(self, columns):
         """Return lambda columns.
@@ -249,7 +254,7 @@ class ActivityGraphViewModel:
         visited_nodes = []
         for edge in self.graph.edges:
             vertexes = tuple(map(self._format_vertex_raw, edge, repeat(columns_callable, 2)))
-            output.write(f'"{vertexes[0]}" -> "{vertexes[1]}";')
+            output.write(f"{vertexes[0]} -> {vertexes[1]};")
             for vertex in vertexes:
                 if vertex not in visited_nodes:
                     visited_nodes.append(vertex)
@@ -260,7 +265,7 @@ class ActivityGraphViewModel:
             if lonely_node not in visited_nodes:
                 output.write(f'"{lonely_node}";')
 
-        output.write("}")
+        output.write("\n}")
         return output.getvalue()
 
     def text_representation(
