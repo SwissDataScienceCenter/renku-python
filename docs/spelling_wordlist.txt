@@ -183,6 +183,7 @@ Reproducibility
 reproducibly
 resolvers
 resync
+reticulate
 reusability
 Reusability
 righthand

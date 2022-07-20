@@ -460,6 +460,9 @@ command, it creates a directory in project's data directory using dataset's
 name and version: ``<data-dir>/<dataset-name>-<version>``. Export fails if the
 destination directory is not empty.
 
+.. note:: See our `dataset versioning tutorial
+   <https://renkulab.io/projects/learn-renku/dataset-crates/dataset-versioning>`_
+   for example recipes using tags for data management.
 
 Listing all files in the project associated with a dataset.
 
