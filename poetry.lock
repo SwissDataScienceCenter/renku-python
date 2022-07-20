@@ -1658,7 +1658,7 @@ pytest-cache = "*"
 
 [[package]]
 name = "pytest-recording"
-version = "0.12.0"
+version = "0.12.1"
 description = "A pytest plugin that allows you recording of network interactions via VCR.py"
 category = "main"
 optional = true
@@ -2676,7 +2676,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "10f08b6e64af2ff70f9c46c3f5d4052316ea706739344d55230226b2b9c3475e"
+content-hash = "beeb19073cc3108eeb93e1868c7ac7389765b7cfe736bd406af92bd1acd3cbc0"
 
 [metadata.files]
 addict = [
@@ -3798,8 +3798,8 @@ pytest-pep8 = [
     {file = "pytest-pep8-1.0.6.tar.gz", hash = "sha256:032ef7e5fa3ac30f4458c73e05bb67b0f036a8a5cb418a534b3170f89f120318"},
 ]
 pytest-recording = [
-    {file = "pytest-recording-0.12.0.tar.gz", hash = "sha256:9039bf488f80c016055ffd039a91e33b1e89f3ee2ee0005c0bbce298fd417ee1"},
-    {file = "pytest_recording-0.12.0-py3-none-any.whl", hash = "sha256:a94b000640fe5d05b34fa9e25dca1671dd7f21195502c5f4d2f600c31dc14f7e"},
+    {file = "pytest-recording-0.12.1.tar.gz", hash = "sha256:0d1f36d10dea5090cab8ecd230e5dc937c97b9fed193874b330d2926ddea028f"},
+    {file = "pytest_recording-0.12.1-py3-none-any.whl", hash = "sha256:6b5546b822b270b8d7338f70950453be45e4aa5bfd884d97583dfa47288380f9"},
 ]
 pytest-timeout = [
     {file = "pytest-timeout-2.1.0.tar.gz", hash = "sha256:c07ca07404c612f8abbe22294b23c368e2e5104b521c1790195561f37e1ac3d9"},
