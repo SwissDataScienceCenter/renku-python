@@ -58,6 +58,6 @@ The following sections describe the Renku Python API. If you work with the R pro
 .. _api-rdfgraph:
 
 ``RDF Graph``
-------------
+-------------
 
 .. automodule:: renku.ui.api.graph.rdf
