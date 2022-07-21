@@ -18,26 +18,7 @@
 Renku Python API
 ================
 
-.. _api-project:
-
-``Project``
------------
-
-.. automodule:: renku.ui.api.models.project
-
-.. _api-dataset:
-
-``Dataset``
------------
-
-.. automodule:: renku.ui.api.models.dataset
-
-.. _api-plan:
-
-``Plan, CompositePlan``
------------------------
-
-.. automodule:: renku.ui.api.models.plan
+The following sections describe the Renku Python API. If you work with the R programming language, you can also use this API through the reticulate package. For more information, visit `our dedicated tutorial <https://renkulab.io/projects/learn-renku/renku-api-from-r>`_.
 
 .. _api-activity:
 
@@ -46,9 +27,37 @@ Renku Python API
 
 .. automodule:: renku.ui.api.models.activity
 
+.. _api-dataset:
+
+``Dataset``
+-----------
+
+.. automodule:: renku.ui.api.models.dataset
+
 .. _api-parameter:
 
 ``Inputs, Outputs, and Parameters``
 -----------------------------------
 
 .. automodule:: renku.ui.api.models.parameter
+
+.. _api-plan:
+
+``Plan, CompositePlan``
+-----------------------
+
+.. automodule:: renku.ui.api.models.plan
+
+.. _api-project:
+
+``Project``
+-----------
+
+.. automodule:: renku.ui.api.models.project
+
+.. _api-rdfgraph:
+
+``RDF Graph``
+-------------
+
+.. automodule:: renku.ui.api.graph.rdf
