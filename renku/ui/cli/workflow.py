@@ -622,6 +622,14 @@ You can also run in interactive mode using the ``--interactive`` flag.
 This will allow you to navigate between workflow execution and see details
 by pressing the <Enter> key.
 
+If you prefer to elaborate the output graph further, or if you wish to export
+it for any reason, you can use the ``--format`` option to specify an output
+format.
+
+.. code-block:: console
+
+   $ renku workflow visualize --format dot <path>
+
 Use ``renku workflow visualize -h`` to see all available options.
 
 .. cheatsheet::
