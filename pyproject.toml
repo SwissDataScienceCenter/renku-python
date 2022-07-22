@@ -82,7 +82,7 @@ grandalf = "==0.7"
 gunicorn = { optional = true, version = "*" }
 humanize = ">=3.0.0,<4.1.0"
 importlib-metadata = { version = "<4.12.0,>=4.8.1", python = "<3.8.0" }
-importlib-resources = { version = ">=5.4.0,<5.8.0", python = "<3.9.0" }
+importlib-resources = { version = ">=5.4.0,<5.9.0", python = "<3.9.0" }
 inject = "<4.4.0,>=4.3.0"
 isort = { version = "<5.10.2,>=5.3.2", optional = true }
 jinja2 = { version = ">=2.11.3,<3.1.3" }
