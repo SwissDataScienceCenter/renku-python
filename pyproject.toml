@@ -51,7 +51,7 @@ Changelog = "https://github.com/swissdatasciencecenter/renku-python/blob/master/
 
 [tool.poetry.dependencies]
 python = "^3.7.1"
-apispec = { version = "<5.2.0,>=4.0.0", optional = true }
+apispec = { version = ">=4.0.0,<5.3.0", optional = true }
 apispec-webframeworks = { version = "<0.6,>=0.5.2", optional = true }
 appdirs = "<=1.4.4,>=1.4.3"
 attrs = "<21.5.0,>=21.1.0"
