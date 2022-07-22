@@ -452,6 +452,9 @@ command, it creates a directory in project's data directory using dataset's
 name and version: ``<data-dir>/<dataset-name>-<version>``. Export fails if the
 destination directory is not empty.
 
+.. note:: See our `dataset versioning tutorial
+   <https://renkulab.io/projects/learn-renku/dataset-crates/dataset-versioning>`_
+   for example recipes using tags for data management.
 
 Listing all files in the project associated with a dataset.
 
@@ -791,21 +794,24 @@ def show(tag, name):
     print_markdown(ds.get("description") or "")
 
 
+def add_provider_options(*param_decls, **attrs):
+    """Sets dataset export provider option groups on the dataset add command."""
+    from renku.core.dataset.providers.factory import ProviderFactory
+    from renku.ui.cli.utils.click import create_options
+
+    providers = [p for p in ProviderFactory.get_providers() if p.supports_add() and p.get_add_parameters()]
+    return create_options(providers=providers, parameter_function="get_add_parameters")
+
+
 @dataset.command()
 @click.argument("name", shell_complete=_complete_datasets)
 @click.argument("urls", type=click.Path(), nargs=-1)
-@click.option("-e", "--external", is_flag=True, help="Creates a link to external data.")
 @click.option("-f", "--force", is_flag=True, help="Allow adding otherwise ignored files.")
 @click.option("-o", "--overwrite", is_flag=True, help="Overwrite existing files.")
 @click.option("-c", "--create", is_flag=True, help="Create dataset if it does not exist.")
-@click.option(
-    "-s", "--src", "--source", "sources", default=None, multiple=True, help="Path(s) within remote git repo to be added"
-)
-@click.option(
-    "-d", "--dst", "--destination", "destination", default="", help="Destination directory within the dataset path"
-)
-@click.option("--ref", default=None, help="Add files from a specific commit/tag/branch.")
-def add(name, urls, external, force, overwrite, create, sources, destination, ref):
+@click.option("-d", "--destination", default="", help="Destination directory within the dataset path")
+@add_provider_options()
+def add(name, urls, external, force, overwrite, create, destination, **kwargs):
     """Add data to a dataset."""
     from renku.command.dataset import add_to_dataset_command
     from renku.ui.cli.utils.callback import ClickCallback
@@ -818,9 +824,8 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
         force=force,
         overwrite=overwrite,
         create=create,
-        sources=sources,
         destination=destination,
-        ref=ref,
+        **kwargs,
     )
     click.secho("OK", fg=color.GREEN)
 
@@ -946,46 +951,23 @@ def export_provider_argument(*param_decls, **attrs):
     def wrapper(f):
         from click import argument
 
-        def _get_providers():
-            from renku.core.dataset.providers import ProviderFactory
+        def get_providers_names():
+            from renku.core.dataset.providers.factory import ProviderFactory
 
-            return [k.lower() for k, p in ProviderFactory.providers().items() if p.supports_export]
+            return [p.name.lower() for p in ProviderFactory.get_providers() if p.supports_export()]
 
-        f = argument("provider", type=click.Choice(Proxy(_get_providers)))(f)
-        return f
+        return argument("provider", type=click.Choice(Proxy(get_providers_names)))(f)
 
     return wrapper
 
 
 def export_provider_options(*param_decls, **attrs):
     """Sets dataset export provider option groups on the dataset export command."""
+    from renku.core.dataset.providers.factory import ProviderFactory
+    from renku.ui.cli.utils.click import create_options
 
-    def wrapper(f):
-        from click_option_group import optgroup
-
-        from renku.core.dataset.providers import ProviderFactory
-
-        providers = [
-            (k, v) for k, v in ProviderFactory.providers().items() if v.supports_export and v.get_export_parameters()
-        ]
-
-        for i, (name, provider) in enumerate(sorted(providers, reverse=True)):
-            for j, param in enumerate(provider.get_export_parameters()):
-                param_description = param.description
-                if j == 0:
-                    param_description = f"\b\n{param.description}\n "  # NOTE: add newline after a group
-                args = [f"--{param.name}"] + [f"-{a}" if len(a) == 1 else f"--{a}" for a in param.aliases if a]
-                f = optgroup.option(*args, type=param.type, help=param_description, is_flag=param.is_flag)(f)
-
-            name = f"{name} configuration"
-            if i == len(providers) - 1:
-                name = "\n  " + name  # NOTE: add newline before first group
-
-            f = optgroup.group(name=name)(f)
-
-        return f
-
-    return wrapper
+    providers = [p for p in ProviderFactory.get_providers() if p.supports_export() and p.get_export_parameters()]
+    return create_options(providers=providers, parameter_function="get_export_parameters")
 
 
 @dataset.command()
@@ -1012,33 +994,11 @@ def export(name, provider, tag, **kwargs):
 
 def import_provider_options(*param_decls, **attrs):
     """Sets dataset import provider option groups on the dataset import command."""
+    from renku.core.dataset.providers.factory import ProviderFactory
+    from renku.ui.cli.utils.click import create_options
 
-    def wrapper(f):
-        from click_option_group import optgroup
-
-        from renku.core.dataset.providers import ProviderFactory
-
-        providers = [
-            (k, v) for k, v in ProviderFactory.providers().items() if v.supports_import and v.get_import_parameters()
-        ]
-
-        for i, (name, provider) in enumerate(sorted(providers, reverse=True)):
-            for j, param in enumerate(provider.get_import_parameters()):
-                param_description = param.description
-                if j == 0:
-                    param_description = f"\b\n{param.description}\n "  # NOTE: add newline after a group
-                args = [f"--{param.name}"] + [f"-{a}" if len(a) == 1 else f"--{a}" for a in param.aliases if a]
-                f = optgroup.option(*args, type=param.type, help=param_description, is_flag=param.is_flag)(f)
-
-            name = f"{name} configuration"
-            if i == len(providers) - 1:
-                name = "\n  " + name  # NOTE: add newline before first group
-
-            f = optgroup.group(name=name)(f)
-
-        return f
-
-    return wrapper
+    providers = [p for p in ProviderFactory.get_providers() if p.supports_import() and p.get_import_parameters()]
+    return create_options(providers=providers, parameter_function="get_import_parameters")
 
 
 @dataset.command("import")

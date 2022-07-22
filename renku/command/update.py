@@ -22,7 +22,6 @@ from typing import Optional
 
 from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
-from renku.command.workflow import execute_workflow
 from renku.core import errors
 from renku.core.errors import ParameterError
 from renku.core.interface.client_dispatcher import IClientDispatcher
@@ -34,11 +33,17 @@ from renku.core.workflow.activity import (
     sort_activities,
 )
 from renku.core.workflow.concrete_execution_graph import ExecutionGraph
+from renku.core.workflow.execute import execute_workflow_graph
 
 
-def update_command():
+def update_command(skip_metadata_update: bool):
     """Update existing files by rerunning their outdated workflow."""
-    return Command().command(_update).require_migration().require_clean().with_database(write=True).with_commit()
+    command = Command().command(_update).require_migration().require_clean()
+    if skip_metadata_update:
+        command = command.with_database(write=False)
+    else:
+        command = command.with_database(write=True).with_commit()
+    return command
 
 
 @inject.autoparams()
@@ -81,4 +86,4 @@ def _update(
         return activities, modified_paths
 
     graph = ExecutionGraph([a.plan_with_values for a in activities], virtual_links=True)
-    execute_workflow(dag=graph.workflow_graph, provider=provider, config=config)
+    execute_workflow_graph(dag=graph.workflow_graph, provider=provider, config=config)
