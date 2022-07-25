@@ -19,6 +19,7 @@
 
 
 import json
+import os
 from typing import TYPE_CHECKING, Optional, cast
 
 from packaging.version import Version
@@ -76,6 +77,10 @@ class DatabaseCommand(Command):
         context["constructor_bindings"][IDatabaseGateway] = lambda: DatabaseGateway()
         context["constructor_bindings"][IDatasetGateway] = lambda: DatasetGateway()
         context["constructor_bindings"][IProjectGateway] = lambda: ProjectGateway()
+
+        if int(os.environ.get("RENKU_SKIP_MIN_VERSION_CHECK", "0")) == 1:
+            # NOTE: Used for unit tests
+            return
 
         try:
             self.project = cast("Project", self.dispatcher.current_database["project"])
