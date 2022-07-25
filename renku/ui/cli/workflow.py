@@ -626,9 +626,13 @@ If you prefer to elaborate the output graph further, or if you wish to export
 it for any reason, you can use the ``--format`` option to specify an output
 format.
 
+The following example generates the graph using the `dot` format. It can
+be stored in a file or piped directly to any compatible tool. Here we
+use the ``dot`` command line tool from graphviz to generate an SVG file.
+
 .. code-block:: console
 
-   $ renku workflow visualize --format dot <path>
+   $ renku workflow visualize --format dot <path> | dot -Tsvg > graph.svg
 
 Use ``renku workflow visualize -h`` to see all available options.
 
