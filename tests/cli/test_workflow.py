@@ -923,16 +923,16 @@ def test_workflow_visualize_dot(runner, project, client, workflow_graph):
     result = runner.invoke(cli, ["workflow", "visualize", "--format", "dot", "--revision", "HEAD^", "H", "S"])
 
     assert 0 == result.exit_code, format_result_exception(result)
-    '"Y" -> "bash -c \\"cat X Y | tee R S\\"";' in result.output
-    '"X" -> "bash -c \\"cat X Y | tee R S\\"";' in result.output
-    '"bash -c \\"cat X Y | tee R S\\"" -> "R";' in result.output
-    '"bash -c \\"cat X Y | tee R S\\"" -> "S";' in result.output
-    4 == result.output.count('"bash -c \\"cat X Y | tee R S\\"')
+    assert '"Y" -> "bash -c \\"cat X Y | tee R S\\"";' in result.output
+    assert '"X" -> "bash -c \\"cat X Y | tee R S\\"";' in result.output
+    assert '"bash -c \\"cat X Y | tee R S\\"" -> "R";' in result.output
+    assert '"bash -c \\"cat X Y | tee R S\\"" -> "S";' in result.output
+    assert 4 == result.output.count('"bash -c \\"cat X Y | tee R S\\"')
 
-    1 == result.output.count('"echo other > H" -> "H"')
-    1 == result.output.count('-> "H"')
-    0 == result.output.count('"H" -->')
-    1 == result.output.count('"H"')
+    assert 1 == result.output.count('"echo other > H" -> "H"')
+    assert 1 == result.output.count('-> "H"')
+    assert 0 == result.output.count('"H" -->')
+    assert 1 == result.output.count('"H"')
 
 
 @pytest.mark.skip(
