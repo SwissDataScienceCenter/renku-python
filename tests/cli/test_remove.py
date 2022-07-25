@@ -17,17 +17,20 @@
 # limitations under the License.
 """Test ``remove`` command."""
 
+import pytest
+
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
-def test_remove_dataset_file(isolated_runner, client, tmpdir, subdirectory):
+@pytest.mark.parametrize("datadir_option,datadir", [([], f"{DATA_DIR}/testing"), (["--datadir", "mydir"], "mydir")])
+def test_remove_dataset_file(isolated_runner, client, tmpdir, subdirectory, datadir_option, datadir):
     """Test remove of a file that belongs to a dataset."""
     runner = isolated_runner
 
     # create a dataset
-    result = runner.invoke(cli, ["dataset", "create", "testing"])
+    result = runner.invoke(cli, ["dataset", "create", "testing"] + datadir_option)
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
@@ -37,13 +40,13 @@ def test_remove_dataset_file(isolated_runner, client, tmpdir, subdirectory):
     result = runner.invoke(cli, ["dataset", "add", "testing", source.strpath])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    path = client.path / client.data_dir / "testing" / "remove_dataset.file"
+    path = client.path / datadir / "remove_dataset.file"
     assert path.exists()
 
     result = runner.invoke(cli, ["doctor"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["rm", str(client.path / DATA_DIR)])
+    result = runner.invoke(cli, ["rm", str(client.path / datadir)])
     assert 0 == result.exit_code, format_result_exception(result)
 
     assert not path.exists()

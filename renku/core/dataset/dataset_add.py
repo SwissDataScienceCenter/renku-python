@@ -35,7 +35,7 @@ from renku.core.util.dataset import check_url
 from renku.core.util.dispatcher import get_client, get_database
 from renku.core.util.git import get_git_user
 from renku.core.util.os import delete_file, get_relative_path
-from renku.domain_model.dataset import Dataset, DatasetFile, get_dataset_data_dir
+from renku.domain_model.dataset import Dataset, DatasetFile
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata
@@ -57,6 +57,7 @@ def add_to_dataset(
     extract: bool = False,
     clear_files_before: bool = False,
     total_size: Optional[int] = None,
+    datadir: Optional[Path] = None,
 ) -> Dataset:
     """Import the data into the data directory."""
     client = get_client()
@@ -65,7 +66,7 @@ def add_to_dataset(
     _check_available_space(client, urls, total_size=total_size)
 
     try:
-        with DatasetContext(name=dataset_name, create=create) as dataset:
+        with DatasetContext(name=dataset_name, create=create, datadir=datadir) as dataset:
             destination_path = _create_destination_directory(client, dataset, destination)
 
             client.check_external_storage()  # TODO: This is not required for external storages
@@ -177,7 +178,7 @@ def _download_files(
             revision=revision,
             sources=sources,
             external=external,
-            dataset_name=dataset.name,
+            dataset=dataset,
             extract=extract,
         )
 
@@ -210,7 +211,7 @@ def _create_destination_directory(
     client: "LocalClient", dataset: Dataset, destination: Optional[Union[Path, str]] = None
 ) -> Path:
     """Create directory for dataset add."""
-    dataset_datadir = client.path / get_dataset_data_dir(client, dataset.name)
+    dataset_datadir = client.path / dataset.get_datadir()
     # NOTE: Make sure that dataset's data dir exists because we check for existence of a destination later to decide
     # what will be its name
     dataset_datadir.mkdir(parents=True, exist_ok=True)

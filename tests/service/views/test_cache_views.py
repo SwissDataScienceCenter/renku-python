@@ -1085,8 +1085,10 @@ def test_check_migrations_remote_anonymous(svc_client, it_remote_public_repo_url
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_check_migrations_local_minimum_version(svc_client_setup, mocker):
+def test_check_migrations_local_minimum_version(svc_client_setup, mocker, monkeypatch):
     """Check if migrations are required for a local project."""
+    monkeypatch.setenv("RENKU_SKIP_MIN_VERSION_CHECK", "0")
+
     svc_client, headers, project_id, _, _ = svc_client_setup
 
     def _mock_database_project(project):

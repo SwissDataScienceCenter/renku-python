@@ -326,6 +326,9 @@ markers = [
     "service: mark a test as service test.",
     "shelled: mark a test as a shelled test.",
 ]
+env = [
+    "RENKU_SKIP_MIN_VERSION_CHECK = '1'"
+]
 
 [tool.mypy]
 python_version = "3.8"
