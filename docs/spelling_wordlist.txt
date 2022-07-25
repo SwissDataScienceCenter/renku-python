@@ -78,6 +78,7 @@ Fortran
 GitLab
 GitPython
 GraphQL
+graphviz
 gapped
 git-lfs
 gitattributes
