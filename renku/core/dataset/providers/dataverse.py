@@ -23,7 +23,7 @@ import re
 import urllib
 from pathlib import Path
 from string import Template
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
 from urllib import parse as urlparse
 
 from renku.command.command_builder import inject
@@ -37,10 +37,12 @@ from renku.core.dataset.providers.dataverse_metadata_templates import (
 from renku.core.dataset.providers.doi import DOIProvider
 from renku.core.dataset.providers.repository import RepositoryImporter, make_request
 from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.plugin import hookimpl
 from renku.core.util import communication
 from renku.core.util.doi import extract_doi, get_doi_url, is_doi
 from renku.core.util.file_size import bytes_to_unit
 from renku.core.util.urls import remove_credentials
+from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderDataset, ProviderParameter
@@ -579,3 +581,9 @@ def make_file_url(file_id, base_url):
     args_dict = {"persistentId": file_id}
     url_parts[4] = urllib.parse.urlencode(args_dict)
     return urllib.parse.urlunparse(url_parts)
+
+
+class DataverseProviderPlugin(IDatasetProviderPlugin):
+    @hookimpl
+    def session_provider(self) -> "Type[ProviderApi]":
+        return DataverseProvider

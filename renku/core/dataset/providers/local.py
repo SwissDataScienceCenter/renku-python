@@ -21,13 +21,15 @@ import os
 import urllib
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Type
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
+from renku.core.plugin import hookimpl
 from renku.core.util import communication
 from renku.core.util.dataset import check_url
 from renku.core.util.os import get_absolute_path, is_path_empty, is_subpath
+from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderParameter
@@ -247,3 +249,9 @@ class LocalExporter(ExporterApi):
 
         communication.echo(f"Dataset metadata was copied to {metadata_path}")
         return str(dst_root)
+
+
+class FilesystemProviderPlugin(IDatasetProviderPlugin):
+    @hookimpl
+    def session_provider(self) -> "Type[ProviderApi]":
+        return FilesystemProvider

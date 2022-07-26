@@ -28,11 +28,13 @@ def get_plugin_manager():
     from renku.core.plugin import provider as provider_hook_specs
     from renku.core.plugin import run as run_hook_specs
     from renku.core.plugin import workflow as workflow_hook_specs
+    from renku.core.plugin import dataset_provider
 
     pm = pluggy.PluginManager("renku")
     pm.add_hookspecs(provider_hook_specs)
     pm.add_hookspecs(run_hook_specs)
     pm.add_hookspecs(workflow_hook_specs)
+    pm.add_hookspecs(dataset_provider)
     pm.load_setuptools_entrypoints("renku")
 
     for cls in default_implementations.__dict__.values():

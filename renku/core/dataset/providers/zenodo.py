@@ -22,16 +22,18 @@ import os
 import pathlib
 import urllib
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
 from urllib.parse import urlparse
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
 from renku.core.dataset.providers.repository import RepositoryImporter, make_request
+from renku.core.plugin import hookimpl
 from renku.core.util import communication
 from renku.core.util.doi import is_doi
 from renku.core.util.file_size import bytes_to_unit
 from renku.core.util.urls import remove_credentials
+from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderDataset, ProviderParameter
@@ -551,3 +553,9 @@ def make_records_url(record_id):
         str: Full URL for the record.
     """
     return urllib.parse.urljoin(ZENODO_BASE_URL, pathlib.posixpath.join(ZENODO_API_PATH, "records", record_id))
+
+
+class ZenodoProviderPlugin(IDatasetProviderPlugin):
+    @hookimpl
+    def session_provider(self) -> "Type[ProviderApi]":
+        return ZenodoProvider

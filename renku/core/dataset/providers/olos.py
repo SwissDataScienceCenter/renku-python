@@ -20,7 +20,7 @@
 import datetime
 import urllib
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Type
 from urllib import parse as urlparse
 from uuid import UUID, uuid4
 
@@ -28,7 +28,9 @@ from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
 from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.plugin import hookimpl
 from renku.core.util import communication
+from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderParameter
@@ -284,3 +286,9 @@ class _OLOSDeposition:
                     response.status_code, json_res["message"] if "message" in json_res else json_res["status"]
                 )
             )
+
+
+class OLOSProviderPlugin(IDatasetProviderPlugin):
+    @hookimpl
+    def session_provider(self) -> "Type[ProviderApi]":
+        return OLOSProvider

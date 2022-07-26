@@ -18,13 +18,15 @@
 """S3 dataset provider."""
 
 import urllib
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Tuple, Type
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials, ProviderPriority
+from renku.core.plugin import hookimpl
 from renku.core.util.dispatcher import get_repository, get_storage
 from renku.core.util.metadata import prompt_for_credentials
 from renku.core.util.urls import get_scheme
+from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset
@@ -94,3 +96,9 @@ def extract_bucket_and_path(uri: str) -> Tuple[str, str]:
         raise errors.ParameterError(f"Invalid S3 URI: {uri}")
 
     return parsed_uri.netloc, parsed_uri.path
+
+
+class S3ProviderPlugin(IDatasetProviderPlugin):
+    @hookimpl
+    def session_provider(self) -> "Type[ProviderApi]":
+        return S3Provider

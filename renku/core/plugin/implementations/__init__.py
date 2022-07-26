@@ -23,17 +23,36 @@ from renku.core.session.docker import DockerSessionProvider
 from renku.core.session.renkulab import RenkulabSessionProvider
 from renku.core.workflow.converters.cwl import CWLExporter
 from renku.core.workflow.providers.cwltool import CWLToolProvider
+from renku.core.dataset.providers.dataverse import DataverseProviderPlugin
+from renku.core.dataset.providers.git import GitProviderPlugin
+from renku.core.dataset.providers.local import FilesystemProviderPlugin
+from renku.core.dataset.providers.olos import OLOSProviderPlugin
+from renku.core.dataset.providers.renku import RenkuProviderPlugin
+from renku.core.dataset.providers.s3 import S3ProviderPlugin
+from renku.core.dataset.providers.web import WebProviderPlugin
+from renku.core.dataset.providers.zenodo import ZenodoProviderPlugin
 
 if TYPE_CHECKING:
     from renku.domain_model.session import ISessionProvider
     from renku.domain_model.workflow.converters import IWorkflowConverter
     from renku.domain_model.workflow.provider import IWorkflowProvider
+    from renku.core.dataset.providers.api import ProviderApi
 
 __all__: List[str] = []
 
 session_providers: "List[Type[ISessionProvider]]" = [DockerSessionProvider, RenkulabSessionProvider]
 workflow_exporters: "List[Type[IWorkflowConverter]]" = [CWLExporter]
 workflow_providers: "List[Type[IWorkflowProvider]]" = [CWLToolProvider]
+dataset_providers: "List[Type[ProviderApi]]" = [
+    DataverseProviderPlugin,
+    GitProviderPlugin,
+    FilesystemProviderPlugin,
+    OLOSProviderPlugin,
+    RenkuProviderPlugin,
+    S3ProviderPlugin,
+    WebProviderPlugin,
+    ZenodoProviderPlugin,
+]
 
 try:
     from renku.core.workflow.providers.toil import ToilProvider
