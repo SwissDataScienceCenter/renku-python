@@ -19,10 +19,13 @@
 
 import urllib
 from pathlib import Path
+from typing import Type
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ImporterApi, ProviderApi, ProviderPriority
+from renku.core.plugin import hookimpl
 from renku.core.util.doi import extract_doi, is_doi
+from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 DOI_BASE_URL = "https://dx.doi.org"
 
@@ -148,3 +151,12 @@ def make_doi_url(doi):
         parsed_url = parsed_url._replace(scheme="")
         doi = parsed_url.geturl()
     return urllib.parse.urljoin(DOI_BASE_URL, doi)
+
+
+class DOIProviderPlugin(IDatasetProviderPlugin):
+    """DOI provider plugin."""
+
+    @hookimpl
+    def dataset_provider(self) -> "Type[ProviderApi]":
+        """The defintion of the provider."""
+        return DOIProvider
