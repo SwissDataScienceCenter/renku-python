@@ -17,13 +17,14 @@
 # limitations under the License.
 """Renku activity database gateway implementation."""
 
-from itertools import chain
+import itertools
 from pathlib import Path
 from typing import List, Optional, Set, Tuple, Union
 
 from persistent.list import PersistentList
 
 from renku.command.command_builder.command import inject
+from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.interface.plan_gateway import IPlanGateway
@@ -31,6 +32,7 @@ from renku.core.util.os import are_paths_related
 from renku.core.workflow.activity import create_activity_graph
 from renku.domain_model.provenance.activity import Activity, ActivityCollection
 from renku.domain_model.workflow.plan import Plan
+from renku.infrastructure.database import Database
 from renku.infrastructure.gateway.database_gateway import ActivityDownstreamRelation
 
 
@@ -39,11 +41,15 @@ class ActivityGateway(IActivityGateway):
 
     database_dispatcher = inject.attr(IDatabaseDispatcher)
 
+    def get_by_id(self, id: str) -> Optional[Activity]:
+        """Get an activity by id."""
+        return self.database_dispatcher.current_database["activities"].get(id)
+
     def get_all_usage_paths(self) -> List[str]:
         """Return all usage paths."""
         database = self.database_dispatcher.current_database
 
-        return list(database["activities-by-usage"].keys())
+        return list(a for a in database["activities-by-usage"].keys())
 
     def get_all_generation_paths(self) -> List[str]:
         """Return all generation paths."""
@@ -51,13 +57,33 @@ class ActivityGateway(IActivityGateway):
 
         return list(database["activities-by-generation"].keys())
 
+    def get_activities_by_usage(self, path: Union[Path, str], checksum: Optional[str] = None) -> List[Activity]:
+        """Return the list of all activities that use a path."""
+        by_usage = self.database_dispatcher.current_database["activities-by-usage"]
+        activities = by_usage.get(str(path), [])
+
+        if not checksum:
+            return activities
+
+        result = []
+
+        for activity in activities:
+            usage = next((g for g in activity.usages if g.entity.checksum == checksum), None)
+
+            if usage:
+                result.append(activity)
+
+        return result
+
     def get_activities_by_generation(self, path: Union[Path, str], checksum: Optional[str] = None) -> List[Activity]:
         """Return the list of all activities that generate a path."""
         by_generation = self.database_dispatcher.current_database["activities-by-generation"]
         activities = by_generation.get(str(path), [])
 
+        activities = (a for a in activities if not a.deleted)
+
         if not checksum:
-            return activities
+            return list(activities)
 
         result = []
 
@@ -79,6 +105,16 @@ class ActivityGateway(IActivityGateway):
         downstream = set(activity_catalog.findValues("downstream", tok(upstream=activity), maxDepth=max_depth))
 
         return downstream
+
+    def get_upstream_activities(self, activity: Activity, max_depth=None) -> Set[Activity]:
+        """Get upstream activities that this activity depends on them."""
+        database = self.database_dispatcher.current_database
+
+        activity_catalog = database["activity-catalog"]
+        tok = activity_catalog.tokenizeQuery
+        upstream = set(activity_catalog.findValues("upstream", tok(downstream=activity), maxDepth=max_depth))
+
+        return upstream
 
     def get_downstream_activity_chains(self, activity: Activity) -> List[Tuple[Activity, ...]]:
         """Get a list of tuples of all downstream paths of this activity."""
@@ -102,9 +138,10 @@ class ActivityGateway(IActivityGateway):
 
         return upstream_chains
 
-    def get_all_activities(self) -> List[Activity]:
+    def get_all_activities(self, include_deleted: bool = False) -> List[Activity]:
         """Get all activities in the project."""
-        return list(self.database_dispatcher.current_database["activities"].values())
+        database = self.database_dispatcher.current_database
+        return [a for a in database["activities"].values() if not a.deleted or include_deleted]
 
     def add(self, activity: Activity):
         """Add an ``Activity`` to storage."""
@@ -113,37 +150,7 @@ class ActivityGateway(IActivityGateway):
 
         database["activities"].add(activity)
 
-        upstreams = set()
-        downstreams = set()
-
-        by_usage = database["activities-by-usage"]
-        by_generation = database["activities-by-generation"]
-
-        for usage in activity.usages:
-            if usage.entity.path not in by_usage:
-                by_usage[usage.entity.path] = PersistentList()
-            by_usage[usage.entity.path].append(activity)
-
-            for path, activities in by_generation.items():
-                if are_paths_related(path, usage.entity.path):
-                    upstreams.update(activities)
-
-        for generation in activity.generations:
-            if generation.entity.path not in by_generation:
-                by_generation[generation.entity.path] = PersistentList()
-            by_generation[generation.entity.path].append(activity)
-
-            for path, activities in by_usage.items():
-                if are_paths_related(path, generation.entity.path):
-                    downstreams.update(activities)
-
-        if upstreams:
-            for s in upstreams:
-                database["activity-catalog"].index(ActivityDownstreamRelation(downstream=activity, upstream=s))
-
-        if downstreams:
-            for s in downstreams:
-                database["activity-catalog"].index(ActivityDownstreamRelation(downstream=s, upstream=activity))
+        _index_activity(activity=activity, database=database)
 
         assert isinstance(activity.association.plan, Plan)
 
@@ -156,7 +163,7 @@ class ActivityGateway(IActivityGateway):
 
         all_activities = set()
 
-        for activity_chain in chain(upstream_chains, downstream_chains):
+        for activity_chain in itertools.chain(upstream_chains, downstream_chains):
             for current_activity in activity_chain:
                 all_activities.add(current_activity)
 
@@ -172,3 +179,129 @@ class ActivityGateway(IActivityGateway):
     def get_all_activity_collections(self) -> List[ActivityCollection]:
         """Get all activity collections in the project."""
         return list(self.database_dispatcher.current_database["activity-collections"].values())
+
+    def remove(self, activity: Activity, keep_reference: bool = True, force: bool = False):
+        """Remove an activity from the storage.
+
+        Args:
+            activity(Activity): The activity to be removed.
+            keep_reference(bool): Whether to keep the activity in the ``activities`` index or not.
+            force(bool): Force-delete the activity even if it has downstream activities.
+        """
+        database = self.database_dispatcher.current_database
+
+        if not force and self.get_downstream_activities(activity):
+            raise errors.ActivityDownstreamNotEmptyError(activity)
+
+        if not keep_reference:
+            database["activities"].remove(activity)
+
+        _unindex_activity(activity=activity, database=database)
+
+
+def reindex_catalog(database):
+    """Clear and re-create database's activity-catalog and its relations."""
+    activity_catalog = database["activity-catalog"]
+    relations = database["_downstream_relations"]
+
+    activity_catalog.clear()
+    relations.clear()
+
+    for activity in database["activities"].values():
+        _index_activity(activity=activity, database=database)
+
+
+def _index_activity(activity: Activity, database: Database):
+    """Add an activity to database indexes and create its up/downstream relations."""
+    if activity.deleted:
+        return
+
+    upstreams = set()
+    downstreams = set()
+
+    by_usage = database["activities-by-usage"]
+    by_generation = database["activities-by-generation"]
+
+    for usage in activity.usages:
+        if usage.entity.path not in by_usage:
+            by_usage[usage.entity.path] = PersistentList()
+        if activity not in by_usage[usage.entity.path]:
+            by_usage[usage.entity.path].append(activity)
+
+        for path, activities in by_generation.items():
+            if are_paths_related(path, usage.entity.path):
+                upstreams.update(activities)
+
+    for generation in activity.generations:
+        if generation.entity.path not in by_generation:
+            by_generation[generation.entity.path] = PersistentList()
+        if activity not in by_generation[generation.entity.path]:
+            by_generation[generation.entity.path].append(activity)
+
+        for path, activities in by_usage.items():
+            if are_paths_related(path, generation.entity.path):
+                downstreams.update(activities)
+
+    activity_catalog = database["activity-catalog"]
+
+    if upstreams:
+        for a in upstreams:
+            if a != activity:
+                activity_catalog.index(ActivityDownstreamRelation(downstream=activity, upstream=a))
+
+    if downstreams:
+        for a in downstreams:
+            if a != activity:
+                activity_catalog.index(ActivityDownstreamRelation(downstream=a, upstream=activity))
+
+    if upstreams or downstreams:
+        activity_catalog._p_changed = True
+
+
+def _unindex_activity(activity: Activity, database: Database):
+    """Add an activity to database indexes and create its up/downstream relations."""
+    upstreams = set()
+    downstreams = set()
+
+    by_usage = database["activities-by-usage"]
+    by_generation = database["activities-by-generation"]
+
+    for usage in activity.usages:
+        if usage.entity.path in by_usage:
+            activities = by_usage[usage.entity.path]
+            activities.remove(activity)
+            if len(activities) == 0:
+                del by_usage[usage.entity.path]
+
+        for path, activities in by_generation.items():
+            if are_paths_related(path, usage.entity.path):
+                upstreams.update(activities)
+
+    for generation in activity.generations:
+        if generation.entity.path in by_generation:
+            activities = by_generation[generation.entity.path]
+            activities.remove(activity)
+            if len(activities) == 0:
+                del by_generation[generation.entity.path]
+
+        for path, activities in by_usage.items():
+            if are_paths_related(path, generation.entity.path):
+                downstreams.update(activities)
+
+    activity_catalog = database["activity-catalog"]
+    relations = database["_downstream_relations"]
+
+    if upstreams:
+        for s in upstreams:
+            relation = ActivityDownstreamRelation(downstream=activity, upstream=s)
+            activity_catalog.unindex(relation)
+            relations.pop(relation.id, None)
+
+    if downstreams:
+        for s in downstreams:
+            relation = ActivityDownstreamRelation(downstream=s, upstream=activity)
+            activity_catalog.unindex(relation)
+            relations.pop(relation.id, None)
+
+    if upstreams or downstreams:
+        activity_catalog._p_changed = True

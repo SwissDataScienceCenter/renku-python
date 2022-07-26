@@ -134,15 +134,15 @@ def test_composite_plan_set_defaults(composite_plan):
 
     grouped.set_mappings_from_strings(["prop1=@step1.@input1", "prop2=run2.@output2"])
 
-    grouped.set_mapping_defaults(["prop1=1", "prop2=abcdefg", "@step1.@param1=xyz", "run2.run2_input1=7.89"])
+    grouped.set_mapping_defaults(["prop1=abc", "prop2=def", "@step1.@param1=xyz", "run2.run2_input1=7.89"])
 
-    assert next(filter(lambda m: m.name == "prop1", grouped.mappings)).default_value == "1"
-    assert next(filter(lambda m: m.name == "prop2", grouped.mappings)).default_value == "abcdefg"
+    assert next(filter(lambda m: m.name == "prop1", grouped.mappings)).default_value == "abc"
+    assert next(filter(lambda m: m.name == "prop2", grouped.mappings)).default_value == "def"
     assert run1.parameters[0].default_value == "xyz"
     assert run2.inputs[0].default_value == "7.89"
 
-    assert run1.inputs[0].default_value != "1"
-    assert run2.outputs[1].default_value != "abcdefg"
+    assert run1.inputs[0].default_value != "abc"
+    assert run2.outputs[1].default_value != "def"
 
 
 def test_composite_plan_set_description(composite_plan):
@@ -210,18 +210,18 @@ def test_composite_plan_map_all_parameters(composite_plan):
             {},
             {
                 "run1": {
-                    "run1_input1": 1,
-                    "run1_input2": 2,
-                    "run1_output1": 3,
-                    "run1_output2": 4,
+                    "run1_input1": "1",
+                    "run1_input2": "2",
+                    "run1_output1": "3",
+                    "run1_output2": "4",
                     "run1_param1": 5,
                     "run1_param2": 6,
                 },
                 "run2": {
-                    "run2_input1": 1,
-                    "run2_input2": 2,
-                    "run2_output1": 3,
-                    "run2_output2": 4,
+                    "run2_input1": "1",
+                    "run2_input2": "2",
+                    "run2_output1": "3",
+                    "run2_output2": "4",
                     "run2_param1": 5,
                     "run2_param2": 6,
                 },
@@ -241,18 +241,18 @@ def test_composite_plan_map_all_parameters(composite_plan):
             },
             {
                 "run1": {
-                    "run1_input1": 1,
-                    "run1_input2": 2,
-                    "run1_output1": 3,
-                    "run1_output2": 4,
+                    "run1_input1": "1",
+                    "run1_input2": "2",
+                    "run1_output1": "3",
+                    "run1_output2": "4",
                     "run1_param1": 5,
                     "run1_param2": "f",
                 },
                 "run2": {
-                    "run2_input1": 1,
+                    "run2_input1": "1",
                     "run2_input2": "h",
-                    "run2_output1": 3,
-                    "run2_output2": 4,
+                    "run2_output1": "3",
+                    "run2_output2": "4",
                     "run2_param1": 5,
                     "run2_param2": 6,
                 },
@@ -265,18 +265,18 @@ def test_composite_plan_map_all_parameters(composite_plan):
             {},
             {
                 "run1": {
-                    "run1_input1": 1,
-                    "run1_input2": 2,
-                    "run1_output1": 3,
-                    "run1_output2": 4,
+                    "run1_input1": "1",
+                    "run1_input2": "2",
+                    "run1_output1": "3",
+                    "run1_output2": "4",
                     "run1_param1": 5,
                     "run1_param2": 6,
                 },
                 "run2": {
-                    "run2_input1": 1,
-                    "run2_input2": 2,
-                    "run2_output1": 3,
-                    "run2_output2": 4,
+                    "run2_input1": "1",
+                    "run2_input2": "2",
+                    "run2_output1": "3",
+                    "run2_output2": "4",
                     "run2_param1": 5,
                     "run2_param2": 6,
                 },
@@ -290,16 +290,16 @@ def test_composite_plan_map_all_parameters(composite_plan):
             {
                 "run1": {
                     "run1_input1": "x",
-                    "run1_input2": 2,
-                    "run1_output1": 3,
-                    "run1_output2": 4,
+                    "run1_input2": "2",
+                    "run1_output1": "3",
+                    "run1_output2": "4",
                     "run1_param1": 5,
                     "run1_param2": 6,
                 },
                 "run2": {
-                    "run2_input1": 1,
-                    "run2_input2": 2,
-                    "run2_output1": 3,
+                    "run2_input1": "1",
+                    "run2_input2": "2",
+                    "run2_output1": "3",
                     "run2_output2": "y",
                     "run2_param1": 5,
                     "run2_param2": 6,
@@ -319,16 +319,16 @@ def test_composite_plan_map_all_parameters(composite_plan):
             {
                 "run1": {
                     "run1_input1": "x",
-                    "run1_input2": 2,
-                    "run1_output1": 3,
-                    "run1_output2": 4,
+                    "run1_input2": "2",
+                    "run1_output1": "3",
+                    "run1_output2": "4",
                     "run1_param1": 5,
                     "run1_param2": "f",
                 },
                 "run2": {
-                    "run2_input1": 1,
+                    "run2_input1": "1",
                     "run2_input2": "h",
-                    "run2_output1": 3,
+                    "run2_output1": "3",
                     "run2_output2": "a",
                     "run2_param1": 5,
                     "run2_param2": 6,
@@ -349,16 +349,16 @@ def test_composite_plan_map_all_parameters(composite_plan):
             {
                 "run1": {
                     "run1_input1": "x",
-                    "run1_input2": 2,
-                    "run1_output1": 3,
-                    "run1_output2": 4,
+                    "run1_input2": "2",
+                    "run1_output1": "3",
+                    "run1_output2": "4",
                     "run1_param1": 5,
                     "run1_param2": "f",
                 },
                 "run2": {
-                    "run2_input1": 1,
+                    "run2_input1": "1",
                     "run2_input2": "h",
-                    "run2_output1": 3,
+                    "run2_output1": "3",
                     "run2_output2": "z",
                     "run2_param1": 5,
                     "run2_param2": 6,
@@ -379,16 +379,16 @@ def test_composite_plan_map_all_parameters(composite_plan):
             {
                 "run1": {
                     "run1_input1": "42",
-                    "run1_input2": 2,
-                    "run1_output1": 3,
-                    "run1_output2": 4,
+                    "run1_input2": "2",
+                    "run1_output1": "3",
+                    "run1_output2": "4",
                     "run1_param1": 5,
                     "run1_param2": "f",
                 },
                 "run2": {
-                    "run2_input1": 1,
+                    "run2_input1": "1",
                     "run2_input2": "h",
-                    "run2_output1": 3,
+                    "run2_output1": "3",
                     "run2_output2": "a",
                     "run2_param1": 5,
                     "run2_param2": 6,

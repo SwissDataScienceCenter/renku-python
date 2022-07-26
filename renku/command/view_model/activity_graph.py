@@ -18,8 +18,11 @@
 """Activity graph view model."""
 
 from datetime import datetime
+from itertools import repeat
 from textwrap import shorten
 from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple
+
+from renku.core import errors
 
 if TYPE_CHECKING:
     from grandalf.graphs import Edge
@@ -79,6 +82,45 @@ class ActivityGraphViewModel:
 
         return max(activity_times)
 
+    def _format_vertex_raw(self, node, columns: List[Callable]) -> str:
+        """Return vertex text for a node.
+
+        Args:
+            node: The node to format.
+            columns (List[Callable]): The fields to include in the node text.
+
+        Returns:
+            string representation of node
+        """
+        import json
+
+        from renku.domain_model.provenance.activity import Activity
+
+        if isinstance(node, Activity):
+            text = "\n".join(c(node) for c in columns)
+        else:
+            text = node
+
+        # NOTE: double quotes are common in console command, repr() wouldn't escape properly
+        return json.dumps(text)
+
+    def _get_lambda_columns(self, columns):
+        """Return lambda columns.
+
+        Args:
+            columns (str): comma-separated column names.
+
+        Returns:
+            List[Callable] lambda columns
+        """
+
+        try:
+            return [ACTIVITY_GRAPH_COLUMNS[c] for c in columns.split(",")]
+        except KeyError as e:
+            wrong_values = ", ".join(e.args)
+            suggestion = ",".join(ACTIVITY_GRAPH_COLUMNS.keys())
+            raise errors.ParameterError(f"you can use any of '{suggestion}'", f"columns '{wrong_values}'")
+
     def layout_graph(self, columns):
         """Create a Sugiyama layout of the graph.
 
@@ -92,7 +134,7 @@ class ActivityGraphViewModel:
 
         from renku.domain_model.provenance.activity import Activity
 
-        columns = [ACTIVITY_GRAPH_COLUMNS[c] for c in columns.split(",")]
+        columns = self._get_lambda_columns(columns)
 
         self.layouts: List[SugiyamaLayout] = []
 
@@ -183,6 +225,48 @@ class ActivityGraphViewModel:
 
         existing_edges.extend(new_edges)
         return max_y, edge_color
+
+    def dot_representation(self, columns: str) -> str:
+        """Return the graph as a Graphviz Dot string.
+
+        Args:
+            columns(str): Columns to include in node text.
+
+        Returns:
+            string representing the Graphviz Dot graph
+        """
+        import io
+
+        from renku.domain_model.provenance.activity import Activity
+
+        # compute node text
+        columns_callable = self._get_lambda_columns(columns)
+        activities_text = {}
+        for node in self.graph.nodes:
+            if isinstance(node, Activity):
+                output_text = "\n".join(c(node) for c in columns_callable)
+                activities_text[str(node)] = output_text
+
+        output = io.StringIO()
+        output.write("digraph {\n")
+
+        # add edges and track visited nodes
+        visited_nodes = []
+        for edge in self.graph.edges:
+            vertexes = tuple(map(self._format_vertex_raw, edge, repeat(columns_callable, 2)))
+            output.write(f"{vertexes[0]} -> {vertexes[1]};")
+            for vertex in vertexes:
+                if vertex not in visited_nodes:
+                    visited_nodes.append(vertex)
+
+        # add missing nodes
+        for node in self.graph.nodes:
+            lonely_node = self._format_vertex_raw(node, columns_callable)
+            if lonely_node not in visited_nodes:
+                output.write(f'"{lonely_node}";')
+
+        output.write("\n}")
+        return output.getvalue()
 
     def text_representation(
         self, columns: str, color: bool = True, ascii=False

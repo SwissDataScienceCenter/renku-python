@@ -18,9 +18,10 @@
 """Renku database gateway interface."""
 
 from abc import ABC
-from typing import Generator
+from typing import TYPE_CHECKING, Generator
 
-from persistent import Persistent
+if TYPE_CHECKING:
+    from persistent import Persistent
 
 
 class IDatabaseGateway(ABC):
@@ -34,6 +35,6 @@ class IDatabaseGateway(ABC):
         """Commit changes to database."""
         raise NotImplementedError
 
-    def get_modified_objects_from_revision(self, revision_or_range: str) -> Generator[Persistent, None, None]:
+    def get_modified_objects_from_revision(self, revision_or_range: str) -> Generator["Persistent", None, None]:
         """Get all database objects modified in a revision."""
         raise NotImplementedError

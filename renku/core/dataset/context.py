@@ -16,6 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dataset context managers."""
+
+import contextlib
+import time
+from pathlib import Path
 from typing import Optional
 
 from renku.command.command_builder.command import inject
@@ -38,6 +42,7 @@ class DatasetContext:
         create: Optional[bool] = False,
         commit_database: Optional[bool] = False,
         creator: Optional[Person] = None,
+        datadir: Optional[Path] = None,
     ) -> None:
         self.name = name
         self.create = create
@@ -45,6 +50,7 @@ class DatasetContext:
         self.creator = creator
         self.dataset_provenance = DatasetsProvenance()
         self.dataset: Optional[Dataset] = None
+        self.datadir: Optional[Path] = datadir
 
     def __enter__(self):
         """Enter context."""
@@ -53,8 +59,8 @@ class DatasetContext:
             if not self.create:
                 raise errors.DatasetNotFound(name=self.name)
 
-            # NOTE: Don't update provenance when creating here because it will be updated later
-            self.dataset = create_dataset(name=self.name, update_provenance=False)
+            # NOTE: Don't update provenance when creating here because it will be updated later)
+            self.dataset = create_dataset(name=self.name, update_provenance=False, datadir=self.datadir)
         elif self.create:
             raise errors.DatasetExistsError('Dataset exists: "{}".'.format(self.name))
 
@@ -71,3 +77,15 @@ class DatasetContext:
             self.datasets_provenance = DatasetsProvenance()
             self.datasets_provenance.add_or_update(self.dataset, creator=self.creator)
             self.database_dispatcher.current_database.commit()
+
+
+@contextlib.contextmanager
+def wait_for(delay: float):
+    """Make sure that at least ``delay`` seconds are passed during the execution of the wrapped code block."""
+    start = time.time()
+
+    yield
+
+    exec_time = time.time() - start
+    if exec_time < delay:
+        time.sleep(delay - exec_time)

@@ -19,6 +19,7 @@
 from flask import request
 
 from renku.ui.service.config import SERVICE_PREFIX
+from renku.ui.service.controllers.cache_files_delete_chunks import DeleteFileChunksCtrl
 from renku.ui.service.controllers.cache_files_upload import UploadFilesCtrl
 from renku.ui.service.controllers.cache_list_projects import ListProjectsCtrl
 from renku.ui.service.controllers.cache_list_uploaded import ListUploadedFilesCtrl
@@ -26,7 +27,7 @@ from renku.ui.service.controllers.cache_migrate_project import MigrateProjectCtr
 from renku.ui.service.controllers.cache_migrations_check import MigrationsCheckCtrl
 from renku.ui.service.controllers.cache_project_clone import ProjectCloneCtrl
 from renku.ui.service.gateways.gitlab_api_provider import GitlabAPIProvider
-from renku.ui.service.views.api_versions import V0_9, V1_0, V1_1, VersionedBlueprint
+from renku.ui.service.views.api_versions import ALL_VERSIONS, VERSIONS_FROM_V1_0, VERSIONS_FROM_V1_1, VersionedBlueprint
 from renku.ui.service.views.decorators import accepts_json, optional_identity, requires_cache, requires_identity
 from renku.ui.service.views.error_handlers import (
     handle_common_except,
@@ -40,9 +41,7 @@ CACHE_BLUEPRINT_TAG = "cache"
 cache_blueprint = VersionedBlueprint("cache", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@cache_blueprint.route(
-    "/cache.files_list", methods=["GET"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1]
-)
+@cache_blueprint.route("/cache.files_list", methods=["GET"], provide_automatic_options=False, versions=ALL_VERSIONS)
 @handle_common_except
 @requires_cache
 @requires_identity
@@ -65,9 +64,7 @@ def list_uploaded_files_view(user_data, cache):
     return ListUploadedFilesCtrl(cache, user_data).to_response()
 
 
-@cache_blueprint.route(
-    "/cache.files_upload", methods=["POST"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1]
-)
+@cache_blueprint.route("/cache.files_upload", methods=["POST"], provide_automatic_options=False, versions=ALL_VERSIONS)
 @handle_common_except
 @requires_cache
 @requires_identity
@@ -103,8 +100,35 @@ def upload_file_view(user_data, cache):
 
 
 @cache_blueprint.route(
-    "/cache.project_clone", methods=["POST"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1]
+    "/cache.files_delete_chunks", methods=["POST"], provide_automatic_options=False, versions=ALL_VERSIONS
 )
+@handle_common_except
+@accepts_json
+@requires_cache
+@requires_identity
+def delete_file_chunks_view(user_data, cache):
+    """
+    Delete chunks from a chunked upload.
+
+    ---
+    post:
+      description: Delete chunks from a chunked upload.
+      parameters:
+        - in: query
+          schema: FileChunksDeleteRequest
+      responses:
+        200:
+          description: Status of deletion request.
+          content:
+            application/json:
+              schema: FileChunksDeleteResponseRPC
+      tags:
+        - cache
+    """
+    return DeleteFileChunksCtrl(cache, user_data, dict(request.json)).to_response()
+
+
+@cache_blueprint.route("/cache.project_clone", methods=["POST"], provide_automatic_options=False, versions=ALL_VERSIONS)
 @handle_common_except
 @accepts_json
 @requires_cache
@@ -133,9 +157,7 @@ def project_clone_view(user_data, cache):
     return ProjectCloneCtrl(cache, user_data, dict(request.json)).to_response()
 
 
-@cache_blueprint.route(
-    "/cache.project_list", methods=["GET"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1]
-)
+@cache_blueprint.route("/cache.project_list", methods=["GET"], provide_automatic_options=False, versions=ALL_VERSIONS)
 @handle_common_except
 @requires_cache
 @requires_identity
@@ -158,7 +180,7 @@ def list_projects_view(user_data, cache):
     return ListProjectsCtrl(cache, user_data).to_response()
 
 
-@cache_blueprint.route("/cache.migrate", methods=["POST"], provide_automatic_options=False, versions=[V1_1])
+@cache_blueprint.route("/cache.migrate", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_FROM_V1_1)
 @handle_common_except
 @handle_migration_write_errors
 @accepts_json
@@ -188,7 +210,7 @@ def migrate_project_view(user_data, cache):
 
 
 @cache_blueprint.route(
-    "/cache.migrations_check", methods=["GET"], provide_automatic_options=False, versions=[V1_0, V1_1]
+    "/cache.migrations_check", methods=["GET"], provide_automatic_options=False, versions=VERSIONS_FROM_V1_0
 )
 @handle_common_except
 @handle_migration_read_errors

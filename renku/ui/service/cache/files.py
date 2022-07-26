@@ -17,15 +17,16 @@
 # limitations under the License.
 """Renku service files cache management."""
 from renku.ui.service.cache.base import BaseCache
-from renku.ui.service.cache.models.file import File
+from renku.ui.service.cache.models.file import File, FileChunk
 from renku.ui.service.cache.models.user import User
-from renku.ui.service.cache.serializers.file import FileSchema
+from renku.ui.service.cache.serializers.file import FileChunkSchema, FileSchema
 
 
 class FileManagementCache(BaseCache):
     """File management cache."""
 
     file_schema = FileSchema()
+    chunk_schema = FileChunkSchema()
 
     def set_file(self, user, file_data):
         """Cache file metadata."""
@@ -39,6 +40,15 @@ class FileManagementCache(BaseCache):
     def set_files(self, user, files):
         """Cache files metadata."""
         return [self.set_file(user, file_) for file_ in files]
+
+    def set_file_chunk(self, user, chunk_data):
+        """Cache chunk metadata."""
+        chunk_data.update({"user_id": user.user_id})
+
+        chunk_obj = self.chunk_schema.load(chunk_data)
+        chunk_obj.save()
+
+        return chunk_obj
 
     @staticmethod
     def get_file(user, file_id):
@@ -56,6 +66,21 @@ class FileManagementCache(BaseCache):
         return File.query(File.user_id == user.user_id)
 
     @staticmethod
+    def get_chunks(user, chunked_id=None):
+        """Get all user chunks for a file."""
+        if chunked_id is not None:
+            return FileChunk.query(FileChunk.user_id == user.user_id and FileChunk.chunked_id == chunked_id)
+        return FileChunk.query(FileChunk.user_id == user.user_id)
+
+    @staticmethod
+    def invalidate_chunks(user, chunked_id):
+        """Remove all user chunks for a file."""
+        chunks = FileChunk.query(FileChunk.user_id == user.user_id and FileChunk.chunked_id == chunked_id)
+
+        for chunk in chunks:
+            chunk.delete()
+
+    @staticmethod
     def invalidate_file(user, file_id):
         """Remove users file records."""
         file_obj = FileManagementCache.get_file(user, file_id)
@@ -69,3 +94,8 @@ class FileManagementCache(BaseCache):
         """Iterate through all cached files."""
         for user in User.all():
             yield user, self.get_files(user)
+
+    def user_chunks(self):
+        """Iterate through all cached files."""
+        for user in User.all():
+            yield user, self.get_chunks(user)

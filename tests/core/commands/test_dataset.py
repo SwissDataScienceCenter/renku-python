@@ -34,8 +34,9 @@ from renku.command.dataset import (
 )
 from renku.core import errors
 from renku.core.dataset.context import DatasetContext
-from renku.core.dataset.dataset_add import add_data_to_dataset
+from renku.core.dataset.dataset_add import add_to_dataset
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
+from renku.core.dataset.tag import get_dataset_by_tag
 from renku.core.errors import ParameterError
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.util.contexts import chdir
@@ -43,6 +44,7 @@ from renku.core.util.git import get_git_user
 from renku.core.util.urls import get_slug
 from renku.domain_model.dataset import Dataset, is_dataset_name_valid
 from renku.domain_model.provenance.agent import Person
+from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository
 from tests.utils import assert_dataset_is_mutated, load_dataset, raises
 
@@ -56,7 +58,6 @@ from tests.utils import assert_dataset_is_mutated, load_dataset, raises
         ("", "tempp", False, errors.ParameterError),
         ("http://", "example.com/file1", False, None),
         ("https://", "example.com/file1", True, None),
-        ("bla://", "file", False, errors.UrlSchemeNotSupported),
     ],
 )
 def test_data_add(scheme, path, overwrite, error, client_with_injection, directory_tree, dataset_responses):
@@ -65,7 +66,7 @@ def test_data_add(scheme, path, overwrite, error, client_with_injection, directo
         if path == "temp":
             path = str(directory_tree / "file1")
 
-        dataset = add_data_to_dataset("dataset", [f"{scheme}{path}"], overwrite=overwrite, create=True)
+        dataset = add_to_dataset("dataset", [f"{scheme}{path}"], overwrite=overwrite, create=True)
 
         target_path = os.path.join(DATA_DIR, "dataset", "file1")
 
@@ -82,13 +83,13 @@ def test_data_add(scheme, path, overwrite, error, client_with_injection, directo
             shutil.rmtree("./data/dataset")
             # NOTE: To simulate loading from persistent storage like what a separate renku command would do
             dataset.freeze()
-            add_data_to_dataset("dataset", [f"{scheme}{path}"], overwrite=True)
+            add_to_dataset("dataset", [f"{scheme}{path}"], overwrite=True)
             assert os.path.exists(target_path)
 
 
 def test_data_add_recursive(directory_tree, client_with_injection):
     """Test recursive data imports."""
-    dataset = add_data_to_dataset("dataset", [str(directory_tree / "dir1")], create=True)
+    dataset = add_to_dataset("dataset", [str(directory_tree / "dir1")], create=True)
 
     assert os.path.basename(os.path.dirname(dataset.files[0].entity.path)) == "dir1"
 
@@ -241,3 +242,23 @@ def test_uppercase_dataset_name_is_valid():
     """Test dataset name can have uppercase characters."""
     assert is_dataset_name_valid("UPPER-CASE")
     assert is_dataset_name_valid("Pascal-Case")
+
+
+@pytest.mark.integration
+def test_get_dataset_by_tag(path_injection, tmp_path):
+    """Test getting datasets by a given tag."""
+    url = "https://dev.renku.ch/gitlab/renku-python-integration-tests/lego-datasets.git"
+    repository = Repository.clone_from(url=url, path=tmp_path / "repo")
+
+    with path_injection(repository.path):
+        dataset_gateway = DatasetGateway()
+
+        parts_dataset = dataset_gateway.get_by_name("parts")
+
+        returned_datasets = get_dataset_by_tag(dataset=parts_dataset, tag="v1")
+        selected_tag = next(tag for tag in dataset_gateway.get_all_tags(parts_dataset) if tag.name == "v1")
+
+        assert selected_tag.dataset_id.value == returned_datasets.id
+
+        # Get a non-existing tag
+        assert get_dataset_by_tag(dataset=parts_dataset, tag="v42") is None

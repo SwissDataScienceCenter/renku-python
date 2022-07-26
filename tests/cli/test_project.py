@@ -116,3 +116,73 @@ def test_project_edit_no_change(runner, client):
     commit_sha_after = client.repository.head.commit.hexsha
     assert commit_sha_after == commit_sha_before
     assert client.repository.is_dirty(untracked_files=True)
+
+
+def test_project_edit_unset(runner, client, subdirectory, client_database_injection_manager):
+    """Check project metadata editing."""
+    (client.path / "README.md").write_text("Make repo dirty.")
+
+    creator = "Forename Surname [Affiliation]"
+
+    metadata = {
+        "@id": "https://example.com/annotation1",
+        "@type": "https://schema.org/specialType",
+        "https://schema.org/specialProperty": "some_unique_value",
+    }
+    metadata_path = client.path / "metadata.json"
+    metadata_path.write_text(json.dumps(metadata))
+
+    result = runner.invoke(
+        cli,
+        [
+            "project",
+            "edit",
+            "-d",
+            " new description ",
+            "-c",
+            creator,
+            "--metadata",
+            str(metadata_path),
+            "-k",
+            "keyword1",
+            "-k",
+            "keyword2",
+        ],
+    )
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Successfully updated: creator, description, keywords, custom_metadata." in result.output
+    assert "Warning: No email or wrong format for: Forename Surname" in result.output
+
+    commit_sha_before = client.repository.head.commit.hexsha
+
+    result = runner.invoke(
+        cli,
+        ["project", "edit", "-u", "keywords", "-u", "metadata"],
+    )
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Successfully updated: keywords, custom_metadata." in result.output
+
+    with client_database_injection_manager(client):
+        project_gateway = ProjectGateway()
+        project = project_gateway.get_project()
+
+    assert not project.annotations
+    assert not project.keywords
+
+    assert client.repository.is_dirty(untracked_files=True)
+    commit_sha_after = client.repository.head.commit.hexsha
+    assert commit_sha_before != commit_sha_after
+
+    result = runner.invoke(cli, ["project", "show"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Id:" in result.output
+    assert "Name:" in result.output
+    assert "Creator:" in result.output
+    assert "Renku Version:" in result.output
+    assert "Keywords:" in result.output
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)

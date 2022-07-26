@@ -18,6 +18,115 @@
 Changes
 =======
 
+`1.6.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.5.0...v1.6.0>`__ (2022-07-22)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** fix merge tool committing more than just .gitattributes
+   (`#3013 <https://github.com/SwissDataScienceCenter/renku-python/issues/3013>`__)
+   (`3905d78 <https://github.com/SwissDataScienceCenter/renku-python/commit/3905d78261d1064e8d3d108658f9699829bd1fc9>`__)
+-  **cli:** fix merge tool not working with OOBuckets
+   (`#3023 <https://github.com/SwissDataScienceCenter/renku-python/issues/3023>`__)
+   (`71f0d4a <https://github.com/SwissDataScienceCenter/renku-python/commit/71f0d4a2f11a7df3d38dbdaa1e4249361b064045>`__)
+-  **cli:** prevent deletion of plans that are still used in composite plans
+   (`#2993 <https://github.com/SwissDataScienceCenter/renku-python/issues/2993>`__)
+   (`f013bb6 <https://github.com/SwissDataScienceCenter/renku-python/commit/f013bb67539acb568a079b22f553122c12267e55>`__)
+-  **cli:** prevent removed plans from being used in workflow commands
+   (`#2998 <https://github.com/SwissDataScienceCenter/renku-python/issues/2998>`__)
+   (`493f4c5 <https://github.com/SwissDataScienceCenter/renku-python/commit/493f4c58d5766372739da14141ee0b090467f26d>`__)
+-  **core:** persist activity catalog in metadata
+   (`#2994 <https://github.com/SwissDataScienceCenter/renku-python/issues/2994>`__)
+   (`8ef503f <https://github.com/SwissDataScienceCenter/renku-python/commit/8ef503fbbcefbde8bb4a7a430688d63b19459660>`__)
+
+Features
+~~~~~~~~
+
+-  **api:** add RDFGraph to API
+   (`#3031 <https://github.com/SwissDataScienceCenter/renku-python/issues/3031>`__)
+   (`b8784d5 <https://github.com/SwissDataScienceCenter/renku-python/commit/b8784d5160691f3b6f7776d1ae0a874ea80c2041>`__)
+-  **cli:** inform users about ‘renku login’ in related errors
+   (`#3000 <https://github.com/SwissDataScienceCenter/renku-python/issues/3000>`__)
+   (`ec91b31 <https://github.com/SwissDataScienceCenter/renku-python/commit/ec91b319fbc2c1b9cb7b1e1b5c1d594b4447701f>`__)
+-  **cli:** add option to skip metadata update when executing workflows
+   (`#3025 <https://github.com/SwissDataScienceCenter/renku-python/issues/3025>`__)
+   (`c89aba7 <https://github.com/SwissDataScienceCenter/renku-python/commit/c89aba7081e71e34eefe4495bfe6498a0dcf900f>`__)
+-  **cli:** use existing remote image when starting sessions
+   (`#2991 <https://github.com/SwissDataScienceCenter/renku-python/issues/2991>`__)
+   (`b09805c <https://github.com/SwissDataScienceCenter/renku-python/commit/b09805c4c140493dc6b4d94cc988260201628dac>`__)
+
+
+`1.5.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.4.0...v1.5.0>`__ (2022-07-04)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **service:** correctly use project namespace when generating project id
+   (`#2958 <https://github.com/SwissDataScienceCenter/renku-python/issues/2958>`__)
+   (`6995098 <https://github.com/SwissDataScienceCenter/renku-python/commit/69950981bc51d252d1287c254a5c2ac2a352f665>`__)
+
+Features
+~~~~~~~~
+
+-  **core:** allow partial updates on dataset and project edit
+   (`#2949 <https://github.com/SwissDataScienceCenter/renku-python/issues/2949>`__)
+   (`3daa1ec <https://github.com/SwissDataScienceCenter/renku-python/commit/3daa1ecdc803043dd7618ad7a3a1a6d3ca2897de>`__)
+-  **dataset:** export to a local directory
+   (`#2944 <https://github.com/SwissDataScienceCenter/renku-python/issues/2944>`__)
+   (`9090869 <https://github.com/SwissDataScienceCenter/renku-python/commit/9090869692d0ba24e969ce6e43a2b360a074698f>`__)
+-  **dataset:** filter ls-files by tag
+   (`#2950 <https://github.com/SwissDataScienceCenter/renku-python/issues/2950>`__)
+   (`73866f2 <https://github.com/SwissDataScienceCenter/renku-python/commit/73866f2f936fee8e037d068f64cd8ee5aa1c0a41>`__)
+-  **service:** support chunked file uploads
+   (`#2892 <https://github.com/SwissDataScienceCenter/renku-python/issues/2892>`__)
+   (`610e88a <https://github.com/SwissDataScienceCenter/renku-python/commit/610e88ab50ab13b55fb89d9643a948b6d36daa0b>`__)
+-  **workflow:** workflow revert command
+   (`#2956 <https://github.com/SwissDataScienceCenter/renku-python/issues/2956>`__)
+   (`cb0e73d <https://github.com/SwissDataScienceCenter/renku-python/commit/cb0e73d0016a344500d8829edcccd2982e929441>`__)
+
+`1.4.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.3.1...v1.4.0>`__ (2022-06-10)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** automatically cleanup dangling git processes
+   (`#2928 <https://github.com/SwissDataScienceCenter/renku-python/issues/2928>`__)
+   (`56b06b5 <https://github.com/SwissDataScienceCenter/renku-python/commit/56b06b5af8486c7f5675fe943259bd9975a7dd5d>`__)
+
+Features
+~~~~~~~~
+
+-  **dataset:** import dataset at specific tags
+   (`#2926 <https://github.com/SwissDataScienceCenter/renku-python/issues/2926>`__)
+   (`c948a77 <https://github.com/SwissDataScienceCenter/renku-python/commit/c948a7763ed9c2b683dd9a622099485408690cd1>`__)
+-  **cli:** show dataset metadata for tag
+   (`#2919 <https://github.com/SwissDataScienceCenter/renku-python/issues/2919>`__)
+   (`713b4a4 <https://github.com/SwissDataScienceCenter/renku-python/commit/713b4a4db1ad514d88bdb211c990b4ab9c389322>`__)
+-  **api:** add activity support to Renku api
+   (`#2911 <https://github.com/SwissDataScienceCenter/renku-python/issues/2911>`__)
+   (`37d50ae <https://github.com/SwissDataScienceCenter/renku-python/commit/37d50ae667a504f046317245dc1047b7023d2d81>`__)
+-  **cli:** add support for setting custom metadata on Plans
+   (`#2929 <https://github.com/SwissDataScienceCenter/renku-python/issues/2929>`__)
+   (`c99659f <https://github.com/SwissDataScienceCenter/renku-python/commit/c99659f93dbdb3898bf9d58634c4d0fcdcdcf831>`__)
+-  **cli:** add pager support to renku log
+   (`#2932 <https://github.com/SwissDataScienceCenter/renku-python/issues/2932>`__)
+   (`31f9514 <https://github.com/SwissDataScienceCenter/renku-python/commit/31f9514c19f97a1260b763cf752326d685fdf2b0>`__)
+-  **cli:** add renku template validate command
+   (`#2936 <https://github.com/SwissDataScienceCenter/renku-python/issues/2936>`__)
+   (`bc56b8b <https://github.com/SwissDataScienceCenter/renku-python/commit/bc56b8be751f6ee376d2d27fd72473f8a31d4676>`__)
+-  **cli:** improve renku run error messages
+   (`#2915 <https://github.com/SwissDataScienceCenter/renku-python/issues/2915>`__)
+   (`5cc006c <https://github.com/SwissDataScienceCenter/renku-python/commit/5cc006caa475c57da7c3b568c8c24dd0601d0e28>`__)
+-  **core:** add remote Renku instance session provider
+   (`#2880 <https://github.com/SwissDataScienceCenter/renku-python/issues/2880>`__)
+   (`f554f19 <https://github.com/SwissDataScienceCenter/renku-python/commit/f554f192ef83fb7f2c7f44ef3da5c6b5487264ca>`__)
+-  **core:** use oauth 2.0 device auth grant for renku login
+   (`#2722 <https://github.com/SwissDataScienceCenter/renku-python/issues/2722>`__)
+   (`eae254e <https://github.com/SwissDataScienceCenter/renku-python/commit/eae254e90d1bf52da9efe68096139df14d84dfd1>`__)
+
 `1.3.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.3.0...v1.3.1>`__ (2022-05-23)
 -------------------------------------------------------------------------------------------------------
 

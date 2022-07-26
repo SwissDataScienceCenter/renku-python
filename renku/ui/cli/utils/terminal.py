@@ -18,6 +18,9 @@
 """Utility functions for ViewModels."""
 
 import functools
+import pydoc
+import re
+import shutil
 from typing import TYPE_CHECKING
 
 import click
@@ -30,6 +33,27 @@ if TYPE_CHECKING:
 style_header = functools.partial(click.style, bold=True, fg=color.YELLOW)
 style_key = functools.partial(click.style, bold=True, fg=color.MAGENTA)
 style_value = functools.partial(click.style, bold=True)
+
+ANSI_REGEX = re.compile(r"(?:\x1B[@-Z\\-_]|[\x80-\x9A\x9C-\x9F]|(?:\x1B\[|\x9B)[0-?]*[ -/]*[@-~])")
+
+
+def strip_ansi_codes(text: str) -> str:
+    """Remove ANSI formatting codes from text."""
+    return ANSI_REGEX.sub("", text)
+
+
+def show_text_with_pager(text: str) -> None:
+    """Print text with a pager (i.e. ``less``) if appropriate.
+
+    Args:
+        text(str): The text to print.
+    """
+    tty_size = shutil.get_terminal_size(fallback=(120, 40))
+
+    if len(text.splitlines()) >= tty_size.lines:
+        pydoc.pipepager(text, "less --chop-long-lines -R --tilde")
+    else:
+        click.echo(text)
 
 
 def print_markdown(text: str):
@@ -44,7 +68,8 @@ def print_plan(plan: "PlanViewModel", err: bool = False):
     """Print a plan to stderr.
 
     Args:
-        err: Print to ``stderr``.
+        plan(PlanViewModel): The plan to print.
+        err(bool,optional): Print to ``stderr`` (Default value = False).
     """
 
     def print_key_value(key, value, print_empty: bool = True):
@@ -69,6 +94,9 @@ def print_plan(plan: "PlanViewModel", err: bool = False):
 
     print_key_value("Command: ", plan.full_command)
     print_key_value("Success Codes: ", plan.success_codes)
+
+    if plan.annotations:
+        print_key_value("Annotations:\n", plan.annotations)
 
     if plan.inputs:
         print_key("Inputs:")

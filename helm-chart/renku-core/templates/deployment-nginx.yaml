@@ -20,13 +20,6 @@ spec:
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
-              add:
-                - chown
-                - setgid
-                - setuid
             runAsNonRoot: true
           ports:
           - containerPort: 8080

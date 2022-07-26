@@ -23,13 +23,13 @@ from renku.command.echo import WARNING
 from renku.core.interface.dataset_gateway import IDatasetGateway
 
 
-@inject.autoparams()
-def check_missing_external_files(client, fix, dataset_gateway: IDatasetGateway):
+@inject.autoparams("dataset_gateway")
+def check_missing_external_files(client, dataset_gateway: IDatasetGateway, **kwargs):
     """Find external files that are missing.
 
     Args:
         client: ``LocalClient``.
-        fix: Whether to fix found issues.
+        kwargs: keyword arguments.
 
     Returns:
         Tuple of whether no external files are missing and string of found problems.

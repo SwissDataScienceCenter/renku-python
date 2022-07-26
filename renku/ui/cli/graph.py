@@ -85,7 +85,7 @@ GRAPH_FORMATS = {
 }
 
 
-@click.group(hidden=True)
+@click.group()
 def graph():
     """Graph commands."""
 

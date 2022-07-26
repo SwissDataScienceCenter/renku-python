@@ -21,13 +21,15 @@ from pathlib import Path
 
 from renku.core.constant import RENKU_HOME
 from renku.core.management.repository import RepositoryApiMixin
-from renku.domain_model.refs import LinkReference
 
 POINTERS = "pointers"
 """Directory for storing external pointer files."""
 
 DATASET_IMAGES = "dataset_images"
 """Directory for dataset images."""
+
+REFS = "refs"
+"""Define a name of the folder with references in the Renku folder."""
 
 
 def renku_dataset_images_path(client):
@@ -46,6 +48,6 @@ DATASET_METADATA_PATHS = [
     Path(RENKU_HOME) / RepositoryApiMixin.DATABASE_PATH,
     Path(RENKU_HOME) / DATASET_IMAGES,
     Path(RENKU_HOME) / POINTERS,
-    Path(RENKU_HOME) / LinkReference.REFS,
+    Path(RENKU_HOME) / REFS,
     ".gitattributes",
 ]

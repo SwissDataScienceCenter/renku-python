@@ -30,13 +30,16 @@ import marshmallow
 
 from renku.core import errors
 from renku.core.util.datetime8601 import fix_datetime, local_now, parse_date
+from renku.core.util.dispatcher import get_client
 from renku.core.util.git import get_entity_from_revision
 from renku.core.util.metadata import is_external_file
 from renku.core.util.urls import get_path, get_slug
+from renku.core.util.util import NO_VALUE
 from renku.infrastructure.immutable import Immutable, Slots
 from renku.infrastructure.persistent import Persistent
 
 if TYPE_CHECKING:
+    from renku.core.management.client import LocalClient
     from renku.domain_model.entity import Entity
     from renku.domain_model.provenance.agent import Person
     from renku.domain_model.provenance.annotation import Annotation
@@ -47,19 +50,19 @@ def is_dataset_name_valid(name: str) -> bool:
     return name is not None and name == get_slug(name, lowercase=False)
 
 
-def generate_default_name(dataset_title, dataset_version=None) -> str:
+def generate_default_name(title: str, version: str = None) -> str:
     """Get dataset name."""
     max_length = 24
     # For compatibility with older versions use title as name if it is valid; otherwise, use encoded title
-    if is_dataset_name_valid(dataset_title):
-        return dataset_title
+    if is_dataset_name_valid(title):
+        return title
 
-    slug = get_slug(dataset_title)
+    slug = get_slug(title)
     name = slug[:max_length]
 
-    if dataset_version:
+    if version:
         max_version_length = 10
-        version_slug = get_slug(dataset_version)[:max_version_length]
+        version_slug = get_slug(version)[:max_version_length]
         name = f"{name[:-(len(version_slug) + 1)]}_{version_slug}"
 
     return get_slug(name)
@@ -315,6 +318,7 @@ class Dataset(Persistent):
     """Represent a dataset."""
 
     date_modified: Optional[datetime] = None  # type: ignore
+    datadir: Optional[str] = None
 
     def __init__(
         self,
@@ -339,6 +343,7 @@ class Dataset(Persistent):
         same_as: Optional[Url] = None,
         title: Optional[str] = None,
         version: Optional[str] = None,
+        datadir: Optional[Path] = None,
     ):
         if not name:
             assert title, "Either 'name' or 'title' must be set."
@@ -380,6 +385,9 @@ class Dataset(Persistent):
         self.version: Optional[str] = version
         self.annotations: List["Annotation"] = annotations or []
 
+        if datadir:
+            self.datadir: Optional[str] = str(datadir)
+
     @staticmethod
     def generate_id(identifier: str) -> str:
         """Generate an identifier for Dataset."""
@@ -400,7 +408,7 @@ class Dataset(Persistent):
                 raise ValueError(f"Invalid creator type: {creator}")
 
     @property
-    def files(self):
+    def files(self) -> List[DatasetFile]:
         """Return list of existing files."""
         return [f for f in self.dataset_files if not f.is_removed()]
 
@@ -418,6 +426,14 @@ class Dataset(Persistent):
     def keywords_csv(self):
         """Comma-separated list of keywords associated with dataset."""
         return ", ".join(self.keywords)
+
+    def get_datadir(self, client: Optional["LocalClient"] = None) -> Path:
+        """Return dataset's data directory."""
+        if self.datadir:
+            return Path(self.datadir)
+
+        client = client or get_client()
+        return Path(os.path.join(client.data_dir, self.name))
 
     def __repr__(self) -> str:
         return f"<Dataset {self.identifier} {self.name}>"
@@ -525,7 +541,7 @@ class Dataset(Persistent):
 
     def update_metadata_from(self, other: "Dataset", exclude=None):
         """Update metadata from another dataset."""
-        editable_fields = [
+        updatable_fields = [
             "creators",
             "date_created",
             "date_published",
@@ -539,7 +555,7 @@ class Dataset(Persistent):
             "title",
             "version",
         ]
-        for name in editable_fields:
+        for name in updatable_fields:
             value = getattr(other, name)
             if exclude and name in exclude:
                 continue
@@ -554,7 +570,7 @@ class Dataset(Persistent):
         for name, value in kwargs.items():
             if name not in editable_attributes:
                 raise errors.ParameterError(f"Cannot edit field: '{name}'")
-            if value and value != getattr(self, name):
+            if value is not NO_VALUE and value != getattr(self, name):
                 setattr(self, name, value)
 
     def unlink_file(self, path, missing_ok=False) -> Optional[DatasetFile]:
@@ -630,6 +646,17 @@ class DatasetDetailsJson(marshmallow.Schema):
 
     annotations = marshmallow.fields.List(marshmallow.fields.Nested(AnnotationJson))
 
+    datadir = marshmallow.fields.Method("get_datadir")
+
+    def get_datadir(self, obj):
+        """Get data directory."""
+        if isinstance(obj, dict):
+            return str(obj.get("datadir_path", obj.get("datadir", "")))
+        if hasattr(obj, "datadir_path"):
+            return obj.datadir_path
+
+        return str(obj.get_datadir())
+
 
 class DatasetFileDetailsJson(marshmallow.Schema):
     """Serialize dataset files to a response object."""
@@ -663,6 +690,9 @@ class ImageObjectRequestJson(marshmallow.Schema):
     mirror_locally = marshmallow.fields.Bool(default=False)
 
 
-def get_dataset_data_dir(client, dataset: Dataset) -> str:
-    """Return default data directory for a dataset."""
-    return os.path.join(client.data_dir, dataset.name)
+def get_file_path_in_dataset(client, dataset: Dataset, dataset_file: DatasetFile) -> Path:
+    """Return path of a file relative to dataset's data dir."""
+    try:
+        return (client.path / dataset_file.entity.path).relative_to(client.path / dataset.get_datadir(client))
+    except ValueError:  # NOTE: File is not in the dataset's data dir
+        return Path(dataset_file.entity.path)

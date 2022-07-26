@@ -18,6 +18,7 @@
 """An abstraction layer for the underlying VCS."""
 
 import configparser
+import hashlib
 import math
 import os
 import subprocess
@@ -27,22 +28,7 @@ from datetime import datetime
 from functools import lru_cache
 from itertools import zip_longest
 from pathlib import Path
-from typing import (
-    Any,
-    BinaryIO,
-    Callable,
-    Dict,
-    Generator,
-    List,
-    NamedTuple,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-    cast,
-)
+from typing import Any, Callable, Dict, Generator, List, NamedTuple, Optional, Set, Tuple, Type, TypeVar, Union, cast
 
 import git
 
@@ -82,9 +68,19 @@ class BaseRepository:
 
         self._repository: Optional[git.Repo] = repository
         self._path = Path(path).resolve()
+        self._lfs: Optional["LFS"] = None
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} {self.path}>"
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        self.close()
+
+    def __del__(self):
+        self.close()
 
     @property
     def path(self) -> Path:
@@ -185,9 +181,21 @@ class BaseRepository:
             raise errors.ParameterError("Repository not set.")
         return [str(e[0]) for e in self._repository.index.entries]
 
+    @property
+    def lfs(self) -> "LFS":
+        """Return a Git LFS manager."""
+        if self._lfs is None:
+            self._lfs = LFS(self)
+
+        return self._lfs
+
     def is_valid(self) -> bool:
         """Return True if a valid repository exists."""
         return self._repository is not None
+
+    def get_historical_changes_patch(self, path: Union[Path, str]) -> List[str]:
+        """Return a patch of all changes to a file."""
+        return self.run_git_command("log", "--", str(path), patch=True, follow=True).splitlines()
 
     def add(self, *paths: Union[Path, str], force: bool = False, all: bool = False) -> None:
         """Add a list of files to be committed to the VCS."""
@@ -314,16 +322,37 @@ class BaseRepository:
         return self.run_git_command("status")
 
     def create_worktree(
-        self, path: Path, reference: Union["Branch", "Commit", "Reference", str], checkout: bool = True
+        self,
+        path: Path,
+        reference: Optional[Union["Branch", "Commit", "Reference", str]],
+        branch: Optional[str] = None,
+        checkout: bool = True,
+        detach: bool = False,
     ):
         """Create a git worktree.
 
         Args:
             path(Path): Target folder.
             reference(Union[Branch, Commit, Reference, str]): the reference to base the tree on.
-            checkout(bool): Whether to perform a checkout of the reference (Default value = False).
+            checkout(bool, optional): Whether to perform a checkout of the reference (Default value = False).
+            detach(bool, optional): Whether to detach HEAD in worktree (Default value = False).
         """
-        self.run_git_command("worktree", "add", path, reference, checkout=checkout)
+        args = ["add"]
+
+        # NOTE: pass args as string to ensure correct order
+        if checkout:
+            args.append("--checkout")
+        if detach:
+            args.append("--detach")
+
+        if branch:
+            args.extend(["-b", branch])
+
+        args.append(str(path))
+
+        if reference:
+            args.append(str(reference))
+        self.run_git_command("worktree", *args)
 
     def remove_worktree(self, path: Path):
         """Create a git worktree.
@@ -387,6 +416,48 @@ class BaseRepository:
             raise errors.GitCommitNotFoundError(f"Cannot find previous commit for '{path}' from '{revision}'")
         return commit
 
+    def get_revisions_paths(self, *checksums: str) -> List[Tuple[Optional[str], Optional[str]]]:
+        """Return a revision:path tuple for each checksum so that revision contains the given blob with the checksum."""
+
+        def parse_output(output) -> Tuple[Optional[str], Optional[str]]:
+            if output.lstrip().startswith("fatal:"):
+                return None, None
+            else:
+                return output.split(":", maxsplit=1)
+
+        outputs = []
+        for batch in split_paths(*checksums):
+            try:
+                outputs.extend(self.run_git_command("describe", "--always", *batch).split(os.linesep))
+            except errors.GitCommandError:
+                outputs.extend(["fatal:"] * len(batch))
+
+        return [parse_output(o) for o in outputs]
+
+    def get_sizes(self, *checksums: str) -> List[Optional[str]]:
+        """Return size of blobs given their checksum."""
+        revisions = []
+        for batch in split_paths(*checksums):
+            try:
+                revisions.extend(self.run_git_command("describe", "--always", *batch).split(os.linesep))
+            except errors.GitCommandError:
+                revisions.extend(["fatal:"] * len(batch))
+
+        try:
+            result = subprocess.run(
+                ["git", "cat-file", "--batch-check='%(objectsize)'"],
+                check=True,
+                input="\n".join(revisions),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                cwd=self.path,
+                text=True,
+            )
+        except subprocess.CalledProcessError:
+            return [""] * len(checksums)
+        else:
+            return ["" if "missing" in line else line.strip("\"'") for line in result.stdout.split(os.linesep)[:-1]]
+
     def iterate_commits(
         self,
         *paths: Union[Path, str],
@@ -426,7 +497,11 @@ class BaseRepository:
             return wrapped_commit
 
     def get_ignored_paths(self, *paths: Union[Path, str]) -> List[str]:
-        """Return ignored paths matching ``.gitignore`` file."""
+        """Return ignored paths matching ``.gitignore`` file.
+
+        NOTE: This function returns the same value as inputs: If input is an absolute path output is an absolute path.
+        The same is true for relative paths.
+        """
         ignored = []
 
         for batch in split_paths(*paths):
@@ -465,12 +540,31 @@ class BaseRepository:
     def copy_content_to_file(
         self,
         path: Union[Path, str],
+        *,
         revision: Optional[Union["Reference", str]] = None,
         checksum: Optional[str] = None,
-        output_file: Optional[BinaryIO] = None,
+        output_path: Optional[Union[Path, str]] = None,
         apply_filters: bool = True,
     ) -> str:
-        """Get content of an object using its checksum, write it to a file, and return the file's path."""
+        """Get content of an object using its checksum, write it to a file, and return the file's path.
+
+        Args:
+            path(Union[Path, str]): Relative or absolute path to the file.
+            revision(Optional[Union[Reference, str]]): A commit/branch/tag to get the file from. This cannot be passed
+                with ``checksum``.
+            checksum(Optional[str]): Git hash of the file to be retrieved. This cannot be passed with ``revision``.
+            output_path(Optional[Union[Path, str]]): A path to copy the content to. A temporary file is created if it is
+                ``None``.
+            apply_filters(bool): Whether to apply Git filter on the retrieved object. Note that ``apply_filters`` still
+                works if repository is cloned with ``--skip-smudge`` or if ``GIT_LFS_SKIP_SMUDGE`` is set. It also works
+                if there is not entry for the file in ``.gitattributes`` (e.g. when a file was deleted). The reason is
+                that we use `git lfs smudge` command to get the file content if this option is passed and we also
+                disable ``GIT_LFS_SKIP_SMUDGE``.
+
+        Returns:
+            The path to the created file.
+
+        """
         absolute_path = get_absolute_path(path, self.path)
 
         def get_content_helper(output_file) -> bool:
@@ -512,20 +606,32 @@ class BaseRepository:
                         path=absolute_path, checksum=checksum, revision=revision, apply_filters=apply_filters
                     )
 
-        if output_file is None:
+        output = None
+
+        if output_path is None:
             with tempfile.NamedTemporaryFile(mode="w+b", delete=False) as temp_output_file:
                 if get_content_helper(output_file=temp_output_file):
-                    return temp_output_file.name
+                    output = temp_output_file.name
         else:
-            if get_content_helper(output_file):
-                return output_file.name
+            with open(output_path, "wb") as output_file:
+                if get_content_helper(output_file):
+                    output = output_file.name
+
+        if output is not None:
+            if not apply_filters or not self.lfs.is_pointer_file(output):
+                return output
+
+            with tempfile.NamedTemporaryFile(mode="w+t", delete=False) as pointer:
+                pointer.write(Path(output).read_text())
+
+            self.lfs.get_content(pointer.name, output)
+            return output
 
         from_submodules = get_content_from_submodules()
         if from_submodules:
             return from_submodules
 
-        # TODO: Return FileNotFound
-        raise errors.ExportError(f"File not found in the repository: '{revision}/{checksum}:{path}'")
+        raise errors.FileNotFound(path, checksum=checksum, revision=revision)
 
     def get_object_hashes(
         self, paths: List[Union[Path, str]], revision: Optional[str] = None
@@ -675,6 +781,19 @@ class BaseRepository:
         configuration = self.get_configuration()
         return Repository._get_user_from_configuration(configuration)
 
+    def close(self) -> None:
+        """Close the underlying repository.
+
+        Cleans up dangling processes.
+        """
+        if getattr(self, "_repository", None) is not None:
+            try:
+                self._repository.close()  # type:ignore
+            except AttributeError:
+                pass
+            del self._repository
+            self._repository = None
+
     @staticmethod
     def get_global_user() -> "Actor":
         """Return the global git user."""
@@ -787,6 +906,13 @@ class BaseRepository:
             return result[0]
         return None
 
+    @staticmethod
+    def hash_string(content: str) -> str:
+        """Calculate the object-hash for a blob with specified content."""
+        content_bytes = content.encode("utf-8")
+        data = f"blob {len(content_bytes)}\0".encode("utf-8") + content_bytes
+        return hashlib.sha1(data).hexdigest()
+
 
 class Repository(BaseRepository):
     """Abstract Base repository."""
@@ -795,6 +921,7 @@ class Repository(BaseRepository):
         self, path: Union[Path, str] = ".", search_parent_directories: bool = False, repository: git.Repo = None
     ):
         repo = repository or _create_repository(path, search_parent_directories)
+
         super().__init__(path=Path(repo.working_dir).resolve(), repository=repo)  # type: ignore
 
     @classmethod
@@ -855,6 +982,56 @@ class Repository(BaseRepository):
             return cls(path=path, repository=repository)
 
 
+class LFS:
+    """Git LFS manager."""
+
+    def __init__(self, repository: BaseRepository):
+        self._repository: BaseRepository = repository
+
+    def install(self, skip_smudge: bool = True):
+        """Force install Git LFS in the repository."""
+        os.environ["GIT_LFS_SKIP_SMUDGE"] = "1" if skip_smudge else "0"
+
+        command = ["lfs", "install", "--local", "--force"]
+        if skip_smudge:
+            command += ["--skip-smudge"]
+
+        try:
+            self._repository.run_git_command(*command)
+        except errors.GitCommandError as e:
+            raise errors.GitError(f"Cannot install Git LFS in {self}") from e
+
+    def is_pointer_file(self, path: Union[Path, str]):
+        """Check if a file is an LFS pointer."""
+        try:
+            self._repository.run_git_command("lfs", "pointer", check=True, file=path)
+        except errors.GitError:
+            return False
+        else:
+            return True
+
+    def get_content(self, path: Union[Path, str], output_path: Union[Path, str]):
+        """Get content from a given pointer file."""
+        try:
+            with open(path) as pointer_file, open(output_path, "wb") as output_file:
+                # NOTE: This return the pointer_file content if it's not an LFS pointer file or doesn't point to a valid
+                # LFS object
+                subprocess.run(
+                    ["git", "lfs", "smudge"],
+                    check=True,
+                    stdin=pointer_file,
+                    stdout=output_file,
+                    stderr=subprocess.DEVNULL,
+                    cwd=self._repository.path,
+                    env={"GIT_LFS_SKIP_SMUDGE": "0"},
+                )
+        except subprocess.CalledProcessError:
+            return False
+        else:
+            # NOTE: No need to check the exit code since ``check=True`` takes care of non-zero exit codes
+            return True
+
+
 class Submodule(BaseRepository):
     """A git submodule."""
 
@@ -864,7 +1041,7 @@ class Submodule(BaseRepository):
         self._name: str = name
         self._url: str = url
         try:
-            self._repository: git.Repo = _create_repository(path, search_parent_directories=False)
+            self._repository: Optional[git.Repo] = _create_repository(path, search_parent_directories=False)
         except errors.GitError:
             # NOTE: Submodule directory doesn't exist yet, so, we ignore the error
             pass
@@ -880,6 +1057,15 @@ class Submodule(BaseRepository):
 
     def __repr__(self) -> str:
         return f"<Submodule {self.relative_path}>"
+
+    def __del__(self) -> None:
+        if getattr(self, "_repository", None) is not None:
+            try:
+                self._repository.close()  # type:ignore
+            except AttributeError:
+                pass
+            del self._repository
+            self._repository = None
 
     @property
     def name(self) -> str:
@@ -901,25 +1087,47 @@ class SubmoduleManager:
     """Manage submodules of a Repository."""
 
     def __init__(self, repository: git.Repo):
-        self._repository = repository
+        self._repository: Optional[git.Repo] = repository
+        self._submodule_cache: Dict[str, Submodule] = {}  # type: ignore
         try:
             self.update()
         except errors.GitError:
             # NOTE: Update fails if submodule repo cannot be cloned. Repository still works but submodules are broken.
             pass
 
+    def _get_submodule(self, submodule: git.Submodule) -> Submodule:  # type: ignore
+        """Get a submodule from local cache."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
+
+        if submodule.name not in self._submodule_cache:
+            submodule_result = Submodule.from_submodule(self._repository, submodule)
+            self._submodule_cache[submodule.name] = submodule_result
+        return self._submodule_cache[submodule.name]
+
     def __getitem__(self, name: str) -> Submodule:
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
+
         try:
             submodule = self._repository.submodules[name]
         except IndexError:
             raise errors.GitError(f"Submodule '{name}' not found")
         else:
-            return Submodule.from_submodule(self._repository, submodule)
+            return self._get_submodule(submodule)
 
     def __iter__(self):
-        return (Submodule.from_submodule(self._repository, s) for s in self._repository.submodules)
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
+
+        for s in self._repository.submodules:
+
+            yield self._get_submodule(s)
 
     def __len__(self) -> int:
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
+
         return len(self._repository.submodules)
 
     def __repr__(self) -> str:
@@ -927,16 +1135,27 @@ class SubmoduleManager:
 
     def remove(self, submodule: Union[Submodule, str], force: bool = False):
         """Remove an existing submodule."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
+
         name = submodule if isinstance(submodule, str) else submodule.name
 
         try:
-            submodule = self._repository.submodules[name]
-            submodule.remove(force=force)
+            git_submodule = self._repository.submodules[name]
+            git_submodule.remove(force=force)
+
+            if name in self._submodule_cache:
+                submodule = self._submodule_cache[name]
+                del self._submodule_cache[name]
+                submodule.close()
         except git.GitError as e:
             raise errors.GitError(f"Cannot delete submodule '{submodule}'") from e
 
     def update(self, initialize: bool = True):
         """Update all submodule."""
+        if self._repository is None:
+            raise errors.ParameterError("Repository not set.")
+
         # NOTE: Git complains if ``--init`` comes before ``update``
         args = ("update", "--init") if initialize else ("update",)
         _run_git_command(self._repository, "submodule", *args)
@@ -1309,6 +1528,12 @@ class Remote:
     def set_url(self, url: str):
         """Change URL of a remote."""
         _run_git_command(self._repository, "remote", "set-url", self.name, url)
+
+    @property
+    def head(self) -> str:
+        """The head commit of the remote."""
+        self._remote.fetch()
+        return _run_git_command(self._repository, "rev-parse", f"{self._remote.name}/{self._repository.active_branch}")
 
 
 class RemoteManager:

@@ -175,8 +175,8 @@ def _warn_about_ignored_destinations(destinations, client_dispatcher: IClientDis
 
     ignored = client.find_ignored_paths(*destinations)
     if ignored:
-        ignored = "\n\t".join((str(Path(p).relative_to(client.path)) for p in ignored))
-        communication.warn(f"The following moved path match .gitignore:\n\t{ignored}")
+        ignored_str = "\n\t".join((str(Path(p).relative_to(client.path)) for p in ignored))
+        communication.warn(f"The following moved path match .gitignore:\n\t{ignored_str}")
 
 
 @inject.autoparams()

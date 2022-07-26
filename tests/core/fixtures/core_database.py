@@ -167,22 +167,6 @@ def dummy_database_injection_bindings(database):
 
 
 @pytest.fixture
-def injected_client_with_database(client, client_injection_bindings, database_injection_bindings, injection_binder):
-    """Inject a client."""
-    bindings = database_injection_bindings(client_injection_bindings(client))
-    injection_binder(bindings)
-
-
-@pytest.fixture
-def injected_local_client_with_database(
-    local_client, client_injection_bindings, database_injection_bindings, injection_binder
-):
-    """Inject a client."""
-    bindings = database_injection_bindings(client_injection_bindings(local_client))
-    injection_binder(bindings)
-
-
-@pytest.fixture
 def injection_manager():
     """Factory fixture for injection manager."""
 
@@ -215,9 +199,29 @@ def dummy_database_injection_manager(dummy_database_injection_bindings, injectio
 
 
 @pytest.fixture
-def injected_client_with_dummy_database(
-    client, client_injection_bindings, dummy_database_injection_bindings, injection_binder
-):
-    """Inject a client."""
-    bindings = dummy_database_injection_bindings(client_injection_bindings(client))
-    injection_binder(bindings)
+def injected_client(client, client_database_injection_manager):
+    """Fixture for context manager with client and database injection."""
+    with client_database_injection_manager(client):
+        yield client
+
+
+@pytest.fixture
+def injected_dummy_database(dummy_database_injection_manager):
+    """Fixture for context manager with dummy database injection."""
+    with dummy_database_injection_manager(None):
+        yield
+
+
+@pytest.fixture
+def path_injection(injection_manager, database_injection_bindings, client_injection_bindings):
+    """Fixture that accepts a path and adds required renku binding."""
+
+    def create_client_and_bindings(path: Union[Path, str]):
+        from renku.core.management.client import LocalClient
+        from renku.core.util.contexts import chdir
+
+        with chdir(path):
+            client = LocalClient(path=path)
+            return injection_manager(database_injection_bindings(client_injection_bindings(client)))
+
+    return create_client_and_bindings

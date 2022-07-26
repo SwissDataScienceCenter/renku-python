@@ -29,7 +29,8 @@ from renku.core import errors
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.util.contexts import chdir
 from renku.core.util.git import get_git_user
-from renku.domain_model.dataset import Url, get_dataset_data_dir
+from renku.core.util.os import get_files
+from renku.domain_model.dataset import Url
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
@@ -188,14 +189,15 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
 
     result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    assert "pyndl_naive_discr_v0.8.1" in result.output
+    assert "pyndl_naive_discr_v0.8.2" in result.output
 
 
 @pytest.mark.parametrize(
     "doi,err",
     [
         ("10.5281/zenodo.5979642342", "record not found"),
-        ("10.7910/DVN/S8MSVFXXXX", "provider DVN not found"),
+        ("10.7910/DVN/S8MSVFXXXX", "Provider not found: DVN"),
+        ("10.1371/journal.pgen.1001111", "Provider not found: journal"),
         ("10.5281/zenodo.4557383", "no files have been found"),  # A restricted dataset
         ("https://zenodo.org/record/2621201248", "record not found"),
         ("https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/F4NUMRXXXX", "record not found"),
@@ -394,15 +396,21 @@ def test_dataset_import_renkulab_dataset_with_image(runner, project, client, cli
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.vcr
-def test_import_renku_dataset_preserves_directory_hierarchy(runner, project, client, load_dataset_with_injection):
+@pytest.mark.parametrize(
+    "datadir_option,expected_datadir", [([], Path(DATA_DIR) / "remote"), (["--datadir", "mydir"], Path("mydir"))]
+)
+def test_import_renku_dataset_preserves_directory_hierarchy(
+    runner, project, client, load_dataset_with_injection, datadir_option, expected_datadir
+):
     """Test dataset imported from Renku projects have correct directory hierarchy."""
     url = "https://dev.renku.ch/datasets/1a637fd1a7a64d1fb9aa157e7033cd1c"
-    assert 0 == runner.invoke(cli, ["dataset", "import", "--yes", "--name", "remote", url]).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "import", "--yes", "--name", "remote", url] + datadir_option).exit_code
 
     dataset = load_dataset_with_injection("remote", client)
     paths = ["README.md", os.path.join("python", "data", "README.md"), os.path.join("r", "data", "README.md")]
 
-    data_dir = Path(get_dataset_data_dir(client, dataset))
+    data_dir = Path(dataset.get_datadir(client))
+    assert data_dir == expected_datadir
     for path in paths:
         assert (data_dir / path).exists()
         file = dataset.find_file(data_dir / path)
@@ -652,6 +660,51 @@ def test_dataset_export_upload_tag(
 
 
 @pytest.mark.integration
+def test_dataset_export_to_local(runner, tmp_path):
+    """Test exporting a version of dataset to a local directory."""
+    url = "https://dev.renku.ch/gitlab/renku-python-integration-tests/lego-datasets.git"
+    repository = Repository.clone_from(url=url, path=tmp_path / "repo")
+    # NOTE: Install LFS and disable LFS smudge filter to make sure that we can get valid content in that case
+    repository.lfs.install(skip_smudge=True)
+
+    os.chdir(repository.path)
+
+    output_path: Path = tmp_path / "exported"
+
+    result = runner.invoke(cli, ["dataset", "export", "parts", "local", "-t", "v1", "-p", output_path])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert f"Dataset metadata was copied to {output_path}/METADATA.yml" in result.output
+    assert f"Exported to: {output_path}" in result.output
+    assert {"METADATA.yml", "README.md", "part_categories.csv", "part_relationships.csv", "parts.csv"} == {
+        str(f.relative_to(output_path)) for f in get_files(output_path)
+    }
+    assert (output_path / "parts.csv").read_text().startswith("part_num,name,part_cat_id,part_material")
+    assert (output_path / "part_relationships.csv").read_text().startswith("rel_type,child_part_num,parent_part_num")
+    assert (output_path / "part_categories.csv").read_text().startswith("id,name")
+    assert (output_path / "README.md").read_text().startswith("First version updated on 27.02.2022")
+    assert "- '@id': /dataset-files/" in (output_path / "METADATA.yml").read_text()
+
+    # NOTE: Export fails if destination directory is not empty
+    result = runner.invoke(cli, ["dataset", "export", "parts", "local", "-t", "v2", "--path", output_path])
+
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert f"Destination directory is not empty: '{output_path}'" in result.output
+
+    # NOTE: Export creates a default directory inside the project is no output path is set
+    result = runner.invoke(cli, ["dataset", "export", "parts", "local"], input="2\n")  # v1
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert f"Dataset metadata was copied to {repository.path}/data/parts-v1/METADATA.yml" in result.output
+    assert f"Exported to: {repository.path}/data/parts-v1" in result.output
+    assert repository.is_dirty(untracked_files=True)
+    assert (repository.path / "data" / "parts-v1" / "part_relationships.csv").exists()
+    assert (repository.path / "data" / "parts-v1" / "parts.csv").read_text() == (
+        repository.path / "data" / "parts-v1" / "parts.csv"
+    ).read_text()
+
+
+@pytest.mark.integration
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
@@ -792,15 +845,13 @@ def test_export_dataset_wrong_provider(runner, project, tmpdir, client):
 
 
 @pytest.mark.integration
-@retry_failed
-@pytest.mark.vcr
-@pytest.mark.parametrize("provider", ["zenodo", "dataverse", "renku", "olos"])
-def test_dataset_export(runner, client, project, provider):
+@pytest.mark.parametrize("provider", ["zenodo", "dataverse", "local", "olos"])
+def test_dataset_export_non_existing(runner, client, project, provider):
     """Check dataset not found exception raised."""
-    result = runner.invoke(cli, ["dataset", "export", "doesnotexists", provider])
+    result = runner.invoke(cli, ["dataset", "export", "non-existing", provider])
 
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
-    assert 'Dataset "doesnotexists" is not found.' in result.output
+    assert "Dataset 'non-existing' is not found." in result.output
 
 
 @pytest.mark.integration
@@ -895,7 +946,7 @@ def test_export_imported_dataset_to_dataverse(runner, client, dataverse_demo, ze
 
 
 @pytest.mark.integration
-@pytest.mark.vc
+@pytest.mark.vcr
 def test_add_from_url_to_destination(runner, client, load_dataset_with_injection):
     """Test add data from a URL to a new destination."""
     url = "https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/docs/Makefile"
@@ -1034,7 +1085,7 @@ def test_add_data_in_multiple_places_from_git(runner, client, load_dataset_with_
     assert 0 == runner.invoke(cli, args + ["-s", "docker/base/Dockerfile", url]).exit_code
 
     dataset = load_dataset_with_injection("remote", client)
-    data_dir = Path(get_dataset_data_dir(client, dataset))
+    data_dir = Path(dataset.get_datadir(client))
     based_on_id = dataset.find_file(data_dir / "Dockerfile").based_on.id
 
     assert 0 == runner.invoke(cli, args + ["-s", "docker", url]).exit_code
@@ -1050,7 +1101,7 @@ def test_add_data_in_multiple_places_from_git(runner, client, load_dataset_with_
     [
         ([], 0, "No URL is specified"),
         (["-s", "file", "-d", "new-file"], 0, "No URL is specified"),
-        (["-s", "file"], 2, 'Cannot use "--source" with multiple URLs.'),
+        (["-s", "file"], 2, "Cannot use '--source' with multiple URLs."),
         (["-s", "non-existing"], 1, "No such file or directory"),
         (["-s", "docker/*Dockerfile"], 1, "No such file or directory"),
         (["-s", "docker", "-d", "LICENSE"], 1, "Destination is not a directory"),
@@ -1783,3 +1834,106 @@ def test_datasets_provenance_after_external_provider_update(client, runner, get_
         current_version = datasets_provenance.get_by_name("my-data")
 
     assert current_version.identifier != current_version.initial_identifier
+
+
+@pytest.mark.integration
+@retry_failed
+@pytest.mark.vcr
+def test_datasets_import_with_tag(client, runner, get_datasets_provenance_with_injection):
+    """Test dataset import from a Renku provider with a specified tag version."""
+    doi = "https://dev.renku.ch/datasets/ddafee6bb38a46f99346cb563afc2c64"
+    result = runner.invoke(cli, ["dataset", "import", "-y", "--tag", "v1", doi])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        dataset = datasets_provenance.get_by_name("parts")
+
+    dataset_path = client.path / "data" / "parts"
+    assert "v1" == dataset.version
+    assert (dataset_path / "README.md").exists()  # This file was deleted in a later version
+    assert doi == dataset.same_as.value
+    assert "Updated on 01.06.2022" not in (dataset_path / "parts.csv").read_text()
+
+    git_attributes = (client.repository.path / ".gitattributes").read_text()
+    assert "data/parts/parts.csv" in git_attributes
+    assert "data/parts/part_relationships.csv" in git_attributes
+
+    result = runner.invoke(cli, ["dataset", "ls-tags", "parts"])
+
+    assert "v1" in result.output
+    assert "First version updated on 27.02.2022" in result.output
+
+
+@pytest.mark.integration
+@retry_failed
+@pytest.mark.vcr
+def test_datasets_imported_with_tag_are_not_updated(client, runner):
+    """Test dataset that are imported with a specified tag version won't be updated."""
+    doi = "https://dev.renku.ch/datasets/ddafee6bb38a46f99346cb563afc2c64"
+    assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--tag", "v1", doi]).exit_code
+
+    commit_sha_before = client.repository.head.commit.hexsha
+
+    result = runner.invoke(cli, ["dataset", "update", "--all"])
+
+    commit_sha_after = client.repository.head.commit.hexsha
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Skipped updating imported Renku dataset 'parts' with tag 'v1'" in result.output
+    assert commit_sha_after == commit_sha_before
+
+
+@pytest.mark.integration
+@retry_failed
+@pytest.mark.vcr
+def test_dataset_update_removes_deleted_files(
+    client, runner, client_database_injection_manager, get_datasets_provenance_with_injection
+):
+    """Test dataset update removes deleted files in the updated renku datasets."""
+    doi = "https://dev.renku.ch/datasets/ddafee6bb38a46f99346cb563afc2c64"
+    assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--tag", "v1", "--name", "parts", doi]).exit_code
+
+    # NOTE: Allow dataset to be updatable by removing ``version`` and setting ``same_as`` to another id of the dataset
+    with client_database_injection_manager(client):
+        with with_dataset(client, name="parts", commit_database=True) as dataset:
+            dataset.version = None
+            dataset.same_as = Url(url_id="https://dev.renku.ch/datasets/abc934939cbf45dca0cfef61d05fa132")
+    client.repository.add(all=True)
+    client.repository.commit("metadata updated")
+
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        dataset = datasets_provenance.get_by_name("parts")
+
+    assert 4 == len(dataset.files)
+
+    result = runner.invoke(cli, ["dataset", "update", "parts"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+        dataset = datasets_provenance.get_by_name("parts")
+
+    assert 2 == len(dataset.files)
+    assert {"data/parts/part_categories.csv", "data/parts/parts.csv"} == {f.entity.path for f in dataset.files}
+
+
+@pytest.mark.integration
+def test_dataset_ls_with_tag(runner, tmp_path):
+    """Test listing dataset files from a given tag."""
+    url = "https://dev.renku.ch/gitlab/renku-python-integration-tests/lego-datasets.git"
+    repository = Repository.clone_from(url=url, path=tmp_path / "repo")
+
+    os.chdir(repository.path)
+
+    result = runner.invoke(cli, ["dataset", "ls-files", "--tag", "v1"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    lines = result.output.split(os.linesep)
+
+    deleted_file = next(line for line in lines if "data/parts/README.md" in line)
+    assert "36  B" in deleted_file
+    assert "*" not in deleted_file
+
+    deleted_lfs_file = next(line for line in lines if "data/parts/part_relationships.csv" in line)
+    assert "548 KB" in deleted_lfs_file
+    assert "*" in deleted_lfs_file

@@ -20,8 +20,6 @@
 from datetime import datetime
 from operator import attrgetter
 
-from tabulate import tabulate as tblte
-
 
 def format_cell(cell, datetime_fmt=None):
     """Format a cell."""
@@ -38,6 +36,8 @@ def format_cell(cell, datetime_fmt=None):
 
 def tabulate(collection, headers, datetime_fmt="%Y-%m-%d %H:%M:%S", **kwargs):
     """Pretty-print a collection."""
+    from tabulate import tabulate as to_table
+
     if isinstance(headers, dict):
         attrs = headers.keys()
         # if mapping is not specified keep original
@@ -46,13 +46,13 @@ def tabulate(collection, headers, datetime_fmt="%Y-%m-%d %H:%M:%S", **kwargs):
         attrs = names = headers
 
     if collection and isinstance(collection[0], dict):
-        return tblte(collection, headers="keys", **kwargs)
+        return to_table(collection, headers="keys", **kwargs)
 
     # NOTE: Convert instance attributes to a collection of formatted cells.
     table = [
         (format_cell(cell, datetime_fmt=datetime_fmt) for cell in _to_list(attrgetter(*attrs)(c))) for c in collection
     ]
-    return tblte(table, headers=[h.upper() for h in names], **kwargs)
+    return to_table(table, headers=[h.upper() for h in names], **kwargs)
 
 
 def _to_list(value):

@@ -18,12 +18,13 @@
 """Merge strategies."""
 
 import os
+import shutil
 from json import JSONDecodeError
 from pathlib import Path
 from tempfile import mkdtemp
 from typing import List, NamedTuple, Optional, Union, cast
 
-from BTrees.OOBTree import BTree, TreeSet
+from BTrees.OOBTree import BTree, Bucket, TreeSet
 from deepdiff import DeepDiff
 from persistent import Persistent
 from persistent.list import PersistentList
@@ -86,6 +87,7 @@ class GitMerger:
             # NOTE: cleanup worktrees
             for entry in self.remote_entries:
                 client.repository.remove_worktree(entry.path)
+                shutil.rmtree(entry.path, ignore_errors=True)
 
         if not merged:
             raise errors.MetadataMergeError("Couldn't merge metadata: remote object not found in merge branches.")
@@ -103,7 +105,7 @@ class GitMerger:
         for remote_branch in remote_branches:
             # NOTE: Create a new shallow worktree for each remote branch, could be several in case of an octo merge
             worktree_path = Path(mkdtemp())
-            client.repository.create_worktree(worktree_path, remote_branch, checkout=False)
+            client.repository.create_worktree(worktree_path, reference=remote_branch, checkout=False)
             try:
                 remote_repository = Repository(worktree_path)
                 remote_repository.checkout(sparse=[database_path])
@@ -128,7 +130,7 @@ class GitMerger:
         """Merge two database objects."""
         if type(local) != type(remote):
             raise errors.MetadataMergeError(f"Cannot merge {local} and {remote}: disparate types.")
-        if isinstance(local, (BTree, Index)):
+        if isinstance(local, (BTree, Index, Bucket)):
             return self.merge_btrees(local, remote)
         elif isinstance(local, TreeSet):
             return self.merge_treesets(local, remote)
@@ -141,7 +143,9 @@ class GitMerger:
                 f"Cannot merge {local} and {remote}: type not supported for automated merge."
             )
 
-    def merge_btrees(self, local: Union[BTree, Index], remote: Union[BTree, Index]) -> Union[BTree, Index]:
+    def merge_btrees(
+        self, local: Union[BTree, Index, Bucket], remote: Union[BTree, Index, Bucket]
+    ) -> Union[BTree, Index, Bucket]:
         """Merge two BTrees."""
         local_key_ids = {k: getattr(v, "_p_oid", None) for k, v in local.items()}
         remote_key_ids = {k: getattr(v, "_p_oid", None) for k, v in remote.items()}
@@ -166,7 +170,7 @@ class GitMerger:
 
             local_object._p_activate()
             remote_object._p_activate()
-            diff = DeepDiff(local_object, remote_object)
+            diff = DeepDiff(local_object, remote_object, exclude_types=[Database])
             pretty_diff = diff.pretty().replace("Value of root.", "local.")
             pretty_diff = "\n".join(f"\t{line}" for line in pretty_diff.splitlines())
             entry_type = str(type(local_object)).split(".")[-1][:-2]
@@ -194,7 +198,7 @@ class GitMerger:
         return local
 
     def merge_indices(self, local: Index, remote: Index) -> Index:
-        """Merge two BTrees."""
+        """Merge two Indices."""
         local_key_ids = {k: getattr(v, "_p_oid", None) for k, v in local.items()}
         remote_key_ids = {k: getattr(v, "_p_oid", None) for k, v in remote.items()}
 
@@ -218,7 +222,7 @@ class GitMerger:
 
             local_object._p_activate()
             remote_object._p_activate()
-            diff = DeepDiff(local_object, remote_object)
+            diff = DeepDiff(local_object, remote_object, exclude_types=[Database])
             pretty_diff = diff.pretty().replace("Value of root.", "local.")
             pretty_diff = "\n".join(f"\t{line}" for line in pretty_diff.splitlines())
             entry_type = str(type(local.get(common_key))).split(".")[-1][:-2]
@@ -255,7 +259,7 @@ class GitMerger:
                 if subkey not in local._name_TO_mapping[key]:
                     local._name_TO_mapping[key][subkey] = subvalue
 
-        for key, value in remote._reltoken_name_TO_objtokenset:
+        for key, value in remote._reltoken_name_TO_objtokenset.items():
             if key not in local._reltoken_name_TO_objtokenset:
                 local._reltoken_name_TO_objtokenset[key] = value
 

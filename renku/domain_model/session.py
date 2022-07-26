@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from renku.core.management.client import LocalClient
 
@@ -39,16 +39,18 @@ class ISessionProvider(metaclass=ABCMeta):
     """Abstract class for a interactive session provider."""
 
     @abstractmethod
-    def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]) -> Optional[str]:
+    def get_name(self) -> str:
+        """Return session provider's name."""
+        pass
+
+    @abstractmethod
+    def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]):
         """Builds the container image.
 
         Args:
             image_descriptor: Path to the container image descriptor file.
             image_name: Container image name.
             config: Path to the session provider specific configuration YAML.
-
-        Returns:
-            str: a unique id for the created interactive session.
         """
         pass
 
@@ -66,11 +68,11 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def session_provider(self) -> Tuple["ISessionProvider", str]:
+    def session_provider(self) -> "ISessionProvider":
         """Supported session provider.
 
         Returns:
-            a tuple of ``self`` and engine type name.
+            a reference to ``self``.
         """
         pass
 
@@ -142,3 +144,12 @@ class ISessionProvider(metaclass=ABCMeta):
             URL of the interactive session.
         """
         pass
+
+    def pre_start_checks(self):
+        """Perform any required checks on the state of the repository prior to starting a session.
+
+        The expectation is that this method will abort the
+        session start if the checks are not successful or will take corrective actions to
+        make sure that the session launches successfully. By default this method does not do any checks.
+        """
+        return None

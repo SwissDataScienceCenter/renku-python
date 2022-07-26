@@ -21,10 +21,11 @@ import contextlib
 import os
 import sys
 from pathlib import Path
+from typing import Union
 
 import click
 
-from renku.core.util.git import default_path
+from renku.core import errors
 
 
 @contextlib.contextmanager
@@ -108,8 +109,31 @@ def click_context(path, command):
     """Provide a click context with repo path injected."""
     from renku.core.constant import RENKU_HOME
     from renku.core.management.client import LocalClient
+    from renku.core.util.git import default_path
 
     return click.Context(
         click.Command(command),
         obj=LocalClient(path=default_path(path), renku_home=RENKU_HOME, external_storage_requested=True),
     ).scope()
+
+
+@contextlib.contextmanager
+def Lock(filename: Union[Path, str], timeout: int = 0, mode: str = "shared", blocking: bool = False):
+    """A file-based lock context manager."""
+    import portalocker
+
+    if mode == "shared":
+        flags = portalocker.LOCK_SH
+    elif mode == "exclusive":
+        flags = portalocker.LOCK_EX
+    else:
+        raise errors.ParameterError(f"Mode can be 'shared' or 'exclusive' not '{mode}'")
+
+    if not blocking:
+        flags |= portalocker.LOCK_NB
+
+    try:
+        with portalocker.Lock(filename, timeout=timeout, flags=flags):
+            yield
+    except (portalocker.LockException, portalocker.AlreadyLocked) as e:
+        raise errors.LockError(f"Cannot lock {e.__class__.__name__}")

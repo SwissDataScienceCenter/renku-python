@@ -54,6 +54,9 @@ class ActivityDownstreamRelation:
 
         self.id = f"{upstream.id}:{downstream.id}"
 
+    def __repr__(self):
+        return f"<ActivityDownstreamRelation {self.id} at 0x{id(self):0x}>"
+
 
 def dump_activity(activity: Activity, catalog, cache) -> str:
     """Get storage token for an activity."""
@@ -139,8 +142,6 @@ class DatabaseGateway(IDatabaseGateway):
 
     def get_modified_objects_from_revision(self, revision_or_range: str) -> Generator[Persistent, None, None]:
         """Get all database objects modified in a revision."""
-        # TODO: use gateway once #renku-python/issues/2253 is done
-
         client_dispatcher = inject.instance(IClientDispatcher)
         client = client_dispatcher.current_client
 

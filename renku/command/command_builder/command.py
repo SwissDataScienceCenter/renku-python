@@ -21,7 +21,8 @@ import contextlib
 import functools
 import threading
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
 import click
 import inject
@@ -102,7 +103,7 @@ def remove_injector():
 
 
 @contextlib.contextmanager
-def replace_injection(bindings, constructor_bindings=None):
+def replace_injection(bindings: Dict, constructor_bindings=None):
     """Temporarily inject various test objects.
 
     Args:
@@ -171,6 +172,7 @@ class Command:
         self._track_std_streams: bool = False
         self._working_directory: Optional[str] = None
         self._client: Optional["LocalClient"] = None
+        self._client_was_created: bool = False
 
     def __getattr__(self, name: str) -> Any:
         """Bubble up attributes of wrapped builders."""
@@ -205,6 +207,7 @@ class Command:
                 dispatcher.push_created_client_to_stack(self._client)
             else:
                 self._client = dispatcher.push_client_to_stack(path=default_path(self._working_directory or "."))
+                self._client_was_created = True
             ctx = click.Context(click.Command(builder._operation))  # type: ignore
         else:
             if not self._client:
@@ -236,6 +239,9 @@ class Command:
             result("CommandResult"): Result of command execution.
         """
         remove_injector()
+
+        if self._client_was_created and self._client and self._client.repository is not None:
+            self._client.repository.close()
 
         if result.error:
             raise result.error
@@ -428,7 +434,7 @@ class Command:
         message: Optional[str] = None,
         commit_if_empty: bool = False,
         raise_if_empty: bool = False,
-        commit_only: Optional[bool] = None,
+        commit_only: Optional[Union[str, List[Union[str, Path]]]] = None,
         skip_staging: bool = False,
     ) -> "Command":
         """Create a commit.

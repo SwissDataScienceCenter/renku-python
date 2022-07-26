@@ -17,6 +17,7 @@
 # limitations under the License.
 """OS utility functions."""
 
+import fnmatch
 import hashlib
 import os
 import re
@@ -110,7 +111,7 @@ def is_path_empty(path: Union[Path, str]) -> bool:
 
     :ref path: target path
     """
-    subpaths = Path(path).rglob("*")
+    subpaths = Path(path).glob("*")
     return not any(subpaths)
 
 
@@ -205,3 +206,17 @@ def safe_read_yaml(file: str) -> Dict[str, Any]:
         return yaml.read_yaml(file)
     except Exception as e:
         raise errors.ParameterError(e)
+
+
+def matches(path: Union[Path, str], pattern: str) -> bool:
+    """Check if a path matched a given pattern."""
+    pattern = pattern.rstrip(os.sep)
+
+    path = Path(path)
+    paths = [path] + list(path.parents)[:-1]
+
+    for parent in paths:
+        if fnmatch.fnmatch(str(parent), pattern):
+            return True
+
+    return False

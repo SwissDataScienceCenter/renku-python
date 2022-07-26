@@ -195,13 +195,13 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
         if matched_output:
             outputs.remove(matched_output)
 
-    created_outputs = []
+    generated_outputs = []
     workdir_requirements = [r for r in cmd_line_tool.requirements if isinstance(r, InitialWorkDirRequirement)]
 
     for r in workdir_requirements:
         for listing in r.listing:
             if listing.entry == '$({"listing": [], "class": "Directory"})':
-                created_outputs.append(listing.entryname)
+                generated_outputs.append(listing.entryname)
 
     # NOTE: multiple outputs might bind to the same input; we use this copy to find output bindings
     all_inputs = inputs.copy()
@@ -244,7 +244,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
         if not (client.path / path).is_dir():
             check_path = path.parent
 
-        if check_path != "." and str(check_path) in created_outputs:
+        if check_path != "." and str(check_path) in generated_outputs:
             create_folder = True
 
         run.outputs.append(

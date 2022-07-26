@@ -1,4 +1,5 @@
 acyclic
+adhoc
 admin
 Amalthea
 analytics
@@ -45,6 +46,7 @@ Cuda
 customizable
 cwl
 CWL
+datadir
 dataset
 datasets
 datetimes
@@ -54,6 +56,7 @@ deployer
 deserialization
 deserialize
 Deserialize
+deserialized
 Deserialized
 deserializing
 discoverable
@@ -73,16 +76,18 @@ filesystem
 FilterFlights
 findable
 Fortran
+GitLab
+GitPython
+GraphQL
+graphviz
 gapped
 git-lfs
+gitattributes
 github
 gitignore
 gitkeep
 gitlab
-GitLab
 gitlabClientSecret
-GitPython
-GraphQL
 hexsha
 Homebrew
 hostname
@@ -154,6 +159,7 @@ Postgresql
 powerline
 pre
 prepend
+prepending
 preprocessed
 preprocessing
 programmatically
@@ -178,6 +184,7 @@ Reproducibility
 reproducibly
 resolvers
 resync
+reticulate
 reusability
 Reusability
 righthand
@@ -206,6 +213,7 @@ Subclass
 subclasses
 Subclasses
 subcommand
+subcommands
 subdirectories
 subdirectory
 subfolder
@@ -215,6 +223,7 @@ Subgraph
 submodule
 submodules
 subpath
+subprocesses
 substep
 substeps
 substring
@@ -243,6 +252,7 @@ Unlink
 unlinking
 unmapped
 unmerged
+unpushed
 untracked
 untracked
 updatable

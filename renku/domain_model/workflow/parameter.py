@@ -20,7 +20,7 @@
 import copy
 import urllib
 from abc import abstractmethod
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Any, Iterator, List, Optional
 from uuid import uuid4
 
@@ -74,7 +74,8 @@ class CommandParameterBase:
         self.id: str = id
         self.position: Optional[int] = position
         self.prefix: Optional[str] = prefix
-        self._v_actual_value_set = False
+        self._v_actual_value = None
+        self._v_actual_value_set: bool = False
         self.derived_from: Optional[str] = derived_from
         self.postfix: Optional[str] = postfix
 
@@ -92,6 +93,9 @@ class CommandParameterBase:
         position_str = str(position) if position is not None else uuid4().hex
         postfix = urllib.parse.quote(postfix) if postfix else position_str
         return f"{plan_id}/{parameter_type}/{postfix}"
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} '{self.actual_value}'>"
 
     @property
     def role(self) -> str:
@@ -212,8 +216,10 @@ class CommandInput(CommandParameterBase):
         derived_from: Optional[str] = None,
         postfix: Optional[str] = None,
     ):
+        assert isinstance(default_value, (Path, str)), f"Invalid value type for CommandOutput: {type(default_value)}"
+
         super().__init__(
-            default_value=default_value,
+            default_value=str(default_value),
             description=description,
             id=id,
             name=name,
@@ -265,8 +271,10 @@ class CommandOutput(CommandParameterBase):
         derived_from: Optional[str] = None,
         postfix: Optional[str] = None,
     ):
+        assert isinstance(default_value, (Path, str)), f"Invalid value type for CommandOutput: {type(default_value)}"
+
         super().__init__(
-            default_value=default_value,
+            default_value=str(default_value),
             description=description,
             id=id,
             name=name,

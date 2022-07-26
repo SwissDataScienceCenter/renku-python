@@ -214,13 +214,6 @@ def parse_parameters(ctx, param, value):
     return parameters
 
 
-def validate_name(ctx, param, value):
-    """Validate a project name."""
-    if not value:
-        value = os.path.basename(ctx.params["path"].rstrip(os.path.sep))
-    return value
-
-
 def resolve_data_directory(data_dir, path):
     """Check data directory is within the project path."""
     if not data_dir:
@@ -241,7 +234,7 @@ def resolve_data_directory(data_dir, path):
 
 @click.command()
 @click.argument("path", default=".", type=click.Path(writable=True, file_okay=False, resolve_path=True))
-@click.option("-n", "--name", callback=validate_name, help="Provide a custom project name.")
+@click.option("-n", "--name", default=None, help="Provide a custom project name.")
 @click.option("--description", help="Provide a description for the project.")
 @click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords.")
 @click.option(

@@ -33,6 +33,22 @@ class RenkuException(Exception):
     """
 
 
+class DatasetException(RenkuException):
+    """Base class for all dataset-related exceptions."""
+
+
+class ActivityDownstreamNotEmptyError(RenkuException):
+    """Raised when an activity cannot be deleted because its downstream is not empty."""
+
+    def __init__(self, activity):
+        self.activity = activity
+        super().__init__(f"Activity '{activity.id}' has non-empty downstream")
+
+
+class LockError(RenkuException):
+    """Raise when a project cannot be locked."""
+
+
 class RequestError(RenkuException):
     """Raise when a ``requests`` call fails."""
 
@@ -157,14 +173,6 @@ class NothingToCommit(RenkuException):
         super(NothingToCommit, self).__init__("There is nothing to commit.")
 
 
-class DatasetFileExists(RenkuException):
-    """Raise when file is already in dataset."""
-
-    def __init__(self):
-        """Build a custom message."""
-        super(DatasetFileExists, self).__init__("File already exists in dataset. Use --force to add.")
-
-
 class CommitMessageEmpty(RenkuException):
     """Raise invalid commit message."""
 
@@ -243,7 +251,7 @@ class InvalidSuccessCode(RenkuException):
         super(InvalidSuccessCode, self).__init__(msg)
 
 
-class DatasetNotFound(RenkuException):
+class DatasetNotFound(DatasetException):
     """Raise when dataset is not found."""
 
     def __init__(self, *, name=None, message=None):
@@ -251,13 +259,13 @@ class DatasetNotFound(RenkuException):
         if message:
             msg = message
         elif name:
-            msg = f'Dataset "{name}" is not found.'
+            msg = f"Dataset '{name}' is not found."
         else:
             msg = "Dataset is not found."
         super().__init__(msg)
 
 
-class DatasetTagNotFound(RenkuException):
+class DatasetTagNotFound(DatasetException):
     """Raise when a tag can't be found."""
 
     def __init__(self, tag) -> None:
@@ -265,7 +273,22 @@ class DatasetTagNotFound(RenkuException):
         super().__init__(msg)
 
 
-class ExternalFileNotFound(RenkuException):
+class FileNotFound(RenkuException):
+    """Raise when a file is not found."""
+
+    def __init__(self, path, checksum=None, revision=None):
+        """Build a custom message."""
+        if checksum:
+            message = f"File not found in the repository: {checksum}:{path}"
+        elif revision:
+            message = f"File not found in the repository: {path}@{revision}"
+        else:
+            message = f"Cannot find file {path}"
+
+        super().__init__(message)
+
+
+class ExternalFileNotFound(DatasetException):
     """Raise when an external file is not found."""
 
     def __init__(self, path):
@@ -273,7 +296,15 @@ class ExternalFileNotFound(RenkuException):
         super().__init__(f"Cannot find external file '{path}'")
 
 
-class DatasetExistsError(RenkuException):
+class DirectoryNotEmptyError(RenkuException):
+    """Raised when a directory passed as output is not empty."""
+
+    def __init__(self, path):
+        """Build a custom message."""
+        super().__init__(f"Destination directory is not empty: '{path}'")
+
+
+class DatasetExistsError(DatasetException):
     """Raise when trying to create an existing dataset."""
 
 
@@ -401,10 +432,6 @@ class GitLFSError(RenkuException):
     """Raised when a Git LFS operation fails."""
 
 
-class UrlSchemeNotSupported(RenkuException):
-    """Raised when adding data from unsupported URL schemes."""
-
-
 class OperationError(RenkuException):
     """Raised when an operation at runtime raises an error."""
 
@@ -442,7 +469,7 @@ class WorkflowRerunError(RenkuException):
         super(WorkflowRerunError, self).__init__(msg)
 
 
-class ExportError(RenkuException):
+class ExportError(DatasetException):
     """Raised when a dataset cannot be exported."""
 
 
@@ -474,13 +501,8 @@ class MigrationError(RenkuException):
     """Raised when something went wrong during migrations."""
 
 
-class RenkuImportError(RenkuException):
+class ImportError(RenkuException):
     """Raised when a dataset cannot be imported."""
-
-    def __init__(self, exp, msg):
-        """Embed exception and build a custom message."""
-        self.exp = exp
-        super(RenkuImportError, self).__init__(msg)
 
 
 class CommandNotFinalizedError(RenkuException):
@@ -495,7 +517,7 @@ class RenkuSaveError(RenkuException):
     """Raised when renku save doesn't work."""
 
 
-class DatasetImageError(RenkuException):
+class DatasetImageError(DatasetException):
     """Raised when a local dataset image is not accessible."""
 
 
@@ -593,6 +615,29 @@ class DockerError(RenkuException):
         super().__init__(f"Docker failed: {reason}")
 
 
+class RenkulabSessionError(RenkuException):
+    """Raised when an error occurs trying to start sessions with the notebook service."""
+
+
+class RenkulabSessionGetUrlError(RenkuException):
+    """Raised when Renku deployment's URL cannot be gotten from project's remotes or configured remotes."""
+
+    def __init__(self):
+        message = (
+            "Cannot determine the Renku deployment's URL. Ensure your current project is a valid Renku project and has "
+            "a remote URL."
+        )
+        super().__init__(message)
+
+
+class NotebookSessionNotReadyError(RenkuException):
+    """Raised when a user attempts to open a session that is not ready."""
+
+
+class NotebookSessionImageNotExistError(RenkuException):
+    """Raised when a user attempts to start a session with an image that does not exist."""
+
+
 class MetadataMergeError(RenkuException):
     """Raise when merging of metadata failed."""
 
@@ -608,3 +653,18 @@ class MinimumVersionError(RenkuException):
             f"You are using renku version {current_version} but this project requires at least version "
             f"{minimum_version}. Please upgrade renku to work on this project."
         )
+
+
+class DatasetProviderNotFound(DatasetException, ParameterError):
+    """Raised when a dataset provider cannot be found based on a URL or a provider name."""
+
+    def __init__(self, *, name: str = None, uri: str = None, message: str = None):
+        if message is None:
+            if name:
+                message = f"Provider '{name}' not found"
+            elif uri:
+                message = f"Cannot find a provider to process '{uri}'"
+            else:
+                message = "Provider not found"
+
+        super().__init__(message)

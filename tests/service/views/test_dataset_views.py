@@ -605,6 +605,7 @@ def test_list_datasets_view(svc_client_with_repo):
         "creators",
         "keywords",
         "annotations",
+        "datadir",
     } == set(response.json["result"]["datasets"][0].keys())
 
 
@@ -666,6 +667,7 @@ def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo_url):
         "creators",
         "keywords",
         "annotations",
+        "datadir",
     } == set(response.json["result"]["datasets"][0].keys())
 
 
@@ -782,6 +784,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
         "created_at",
         "keywords",
         "annotations",
+        "datadir",
     } == set(response.json["result"]["datasets"][0].keys())
 
     assert payload["name"] in [ds["name"] for ds in response.json["result"]["datasets"]]
@@ -791,7 +794,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
 @pytest.mark.integration
 @retry_failed
 def test_list_dataset_files(svc_client_with_repo):
-    """Check listing of dataset files"""
+    """Check listing of dataset files."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
     file_name = uuid.uuid4().hex
@@ -1248,6 +1251,68 @@ def test_edit_datasets_view_without_modification(svc_client_with_repo):
     assert payload["description"] == ds["description"]
     assert payload["creators"] == ds["creators"]
     assert payload["keywords"] == ds["keywords"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+def test_edit_datasets_view_unset_values(svc_client_with_repo):
+    """Test editing dataset metadata."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+    name = uuid.uuid4().hex
+
+    payload = {
+        "project_id": project_id,
+        "name": name,
+        "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
+        "title": "my-title",
+        "description": "my description",
+        "keywords": ["keywords"],
+        "images": [
+            {"content_url": "https://example.com/image1.jpg", "position": 1},
+        ],
+        "custom_metadata": {"test": "test"},
+    }
+
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
+    assert_rpc_response(response)
+    assert {"name", "remote_branch"} == set(response.json["result"].keys())
+    assert payload["name"] == response.json["result"]["name"]
+
+    params_list = {
+        "project_id": project_id,
+    }
+
+    response = svc_client.get("/datasets.list", query_string=params_list, headers=headers)
+
+    assert_rpc_response(response)
+    edit_payload = {
+        "project_id": project_id,
+        "name": name,
+        "keywords": None,
+        "images": None,
+        "custom_metadata": None,
+    }
+    response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
+
+    assert_rpc_response(response)
+    assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
+    assert {"keywords": [], "custom_metadata": None, "images": [],} == response.json[
+        "result"
+    ]["edited"]
+
+    params_list = {
+        "project_id": project_id,
+    }
+
+    response = svc_client.get("/datasets.list", query_string=params_list, headers=headers)
+
+    assert_rpc_response(response)
+    ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
+    assert edit_payload["name"] == ds["name"]
+    assert 0 == len(ds["keywords"])
+    assert 0 == len(ds["annotations"])
+    assert 0 == len(ds["images"])
 
 
 @pytest.mark.service

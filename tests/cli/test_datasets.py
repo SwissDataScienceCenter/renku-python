@@ -30,14 +30,13 @@ from renku.command.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FI
 from renku.command.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
 from renku.core import errors
 from renku.core.constant import RENKU_HOME
-from renku.core.dataset.constant import renku_pointers_path
-from renku.core.dataset.providers import ProviderFactory
+from renku.core.dataset.constant import REFS, renku_pointers_path
 from renku.core.dataset.providers.dataverse import DataverseProvider
+from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.zenodo import ZenodoProvider
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.util.urls import get_slug
 from renku.domain_model.dataset import Dataset
-from renku.domain_model.refs import LinkReference
 from renku.ui.cli import cli
 from tests.utils import assert_dataset_is_mutated, format_result_exception, write_and_commit_file
 
@@ -50,6 +49,23 @@ def test_datasets_create_clean(runner, project, client, load_dataset_with_inject
 
     dataset = load_dataset_with_injection("dataset", client)
     assert isinstance(dataset, Dataset)
+    assert Path("data/dataset/") == dataset.get_datadir(client)
+
+    assert not client.repository.is_dirty(untracked_files=True)
+
+
+def test_datasets_create_clean_with_datadir(runner, project, client, load_dataset_with_injection):
+    """Test creating a dataset in clean repository."""
+
+    datadir = Path("my/data/dir")
+
+    result = runner.invoke(cli, ["dataset", "create", "--datadir", datadir, "dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "OK" in result.output
+
+    dataset = load_dataset_with_injection("dataset", client)
+    assert isinstance(dataset, Dataset)
+    assert datadir == dataset.get_datadir(client)
 
     assert not client.repository.is_dirty(untracked_files=True)
 
@@ -73,11 +89,12 @@ def test_datasets_create_dirty(runner, project, client, load_dataset_with_inject
     assert {"untracked"} == set(client.repository.untracked_files)
 
 
-def test_dataset_show(runner, client, subdirectory):
+@pytest.mark.parametrize("datadir_option,datadir", [([], f"{DATA_DIR}/my-dataset"), (["--datadir", "mydir"], "mydir")])
+def test_dataset_show(runner, client, subdirectory, datadir_option, datadir):
     """Test creating and showing a dataset with metadata."""
     result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
     assert 1 == result.exit_code, format_result_exception(result)
-    assert 'Dataset "my-dataset" is not found.' in result.output
+    assert "Dataset 'my-dataset' is not found." in result.output
 
     metadata = {
         "@id": "https://example.com/annotation1",
@@ -107,7 +124,8 @@ def test_dataset_show(runner, client, subdirectory):
             "keyword-2",
             "--metadata",
             str(metadata_path),
-        ],
+        ]
+        + datadir_option,
     )
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
@@ -126,13 +144,15 @@ def test_dataset_show(runner, client, subdirectory):
     assert "https://example.com/annotation1" in result.output
     assert "https://schema.org/specialType" in result.output
     assert "##" not in result.output
+    assert datadir in result.output
+    assert "Data Directory:"
 
 
 def test_dataset_show_tag(runner, client, subdirectory):
     """Test creating and showing a dataset with metadata."""
     result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
     assert 1 == result.exit_code, format_result_exception(result)
-    assert 'Dataset "my-dataset" is not found.' in result.output
+    assert "Dataset 'my-dataset' is not found." in result.output
 
     metadata = {
         "@id": "https://example.com/annotation1",
@@ -333,7 +353,7 @@ def test_dataset_create_exception_refs(runner, project, client):
     with (datasets_dir / "a").open("w") as fp:
         fp.write("a")
 
-    refs_dir = client.path / RENKU_HOME / LinkReference.REFS
+    refs_dir = client.path / RENKU_HOME / REFS
     if not refs_dir.exists():
         refs_dir.mkdir()
 
@@ -370,16 +390,20 @@ def test_datasets_list_empty(output_format, runner, project):
 
 
 @pytest.mark.parametrize("output_format", DATASETS_FORMATS.keys())
-def test_datasets_list_non_empty(output_format, runner, project):
+@pytest.mark.parametrize("datadir_option,datadir", [([], f"{DATA_DIR}/my-dataset"), (["--datadir", "mydir"], "mydir")])
+def test_datasets_list_non_empty(output_format, runner, project, datadir_option, datadir):
     """Test listing with datasets."""
     format_option = "--format={0}".format(output_format)
-    result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
+    result = runner.invoke(cli, ["dataset", "create", "my-dataset"] + datadir_option)
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     result = runner.invoke(cli, ["dataset", "ls", format_option])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "my-dataset" in result.output
+
+    if output_format != "json-ld":
+        assert "my-dataset" in result.output
+        assert datadir in result.output
 
 
 @pytest.mark.parametrize(
@@ -440,7 +464,10 @@ def test_datasets_list_description(runner, project):
     assert description[: len(short_description) + 1] not in line
 
 
-def test_add_and_create_dataset(directory_tree, runner, project, client, subdirectory, load_dataset_with_injection):
+@pytest.mark.parametrize("datadir_option,datadir", [([], f"{DATA_DIR}/new-dataset"), (["--datadir", "mydir"], "mydir")])
+def test_add_and_create_dataset(
+    directory_tree, runner, project, client, subdirectory, load_dataset_with_injection, datadir_option, datadir
+):
     """Test add data to a non-existing dataset."""
     result = runner.invoke(cli, ["dataset", "add", "new-dataset", str(directory_tree)], catch_exceptions=False)
     assert 1 == result.exit_code
@@ -448,13 +475,13 @@ def test_add_and_create_dataset(directory_tree, runner, project, client, subdire
 
     # Add succeeds with --create
     result = runner.invoke(
-        cli, ["dataset", "add", "--create", "new-dataset", str(directory_tree)], catch_exceptions=False
+        cli, ["dataset", "add", "--create", "new-dataset", str(directory_tree)] + datadir_option, catch_exceptions=False
     )
     assert 0 == result.exit_code, format_result_exception(result)
 
-    path1 = os.path.join(client.path, DATA_DIR, "new-dataset", directory_tree.name, "file1")
-    path2 = os.path.join(client.path, DATA_DIR, "new-dataset", directory_tree.name, "dir1", "file2")
-    path3 = os.path.join(client.path, DATA_DIR, "new-dataset", directory_tree.name, "dir1", "file3")
+    path1 = os.path.join(client.path, datadir, directory_tree.name, "file1")
+    path2 = os.path.join(client.path, datadir, directory_tree.name, "dir1", "file2")
+    path3 = os.path.join(client.path, datadir, directory_tree.name, "dir1", "file3")
 
     assert os.stat(path1)
     assert os.stat(path2)
@@ -552,14 +579,15 @@ def test_multiple_file_to_dataset(tmpdir, runner, project, client, load_dataset_
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_add_with_relative_path(runner, client, directory_tree, subdirectory):
+@pytest.mark.parametrize("datadir_option,datadir", [([], f"{DATA_DIR}/local"), (["--datadir", "mydir"], "mydir")])
+def test_add_with_relative_path(runner, client, directory_tree, subdirectory, datadir_option, datadir):
     """Test adding data with relative path."""
     relative_path = os.path.relpath(directory_tree / "file1", os.getcwd())
 
-    result = runner.invoke(cli, ["dataset", "add", "--create", "local", relative_path])
+    result = runner.invoke(cli, ["dataset", "add", "--create", "local", relative_path] + datadir_option)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    path = client.path / client.data_dir / "local" / "file1"
+    path = client.path / datadir / "file1"
     assert path.exists()
     assert "file1 content" == path.read_text()
 
@@ -637,13 +665,6 @@ def test_usage_error_in_add_from_url(runner, client, params, message):
     result = runner.invoke(cli, ["dataset", "add", "remote", "--create"] + params, catch_exceptions=False)
     assert 2 == result.exit_code
     assert message in result.output
-
-
-def test_add_from_local_repo_warning(runner, client, data_repository, directory_tree):
-    """Test a warning is printed when adding from a local git repository."""
-    result = runner.invoke(cli, ["dataset", "add", "dataset", "--create", str(directory_tree)], catch_exceptions=False)
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "Use remote's Git URL instead to enable lineage " in result.output
 
 
 def test_add_untracked_file(runner, project, client, load_dataset_with_injection):
@@ -1042,7 +1063,7 @@ def test_dataset_unlink_file_not_found(runner, project):
 
     result = runner.invoke(cli, ["dataset", "unlink", "my-dataset", "--include", "notthere.csv"])
 
-    assert 2 == result.exit_code
+    assert 2 == result.exit_code, format_result_exception(result)
 
 
 def test_dataset_unlink_file_abort_unlinking(tmpdir, runner, project):
@@ -1211,6 +1232,51 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory, load_dataset
 
 
 @pytest.mark.parametrize("dirty", [False, True])
+def test_dataset_edit_unset(runner, client, project, dirty, subdirectory, load_dataset_with_injection):
+    """Check dataset metadata editing unsetting values."""
+    if dirty:
+        (client.path / "README.md").write_text("Make repo dirty.")
+
+    metadata = {
+        "@id": "https://example.com/annotation1",
+        "@type": "https://schema.org/specialType",
+        "https://schema.org/specialProperty": "some_unique_value",
+    }
+    metadata_path = client.path / "metadata.json"
+    metadata_path.write_text(json.dumps(metadata))
+
+    result = runner.invoke(
+        cli,
+        [
+            "dataset",
+            "create",
+            "dataset",
+            "-t",
+            "original title",
+            "-c",
+            "John Doe <john@does.example.com>",
+            "-k",
+            "keyword-1",
+            "--metadata",
+            str(metadata_path),
+        ],
+    )
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(
+        cli,
+        ["dataset", "edit", "dataset", "-u", "keywords", "-u", "metadata"],
+        catch_exceptions=False,
+    )
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Successfully updated: keywords, custom_metadata." in result.output
+
+    dataset = load_dataset_with_injection("dataset", client)
+    assert 0 == len(dataset.keywords)
+    assert 0 == len(dataset.annotations)
+
+
+@pytest.mark.parametrize("dirty", [False, True])
 def test_dataset_edit_no_change(runner, client, project, dirty):
     """Check metadata editing does not commit when there is no change."""
     result = runner.invoke(cli, ["dataset", "create", "dataset", "-t", "original title"])
@@ -1235,7 +1301,7 @@ def test_dataset_edit_no_change(runner, client, project, dirty):
 )
 def test_dataset_provider_resolution_zenodo(doi_responses, uri):
     """Check that zenodo uris resolve to ZenodoProvider."""
-    provider, _ = ProviderFactory.from_uri(uri)
+    provider = ProviderFactory.get_import_provider(uri)
     assert type(provider) is ZenodoProvider
 
 
@@ -1250,7 +1316,7 @@ def test_dataset_provider_resolution_zenodo(doi_responses, uri):
 @pytest.mark.integration
 def test_dataset_provider_resolution_dataverse(doi_responses, uri):
     """Check that dataverse URIs resolve to ``DataverseProvider``."""
-    provider, _ = ProviderFactory.from_uri(uri)
+    provider = ProviderFactory.get_import_provider(uri)
     assert type(provider) is DataverseProvider
 
 
@@ -2276,17 +2342,18 @@ def test_authorized_import(mock_kg, client, runner):
     assert "Cannot find project in the knowledge graph" in result.output
 
 
-def test_update_local_file(runner, client, directory_tree, load_dataset_with_injection):
+@pytest.mark.parametrize("datadir_option,datadir", [([], f"{DATA_DIR}/my-data"), (["--datadir", "mydir"], "mydir")])
+def test_update_local_file(runner, client, directory_tree, load_dataset_with_injection, datadir_option, datadir):
     """Check updating local files."""
-    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)]).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)] + datadir_option).exit_code
 
-    file1 = Path(DATA_DIR) / "my-data" / directory_tree.name / "file1"
+    file1 = Path(datadir) / directory_tree.name / "file1"
     file1.write_text("some updates")
     client.repository.add(all=True)
     client.repository.commit("file1")
     new_checksum_file1 = client.repository.get_object_hash(file1)
 
-    file2 = Path(DATA_DIR) / "my-data" / directory_tree.name / "dir1" / "file2"
+    file2 = Path(datadir) / directory_tree.name / "dir1" / "file2"
     file2.write_text("some updates")
     client.repository.add(all=True)
     client.repository.commit("file2")
@@ -2391,3 +2458,10 @@ def test_update_mixed_types(runner, client, directory_tree, load_dataset_with_in
     dataset = load_dataset_with_injection("my-data", client)
     assert new_checksum_file2 == dataset.find_file(file2).entity.checksum
     assert_dataset_is_mutated(old=old_dataset, new=dataset)
+
+
+def test_update_with_no_dataset(runner, client):
+    """Check updating a project with no dataset should not raise an error."""
+    result = runner.invoke(cli, ["dataset", "update", "--all"])
+
+    assert 0 == result.exit_code, format_result_exception(result)

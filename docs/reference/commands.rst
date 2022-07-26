@@ -20,19 +20,6 @@ Renku Command Line
 
 .. automodule:: renku.ui.cli
 
-.. _cli-init:
-
-``renku init``
---------------
-
-.. automodule:: renku.ui.cli.init
-
-.. _cli-template:
-
-``renku template``
-------------------
-
-.. automodule:: renku.ui.cli.template
 
 .. _cli-clone:
 
@@ -41,19 +28,13 @@ Renku Command Line
 
 .. automodule:: renku.ui.cli.clone
 
+
 .. _cli-config:
 
 ``renku config``
 ----------------
 
 .. automodule:: renku.ui.cli.config
-
-.. _cli-project:
-
-``renku project``
------------------
-
-.. automodule:: renku.ui.cli.project
 
 .. _cli-datasets:
 
@@ -62,12 +43,38 @@ Renku Command Line
 
 .. automodule:: renku.ui.cli.dataset
 
+
+.. _cli-doctor:
+
+``renku doctor``
+----------------
+
+.. automodule:: renku.ui.cli.doctor
+
+
+.. _cli-env:
+
+``renku env``
+----------------
+
+.. automodule:: renku.ui.cli.env
+
+
 .. _cli-gc:
 
 ``renku gc``
 ------------
 
 .. automodule:: renku.ui.cli.gc
+
+
+.. _cli-githooks:
+
+``renku githooks``
+------------------
+
+.. automodule:: renku.ui.cli.githooks
+
 
 .. _cli-graph:
 
@@ -76,12 +83,14 @@ Renku Command Line
 
 .. automodule:: renku.ui.cli.graph
 
-.. _cli-run:
 
-``renku run``
--------------
+.. _cli-init:
 
-.. automodule:: renku.ui.cli.run
+``renku init``
+--------------
+
+.. automodule:: renku.ui.cli.init
+
 
 .. _cli-log:
 
@@ -90,6 +99,7 @@ Renku Command Line
 
 .. automodule:: renku.ui.cli.log
 
+
 .. _cli-login:
 
 ``renku login``
@@ -97,69 +107,6 @@ Renku Command Line
 
 .. automodule:: renku.ui.cli.login
 
-.. _cli-status:
-
-``renku status``
-----------------
-
-.. automodule:: renku.ui.cli.status
-
-.. _cli-update:
-
-``renku update``
-----------------
-
-.. automodule:: renku.ui.cli.update
-
-.. _cli-rerun:
-
-``renku rerun``
----------------
-
-.. automodule:: renku.ui.cli.rerun
-
-.. _cli-rm:
-
-``renku rm``
-------------
-
-.. automodule:: renku.ui.cli.remove
-
-.. _cli-mv:
-
-``renku mv``
-------------
-
-.. automodule:: renku.ui.cli.move
-
-.. _cli-workflow:
-
-``renku workflow``
-------------------
-
-.. automodule:: renku.ui.cli.workflow
-
-.. _cli-save:
-
-``renku save``
---------------
-
-.. automodule:: renku.ui.cli.save
-
-.. _cli-storage:
-
-``renku storage``
------------------
-
-.. automodule:: renku.ui.cli.storage
-
-.. _cli-doctor:
-
-
-``renku doctor``
-----------------
-
-.. automodule:: renku.ui.cli.doctor
 
 .. _cli-mergetool:
 
@@ -168,12 +115,46 @@ Renku Command Line
 
 .. automodule:: renku.ui.cli.mergetool
 
+
 .. _cli-migrate:
 
 ``renku migrate``
 -----------------
 
 .. automodule:: renku.ui.cli.migrate
+
+
+.. _cli-mv:
+
+``renku mv``
+------------
+
+.. automodule:: renku.ui.cli.move
+
+
+.. _cli-project:
+
+``renku project``
+-----------------
+
+.. automodule:: renku.ui.cli.project
+
+
+.. _cli-rerun:
+
+``renku rerun``
+---------------
+
+.. automodule:: renku.ui.cli.rerun
+
+
+.. _cli-rm:
+
+``renku rm``
+------------
+
+.. automodule:: renku.ui.cli.remove
+
 
 .. _cli-rollback:
 
@@ -182,6 +163,23 @@ Renku Command Line
 
 .. automodule:: renku.ui.cli.rollback
 
+
+.. _cli-run:
+
+``renku run``
+-------------
+
+.. automodule:: renku.ui.cli.run
+
+
+.. _cli-save:
+
+``renku save``
+--------------
+
+.. automodule:: renku.ui.cli.save
+
+
 .. _cli-service:
 
 ``renku service``
@@ -189,12 +187,54 @@ Renku Command Line
 
 .. automodule:: renku.ui.cli.service
 
-.. _cli-githooks:
 
-``renku githooks``
+.. _cli-session:
+
+``renku session``
+-----------------
+
+.. automodule:: renku.ui.cli.session
+
+
+.. _cli-status:
+
+``renku status``
+----------------
+
+.. automodule:: renku.ui.cli.status
+
+
+.. _cli-storage:
+
+``renku storage``
+-----------------
+
+.. automodule:: renku.ui.cli.storage
+
+
+.. _cli-template:
+
+``renku template``
 ------------------
 
-.. automodule:: renku.ui.cli.githooks
+.. automodule:: renku.ui.cli.template
+
+
+.. _cli-update:
+
+``renku update``
+----------------
+
+.. automodule:: renku.ui.cli.update
+
+
+.. _cli-workflow:
+
+``renku workflow``
+------------------
+
+.. automodule:: renku.ui.cli.workflow
+
 
 Error Tracking
 --------------

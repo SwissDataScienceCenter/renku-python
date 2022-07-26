@@ -169,7 +169,7 @@ napoleon_google_docstring = True
 napoleon_numpy_docstring = False
 
 # sphinx type references only work for types that documentation is generated for
-# Suppress warnungs for these types that are referenced but not documented themselves.
+# Suppress warnings for these types that are referenced but not documented themselves.
 nitpick_ignore = [
     ("py:class", "Path"),
     ("py:class", "OID_TYPE"),

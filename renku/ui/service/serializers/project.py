@@ -62,10 +62,10 @@ class ProjectShowResponseRPC(RenkuSyncSchema):
 class ProjectEditRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema):
     """Project edit metadata request."""
 
-    description = fields.String(default=None, description="New description for the project")
+    description = fields.String(description="New description for the project")
     creator = fields.Nested(DatasetCreators, description="New creator for the project")
-    custom_metadata = fields.Dict(default=None, description="Custom JSON-LD metadata")
-    keywords = fields.List(fields.String(), default=None, Missing=None, description="Keyword(s) for the project")
+    custom_metadata = fields.Dict(allow_none=True, description="New custom JSON-LD metadata")
+    keywords = fields.List(fields.String(), allow_none=True, description="New keyword(s) for the project")
 
 
 class ProjectEditResponse(RenkuSyncSchema):

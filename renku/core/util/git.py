@@ -19,19 +19,20 @@
 
 import os
 import pathlib
+import re
 import shutil
 import urllib
 from functools import reduce
 from pathlib import Path
-from subprocess import SubprocessError, run
+from subprocess import PIPE, SubprocessError, run
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union, cast
 from uuid import uuid4
 
 from renku.core import errors
-from renku.domain_model.git import GitURL
 
 if TYPE_CHECKING:
     from renku.domain_model.entity import Collection, Entity
+    from renku.domain_model.git import GitURL
     from renku.domain_model.provenance.agent import Person, SoftwareAgent
     from renku.infrastructure.repository import Commit, Remote, Repository
 
@@ -142,7 +143,7 @@ def get_cache_directory_for_repository(client, url) -> Path:
     return client.renku_path / CACHE / get_full_repository_path(url)
 
 
-def parse_git_url(url: Optional[str]) -> GitURL:
+def parse_git_url(url: Optional[str]) -> "GitURL":
     """Return parsed git url.
 
     Args:
@@ -153,6 +154,8 @@ def parse_git_url(url: Optional[str]) -> GitURL:
         GitURL: The parsed GitURL.
 
     """
+    from renku.domain_model.git import GitURL
+
     if not url:
         raise errors.InvalidGitURL("No URL provided.")
 
@@ -731,8 +734,7 @@ def clone_repository(
         return None
 
     def clone(branch, depth):
-        if skip_smudge:
-            os.environ["GIT_LFS_SKIP_SMUDGE"] = "1"
+        os.environ["GIT_LFS_SKIP_SMUDGE"] = "1" if skip_smudge else "0"
 
         return Repository.clone_from(
             url,
@@ -790,13 +792,7 @@ def clone_repository(
         install(force=True, repository=repository)
 
     if install_lfs:
-        command = ["lfs", "install", "--local", "--force"]
-        if skip_smudge:
-            command += ["--skip-smudge"]
-        try:
-            repository.run_git_command(*command)
-        except errors.GitCommandError as e:
-            raise errors.GitError("Cannot install Git LFS") from e
+        repository.lfs.install(skip_smudge=skip_smudge)
 
     return repository
 
@@ -825,3 +821,88 @@ def get_git_progress_instance():
             print(self._previous_line_length * " ", end="\r")
 
     return GitProgress()
+
+
+def get_file_size(repository_path: Path, path: str) -> Optional[float]:
+    """Return file size for a file inside a git repository."""
+    # NOTE: First try to get file size from Git LFS
+    try:
+        lfs_run = run(
+            ("git", "lfs", "ls-files", "--name-only", "--size"),
+            stdout=PIPE,
+            cwd=repository_path,
+            universal_newlines=True,
+        )
+    except SubprocessError:
+        pass
+    else:
+        lfs_output = lfs_run.stdout.split("\n")
+        # Example line format: relative/path/to/file (7.9 MB)
+        pattern = re.compile(r".*\((.*)\)")
+        for line in lfs_output:
+            if path not in line:
+                continue
+            match = pattern.search(line)
+            if not match:
+                continue
+            size_info = match.groups()[0].split()
+            if len(size_info) != 2:
+                continue
+            try:
+                size = float(size_info[0])
+            except ValueError:
+                continue
+            unit = size_info[1].strip().lower()
+            conversions = {"b": 1, "kb": 1e3, "mb": 1e6, "gb": 1e9}
+            multiplier = conversions.get(unit, None)
+            if multiplier is None:
+                continue
+            return size * multiplier
+
+    # Return size of the file on disk
+    full_path = repository_path / path
+    return float(os.path.getsize(full_path)) if full_path.exists() else None
+
+
+def shorten_message(message: str, line_length: int = 100, body_length: int = 65000) -> str:
+    """Wraps and shortens a commit message.
+
+    Args:
+        message(str): message to adjust.
+        line_length(int, optional): maximum line length before wrapping. 0 for infinite (Default value = 100).
+        body_length(int, optional): maximum body length before cut. 0 for infinite (Default value = 65000).
+    Raises:
+        ParameterError: If line_length or body_length < 0
+    Returns:
+        message wrapped and trimmed.
+
+    """
+    if line_length < 0:
+        raise errors.ParameterError("the length can't be negative.", "line_length")
+
+    if body_length < 0:
+        raise errors.ParameterError("the length can't be negative.", "body_length")
+
+    if body_length and len(message) > body_length:
+        message = message[: body_length - 3] + "..."
+
+    if line_length == 0 or len(message) <= line_length:
+        return message
+
+    lines = message.split(" ")
+    lines = [
+        line
+        if len(line) < line_length
+        else "\n\t".join(line[o : o + line_length] for o in range(0, len(line), line_length))
+        for line in lines
+    ]
+
+    # NOTE: tries to preserve message spacing.
+    wrapped_message = reduce(
+        lambda c, x: (f"{c[0]} {x}", c[1] + len(x) + 1)
+        if c[1] + len(x) <= line_length
+        else (f"{c[0]}\n\t" + x, len(x)),
+        lines,
+        ("", 0),
+    )[0]
+    return wrapped_message[1:]

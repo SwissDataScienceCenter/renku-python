@@ -309,11 +309,21 @@ jobs:
         run: |
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
+      - name: Set coveralls path mapping
+        run: |
+          echo "
+
+          [tool.coverage.paths]
+          source = [
+              \"renku/\",
+              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
+          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish and not serial" -n auto tests/api
       - name: Coveralls
         env:
@@ -321,6 +331,7 @@ jobs:
           GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
           COVERALLS_PARALLEL: true
+        if: always()
         run: coveralls --service=github-actions
         continue-on-error: true
 
@@ -367,17 +378,28 @@ jobs:
         run: |
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
+      - name: Set coveralls path mapping
+        run: |
+          echo "
+
+          [tool.coverage.paths]
+          source = [
+              \"renku/\",
+              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
+          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish and not serial" -n auto  tests/cli
       - name: Test with pytest(serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v --cov-append -m "not integration and not publish and serial"  tests/cli
       - name: Coveralls
         env:
@@ -385,6 +407,7 @@ jobs:
           GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
           COVERALLS_PARALLEL: true
+        if: always()
         run: coveralls --service=github-actions
         continue-on-error: true
 
@@ -431,17 +454,28 @@ jobs:
         run: |
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
+      - name: Set coveralls path mapping
+        run: |
+          echo "
+
+          [tool.coverage.paths]
+          source = [
+              \"renku/\",
+              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
+          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish and not serial" -n auto tests/core
       - name: Test with pytest(serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v --cov-append -m "not integration and not publish and serial" tests/core
       - name: Coveralls
         env:
@@ -449,6 +483,7 @@ jobs:
           GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
           COVERALLS_PARALLEL: true
+        if: always()
         run: coveralls --service=github-actions
         continue-on-error: true
 
@@ -495,11 +530,21 @@ jobs:
         run: |
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
+      - name: Set coveralls path mapping
+        run: |
+          echo "
+
+          [tool.coverage.paths]
+          source = [
+              \"renku/\",
+              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
+          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish" -n auto tests/service
       - name: Coveralls
         env:
@@ -507,6 +552,7 @@ jobs:
           GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
           COVERALLS_PARALLEL: true
+        if: always()
         run: coveralls --service=github-actions
         continue-on-error: true
 
@@ -544,6 +590,7 @@ jobs:
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish and not serial" tests/api
 
   test-macos-cli:
@@ -580,6 +627,7 @@ jobs:
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish and not serial" tests/cli
       - name: Test with pytest(serial)
         env:
@@ -587,6 +635,7 @@ jobs:
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish and serial" tests/cli
 
   test-macos-core:
@@ -623,12 +672,14 @@ jobs:
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish and not serial" tests/core
       - name: Test with pytest(serial)
         env:
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish and serial" tests/core
 
   test-macos-service:
@@ -664,6 +715,7 @@ jobs:
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish" tests/service
 
   test-linux-integration:
@@ -714,6 +766,15 @@ jobs:
         with:
           path: cassettes
           key: ${{ env.NETWORK_CACHE_PREFIX }}-${{ needs.year-week.outputs.date }}-${{ hashFiles('tests') }}-${{ github.job }}
+      - name: Set coveralls path mapping
+        run: |
+          echo "
+
+          [tool.coverage.paths]
+          source = [
+              \"renku/\",
+              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
+          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -724,7 +785,10 @@ jobs:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -m "integration and not service and not serial" -v --timeout=600 -n auto
+      - name: Start Redis
+        uses: supercharge/redis-github-action@1.4.0
       - name: Test with pytest (serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -735,6 +799,7 @@ jobs:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest --cov-append -m "integration and not service and serial" -v --timeout=600
       - name: Coveralls
         env:
@@ -742,6 +807,7 @@ jobs:
           GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
           COVERALLS_PARALLEL: true
+        if: always()
         run: coveralls --service=github-actions
         continue-on-error: true
 
@@ -793,6 +859,15 @@ jobs:
         with:
           path: cassettes
           key: ${{ env.NETWORK_CACHE_PREFIX }}-${{ needs.year-week.outputs.date }}-${{ hashFiles('tests') }}-${{ github.job }}
+      - name: Set coveralls path mapping
+        run: |
+          echo "
+
+          [tool.coverage.paths]
+          source = [
+              \"renku/\",
+              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
+          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -803,6 +878,7 @@ jobs:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -m "integration and service and not serial" -v --timeout=600 -n auto
       - name: Test with pytest (serial)
         env:
@@ -814,6 +890,7 @@ jobs:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest --cov-append -m "integration and service and serial" -v --timeout=600
       - name: Coveralls
         env:
@@ -821,6 +898,7 @@ jobs:
           GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
           COVERALLS_PARALLEL: true
+        if: always()
         run: coveralls --service=github-actions
         continue-on-error: true
 
@@ -862,7 +940,10 @@ jobs:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -m "integration and not serial" -v
+      - name: Start Redis
+        uses: supercharge/redis-github-action@1.4.0
       - name: Test with pytest(serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -873,6 +954,7 @@ jobs:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -m "integration and serial" -v
 
   publish-pypi:
@@ -924,6 +1006,8 @@ jobs:
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: merge changes from master
+        env:
+          GITHUB_TOKEN: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
         run: |
           git merge origin/master --message "Merge branch 'master' into develop"
           git push
@@ -977,7 +1061,7 @@ jobs:
           echo "GIT_USER=Renku Bot" >> $GITHUB_ENV
           echo "GIT_EMAIL=renku@datascience.ch" >> $GITHUB_ENV
       - name: Push chart and images
-        uses: SwissDataScienceCenter/renku-actions/publish-chart@v0.5.2
+        uses: SwissDataScienceCenter/renku-actions/publish-chart@v0.5.3
         env:
           CHART_NAME: renku-core
           GITHUB_TOKEN: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
@@ -986,7 +1070,7 @@ jobs:
       - name: Wait for chart to be available
         run: sleep 120
       - name: Update component version
-        uses: SwissDataScienceCenter/renku-actions/update-component-version@v0.5.2
+        uses: SwissDataScienceCenter/renku-actions/update-component-version@v0.5.3
         env:
           CHART_NAME: renku-core
           GITHUB_TOKEN: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
@@ -1002,6 +1086,7 @@ jobs:
         test-linux-integration,
         test-linux-integration-service,
       ]
+    if: always()
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1011,3 +1096,4 @@ jobs:
         with:
           github-token: ${{ secrets.github_token }}
           parallel-finished: true
+          base-path: renku/

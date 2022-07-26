@@ -349,6 +349,8 @@ napoleon_numpy_docstring = False
 nitpick_ignore = [
     ("py:class", "CommandResult"),
     ("py:class", "CommunicationCallback"),
+    ("py:class", "datetime"),
+    ("py:class", "DiGraph"),
     ("py:class", "DynamicProxy"),
     ("py:class", "IActivityGateway"),
     ("py:class", "IClientDispatcher"),
@@ -356,6 +358,7 @@ nitpick_ignore = [
     ("py:class", "IDatasetGateway"),
     ("py:class", "IPlanGateway"),
     ("py:class", "LocalClient"),
+    ("py:class", "NoValueType"),
     ("py:class", "OID_TYPE"),
     ("py:class", "Path"),
     ("py:class", "Persistent"),

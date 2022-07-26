@@ -50,11 +50,11 @@ except ImportError:
 
 def export_graph_command():
     """Return a command for exporting graph data."""
-    return Command().command(_export_graph).with_database(write=False).require_migration()
+    return Command().command(export_graph).with_database(write=False).require_migration()
 
 
 @inject.autoparams("client_dispatcher")
-def _export_graph(
+def export_graph(
     client_dispatcher: IClientDispatcher,
     format: str = "json-ld",
     revision_or_range: str = None,
@@ -75,9 +75,9 @@ def _export_graph(
     format = format.lower()
 
     if revision_or_range:
-        graph = _get_graph_for_revision(revision_or_range=revision_or_range)
+        graph = get_graph_for_revision(revision_or_range=revision_or_range)
     else:
-        graph = _get_graph_for_all_objects()
+        graph = get_graph_for_all_objects()
 
     # NOTE: rewrite ids for current environment
     host = get_host(client_dispatcher.current_client)
@@ -111,7 +111,7 @@ def update_nested_node_host(node: Dict, host: str) -> None:
 
 
 @inject.autoparams()
-def _get_graph_for_revision(
+def get_graph_for_revision(
     revision_or_range: str,
     database_gateway: IDatabaseGateway,
     project_gateway: IProjectGateway,
@@ -142,7 +142,7 @@ def _get_graph_for_revision(
 
 
 @inject.autoparams()
-def _get_graph_for_all_objects(
+def get_graph_for_all_objects(
     project_gateway: IProjectGateway,
     dataset_gateway: IDatasetGateway,
     activity_gateway: IActivityGateway,
@@ -160,7 +160,10 @@ def _get_graph_for_all_objects(
         List of JSON-LD metadata.
     """
     project = project_gateway.get_project()
-    objects: List[Union[Project, Dataset, DatasetTag, Activity, AbstractPlan]] = activity_gateway.get_all_activities()
+    # NOTE: Include deleted activities when exporting graph
+    objects: List[Union[Project, Dataset, DatasetTag, Activity, AbstractPlan]] = activity_gateway.get_all_activities(
+        include_deleted=True
+    )
 
     processed_plans = set()
 
@@ -220,6 +223,10 @@ def _convert_entities_to_graph(
             # NOTE: Since the database is read-only, it's OK to modify objects; they won't be written back
             entity.unfreeze()
             entity.project_id = project_id
+
+            if isinstance(entity, Activity):
+                entity.association.plan.unfreeze()
+                entity.association.plan.project_id = project_id
         schema = next(s for t, s in schemas.items() if isinstance(entity, t))
         graph.extend(schema(flattened=True).dump(entity))
 
