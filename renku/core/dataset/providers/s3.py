@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,7 +18,7 @@
 """S3 dataset provider."""
 
 import urllib
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Optional, Tuple
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials, ProviderPriority
@@ -36,7 +36,7 @@ class S3Provider(ProviderApi):
     priority = ProviderPriority.NORMAL
     name = "S3"
 
-    def __init__(self, uri: str):
+    def __init__(self, uri: Optional[str]):
         super().__init__(uri=uri)
         bucket, _ = extract_bucket_and_path(uri=self.uri)
         self._bucket: str = bucket
@@ -79,7 +79,7 @@ class S3Credentials(ProviderCredentials):
 
     @staticmethod
     def get_credentials_names() -> Tuple[str, ...]:
-        """Return list of the required credentials for a provider."""
+        """Return a tuple of the required credentials for a provider."""
         return "Access Key ID", "Secret Access Key"
 
 

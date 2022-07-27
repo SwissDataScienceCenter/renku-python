@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,6 +19,7 @@
 
 import urllib
 from pathlib import Path
+from typing import Optional
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ImporterApi, ProviderApi, ProviderPriority
@@ -33,7 +34,7 @@ class DOIProvider(ProviderApi):
     priority = ProviderPriority.HIGHER
     name = "DOI"
 
-    def __init__(self, uri: str, headers=None, timeout=3):
+    def __init__(self, uri: Optional[str], headers=None, timeout=3):
         super().__init__(uri=uri)
 
         self.timeout = timeout

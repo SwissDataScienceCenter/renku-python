@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,10 +17,10 @@
 # limitations under the License.
 """S3 storage handler."""
 
-from renku.infrastructure.storage.base import BaseStorage, get_rclone_env_var_name, set_rclone_env_var
+from renku.infrastructure.storage.base import RCloneBaseStorage, get_rclone_env_var_name, set_rclone_env_var
 
 
-class S3Storage(BaseStorage):
+class S3Storage(RCloneBaseStorage):
     """S3 storage handler."""
 
     def set_configurations(self):

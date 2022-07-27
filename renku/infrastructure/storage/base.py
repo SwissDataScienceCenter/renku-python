@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -25,7 +25,7 @@ from renku.core import errors
 from renku.core.interface.storage import IStorage
 
 
-class BaseStorage(IStorage):
+class RCloneBaseStorage(IStorage):
     """Base external storage handler class."""
 
     def set_configurations(self):
@@ -79,8 +79,12 @@ def transform_kwargs(**kwargs) -> List[str]:
             name = f"-{key}" if len(key) == 1 else f"--{key.replace('_', '-')}"
             return [name] if value is True else [name, f"{value}"]
 
-    args = [transform_kwarg(k, v) for k, v in kwargs.items()]
-    return [a for arg in args for a in arg]
+    all_args = []
+    for key, value in kwargs.items():
+        args = transform_kwarg(key, value)
+        all_args.extend(args)
+
+    return all_args
 
 
 def get_rclone_env_var_name(provider_name, name) -> str:

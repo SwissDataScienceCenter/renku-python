@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -49,7 +49,7 @@ class RenkuProvider(ProviderApi):
     priority = ProviderPriority.HIGH
     name = "Renku"
 
-    def __init__(self, uri: str, **kwargs):
+    def __init__(self, uri: Optional[str], **kwargs):
         super().__init__(uri=uri)
 
         self._accept = "application/json"

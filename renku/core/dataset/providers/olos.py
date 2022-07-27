@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -41,7 +41,7 @@ class OLOSProvider(ProviderApi):
     priority = ProviderPriority.HIGH
     name = "OLOS"
 
-    def __init__(self, uri: str, is_doi: bool = False):
+    def __init__(self, uri: Optional[str], is_doi: bool = False):
         super().__init__(uri=uri)
 
         self.is_doi = is_doi

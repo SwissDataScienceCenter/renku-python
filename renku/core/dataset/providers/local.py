@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -41,7 +41,7 @@ class FilesystemProvider(ProviderApi):
     priority = ProviderPriority.LOW
     name = "Local"
 
-    def __init__(self, uri: str):
+    def __init__(self, uri: Optional[str]):
         super().__init__(uri=uri)
 
         self._path: Optional[str] = None
