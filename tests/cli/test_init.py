@@ -428,7 +428,7 @@ def test_init_with_data_dir(isolated_runner, data_dir, directory_tree, project_i
     assert not Repository(new_project).is_dirty(untracked_files=True)
 
     os.chdir(new_project.resolve())
-    result = isolated_runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)])
+    result = isolated_runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-data", str(directory_tree)])
     assert 0 == result.exit_code, format_result_exception(result)
     assert (Path(data_dir) / "my-data" / directory_tree.name / "file1").exists()
 

@@ -30,7 +30,7 @@ from tests.utils import format_result_exception, modified_environ, with_dataset
 @pytest.mark.parametrize("revision", ["", "HEAD", "HEAD^", "HEAD^..HEAD"])
 def test_graph_export_validation(runner, client, directory_tree, run, revision):
     """Test graph validation when exporting."""
-    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)]).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-data", str(directory_tree)]).exit_code
 
     file1 = client.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
     file2 = client.path / DATA_DIR / "my-data" / directory_tree.name / "dir1" / "file2"
@@ -94,7 +94,7 @@ def test_graph_export_strict_dataset(tmpdir, runner, project, client, subdirecto
         test_paths.append(os.path.relpath(str(new_file), str(project)))
 
     # add data
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths)
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset"] + paths)
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["graph", "export", "--strict", "--format=json-ld"])
