@@ -26,7 +26,7 @@ except ImportError:
 
 __version__ = "1.6.0"
 __template_version__ = "0.3.1"
-__minimum_project_version__ = "1.2.0"
+__minimum_project_version__ = "1.7.0"
 
 
 def is_release():

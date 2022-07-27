@@ -86,21 +86,21 @@ class FilesystemProvider(ProviderApi):
         uri: str,
         destination: Path,
         *,
-        dataset_name: str = None,
+        dataset: Optional["Dataset"] = None,
         external: bool = False,
         **kwargs,
     ) -> List["DatasetAddMetadata"]:
         """Add files from a URI to a dataset."""
         from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
-        from renku.domain_model.dataset import get_dataset_data_dir
 
-        assert dataset_name is not None, "Dataset name is not passed"
+        if dataset is None:
+            raise errors.ParameterError("Dataset is not passed")
 
         u = urllib.parse.urlparse(uri)
         path = u.path
 
         action = DatasetAddAction.SYMLINK if external else DatasetAddAction.COPY
-        absolute_dataset_data_dir = (client.path / get_dataset_data_dir(client, dataset_name)).resolve()
+        absolute_dataset_data_dir = (client.path / dataset.get_datadir()).resolve()
         source_root = Path(get_absolute_path(path))
         is_within_repo = is_subpath(path=source_root, base=client.path)
         warnings = []
@@ -209,7 +209,6 @@ class LocalExporter(ExporterApi):
         """Execute entire export process."""
         from renku.command.schema.dataset import dump_dataset_as_jsonld
         from renku.core.util.yaml import write_yaml
-        from renku.domain_model.dataset import get_dataset_data_dir
 
         if self._path:
             dst_root = client.path / self._path
@@ -224,7 +223,7 @@ class LocalExporter(ExporterApi):
 
         dst_root.mkdir(parents=True, exist_ok=True)
 
-        data_dir = get_dataset_data_dir(client=client, dataset_name=self._dataset.name)
+        data_dir = self._dataset.get_datadir()
 
         with communication.progress("Copying dataset files ...", total=len(self._dataset.files)) as progressbar:
             for file in self.dataset.files:
