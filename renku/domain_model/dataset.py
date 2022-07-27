@@ -384,7 +384,6 @@ class Dataset(Persistent):
         self.title: Optional[str] = title
         self.version: Optional[str] = version
         self.annotations: List["Annotation"] = annotations or []
-        self._datadir: Optional[str] = str(datadir) if datadir else None
 
         if datadir:
             self.datadir: Optional[str] = str(datadir)
