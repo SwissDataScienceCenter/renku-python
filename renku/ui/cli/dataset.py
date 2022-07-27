@@ -58,6 +58,11 @@ the dataset.
 | -m, --metadata    | Path to file containing custom JSON-LD metadata to   |
 |                   | be added to the dataset.                             |
 +-------------------+------------------------------------------------------+
+| --datadir         | Set a custom base directory for a dataset. Default is|
+|                   | ``<project_data_dir>/<dataset_name>``, where         |
+|                   | ``project_data_dir`` is set on project creation      |
+|                   | (usually ``data/``).                                 |
++-------------------+------------------------------------------------------+
 
 Editing a dataset's metadata:
 
@@ -396,6 +401,9 @@ or ``doi:10.5281/zenodo.3352150``) and full URLs (e.g.
 ``http://zenodo.org/record/3352150``). A tag with the remote version of the
 dataset is automatically created.
 
+You can change the directory a dataset is imported to by using the
+``--datadir`` option.
+
 .. cheatsheet::
    :group: Datasets
    :command: $ renku dataset import <uri>
@@ -579,7 +587,7 @@ def dataset():
     "-c",
     "--columns",
     type=click.STRING,
-    default="id,name,title,version",
+    default="id,name,title,version,datadir",
     metavar="<columns>",
     help="Comma-separated list of column to display: {}.".format(", ".join(DATASETS_COLUMNS.keys())),
     show_default=True,
@@ -616,7 +624,13 @@ def list_dataset(format, columns):
     help="Custom metadata to be associated with the dataset.",
 )
 @click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords.")
-def create(name, title, description, creators, metadata, keyword):
+@click.option(
+    "--datadir",
+    default=None,
+    type=click.Path(),
+    help="Dataset's data directory (defaults to 'data/<dataset name>').",
+)
+def create(name, title, description, creators, metadata, keyword, datadir):
     """Create an empty dataset in the current repo."""
     from renku.command.dataset import create_dataset_command
     from renku.core.util.metadata import construct_creators
@@ -644,6 +658,7 @@ def create(name, title, description, creators, metadata, keyword):
             creators=creators,
             keywords=keyword,
             custom_metadata=custom_metadata,
+            datadir=datadir,
         )
     )
 
@@ -771,6 +786,7 @@ def show(tag, name):
 
     click.echo(click.style("Name: ", bold=True, fg=color.MAGENTA) + click.style(ds["name"], bold=True))
     click.echo(click.style("Created: ", bold=True, fg=color.MAGENTA) + (ds.get("created_at", "") or ""))
+    click.echo(click.style("Data Directory: ", bold=True, fg=color.MAGENTA) + str(ds.get("datadir", "") or ""))
 
     creators = []
     for creator in ds.get("creators", []):
@@ -810,8 +826,14 @@ def add_provider_options(*param_decls, **attrs):
 @click.option("-o", "--overwrite", is_flag=True, help="Overwrite existing files.")
 @click.option("-c", "--create", is_flag=True, help="Create dataset if it does not exist.")
 @click.option("-d", "--destination", default="", help="Destination directory within the dataset path")
+@click.option(
+    "--datadir",
+    default=None,
+    type=click.Path(),
+    help="Dataset's data directory (defaults to 'data/<dataset name>').",
+)
 @add_provider_options()
-def add(name, urls, external, force, overwrite, create, destination, **kwargs):
+def add(name, urls, external, force, overwrite, create, destination, datadir, **kwargs):
     """Add data to a dataset."""
     from renku.command.dataset import add_to_dataset_command
     from renku.ui.cli.utils.callback import ClickCallback
@@ -825,6 +847,7 @@ def add(name, urls, external, force, overwrite, create, destination, **kwargs):
         overwrite=overwrite,
         create=create,
         destination=destination,
+        datadir=datadir,
         **kwargs,
     )
     click.secho("OK", fg=color.GREEN)
@@ -1006,8 +1029,14 @@ def import_provider_options(*param_decls, **attrs):
 @click.option("--short-name", "--name", "name", default=None, help="A convenient name for dataset.")
 @click.option("-x", "--extract", is_flag=True, help="Extract files before importing to dataset.")
 @click.option("-y", "--yes", is_flag=True, help="Bypass download confirmation.")
+@click.option(
+    "--datadir",
+    default=None,
+    type=click.Path(),
+    help="Dataset's data directory (defaults to 'data/<dataset name>').",
+)
 @import_provider_options()
-def import_(uri, name, extract, yes, **kwargs):
+def import_(uri, name, extract, yes, datadir, **kwargs):
     """Import data from a 3rd party provider or another renku project.
 
     Supported providers: [Dataverse, Renku, Zenodo]
@@ -1017,7 +1046,7 @@ def import_(uri, name, extract, yes, **kwargs):
 
     communicator = ClickCallback()
     import_dataset_command().with_communicator(communicator).build().execute(
-        uri=uri, name=name, extract=extract, yes=yes, **kwargs
+        uri=uri, name=name, extract=extract, yes=yes, datadir=datadir, **kwargs
     )
 
     click.secho(" " * 79 + "\r", nl=False)
