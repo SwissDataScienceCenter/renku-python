@@ -115,6 +115,7 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
                 urls=local_paths,
                 create=self.ctx["create_dataset"],
                 force=self.ctx["force"],
+                copy=True,
             )
 
         return local_paths, enqueued_paths
