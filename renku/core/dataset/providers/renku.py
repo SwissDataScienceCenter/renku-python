@@ -22,7 +22,7 @@ import shutil
 import urllib
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
 
 from renku.command.command_builder.command import inject
 from renku.command.login import read_renku_token
@@ -31,11 +31,13 @@ from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.providers.api import ImporterApi, ProviderApi, ProviderPriority
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
+from renku.core.plugin import hookimpl
 from renku.core.util import communication
 from renku.core.util.file_size import bytes_to_unit
 from renku.core.util.git import clone_renku_repository, get_cache_directory_for_repository, get_file_size
 from renku.core.util.metadata import is_external_file, make_project_temp_dir
 from renku.core.util.urls import remove_credentials
+from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderDataset, ProviderParameter
@@ -43,7 +45,7 @@ if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset
 
 
-class RenkuProvider(ProviderApi):
+class RenkuProvider(ProviderApi, IDatasetProviderPlugin):
     """Renku API provider."""
 
     priority = ProviderPriority.HIGH
@@ -224,6 +226,12 @@ class RenkuProvider(ProviderApi):
 
         self._authorization_header = {"Authorization": f"Bearer {token}"} if token else {}
 
+    @classmethod
+    @hookimpl
+    def dataset_provider(cls) -> "Type[RenkuProvider]":
+        """The definition of the provider."""
+        return cls
+
 
 class RenkuImporter(ImporterApi):
     """Renku record serializer."""
@@ -268,11 +276,9 @@ class RenkuImporter(ImporterApi):
         from renku.core.management.client import LocalClient
         from renku.domain_model.dataset import RemoteEntity
 
-        if not self.provider_dataset.data_dir:
-            raise errors.OperationError(f"Data directory for dataset must be set: {self.provider_dataset.name}")
-
         url = remove_credentials(self.project_url)
-        dataset_datadir = self.provider_dataset.data_dir
+
+        dataset_datadir = self.provider_dataset.get_datadir()
         remote_repository = self.repository
 
         if self.provider_dataset.version:  # NOTE: A tag was specified for import
@@ -442,13 +448,13 @@ class RenkuImporter(ImporterApi):
     @property
     def datadir_exists(self):
         """Whether the dataset data directory exists (might be missing in git if empty)."""
-        return (self._remote_client.path / self.provider_dataset.data_dir).exists()
+        return (self._remote_client.path / self.provider_dataset.get_datadir()).exists()
 
     @inject.autoparams()
     def _fetch_dataset(self, client_dispatcher: IClientDispatcher, database_dispatcher: IDatabaseDispatcher):
         from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile
         from renku.core.management.client import LocalClient
-        from renku.domain_model.dataset import Url, get_dataset_data_dir
+        from renku.domain_model.dataset import Url
 
         repository = None
         client = client_dispatcher.current_client
@@ -514,7 +520,6 @@ class RenkuImporter(ImporterApi):
             database_dispatcher.pop_database()
             client_dispatcher.pop_client()
 
-        provider_dataset.data_dir = get_dataset_data_dir(self._remote_client, provider_dataset.name)
         provider_dataset.derived_from = None
         provider_dataset.same_as = Url(url_id=remove_credentials(self.latest_uri))
 

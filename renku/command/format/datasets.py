@@ -102,4 +102,5 @@ DATASETS_COLUMNS = {
     "keywords": ("keywords_csv", "keywords"),
     "description": ("short_description", "description"),
     "storage": ("storage", None),
+    "datadir": ("datadir_path", "datadir"),
 }

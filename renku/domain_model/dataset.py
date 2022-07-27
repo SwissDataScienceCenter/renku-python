@@ -30,6 +30,7 @@ import marshmallow
 
 from renku.core import errors
 from renku.core.util.datetime8601 import fix_datetime, local_now, parse_date
+from renku.core.util.dispatcher import get_client
 from renku.core.util.git import get_entity_from_revision
 from renku.core.util.metadata import is_external_file
 from renku.core.util.urls import get_path, get_slug
@@ -38,6 +39,7 @@ from renku.infrastructure.immutable import Immutable, Slots
 from renku.infrastructure.persistent import Persistent
 
 if TYPE_CHECKING:
+    from renku.core.management.client import LocalClient
     from renku.domain_model.entity import Entity
     from renku.domain_model.provenance.agent import Person
     from renku.domain_model.provenance.annotation import Annotation
@@ -317,6 +319,7 @@ class Dataset(Persistent):
 
     date_modified: Optional[datetime] = None  # type: ignore
     storage: Optional[str] = None
+    datadir: Optional[str] = None
 
     def __init__(
         self,
@@ -342,6 +345,7 @@ class Dataset(Persistent):
         storage: Optional[str] = None,
         title: Optional[str] = None,
         version: Optional[str] = None,
+        datadir: Optional[Path] = None,
     ):
         if not name:
             assert title, "Either 'name' or 'title' must be set."
@@ -384,6 +388,9 @@ class Dataset(Persistent):
         self.version: Optional[str] = version
         self.annotations: List["Annotation"] = annotations or []
 
+        if datadir:
+            self.datadir: Optional[str] = str(datadir)
+
     @staticmethod
     def generate_id(identifier: str) -> str:
         """Generate an identifier for Dataset."""
@@ -422,6 +429,14 @@ class Dataset(Persistent):
     def keywords_csv(self):
         """Comma-separated list of keywords associated with dataset."""
         return ", ".join(self.keywords)
+
+    def get_datadir(self, client: Optional["LocalClient"] = None) -> Path:
+        """Return dataset's data directory."""
+        if self.datadir:
+            return Path(self.datadir)
+
+        client = client or get_client()
+        return Path(os.path.join(client.data_dir, self.name))
 
     def __repr__(self) -> str:
         return f"<Dataset {self.identifier} {self.name}>"
@@ -641,6 +656,17 @@ class DatasetDetailsJson(marshmallow.Schema):
 
     annotations = marshmallow.fields.List(marshmallow.fields.Nested(AnnotationJson))
 
+    datadir = marshmallow.fields.Method("get_datadir")
+
+    def get_datadir(self, obj):
+        """Get data directory."""
+        if isinstance(obj, dict):
+            return str(obj.get("datadir_path", obj.get("datadir", "")))
+        if hasattr(obj, "datadir_path"):
+            return obj.datadir_path
+
+        return str(obj.get_datadir())
+
 
 class DatasetFileDetailsJson(marshmallow.Schema):
     """Serialize dataset files to a response object."""
@@ -674,14 +700,9 @@ class ImageObjectRequestJson(marshmallow.Schema):
     mirror_locally = marshmallow.fields.Bool(default=False)
 
 
-def get_dataset_data_dir(client, dataset_name: str) -> str:
-    """Return default data directory for a dataset."""
-    return os.path.join(client.data_dir, dataset_name)
-
-
 def get_file_path_in_dataset(client, dataset: Dataset, dataset_file: DatasetFile) -> Path:
     """Return path of a file relative to dataset's data dir."""
     try:
-        return (client.path / dataset_file.entity.path).relative_to(get_dataset_data_dir(client, dataset.name))
+        return (client.path / dataset_file.entity.path).relative_to(client.path / dataset.get_datadir(client))
     except ValueError:  # NOTE: File is not in the dataset's data dir
         return Path(dataset_file.entity.path)

@@ -15,33 +15,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Version information for Renku."""
+"""Dataset providers."""
 
-import re
+from abc import ABCMeta, abstractclassmethod
+from typing import Type
 
-try:
-    from importlib.metadata import distribution
-except ImportError:
-    from importlib_metadata import distribution  # type: ignore
-
-__version__ = "1.6.0"
-__template_version__ = "0.3.1"
-__minimum_project_version__ = "1.7.0"
+from renku.core.dataset.providers.api import ProviderApi
 
 
-def is_release():
-    """Check if current version is a release semver."""
-    if re.match(r"\d+.\d+.\d+$", __version__):
-        return True
-    return False
+class IDatasetProviderPlugin(metaclass=ABCMeta):
+    """Abstract class for a dataset provider plugin."""
 
+    @abstractclassmethod
+    def dataset_provider(cls) -> "Type[ProviderApi]":
+        """Supported dataset provider plugin.
 
-def _get_distribution_url():
-    try:
-        d = distribution("renku")
-        return d.metadata["Home-page"]
-    except Exception:
-        return "https://github.com/swissdatasciencecenter/renku-python"
-
-
-version_url = f"{_get_distribution_url()}/tree/v{__version__}"
+        Returns:
+            a ProviderApi class definition (not instance) from a specific plugin
+        """
+        pass

@@ -23,9 +23,9 @@ jobs:
         run: |
           if [ "$REF" == "refs/heads/$DEFAULT_BRANCH" ] || [[ "$REF" =~ ^refs/tags/.* ]]
           then
-              echo "::set-output name=matrix::{\"python-version\": [\"3.8\", \"3.9\"]}"
+              echo "::set-output name=matrix::{\"python-version\": [\"3.7\", \"3.10\"]}"
           else
-              echo "::set-output name=matrix::{\"python-version\": [\"3.7\"]}"
+              echo "::set-output name=matrix::{\"python-version\": [\"3.9\"]}"
           fi
 
   cleanup-runs:
@@ -323,6 +323,7 @@ jobs:
           POETRY_VIRTUALENVS_CREATE: false
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish and not serial" -n auto tests/api
       - name: Coveralls
         env:
@@ -391,12 +392,14 @@ jobs:
           POETRY_VIRTUALENVS_CREATE: false
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish and not serial" -n auto  tests/cli
       - name: Test with pytest(serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v --cov-append -m "not integration and not publish and serial"  tests/cli
       - name: Coveralls
         env:
@@ -465,12 +468,14 @@ jobs:
           POETRY_VIRTUALENVS_CREATE: false
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish and not serial" -n auto tests/core
       - name: Test with pytest(serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v --cov-append -m "not integration and not publish and serial" tests/core
       - name: Coveralls
         env:
@@ -539,6 +544,7 @@ jobs:
           POETRY_VIRTUALENVS_CREATE: false
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish" -n auto tests/service
       - name: Coveralls
         env:
@@ -584,6 +590,7 @@ jobs:
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish and not serial" tests/api
 
   test-macos-cli:
@@ -620,6 +627,7 @@ jobs:
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish and not serial" tests/cli
       - name: Test with pytest(serial)
         env:
@@ -627,6 +635,7 @@ jobs:
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish and serial" tests/cli
 
   test-macos-core:
@@ -663,12 +672,14 @@ jobs:
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish and not serial" tests/core
       - name: Test with pytest(serial)
         env:
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish and serial" tests/core
 
   test-macos-service:
@@ -704,6 +715,7 @@ jobs:
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -v -m "not integration and not publish" tests/service
 
   test-linux-integration:
@@ -773,6 +785,7 @@ jobs:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -m "integration and not service and not serial" -v --timeout=600 -n auto
       - name: Start Redis
         uses: supercharge/redis-github-action@1.4.0
@@ -786,6 +799,7 @@ jobs:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest --cov-append -m "integration and not service and serial" -v --timeout=600
       - name: Coveralls
         env:
@@ -864,6 +878,7 @@ jobs:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -m "integration and service and not serial" -v --timeout=600 -n auto
       - name: Test with pytest (serial)
         env:
@@ -875,6 +890,7 @@ jobs:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest --cov-append -m "integration and service and serial" -v --timeout=600
       - name: Coveralls
         env:
@@ -925,6 +941,7 @@ jobs:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -m "integration and not serial" -v
       - name: Start Redis
         uses: supercharge/redis-github-action@1.4.0
@@ -938,6 +955,7 @@ jobs:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          RENKU_SKIP_MIN_VERSION_CHECK: '1'
         run: pytest -m "integration and serial" -v
 
   publish-pypi:

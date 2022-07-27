@@ -20,7 +20,7 @@
 import datetime
 import urllib
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Type
 from urllib import parse as urlparse
 from uuid import UUID, uuid4
 
@@ -28,14 +28,16 @@ from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
 from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.plugin import hookimpl
 from renku.core.util import communication
+from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderParameter
     from renku.domain_model.dataset import Dataset, DatasetTag
 
 
-class OLOSProvider(ProviderApi):
+class OLOSProvider(ProviderApi, IDatasetProviderPlugin):
     """Provider for OLOS integration."""
 
     priority = ProviderPriority.HIGH
@@ -88,6 +90,12 @@ class OLOSProvider(ProviderApi):
 
         set_export_parameters()
         return OLOSExporter(dataset=dataset, server_url=self._server_url)
+
+    @classmethod
+    @hookimpl
+    def dataset_provider(cls) -> "Type[OLOSProvider]":
+        """The definition of the provider."""
+        return cls
 
 
 class OLOSExporter(ExporterApi):

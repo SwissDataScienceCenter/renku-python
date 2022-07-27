@@ -42,18 +42,11 @@ from renku.core.util.datetime8601 import local_now
 from renku.core.util.dispatcher import get_client, get_database
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository, get_git_user
 from renku.core.util.metadata import is_external_file, read_credentials, store_credentials
-from renku.core.util.os import delete_file
+from renku.core.util.os import delete_file, get_safe_relative_path
 from renku.core.util.tabulate import tabulate
 from renku.core.util.urls import get_slug
 from renku.core.util.util import NO_VALUE, NoValueType
-from renku.domain_model.dataset import (
-    Dataset,
-    DatasetDetailsJson,
-    DatasetFile,
-    RemoteEntity,
-    get_dataset_data_dir,
-    is_dataset_name_valid,
-)
+from renku.domain_model.dataset import Dataset, DatasetDetailsJson, DatasetFile, RemoteEntity, is_dataset_name_valid
 from renku.domain_model.provenance.agent import Person
 from renku.domain_model.provenance.annotation import Annotation
 from renku.infrastructure.immutable import DynamicProxy
@@ -86,6 +79,7 @@ def list_datasets():
         dataset = DynamicProxy(dataset)
         dataset.tags = tags
         dataset.tags_csv = ",".join(tag.name for tag in tags)
+        dataset.datadir_path = str(dataset.get_datadir())
         datasets.append(dataset)
 
     return list(datasets)
@@ -101,6 +95,7 @@ def create_dataset(
     update_provenance: bool = True,
     custom_metadata: Optional[Dict[str, Any]] = None,
     storage: Optional[str] = None,
+    datadir: Optional[Path] = None,
 ):
     """Create a dataset.
 
@@ -115,6 +110,7 @@ def create_dataset(
             (Default value = True).
         custom_metadata(Optional[Dict[str, Any]], optional): Custom JSON-LD metadata (Default value = None).
         storage(Optional[str], optional): Backend storage's URI (Default value = None).
+        datadir(Optional[Path]): Dataset's data directory (Default value = None).
 
     Returns:
         Dataset: The created dataset.
@@ -146,6 +142,12 @@ def create_dataset(
         [Annotation(id=Annotation.generate_id(), source="renku", body=custom_metadata)] if custom_metadata else None
     )
 
+    if datadir:
+        try:
+            datadir = get_safe_relative_path(datadir, client.path)
+        except ValueError as e:
+            raise errors.ParameterError("Datadir must be inside repository.") from e
+
     dataset = Dataset(
         identifier=None,
         name=name,
@@ -156,6 +158,7 @@ def create_dataset(
         project_id=client.project.id,
         annotations=annotations,
         storage=storage,
+        datadir=datadir,
     )
 
     if images:
@@ -389,8 +392,9 @@ def export_dataset(name, provider_name, tag, client_dispatcher: IClientDispatche
         if not dataset:
             raise errors.DatasetNotFound(message=f"Cannot find dataset with id: '{selected_tag.dataset_id.value}'")
 
-    data_dir = get_dataset_data_dir(client, dataset.name)  # type: ignore
     dataset = cast(Dataset, DynamicProxy(dataset))
+
+    data_dir = dataset.get_datadir()
     dataset.data_dir = data_dir
 
     exporter = provider.get_exporter(dataset=dataset, tag=selected_tag, **kwargs)
@@ -422,6 +426,7 @@ def import_dataset(
     name: str = "",
     extract: bool = False,
     yes: bool = False,
+    datadir: Optional[Path] = None,
     previous_dataset: Optional[Dataset] = None,
     delete: bool = False,
     gitlab_token: Optional[str] = None,
@@ -434,11 +439,14 @@ def import_dataset(
         name(str): Name to give imported dataset (Default value = "").
         extract(bool): Whether to extract compressed dataset data (Default value = False).
         yes(bool): Whether to skip user confirmation (Default value = False).
+        datadir(Optional[Path]): Dataset's data directory (Default value = None).
         previous_dataset(Optional[Dataset]): Previously imported dataset version (Default value = None).
         delete(bool): Whether to delete files that don't exist anymore (Default value = False).
         gitlab_token(Optional[str]): Gitlab OAuth2 token (Default value = None).
     """
     from renku.core.dataset.dataset_add import add_to_dataset
+
+    client = get_client()
 
     def confirm_download(files):
         if yes:
@@ -470,7 +478,7 @@ def import_dataset(
         deleted_paths = previous_paths - current_paths
 
         for path in deleted_paths:
-            delete_file(get_client().path / path, follow_symlinks=True)
+            delete_file(client.path / path, follow_symlinks=True)
 
     provider = ProviderFactory.get_import_provider(uri)
 
@@ -493,6 +501,14 @@ def import_dataset(
     except (KeyError, LookupError):
         pass
 
+    if datadir and previous_dataset:
+        raise errors.ParameterError("Can't specify datadir when updating a previously imported dataset.")
+    elif datadir:
+        try:
+            datadir = get_safe_relative_path(datadir, client.path)
+        except ValueError as e:
+            raise errors.ParameterError("Datadir must be inside repository.") from e
+
     name = name or provider_dataset.name
 
     new_dataset = add_to_dataset(
@@ -505,6 +521,7 @@ def import_dataset(
         overwrite=True,
         total_size=calculate_total_size(importer.provider_dataset_files),
         clear_files_before=True,
+        datadir=datadir,
     )
 
     new_dataset.update_metadata_from(provider_dataset)
