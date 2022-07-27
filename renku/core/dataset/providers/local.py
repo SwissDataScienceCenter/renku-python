@@ -17,29 +17,43 @@
 # limitations under the License.
 """Local exporter."""
 
+import os
+import urllib
 import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
 
 from renku.core import errors
-from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderParameter
+from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
 from renku.core.util import communication
-from renku.core.util.os import is_path_empty
+from renku.core.util.dataset import check_url
+from renku.core.util.os import get_absolute_path, is_path_empty, is_subpath
 
 if TYPE_CHECKING:
+    from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderParameter
+    from renku.core.management.client import LocalClient
     from renku.domain_model.dataset import Dataset, DatasetTag
 
 
-class LocalProvider(ProviderApi):
-    """Local provider."""
+class FilesystemProvider(ProviderApi):
+    """Local filesystem provider."""
+
+    priority = ProviderPriority.LOW
+    name = "Local"
 
     def __init__(self):
         self._path: Optional[str] = None
 
     @staticmethod
-    def supports(uri):
+    def supports(uri: str) -> bool:
         """Whether or not this provider supports a given URI."""
-        return False
+        is_remote, _ = check_url(uri)
+        return not is_remote
+
+    @staticmethod
+    def supports_add():
+        """Whether this provider supports adding data to datasets."""
+        return True
 
     @staticmethod
     def supports_export():
@@ -47,21 +61,125 @@ class LocalProvider(ProviderApi):
         return True
 
     @staticmethod
-    def get_export_parameters() -> List[ProviderParameter]:
+    def get_add_parameters() -> List["ProviderParameter"]:
+        """Returns parameters that can be set for add."""
+        from renku.core.dataset.providers.models import ProviderParameter
+
+        return [
+            ProviderParameter(
+                "external", flags=["e", "external"], help="Creates a link to external data.", is_flag=True
+            ),
+        ]
+
+    @staticmethod
+    def get_export_parameters() -> List["ProviderParameter"]:
         """Returns parameters that can be set for export."""
-        return [ProviderParameter("path", description="Path to copy data to.", type=str, aliases=["p"])]
+        from renku.core.dataset.providers.models import ProviderParameter
 
-    def set_export_parameters(self, *, path: Optional[str] = None, **kwargs):
-        """Set and validate required parameters for exporting for a provider."""
-        self._path = path
+        return [ProviderParameter("path", flags=["p", "path"], help="Path to copy data to.", type=str)]
 
-    def find_record(self, uri, **kwargs):
-        """Retrieves a record."""
-        raise NotImplementedError
+    @staticmethod
+    def add(
+        client: "LocalClient",
+        uri: str,
+        destination: Path,
+        *,
+        dataset: Optional["Dataset"] = None,
+        external: bool = False,
+        **kwargs,
+    ) -> List["DatasetAddMetadata"]:
+        """Add files from a URI to a dataset."""
+        from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
 
-    def get_exporter(self, dataset: "Dataset", tag: Optional["DatasetTag"]) -> "LocalExporter":
+        if dataset is None:
+            raise errors.ParameterError("Dataset is not passed")
+
+        u = urllib.parse.urlparse(uri)
+        path = u.path
+
+        action = DatasetAddAction.SYMLINK if external else DatasetAddAction.COPY
+        absolute_dataset_data_dir = (client.path / dataset.get_datadir()).resolve()
+        source_root = Path(get_absolute_path(path))
+        is_within_repo = is_subpath(path=source_root, base=client.path)
+        warnings = []
+
+        def check_recursive_addition(src: Path):
+            if src.resolve() == absolute_dataset_data_dir:
+                raise errors.ParameterError(f"Cannot recursively add path containing dataset's data directory: {path}")
+
+        def get_destination_root():
+            destination_exists = destination.exists()
+            destination_is_dir = destination.is_dir()
+
+            if client.is_protected_path(source_root):
+                raise errors.ProtectedFiles([source_root])
+
+            check_recursive_addition(source_root)
+
+            if not source_root.exists():
+                raise errors.ParameterError(f"Cannot find source file: {path}")
+            if source_root.is_dir() and destination_exists and not destination_is_dir:
+                raise errors.ParameterError(f"Cannot copy directory '{path}' to non-directory '{destination}'")
+
+            return destination / source_root.name if destination_exists and destination_is_dir else destination
+
+        def get_metadata(src: Path) -> DatasetAddMetadata:
+            is_tracked = client.repository.contains(src)
+
+            if is_tracked or (is_within_repo and not external):
+                path_in_repo = src.relative_to(client.path)
+                if external:
+                    warnings.append(str(path_in_repo))
+                return DatasetAddMetadata(
+                    entity_path=path_in_repo,
+                    url=str(path_in_repo),
+                    action=DatasetAddAction.NONE,
+                    source=path_in_repo,
+                    destination=path_in_repo,
+                )
+            else:
+                relative_path = src.relative_to(source_root)
+                dst = destination_root / relative_path
+
+                return DatasetAddMetadata(
+                    entity_path=dst.relative_to(client.path),
+                    url=os.path.relpath(src, client.path),
+                    action=action,
+                    source=src,
+                    destination=dst,
+                )
+
+        destination_root = get_destination_root()
+
+        results = []
+        if source_root.is_dir():
+            for file in source_root.rglob("*"):
+                if client.is_protected_path(file):
+                    raise errors.ProtectedFiles([file])
+
+                if file.is_dir():
+                    check_recursive_addition(file)
+                    continue
+                results.append(get_metadata(file))
+        else:
+            results = [get_metadata(source_root)]
+
+        if warnings:
+            message = "\n\t".join(warnings)
+            communication.warn(f"Warning: The following files cannot be added as external:\n\t{message}")
+
+        return results
+
+    def get_exporter(
+        self, dataset: "Dataset", *, tag: Optional["DatasetTag"], path: Optional[str] = None, **kwargs
+    ) -> "LocalExporter":
         """Create export manager for given dataset."""
+        self._path = path
         return LocalExporter(dataset=dataset, path=self._path, tag=tag)
+
+    def get_importer(self, uri, **kwargs):
+        """Get import manager."""
+        raise NotImplementedError
 
 
 class LocalExporter(ExporterApi):
@@ -89,7 +207,6 @@ class LocalExporter(ExporterApi):
         """Execute entire export process."""
         from renku.command.schema.dataset import dump_dataset_as_jsonld
         from renku.core.util.yaml import write_yaml
-        from renku.domain_model.dataset import get_dataset_data_dir
 
         if self._path:
             dst_root = client.path / self._path
@@ -104,7 +221,7 @@ class LocalExporter(ExporterApi):
 
         dst_root.mkdir(parents=True, exist_ok=True)
 
-        data_dir = get_dataset_data_dir(client=client, dataset=self._dataset)
+        data_dir = self._dataset.get_datadir()
 
         with communication.progress("Copying dataset files ...", total=len(self._dataset.files)) as progressbar:
             for file in self.dataset.files:

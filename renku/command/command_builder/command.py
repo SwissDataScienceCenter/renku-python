@@ -21,7 +21,8 @@ import contextlib
 import functools
 import threading
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
 import click
 import inject
@@ -433,7 +434,7 @@ class Command:
         message: Optional[str] = None,
         commit_if_empty: bool = False,
         raise_if_empty: bool = False,
-        commit_only: Optional[bool] = None,
+        commit_only: Optional[Union[str, List[Union[str, Path]]]] = None,
         skip_staging: bool = False,
     ) -> "Command":
         """Create a commit.

@@ -36,6 +36,7 @@ from renku.core.plugin.provider import available_workflow_providers
 from renku.core.util.yaml import write_yaml
 from renku.infrastructure.database import Database
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
+from renku.infrastructure.gateway.plan_gateway import PlanGateway
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 
@@ -350,6 +351,49 @@ def test_workflow_remove_command(runner, project):
     result = runner.invoke(cli, ["workflow", "remove", "--force", workflow_name])
     assert 0 == result.exit_code, format_result_exception(result)
 
+    result = runner.invoke(cli, ["workflow", "edit", workflow_name, "--name", "new_name"])
+    assert 2 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "execute", workflow_name])
+    assert 2 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "iterate", workflow_name])
+    assert 2 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "compose", "composite", workflow_name])
+    assert 1 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "export", workflow_name])
+    assert 2 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "show", workflow_name])
+    assert 2 == result.exit_code, format_result_exception(result)
+
+
+def test_workflow_remove_with_composite_command(runner, project):
+    """Test workflow remove with builder."""
+    workflow_name = "test_workflow"
+
+    result = runner.invoke(cli, ["workflow", "remove", workflow_name])
+    assert 2 == result.exit_code
+
+    result = runner.invoke(cli, ["run", "--success-code", "0", "--no-output", "--name", workflow_name, "echo", "foo"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "compose", "composed-workflow", workflow_name])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "remove", workflow_name])
+    assert 2 == result.exit_code, format_result_exception(result)
+    assert (
+        "The specified workflow 'test_workflow' is part of the following composite workflows and won't be removed"
+        in result.stderr
+    )
+
+    result = runner.invoke(cli, ["workflow", "remove", "--force", workflow_name])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Removing 'test_workflow', which is still used in these workflows" in result.output
+
 
 def test_workflow_export_command(runner, project):
     """Test workflow export with builder."""
@@ -366,7 +410,7 @@ def test_workflow_export_command(runner, project):
     assert len(workflow.outputs) == 1
 
 
-def test_workflow_edit(runner, client, run_shell):
+def test_workflow_edit(runner, client):
     """Test naming of CWL tools and workflows."""
 
     def _get_plan_id(output):
@@ -486,6 +530,22 @@ def test_workflow_edit(runner, client, run_shell):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
+def test_workflow_edit_no_change(runner, client, run_shell):
+    """Ensure that workflow edit doesn't commit if there's no changes."""
+
+    workflow_name = "my-workflow"
+
+    result = runner.invoke(cli, ["run", "--name", workflow_name, "touch", "data.txt"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    before = client.repository.head.commit
+
+    result = runner.invoke(cli, ["workflow", "edit", workflow_name])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    assert before == client.repository.head.commit
+
+
 def test_workflow_show_outputs_with_directory(runner, client, run):
     """Output files in directory are not shown as separate outputs."""
     base_sh = ["bash", "-c", 'DIR="$0"; mkdir -p "$DIR"; ' 'for x in "$@"; do touch "$DIR/$x"; done']
@@ -514,6 +574,7 @@ def test_workflow_show_outputs_with_directory(runner, client, run):
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
 @pytest.mark.parametrize("yaml", [False, True])
+@pytest.mark.parametrize("skip_metadata_update", [False, True])
 @pytest.mark.parametrize(
     "workflows, parameters",
     [
@@ -535,7 +596,19 @@ def test_workflow_show_outputs_with_directory(runner, client, run):
         ),
     ],
 )
-def test_workflow_execute_command(runner, run_shell, project, capsys, client, provider, yaml, workflows, parameters):
+def test_workflow_execute_command(
+    runner,
+    run_shell,
+    project,
+    capsys,
+    client,
+    client_database_injection_manager,
+    provider,
+    yaml,
+    skip_metadata_update,
+    workflows,
+    parameters,
+):
     """Test workflow execute."""
 
     for wf in workflows:
@@ -566,11 +639,15 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
 
     if not parameters:
         execute_cmd = ["workflow", "execute", "-p", provider, workflow_name]
+        if skip_metadata_update:
+            execute_cmd.append("--skip-metadata-update")
         _execute(capsys, runner, execute_cmd)
     else:
         database = Database.from_path(client.database_path)
         plan = database["plans-by-name"][workflow_name]
         execute_cmd = ["workflow", "execute", "-p", provider]
+        if skip_metadata_update:
+            execute_cmd.append("--skip-metadata-update")
 
         overrides = dict()
         outputs = []
@@ -611,6 +688,15 @@ def test_workflow_execute_command(runner, run_shell, project, capsys, client, pr
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
+
+    if skip_metadata_update:
+        with client_database_injection_manager(client):
+            plan_gateway = PlanGateway()
+            plans = plan_gateway.get_all_plans()
+            assert len(plans) == len(workflows) + (1 if is_composite else 0)
+            activity_gateway = ActivityGateway()
+            activities = activity_gateway.get_all_activities()
+            assert len(activities) == len(workflows)
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
@@ -831,6 +917,24 @@ def test_workflow_visualize_non_interactive(runner, project, client, workflow_gr
     assert "H" in result.output
 
 
+def test_workflow_visualize_dot(runner, project, client, workflow_graph):
+    """Test renku workflow visualize dot format."""
+
+    result = runner.invoke(cli, ["workflow", "visualize", "--format", "dot", "--revision", "HEAD^", "H", "S"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert '"Y" -> "bash -c \\"cat X Y | tee R S\\"";' in result.output
+    assert '"X" -> "bash -c \\"cat X Y | tee R S\\"";' in result.output
+    assert '"bash -c \\"cat X Y | tee R S\\"" -> "R";' in result.output
+    assert '"bash -c \\"cat X Y | tee R S\\"" -> "S";' in result.output
+    assert 4 == result.output.count('"bash -c \\"cat X Y | tee R S\\"')
+
+    assert 1 == result.output.count('"echo other > H" -> "H"')
+    assert 1 == result.output.count('-> "H"')
+    assert 0 == result.output.count('"H" -->')
+    assert 1 == result.output.count('"H"')
+
+
 @pytest.mark.skip(
     "Doesn't actually work, not really a tty available in github actions, "
     "see https://github.com/actions/runner/issues/241"
@@ -986,6 +1090,7 @@ def test_workflow_compose_execute(runner, project, run_shell, client):
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
+@pytest.mark.parametrize("skip_metadata_update", [True, False])
 @pytest.mark.parametrize(
     "workflow, parameters, num_iterations",
     [
@@ -1021,7 +1126,17 @@ def test_workflow_compose_execute(runner, project, run_shell, client):
         ),
     ],
 )
-def test_workflow_iterate(runner, run_shell, client, workflow, parameters, provider, num_iterations):
+def test_workflow_iterate(
+    runner,
+    run_shell,
+    client,
+    client_database_injection_manager,
+    workflow,
+    parameters,
+    num_iterations,
+    provider,
+    skip_metadata_update,
+):
     """Test renku workflow iterate."""
 
     workflow_name = "foobar"
@@ -1033,8 +1148,11 @@ def test_workflow_iterate(runner, run_shell, client, workflow, parameters, provi
     # Assert not allocated stderr.
     assert output[1] is None
 
-    iteration_cmd = ["renku", "workflow", "iterate", "-p", provider, workflow_name]
+    iteration_cmd = ["renku", "workflow", "iterate", "-p", provider]
     outputs = []
+    if skip_metadata_update:
+        iteration_cmd.append("--skip-metadata-update")
+    iteration_cmd.append(workflow_name)
     index_re = re.compile(r"{iter_index}")
 
     for k, v in filter(lambda x: x[0].startswith("output"), parameters.items()):
@@ -1065,6 +1183,16 @@ def test_workflow_iterate(runner, run_shell, client, workflow, parameters, provi
     # check whether parameters setting was effective
     for o in outputs:
         assert Path(o).resolve().exists()
+
+    # check that metadata update was performed or not based on CLI flag
+    with client_database_injection_manager(client):
+        plans = PlanGateway().get_all_plans()
+        activities = ActivityGateway().get_all_activities()
+        assert len(plans) == 1
+        if skip_metadata_update:
+            assert len(activities) == 1
+        else:
+            assert len(activities) == num_iterations + len(plans)
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -1209,6 +1337,54 @@ def test_workflow_templated_params(runner, run_shell, client, capsys, workflow, 
 
     for o in outputs:
         assert Path(o).resolve().exists()
+
+
+def test_revert_activity(client, runner, client_database_injection_manager):
+    """Test reverting activities."""
+    input = client.path / "input"
+    intermediate = client.path / "intermediate"
+    output = client.path / "output"
+
+    assert 0 == runner.invoke(cli, ["run", "--name", "r1", "--", "echo", "some-data"], stdout=input).exit_code
+    assert 0 == runner.invoke(cli, ["run", "--name", "r2", "--", "head", input], stdout=intermediate).exit_code
+    assert 0 == runner.invoke(cli, ["run", "--name", "r3", "--", "tail", intermediate], stdout=output).exit_code
+
+    with client_database_injection_manager(client):
+        activity_gateway = ActivityGateway()
+        activity = next(a for a in activity_gateway.get_all_activities() if a.association.plan.name == "r1")
+
+    result = runner.invoke(cli, ["workflow", "revert", "--force", activity.id])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    with client_database_injection_manager(client):
+        activity_gateway = ActivityGateway()
+        activities = activity_gateway.get_all_activities(include_deleted=True)
+        activity_1, activity_2, activity_3 = sorted(activities, key=lambda a: a.association.plan.name)
+
+        assert set() == activity_gateway.get_upstream_activities(activity_1)
+        assert set() == activity_gateway.get_downstream_activities(activity_1)
+        assert set() == activity_gateway.get_upstream_activities(activity_2)
+        assert {activity_3} == activity_gateway.get_downstream_activities(activity_2)
+        assert {activity_2} == activity_gateway.get_upstream_activities(activity_3)
+        assert set() == activity_gateway.get_downstream_activities(activity_3)
+
+    # Force re-build the activity catalog
+    result = runner.invoke(cli, ["doctor", "--fix", "--force"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    with client_database_injection_manager(client):
+        activity_gateway = ActivityGateway()
+        activities = activity_gateway.get_all_activities(include_deleted=True)
+        activity_1, activity_2, activity_3 = sorted(activities, key=lambda a: a.association.plan.name)
+
+        assert set() == activity_gateway.get_upstream_activities(activity_1)
+        assert set() == activity_gateway.get_downstream_activities(activity_1)
+        assert set() == activity_gateway.get_upstream_activities(activity_2)
+        assert {activity_3} == activity_gateway.get_downstream_activities(activity_2)
+        assert {activity_2} == activity_gateway.get_upstream_activities(activity_3)
+        assert set() == activity_gateway.get_downstream_activities(activity_3)
 
 
 def test_reverted_activity_status(client, runner, client_database_injection_manager):

@@ -13,7 +13,7 @@ global:
   certificates:
     image:
       repository: renku/certificates
-      tag: '0.0.1'
+      tag: '0.0.2'
     customCAs: []
       # - secret:
 
@@ -111,7 +111,7 @@ versions:
     fullnameOverride: ""
     image:
       repository: renku/renku-core
-      tag: "v1.5.0"
+      tag: "v1.6.0"
       pullPolicy: IfNotPresent
   v8:
     name: v8

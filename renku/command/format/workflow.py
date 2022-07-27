@@ -91,3 +91,8 @@ WORKFLOW_COLUMNS = {
     "description": ("short_description", "description"),
     "command": ("full_command", "command"),
 }
+
+WORKFLOW_VISUALIZE_FORMATS = {
+    "console": "console",
+    "dot": "dot",
+}

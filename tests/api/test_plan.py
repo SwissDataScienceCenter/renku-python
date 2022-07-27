@@ -36,7 +36,7 @@ def test_list_plans(client_with_runs):
 
 def test_list_deleted_plans(client_with_runs, runner):
     """Test listing deleted plans."""
-    result = runner.invoke(cli, ["workflow", "remove", "plan-1"])
+    result = runner.invoke(cli, ["workflow", "remove", "--force", "plan-1"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     plans = Plan.list()

@@ -18,7 +18,7 @@
 """Docker based interactive session provider."""
 
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
+from typing import Any, Dict, Iterable, List, Optional, cast
 from uuid import uuid4
 
 import docker
@@ -26,6 +26,7 @@ import docker
 from renku.core import errors
 from renku.core.management.client import LocalClient
 from renku.core.plugin import hookimpl
+from renku.core.util import communication
 from renku.domain_model.session import ISessionProvider, Session
 
 
@@ -65,6 +66,10 @@ class DockerSessionProvider(ISessionProvider):
     def _get_docker_containers(self, project_name: str) -> List[docker.models.containers.Container]:
         return self.docker_client().containers.list(filters={"label": f"renku_project={project_name}"})
 
+    def get_name(self) -> str:
+        """Return session provider's name."""
+        return "docker"
+
     def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]):
         """Builds the container image."""
         self.docker_client().images.build(path=str(image_descriptor), tag=image_name)
@@ -72,24 +77,26 @@ class DockerSessionProvider(ISessionProvider):
     def find_image(self, image_name: str, config: Optional[Dict[str, Any]]) -> bool:
         """Find the given container image."""
         try:
-            _ = self.docker_client().images.get(image_name)
-            return True
+            self.docker_client().images.get(image_name)
         except docker.errors.ImageNotFound:
             try:
-                _ = self.docker_client().images.pull(image_name)
+                with communication.busy(msg=f"Pulling image from remote {image_name}"):
+                    self.docker_client().images.pull(image_name)
+            except docker.errors.NotFound:
+                return False
+            else:
                 return True
-            except docker.errors.ImageNotFound:
-                pass
-        return False
+        else:
+            return True
 
     @hookimpl
-    def session_provider(self) -> Tuple[ISessionProvider, str]:
+    def session_provider(self) -> ISessionProvider:
         """Supported session provider.
 
         Returns:
-            a tuple of ``self`` and provider name.
+            a reference to ``self``.
         """
-        return (self, "docker")
+        return self
 
     def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
@@ -209,7 +216,7 @@ class DockerSessionProvider(ISessionProvider):
         try:
             docker_containers = (
                 self._get_docker_containers(project_name)
-                if all
+                if stop_all
                 else self.docker_client().containers.list(filters={"id": session_name})
             )
 

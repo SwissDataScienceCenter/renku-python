@@ -64,12 +64,12 @@ def _shacl_graph_to_string(graph):
     return "\n\t".join(problems)
 
 
-def check_project_structure(client, fix):
+def check_project_structure(client, **kwargs):
     """Validate project metadata against SHACL.
 
     Args:
         client: ``LocalClient``.
-        fix: Whether to fix found issues.
+        kwargs: keyword arguments.
 
     Returns:
         Tuple of whether project structure is valid and string of found problems.
@@ -86,14 +86,14 @@ def check_project_structure(client, fix):
     return False, problems
 
 
-@inject.autoparams()
-def check_datasets_structure(client, fix, dataset_gateway: IDatasetGateway):
+@inject.autoparams("dataset_gateway")
+def check_datasets_structure(client, dataset_gateway: IDatasetGateway, **kwargs):
     """Validate dataset metadata against SHACL.
 
     Args:
         client: The ``LocalClient``.
-        fix: Whether to fix found issues.
         dataset_gateway(IDatasetGateway): The injected dataset gateway.
+        kwargs: keyword arguments.
 
     Returns:
         Tuple[bool, str]: Tuple of whether structure is valid and of problems that might have been found.

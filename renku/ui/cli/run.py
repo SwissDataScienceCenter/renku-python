@@ -93,6 +93,13 @@ The detection might not work as expected if:
    You can specify ``--input name=path`` or just ``--input path``, the former
    of which would also set the name of the input on the resulting Plan.
 
+   For example, ``renku run --input inputfile=data.csv -- python script.py data.csv outfile``
+   would force Renku to detect ``data.csv`` as an input file and set the name
+   of the input to ``inputfile``.
+   Similarly, ``renku run --input inputfile=data.csv -- python script.py``
+   would let Renku know that ``script.py`` reads the file ``data.csv`` even
+   though it does not show up on the command line.
+
 .. topic:: Specifying auxiliary parameters (``--param``)
 
    You can specify extra parameters to your program explicitly by using the
@@ -102,6 +109,11 @@ The detection might not work as expected if:
    command line.
    You can specify ``--param name=value`` or just ``--param value``, the former
    of which would also set the name of the parameter on the resulting Plan.
+
+   For example, ``renku run --param myparam=hello -- python script.py hello outfile``
+   would force Renku to detect ``hello`` as the value of a string parameter
+   with name ``myparam`` even if there is a file called ``hello`` present on the
+   filesystem.
 
 .. topic:: Disabling input detection (``--no-input-detection``)
 
@@ -166,6 +178,14 @@ those paths. Therefore:
    the command.
    You can specify ``--output name=path`` or just `--output path``, the former
    of which would also set the name of the output on the resulting Plan.
+
+   For instance, ``renku run --output result=result.txt -- python script.py -o result.txt``
+   would force Renku to treat the file ``result.txt`` as an output of the
+   workflow and set the name of the output to ``result``.
+   Similarly, ``renku run --output result=result.txt -- python script.py``
+   would let Renku know about ``result.txt`` created by ``script.py`` even
+   though it does not show up on the command line command. Though Renku should
+   automatically detect these cases under normal circumstances.
 
 .. topic:: Disabling output detection (``--no-output-detection``)
 

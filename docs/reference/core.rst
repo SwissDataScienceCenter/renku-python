@@ -135,6 +135,14 @@ Providers for dataset import and export
    :members:
    :show-inheritance:
 
+.. automodule:: renku.core.dataset.providers.git
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.dataset.providers.local
+   :members:
+   :show-inheritance:
+
 .. automodule:: renku.core.dataset.providers.models
    :members:
    :show-inheritance:
@@ -147,6 +155,14 @@ Providers for dataset import and export
    :members:
    :show-inheritance:
 
+.. automodule:: renku.core.dataset.providers.repository
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.dataset.providers.web
+   :members:
+   :show-inheritance:
+
 .. automodule:: renku.core.dataset.providers.zenodo
    :members:
    :show-inheritance:
@@ -155,6 +171,14 @@ Workflows
 ---------
 
 .. automodule:: renku.core.workflow.activity
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.workflow.plan
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.workflow.execute
    :members:
    :show-inheritance:
 

@@ -22,7 +22,7 @@ from unittest.mock import patch
 import pytest
 
 from renku.core.errors import ParameterError
-from renku.core.plugin.session import supported_session_providers
+from renku.core.plugin.session import get_supported_session_providers
 from renku.core.session.docker import DockerSessionProvider
 from renku.core.session.renkulab import RenkulabSessionProvider
 from renku.core.session.session import session_list, session_start, session_stop
@@ -99,7 +99,9 @@ def test_session_start(
         pre_start_checks=fake_pre_start_checks,
         **provider_patches,
     ):
-        provider_implementation = next(filter(lambda x: x[1] == provider_name, supported_session_providers()), None)
+        provider_implementation = next(
+            filter(lambda x: x.get_name() == provider_name, get_supported_session_providers()), None
+        )
         assert provider_implementation is not None
 
         with client_database_injection_manager(client):
@@ -136,7 +138,9 @@ def test_session_stop(
     client_database_injection_manager,
 ):
     with patch.multiple(session_provider, session_stop=fake_stop, **provider_patches):
-        provider_implementation = next(filter(lambda x: x[1] == provider_name, supported_session_providers()), None)
+        provider_implementation = next(
+            filter(lambda x: x.get_name() == provider_name, get_supported_session_providers()), None
+        )
         assert provider_implementation is not None
 
         with client_database_injection_manager(client):
