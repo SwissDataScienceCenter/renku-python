@@ -192,5 +192,5 @@ class GitProvider(ProviderApi, IDatasetProviderPlugin):
     @classmethod
     @hookimpl
     def dataset_provider(cls) -> "Type[GitProvider]":
-        """The defintion of the provider."""
+        """The definition of the provider."""
         return cls

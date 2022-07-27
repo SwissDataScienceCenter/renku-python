@@ -188,7 +188,7 @@ class DataverseProvider(ProviderApi, IDatasetProviderPlugin):
     @classmethod
     @hookimpl
     def dataset_provider(cls) -> "Type[DataverseProvider]":
-        """The defintion of the provider."""
+        """The definition of the provider."""
         return cls
 
 
