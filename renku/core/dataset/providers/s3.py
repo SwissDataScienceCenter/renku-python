@@ -68,7 +68,7 @@ class S3Provider(ProviderApi):
             raise errors.ParameterError(f"S3 bucket '{self.bucket}' doesn't exists.")
 
         repository = get_repository()
-        repository.add_ignored_pattern(pattern=dataset.get_datadir())
+        repository.add_ignored_pattern(pattern=str(dataset.get_datadir()))
 
 
 class S3Credentials(ProviderCredentials):

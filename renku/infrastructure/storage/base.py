@@ -23,6 +23,7 @@ from typing import Any, List
 
 from renku.core import errors
 from renku.core.interface.storage import IStorage
+from renku.core.util.util import NO_VALUE
 
 
 class RCloneBaseStorage(IStorage):
@@ -32,7 +33,8 @@ class RCloneBaseStorage(IStorage):
         """Set required configurations for rclone to access the storage."""
         for name, value in self.credentials.items():
             name = get_rclone_env_var_name(self.provider.name, name)
-            set_rclone_env_var(name=name, value=value)
+            if value is not NO_VALUE:
+                set_rclone_env_var(name=name, value=value)
 
     def exists(self, uri: str) -> bool:
         """Checks if a remote storage URI exists."""
