@@ -211,7 +211,7 @@ def _create_destination_directory(
     client: "LocalClient", dataset: Dataset, destination: Optional[Union[Path, str]] = None
 ) -> Path:
     """Create directory for dataset add."""
-    dataset_datadir = client.path / dataset.get_datadir(client)
+    dataset_datadir = client.path / dataset.get_datadir()
     # NOTE: Make sure that dataset's data dir exists because we check for existence of a destination later to decide
     # what will be its name
     dataset_datadir.mkdir(parents=True, exist_ok=True)

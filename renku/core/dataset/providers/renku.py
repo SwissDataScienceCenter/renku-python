@@ -268,11 +268,9 @@ class RenkuImporter(ImporterApi):
         from renku.core.management.client import LocalClient
         from renku.domain_model.dataset import RemoteEntity
 
-        if not self.provider_dataset.data_dir:
-            raise errors.OperationError(f"Data directory for dataset must be set: {self.provider_dataset.name}")
-
         url = remove_credentials(self.project_url)
-        dataset_datadir = self.provider_dataset.data_dir
+
+        dataset_datadir = self.provider_dataset.get_datadir()
         remote_repository = self.repository
 
         if self.provider_dataset.version:  # NOTE: A tag was specified for import
@@ -442,7 +440,7 @@ class RenkuImporter(ImporterApi):
     @property
     def datadir_exists(self):
         """Whether the dataset data directory exists (might be missing in git if empty)."""
-        return (self._remote_client.path / self.provider_dataset.data_dir).exists()
+        return (self._remote_client.path / self.provider_dataset.get_datadir()).exists()
 
     @inject.autoparams()
     def _fetch_dataset(self, client_dispatcher: IClientDispatcher, database_dispatcher: IDatabaseDispatcher):
@@ -514,7 +512,6 @@ class RenkuImporter(ImporterApi):
             database_dispatcher.pop_database()
             client_dispatcher.pop_client()
 
-        provider_dataset.data_dir = provider_dataset.get_datadir(self._remote_client)
         provider_dataset.derived_from = None
         provider_dataset.same_as = Url(url_id=remove_credentials(self.latest_uri))
 

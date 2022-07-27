@@ -460,6 +460,9 @@ command, it creates a directory in project's data directory using dataset's
 name and version: ``<data-dir>/<dataset-name>-<version>``. Export fails if the
 destination directory is not empty.
 
+.. note:: See our `dataset versioning tutorial
+   <https://renkulab.io/projects/learn-renku/dataset-crates/dataset-versioning>`_
+   for example recipes using tags for data management.
 
 Listing all files in the project associated with a dataset.
 
@@ -584,7 +587,7 @@ def dataset():
     "-c",
     "--columns",
     type=click.STRING,
-    default="id,name,title,version",
+    default="id,name,title,version,datadir",
     metavar="<columns>",
     help="Comma-separated list of column to display: {}.".format(", ".join(DATASETS_COLUMNS.keys())),
     show_default=True,
@@ -783,6 +786,7 @@ def show(tag, name):
 
     click.echo(click.style("Name: ", bold=True, fg=color.MAGENTA) + click.style(ds["name"], bold=True))
     click.echo(click.style("Created: ", bold=True, fg=color.MAGENTA) + (ds.get("created_at", "") or ""))
+    click.echo(click.style("Data Directory: ", bold=True, fg=color.MAGENTA) + str(ds.get("datadir", "") or ""))
 
     creators = []
     for creator in ds.get("creators", []):

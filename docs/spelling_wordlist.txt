@@ -46,6 +46,7 @@ Cuda
 customizable
 cwl
 CWL
+datadir
 dataset
 datasets
 datetimes
@@ -78,6 +79,7 @@ Fortran
 GitLab
 GitPython
 GraphQL
+graphviz
 gapped
 git-lfs
 gitattributes
@@ -182,6 +184,7 @@ Reproducibility
 reproducibly
 resolvers
 resync
+reticulate
 reusability
 Reusability
 righthand

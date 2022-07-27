@@ -219,7 +219,7 @@ def _list_plans(
 
     Args:
         include_deleted(bool): Whether to include deleted plans.
-
+        type(Optional[Type[Union[core_plan.Plan, core_composite_plan.CompositePlan]]]): The type of plan to list.
     Returns:
         A list of all plans in the supplied project.
     """

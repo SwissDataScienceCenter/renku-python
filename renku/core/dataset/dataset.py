@@ -79,6 +79,7 @@ def list_datasets():
         dataset = DynamicProxy(dataset)
         dataset.tags = tags
         dataset.tags_csv = ",".join(tag.name for tag in tags)
+        dataset.datadir_path = str(dataset.get_datadir())
         datasets.append(dataset)
 
     return list(datasets)
@@ -141,7 +142,10 @@ def create_dataset(
         annotations = [Annotation(id=Annotation.generate_id(), source="renku", body=custom_metadata)]
 
     if datadir:
-        datadir = get_safe_relative_path(datadir, client.path)
+        try:
+            datadir = get_safe_relative_path(datadir, client.path)
+        except ValueError as e:
+            raise errors.ParameterError("Datadir must be inside repository.") from e
 
     dataset = Dataset(
         identifier=None,
@@ -324,7 +328,7 @@ def file_unlink(name, include, exclude, client_dispatcher: IClientDispatcher, ye
         )
         communication.confirm(prompt_text, abort=True, warning=True)
 
-    dataset_datadir = dataset.get_datadir(client)
+    dataset_datadir = dataset.get_datadir()
     for file in records:
         dataset.unlink_file(file.entity.path)
         path_file = Path(file.entity.path)
@@ -402,8 +406,9 @@ def export_dataset(name, provider_name, tag, client_dispatcher: IClientDispatche
         if not dataset:
             raise errors.DatasetNotFound(message=f"Cannot find dataset with id: '{selected_tag.dataset_id.value}'")
 
-    data_dir = dataset.get_datadir(client)
     dataset = cast(Dataset, DynamicProxy(dataset))
+
+    data_dir = dataset.get_datadir()
     dataset.data_dir = data_dir
 
     exporter = provider.get_exporter(dataset=dataset, tag=selected_tag, **kwargs)
@@ -513,7 +518,10 @@ def import_dataset(
     if datadir and previous_dataset:
         raise errors.ParameterError("Can't specify datadir when updating a previously imported dataset.")
     elif datadir:
-        datadir = get_safe_relative_path(datadir, client.path)
+        try:
+            datadir = get_safe_relative_path(datadir, client.path)
+        except ValueError as e:
+            raise errors.ParameterError("Datadir must be inside repository.") from e
 
     name = name or provider_dataset.name
 

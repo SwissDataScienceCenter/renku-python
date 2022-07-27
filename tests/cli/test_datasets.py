@@ -89,7 +89,8 @@ def test_datasets_create_dirty(runner, project, client, load_dataset_with_inject
     assert {"untracked"} == set(client.repository.untracked_files)
 
 
-def test_dataset_show(runner, client, subdirectory):
+@pytest.mark.parametrize("datadir_option,datadir", [([], f"{DATA_DIR}/my-dataset"), (["--datadir", "mydir"], "mydir")])
+def test_dataset_show(runner, client, subdirectory, datadir_option, datadir):
     """Test creating and showing a dataset with metadata."""
     result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
     assert 1 == result.exit_code, format_result_exception(result)
@@ -123,7 +124,8 @@ def test_dataset_show(runner, client, subdirectory):
             "keyword-2",
             "--metadata",
             str(metadata_path),
-        ],
+        ]
+        + datadir_option,
     )
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
@@ -142,6 +144,8 @@ def test_dataset_show(runner, client, subdirectory):
     assert "https://example.com/annotation1" in result.output
     assert "https://schema.org/specialType" in result.output
     assert "##" not in result.output
+    assert datadir in result.output
+    assert "Data Directory:"
 
 
 def test_dataset_show_tag(runner, client, subdirectory):
@@ -386,16 +390,20 @@ def test_datasets_list_empty(output_format, runner, project):
 
 
 @pytest.mark.parametrize("output_format", DATASETS_FORMATS.keys())
-def test_datasets_list_non_empty(output_format, runner, project):
+@pytest.mark.parametrize("datadir_option,datadir", [([], f"{DATA_DIR}/my-dataset"), (["--datadir", "mydir"], "mydir")])
+def test_datasets_list_non_empty(output_format, runner, project, datadir_option, datadir):
     """Test listing with datasets."""
     format_option = "--format={0}".format(output_format)
-    result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
+    result = runner.invoke(cli, ["dataset", "create", "my-dataset"] + datadir_option)
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     result = runner.invoke(cli, ["dataset", "ls", format_option])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "my-dataset" in result.output
+
+    if output_format != "json-ld":
+        assert "my-dataset" in result.output
+        assert datadir in result.output
 
 
 @pytest.mark.parametrize(
