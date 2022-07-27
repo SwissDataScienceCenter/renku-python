@@ -30,7 +30,7 @@ from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 DOI_BASE_URL = "https://dx.doi.org"
 
 
-class DOIProvider(ProviderApi):
+class DOIProvider(ProviderApi, IDatasetProviderPlugin):
     """`doi.org <http://doi.org>`_ registry API provider."""
 
     priority = ProviderPriority.HIGHER
@@ -72,6 +72,12 @@ class DOIProvider(ProviderApi):
 
         query_response = query(uri)
         return serialize(query_response)
+
+    @classmethod
+    @hookimpl
+    def dataset_provider(cls) -> "Type[DOIProvider]":
+        """The defintion of the provider."""
+        return cls
 
 
 class DOIImporter(ImporterApi):
@@ -151,12 +157,3 @@ def make_doi_url(doi):
         parsed_url = parsed_url._replace(scheme="")
         doi = parsed_url.geturl()
     return urllib.parse.urljoin(DOI_BASE_URL, doi)
-
-
-class DOIProviderPlugin(IDatasetProviderPlugin):
-    """DOI provider plugin."""
-
-    @hookimpl
-    def dataset_provider(self) -> "Type[ProviderApi]":
-        """The defintion of the provider."""
-        return DOIProvider

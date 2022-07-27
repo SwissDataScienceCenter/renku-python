@@ -24,11 +24,11 @@ import pluggy
 @lru_cache(None)
 def get_plugin_manager():
     """The ``pluggy`` plugin manager."""
+    from renku.core.plugin import dataset_provider
     from renku.core.plugin import implementations as default_implementations
     from renku.core.plugin import provider as provider_hook_specs
     from renku.core.plugin import run as run_hook_specs
     from renku.core.plugin import workflow as workflow_hook_specs
-    from renku.core.plugin import dataset_provider
 
     pm = pluggy.PluginManager("renku")
     pm.add_hookspecs(provider_hook_specs)
@@ -40,5 +40,8 @@ def get_plugin_manager():
     for cls in default_implementations.__dict__.values():
         if not isinstance(cls, type):
             continue
-        pm.register(cls())
+        try:
+            pm.register(cls())
+        except TypeError:
+            pm.register(cls)
     return pm

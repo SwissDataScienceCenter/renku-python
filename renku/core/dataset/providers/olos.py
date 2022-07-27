@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset, DatasetTag
 
 
-class OLOSProvider(ProviderApi):
+class OLOSProvider(ProviderApi, IDatasetProviderPlugin):
     """Provider for OLOS integration."""
 
     priority = ProviderPriority.HIGH
@@ -88,6 +88,12 @@ class OLOSProvider(ProviderApi):
 
         set_export_parameters()
         return OLOSExporter(dataset=dataset, server_url=self._server_url)
+
+    @classmethod
+    @hookimpl
+    def dataset_provider(cls) -> "Type[OLOSProvider]":
+        """The defintion of the provider."""
+        return cls
 
 
 class OLOSExporter(ExporterApi):
@@ -284,12 +290,3 @@ class _OLOSDeposition:
                     response.status_code, json_res["message"] if "message" in json_res else json_res["status"]
                 )
             )
-
-
-class OLOSProviderPlugin(IDatasetProviderPlugin):
-    """OLOS provider plugin."""
-
-    @hookimpl
-    def dataset_provider(self) -> "Type[ProviderApi]":
-        """The defintion of the provider."""
-        return OLOSProvider

@@ -22,7 +22,7 @@ import shutil
 import urllib
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
+from typing import TYPE_CHECKING, Any, Dict, List, Type
 
 from renku.command.command_builder.command import inject
 from renku.command.login import read_renku_token
@@ -45,7 +45,7 @@ if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset
 
 
-class RenkuProvider(ProviderApi):
+class RenkuProvider(ProviderApi, IDatasetProviderPlugin):
     """Renku API provider."""
 
     priority = ProviderPriority.HIGH
@@ -225,6 +225,12 @@ class RenkuProvider(ProviderApi):
             token = self._renku_token
 
         self._authorization_header = {"Authorization": f"Bearer {token}"} if token else {}
+
+    @classmethod
+    @hookimpl
+    def dataset_provider(cls) -> "Type[RenkuProvider]":
+        """The defintion of the provider."""
+        return cls
 
 
 class RenkuImporter(ImporterApi):
@@ -550,12 +556,3 @@ class RenkuImporter(ImporterApi):
             )
         finally:
             communication.enable()
-
-
-class RenkuProviderPlugin(IDatasetProviderPlugin):
-    """Renku provider plugin."""
-
-    @hookimpl
-    def dataset_provider(self) -> "Type[ProviderApi]":
-        """The defintion of the provider."""
-        return RenkuProvider

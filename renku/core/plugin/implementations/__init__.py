@@ -19,23 +19,23 @@
 
 from typing import TYPE_CHECKING, List, Type
 
+from renku.core.dataset.providers.dataverse import DataverseProvider
+from renku.core.dataset.providers.git import GitProvider
+from renku.core.dataset.providers.local import FilesystemProvider
+from renku.core.dataset.providers.olos import OLOSProvider
+from renku.core.dataset.providers.renku import RenkuProvider
+from renku.core.dataset.providers.web import WebProvider
+from renku.core.dataset.providers.zenodo import ZenodoProvider
 from renku.core.session.docker import DockerSessionProvider
 from renku.core.session.renkulab import RenkulabSessionProvider
 from renku.core.workflow.converters.cwl import CWLExporter
 from renku.core.workflow.providers.cwltool import CWLToolProvider
-from renku.core.dataset.providers.dataverse import DataverseProviderPlugin
-from renku.core.dataset.providers.git import GitProviderPlugin
-from renku.core.dataset.providers.local import FilesystemProviderPlugin
-from renku.core.dataset.providers.olos import OLOSProviderPlugin
-from renku.core.dataset.providers.renku import RenkuProviderPlugin
-from renku.core.dataset.providers.web import WebProviderPlugin
-from renku.core.dataset.providers.zenodo import ZenodoProviderPlugin
 
 if TYPE_CHECKING:
+    from renku.core.dataset.providers.api import ProviderApi
     from renku.domain_model.session import ISessionProvider
     from renku.domain_model.workflow.converters import IWorkflowConverter
     from renku.domain_model.workflow.provider import IWorkflowProvider
-    from renku.core.dataset.providers.api import ProviderApi
 
 __all__: List[str] = []
 
@@ -43,13 +43,13 @@ session_providers: "List[Type[ISessionProvider]]" = [DockerSessionProvider, Renk
 workflow_exporters: "List[Type[IWorkflowConverter]]" = [CWLExporter]
 workflow_providers: "List[Type[IWorkflowProvider]]" = [CWLToolProvider]
 dataset_providers: "List[Type[ProviderApi]]" = [
-    DataverseProviderPlugin,
-    GitProviderPlugin,
-    FilesystemProviderPlugin,
-    OLOSProviderPlugin,
-    RenkuProviderPlugin,
-    WebProviderPlugin,
-    ZenodoProviderPlugin,
+    DataverseProvider,
+    GitProvider,
+    FilesystemProvider,
+    OLOSProvider,
+    RenkuProvider,
+    WebProvider,
+    ZenodoProvider,
 ]
 
 try:

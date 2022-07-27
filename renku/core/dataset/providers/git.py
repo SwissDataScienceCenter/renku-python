@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     from renku.core.management.client import LocalClient
 
 
-class GitProvider(ProviderApi):
+class GitProvider(ProviderApi, IDatasetProviderPlugin):
     """Git provider."""
 
     priority = ProviderPriority.NORMAL
@@ -189,11 +189,8 @@ class GitProvider(ProviderApi):
 
         return results
 
-
-class GitProviderPlugin(IDatasetProviderPlugin):
-    """Git provider plugin."""
-
+    @classmethod
     @hookimpl
-    def dataset_provider(self) -> "Type[ProviderApi]":
+    def dataset_provider(cls) -> "Type[GitProvider]":
         """The defintion of the provider."""
-        return GitProvider
+        return cls

@@ -74,7 +74,7 @@ DATAVERSE_SUBJECTS = [
 ]
 
 
-class DataverseProvider(ProviderApi):
+class DataverseProvider(ProviderApi, IDatasetProviderPlugin):
     """Dataverse API provider."""
 
     priority = ProviderPriority.HIGH
@@ -184,6 +184,12 @@ class DataverseProvider(ProviderApi):
 
         set_export_parameters()
         return DataverseExporter(dataset=dataset, server_url=self._server_url, dataverse_name=self._dataverse_name)
+
+    @classmethod
+    @hookimpl
+    def dataset_provider(cls) -> "Type[DataverseProvider]":
+        """The defintion of the provider."""
+        return cls
 
 
 class DataverseImporter(RepositoryImporter):
@@ -582,12 +588,3 @@ def make_file_url(file_id, base_url):
     args_dict = {"persistentId": file_id}
     url_parts[4] = urllib.parse.urlencode(args_dict)
     return urllib.parse.urlunparse(url_parts)
-
-
-class DataverseProviderPlugin(IDatasetProviderPlugin):
-    """Dataverse provider plugin."""
-
-    @hookimpl
-    def dataset_provider(self) -> "Type[ProviderApi]":
-        """The defintion of the provider."""
-        return DataverseProvider

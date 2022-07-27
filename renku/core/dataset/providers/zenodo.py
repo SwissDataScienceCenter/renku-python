@@ -54,7 +54,7 @@ ZENODO_FILES_URL = "depositions/{0}/files"
 ZENODO_NEW_DEPOSIT_URL = "depositions"
 
 
-class ZenodoProvider(ProviderApi):
+class ZenodoProvider(ProviderApi, IDatasetProviderPlugin):
     """Zenodo registry API provider."""
 
     priority = ProviderPriority.HIGH
@@ -121,6 +121,12 @@ class ZenodoProvider(ProviderApi):
         """Create export manager for given dataset."""
         self._publish = publish
         return ZenodoExporter(dataset=dataset, publish=self._publish, tag=tag)
+
+    @classmethod
+    @hookimpl
+    def dataset_provider(cls) -> "Type[ZenodoProvider]":
+        """The defintion of the provider."""
+        return cls
 
 
 class ZenodoImporter(RepositoryImporter):
@@ -559,12 +565,3 @@ def make_records_url(record_id):
         str: Full URL for the record.
     """
     return urllib.parse.urljoin(ZENODO_BASE_URL, pathlib.posixpath.join(ZENODO_API_PATH, "records", record_id))
-
-
-class ZenodoProviderPlugin(IDatasetProviderPlugin):
-    """Zenodo provider plugin."""
-
-    @hookimpl
-    def dataset_provider(self) -> "Type[ProviderApi]":
-        """The defintion of the provider."""
-        return ZenodoProvider

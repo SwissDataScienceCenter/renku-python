@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from renku.core.management.client import LocalClient
 
 
-class WebProvider(ProviderApi):
+class WebProvider(ProviderApi, IDatasetProviderPlugin):
     """A provider for downloading data from web URLs."""
 
     priority = ProviderPriority.LOWEST
@@ -70,6 +70,12 @@ class WebProvider(ProviderApi):
         return download_file(
             client=client, uri=uri, destination=destination, extract=extract, filename=filename, multiple=multiple
         )
+
+    @classmethod
+    @hookimpl
+    def dataset_provider(cls) -> "Type[WebProvider]":
+        """The defintion of the provider."""
+        return cls
 
 
 def _ensure_dropbox(url):
@@ -193,12 +199,3 @@ def download_files(
             files.extend(future.result())
 
     return files
-
-
-class WebProviderPlugin(IDatasetProviderPlugin):
-    """Web provider plugin."""
-
-    @hookimpl
-    def dataset_provider(self) -> "Type[ProviderApi]":
-        """The defintion of the provider."""
-        return WebProvider

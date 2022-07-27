@@ -16,11 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Plugin hooks for renku workflow customization."""
-from typing import List, Type
+from typing import TYPE_CHECKING, List, Type
 
 import pluggy
 
-from renku.core.dataset.providers.api import ProviderApi
+if TYPE_CHECKING:
+    from renku.core.dataset.providers.api import ProviderApi
 
 hookspec = pluggy.HookspecMarker("renku")
 

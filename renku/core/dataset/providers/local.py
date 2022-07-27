@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset, DatasetTag
 
 
-class FilesystemProvider(ProviderApi):
+class FilesystemProvider(ProviderApi, IDatasetProviderPlugin):
     """Local filesystem provider."""
 
     priority = ProviderPriority.LOW
@@ -103,7 +103,7 @@ class FilesystemProvider(ProviderApi):
         absolute_dataset_data_dir = (client.path / get_dataset_data_dir(client, dataset_name)).resolve()
         source_root = Path(get_absolute_path(path))
         is_within_repo = is_subpath(path=source_root, base=client.path)
-        warnings = []
+        warnings: List[str] = []
 
         def check_recursive_addition(src: Path):
             if src.resolve() == absolute_dataset_data_dir:
@@ -183,6 +183,12 @@ class FilesystemProvider(ProviderApi):
         """Get import manager."""
         raise NotImplementedError
 
+    @classmethod
+    @hookimpl
+    def dataset_provider(cls) -> "Type[FilesystemProvider]":
+        """The defintion of the provider."""
+        return cls
+
 
 class LocalExporter(ExporterApi):
     """Local export manager."""
@@ -247,12 +253,3 @@ class LocalExporter(ExporterApi):
 
         communication.echo(f"Dataset metadata was copied to {metadata_path}")
         return str(dst_root)
-
-
-class FilesystemProviderPlugin(IDatasetProviderPlugin):
-    """Filesystem provider plugin."""
-
-    @hookimpl
-    def dataset_provider(self) -> "Type[ProviderApi]":
-        """The defintion of the provider."""
-        return FilesystemProvider

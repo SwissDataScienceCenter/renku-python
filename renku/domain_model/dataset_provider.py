@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Interactive session engine."""
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta, abstractclassmethod
 from typing import Type
 
 from renku.core.dataset.providers.api import ProviderApi
@@ -25,8 +25,8 @@ from renku.core.dataset.providers.api import ProviderApi
 class IDatasetProviderPlugin(metaclass=ABCMeta):
     """Abstract class for a dataset provider plugin."""
 
-    @abstractmethod
-    def dataset_provider(self) -> "Type[ProviderApi]":
+    @abstractclassmethod
+    def dataset_provider(cls) -> "Type[ProviderApi]":
         """Supported dataset provider plugin.
 
         Returns:

@@ -17,13 +17,13 @@
 # limitations under the License.
 """A factory to get various data providers."""
 
-from typing import TYPE_CHECKING, Type, List
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 from renku.core import errors
+from renku.core.plugin.dataset_provider import get_supported_dataset_providers
 from renku.core.util import communication
 from renku.core.util.doi import is_doi
-from renku.core.plugin.dataset_provider import get_supported_dataset_providers
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.api import ProviderApi
@@ -33,7 +33,7 @@ class ProviderFactory:
     """Create a provider type from URI."""
 
     @staticmethod
-    def get_providers() -> "List[Type[ProviderApi]]":
+    def get_providers():
         """Return a list of providers sorted based on their priorities (higher priority providers come first)."""
         providers = get_supported_dataset_providers()
         return sorted(providers, key=lambda p: p.priority)
