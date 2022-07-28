@@ -53,11 +53,11 @@ def add_to_dataset(
     sources: Optional[List[Union[str, Path]]] = None,
     destination: str = "",
     revision: Optional[str] = None,
-    external: bool = False,
     extract: bool = False,
     clear_files_before: bool = False,
     total_size: Optional[int] = None,
     datadir: Optional[Path] = None,
+    **kwargs,
 ) -> Dataset:
     """Import the data into the data directory."""
     client = get_client()
@@ -79,8 +79,9 @@ def add_to_dataset(
                 destination=destination_path,
                 revision=revision,
                 sources=sources,
-                external=external,
                 extract=extract,
+                force=force,
+                **kwargs,
             )
 
             # Remove all files that are under a .git directory
@@ -147,10 +148,11 @@ def _download_files(
     importer: Optional[ImporterApi] = None,
     dataset: Dataset,
     destination: Path,
-    external: bool,
     extract: bool,
     revision: Optional[str],
     sources: List[Union[str, Path]],
+    force: bool = False,
+    **kwargs,
 ) -> List["DatasetAddMetadata"]:
     """Process file URLs for adding to a dataset."""
     if importer:
@@ -177,9 +179,10 @@ def _download_files(
             destination=destination,
             revision=revision,
             sources=sources,
-            external=external,
             dataset=dataset,
             extract=extract,
+            force=force,
+            **kwargs,
         )
 
         files.extend(new_files)

@@ -37,7 +37,7 @@ def test_remove_dataset_file(isolated_runner, client, tmpdir, subdirectory, data
     source = tmpdir.join("remove_dataset.file")
     source.write(DATA_DIR)
 
-    result = runner.invoke(cli, ["dataset", "add", "testing", source.strpath])
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "testing", source.strpath])
     assert 0 == result.exit_code, format_result_exception(result)
 
     path = client.path / datadir / "remove_dataset.file"

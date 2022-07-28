@@ -226,7 +226,7 @@ def test_show_inputs(tmpdir_factory, project, runner, run, template):
     second_repository.commit("Added woop file")
 
     assert 0 == run(args=("dataset", "create", "foo"))
-    assert 0 == run(args=("dataset", "add", "foo", str(woop)))
+    assert 0 == run(args=("dataset", "add", "--copy", "foo", str(woop)))
 
     imported_woop = Path(project) / DATA_DIR / "foo" / woop.name
     assert imported_woop.exists()
@@ -308,7 +308,7 @@ def test_early_check_of_external_storage(isolated_runner, monkeypatch, directory
     with monkeypatch.context() as monkey:
         monkey.setattr(StorageApiMixin, "storage_installed", False)
 
-        failing_command = ["dataset", "add", "-s", "src", "my-dataset", str(directory_tree)]
+        failing_command = ["dataset", "add", "--copy", "-s", "src", "my-dataset", str(directory_tree)]
         result = isolated_runner.invoke(cli, failing_command)
         assert 1 == result.exit_code
         assert "External storage is not configured" in result.output
@@ -367,16 +367,16 @@ def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
     with monkeypatch.context() as monkey:
         monkey.setattr(StorageApiMixin, "storage_installed", False)
 
-        result = runner.invoke(cli, ["dataset", "add", "f", "../woop"], catch_exceptions=False)
+        result = runner.invoke(cli, ["dataset", "add", "--copy", "f", "../woop"], catch_exceptions=False)
 
         assert 1 == result.exit_code
         subprocess.call(["git", "clean", "-dff"])
 
-    result = runner.invoke(cli, ["-S", "dataset", "add", "f", "../woop"], catch_exceptions=False)
+    result = runner.invoke(cli, ["-S", "dataset", "add", "--copy", "f", "../woop"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
     os.chdir("../bar")
-    result = runner.invoke(cli, ["-S", "dataset", "add", "b", "../foo/data/f/woop"], catch_exceptions=False)
+    result = runner.invoke(cli, ["-S", "dataset", "add", "--copy", "b", "../foo/data/f/woop"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
     # Produce a derived data from the imported data.
@@ -670,7 +670,9 @@ def test_lfs_size_limit(isolated_runner, project_init):
     with large.open("w") as f:
         f.write("x" * 1024**2)
 
-    result = runner.invoke(cli, ["dataset", "add", "--create", "my-dataset", str(large)], catch_exceptions=False)
+    result = runner.invoke(
+        cli, ["dataset", "add", "--copy", "--create", "my-dataset", str(large)], catch_exceptions=False
+    )
     assert 0 == result.exit_code, format_result_exception(result)
     assert "large" in Path(".gitattributes").read_text()
 
@@ -678,7 +680,7 @@ def test_lfs_size_limit(isolated_runner, project_init):
     with small.open("w") as f:
         f.write("small file")
 
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(small)], catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(small)], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
     assert "small" not in Path(".gitattributes").read_text()
 
@@ -717,7 +719,7 @@ def test_lfs_ignore(isolated_runner, ignore, path, tracked, project_init):
     with Path("dummy").open("w") as f:
         f.write("dummy")
 
-    result = runner.invoke(cli, ["dataset", "add", "--create", "my-dataset", "dummy"], catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "add", "--move", "--create", "my-dataset", "dummy"], catch_exceptions=False)
 
     # add dataset file
     filepath = Path(path)
@@ -728,11 +730,11 @@ def test_lfs_ignore(isolated_runner, ignore, path, tracked, project_init):
     with filepath.open("w") as f:
         f.write("x" * 1024**2)
 
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(filepath)], catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "add", "--move", "my-dataset", str(filepath)], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
     # check if file is tracked or not
     if tracked:
-        assert str(filepath) in Path(".gitattributes").read_text()
+        assert str(filepath.name) in Path(".gitattributes").read_text()
     else:
         assert str(filepath) not in Path(".gitattributes").read_text()

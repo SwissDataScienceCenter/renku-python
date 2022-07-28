@@ -46,7 +46,7 @@ def test_dataset_shacl(tmpdir, runner, project, client):
         paths.append(str(new_file))
 
     # add data
-    runner.invoke(cli, ["dataset", "add", "dataset"] + paths, catch_exceptions=False)
+    runner.invoke(cli, ["dataset", "add", "--copy", "dataset"] + paths, catch_exceptions=False)
 
     runner.invoke(cli, ["dataset", "tag", "dataset", "1.0"], catch_exceptions=False)
 

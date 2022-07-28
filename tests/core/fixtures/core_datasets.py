@@ -64,7 +64,7 @@ def client_with_datasets(client, directory_tree, client_database_injection_manag
     with client_database_injection_manager(client):
         create_dataset(name="dataset-1", keywords=["dataset", "1"], creators=[person_1])
 
-        dataset = add_to_dataset("dataset-2", urls=[str(p) for p in directory_tree.glob("*")], create=True)
+        dataset = add_to_dataset("dataset-2", urls=[str(p) for p in directory_tree.glob("*")], create=True, copy=True)
         dataset.keywords = ["dataset", "2"]
         dataset.creators = [person_1, person_2]
 

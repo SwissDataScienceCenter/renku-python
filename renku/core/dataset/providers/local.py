@@ -28,7 +28,7 @@ from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderP
 from renku.core.plugin import hookimpl
 from renku.core.util import communication
 from renku.core.util.dataset import check_url
-from renku.core.util.os import get_absolute_path, is_path_empty, is_subpath
+from renku.core.util.os import get_absolute_path, is_path_empty
 from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
@@ -73,6 +73,27 @@ class FilesystemProvider(ProviderApi, IDatasetProviderPlugin):
             ProviderParameter(
                 "external", flags=["e", "external"], help="Creates a link to external data.", is_flag=True
             ),
+            ProviderParameter(
+                "copy",
+                flags=["cp", "copy"],
+                help="Copy files to the dataset's data directory. Mutually exclusive with --move and --link.",
+                is_flag=True,
+                default=False,
+            ),
+            ProviderParameter(
+                "move",
+                flags=["mv", "move"],
+                help="Move files to the dataset's data directory. Mutually exclusive with --copy and --link.",
+                is_flag=True,
+                default=False,
+            ),
+            ProviderParameter(
+                "link",
+                flags=["ln", "link"],
+                help="Symlink files to the dataset's data directory. Mutually exclusive with --copy and --move.",
+                is_flag=True,
+                default=False,
+            ),
         ]
 
     @staticmethod
@@ -90,10 +111,29 @@ class FilesystemProvider(ProviderApi, IDatasetProviderPlugin):
         *,
         dataset: Optional["Dataset"] = None,
         external: bool = False,
+        move: bool = False,
+        copy: bool = False,
+        link: bool = False,
+        force: bool = False,
         **kwargs,
     ) -> List["DatasetAddMetadata"]:
         """Add files from a URI to a dataset."""
         from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
+
+        if sum([move, copy, link]) > 1:
+            raise errors.ParameterError("--move, --copy and --link are mutually exclusive.")
+
+        default_action = DatasetAddAction.COPY
+        prompt_action = True
+
+        if move:
+            default_action = DatasetAddAction.MOVE
+            prompt_action = False
+        elif link:
+            default_action = DatasetAddAction.SYMLINK
+            prompt_action = False
+        elif copy:
+            prompt_action = False
 
         if dataset is None:
             raise errors.ParameterError("Dataset is not passed")
@@ -101,10 +141,9 @@ class FilesystemProvider(ProviderApi, IDatasetProviderPlugin):
         u = urllib.parse.urlparse(uri)
         path = u.path
 
-        action = DatasetAddAction.SYMLINK if external else DatasetAddAction.COPY
+        action = DatasetAddAction.SYMLINK if external else default_action
         absolute_dataset_data_dir = (client.path / dataset.get_datadir()).resolve()
         source_root = Path(get_absolute_path(path))
-        is_within_repo = is_subpath(path=source_root, base=client.path)
         warnings: List[str] = []
 
         def check_recursive_addition(src: Path):
@@ -130,28 +169,23 @@ class FilesystemProvider(ProviderApi, IDatasetProviderPlugin):
         def get_metadata(src: Path) -> DatasetAddMetadata:
             is_tracked = client.repository.contains(src)
 
-            if is_tracked or (is_within_repo and not external):
-                path_in_repo = src.relative_to(client.path)
-                if external:
-                    warnings.append(str(path_in_repo))
-                return DatasetAddMetadata(
-                    entity_path=path_in_repo,
-                    url=str(path_in_repo),
-                    action=DatasetAddAction.NONE,
-                    source=path_in_repo,
-                    destination=path_in_repo,
-                )
-            else:
-                relative_path = src.relative_to(source_root)
-                dst = destination_root / relative_path
+            relative_path = src.relative_to(source_root)
+            dst = destination_root / relative_path
 
-                return DatasetAddMetadata(
-                    entity_path=dst.relative_to(client.path),
-                    url=os.path.relpath(src, client.path),
-                    action=action,
-                    source=src,
-                    destination=dst,
-                )
+            if is_tracked and external:
+                warnings.append(str(src.relative_to(client.path)))
+
+            if not is_tracked and not external and action == DatasetAddAction.SYMLINK:
+                # NOTE: we need to commit src if it is linked to and not external.
+                client.repository.add(src)
+
+            return DatasetAddMetadata(
+                entity_path=dst.relative_to(client.path),
+                url=os.path.relpath(src, client.path),
+                action=action,
+                source=src,
+                destination=dst,
+            )
 
         destination_root = get_destination_root()
 
@@ -167,6 +201,16 @@ class FilesystemProvider(ProviderApi, IDatasetProviderPlugin):
                 results.append(get_metadata(file))
         else:
             results = [get_metadata(source_root)]
+
+        if not force and prompt_action and not external:
+            communication.confirm(
+                f"The following files will be copied to {dataset.get_datadir()} "
+                "(use '--move' or '--link' to move or symlink them instead, '--copy' to not show this warning):\n\t"
+                + "\n\t".join(str(e.source) for e in results)
+                + "\nProceed?",
+                abort=True,
+                warning=True,
+            )
 
         if warnings:
             message = "\n\t".join(warnings)
