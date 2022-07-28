@@ -18,10 +18,10 @@
 """Renku doctor tests."""
 from pathlib import Path
 
-from renku.domain_model.dataset import Url
+from renku.domain_model.dataset import DatasetFile, Url
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.ui.cli import cli
-from tests.utils import create_dummy_activity, format_result_exception, with_dataset
+from tests.utils import create_dummy_activity, format_result_exception, with_dataset, write_and_commit_file
 
 
 def test_new_project_is_ok(runner, project):
@@ -143,6 +143,30 @@ def test_fix_invalid_imported_dataset(runner, client_with_datasets, client_datab
             # NOTE: Set both same_as and derived_from for a dataset
             assert dataset.same_as.value == "http://example.com"
             assert dataset.derived_from is None
+
+
+def test_file_outside_datadir(runner, client_with_datasets, client_database_injection_manager):
+    """Test doctor check deal with files outside a datasets datadir."""
+    write_and_commit_file(client_with_datasets.repository, "some_file", "content_a")
+
+    with client_database_injection_manager(client_with_datasets):
+        with with_dataset(client_with_datasets, name="dataset-1", commit_database=True) as dataset:
+            dataset.add_or_update_files([DatasetFile.from_path(client_with_datasets, "some_file")])
+    client_with_datasets.repository.add(all=True)
+    client_with_datasets.repository.commit("modified dataset")
+
+    result = runner.invoke(cli, ["doctor"])
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "There are dataset files that aren't inside their dataset's data directory" in result.output
+    assert "some_file" in result.output
+
+    result = runner.invoke(cli, ["doctor", "--fix"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    with client_database_injection_manager(client_with_datasets):
+        with with_dataset(client_with_datasets, name="dataset-1", commit_database=True) as dataset:
+            assert 1 == len(dataset.files)
+            assert dataset.files[0].entity.path.startswith(str(dataset.get_datadir()))
 
 
 def test_doctor_fix_activity_catalog(runner, client, client_database_injection_manager):

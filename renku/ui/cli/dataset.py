@@ -1073,7 +1073,8 @@ def import_(uri, name, extract, yes, datadir, **kwargs):
     click.secho("OK", fg=color.GREEN)
 
 
-@dataset.command("update")
+@dataset.command()
+@click.pass_context
 @click.argument("names", nargs=-1, shell_complete=_complete_datasets)
 @click.option(
     "--creators",
@@ -1085,9 +1086,27 @@ def import_(uri, name, extract, yes, datadir, **kwargs):
 @click.option("--delete", is_flag=True, help="Delete local files that are deleted from remote.")
 @click.option("-e", "--external", is_flag=True, help="Deprecated")
 @click.option("--no-external", is_flag=True, help="Skip updating external data.")
+@click.option("--no-local", is_flag=True, help="Skip updating local files.")
+@click.option("--no-remote", is_flag=True, help="Skip updating remote files.")
+@click.option("-c", "--check-data-directory", is_flag=True, help="Check datasets' data directories for new files.")
 @click.option("--all", "-a", "update_all", is_flag=True, default=False, help="Update all datasets.")
 @click.option("-n", "--dry-run", is_flag=True, help="Show what would have been changed")
-def update(names, creators, include, exclude, ref, delete, external, no_external, update_all, dry_run):
+def update(
+    ctx,
+    names,
+    creators,
+    include,
+    exclude,
+    ref,
+    delete,
+    external,
+    no_external,
+    no_local,
+    no_remote,
+    check_data_directory,
+    update_all,
+    dry_run,
+):
     """Updates files in dataset from a remote Git repo."""
     from renku.command.dataset import update_datasets_command
     from renku.core import errors
@@ -1120,6 +1139,9 @@ def update(names, creators, include, exclude, ref, delete, external, no_external
             ref=ref,
             delete=delete,
             no_external=no_external,
+            no_local=no_local,
+            no_remote=no_remote,
+            check_data_directory=check_data_directory,
             update_all=update_all,
             dry_run=dry_run,
         )
@@ -1155,3 +1177,5 @@ def update(names, creators, include, exclude, ref, delete, external, no_external
             files = get_dataset_files(deleted_files)
             message = " (pass '--delete' to remove them from datasets' metadata)" if not delete else ""
             click.echo(f"The following files will be deleted{message}:\n\n{files}\n")
+
+        ctx.exit(1)

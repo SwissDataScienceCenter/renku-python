@@ -101,7 +101,7 @@ def import_dataset_command():
 def update_datasets_command():
     """Command for updating datasets."""
     command = Command().command(update_datasets).lock_dataset().with_database(write=True)
-    return command.require_migration().require_clean().with_commit(commit_only=DATASET_METADATA_PATHS)
+    return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
 def add_dataset_tag_command():

@@ -56,5 +56,5 @@ def doctor(ctx, fix, force):
         click.secho("Everything seems to be ok.", fg=color.GREEN)
         ctx.exit(0)
 
-    click.secho(problems)
+    click.echo(problems)
     ctx.exit(1)

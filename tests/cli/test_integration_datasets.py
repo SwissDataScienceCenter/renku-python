@@ -1540,7 +1540,7 @@ def test_update_specific_refs(ref, runner, client):
 
     result = runner.invoke(cli, ["dataset", "update", "--ref", ref, "--all", "--dry-run"])
 
-    assert 0 == result.exit_code, format_result_exception(result)
+    assert 1 == result.exit_code, format_result_exception(result)
     assert "The following files will be updated" in result.output
     assert str(file) in result.output
     assert commit_sha_after_file1_delete == client.repository.head.commit.hexsha

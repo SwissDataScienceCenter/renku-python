@@ -2442,7 +2442,7 @@ def test_update_local_file(runner, client, directory_tree, load_dataset_with_inj
     # NOTE: Update dry run
     result = runner.invoke(cli, ["dataset", "update", "my-data", "--dry-run"])
 
-    assert 0 == result.exit_code, format_result_exception(result)
+    assert 1 == result.exit_code, format_result_exception(result)
     assert "The following files will be updated" in result.output
     assert "The following files will be deleted" not in result.output
     assert str(file1) in result.output
@@ -2450,12 +2450,63 @@ def test_update_local_file(runner, client, directory_tree, load_dataset_with_inj
     assert commit_sha_after_file1_delete == client.repository.head.commit.hexsha
     assert not client.repository.is_dirty(untracked_files=True)
 
+    result = runner.invoke(cli, ["dataset", "update", "my-data", "--no-local"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert commit_sha_after_file1_delete == client.repository.head.commit.hexsha
+
     result = runner.invoke(cli, ["dataset", "update", "my-data"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     dataset = load_dataset_with_injection("my-data", client)
     assert new_checksum_file1 == dataset.find_file(file1).entity.checksum
     assert new_checksum_file2 == dataset.find_file(file2).entity.checksum
+    assert_dataset_is_mutated(old=old_dataset, new=dataset)
+
+
+@pytest.mark.parametrize("datadir_option,datadir", [([], f"{DATA_DIR}/my-data"), (["--datadir", "mydir"], "mydir")])
+def test_update_local_file_in_datadir(
+    runner, client, directory_tree, load_dataset_with_injection, datadir_option, datadir
+):
+    """Check updating local files dropped in the datadir."""
+    assert (
+        0
+        == runner.invoke(
+            cli, ["dataset", "add", "--copy", "-c", "my-data", str(directory_tree)] + datadir_option
+        ).exit_code
+    )
+
+    file1 = Path(datadir) / "some_new_file"
+    file1.write_text("some updates")
+    folder = Path(datadir) / "folder"
+    folder.mkdir()
+    file2 = folder / "another_new_file"
+    file2.write_text("some updates")
+
+    old_dataset = load_dataset_with_injection("my-data", client)
+
+    # NOTE: Update dry run
+    result = runner.invoke(
+        cli, ["dataset", "update", "my-data", "--dry-run", "--check-data-directory", "--no-remote", "--no-external"]
+    )
+
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "The following files will be updated" in result.output
+    assert "The following files will be deleted" not in result.output
+    assert str(file1) in result.output
+    assert str(file2) in result.output
+
+    assert client.repository.is_dirty(untracked_files=True)
+
+    result = runner.invoke(
+        cli, ["dataset", "update", "my-data", "--check-data-directory", "--no-remote", "--no-external"]
+    )
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    assert not client.repository.is_dirty(untracked_files=True)
+    dataset = load_dataset_with_injection("my-data", client)
+    assert dataset.find_file(file1)
+    assert dataset.find_file(file2)
     assert_dataset_is_mutated(old=old_dataset, new=dataset)
 
 
@@ -2472,7 +2523,7 @@ def test_update_local_deleted_file(runner, client, directory_tree, load_dataset_
     # NOTE: Update dry run
     result = runner.invoke(cli, ["dataset", "update", "--all", "--dry-run"])
 
-    assert 0 == result.exit_code, format_result_exception(result)
+    assert 1 == result.exit_code, format_result_exception(result)
     assert "The following files will be updated" not in result.output
     assert "The following files will be deleted" in result.output
     assert str(file1) in result.output
