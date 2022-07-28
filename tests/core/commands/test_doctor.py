@@ -78,7 +78,7 @@ def test_lfs_broken_history(runner, client, tmp_path):
     # Add a file without adding it to LFS
     result = runner.invoke(
         cli,
-        ["--no-external-storage", "dataset", "add", "--create", "new-dataset", str(big_file)],
+        ["--no-external-storage", "dataset", "add", "--copy", "--create", "new-dataset", str(big_file)],
         catch_exceptions=False,
     )
     assert 0 == result.exit_code, format_result_exception(result)

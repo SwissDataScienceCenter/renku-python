@@ -556,7 +556,7 @@ def test_dataset_export_upload_file(
     new_file.write("1,2,3")
 
     # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(new_file)])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     with client_database_injection_manager(client):
@@ -613,7 +613,7 @@ def test_dataset_export_upload_tag(
     new_file.write("1,2,3")
 
     # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(new_file)])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     with client_database_injection_manager(client):
@@ -633,7 +633,7 @@ def test_dataset_export_upload_tag(
     new_file.write("1,2,3,4")
 
     # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(new_file)])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     # tag dataset
@@ -742,7 +742,7 @@ def test_dataset_export_upload_multiple(
         paths.append(str(new_file))
 
     # add data
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset"] + paths, catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset"] + paths, catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     with client_database_injection_manager(client):
@@ -775,7 +775,7 @@ def test_dataset_export_upload_failure(runner, tmpdir, client, zenodo_sandbox):
     new_file.write("1,2,3")
 
     # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(new_file)])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", "zenodo"])
@@ -804,7 +804,7 @@ def test_dataset_export_published_url(runner, tmpdir, client, zenodo_sandbox, da
     new_file.write("1,2,3")
 
     # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(new_file)])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     with with_dataset(client, name="my-dataset", commit_database=True) as dataset:
@@ -836,7 +836,7 @@ def test_export_dataset_wrong_provider(runner, project, tmpdir, client):
     new_file.write("1,2,3")
 
     # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(new_file)])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", "unsupported-provider"])
@@ -882,7 +882,7 @@ def test_export_dataset_unauthorized(
     new_file.write("1,2,3")
 
     # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(new_file)])
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(new_file)])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params)
@@ -952,7 +952,7 @@ def test_add_from_url_to_destination(runner, client, load_dataset_with_injection
     url = "https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/docs/Makefile"
     assert 0 == runner.invoke(cli, ["dataset", "create", "remote"], catch_exceptions=False).exit_code
 
-    result = runner.invoke(cli, ["dataset", "add", "remote", "-d", "new-name", url])
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "remote", "-d", "new-name", url])
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     relative_path = os.path.join(client.data_dir, "remote", "new-name")
@@ -982,7 +982,7 @@ def test_add_from_git_to_new_path(runner, client, params, path, load_dataset_wit
     remote = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
     assert 0 == runner.invoke(cli, ["dataset", "create", "remote"], catch_exceptions=False).exit_code
 
-    result = runner.invoke(cli, ["dataset", "add", "remote", "--ref", "0.3.0", remote] + params)
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "remote", "--ref", "0.3.0", remote] + params)
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert Path(path).exists()
@@ -1012,7 +1012,7 @@ def test_add_from_git_to_existing_path(runner, client, params, path, load_datase
 
     write_and_commit_file(client.repository, client.path / "data" / "remote" / "existing" / ".gitkeep", "")
 
-    result = runner.invoke(cli, ["dataset", "add", "remote", "--ref", "0.3.0", remote] + params)
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "remote", "--ref", "0.3.0", remote] + params)
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert Path(path).exists()
@@ -1043,7 +1043,7 @@ def test_add_from_git_with_wildcards_to_new_path(runner, client, params, files, 
     remote = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
 
     result = runner.invoke(
-        cli, ["dataset", "add", "remote", "--create", "--ref", "0.5.2", "-d", "new", remote] + params
+        cli, ["dataset", "add", "remote", "--copy", "--create", "--ref", "0.5.2", "-d", "new", remote] + params
     )
     assert 0 == result.exit_code, format_result_exception(result)
     assert files == set(os.listdir("data/remote/new"))
@@ -1067,7 +1067,9 @@ def test_add_from_git_with_wildcards_to_existing_path(runner, client, params, fi
     remote = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
 
     result = runner.invoke(
-        cli, ["dataset", "add", "remote", "--create", "--ref", "0.5.2", remote] + params, catch_exceptions=False
+        cli,
+        ["dataset", "add", "remote", "--copy", "--create", "--ref", "0.5.2", remote] + params,
+        catch_exceptions=False,
     )
     assert 0 == result.exit_code, format_result_exception(result)
     assert files == set(os.listdir("data/remote"))
@@ -1081,7 +1083,7 @@ def test_add_data_in_multiple_places_from_git(runner, client, load_dataset_with_
 
     assert 0 == runner.invoke(cli, ["dataset", "create", "remote"]).exit_code
 
-    args = ["dataset", "add", "remote", "--ref", "0.3.0"]
+    args = ["dataset", "add", "--copy", "remote", "--ref", "0.3.0"]
     assert 0 == runner.invoke(cli, args + ["-s", "docker/base/Dockerfile", url]).exit_code
 
     dataset = load_dataset_with_injection("remote", client)
@@ -1118,14 +1120,16 @@ def test_usage_error_in_add_from_git(runner, client, params, n_urls, message):
     # create a dataset and add a file to it
     result = runner.invoke(
         cli,
-        ["dataset", "add", "remote", "--create", "--ref", "0.3.0", "-s", "LICENSE", remote],
+        ["dataset", "add", "--copy", "remote", "--create", "--ref", "0.3.0", "-s", "LICENSE", remote],
         catch_exceptions=False,
     )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     urls = n_urls * [remote]
 
-    result = runner.invoke(cli, ["dataset", "add", "remote", "--ref", "0.3.0"] + params + urls, catch_exceptions=False)
+    result = runner.invoke(
+        cli, ["dataset", "add", "--copy", "remote", "--ref", "0.3.0"] + params + urls, catch_exceptions=False
+    )
     assert 2 == result.exit_code, result.output + str(result.stderr_bytes)
     assert message in result.output
 
@@ -1139,7 +1143,9 @@ def test_dataset_update(client, runner, params, load_dataset_with_injection):
     url = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
 
     # Add dataset to project
-    result = runner.invoke(cli, ["dataset", "add", "--create", "remote", "--ref", "0.3.0", "-s", "README.md", url])
+    result = runner.invoke(
+        cli, ["dataset", "add", "--copy", "--create", "remote", "--ref", "0.3.0", "-s", "README.md", url]
+    )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     before = load_dataset_with_injection("remote", client).find_file("data/remote/README.md")
@@ -1573,7 +1579,15 @@ def test_update_with_multiple_remotes_and_ref(runner, client):
     # add data from another git repo
     result = runner.invoke(
         cli,
-        ["dataset", "add", "dataset", "-s", "LICENSE", "https://github.com/SwissDataScienceCenter/renku-notebooks.git"],
+        [
+            "dataset",
+            "add",
+            "--copy",
+            "dataset",
+            "-s",
+            "LICENSE",
+            "https://github.com/SwissDataScienceCenter/renku-notebooks.git",
+        ],
     )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
@@ -1594,7 +1608,16 @@ def test_files_are_tracked_in_lfs(runner, client, no_lfs_size_limit):
 
     # add data from a git repo
     result = runner.invoke(
-        cli, ["dataset", "add", "dataset", "-s", filename, "https://github.com/SwissDataScienceCenter/renku-python.git"]
+        cli,
+        [
+            "dataset",
+            "add",
+            "--copy",
+            "dataset",
+            "-s",
+            filename,
+            "https://github.com/SwissDataScienceCenter/renku-python.git",
+        ],
     )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     path = "data/dataset/{}".format(filename)
@@ -1611,7 +1634,7 @@ def test_add_removes_credentials(runner, client, url, load_dataset_with_injectio
     """Check removal of credentials during adding of remote data files."""
     from urllib.parse import urlparse
 
-    result = runner.invoke(cli, ["dataset", "add", "-c", "my-dataset", url])
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-dataset", url])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     dataset = load_dataset_with_injection("my-dataset", client)
@@ -1647,7 +1670,7 @@ def test_add_with_content_disposition(runner, client, monkeypatch, disposition, 
             return original_disposition(response)
 
         monkey.setattr(renku.core.util.requests, "get_filename_from_headers", _fake_disposition)
-        result = runner.invoke(cli, ["dataset", "add", "-c", "my-dataset", url])
+        result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-dataset", url])
         assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     dataset = load_dataset_with_injection("my-dataset", client)
@@ -1670,7 +1693,7 @@ def test_check_disk_space(runner, client, monkeypatch, url):
 
     monkeypatch.setattr(shutil, "disk_usage", disk_usage)
 
-    result = runner.invoke(cli, ["dataset", "add", "-c", "my-data", url], catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-data", url], catch_exceptions=False)
     assert 1 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "Insufficient disk space" in result.output
 
@@ -1713,7 +1736,7 @@ def test_migration_submodule_datasets(isolated_runner, old_repository_with_submo
 @pytest.mark.vcr
 def test_dataset_add_dropbox(runner, client, project, url, size):
     """Test importing data from dropbox."""
-    result = runner.invoke(cli, ["dataset", "add", "-c", "my-dropbox-data", url], catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-dropbox-data", url], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
     filename = Path(parse.urlparse(url).path).name

@@ -32,7 +32,7 @@ def test_dataset_add(tmpdir, runner, client, subdirectory):
     ignored_file.write("My Specification")
 
     # The file should be ignored and command fail
-    result = runner.invoke(cli, ["dataset", "add", "testing", ignored_file.strpath], catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "testing", ignored_file.strpath], catch_exceptions=False)
 
     assert 1 == result.exit_code
 
@@ -40,5 +40,5 @@ def test_dataset_add(tmpdir, runner, client, subdirectory):
     client.repository.clean()
 
     # Use the --force ;)
-    result = runner.invoke(cli, ["dataset", "add", "testing", "--force", ignored_file.strpath])
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "testing", "--force", ignored_file.strpath])
     assert 0 == result.exit_code, format_result_exception(result)

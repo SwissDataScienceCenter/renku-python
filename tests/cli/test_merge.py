@@ -34,7 +34,7 @@ def test_mergetool(runner, client, directory_tree, run_shell, client_database_in
 
     # create a common dataset
     result = runner.invoke(
-        cli, ["dataset", "add", "--create", "shared-dataset", str(directory_tree)], catch_exceptions=False
+        cli, ["dataset", "add", "--copy", "--create", "shared-dataset", str(directory_tree)], catch_exceptions=False
     )
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -55,7 +55,7 @@ def test_mergetool(runner, client, directory_tree, run_shell, client_database_in
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(
-        cli, ["dataset", "add", "--create", "remote-dataset", str(directory_tree)], catch_exceptions=False
+        cli, ["dataset", "add", "--copy", "--create", "remote-dataset", str(directory_tree)], catch_exceptions=False
     )
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -90,7 +90,7 @@ def test_mergetool(runner, client, directory_tree, run_shell, client_database_in
 
     # Add a new dataset
     result = runner.invoke(
-        cli, ["dataset", "add", "--create", "local-dataset", str(directory_tree)], catch_exceptions=False
+        cli, ["dataset", "add", "--copy", "--create", "local-dataset", str(directory_tree)], catch_exceptions=False
     )
     assert 0 == result.exit_code, format_result_exception(result)
 
