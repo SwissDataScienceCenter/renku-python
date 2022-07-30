@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 from renku.core import errors
+from renku.core.plugin.dataset_provider import get_supported_dataset_providers
 from renku.core.util import communication
 from renku.core.util.doi import is_doi
 
@@ -34,26 +35,7 @@ class ProviderFactory:
     @staticmethod
     def get_providers():
         """Return a list of providers sorted based on their priorities (higher priority providers come first)."""
-        from renku.core.dataset.providers.dataverse import DataverseProvider
-        from renku.core.dataset.providers.git import GitProvider
-        from renku.core.dataset.providers.local import FilesystemProvider
-        from renku.core.dataset.providers.olos import OLOSProvider
-        from renku.core.dataset.providers.renku import RenkuProvider
-        from renku.core.dataset.providers.s3 import S3Provider
-        from renku.core.dataset.providers.web import WebProvider
-        from renku.core.dataset.providers.zenodo import ZenodoProvider
-
-        providers = [
-            DataverseProvider,
-            GitProvider,
-            FilesystemProvider,
-            OLOSProvider,
-            RenkuProvider,
-            S3Provider,
-            WebProvider,
-            ZenodoProvider,
-        ]
-
+        providers = get_supported_dataset_providers()
         return sorted(providers, key=lambda p: p.priority)
 
     @staticmethod

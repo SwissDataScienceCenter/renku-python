@@ -334,8 +334,28 @@ def file_unlink(name, include, exclude, client_dispatcher: IClientDispatcher, ye
         )
         communication.confirm(prompt_text, abort=True, warning=True)
 
+    dataset_datadir = dataset.get_datadir()
     for file in records:
         dataset.unlink_file(file.entity.path)
+        path_file = Path(file.entity.path)
+        # INFO: Remove actual dataset file only if it is located within dataset directory
+        if str(path_file.absolute()).startswith(str(dataset_datadir.absolute())):
+            if not path_file.exists():
+                communication.warn(
+                    f"Dataset file {path_file} could not be found, skipping the removal from {dataset_datadir}."
+                )
+                continue
+            try:
+                if path_file.is_dir():
+                    shutil.rmtree(str(path_file.absolute()), ignore_errors=False, onerror=None)
+                else:
+                    path_file.unlink()
+            except Exception as err:
+                communication.warn(
+                    f"Dataset file {path_file} could not be removed from {dataset_datadir} because of {err}."
+                )
+            else:
+                client.repository.add(path_file)
 
     datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
 

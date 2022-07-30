@@ -1469,7 +1469,7 @@ def test_unlink_file(unlink_file_setup):
 
     assert_rpc_response(response)
     assert {"unlinked", "remote_branch"} == set(response.json["result"].keys())
-    assert ["README.md"] == response.json["result"]["unlinked"]
+    assert any(p.endswith("README.md") for p in response.json["result"]["unlinked"])
 
 
 @pytest.mark.integration

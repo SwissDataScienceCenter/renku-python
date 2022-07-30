@@ -22,7 +22,7 @@ import shutil
 import urllib
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
 
 from renku.command.command_builder.command import inject
 from renku.command.login import read_renku_token
@@ -31,11 +31,13 @@ from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.providers.api import ImporterApi, ProviderApi, ProviderPriority
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
+from renku.core.plugin import hookimpl
 from renku.core.util import communication
 from renku.core.util.file_size import bytes_to_unit
 from renku.core.util.git import clone_renku_repository, get_cache_directory_for_repository, get_file_size
 from renku.core.util.metadata import is_external_file, make_project_temp_dir
 from renku.core.util.urls import remove_credentials
+from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderDataset, ProviderParameter
@@ -43,7 +45,7 @@ if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset
 
 
-class RenkuProvider(ProviderApi):
+class RenkuProvider(ProviderApi, IDatasetProviderPlugin):
     """Renku API provider."""
 
     priority = ProviderPriority.HIGH
@@ -223,6 +225,12 @@ class RenkuProvider(ProviderApi):
             token = self._renku_token
 
         self._authorization_header = {"Authorization": f"Bearer {token}"} if token else {}
+
+    @classmethod
+    @hookimpl
+    def dataset_provider(cls) -> "Type[RenkuProvider]":
+        """The definition of the provider."""
+        return cls
 
 
 class RenkuImporter(ImporterApi):

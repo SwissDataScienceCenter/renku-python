@@ -854,7 +854,7 @@ def add_provider_options(*param_decls, **attrs):
     help="Dataset's data directory (defaults to 'data/<dataset name>').",
 )
 @add_provider_options()
-def add(name, urls, external, force, overwrite, create, destination, datadir, **kwargs):
+def add(name, urls, force, overwrite, create, destination, datadir, **kwargs):
     """Add data to a dataset."""
     from renku.command.dataset import add_to_dataset_command
     from renku.ui.cli.utils.callback import ClickCallback
@@ -863,7 +863,6 @@ def add(name, urls, external, force, overwrite, create, destination, datadir, **
     add_to_dataset_command().with_communicator(communicator).build().execute(
         urls=urls,
         dataset_name=name,
-        external=external,
         force=force,
         overwrite=overwrite,
         create=create,

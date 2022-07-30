@@ -54,7 +54,7 @@ class ProviderApi(abc.ABC):
     priority: Optional[ProviderPriority] = None
     name: Optional[str] = None
 
-    def __init__(self, uri: Optional[str]):
+    def __init__(self, uri: Optional[str], **kwargs):
         self._uri: str = uri or ""
 
     def __init_subclass__(cls, **kwargs):

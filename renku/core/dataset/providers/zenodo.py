@@ -22,16 +22,18 @@ import os
 import pathlib
 import urllib
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
 from urllib.parse import urlparse
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
 from renku.core.dataset.providers.repository import RepositoryImporter, make_request
+from renku.core.plugin import hookimpl
 from renku.core.util import communication
 from renku.core.util.doi import is_doi
 from renku.core.util.file_size import bytes_to_unit
 from renku.core.util.urls import remove_credentials
+from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderDataset, ProviderParameter
@@ -52,7 +54,7 @@ ZENODO_FILES_URL = "depositions/{0}/files"
 ZENODO_NEW_DEPOSIT_URL = "depositions"
 
 
-class ZenodoProvider(ProviderApi):
+class ZenodoProvider(ProviderApi, IDatasetProviderPlugin):
     """Zenodo registry API provider."""
 
     priority = ProviderPriority.HIGH
@@ -113,6 +115,12 @@ class ZenodoProvider(ProviderApi):
         """Create export manager for given dataset."""
         self._publish = publish
         return ZenodoExporter(dataset=dataset, publish=self._publish, tag=tag)
+
+    @classmethod
+    @hookimpl
+    def dataset_provider(cls) -> "Type[ZenodoProvider]":
+        """The definition of the provider."""
+        return cls
 
 
 class ZenodoImporter(RepositoryImporter):

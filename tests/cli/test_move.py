@@ -255,18 +255,21 @@ def test_move_between_datasets(
     """Test move files between datasets."""
     shutil.copy(large_file, directory_tree / "file1")
     shutil.copy(large_file, directory_tree / "dir1" / "file2")
-    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "dataset-1", str(directory_tree)]).exit_code
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "dataset-1", str(directory_tree)])
+    assert 0 == result.exit_code, format_result_exception(result)
     file1 = Path("data") / "dataset-1" / directory_tree.name / "file1"
-    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "dataset-2", str(file1)]).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "add", "--copy", "-c", "dataset-2", str(file1)]).exit_code
     assert 0 == runner.invoke(cli, ["dataset", "create", "dataset-3"]).exit_code
 
     source = Path("data") / "dataset-1"
     destination = Path("data") / "dataset-3"
-    assert 0 == runner.invoke(cli, ["mv", str(source), str(destination), "--to-dataset", "dataset-3"]).exit_code
+
+    result = runner.invoke(cli, ["mv", str(source), str(destination), "--to-dataset", "dataset-3"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
     assert not source.exists()
     assert 0 == len(load_dataset_with_injection("dataset-1", client).files)
-    assert 0 == len(load_dataset_with_injection("dataset-2", client).files)
+    assert 1 == len(load_dataset_with_injection("dataset-2", client).files)
 
     dataset = load_dataset_with_injection("dataset-3", client)
     assert 3 == len(dataset.files)
@@ -276,11 +279,8 @@ def test_move_between_datasets(
         assert path.exists()
         assert dataset.find_file(path)
 
-    tracked = set(client.repository.run_git_command("lfs", "ls-files", "--name-only").split("\n"))
-    assert {"data/dataset-3/directory_tree/file1", "data/dataset-3/directory_tree/dir1/file2"} == tracked
-
     # Some more moves and dataset operations
-    assert 0 == runner.invoke(cli, ["dataset", "add", "dataset-3", str(large_file)]).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "add", "--copy", "dataset-3", str(large_file)]).exit_code
     src1 = os.path.join("data", "dataset-3", directory_tree.name, "dir1")
     dst1 = os.path.join("data", "dataset-1")
     shutil.rmtree(dst1, ignore_errors=True)  # NOTE: Remove directory to force a rename
@@ -288,7 +288,8 @@ def test_move_between_datasets(
     src2 = os.path.join("data", "dataset-3", directory_tree.name, "file1")
     dst2 = os.path.join("data", "dataset-2")
     (client.path / dst2).mkdir(parents=True, exist_ok=True)
-    assert 0 == runner.invoke(cli, ["mv", src2, dst2, "--to-dataset", "dataset-2"]).exit_code
+    result = runner.invoke(cli, ["mv", src2, dst2, "--force", "--to-dataset", "dataset-2"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
     assert {"data/dataset-1/file2", "data/dataset-1/file3"} == {
         f.entity.path for f in load_dataset_with_injection("dataset-1", client).files
@@ -297,9 +298,6 @@ def test_move_between_datasets(
     assert {"data/dataset-3/large-file"} == {
         f.entity.path for f in load_dataset_with_injection("dataset-3", client).files
     }
-
-    tracked = set(client.repository.run_git_command("lfs", "ls-files", "--name-only").split("\n"))
-    assert {"data/dataset-1/file2", "data/dataset-2/file1", "data/dataset-3/large-file"} == tracked
 
     assert 0 == runner.invoke(cli, ["doctor"], catch_exceptions=False).exit_code
     assert not client.repository.is_dirty(untracked_files=True)
