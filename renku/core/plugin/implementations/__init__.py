@@ -24,6 +24,7 @@ from renku.core.dataset.providers.git import GitProvider
 from renku.core.dataset.providers.local import FilesystemProvider
 from renku.core.dataset.providers.olos import OLOSProvider
 from renku.core.dataset.providers.renku import RenkuProvider
+from renku.core.dataset.providers.s3 import S3Provider
 from renku.core.dataset.providers.web import WebProvider
 from renku.core.dataset.providers.zenodo import ZenodoProvider
 from renku.core.session.docker import DockerSessionProvider
@@ -47,6 +48,7 @@ dataset_providers: "List[Type[ProviderApi]]" = [
     GitProvider,
     FilesystemProvider,
     OLOSProvider,
+    S3Provider,
     RenkuProvider,
     WebProvider,
     ZenodoProvider,

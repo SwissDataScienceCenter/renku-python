@@ -48,8 +48,8 @@ class GitProvider(ProviderApi, IDatasetProviderPlugin):
     @staticmethod
     def supports(uri: str) -> bool:
         """Whether or not this provider supports a given URI."""
-        is_remote, is_git = check_url(uri)
-        return is_remote and is_git
+        is_remote, is_git, is_s3 = check_url(uri)
+        return is_remote and is_git and not is_s3
 
     @staticmethod
     def supports_add() -> bool:

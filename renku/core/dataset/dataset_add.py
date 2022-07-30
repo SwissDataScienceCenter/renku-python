@@ -92,7 +92,7 @@ def add_to_dataset(
                     "Ignored adding paths under a .git directory:\n\t" + "\n\t".join(str(p) for p in paths_to_avoid)
                 )
 
-            files_to_commit = {f.get_absolute_commit_path(client.path) for f in files}
+            files_to_commit = {f.get_absolute_commit_path(client.path) for f in files if not str(f.url).startswith("s3://")}
 
             if not force:
                 files, files_to_commit = _check_ignored_files(client, files_to_commit, files)
@@ -109,7 +109,8 @@ def add_to_dataset(
                 client.track_paths_in_storage(*files_to_commit)
 
             # Force-add to include possible ignored files
-            client.repository.add(*files_to_commit, renku_pointers_path(client), force=True)
+            if len(files_to_commit) > 0:
+                client.repository.add(*files_to_commit, renku_pointers_path(client), force=True)
 
             n_staged_changes = len(client.repository.staged_changes)
             if n_staged_changes == 0:
@@ -166,7 +167,7 @@ def _download_files(
     files = []
 
     for url in urls:
-        _, is_git = check_url(url)
+        _, is_git, _ = check_url(url)
 
         if not is_git and sources:
             raise errors.ParameterError("Cannot use '-s/--src/--source' with URLs or local files.")

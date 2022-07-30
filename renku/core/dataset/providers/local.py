@@ -51,7 +51,7 @@ class FilesystemProvider(ProviderApi, IDatasetProviderPlugin):
     @staticmethod
     def supports(uri: str) -> bool:
         """Whether or not this provider supports a given URI."""
-        is_remote, _ = check_url(uri)
+        is_remote, _, _ = check_url(uri)
         return not is_remote
 
     @staticmethod

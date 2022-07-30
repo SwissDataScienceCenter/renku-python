@@ -693,3 +693,21 @@ class StorageObjectNotFound(RCloneException):
             message = f"{message}: {error}"
 
         super().__init__(message)
+
+
+class DirectoryNotFound(RenkuException):
+    """Raised when a specific directory is not found."""
+
+    def __init__(self, path):
+        """Build a custom message."""
+        message = f"Cannot find directory {path}"
+        super().__init__(message)
+
+
+class ExpectedDirectoryGotFile(RenkuException):
+    """Raised when a path should be directory but is instead a file."""
+
+    def __init__(self, path):
+        """Build a custom message."""
+        message = f"Location {path} is expected to be a directory, but it is a file."
+        super().__init__(message)

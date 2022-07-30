@@ -17,10 +17,10 @@
 # limitations under the License.
 """S3 storage handler."""
 
-from renku.infrastructure.storage.base import BaseStorage, get_rclone_env_var_name, set_rclone_env_var
+from renku.infrastructure.storage.base import RCloneBaseStorage, get_rclone_env_var_name, set_rclone_env_var
 
 
-class S3Storage(BaseStorage):
+class S3Storage(RCloneBaseStorage):
     """S3 storage handler."""
 
     def set_configurations(self):

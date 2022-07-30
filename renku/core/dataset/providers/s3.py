@@ -17,20 +17,29 @@
 # limitations under the License.
 """S3 dataset provider."""
 
+from pathlib import Path
+import re
 import urllib
-from typing import TYPE_CHECKING, Tuple
+from typing import List, TYPE_CHECKING, Tuple, Type
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials, ProviderPriority
+from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
+from renku.core.plugin import hookimpl
 from renku.core.util.dispatcher import get_repository, get_storage
 from renku.core.util.metadata import prompt_for_credentials
 from renku.core.util.urls import get_scheme
+from renku.domain_model.dataset import RemoteEntity
+from renku.domain_model.dataset_provider import IDatasetProviderPlugin
+from renku.infrastructure.repository import Repository
 
 if TYPE_CHECKING:
+    from renku.core.dataset.providers.models import ProviderParameter
+    from renku.core.management.client import LocalClient
     from renku.domain_model.dataset import Dataset
 
 
-class S3Provider(ProviderApi):
+class S3Provider(ProviderApi, IDatasetProviderPlugin):
     """S3 provider."""
 
     priority = ProviderPriority.NORMAL
@@ -51,6 +60,35 @@ class S3Provider(ProviderApi):
         """Whether this provider supports creating a dataset."""
         return True
 
+    @staticmethod
+    def supports_add() -> bool:
+        """Whether this provider supports adding data to datasets."""
+        return True
+
+    @staticmethod
+    def add(client: "LocalClient", uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
+        """Add files from a URI to a dataset."""
+        provider = S3Provider(uri=uri)
+        credentials = S3Credentials(provider=provider)
+        prompt_for_credentials(credentials)
+
+        storage = get_storage(provider=provider, credentials=credentials)
+        storage.exists(uri)
+        storage.mount(uri, mount_location=destination)
+
+        hashes = storage.get_hashes(uri=uri)
+        return [
+            DatasetAddMetadata(
+                entity_path=Path(destination) / hash.path,
+                url=hash.base_uri,
+                action=DatasetAddAction.NONE,
+                based_on=RemoteEntity(checksum=hash.hash, url=hash.base_uri, path=hash.path),
+                source=Path(hash.full_uri),
+                destination=Path(destination),
+            )
+            for hash in hashes
+        ]
+
     @property
     def bucket(self) -> str:
         """Return S3 bucket name."""
@@ -69,6 +107,12 @@ class S3Provider(ProviderApi):
 
         repository = get_repository()
         repository.add_ignored_pattern(pattern=dataset.get_datadir())
+
+    @classmethod
+    @hookimpl
+    def dataset_provider(cls) -> "Type[S3Provider]":
+        """The definition of the provider."""
+        return cls
 
 
 class S3Credentials(ProviderCredentials):
