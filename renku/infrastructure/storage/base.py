@@ -48,11 +48,13 @@ class RCloneBaseStorage(IStorage):
             return True
 
     def mount(self, uri: str, mount_location: Path):
-        """Mount the storage to a specific location locally."""
+        """Mount the path from the uri to a specific location locally."""
         if not mount_location.exists():
             raise errors.DirectoryNotFound(mount_location)
         if not mount_location.is_dir():
             raise errors.ExpectedDirectoryGotFile(mount_location)
+        if os.path.ismount(mount_location):
+            raise errors.ExpectedDirectoryGotMountPoint(mount_location)
         if next(mount_location.iterdir(), None):
             raise errors.DirectoryNotEmptyError(mount_location)
         if not self.exists(uri):

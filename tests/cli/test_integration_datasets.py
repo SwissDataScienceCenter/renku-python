@@ -26,6 +26,7 @@ from urllib import parse
 import pytest
 
 from renku.core import errors
+from renku.core.interface.storage import FileHash
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.util.contexts import chdir
 from renku.core.util.git import get_git_user
@@ -2000,3 +2001,103 @@ def test_create_with_unauthorized_s3_backend(runner, client, global_config_dir, 
 
     assert 1 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "Authentication failed when accessing the remote storage" in result.output
+
+
+@pytest.mark.integration
+@retry_failed
+def test_adding_data_from_s3(runner, client, create_s3_dataset, mocker):
+    """Ensure that more data cannot be added to a populated S3 dataset."""
+    mock_s3_storage = mocker.patch("renku.infrastructure.storage.s3.S3Storage", autospec=True)
+    instance_s3_storage = mock_s3_storage.return_value
+    storage_uri = "s3://giab"
+    dataset_name = "test-s3-dataset"
+    instance_s3_storage.get_hashes.return_value = [
+        FileHash(base_uri=storage_uri, path="test/1", hash="random_hash_1", hash_type="md5")
+    ]
+    res = create_s3_dataset(dataset_name, storage_uri)
+    assert res.exit_code == 0
+    res = runner.invoke(cli, ["dataset", "add", dataset_name, "s3://giab"])
+    assert res.exit_code == 0
+    res = runner.invoke(cli, ["dataset", "ls-files"])
+    assert res.exit_code == 0
+    assert "test/1" in res.stdout
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "args,expected_error_msg",
+    [
+        (["s3://giab", "s3://giab/tools"], "Can only add 1 uri"),
+        (["s3://giab", "--source", "test"], "Can not use '--source' with S3 datasets"),
+        (
+            ["https://github.com/SwissDataScienceCenter/renku-python/raw/develop/README.rst"],
+            "Only files from S3 buckets can be added to S3 datasets",
+        ),
+    ],
+)
+@retry_failed
+@pytest.mark.vcr
+def test_invalid_s3_args(runner, client, create_s3_dataset, args, expected_error_msg, mocker):
+    """Test invalid arguments for adding data to S3 dataset."""
+    mock_s3_storage = mocker.patch("renku.infrastructure.storage.s3.S3Storage", autospec=True)
+    storage_uri = "s3://giab"
+    dataset_name = "test-s3-dataset"
+    res = create_s3_dataset(dataset_name, storage_uri)
+    instance_s3_storage = mock_s3_storage.return_value
+    instance_s3_storage.exists.assert_called_with(storage_uri)
+    assert res.exit_code == 0
+    res = runner.invoke(cli, ["dataset", "add", dataset_name, *args])
+    assert res.exit_code != 0
+    assert expected_error_msg in res.stderr
+    instance_s3_storage.mount.assert_not_called()
+
+
+@pytest.mark.integration
+@retry_failed
+def test_adding_s3_data_twice_not_allowed(runner, client, create_s3_dataset, mocker):
+    """Ensure that more data cannot be added to a populated S3 dataset."""
+    mock_s3_storage = mocker.patch("renku.infrastructure.storage.s3.S3Storage", autospec=True)
+    instance_s3_storage = mock_s3_storage.return_value
+    storage_uri = "s3://giab"
+    dataset_name = "test-s3-dataset"
+    instance_s3_storage.get_hashes.return_value = [
+        FileHash(base_uri=storage_uri, path="test/1", hash="random_hash_1", hash_type="md5")
+    ]
+    res = create_s3_dataset(dataset_name, storage_uri)
+    assert res.exit_code == 0
+    res = runner.invoke(cli, ["dataset", "add", dataset_name, "s3://giab"])
+    assert res.exit_code == 0
+    res = runner.invoke(cli, ["dataset", "add", dataset_name, "s3://giab/tools"])
+    assert res.exit_code != 0
+    assert "This S3 dataset already contains files, cannot add more" in res.stderr
+    instance_s3_storage.mount.assert_called_once()
+    assert "s3://giab" in instance_s3_storage.mount.call_args.args or instance_s3_storage.mount.call_args.kwargs.get(
+        "uri"
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "storage_uri,add_uri",
+    [
+        ("s3://giab", "s3://test"),
+        ("s3://giab/test", "s3://test"),
+        ("s3://giab/test", "s3://giab"),
+        ("s3://giab/1/2/3", "s3://giab/1/2/4"),
+        ("s3://giab/1/2/3", "s3://giab/1/3/2"),
+    ],
+)
+@retry_failed
+def test_adding_s3_data_outside_sub_path_not_allowed(
+    runner, client, create_s3_dataset, mocker, storage_uri, add_uri
+):
+    """Ensure that data from bucket that does not match storage bucket name or path cannot be added."""
+    mock_s3_storage = mocker.patch("renku.infrastructure.storage.s3.S3Storage", autospec=True)
+    instance_s3_storage = mock_s3_storage.return_value
+    dataset_name = "test-s3-dataset"
+    res = create_s3_dataset(dataset_name, storage_uri)
+    assert res.exit_code == 0
+    res = runner.invoke(cli, ["dataset", "add", dataset_name, add_uri])
+    assert res.exit_code != 0
+    assert "should be located within or at the storage uri" in res.stderr
+    instance_s3_storage.mount.assert_not_called()

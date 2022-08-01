@@ -711,3 +711,12 @@ class ExpectedDirectoryGotFile(RenkuException):
         """Build a custom message."""
         message = f"Location {path} is expected to be a directory, but it is a file."
         super().__init__(message)
+
+
+class ExpectedDirectoryGotMountPoint(RenkuException):
+    """Raised when a path should be directory but it is also a mount."""
+
+    def __init__(self, path):
+        """Build a custom message."""
+        message = f"Location {path} is expected to be a regular directory, but it also a mount point."
+        super().__init__(message)

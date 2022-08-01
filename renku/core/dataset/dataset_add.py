@@ -57,6 +57,7 @@ def add_to_dataset(
     clear_files_before: bool = False,
     total_size: Optional[int] = None,
     datadir: Optional[Path] = None,
+    storage: Optional[str] = None,
     **kwargs,
 ) -> Dataset:
     """Import the data into the data directory."""
@@ -66,7 +67,7 @@ def add_to_dataset(
     _check_available_space(client, urls, total_size=total_size)
 
     try:
-        with DatasetContext(name=dataset_name, create=create, datadir=datadir) as dataset:
+        with DatasetContext(name=dataset_name, create=create, datadir=datadir, storage=storage) as dataset:
             destination_path = _create_destination_directory(client, dataset, destination)
 
             client.check_external_storage()  # TODO: This is not required for external storages
@@ -156,6 +157,21 @@ def _download_files(
     **kwargs,
 ) -> List["DatasetAddMetadata"]:
     """Process file URLs for adding to a dataset."""
+    if dataset.storage and dataset.storage.lower().startswith("s3://"):
+        if len(urls) == 0:
+            raise errors.ParameterError("No URL is specified")
+        if len(urls) > 1:
+            raise errors.ParameterError("Can only add 1 uri with S3 datasets.")
+        if not urls[0].lower().startswith("s3://"):
+            raise errors.ParameterError("Only files from S3 buckets can be added to S3 datasets.")
+        if sources:
+            raise errors.ParameterError("Can not use '--source' with S3 datasets.")
+        if len(dataset.files) > 0:
+            raise errors.ParameterError(
+                "This S3 dataset already contains files, cannot add more. "
+                "You can create another dataset to add more S3 data."
+            )
+
     if importer:
         return importer.download_files(client=client, destination=destination, extract=extract)
 

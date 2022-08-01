@@ -21,6 +21,7 @@ from pathlib import Path
 import re
 import urllib
 from typing import List, TYPE_CHECKING, Tuple, Type
+from urllib.parse import urlparse
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials, ProviderPriority
@@ -31,7 +32,6 @@ from renku.core.util.metadata import prompt_for_credentials
 from renku.core.util.urls import get_scheme
 from renku.domain_model.dataset import RemoteEntity
 from renku.domain_model.dataset_provider import IDatasetProviderPlugin
-from renku.infrastructure.repository import Repository
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderParameter
@@ -66,25 +66,32 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
         return True
 
     @staticmethod
-    def add(client: "LocalClient", uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
+    def add(client: "LocalClient", uri: str, destination: Path, dataset: "Dataset", **kwargs) -> List["DatasetAddMetadata"]:
         """Add files from a URI to a dataset."""
+        if re.match("\*|\?", uri):
+            raise errors.ParameterError("Wildcards like '*' or '?' are not supported in the uri for S3 datasets.")
         provider = S3Provider(uri=uri)
         credentials = S3Credentials(provider=provider)
         prompt_for_credentials(credentials)
 
         storage = get_storage(provider=provider, credentials=credentials)
-        storage.exists(uri)
+        if dataset.storage and not is_uri_subfolder(dataset.storage, uri):
+            raise errors.ParameterError(
+                f"S3 uri {uri} should be located within or at the storage uri {dataset.storage}. "
+            )
+        if not storage.exists(uri):
+            raise errors.ParameterError(f"S3 bucket '{storage.bucket}' doesn't exists.")
         storage.mount(uri, mount_location=destination)
 
         hashes = storage.get_hashes(uri=uri)
         return [
             DatasetAddMetadata(
-                entity_path=Path(destination) / hash.path,
+                entity_path=Path(destination).relative_to(client.repository.path) / hash.path,
                 url=hash.base_uri,
                 action=DatasetAddAction.NONE,
                 based_on=RemoteEntity(checksum=hash.hash, url=hash.base_uri, path=hash.path),
                 source=Path(hash.full_uri),
-                destination=Path(destination),
+                destination=Path(destination).relative_to(client.repository.path),
             )
             for hash in hashes
         ]
@@ -107,6 +114,7 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
 
         repository = get_repository()
         repository.add_ignored_pattern(pattern=dataset.get_datadir())
+        repository.add(".gitignore")
 
     @classmethod
     @hookimpl
@@ -138,3 +146,30 @@ def extract_bucket_and_path(uri: str) -> Tuple[str, str]:
         raise errors.ParameterError(f"Invalid S3 URI: {uri}")
 
     return parsed_uri.netloc, parsed_uri.path
+
+def is_uri_subfolder(uri: str, subfolder_uri: str) -> bool:
+    """Check if one uri is a 'subfolder' of another."""
+    parsed_uri = urlparse(uri)
+    parsed_subfolder_uri = urlparse(subfolder_uri)
+    parsed_uri_path = Path(parsed_uri.path)
+    parsed_subfolder_uri_path = Path(parsed_subfolder_uri.path)
+    if parsed_uri_path == Path("."):
+        # NOTE: s3://test has a path that equals "" and Path("") gets interpreted as Path(".")
+        # this becomes a problem then when s3://test/1 has an "absolute-like" path of Path("/1")
+        # and Path(".") is not considered a subpath of Path("/1") but from the uris we see that this
+        # is indeed a subpath
+        parsed_uri_path = Path("/")
+    if parsed_subfolder_uri_path == Path("."):
+        parsed_subfolder_uri_path = Path("/")
+    if parsed_uri.scheme != parsed_subfolder_uri.scheme:
+        # INFO: catch s3://test vs http://test
+        return False
+    if parsed_uri.netloc != parsed_subfolder_uri.netloc:
+        # INFO: catch s3://test1 vs s3://test2
+        return False
+    try:
+        # INFO: catch s3://test/1/2/3 vs s3://test/1/2/4
+        parsed_subfolder_uri_path.relative_to(parsed_uri_path)
+    except ValueError:
+        return False
+    return True
