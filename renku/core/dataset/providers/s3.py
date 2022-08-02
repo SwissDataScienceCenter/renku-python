@@ -113,7 +113,9 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
             raise errors.ParameterError(f"S3 bucket '{self.bucket}' doesn't exists.")
 
         repository = get_repository()
-        repository.add_ignored_pattern(pattern=str(dataset.get_datadir().relative_to(repository.path)))
+        repository.add_ignored_pattern(
+            pattern=str(dataset.get_datadir().absolute().relative_to(repository.path.absolute()))
+        )
         repository.add(".gitignore")
 
     @classmethod
