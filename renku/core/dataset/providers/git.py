@@ -21,25 +21,23 @@ import glob
 import os
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Type, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ProviderApi, ProviderPriority
-from renku.core.plugin import hookimpl
 from renku.core.util import communication
 from renku.core.util.dataset import check_url
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository
 from renku.core.util.os import get_files, is_subpath
 from renku.core.util.urls import remove_credentials
 from renku.domain_model.dataset import RemoteEntity
-from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderParameter
     from renku.core.management.client import LocalClient
 
 
-class GitProvider(ProviderApi, IDatasetProviderPlugin):
+class GitProvider(ProviderApi):
     """Git provider."""
 
     priority = ProviderPriority.NORMAL
@@ -188,9 +186,3 @@ class GitProvider(ProviderApi, IDatasetProviderPlugin):
             communication.warn(f"The following files overwrite each other in the destination project:/n/t{files_str}")
 
         return results
-
-    @classmethod
-    @hookimpl
-    def dataset_provider(cls) -> "Type[GitProvider]":
-        """The definition of the provider."""
-        return cls

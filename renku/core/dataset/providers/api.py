@@ -19,11 +19,13 @@ import abc
 from collections import UserDict
 from enum import IntEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
 from renku.core import errors
+from renku.core.plugin import hookimpl
 from renku.core.util.metadata import get_canonical_key, read_credentials, store_credentials
 from renku.core.util.util import NO_VALUE, NoValueType
+from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import (
@@ -48,7 +50,7 @@ class ProviderPriority(IntEnum):
     LOWEST = 7
 
 
-class ProviderApi(abc.ABC):
+class ProviderApi(IDatasetProviderPlugin):
     """Interface defining provider methods."""
 
     priority: Optional[ProviderPriority] = None
@@ -64,6 +66,12 @@ class ProviderApi(abc.ABC):
 
     def __repr__(self):
         return f"<DatasetProvider {self.name}>"
+
+    @classmethod
+    @hookimpl
+    def dataset_provider(cls) -> "Type[ProviderApi]":
+        """The definition of the provider."""
+        return cls
 
     @staticmethod
     @abc.abstractmethod

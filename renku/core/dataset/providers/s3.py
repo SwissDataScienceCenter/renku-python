@@ -18,21 +18,19 @@
 """S3 dataset provider."""
 
 import urllib
-from typing import TYPE_CHECKING, Optional, Tuple, Type
+from typing import TYPE_CHECKING, Optional, Tuple
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials, ProviderPriority
-from renku.core.plugin import hookimpl
 from renku.core.util.dispatcher import get_repository, get_storage
 from renku.core.util.metadata import prompt_for_credentials
 from renku.core.util.urls import get_scheme
-from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset
 
 
-class S3Provider(ProviderApi, IDatasetProviderPlugin):
+class S3Provider(ProviderApi):
     """S3 provider."""
 
     priority = ProviderPriority.NORMAL
@@ -42,12 +40,6 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
         super().__init__(uri=uri)
         bucket, _ = extract_bucket_and_path(uri=self.uri)
         self._bucket: str = bucket
-
-    @classmethod
-    @hookimpl
-    def dataset_provider(cls) -> "Type[S3Provider]":
-        """The definition of the provider."""
-        return cls
 
     @staticmethod
     def supports(uri: str) -> bool:
