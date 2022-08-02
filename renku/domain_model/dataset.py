@@ -441,12 +441,6 @@ class Dataset(Persistent):
     def __repr__(self) -> str:
         return f"<Dataset {self.identifier} {self.name}>"
 
-    def get_datadir(self) -> str:
-        """Return dataset's data directory."""
-        from renku.core.util.dispatcher import get_client
-
-        return os.path.join(get_client().data_dir, self.name)
-
     def is_derivation(self) -> bool:
         """Return if a dataset has correct derived_from."""
         return self.derived_from is not None and not self.same_as and self.id != self.derived_from.url_id

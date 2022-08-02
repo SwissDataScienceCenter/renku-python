@@ -93,7 +93,9 @@ def add_to_dataset(
                     "Ignored adding paths under a .git directory:\n\t" + "\n\t".join(str(p) for p in paths_to_avoid)
                 )
 
-            files_to_commit = {f.get_absolute_commit_path(client.path) for f in files if not str(f.url).startswith("s3://")}
+            files_to_commit = {
+                f.get_absolute_commit_path(client.path) for f in files if not str(f.url).startswith("s3://")
+            }
 
             if not force:
                 files, files_to_commit = _check_ignored_files(client, files_to_commit, files)

@@ -20,12 +20,14 @@
 import concurrent.futures
 import json
 import os
-from pathlib import Path
 import subprocess
+from dataclasses import asdict
+from pathlib import Path
 from typing import Any, List
 
 from renku.core import errors
-from renku.core.interface.storage import IStorage, FileHash
+from renku.core.interface.storage import FileHash, IStorage
+
 
 class RCloneBaseStorage(IStorage):
     """Base external storage handler class."""
@@ -60,7 +62,7 @@ class RCloneBaseStorage(IStorage):
         if not self.exists(uri):
             raise errors.StorageObjectNotFound
         self.set_configurations()
-        execute_rclone_command("mount", "--daemon", uri, mount_location)
+        execute_rclone_command("mount", "--daemon", uri, str(mount_location.absolute()))
 
     def get_hashes(self, uri: str, hash_type: str = "md5") -> List[FileHash]:
         """Download hashes with rclone and parse them.
@@ -84,11 +86,11 @@ class RCloneBaseStorage(IStorage):
             hash_content = hash.get("Hashes", {}).get(hash_type)
             output.append(
                 FileHash(
-                    base_uri = uri,
-                    path = hash["Path"],
-                    hash = hash_content,
-                    hash_type = hash_type if hash_content else None,
-                    modified_datetime = hash.get("ModTime")
+                    base_uri=uri,
+                    path=hash["Path"],
+                    hash=hash_content,
+                    hash_type=hash_type if hash_content else None,
+                    modified_datetime=hash.get("ModTime"),
                 )
             )
         output = self._get_missing_hashes(output, hash_type=hash_type)
@@ -102,10 +104,11 @@ class RCloneBaseStorage(IStorage):
         for many files but usually not for *.gz or other compressed files. This will fill in any
         missing hashes in the list.
         """
+
         def _compute_hash(hash: FileHash, hash_type: str) -> FileHash:
             self.set_configurations()
-            res = execute_rclone_command("hashsum", hash_type, "--download", hash.uri)
-            return FileHash(**hash, hash=res.split()[0])
+            res = execute_rclone_command("hashsum", hash_type, "--download", hash.base_uri)
+            return FileHash(**asdict(hash), hash=res.split()[0])
 
         missing_hashes = []
         valid_hashes = []
@@ -115,13 +118,11 @@ class RCloneBaseStorage(IStorage):
             else:
                 missing_hashes.append(hash)
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = [
-                executor.submit(_compute_hash, hash.uri, "md5")
-                for hash in missing_hashes
-            ]
+            futures = [executor.submit(_compute_hash, hash, "md5") for hash in missing_hashes]
             computed_hashes = [future.result() for future in futures]
 
         return [*valid_hashes, *computed_hashes]
+
 
 def execute_rclone_command(command: str, *args: str, **kwargs) -> str:
     """Execute an R-clone command."""

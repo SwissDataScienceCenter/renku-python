@@ -17,10 +17,10 @@
 # limitations under the License.
 """S3 dataset provider."""
 
-from pathlib import Path
 import re
 import urllib
-from typing import List, TYPE_CHECKING, Tuple, Type
+from pathlib import Path
+from typing import TYPE_CHECKING, List, Tuple, Type
 from urllib.parse import urlparse
 
 from renku.core import errors
@@ -34,7 +34,6 @@ from renku.domain_model.dataset import RemoteEntity
 from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
-    from renku.core.dataset.providers.models import ProviderParameter
     from renku.core.management.client import LocalClient
     from renku.domain_model.dataset import Dataset
 
@@ -66,21 +65,22 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
         return True
 
     @staticmethod
-    def add(client: "LocalClient", uri: str, destination: Path, dataset: "Dataset", **kwargs) -> List["DatasetAddMetadata"]:
+    def add(client: "LocalClient", uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
         """Add files from a URI to a dataset."""
-        if re.match("\*|\?", uri):
+        if re.match(r"\*|\?", uri):
             raise errors.ParameterError("Wildcards like '*' or '?' are not supported in the uri for S3 datasets.")
         provider = S3Provider(uri=uri)
         credentials = S3Credentials(provider=provider)
         prompt_for_credentials(credentials)
 
         storage = get_storage(provider=provider, credentials=credentials)
-        if dataset.storage and not is_uri_subfolder(dataset.storage, uri):
+        dataset = kwargs.get("dataset")
+        if dataset and dataset.storage and not is_uri_subfolder(dataset.storage, uri):
             raise errors.ParameterError(
                 f"S3 uri {uri} should be located within or at the storage uri {dataset.storage}. "
             )
         if not storage.exists(uri):
-            raise errors.ParameterError(f"S3 bucket '{storage.bucket}' doesn't exists.")
+            raise errors.ParameterError(f"S3 bucket '{uri}' doesn't exists.")
         storage.mount(uri, mount_location=destination)
 
         hashes = storage.get_hashes(uri=uri)
@@ -89,7 +89,7 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
                 entity_path=Path(destination).relative_to(client.repository.path) / hash.path,
                 url=hash.base_uri,
                 action=DatasetAddAction.NONE,
-                based_on=RemoteEntity(checksum=hash.hash, url=hash.base_uri, path=hash.path),
+                based_on=RemoteEntity(checksum=hash.hash if hash.hash else "", url=hash.base_uri, path=hash.path),
                 source=Path(hash.full_uri),
                 destination=Path(destination).relative_to(client.repository.path),
             )
@@ -113,7 +113,7 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
             raise errors.ParameterError(f"S3 bucket '{self.bucket}' doesn't exists.")
 
         repository = get_repository()
-        repository.add_ignored_pattern(pattern=dataset.get_datadir())
+        repository.add_ignored_pattern(pattern=str(dataset.get_datadir().relative_to(repository.path)))
         repository.add(".gitignore")
 
     @classmethod
@@ -146,6 +146,7 @@ def extract_bucket_and_path(uri: str) -> Tuple[str, str]:
         raise errors.ParameterError(f"Invalid S3 URI: {uri}")
 
     return parsed_uri.netloc, parsed_uri.path
+
 
 def is_uri_subfolder(uri: str, subfolder_uri: str) -> bool:
     """Check if one uri is a 'subfolder' of another."""

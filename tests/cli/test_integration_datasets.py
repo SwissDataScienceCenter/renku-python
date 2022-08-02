@@ -2088,9 +2088,7 @@ def test_adding_s3_data_twice_not_allowed(runner, client, create_s3_dataset, moc
     ],
 )
 @retry_failed
-def test_adding_s3_data_outside_sub_path_not_allowed(
-    runner, client, create_s3_dataset, mocker, storage_uri, add_uri
-):
+def test_adding_s3_data_outside_sub_path_not_allowed(runner, client, create_s3_dataset, mocker, storage_uri, add_uri):
     """Ensure that data from bucket that does not match storage bucket name or path cannot be added."""
     mock_s3_storage = mocker.patch("renku.infrastructure.storage.s3.S3Storage", autospec=True)
     instance_s3_storage = mock_s3_storage.return_value

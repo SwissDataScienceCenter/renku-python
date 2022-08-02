@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 @dataclass
 class FileHash:
     """The has for a file at a specific location."""
+
     base_uri: str
     path: str
     hash: Optional[str] = None
@@ -39,6 +40,7 @@ class FileHash:
     def full_uri(self) -> str:
         """Return the full uri to the file."""
         return str(Path(self.base_uri) / Path(self.path))
+
 
 class IStorageFactory(abc.ABC):
     """Interface to get an external storage."""
