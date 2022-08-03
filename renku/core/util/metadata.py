@@ -164,10 +164,9 @@ def prompt_for_credentials(provider_credentials: "ProviderCredentials") -> None:
     provider_credentials.read()
 
     prompt_to_store = False
-    for key, value in provider_credentials.items():
-        if value is None:
-            prompt_to_store = True
-            value = communication.prompt(f"Enter a value for '{key}'", type=str, default="")
+    for key in provider_credentials.get_credentials_names_with_no_value():
+        prompt_to_store = True
+        value = communication.prompt(f"Enter a value for '{key}'", type=str, default="")
 
         provider_credentials[key] = value
 

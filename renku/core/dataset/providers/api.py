@@ -261,6 +261,10 @@ class ProviderCredentials(abc.ABC, UserDict):
         """Return the associated provider instance."""
         return self._provider
 
+    def get_credentials_names_with_no_value(self) -> Tuple[str, ...]:
+        """Return a tuple of credential keys that don't have a valid value."""
+        return tuple(key for key, value in self.items() if value is NO_VALUE)
+
     def get_canonical_credentials_names(self) -> Tuple[str, ...]:
         """Return canonical credentials names that can be used as config keys."""
         return tuple(get_canonical_key(key) for key in self.get_credentials_names())
