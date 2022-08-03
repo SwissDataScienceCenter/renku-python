@@ -80,10 +80,6 @@ Renku prompts for your S3 credentials and can store them for future uses.
 
 .. note:: Data directory for datasets that have a storage backend is ignored by
     Git. This is needed to avoid committing pulled data from a remote storage to Git.
-<<<<<<< HEAD
-
-=======
->>>>>>> 2970-create-dataset-with-s3-storage
 
 Editing a dataset's metadata:
 

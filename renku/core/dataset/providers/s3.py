@@ -23,7 +23,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple, Type
 from urllib.parse import urlparse
 
-
 from renku.core import errors
 from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials, ProviderPriority
 from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
@@ -124,12 +123,6 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
             pattern=str(dataset.get_datadir().absolute().relative_to(repository.path.absolute()))
         )
         repository.add(".gitignore")
-
-    @classmethod
-    @hookimpl
-    def dataset_provider(cls) -> "Type[S3Provider]":
-        """The definition of the provider."""
-        return cls
 
 
 class S3Credentials(ProviderCredentials):
