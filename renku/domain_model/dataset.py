@@ -326,6 +326,7 @@ class Dataset(Persistent):
         *,
         annotations: Optional[List["Annotation"]] = None,
         creators: Optional[List["Person"]] = None,
+        datadir: Optional[Path] = None,
         dataset_files: Optional[List[DatasetFile]] = None,
         date_created: Optional[datetime] = None,
         date_published: Optional[datetime] = None,
@@ -345,7 +346,6 @@ class Dataset(Persistent):
         storage: Optional[str] = None,
         title: Optional[str] = None,
         version: Optional[str] = None,
-        datadir: Optional[Path] = None,
     ):
         if not name:
             assert title, "Either 'name' or 'title' must be set."

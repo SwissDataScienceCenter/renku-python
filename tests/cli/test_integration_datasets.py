@@ -2000,3 +2000,101 @@ def test_create_with_unauthorized_s3_backend(runner, client, global_config_dir, 
 
     assert 1 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "Authentication failed when accessing the remote storage" in result.output
+
+
+def add_data_from_s3(client, name, client_database_injection_manager):
+    """Add some S3 files to a dataset.
+
+    # TODO: Replace this with `renku dataset add` when SwissDataScienceCenter/renku-python/pull/3063 is merged.
+    """
+    from renku.domain_model.dataset import DatasetFile, RemoteEntity
+    from renku.domain_model.entity import Entity
+
+    with client_database_injection_manager(client):
+        with with_dataset(client, name=name, commit_database=True) as dataset:
+            name_1 = "Aspera_download_from_ftp.README"
+            url_1 = f"s3://giab/{name_1}"
+            checksum_1 = "e8530c02585aaaecba2d5bd6c4cea6ae"
+            file_1 = DatasetFile(
+                entity=Entity(checksum=checksum_1, path=f"data/{name}/{name_1}"),
+                based_on=RemoteEntity(checksum=checksum_1, path=name_1, url=url_1),
+                source=url_1,
+            )
+
+            name_2 = "02structural.bed.gz"
+            url_2 = f"s3://giab/technical/unimask/{name_2}"
+            checksum_2 = ""
+            file_2 = DatasetFile(
+                entity=Entity(checksum=checksum_2, path=f"data/{name}/{name_2}"),
+                based_on=RemoteEntity(checksum=checksum_2, path=name_2, url=url_2),
+                source=url_2,
+            )
+
+            dataset.dataset_files = [file_1, file_2]
+
+    client.repository.add(all=True)
+    client.repository.commit("metadata updated")
+
+
+@pytest.mark.integration
+@retry_failed
+@pytest.mark.vcr
+def test_pull_data_from_s3_backend(
+    runner, client, global_config_dir, client_database_injection_manager, load_dataset_with_injection
+):
+    """Test pulling data for a dataset with an S3 backend."""
+    result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://giab/"], input="\n\n\n")
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    add_data_from_s3(client, "s3-data", client_database_injection_manager)
+
+    result = runner.invoke(cli, ["dataset", "pull", "s3-data"])
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    dataset = load_dataset_with_injection("s3-data", client)
+    file = next(f for f in dataset.files if f.entity.path.endswith("Aspera_download_from_ftp.README"))
+
+    assert (client.path / file.entity.path).exists()
+    assert not (client.path / file.entity.path).is_symlink()
+
+    file = next(f for f in dataset.files if f.entity.path.endswith("02structural.bed.gz"))
+
+    assert (client.path / file.entity.path).exists()
+    assert not (client.path / file.entity.path).is_symlink()
+    assert "0ddc10ab9f9f0dd0fea4d66d9a55ba99" == file.based_on.checksum
+
+
+@pytest.mark.integration
+@retry_failed
+@pytest.mark.vcr
+def test_pull_data_from_s3_backend_to_a_location(
+    runner, client, global_config_dir, client_database_injection_manager, load_dataset_with_injection, tmp_path
+):
+    """Test pulling data for a dataset with an S3 backend to a location other than dataset's data directory."""
+    result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://giab/"], input="\n\n\n")
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    add_data_from_s3(client, "s3-data", client_database_injection_manager)
+
+    location = tmp_path / "s3-data"
+
+    result = runner.invoke(cli, ["dataset", "pull", "s3-data", "--location", str(location)])
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    dataset = load_dataset_with_injection("s3-data", client)
+    file = next(f for f in dataset.files if f.entity.path.endswith("Aspera_download_from_ftp.README"))
+
+    assert (client.path / file.entity.path).is_symlink()
+    assert (location / file.entity.path).resolve() == (client.path / file.entity.path).resolve()
+
+    file = next(f for f in dataset.files if f.entity.path.endswith("02structural.bed.gz"))
+
+    assert (client.path / file.entity.path).is_symlink()
+    assert (location / file.entity.path).resolve() == (client.path / file.entity.path).resolve()
+    assert "0ddc10ab9f9f0dd0fea4d66d9a55ba99" == file.based_on.checksum
+
+    assert str(location) in (client.path / ".renku" / "renku.ini").read_text()

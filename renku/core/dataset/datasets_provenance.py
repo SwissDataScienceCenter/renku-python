@@ -58,7 +58,17 @@ class DatasetsProvenance:
         return None
 
     def get_by_name(self, name: str, immutable: bool = False, strict: bool = False) -> Optional["Dataset"]:
-        """Return a dataset by its name."""
+        """Return a dataset by its name.
+
+        Args:
+            name(str): Name of the dataset
+            immutable(bool): Whether the dataset will be used as an immutable instance or will be modified (Default
+                value = False).
+            strict(bool): Whether to raise an exception if the dataset doesn't exist or not (Default value = False)
+
+        Returns:
+            Optional[Dataset]: Dataset with the specified name if exists.
+        """
         dataset = self.dataset_gateway.get_by_name(name)
         if not dataset:
             if strict:

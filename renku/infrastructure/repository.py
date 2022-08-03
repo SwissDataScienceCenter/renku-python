@@ -33,7 +33,7 @@ from typing import Any, Callable, Dict, Generator, List, NamedTuple, Optional, S
 import git
 
 from renku.core import errors
-from renku.core.util.os import delete_file, get_absolute_path
+from renku.core.util.os import delete_dataset_file, get_absolute_path
 
 NULL_TREE = git.NULL_TREE
 _MARKER = object()
@@ -535,7 +535,7 @@ class BaseRepository:
         output_path = Path(output)
 
         content: Union[bytes, str] = output_path.read_bytes() if binary else output_path.read_text()
-        delete_file(output)
+        delete_dataset_file(output)
 
         return content
 

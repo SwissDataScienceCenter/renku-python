@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 class S3Provider(ProviderApi):
     """S3 provider."""
 
-    priority = ProviderPriority.NORMAL
+    priority = ProviderPriority.HIGHEST
     name = "S3"
 
     def __init__(self, uri: Optional[str]):
@@ -73,9 +73,6 @@ class S3Provider(ProviderApi):
 
 class S3Credentials(ProviderCredentials):
     """S3-specific credentials."""
-
-    def __init__(self, provider: S3Provider):
-        super().__init__(provider=provider)
 
     @staticmethod
     def get_credentials_names() -> Tuple[str, ...]:

@@ -22,13 +22,14 @@ from typing import TYPE_CHECKING
 from renku.command.command_builder.command import inject
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
-from renku.core.interface.storage import IStorageFactory
+from renku.core.interface.dataset_gateway import IDatasetGateway
+from renku.core.interface.storage import IStorage, IStorageFactory
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials
-    from renku.core.interface.storage import IStorage
     from renku.core.management.client import LocalClient
     from renku.infrastructure.database import Database
+    from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
     from renku.infrastructure.repository import Repository
 
 
@@ -50,6 +51,16 @@ def get_database() -> "Database":
         return database_dispatcher.current_database
 
     return get_database_helper()
+
+
+def get_dataset_gateway() -> "DatasetGateway":
+    """Return an instance of DatasetGateway."""
+
+    @inject.autoparams()
+    def get_dataset_gateway_helper(dataset_gateway: IDatasetGateway):
+        return dataset_gateway
+
+    return get_dataset_gateway_helper()
 
 
 def get_repository() -> "Repository":

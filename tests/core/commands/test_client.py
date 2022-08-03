@@ -56,7 +56,6 @@ def test_safe_class_attributes(tmpdir):
 
     # NOTE: attributes that are allowed on LocalClient
     safe_attributes = [
-        "CONFIG_NAME",
         "DATABASE_PATH",
         "DATA_DIR_CONFIG_KEY",
         "DEPENDENCY_GRAPH",

@@ -67,6 +67,8 @@ class ProviderFactory:
 
         raise errors.DatasetProviderNotFound(uri=uri)
 
+    get_pull_provider = get_create_provider
+
     @staticmethod
     def get_import_provider(uri) -> "ProviderApi":
         """Get an import provider based on uri."""

@@ -68,7 +68,7 @@ class DOIProvider(ProviderApi):
             try:
                 return DOIImporter(**data)
             except TypeError:
-                raise errors.ImportError("doi metadata could not be serialized")
+                raise errors.DatasetImportError("doi metadata could not be serialized")
 
         query_response = query(self.uri)
         return serialize(query_response)

@@ -18,7 +18,8 @@
 """External storage interface."""
 
 import abc
-from typing import TYPE_CHECKING
+from pathlib import Path
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials
@@ -42,21 +43,26 @@ class IStorage(abc.ABC):
         self._credentials: "ProviderCredentials" = credentials
 
     @property
-    def provider(self) -> "ProviderApi":
-        """Return the dataset provider for this storage handler."""
-        return self._provider
-
-    @property
     def credentials(self) -> "ProviderCredentials":
         """Return the provider credentials for this storage handler."""
         return self._credentials
 
+    @property
+    def provider(self) -> "ProviderApi":
+        """Return the dataset provider for this storage handler."""
+        return self._provider
+
     @abc.abstractmethod
-    def set_configurations(self):
-        """Set required configurations to access the storage."""
+    def copy(self, source: Union[Path, str], destination: Union[Path, str]) -> None:
+        """Copy data from ``source`` to ``destination``."""
         raise NotImplementedError
 
     @abc.abstractmethod
     def exists(self, uri: str) -> bool:
         """Checks if a remote storage URI exists."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def set_configurations(self) -> None:
+        """Set required configurations to access the storage."""
         raise NotImplementedError

@@ -1155,3 +1155,21 @@ def update(names, creators, include, exclude, ref, delete, external, no_external
             files = get_dataset_files(deleted_files)
             message = " (pass '--delete' to remove them from datasets' metadata)" if not delete else ""
             click.echo(f"The following files will be deleted{message}:\n\n{files}\n")
+
+
+@dataset.command(hidden=True)
+@click.argument("name", shell_complete=_complete_datasets)
+@click.option(
+    "-l",
+    "--location",
+    default=None,
+    type=click.Path(exists=False, file_okay=False, writable=True),
+    help="A directory to copy data to, instead of the dataset's data directory.",
+)
+def pull(name, location):
+    """Pull data from an external storage."""
+    from renku.command.dataset import pull_external_data_command
+    from renku.ui.cli.utils.callback import ClickCallback
+
+    communicator = ClickCallback()
+    pull_external_data_command().with_communicator(communicator).build().execute(name=name, location=location)
