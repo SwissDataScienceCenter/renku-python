@@ -1,4 +1,4 @@
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,10 +19,11 @@ import abc
 from collections import UserDict
 from enum import IntEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from renku.core import errors
 from renku.core.util.metadata import get_canonical_key, read_credentials, store_credentials
+from renku.core.util.util import NO_VALUE, NoValueType
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import (
@@ -53,8 +54,8 @@ class ProviderApi(abc.ABC):
     priority: Optional[ProviderPriority] = None
     name: Optional[str] = None
 
-    def __init__(self, uri: str):
-        self._uri: str = uri
+    def __init__(self, uri: Optional[str], **kwargs):
+        self._uri: str = uri or ""
 
     def __init_subclass__(cls, **kwargs):
         for required_property in ("priority", "name"):
@@ -239,24 +240,30 @@ class ExporterApi(abc.ABC):
 class ProviderCredentials(abc.ABC, UserDict):
     """Credentials of a provider.
 
-    NOTE: A ``None`` value for a key means that it is not set; however, an empty value, "", means that the key was set.
+    NOTE: An empty string, "", is a valid value. ``NO_VALUE`` means that the value for a key is not set.
     """
 
     def __init__(self, provider: ProviderApi):
         super().__init__()
         self._provider: ProviderApi = provider
-        self.data: Dict[str, Optional[str]] = {key: None for key in self.get_canonical_credentials_names()}
+        self.data: Dict[str, Union[str, NoValueType]] = {
+            key: NO_VALUE for key in self.get_canonical_credentials_names()
+        }
 
     @staticmethod
     @abc.abstractmethod
     def get_credentials_names() -> Tuple[str, ...]:
-        """Return list of the required credentials for a provider."""
+        """Return a tuple of the required credentials for a provider."""
         raise NotImplementedError
 
     @property
     def provider(self):
         """Return the associated provider instance."""
         return self._provider
+
+    def get_credentials_names_with_no_value(self) -> Tuple[str, ...]:
+        """Return a tuple of credential keys that don't have a valid value."""
+        return tuple(key for key, value in self.items() if value is NO_VALUE)
 
     def get_canonical_credentials_names(self) -> Tuple[str, ...]:
         """Return canonical credentials names that can be used as config keys."""
@@ -269,11 +276,18 @@ class ProviderCredentials(abc.ABC, UserDict):
         """
         return self.provider.name.lower()  # type: ignore
 
-    def read(self) -> Dict[str, Optional[str]]:
+    def read(self) -> Dict[str, Union[str, NoValueType]]:
         """Read credentials from the config and return them. Set non-existing values to None."""
         section = self.get_credentials_section_name()
 
-        data = {key: read_credentials(section=section, key=key) for key in self.get_canonical_credentials_names()}
+        def read_and_convert_credentials(key) -> Union[str, NoValueType]:
+            value = read_credentials(section=section, key=key)
+            if value is None:
+                return NO_VALUE
+
+            return value
+
+        data = {key: read_and_convert_credentials(key) for key in self.get_canonical_credentials_names()}
         self.data.update(data)
 
         return self.data

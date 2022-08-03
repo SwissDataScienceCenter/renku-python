@@ -48,8 +48,8 @@ dataset_providers: "List[Type[ProviderApi]]" = [
     GitProvider,
     FilesystemProvider,
     OLOSProvider,
-    S3Provider,
     RenkuProvider,
+    S3Provider,
     WebProvider,
     ZenodoProvider,
 ]

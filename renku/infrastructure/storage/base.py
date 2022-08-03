@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -27,6 +27,7 @@ from typing import Any, List
 
 from renku.core import errors
 from renku.core.interface.storage import FileHash, IStorage
+from renku.core.util.util import NO_VALUE
 
 
 class RCloneBaseStorage(IStorage):
@@ -36,7 +37,8 @@ class RCloneBaseStorage(IStorage):
         """Set required configurations for rclone to access the storage."""
         for name, value in self.credentials.items():
             name = get_rclone_env_var_name(self.provider.name, name)
-            set_rclone_env_var(name=name, value=value)
+            if value is not NO_VALUE:
+                set_rclone_env_var(name=name, value=value)
 
     def exists(self, uri: str) -> bool:
         """Checks if a remote storage URI exists."""
@@ -157,8 +159,12 @@ def transform_kwargs(**kwargs) -> List[str]:
             name = f"-{key}" if len(key) == 1 else f"--{key.replace('_', '-')}"
             return [name] if value is True else [name, f"{value}"]
 
-    args = [transform_kwarg(k, v) for k, v in kwargs.items()]
-    return [a for arg in args for a in arg]
+    all_args = []
+    for key, value in kwargs.items():
+        args = transform_kwarg(key, value)
+        all_args.extend(args)
+
+    return all_args
 
 
 def get_rclone_env_var_name(provider_name, name) -> str:
