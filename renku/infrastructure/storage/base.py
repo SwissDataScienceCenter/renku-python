@@ -95,35 +95,7 @@ class RCloneBaseStorage(IStorage):
                     modified_datetime=hash.get("ModTime"),
                 )
             )
-        output = self._get_missing_hashes(output, hash_type=hash_type)
         return output
-
-    def _get_missing_hashes(self, hashes: List[FileHash], hash_type: str = "md5") -> List[FileHash]:
-        """Go through the list of hashes and compute any hashes that are missing.
-
-        This can be a very slow operation for large files. Rclone will download the files and
-        compute the hashes. But this takes time and resources. S3 computes hashes automatically
-        for many files but usually not for *.gz or other compressed files. This will fill in any
-        missing hashes in the list.
-        """
-
-        def _compute_hash(hash: FileHash, hash_type: str) -> FileHash:
-            self.set_configurations()
-            res = execute_rclone_command("hashsum", hash_type, "--download", hash.base_uri)
-            return FileHash(**asdict(hash), hash=res.split()[0])
-
-        missing_hashes = []
-        valid_hashes = []
-        for hash in hashes:
-            if hash.hash:
-                valid_hashes.append(hash)
-            else:
-                missing_hashes.append(hash)
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = [executor.submit(_compute_hash, hash, "md5") for hash in missing_hashes]
-            computed_hashes = [future.result() for future in futures]
-
-        return [*valid_hashes, *computed_hashes]
 
 
 def execute_rclone_command(command: str, *args: str, **kwargs) -> str:

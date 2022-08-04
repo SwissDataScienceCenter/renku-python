@@ -29,7 +29,7 @@ from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMeta
 from renku.core.plugin import hookimpl
 from renku.core.util.dispatcher import get_repository, get_storage
 from renku.core.util.metadata import prompt_for_credentials
-from renku.core.util.urls import get_scheme
+from renku.core.util.urls import get_scheme, is_uri_subfolder
 from renku.domain_model.dataset import RemoteEntity
 from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 class S3Provider(ProviderApi, IDatasetProviderPlugin):
     """S3 provider."""
 
-    priority = ProviderPriority.NORMAL
+    priority = ProviderPriority.HIGHEST
     name = "S3"
 
     def __init__(self, uri: Optional[str]):
@@ -87,7 +87,6 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
             )
         if not storage.exists(uri):
             raise errors.ParameterError(f"S3 bucket '{uri}' doesn't exists.")
-        storage.mount(uri, mount_location=destination)
 
         hashes = storage.get_hashes(uri=uri)
         return [
@@ -98,6 +97,7 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
                 based_on=RemoteEntity(checksum=hash.hash if hash.hash else "", url=hash.base_uri, path=hash.path),
                 source=Path(hash.full_uri),
                 destination=Path(destination).relative_to(client.repository.path),
+                gitignored=True,
             )
             for hash in hashes
         ]
@@ -122,7 +122,6 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
         repository.add_ignored_pattern(
             pattern=str(dataset.get_datadir().absolute().relative_to(repository.path.absolute()))
         )
-        repository.add(".gitignore")
 
 
 class S3Credentials(ProviderCredentials):
@@ -148,31 +147,3 @@ def extract_bucket_and_path(uri: str) -> Tuple[str, str]:
         raise errors.ParameterError(f"Invalid S3 URI: {uri}")
 
     return parsed_uri.netloc, parsed_uri.path
-
-
-def is_uri_subfolder(uri: str, subfolder_uri: str) -> bool:
-    """Check if one uri is a 'subfolder' of another."""
-    parsed_uri = urlparse(uri)
-    parsed_subfolder_uri = urlparse(subfolder_uri)
-    parsed_uri_path = Path(parsed_uri.path)
-    parsed_subfolder_uri_path = Path(parsed_subfolder_uri.path)
-    if parsed_uri_path == Path("."):
-        # NOTE: s3://test has a path that equals "" and Path("") gets interpreted as Path(".")
-        # this becomes a problem then when s3://test/1 has an "absolute-like" path of Path("/1")
-        # and Path(".") is not considered a subpath of Path("/1") but from the uris we see that this
-        # is indeed a subpath
-        parsed_uri_path = Path("/")
-    if parsed_subfolder_uri_path == Path("."):
-        parsed_subfolder_uri_path = Path("/")
-    if parsed_uri.scheme != parsed_subfolder_uri.scheme:
-        # INFO: catch s3://test vs http://test
-        return False
-    if parsed_uri.netloc != parsed_subfolder_uri.netloc:
-        # INFO: catch s3://test1 vs s3://test2
-        return False
-    try:
-        # INFO: catch s3://test/1/2/3 vs s3://test/1/2/4
-        parsed_subfolder_uri_path.relative_to(parsed_uri_path)
-    except ValueError:
-        return False
-    return True

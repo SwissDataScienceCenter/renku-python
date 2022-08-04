@@ -2006,7 +2006,7 @@ def test_create_with_unauthorized_s3_backend(runner, client, global_config_dir, 
 @pytest.mark.integration
 @retry_failed
 def test_adding_data_from_s3(runner, client, create_s3_dataset, mocker):
-    """Ensure that more data cannot be added to a populated S3 dataset."""
+    """Ensure metadata from a bucket can be added."""
     mock_s3_storage = mocker.patch("renku.infrastructure.storage.s3.S3Storage", autospec=True)
     instance_s3_storage = mock_s3_storage.return_value
     storage_uri = "s3://giab"
@@ -2049,7 +2049,6 @@ def test_invalid_s3_args(runner, client, create_s3_dataset, args, expected_error
     res = runner.invoke(cli, ["dataset", "add", dataset_name, *args])
     assert res.exit_code != 0
     assert expected_error_msg in res.stderr
-    instance_s3_storage.mount.assert_not_called()
 
 
 @pytest.mark.integration
@@ -2070,10 +2069,6 @@ def test_adding_s3_data_twice_not_allowed(runner, client, create_s3_dataset, moc
     res = runner.invoke(cli, ["dataset", "add", dataset_name, "s3://giab/tools"])
     assert res.exit_code != 0
     assert "This S3 dataset already contains files, cannot add more" in res.stderr
-    instance_s3_storage.mount.assert_called_once()
-    assert "s3://giab" in instance_s3_storage.mount.call_args.args or instance_s3_storage.mount.call_args.kwargs.get(
-        "uri"
-    )
 
 
 @pytest.mark.integration
@@ -2090,12 +2085,10 @@ def test_adding_s3_data_twice_not_allowed(runner, client, create_s3_dataset, moc
 @retry_failed
 def test_adding_s3_data_outside_sub_path_not_allowed(runner, client, create_s3_dataset, mocker, storage_uri, add_uri):
     """Ensure that data from bucket that does not match storage bucket name or path cannot be added."""
-    mock_s3_storage = mocker.patch("renku.infrastructure.storage.s3.S3Storage", autospec=True)
-    instance_s3_storage = mock_s3_storage.return_value
+    mocker.patch("renku.infrastructure.storage.s3.S3Storage", autospec=True)
     dataset_name = "test-s3-dataset"
     res = create_s3_dataset(dataset_name, storage_uri)
     assert res.exit_code == 0
     res = runner.invoke(cli, ["dataset", "add", dataset_name, add_uri])
     assert res.exit_code != 0
     assert "should be located within or at the storage uri" in res.stderr
-    instance_s3_storage.mount.assert_not_called()

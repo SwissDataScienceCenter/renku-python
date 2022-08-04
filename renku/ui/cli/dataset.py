@@ -853,7 +853,7 @@ def add_provider_options(*param_decls, **attrs):
     type=click.Path(),
     help="Dataset's data directory (defaults to 'data/<dataset name>').",
 )
-@click.option("-s", "--storage", default=None, help="Destination directory within the dataset path")
+@click.option("-s", "--storage", default=None, help="Define a storage backend for the created dataset")
 @add_provider_options()
 def add(name, urls, force, overwrite, create, destination, datadir, storage, **kwargs):
     """Add data to a dataset."""

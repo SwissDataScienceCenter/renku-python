@@ -94,7 +94,7 @@ def add_to_dataset(
                 )
 
             files_to_commit = {
-                f.get_absolute_commit_path(client.path) for f in files if not str(f.url).startswith("s3://")
+                f.get_absolute_commit_path(client.path) for f in files if not f.gitignored
             }
 
             if not force:
@@ -185,7 +185,7 @@ def _download_files(
     files = []
 
     for url in urls:
-        _, is_git, _ = check_url(url)
+        _, is_git = check_url(url)
 
         if not is_git and sources:
             raise errors.ParameterError("Cannot use '-s/--src/--source' with URLs or local files.")
@@ -249,7 +249,7 @@ def _check_ignored_files(client: "LocalClient", files_to_commit: Set[str], files
     if ignored_files:
         ignored_sources = []
         for file in files:
-            if file.get_absolute_commit_path(client.path) in ignored_files:
+            if not file.gitignored and file.get_absolute_commit_path(client.path) in ignored_files:
                 ignored_sources.append(file.source)
 
         communication.warn(
