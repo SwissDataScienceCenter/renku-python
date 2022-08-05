@@ -17,6 +17,16 @@
 # limitations under the License.
 """Convenience method to save local changes and push them to a remote server.
 
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. click:: renku.ui.cli.save:save
+   :prog: renku save
+   :nested: full
+
+Examples
+~~~~~~~~
+
 If you have local modification to files, you can save them using
 
 .. code-block:: console

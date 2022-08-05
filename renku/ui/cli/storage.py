@@ -17,6 +17,13 @@
 # limitations under the License.
 r"""Manage an external storage.
 
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. click:: renku.ui.cli.storage:storage
+   :prog: renku storage
+   :nested: full
+
 Pulling files from git LFS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017, 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,32 +17,18 @@
 # limitations under the License.
 r"""Create an empty Renku project or reinitialize an existing one.
 
-Start a Renku project
-~~~~~~~~~~~~~~~~~~~~~
+Description
+~~~~~~~~~~~
 
-If you have an existing directory which you want to turn into a Renku project,
-you can type:
+Use an existing renku templates, either official or from the community, to
+create a new Renku project or Renku-ize an existing one.
 
-.. code-block:: console
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
 
-    $ cd ~/my_project
-    $ renku init
-
-or:
-
-.. code-block:: console
-
-    $ renku init ~/my_project
-
-This creates a new subdirectory named ``.renku`` that contains all the
-necessary files for managing the project configuration.
-
-Every project requires a ``name`` that can either be provided using
-``--name`` or automatically taken from the target folder.
-
-You can also provide a description for a project using ``--description``.
-
-If provided directory does not exist, it will be created.
+.. click:: renku.ui.cli.init:init
+   :prog: renku init
+   :nested: full
 
 Use a different template
 ~~~~~~~~~~~~~~~~~~~~~~~~

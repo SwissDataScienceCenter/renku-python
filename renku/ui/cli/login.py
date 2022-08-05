@@ -17,10 +17,22 @@
 # limitations under the License.
 """Logging in to a Renku deployment.
 
-You can use ``renku login`` command to authenticate with a remote Renku
-deployment. This command will bring up a browser window where you can log in
-using your credentials. Renku CLI receives and stores a secure token that will
-be used for future authentications.
+Description
+~~~~~~~~~~~
+
+Authenticate with a remote Renku deployment. This command will bring up
+a browser window where you can log in using your credentials. Renku CLI
+receives and stores a secure token that will be used for future authentications.
+
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. click:: renku.ui.cli.login:login
+   :prog: renku login
+   :nested: full
+
+Examples
+~~~~~~~~
 
 .. code-block:: console
 

@@ -17,8 +17,25 @@
 # limitations under the License.
 """Get and set Renku repository or global options.
 
-Set values
-~~~~~~~~~~
+Description
+~~~~~~~~~~~
+
+Save useful Renku configuration directives in a simple human-readable ini file.
+The values are used by other renku commands and by interactive sessions.
+
+Check the `Available configuration values`_ section to get more information
+on the available values.
+
+
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. click:: renku.ui.cli.config:config
+   :prog: renku config
+   :nested: full
+
+Examples
+~~~~~~~~
 
 You can set various Renku configuration options, for example the image registry
 URL, with a command like:
@@ -37,9 +54,6 @@ directory.
    :description: Set entry <key> to <value> in renku config.
    :extended:
 
-Remove values
-~~~~~~~~~~~~~
-
 To remove a specific key from configuration use:
 
 .. code-block:: console
@@ -53,33 +67,6 @@ option to remove a global configuration value.
    :group: Config
    :command: $ renku config remove <key>
    :description: Unset entry <key> renku config.
-   :extended:
-
-Query values
-~~~~~~~~~~~~
-
-You can display all configuration values with:
-
-.. code-block:: console
-
-    $ renku config show
-    [renku "interactive"]
-    default_url = /lab
-
-Both local and global configuration files are read. Values in local
-configuration take precedence over global values. Use ``--local`` or
-``--global`` flag to read corresponding configuration only.
-You can provide a KEY to display only its value:
-
-.. code-block:: console
-
-    $ renku config show interactive.default_url
-    default_url = /lab
-
-.. cheatsheet::
-   :group: Config
-   :command: $ renku config show [<key>]
-   :description: Show current configuration.
    :extended:
 
 Available configuration values

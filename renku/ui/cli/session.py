@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,8 +17,21 @@
 # limitations under the License.
 """Manage interactive sessions.
 
-Interactive sessions can be started via the command line interface with different
-providers. Currently two providers are supported: ``docker`` and ``renkulab``.
+Description
+~~~~~~~~~~~
+
+Manage sessions through the command line interface by starting and stopping them.
+It's possible to list the current sessions and to connect to them.
+
+Currently, two providers are supported: ``docker`` and ``renkulab``. More on this
+later.
+
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. click:: renku.ui.cli.session:session
+   :prog: renku session
+   :nested: full
 
 Docker provider
 ~~~~~~~~~~~~~~~

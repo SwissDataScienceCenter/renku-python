@@ -17,11 +17,10 @@
 # limitations under the License.
 """Track provenance of data created by executing programs.
 
-Capture command line execution
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Description
+~~~~~~~~~~~
 
-Tracking execution of your command line script is done by simply adding the
-``renku run`` command before the actual command. This will enable detection of:
+Track the execution of your command line scripts. This will enable detection of:
 
 * arguments (flags),
 * string and integer options,
@@ -32,7 +31,15 @@ It will create a ``Plan`` (Workflow Template) that can be reused and a ``Run``
 which is a record of a past workflow execution for provenance purposes. Refer
 to the :ref:`cli-workflow` documentation for more details on this distinction.
 
-Basic usage is:
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. click:: renku.ui.cli.session:session
+   :prog: renku session
+   :nested: full
+
+Examples
+~~~~~~~~
 
 .. code-block:: console
 

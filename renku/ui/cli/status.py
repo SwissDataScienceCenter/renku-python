@@ -17,12 +17,22 @@
 # limitations under the License.
 """Show status of data files created in the repository.
 
-Inspecting a repository
-~~~~~~~~~~~~~~~~~~~~~~~
+Description
+~~~~~~~~~~~
 
-``renku status`` command can be used to check if there are output files in
-a repository that are outdated and need to be re-generated. Output files get
-outdated due to changes in input data or source code (i.e. dependencies).
+Check if there are output files in a repository that are outdated and need
+to be re-generated. Output files get outdated due to changes in input data
+or source code (i.e. dependencies).
+
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. click:: renku.ui.cli.status:status
+   :prog: renku status
+   :nested: full
+
+Examples
+~~~~~~~~
 
 This command shows a list of output files that need to be updated along with
 a list of modified inputs for each file. It also display deleted inputs files

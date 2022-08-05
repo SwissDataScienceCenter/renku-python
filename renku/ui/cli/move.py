@@ -17,10 +17,25 @@
 # limitations under the License.
 """Move or rename a file, a directory, or a symlink.
 
+Description
+~~~~~~~~~~~
+
 Moving a file that belongs to a dataset will update its metadata to include its
 new path and commit. Moreover, tracking information in an external storage
-(e.g. Git LFS) will be updated. Move operation fails if a destination already
-exists in the repo; use ``--force`` flag to overwrite them.
+(e.g. Git LFS) will be updated.
+
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. click:: renku.ui.cli.move:move
+   :prog: renku mv
+   :nested: full
+
+Examples
+~~~~~~~~
+
+Move operation fails if a destination already exists in the repo;
+use ``--force`` flag to overwrite them.
 
 If you want to move files to another dataset use ``--to-dataset`` along with
 destination's dataset name. This removes source paths from all datasets'

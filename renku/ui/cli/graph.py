@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,16 +17,29 @@
 # limitations under the License.
 """Renku CLI commands for handling of Knowledge Graph data.
 
-Exporting Knowledge Graph data
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Description
+~~~~~~~~~~~
 
-You can export part or all of the Renku Knowledge Graph metadata for the
-current project using the ``renku graph export`` command.
+Export part or all of the Renku Knowledge Graph metadata for the
+current project.
 
 By default, this will export the metadata created in the last commit in the
 project.
 If that commit was not a ``renku`` command that creates metadata, it will
 produce no output.
+
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. click:: renku.ui.cli.graph:graph
+   :prog: renku graph
+   :nested: full
+
+Examples
+~~~~~~~~
+
+Here we create a new dataset and then ``renku graph export`` export the
+created metadata as JSON-LD, the default format.
 
 .. code-block:: console
 
@@ -45,9 +58,6 @@ produce no output.
 
         }
     ]
-
-Here we created a new dataset and then ``renku graph export`` exported the
-created metadata as JSON-LD, the default format.
 
 If you want the Knowledge Graph data for the whole project, you can use
 ``renku graph export --full``. Alternatively, you can get data for a single

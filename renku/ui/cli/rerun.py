@@ -17,8 +17,15 @@
 # limitations under the License.
 r"""Recreate files created by the "run" command.
 
-Recreating files
-~~~~~~~~~~~~~~~~
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. click:: renku.ui.cli.rerun:rerun
+   :prog: renku rerun
+   :nested: full
+
+Examples
+~~~~~~~~
 
 .. image:: ../_static/asciicasts/rerun.delay.gif
    :width: 850

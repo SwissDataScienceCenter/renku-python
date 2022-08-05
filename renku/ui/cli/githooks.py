@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,11 +17,23 @@
 # limitations under the License.
 """Install and uninstall Git hooks.
 
-Prevent modifications of output files
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Description
+~~~~~~~~~~~
 
 The commit hooks are enabled by default to prevent situation when
 some output file is manually modified.
+
+
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. click:: renku.ui.cli.githooks:githooks
+   :prog: renku githooks
+   :nested: full
+
+
+Examples
+~~~~~~~~
 
 .. code-block:: console
 

@@ -17,8 +17,15 @@
 # limitations under the License.
 """Manage the set of CWL files created by ``renku`` commands.
 
-Runs and Plans
-~~~~~~~~~~~~~~
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. click:: renku.ui.cli.workflow:workflow
+   :prog: renku workflow
+   :nested: full
+
+Description
+~~~~~~~~~~~
 
 Renku records two different kinds of metadata when a workflow is executed,
 ``Run`` and ``Plan``.
@@ -1172,7 +1179,7 @@ def execute(
     help="Choose an output format.",
 )
 @click.option(
-    "-i", "--interactive", is_flag=True, help="Interactively explore run graph. Only avilable for console output"
+    "-i", "--interactive", is_flag=True, help="Interactively explore run graph. Only available for console output"
 )
 @click.option("--no-color", is_flag=True, help="Don't colorize console output.")
 @click.option("--pager", is_flag=True, help="Force use pager (less) for console output.")

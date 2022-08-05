@@ -50,6 +50,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinxcontrib.spelling",
+    "sphinx_click",
     "sphinx_tabs.tabs",
     "cheatsheet",
 ]
