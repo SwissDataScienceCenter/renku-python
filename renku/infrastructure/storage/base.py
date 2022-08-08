@@ -49,21 +49,6 @@ class RCloneBaseStorage(IStorage):
         else:
             return True
 
-    def mount(self, uri: str, mount_location: Path):
-        """Mount the path from the uri to a specific location locally."""
-        if not mount_location.exists():
-            raise errors.DirectoryNotFound(mount_location)
-        if not mount_location.is_dir():
-            raise errors.ExpectedDirectoryGotFile(mount_location)
-        if os.path.ismount(mount_location):
-            raise errors.ExpectedDirectoryGotMountPoint(mount_location)
-        if next(mount_location.iterdir(), None):
-            raise errors.DirectoryNotEmptyError(mount_location)
-        if not self.exists(uri):
-            raise errors.StorageObjectNotFound
-        self.set_configurations()
-        execute_rclone_command("mount", "--daemon", uri, str(mount_location.absolute()))
-
     def get_hashes(self, uri: str, sources: List[Union[str, Path]] = None, hash_type: str = "md5") -> List[FileHash]:
         """Download hashes with rclone and parse them.
 
@@ -108,7 +93,7 @@ def execute_rclone_command(command: str, *args: str, **kwargs) -> str:
     """Execute an R-clone command."""
     try:
         result = subprocess.run(
-            ("rclone", command, *transform_kwargs(**kwargs), *args),
+            ("rclone", "--config", "''", command, *transform_kwargs(**kwargs), *args),
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,

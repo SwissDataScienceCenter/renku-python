@@ -23,7 +23,7 @@ from typing import Tuple
 
 def check_url(url: str) -> Tuple[bool, bool]:
     """Check if a url is local/remote and if it contains a git repository."""
-    # NOTE: Supported scheme before refactoring were: "", "file", "http", "https", "git+https", "git+ssh", "s3"
+    # NOTE: Supported scheme before refactoring were: "", "file", "http", "https", "git+https", "git+ssh"
     u = urllib.parse.urlparse(url)
 
     is_remote = u.scheme not in ("", "file") or url.lower().startswith("git@")

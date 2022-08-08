@@ -21,8 +21,6 @@ from typing import TYPE_CHECKING, List
 
 import click
 
-from renku.core.util import communication
-
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderParameter
 
@@ -99,9 +97,6 @@ def create_options(providers, parameter_function: str):
                     default=param.default,
                     multiple=param.multiple,
                 )(f)
-
-                communication.warn(provider)
-                communication.warn(param)
 
             name = f"{provider.name} configuration"
             if i == len(providers) - 1:
