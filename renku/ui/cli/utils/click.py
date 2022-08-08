@@ -17,7 +17,14 @@
 # limitations under the License.
 """Click utilities."""
 
+from typing import TYPE_CHECKING, List
+
 import click
+
+from renku.core.util import communication
+
+if TYPE_CHECKING:
+    from renku.core.dataset.providers.models import ProviderParameter
 
 
 class CaseInsensitiveChoice(click.Choice):
@@ -74,7 +81,7 @@ def create_options(providers, parameter_function: str):
         from click_option_group import optgroup
 
         for i, provider in enumerate(sorted(providers, reverse=True, key=lambda p: p.name.lower())):
-            parameters = getattr(provider, parameter_function)()
+            parameters: List["ProviderParameter"] = getattr(provider, parameter_function)()
             for j, param in enumerate(parameters):
                 param_help = f"\b\n{param.help}\n " if j == 0 else param.help  # NOTE: add newline after a group
 
@@ -92,6 +99,9 @@ def create_options(providers, parameter_function: str):
                     default=param.default,
                     multiple=param.multiple,
                 )(f)
+
+                communication.warn(provider)
+                communication.warn(param)
 
             name = f"{provider.name} configuration"
             if i == len(providers) - 1:

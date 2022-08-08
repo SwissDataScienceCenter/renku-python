@@ -20,7 +20,7 @@
 import abc
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Union
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials
@@ -85,10 +85,10 @@ class IStorage(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_hashes(self, uri: str) -> List[FileHash]:
+    def get_hashes(self, uri: str, sources: Optional[List[Union[str, Path]]]) -> List[FileHash]:
         """Get the hashes of all files at the uri.
 
-        The return value is a list of hashes and a flag that indicates whether all files
-        at the uri had hashes (True) or some did not (False).
+        If 'sources' is passed only get the hashes for the specific files at tht uri specified by 'sources'.
+        The return value is a list of hashes.
         """
         raise NotImplementedError

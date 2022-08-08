@@ -17,13 +17,11 @@
 # limitations under the License.
 """Base storage handler."""
 
-import concurrent.futures
 import json
 import os
 import subprocess
-from dataclasses import asdict
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Union
 
 from renku.core import errors
 from renku.core.interface.storage import FileHash, IStorage
@@ -66,7 +64,7 @@ class RCloneBaseStorage(IStorage):
         self.set_configurations()
         execute_rclone_command("mount", "--daemon", uri, str(mount_location.absolute()))
 
-    def get_hashes(self, uri: str, hash_type: str = "md5") -> List[FileHash]:
+    def get_hashes(self, uri: str, sources: List[Union[str, Path]] = None, hash_type: str = "md5") -> List[FileHash]:
         """Download hashes with rclone and parse them.
 
         Returns a tuple containing a list of parsed hashes.
@@ -81,8 +79,16 @@ class RCloneBaseStorage(IStorage):
         ]
         """
         self.set_configurations()
-        hashes_raw = execute_rclone_command("lsjson", "--hash", "-R", "--files-only", uri)
-        hashes = json.loads(hashes_raw)
+        if not sources:
+            hashes_raw = execute_rclone_command("lsjson", "--hash", "-R", "--files-only", uri)
+            hashes = json.loads(hashes_raw)
+        else:
+            hashes = [
+                json.loads(
+                    execute_rclone_command("lsjson", "--hash", "--stat", f"{uri.rstrip('/')}/{str(source).lstrip('/')}")
+                )
+                for source in sources
+            ]
         output = []
         for hash in hashes:
             hash_content = hash.get("Hashes", {}).get(hash_type)

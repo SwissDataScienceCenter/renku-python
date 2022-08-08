@@ -21,6 +21,7 @@ import os
 import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Set, Union, cast
+from urllib.parse import urlparse
 
 from renku.core import errors
 from renku.core.dataset.constant import renku_pointers_path
@@ -66,6 +67,16 @@ def add_to_dataset(
 
     _check_available_space(client, urls, total_size=total_size)
 
+    if not create and storage:
+        raise errors.ParameterError(
+            "Using the '--storage' parameter is only required if the '--create' parameter is also used to "
+            "create the dataset at the same time as when data is added to it"
+        )
+    if create and not storage and any([url.lower().startswith("s3://") for url in urls]):
+        raise errors.ParameterError(
+            "Creating a S3 dataset at the same time as adding data requires the '--storage' parameter to be set"
+        )
+
     try:
         with DatasetContext(name=dataset_name, create=create, datadir=datadir, storage=storage) as dataset:
             destination_path = _create_destination_directory(client, dataset, destination)
@@ -93,9 +104,7 @@ def add_to_dataset(
                     "Ignored adding paths under a .git directory:\n\t" + "\n\t".join(str(p) for p in paths_to_avoid)
                 )
 
-            files_to_commit = {
-                f.get_absolute_commit_path(client.path) for f in files if not f.gitignored
-            }
+            files_to_commit = {f.get_absolute_commit_path(client.path) for f in files if not f.gitignored}
 
             if not force:
                 files, files_to_commit = _check_ignored_files(client, files_to_commit, files)
@@ -159,20 +168,10 @@ def _download_files(
     **kwargs,
 ) -> List["DatasetAddMetadata"]:
     """Process file URLs for adding to a dataset."""
-    if dataset.storage and dataset.storage.lower().startswith("s3://"):
-        if len(urls) == 0:
-            raise errors.ParameterError("No URL is specified")
-        if len(urls) > 1:
-            raise errors.ParameterError("Can only add 1 uri with S3 datasets.")
-        if not urls[0].lower().startswith("s3://"):
-            raise errors.ParameterError("Only files from S3 buckets can be added to S3 datasets.")
-        if sources:
-            raise errors.ParameterError("Can not use '--source' with S3 datasets.")
-        if len(dataset.files) > 0:
-            raise errors.ParameterError(
-                "This S3 dataset already contains files, cannot add more. "
-                "You can create another dataset to add more S3 data."
-            )
+    if dataset.storage and any([urlparse(dataset.storage).scheme != urlparse(url).scheme for url in urls]):
+        raise errors.ParameterError(
+            f"The scheme of some urls {urls} does not match the defined storage url {dataset.storage}."
+        )
 
     if importer:
         return importer.download_files(client=client, destination=destination, extract=extract)
@@ -187,7 +186,7 @@ def _download_files(
     for url in urls:
         _, is_git = check_url(url)
 
-        if not is_git and sources:
+        if not is_git and sources and not urls[0].lower().startswith("s3://"):
             raise errors.ParameterError("Cannot use '-s/--src/--source' with URLs or local files.")
 
         provider = ProviderFactory.get_add_provider(uri=url)

@@ -21,11 +21,10 @@ import re
 import urllib
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple, Type
-from urllib.parse import urlparse
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials, ProviderPriority
-from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
+from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata, ProviderParameter
 from renku.core.plugin import hookimpl
 from renku.core.util.dispatcher import get_repository, get_storage
 from renku.core.util.metadata import prompt_for_credentials
@@ -71,24 +70,54 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
         return True
 
     @staticmethod
+    def get_add_parameters() -> List["ProviderParameter"]:
+        """Returns parameters that can be set for add."""
+        from renku.core.dataset.providers.models import ProviderParameter
+
+        return [
+            ProviderParameter(
+                "sources",
+                flags=["s", "source"],
+                default=None,
+                help="Path(s) within the s3 bucket that should be added",
+                multiple=True,
+                type=str,
+            ),
+            ProviderParameter(
+                "storage",
+                flags=["storage"],
+                default=None,
+                help="Uri for the S3 bucket when creating the dataset at the same time when running 'add'",
+                multiple=False,
+                type=str,
+            ),
+        ]
+
+    @staticmethod
     def add(client: "LocalClient", uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
         """Add files from a URI to a dataset."""
-        if re.match(r"\*|\?", uri):
+        dataset = kwargs.get("dataset")
+        sources = kwargs.get("sources", [])
+        if dataset and dataset.storage and not dataset.storage.lower().startswith("s3://"):
+            raise errors.ParameterError(
+                "Files from S3 buckets can only be added to datasets with S3 storage, "
+                f"the dataset {dataset.name} has non-S3 storage {dataset.storage}."
+            )
+        if re.search(r"[\*\?]", uri):
             raise errors.ParameterError("Wildcards like '*' or '?' are not supported in the uri for S3 datasets.")
         provider = S3Provider(uri=uri)
         credentials = S3Credentials(provider=provider)
         prompt_for_credentials(credentials)
 
         storage = get_storage(provider=provider, credentials=credentials)
-        dataset = kwargs.get("dataset")
         if dataset and dataset.storage and not is_uri_subfolder(dataset.storage, uri):
             raise errors.ParameterError(
-                f"S3 uri {uri} should be located within or at the storage uri {dataset.storage}. "
+                f"S3 uri {uri} should be located within or at the storage uri {dataset.storage}."
             )
         if not storage.exists(uri):
             raise errors.ParameterError(f"S3 bucket '{uri}' doesn't exists.")
 
-        hashes = storage.get_hashes(uri=uri)
+        hashes = storage.get_hashes(uri=uri, sources=sources)
         return [
             DatasetAddMetadata(
                 entity_path=Path(destination).relative_to(client.repository.path) / hash.path,
@@ -119,9 +148,7 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
             raise errors.ParameterError(f"S3 bucket '{self.bucket}' doesn't exists.")
 
         repository = get_repository()
-        repository.add_ignored_pattern(
-            pattern=str(dataset.get_datadir().absolute().relative_to(repository.path.absolute()))
-        )
+        repository.add_ignored_pattern(pattern=str(dataset.get_datadir()))
 
 
 class S3Credentials(ProviderCredentials):

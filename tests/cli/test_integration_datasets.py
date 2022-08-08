@@ -2004,71 +2004,89 @@ def test_create_with_unauthorized_s3_backend(runner, client, global_config_dir, 
 
 
 @pytest.mark.integration
-@retry_failed
-def test_adding_data_from_s3(runner, client, create_s3_dataset, mocker):
+@pytest.mark.parametrize(
+    "args,uris,sources,storage_uri",
+    [
+        (["--create", "--storage", "s3://giab"], ["s3://giab"], [], None),
+        ([], ["s3://giab/tools", "s3://giab/use_cases"], [], "s3://giab"),
+        ([], ["s3://giab"], [], "s3://giab"),
+        ([], ["s3://giab"], ["tools", "changelog_details"], "s3://giab"),
+    ],
+)
+def test_adding_data_from_s3(runner, client, create_s3_dataset, mocker, args, uris, sources, storage_uri):
     """Ensure metadata from a bucket can be added."""
     mock_s3_storage = mocker.patch("renku.infrastructure.storage.s3.S3Storage", autospec=True)
     instance_s3_storage = mock_s3_storage.return_value
-    storage_uri = "s3://giab"
     dataset_name = "test-s3-dataset"
-    instance_s3_storage.get_hashes.return_value = [
-        FileHash(base_uri=storage_uri, path="test/1", hash="random_hash_1", hash_type="md5")
-    ]
-    res = create_s3_dataset(dataset_name, storage_uri)
+    if sources:
+        instance_s3_storage.get_hashes.return_value = [
+            FileHash(base_uri=uris[0], path=source, hash=source, hash_type="md5") for source in sources
+        ]
+    else:
+        instance_s3_storage.get_hashes.return_value = [
+            FileHash(base_uri=uri, path=uri[5:], hash=uri, hash_type="md5")  # uri[5:] removes s3:// from beginning
+            for uri in uris
+        ]
+    if storage_uri:
+        res = create_s3_dataset(dataset_name, storage_uri)
+        assert res.exit_code == 0
+    sources_args = []
+    for source in sources:
+        sources_args.append("--source")
+        sources_args.append(source)
+    res = runner.invoke(cli, ["dataset", "add", dataset_name, *args, *uris, *sources_args], input="\n\nn\n")
     assert res.exit_code == 0
-    res = runner.invoke(cli, ["dataset", "add", dataset_name, "s3://giab"])
-    assert res.exit_code == 0
+    if sources:
+        assert instance_s3_storage.get_hashes.call_count == 1
+    else:
+        assert instance_s3_storage.get_hashes.call_count == len(uris)
     res = runner.invoke(cli, ["dataset", "ls-files"])
     assert res.exit_code == 0
-    assert "test/1" in res.stdout
+    if sources:
+        assert all([source in res.stdout for source in sources])
+    else:
+        assert all([uri[5:] in res.stdout for uri in uris])
 
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    "args,expected_error_msg",
+    "cmd_args,expected_error_msg",
     [
-        (["s3://giab", "s3://giab/tools"], "Can only add 1 uri"),
-        (["s3://giab", "--source", "test"], "Can not use '--source' with S3 datasets"),
+        (
+            ["--create", "s3://giab/tools"],
+            "Creating a S3 dataset at the same time as adding data requires the '--storage' parameter to be set",
+        ),
+        (
+            ["s3://giab", "--storage", "s3://giab"],
+            "Using the '--storage' parameter is only required if the '--create' parameter is also used",
+        ),
         (
             ["https://github.com/SwissDataScienceCenter/renku-python/raw/develop/README.rst"],
-            "Only files from S3 buckets can be added to S3 datasets",
+            "does not match the defined storage url",
+        ),
+        (
+            ["s3://giab/*"],
+            "Wildcards like '*' or '?' are not supported in the uri for S3 datasets",
+        ),
+        (
+            ["s3://giab/test?.txt"],
+            "Wildcards like '*' or '?' are not supported in the uri for S3 datasets",
         ),
     ],
 )
-@retry_failed
-@pytest.mark.vcr
-def test_invalid_s3_args(runner, client, create_s3_dataset, args, expected_error_msg, mocker):
+def test_invalid_s3_args(runner, client, create_s3_dataset, cmd_args, expected_error_msg, mocker):
     """Test invalid arguments for adding data to S3 dataset."""
     mock_s3_storage = mocker.patch("renku.infrastructure.storage.s3.S3Storage", autospec=True)
     storage_uri = "s3://giab"
     dataset_name = "test-s3-dataset"
-    res = create_s3_dataset(dataset_name, storage_uri)
-    instance_s3_storage = mock_s3_storage.return_value
-    instance_s3_storage.exists.assert_called_with(storage_uri)
-    assert res.exit_code == 0
-    res = runner.invoke(cli, ["dataset", "add", dataset_name, *args])
+    if "--create" not in cmd_args:
+        instance_s3_storage = mock_s3_storage.return_value
+        res = create_s3_dataset(dataset_name, storage_uri)
+        assert res.exit_code == 0
+        instance_s3_storage.exists.assert_called_with(storage_uri)
+    res = runner.invoke(cli, ["dataset", "add", dataset_name, *cmd_args])
     assert res.exit_code != 0
     assert expected_error_msg in res.stderr
-
-
-@pytest.mark.integration
-@retry_failed
-def test_adding_s3_data_twice_not_allowed(runner, client, create_s3_dataset, mocker):
-    """Ensure that more data cannot be added to a populated S3 dataset."""
-    mock_s3_storage = mocker.patch("renku.infrastructure.storage.s3.S3Storage", autospec=True)
-    instance_s3_storage = mock_s3_storage.return_value
-    storage_uri = "s3://giab"
-    dataset_name = "test-s3-dataset"
-    instance_s3_storage.get_hashes.return_value = [
-        FileHash(base_uri=storage_uri, path="test/1", hash="random_hash_1", hash_type="md5")
-    ]
-    res = create_s3_dataset(dataset_name, storage_uri)
-    assert res.exit_code == 0
-    res = runner.invoke(cli, ["dataset", "add", dataset_name, "s3://giab"])
-    assert res.exit_code == 0
-    res = runner.invoke(cli, ["dataset", "add", dataset_name, "s3://giab/tools"])
-    assert res.exit_code != 0
-    assert "This S3 dataset already contains files, cannot add more" in res.stderr
 
 
 @pytest.mark.integration
@@ -2082,7 +2100,6 @@ def test_adding_s3_data_twice_not_allowed(runner, client, create_s3_dataset, moc
         ("s3://giab/1/2/3", "s3://giab/1/3/2"),
     ],
 )
-@retry_failed
 def test_adding_s3_data_outside_sub_path_not_allowed(runner, client, create_s3_dataset, mocker, storage_uri, add_uri):
     """Ensure that data from bucket that does not match storage bucket name or path cannot be added."""
     mocker.patch("renku.infrastructure.storage.s3.S3Storage", autospec=True)

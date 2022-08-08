@@ -853,9 +853,8 @@ def add_provider_options(*param_decls, **attrs):
     type=click.Path(),
     help="Dataset's data directory (defaults to 'data/<dataset name>').",
 )
-@click.option("-s", "--storage", default=None, help="Define a storage backend for the created dataset")
 @add_provider_options()
-def add(name, urls, force, overwrite, create, destination, datadir, storage, **kwargs):
+def add(name, urls, force, overwrite, create, destination, datadir, **kwargs):
     """Add data to a dataset."""
     from renku.command.dataset import add_to_dataset_command
     from renku.ui.cli.utils.callback import ClickCallback
@@ -869,7 +868,6 @@ def add(name, urls, force, overwrite, create, destination, datadir, storage, **k
         create=create,
         destination=destination,
         datadir=datadir,
-        storage=storage,
         **kwargs,
     )
     click.secho("OK", fg=color.GREEN)

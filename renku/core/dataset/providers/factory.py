@@ -36,7 +36,7 @@ class ProviderFactory:
     def get_providers():
         """Return a list of providers sorted based on their priorities (higher priority providers come first)."""
         providers = get_supported_dataset_providers()
-        return sorted(providers, key=lambda p: p.priority)
+        return sorted(providers, key=lambda p: p.priority.value)
 
     @staticmethod
     def get_add_provider(uri) -> "ProviderApi":
