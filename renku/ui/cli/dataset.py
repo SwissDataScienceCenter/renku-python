@@ -38,7 +38,9 @@ Examples
 
 Create an empty dataset inside a Renku project:
 
-Create, edit and manage the datasets in your Renku project.
+.. image:: ../_static/asciicasts/dataset-create.delay.gif
+   :width: 850
+   :alt: Create a Dataset
 
 .. cheatsheet::
    :group: Datasets
@@ -107,6 +109,20 @@ Deleting a dataset:
    :description: Remove a dataset.
    :extended:
 
+Creating a dataset with a storage backend:
+
+By passing a storage URI with the ``--storage`` option, you can tell Renku that
+the data for the dataset is stored in a remote storage. At the moment, Renku
+supports only S3 backends. For example:
+
+.. code-block:: console
+
+    $ renku dataset create s3-data --storage s3://bucket-name/path
+
+Renku prompts for your S3 credentials and can store them for future uses.
+
+.. note:: Data directory for datasets that have a storage backend is ignored by
+    Git. This is needed to avoid committing pulled data from a remote storage to Git.
 
 Working with data
 ~~~~~~~~~~~~~~~~~
