@@ -23,7 +23,7 @@ Description
 Clone a project and set up everything to use `renku` right away.
 
 This command is preferred over using ``git clone`` because you don't need
-to manually set up the required Git hooks, nor to enables Git-LFS. It takes
+to manually set up the required Git hooks, nor enable Git-LFS. It takes
 care of that automatically.
 
 Mind that, by default, ``renku clone`` pulls data from Git-LFS after cloning.
