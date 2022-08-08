@@ -20,7 +20,7 @@ r"""Create an empty Renku project or reinitialize an existing one.
 Description
 ~~~~~~~~~~~
 
-Use an existing renku templates, either official or from the community, to
+Use existing renku templates, either official or from the community, to
 create a new Renku project or Renku-ize an existing one.
 
 Commands and options

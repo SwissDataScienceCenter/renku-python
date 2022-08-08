@@ -38,7 +38,7 @@ Commands and options
 Examples
 ~~~~~~~~
 
-Here we create a new dataset and then ``renku graph export`` export the
+Here we create a new dataset and then use ``renku graph export`` to export the
 created metadata as JSON-LD, the default format.
 
 .. code-block:: console
