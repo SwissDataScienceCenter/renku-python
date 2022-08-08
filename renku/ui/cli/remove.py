@@ -22,7 +22,7 @@ Description
 
 Remove a file from then project, updating:
 
-* its metadata, if the file belong to a dataset
+* its metadata, if the file belongs to a dataset
 * the tracking information, if the file is stored in an external storage
   (using Git LFS).
 
