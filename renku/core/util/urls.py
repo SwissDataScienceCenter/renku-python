@@ -70,6 +70,11 @@ def get_path(url: str) -> str:
     return urllib.parse.urlparse(url).path
 
 
+def get_scheme(uri: str) -> str:
+    """Return scheme of a URI."""
+    return urllib.parse.urlparse(uri).scheme.lower()
+
+
 @inject.autoparams("client_dispatcher")
 def parse_authentication_endpoint(
     client_dispatcher: IClientDispatcher, endpoint: Optional[str] = None, use_remote: bool = False

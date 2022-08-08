@@ -1,4 +1,4 @@
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -16,11 +16,14 @@
 """API for providers."""
 
 import abc
+from collections import UserDict
 from enum import IntEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from renku.core import errors
+from renku.core.util.metadata import get_canonical_key, read_credentials, store_credentials
+from renku.core.util.util import NO_VALUE, NoValueType
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import (
@@ -51,6 +54,9 @@ class ProviderApi(abc.ABC):
     priority: Optional[ProviderPriority] = None
     name: Optional[str] = None
 
+    def __init__(self, uri: Optional[str], **kwargs):
+        self._uri: str = uri or ""
+
     def __init_subclass__(cls, **kwargs):
         for required_property in ("priority", "name"):
             if getattr(cls, required_property, None) is None:
@@ -71,6 +77,11 @@ class ProviderApi(abc.ABC):
         return False
 
     @staticmethod
+    def supports_create() -> bool:
+        """Whether this provider supports creating a dataset."""
+        return False
+
+    @staticmethod
     def supports_export() -> bool:
         """Whether this provider supports dataset export."""
         return False
@@ -83,14 +94,6 @@ class ProviderApi(abc.ABC):
     @staticmethod
     def add(client: "LocalClient", uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
         """Add files from a URI to a dataset."""
-        raise NotImplementedError
-
-    def get_exporter(self, dataset: "Dataset", *, tag: Optional["DatasetTag"], **kwargs) -> "ExporterApi":
-        """Get export manager."""
-        raise NotImplementedError
-
-    def get_importer(self, uri, **kwargs) -> "ImporterApi":
-        """Get import manager."""
         raise NotImplementedError
 
     @staticmethod
@@ -107,6 +110,23 @@ class ProviderApi(abc.ABC):
     def get_import_parameters() -> List["ProviderParameter"]:
         """Returns parameters that can be set for import."""
         return []
+
+    @property
+    def uri(self) -> str:
+        """Return provider's URI."""
+        return self._uri
+
+    def get_exporter(self, dataset: "Dataset", *, tag: Optional["DatasetTag"], **kwargs) -> "ExporterApi":
+        """Get export manager."""
+        raise NotImplementedError
+
+    def get_importer(self, **kwargs) -> "ImporterApi":
+        """Get import manager."""
+        raise NotImplementedError
+
+    def on_create(self, dataset: "Dataset") -> None:
+        """Hook to perform provider-specific actions on a newly-created dataset."""
+        raise NotImplementedError
 
 
 class ImporterApi(abc.ABC):
@@ -215,3 +235,67 @@ class ExporterApi(abc.ABC):
     def export(self, **kwargs) -> str:
         """Execute export process."""
         raise NotImplementedError
+
+
+class ProviderCredentials(abc.ABC, UserDict):
+    """Credentials of a provider.
+
+    NOTE: An empty string, "", is a valid value. ``NO_VALUE`` means that the value for a key is not set.
+    """
+
+    def __init__(self, provider: ProviderApi):
+        super().__init__()
+        self._provider: ProviderApi = provider
+        self.data: Dict[str, Union[str, NoValueType]] = {
+            key: NO_VALUE for key in self.get_canonical_credentials_names()
+        }
+
+    @staticmethod
+    @abc.abstractmethod
+    def get_credentials_names() -> Tuple[str, ...]:
+        """Return a tuple of the required credentials for a provider."""
+        raise NotImplementedError
+
+    @property
+    def provider(self):
+        """Return the associated provider instance."""
+        return self._provider
+
+    def get_credentials_names_with_no_value(self) -> Tuple[str, ...]:
+        """Return a tuple of credential keys that don't have a valid value."""
+        return tuple(key for key, value in self.items() if value is NO_VALUE)
+
+    def get_canonical_credentials_names(self) -> Tuple[str, ...]:
+        """Return canonical credentials names that can be used as config keys."""
+        return tuple(get_canonical_key(key) for key in self.get_credentials_names())
+
+    def get_credentials_section_name(self) -> str:
+        """Get section name for storing credentials.
+
+        NOTE: This methods should be overridden by subclasses to allow multiple credentials per providers if needed.
+        """
+        return self.provider.name.lower()  # type: ignore
+
+    def read(self) -> Dict[str, Union[str, NoValueType]]:
+        """Read credentials from the config and return them. Set non-existing values to None."""
+        section = self.get_credentials_section_name()
+
+        def read_and_convert_credentials(key) -> Union[str, NoValueType]:
+            value = read_credentials(section=section, key=key)
+            if value is None:
+                return NO_VALUE
+
+            return value
+
+        data = {key: read_and_convert_credentials(key) for key in self.get_canonical_credentials_names()}
+        self.data.update(data)
+
+        return self.data
+
+    def store(self) -> None:
+        """Store credentials globally."""
+        section = self.get_credentials_section_name()
+
+        for key, value in self.items():
+            if value is not None:
+                store_credentials(section=section, key=key, value=value)

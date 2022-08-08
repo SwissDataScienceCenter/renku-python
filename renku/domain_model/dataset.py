@@ -318,6 +318,7 @@ class Dataset(Persistent):
     """Represent a dataset."""
 
     date_modified: Optional[datetime] = None  # type: ignore
+    storage: Optional[str] = None
     datadir: Optional[str] = None
 
     def __init__(
@@ -341,6 +342,7 @@ class Dataset(Persistent):
         name: Optional[str] = None,
         project_id: Optional[str] = None,
         same_as: Optional[Url] = None,
+        storage: Optional[str] = None,
         title: Optional[str] = None,
         version: Optional[str] = None,
         datadir: Optional[Path] = None,
@@ -381,6 +383,7 @@ class Dataset(Persistent):
         self.license: Optional[str] = license
         self.project_id: Optional[str] = project_id
         self.same_as: Optional[Url] = same_as
+        self.storage: Optional[str] = storage
         self.title: Optional[str] = title
         self.version: Optional[str] = version
         self.annotations: List["Annotation"] = annotations or []
@@ -643,6 +646,7 @@ class DatasetDetailsJson(marshmallow.Schema):
     description = marshmallow.fields.String()
     keywords = marshmallow.fields.List(marshmallow.fields.String())
     identifier = marshmallow.fields.String()
+    storage = marshmallow.fields.String()
 
     annotations = marshmallow.fields.List(marshmallow.fields.Nested(AnnotationJson))
 

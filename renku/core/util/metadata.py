@@ -28,9 +28,12 @@ from packaging.version import Version
 
 from renku.core import errors
 from renku.core.constant import RENKU_HOME, RENKU_TMP
+from renku.core.util import communication
+from renku.core.util.dispatcher import get_client
 from renku.core.util.os import is_subpath
 
 if TYPE_CHECKING:
+    from renku.core.dataset.providers.api import ProviderCredentials
     from renku.domain_model.provenance.agent import Person
 
 
@@ -128,3 +131,45 @@ def make_project_temp_dir(client_path: Path) -> Path:
     base.mkdir(parents=True, exist_ok=True)
 
     return Path(tempfile.mkdtemp(dir=base))
+
+
+def store_credentials(section: str, key: str, value: str) -> None:
+    """Write provider's credentials."""
+    section, key = _get_section_and_key(section=section, key=key)
+    get_client().set_value(section=section, key=key, value=value, global_only=True)
+
+
+def read_credentials(section: str, key: str) -> Optional[str]:
+    """Read provider's credentials."""
+    section, key = _get_section_and_key(section=section, key=key)
+    return get_client().get_value(section=section, key=key)
+
+
+def get_canonical_key(key: str) -> str:
+    """Make a consistent configuration key."""
+    return key.replace(" ", "-").lower()
+
+
+def _get_section_and_key(section: str, key: str) -> Tuple[str, str]:
+    section = "http" if section.lower() == "renku" else section
+
+    return section, get_canonical_key(key)
+
+
+def prompt_for_credentials(provider_credentials: "ProviderCredentials") -> None:
+    """Prompt for provider credentials if needed and update and store them."""
+    if not provider_credentials:
+        return
+
+    provider_credentials.read()
+
+    prompt_to_store = False
+    for key in provider_credentials.get_credentials_names_with_no_value():
+        prompt_to_store = True
+        value = communication.prompt(f"Enter a value for '{key}'", type=str, default="")
+
+        provider_credentials[key] = value
+
+    if prompt_to_store:
+        if communication.confirm("Store credentials?", default=True):
+            provider_credentials.store()

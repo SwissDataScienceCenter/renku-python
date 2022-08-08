@@ -605,6 +605,7 @@ def test_list_datasets_view(svc_client_with_repo):
         "creators",
         "keywords",
         "annotations",
+        "storage",
         "datadir",
     } == set(response.json["result"]["datasets"][0].keys())
 
@@ -667,6 +668,7 @@ def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo_url):
         "creators",
         "keywords",
         "annotations",
+        "storage",
         "datadir",
     } == set(response.json["result"]["datasets"][0].keys())
 
@@ -784,6 +786,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
         "created_at",
         "keywords",
         "annotations",
+        "storage",
         "datadir",
     } == set(response.json["result"]["datasets"][0].keys())
 

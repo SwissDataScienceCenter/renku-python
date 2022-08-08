@@ -15,4 +15,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Data registry integration."""
+"""S3 storage handler."""
+
+from renku.infrastructure.storage.base import RCloneBaseStorage, get_rclone_env_var_name, set_rclone_env_var
+
+
+class S3Storage(RCloneBaseStorage):
+    """S3 storage handler."""
+
+    def set_configurations(self):
+        """Set required configurations for rclone to access the storage."""
+        super().set_configurations()
+
+        # NOTE: Set RCLONE_CONFIG_MYS3_TYPE
+        name = get_rclone_env_var_name(provider_name=self.provider.name, name="TYPE")
+        set_rclone_env_var(name=name, value="s3")
+
+        # NOTE: Set RCLONE_CONFIG_S3_PROVIDER
+        name = get_rclone_env_var_name(provider_name=self.provider.name, name="PROVIDER")
+        set_rclone_env_var(name=name, value="AWS")

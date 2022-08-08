@@ -724,7 +724,7 @@ jobs:
       - name: Install system packages
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y libyaml-0-2 libyaml-dev
+          sudo apt-get install -y libyaml-0-2 libyaml-dev rclone
       - uses: actions/cache@master
         id: dependency-cache
         with:
@@ -815,7 +815,7 @@ jobs:
       - name: Install system packages
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y libyaml-0-2 libyaml-dev
+          sudo apt-get install -y libyaml-0-2 libyaml-dev rclone
       - uses: actions/cache@master
         id: dependency-cache
         with:
@@ -914,6 +914,7 @@ jobs:
           python -m pip install .[all]
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
+          brew install rclone
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false

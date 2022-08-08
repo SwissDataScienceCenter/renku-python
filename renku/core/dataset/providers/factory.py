@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -47,7 +47,21 @@ class ProviderFactory:
 
             try:
                 if provider.supports(uri):
-                    return provider()
+                    return provider(uri=uri)
+            except BaseException as e:
+                communication.warn(f"Couldn't test provider {provider}: {e}")
+
+        raise errors.DatasetProviderNotFound(uri=uri)
+
+    @staticmethod
+    def get_create_provider(uri) -> "ProviderApi":
+        """Get a create provider based on uri."""
+        for provider in ProviderFactory.get_providers():
+            if not provider.supports_create():
+                continue
+            try:
+                if provider.supports(uri):
+                    return provider(uri=uri)
             except BaseException as e:
                 communication.warn(f"Couldn't test provider {provider}: {e}")
 
@@ -70,7 +84,7 @@ class ProviderFactory:
 
             try:
                 if provider.supports(uri):
-                    return provider(is_doi=is_doi_)
+                    return provider(uri=uri, is_doi=is_doi_)
             except BaseException as e:
                 warning += f"Couldn't test provider {provider}: {e}\n"
 
@@ -84,6 +98,6 @@ class ProviderFactory:
         """Get provider from a given name."""
         provider_name = provider_name.lower()
         try:
-            return next(p for p in ProviderFactory.get_providers() if p.name.lower() == provider_name)()
+            return next(p for p in ProviderFactory.get_providers() if p.name.lower() == provider_name)(uri=None)
         except StopIteration:
             raise errors.DatasetProviderNotFound(name=provider_name)
