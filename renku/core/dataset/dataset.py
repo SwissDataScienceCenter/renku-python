@@ -1160,6 +1160,9 @@ def filter_dataset_files(
     records = []
     unused_names = set(names) if names is not None else set()
 
+    if ignore:
+        unused_names = unused_names - set(ignore)
+
     for dataset in dataset_gateway.get_all_active_datasets():
         if (names and dataset.name not in names) or (ignore and dataset.name in ignore):
             continue

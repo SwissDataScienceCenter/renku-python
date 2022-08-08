@@ -1694,6 +1694,47 @@ def test_lfs_hook_can_be_avoided(runner, project, subdirectory, large_file):
     assert "OK" in result.output
 
 
+def test_datadir_hook(runner, client, subdirectory):
+    """Test pre-commit hook fir checking datadir files."""
+    datadir = client.path / "test"
+    datadir.mkdir()
+
+    result = runner.invoke(cli, ["--no-external-storage", "dataset", "create", "--data-dir", str(datadir)])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    file = datadir / "new_file"
+    file.write_text("some updates")
+    file2 = datadir / "another_new_file"
+    file2.write_text("some updates")
+
+    client.repository.add(all=True)
+
+    # Commit fails when file is not tracked in LFS
+    with pytest.raises(errors.GitCommandError) as e:
+        client.repository.commit("datadir files not in dataset")
+
+    assert "Files in datasets data directory that aren't up to date" in e.value.stderr
+
+    assert str(file) in e.value.stderr
+    assert str(file2) in e.value.stderr
+
+    result = runner.invoke(
+        cli, ["--no-external-storage", "dataset", "update", "-c", "--all", "--no-remote", "--no-external"]
+    )
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    client.repository.commit("datadir files not in dataset")
+
+    result = runner.invoke(cli, ["config", "set", "check_datadir_files", "false"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    file3 = datadir / "yet_another_new_file"
+    file3.write_text("some updates")
+
+    client.repository.add(all=True)
+    client.repository.commit("datadir files not in dataset")
+
+
 @pytest.mark.parametrize("external", [False, True])
 def test_add_existing_files(runner, client, directory_tree, external, no_lfs_size_limit, load_dataset_with_injection):
     """Check adding/overwriting existing files."""

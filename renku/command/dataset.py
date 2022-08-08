@@ -98,10 +98,14 @@ def import_dataset_command():
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def update_datasets_command():
+def update_datasets_command(dry_run=False):
     """Command for updating datasets."""
-    command = Command().command(update_datasets).lock_dataset().with_database(write=True)
-    return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
+    command = Command().command(update_datasets).lock_dataset().with_database(write=not dry_run).require_migration()
+
+    if not dry_run:
+        command = command.with_commit(commit_only=DATASET_METADATA_PATHS)
+
+    return command
 
 
 def add_dataset_tag_command():
