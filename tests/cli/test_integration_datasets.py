@@ -1005,7 +1005,9 @@ def test_add_from_git_to_new_path(runner, client, params, path, load_dataset_wit
     ],
 )
 @pytest.mark.vcr
-def test_add_from_git_to_existing_path(runner, client, params, path, load_dataset_with_injection):
+def test_add_from_git_to_existing_path(
+    runner, client, params, path, load_dataset_with_injection, no_datadir_commit_warning
+):
     """Test add data to datasets from a git repository to an existing path."""
     remote = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
     assert 0 == runner.invoke(cli, ["dataset", "create", "remote"], catch_exceptions=False).exit_code

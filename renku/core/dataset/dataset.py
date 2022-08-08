@@ -1195,10 +1195,10 @@ def filter_dataset_files(
         if not check_data_directory:
             continue
 
-        for root, _, files in os.walk(dataset.get_datadir()):
+        for root, _, files in os.walk(client.path / dataset.get_datadir()):
             current_folder = Path(root)
             for current_file in files:
-                file_path = current_folder / current_file
+                file_path = get_safe_relative_path(current_folder / current_file, client.path)
                 if should_include(file_path) and not dataset.find_file(file_path):
                     # New file in dataset folder
                     record = DynamicProxy(DatasetFile.from_path(client, file_path))

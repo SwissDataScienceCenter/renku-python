@@ -293,8 +293,8 @@ python-versions = ">=3.6,<4"
 Click = ">=7.0,<9"
 
 [package.extras]
-tests = ["coveralls", "pytest-cov", "pytest", "coverage (<6)"]
-docs = ["m2r", "pallets-sphinx-themes", "sphinx (>=2.3,<3)"]
+docs = ["sphinx (>=2.3,<3)", "pallets-sphinx-themes", "m2r"]
+tests = ["coverage (<6)", "pytest", "pytest-cov", "coveralls"]
 
 [[package]]
 name = "click-plugins"
@@ -652,8 +652,8 @@ Jinja2 = ">=3.0"
 Werkzeug = ">=2.0"
 
 [package.extras]
-dotenv = ["python-dotenv"]
 async = ["asgiref (>=3.2)"]
+dotenv = ["python-dotenv"]
 
 [[package]]
 name = "frozendict"
