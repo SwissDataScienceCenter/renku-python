@@ -20,9 +20,11 @@
 Description
 ~~~~~~~~~~~
 
-Remove a file that belongs to a dataset and update its metadata. It also
-attempts to update tracking information for files stored in an external
-storage (using Git LFS).
+Remove a file from then project, updating:
+
+* its metadata, if the file belong to a dataset
+* the tracking information, if the file is stored in an external storage
+  (using Git LFS).
 
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~

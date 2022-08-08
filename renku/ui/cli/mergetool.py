@@ -27,6 +27,9 @@ custom merge tool that takes care of merging the metadata.
 
 The merge tool is set up automatically when creating a new project or when
 using ``renku clone`` to clone a Renku project.
+Keep in mind the merge tool configuration cannot be shared through remote
+repositories and has to be set up on each clone separately.
+
 You can manually set up the merge tool by running ``renku mergetool install``.
 
 Commands and options

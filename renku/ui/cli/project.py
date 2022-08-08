@@ -20,7 +20,7 @@ r"""Renku CLI commands for handling of projects.
 Description
 ~~~~~~~~~~~
 
-Visualize and edit project's metadata.
+Show and edit project's metadata.
 
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~

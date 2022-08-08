@@ -37,6 +37,12 @@ Commands and options
 Examples
 ~~~~~~~~
 
+.. cheatsheet::
+   :group: Config
+   :command: $ renku config show [<key>]
+   :description: Show current configuration.
+   :extended:
+
 You can set various Renku configuration options, for example the image registry
 URL, with a command like:
 
