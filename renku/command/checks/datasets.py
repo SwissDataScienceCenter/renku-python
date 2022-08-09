@@ -25,9 +25,11 @@ import click
 from renku.command.command_builder import inject
 from renku.command.echo import WARNING
 from renku.core import errors
+from renku.core.dataset.dataset_add import add_to_dataset
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.migration.utils import get_pre_0_3_4_datasets_metadata
 from renku.core.util import communication
+from renku.core.util.os import get_safe_relative_path
 
 
 def check_dataset_old_metadata_location(client, **kwargs):
@@ -61,6 +63,7 @@ def check_missing_files(client, dataset_gateway: IDatasetGateway, **kwargs):
 
     Args:
         client: ``LocalClient``.
+        dataset_gateway(IDatasetGateway): the dataset gateway.
         kwargs: keyword arguments.
 
     Returns:
@@ -98,6 +101,7 @@ def check_invalid_datasets_derivation(client, fix, dataset_gateway: IDatasetGate
     Args:
         client: ``LocalClient``.
         fix: Whether to fix found issues.
+        dataset_gateway(IDatasetGateway): the dataset gateway.
         kwargs: keyword arguments.
 
     Returns:
@@ -138,3 +142,59 @@ def check_invalid_datasets_derivation(client, fix, dataset_gateway: IDatasetGate
     )
 
     return False, problems
+
+
+@inject.autoparams("dataset_gateway")
+def check_dataset_files_outside_datadir(client, fix, dataset_gateway: IDatasetGateway, **kwargs):
+    """Check for dataset files that are not inside a dataset's datadir.
+
+    Args:
+        client: ``LocalClient``.
+        fix: Whether to fix found issues.
+        dataset_gateway(IDatasetGateway): the dataset gateway.
+        kwargs: keyword arguments.
+
+    Returns:
+        Tuple of whether there are no dataset files outside of its datadir and string of found problems.
+    """
+    invalid_files = []
+    for dataset in dataset_gateway.get_provenance_tails():
+        if dataset.date_removed:
+            continue
+
+        data_dir = dataset.get_datadir(client=client)
+
+        detected_files = []
+
+        for file in dataset.files:
+            if file.is_external:
+                continue
+            try:
+                get_safe_relative_path(client.path / file.entity.path, client.path / data_dir)
+            except ValueError:
+                detected_files.append(file)
+
+        if not detected_files:
+            continue
+
+        if fix:
+            communication.info(f"Fixing dataset '{dataset.name}' files.")
+            dataset.unfreeze()
+            for file in detected_files:
+                dataset.unlink_file(file.entity.path)
+            dataset.freeze()
+            add_to_dataset(dataset.name, urls=[file.entity.path for file in detected_files], link=True)
+        else:
+            invalid_files.extend(detected_files)
+
+    if invalid_files:
+        problems = (
+            WARNING
+            + "There are dataset files that aren't inside their dataset's data directory "
+            + "(use 'renku doctor --fix' to fix them):\n\n\t"
+            + "\n\t".join(click.style(file.entity.path, fg="yellow") for file in invalid_files)
+            + "\n"
+        )
+        return False, problems
+
+    return True, None

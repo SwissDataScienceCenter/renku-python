@@ -81,6 +81,13 @@ jobs:
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: ./run-tests.sh -s
+      - name: Upload poetry lock file
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: poetry-lock
+          path: poetry.lock
+          retention-days: 5
 
   docs-linux:
     runs-on: ubuntu-latest
