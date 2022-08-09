@@ -1709,7 +1709,7 @@ def test_datadir_hook(runner, client, subdirectory):
 
     client.repository.add(all=True)
 
-    # Commit fails when file is not tracked in LFS
+    # Commit fails when a file in datadir is not added to a dataset
     with pytest.raises(errors.GitCommandError) as e:
         client.repository.commit("datadir files not in dataset")
 
@@ -1726,6 +1726,8 @@ def test_datadir_hook(runner, client, subdirectory):
     file3 = datadir / "yet_another_new_file"
     file3.write_text("some updates")
     client.repository.add(all=True)
+
+    # Commit fails when a file in datadir is not added to a dataset
     with pytest.raises(errors.GitCommandError) as e:
         client.repository.commit("datadir files not in dataset")
 
@@ -1735,7 +1737,8 @@ def test_datadir_hook(runner, client, subdirectory):
     assert 0 == result.exit_code, format_result_exception(result)
 
     client.repository.add(all=True)
-    client.repository.commit("datadir files not in dataset")
+    # Commit would fail if a file in datadir is not added to a dataset
+    client.repository.commit("datadir files in dataset")
 
 
 @pytest.mark.parametrize("external", [False, True])
