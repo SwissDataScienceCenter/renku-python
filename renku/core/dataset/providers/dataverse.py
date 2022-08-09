@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -23,7 +23,7 @@ import re
 import urllib
 from pathlib import Path
 from string import Template
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
 from urllib import parse as urlparse
 
 from renku.command.command_builder import inject
@@ -37,10 +37,12 @@ from renku.core.dataset.providers.dataverse_metadata_templates import (
 from renku.core.dataset.providers.doi import DOIProvider
 from renku.core.dataset.providers.repository import RepositoryImporter, make_request
 from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.plugin import hookimpl
 from renku.core.util import communication
 from renku.core.util.doi import extract_doi, get_doi_url, is_doi
 from renku.core.util.file_size import bytes_to_unit
 from renku.core.util.urls import remove_credentials
+from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderDataset, ProviderParameter
@@ -72,13 +74,15 @@ DATAVERSE_SUBJECTS = [
 ]
 
 
-class DataverseProvider(ProviderApi):
+class DataverseProvider(ProviderApi, IDatasetProviderPlugin):
     """Dataverse API provider."""
 
     priority = ProviderPriority.HIGH
     name = "Dataverse"
 
-    def __init__(self, is_doi: bool = False):
+    def __init__(self, uri: Optional[str], is_doi: bool = False):
+        super().__init__(uri=uri)
+
         self.is_doi = is_doi
         self._server_url = None
         self._dataverse_name = None
@@ -121,30 +125,27 @@ class DataverseProvider(ProviderApi):
         parsed = urlparse.urlparse(uri)
         return urlparse.parse_qs(parsed.query)["persistentId"][0]
 
-    def get_importer(self, uri, **kwargs) -> "DataverseImporter":
+    def get_importer(self, **kwargs) -> "DataverseImporter":
         """Get importer for a record from Dataverse.
-
-        Args:
-            uri: DOI or URL.
 
         Returns:
             DataverseImporter: The found record
         """
-        original_uri = uri
 
         def get_export_uri(uri):
             """Gets a dataverse api export URI from a dataverse entry."""
             record_id = DataverseProvider.record_id(uri)
             return make_records_url(record_id, uri)
 
+        uri = self.uri
         if self.is_doi:
-            doi = DOIProvider().get_importer(uri)
+            doi = DOIProvider(uri=uri).get_importer()
             uri = doi.uri
 
         uri = get_export_uri(uri)
         response = make_request(uri)
 
-        return DataverseImporter(json=response.json(), uri=uri, original_uri=original_uri)
+        return DataverseImporter(json=response.json(), uri=uri, original_uri=self.uri)
 
     def get_exporter(
         self,
@@ -182,6 +183,12 @@ class DataverseProvider(ProviderApi):
 
         set_export_parameters()
         return DataverseExporter(dataset=dataset, server_url=self._server_url, dataverse_name=self._dataverse_name)
+
+    @classmethod
+    @hookimpl
+    def dataset_provider(cls) -> "Type[DataverseProvider]":
+        """The definition of the provider."""
+        return cls
 
 
 class DataverseImporter(RepositoryImporter):
@@ -548,7 +555,7 @@ def check_dataverse_uri(url):
 def check_dataverse_doi(doi):
     """Check if a DOI points to a dataverse dataset."""
     try:
-        doi = DOIProvider().get_importer(doi)
+        doi = DOIProvider(uri=doi).get_importer()
     except LookupError:
         return False
 

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,21 +19,26 @@
 
 import urllib
 from pathlib import Path
+from typing import Optional, Type
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ImporterApi, ProviderApi, ProviderPriority
+from renku.core.plugin import hookimpl
 from renku.core.util.doi import extract_doi, is_doi
+from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 DOI_BASE_URL = "https://dx.doi.org"
 
 
-class DOIProvider(ProviderApi):
+class DOIProvider(ProviderApi, IDatasetProviderPlugin):
     """`doi.org <http://doi.org>`_ registry API provider."""
 
     priority = ProviderPriority.HIGHER
     name = "DOI"
 
-    def __init__(self, headers=None, timeout=3):
+    def __init__(self, uri: Optional[str], headers=None, timeout=3):
+        super().__init__(uri=uri)
+
         self.timeout = timeout
         self.headers = headers if headers is not None else {"accept": "application/vnd.citationstyles.csl+json"}
 
@@ -42,7 +47,7 @@ class DOIProvider(ProviderApi):
         """Whether or not this provider supports a given URI."""
         return bool(is_doi(uri))
 
-    def get_importer(self, uri, **kwargs) -> "DOIImporter":
+    def get_importer(self, **kwargs) -> "DOIImporter":
         """Get import manager."""
         from renku.core.util import requests
 
@@ -67,8 +72,14 @@ class DOIProvider(ProviderApi):
             except TypeError:
                 raise errors.ImportError("doi metadata could not be serialized")
 
-        query_response = query(uri)
+        query_response = query(self.uri)
         return serialize(query_response)
+
+    @classmethod
+    @hookimpl
+    def dataset_provider(cls) -> "Type[DOIProvider]":
+        """The definition of the provider."""
+        return cls
 
 
 class DOIImporter(ImporterApi):

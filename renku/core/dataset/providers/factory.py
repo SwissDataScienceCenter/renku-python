@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 from renku.core import errors
+from renku.core.plugin.dataset_provider import get_supported_dataset_providers
 from renku.core.util import communication
 from renku.core.util.doi import is_doi
 
@@ -34,24 +35,7 @@ class ProviderFactory:
     @staticmethod
     def get_providers():
         """Return a list of providers sorted based on their priorities (higher priority providers come first)."""
-        from renku.core.dataset.providers.dataverse import DataverseProvider
-        from renku.core.dataset.providers.git import GitProvider
-        from renku.core.dataset.providers.local import FilesystemProvider
-        from renku.core.dataset.providers.olos import OLOSProvider
-        from renku.core.dataset.providers.renku import RenkuProvider
-        from renku.core.dataset.providers.web import WebProvider
-        from renku.core.dataset.providers.zenodo import ZenodoProvider
-
-        providers = [
-            DataverseProvider,
-            GitProvider,
-            FilesystemProvider,
-            OLOSProvider,
-            RenkuProvider,
-            WebProvider,
-            ZenodoProvider,
-        ]
-
+        providers = get_supported_dataset_providers()
         return sorted(providers, key=lambda p: p.priority)
 
     @staticmethod
@@ -63,7 +47,21 @@ class ProviderFactory:
 
             try:
                 if provider.supports(uri):
-                    return provider()
+                    return provider(uri=uri)
+            except BaseException as e:
+                communication.warn(f"Couldn't test provider {provider}: {e}")
+
+        raise errors.DatasetProviderNotFound(uri=uri)
+
+    @staticmethod
+    def get_create_provider(uri) -> "ProviderApi":
+        """Get a create provider based on uri."""
+        for provider in ProviderFactory.get_providers():
+            if not provider.supports_create():
+                continue
+            try:
+                if provider.supports(uri):
+                    return provider(uri=uri)
             except BaseException as e:
                 communication.warn(f"Couldn't test provider {provider}: {e}")
 
@@ -86,7 +84,7 @@ class ProviderFactory:
 
             try:
                 if provider.supports(uri):
-                    return provider(is_doi=is_doi_)
+                    return provider(uri=uri, is_doi=is_doi_)
             except BaseException as e:
                 warning += f"Couldn't test provider {provider}: {e}\n"
 
@@ -100,6 +98,6 @@ class ProviderFactory:
         """Get provider from a given name."""
         provider_name = provider_name.lower()
         try:
-            return next(p for p in ProviderFactory.get_providers() if p.name.lower() == provider_name)()
+            return next(p for p in ProviderFactory.get_providers() if p.name.lower() == provider_name)(uri=None)
         except StopIteration:
             raise errors.DatasetProviderNotFound(name=provider_name)

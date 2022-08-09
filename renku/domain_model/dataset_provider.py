@@ -15,4 +15,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Data registry integration."""
+"""Dataset providers."""
+
+from abc import ABCMeta, abstractclassmethod
+from typing import Type
+
+from renku.core.dataset.providers.api import ProviderApi
+
+
+class IDatasetProviderPlugin(metaclass=ABCMeta):
+    """Abstract class for a dataset provider plugin."""
+
+    @abstractclassmethod
+    def dataset_provider(cls) -> "Type[ProviderApi]":
+        """Supported dataset provider plugin.
+
+        Returns:
+            a ProviderApi class definition (not instance) from a specific plugin
+        """
+        pass

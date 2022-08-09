@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,22 +21,24 @@ import concurrent.futures
 import os
 import urllib
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING, List, Tuple, Type
 
 from renku.core import errors
 from renku.core.constant import CACHE
 from renku.core.dataset.context import wait_for
 from renku.core.dataset.providers.api import ProviderApi, ProviderPriority
+from renku.core.plugin import hookimpl
 from renku.core.util import communication
 from renku.core.util.dataset import check_url
 from renku.core.util.urls import remove_credentials
+from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata
     from renku.core.management.client import LocalClient
 
 
-class WebProvider(ProviderApi):
+class WebProvider(ProviderApi, IDatasetProviderPlugin):
     """A provider for downloading data from web URLs."""
 
     priority = ProviderPriority.LOWEST
@@ -68,6 +70,12 @@ class WebProvider(ProviderApi):
         return download_file(
             client=client, uri=uri, destination=destination, extract=extract, filename=filename, multiple=multiple
         )
+
+    @classmethod
+    @hookimpl
+    def dataset_provider(cls) -> "Type[WebProvider]":
+        """The definition of the provider."""
+        return cls
 
 
 def _ensure_dropbox(url):

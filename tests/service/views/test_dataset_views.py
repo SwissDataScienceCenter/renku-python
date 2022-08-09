@@ -605,6 +605,7 @@ def test_list_datasets_view(svc_client_with_repo):
         "creators",
         "keywords",
         "annotations",
+        "storage",
         "datadir",
     } == set(response.json["result"]["datasets"][0].keys())
 
@@ -667,6 +668,7 @@ def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo_url):
         "creators",
         "keywords",
         "annotations",
+        "storage",
         "datadir",
     } == set(response.json["result"]["datasets"][0].keys())
 
@@ -784,6 +786,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
         "created_at",
         "keywords",
         "annotations",
+        "storage",
         "datadir",
     } == set(response.json["result"]["datasets"][0].keys())
 
@@ -1466,7 +1469,7 @@ def test_unlink_file(unlink_file_setup):
 
     assert_rpc_response(response)
     assert {"unlinked", "remote_branch"} == set(response.json["result"].keys())
-    assert ["README.md"] == response.json["result"]["unlinked"]
+    assert any(p.endswith("README.md") for p in response.json["result"]["unlinked"])
 
 
 @pytest.mark.integration

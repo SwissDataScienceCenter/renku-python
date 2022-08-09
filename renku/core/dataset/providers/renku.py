@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -22,7 +22,7 @@ import shutil
 import urllib
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
 
 from renku.command.command_builder.command import inject
 from renku.command.login import read_renku_token
@@ -31,11 +31,13 @@ from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.providers.api import ImporterApi, ProviderApi, ProviderPriority
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
+from renku.core.plugin import hookimpl
 from renku.core.util import communication
 from renku.core.util.file_size import bytes_to_unit
 from renku.core.util.git import clone_renku_repository, get_cache_directory_for_repository, get_file_size
 from renku.core.util.metadata import is_external_file, make_project_temp_dir
 from renku.core.util.urls import remove_credentials
+from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderDataset, ProviderParameter
@@ -43,20 +45,20 @@ if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset
 
 
-class RenkuProvider(ProviderApi):
+class RenkuProvider(ProviderApi, IDatasetProviderPlugin):
     """Renku API provider."""
 
     priority = ProviderPriority.HIGH
     name = "Renku"
 
-    def __init__(self, is_doi: bool = False):
-        self.is_doi = is_doi
+    def __init__(self, uri: Optional[str], **kwargs):
+        super().__init__(uri=uri)
+
         self._accept = "application/json"
         self._authorization_header = None
-        self._uri = ""
-        self._gitlab_token = None
+        self._gitlab_token: Optional[str] = None
         self._renku_token = None
-        self._tag = None
+        self._tag: Optional[str] = None
 
     @staticmethod
     def supports(uri):
@@ -81,27 +83,27 @@ class RenkuProvider(ProviderApi):
 
         return [ProviderParameter("tag", help="Import a specific tag instead of the latest version.", type=str)]
 
-    def get_importer(self, uri, tag=None, **kwargs):
+    def get_importer(self, tag: Optional[str] = None, gitlab_token: Optional[str] = None, **kwargs):
         """Retrieves a dataset import manager from Renku.
 
         Args:
-            uri: URL to search for.
+            tag(Optional[str]): Dataset version to import.
+            gitlab_token(Optional[str]): Gitlab access token.
 
         Returns:
-            RenkuImporter: Serializer containing record data.
+            RenkuImporter: A Renku import manager.
         """
-        self._uri = uri
         self._tag = tag
-        self._gitlab_token = kwargs.get("gitlab_token")
+        self._gitlab_token = gitlab_token
 
-        self._prepare_auth(uri)
+        self._prepare_auth(self.uri)
 
-        name, identifier, latest_version_uri, kg_url = self._fetch_dataset_info(uri)
+        name, identifier, latest_version_uri, kg_url = self._fetch_dataset_info(self.uri)
 
         project_url_ssh, project_url_http = self._get_project_urls(kg_url)
 
         return RenkuImporter(
-            uri=uri,
+            uri=self.uri,
             name=name,
             identifier=identifier,
             tag=self._tag,
@@ -194,7 +196,7 @@ class RenkuProvider(ProviderApi):
         except errors.RequestError as e:
             raise errors.OperationError(f"Cannot access knowledge graph: {url}") from e
 
-        parsed_uri = urllib.parse.urlparse(self._uri)
+        parsed_uri = urllib.parse.urlparse(self.uri)
         if response.status_code == 404:
             raise errors.NotFound(
                 f"Resource not found in knowledge graph: {url}\n"
@@ -223,6 +225,12 @@ class RenkuProvider(ProviderApi):
             token = self._renku_token
 
         self._authorization_header = {"Authorization": f"Bearer {token}"} if token else {}
+
+    @classmethod
+    @hookimpl
+    def dataset_provider(cls) -> "Type[RenkuProvider]":
+        """The definition of the provider."""
+        return cls
 
 
 class RenkuImporter(ImporterApi):
@@ -451,7 +459,7 @@ class RenkuImporter(ImporterApi):
         repository = None
         client = client_dispatcher.current_client
 
-        parsed_uri = urllib.parse.urlparse(self._uri)
+        parsed_uri = urllib.parse.urlparse(self.uri)
 
         urls = (self._project_url_ssh, self._project_url_http)
         # Clone the project
@@ -474,7 +482,7 @@ class RenkuImporter(ImporterApi):
                     break
 
         if self._project_url is None or repository is None:
-            raise errors.ParameterError("Cannot clone remote projects:\n\t" + "\n\t".join(urls), param_hint=self._uri)
+            raise errors.ParameterError("Cannot clone remote projects:\n\t" + "\n\t".join(urls), param_hint=self.uri)
 
         self._remote_client = LocalClient(path=repository.path)
         client_dispatcher.push_created_client_to_stack(self._remote_client)

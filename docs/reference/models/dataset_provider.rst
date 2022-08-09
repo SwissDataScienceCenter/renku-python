@@ -1,5 +1,5 @@
 ..
-    Copyright 2019-2022 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2022 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -15,22 +15,9 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
-.. _models:
+Dataset Provider
+----------------
 
-Models
-======
-
-.. automodule:: renku.domain_model
-
-.. toctree::
-   :maxdepth: 1
-
-   projects
-   entity
-   datasets
-   provenance
-   workflow
-   session
-   template
-   refs
-   dataset_provider
+.. automodule:: renku.domain_model.dataset_provider
+   :members:
+   :show-inheritance:
