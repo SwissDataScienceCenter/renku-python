@@ -60,7 +60,7 @@ if TYPE_CHECKING:
 class Project:
     """API Project context class."""
 
-    _project_contexts = LocalStack()
+    _project_contexts: LocalStack = LocalStack()
 
     def __init__(self):
         self._client: "LocalClient" = _get_local_client()
