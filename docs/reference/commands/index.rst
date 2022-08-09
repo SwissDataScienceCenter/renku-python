@@ -15,20 +15,41 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
+Renku Command Line
+==================
 
-Reference
-=========
+.. rst-class:: cli-reference-page
 
-Internals of the ``renku-python`` library.
+.. automodule:: renku.ui.cli
 
 .. toctree::
     :maxdepth: 2
 
-    commands/index
-    api
-    models/index
-    database
-    gateways
-    core
-    plugins
+    clone
+    config
+    dataset
+    doctor
+    env
+    gc
+    githooks
+    graph
+    init
+    login
+    log
+    mergetool
+    migrate
+    move
+    project
+    remove
+    rerun
+    rollback
+    run
+    save
     service
+    session
+    status
+    storage
+    template
+    update
+    workflow
+    errors

@@ -30,6 +30,8 @@ on the available values.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.config:config
    :prog: renku config
    :nested: full

@@ -27,6 +27,8 @@ listed by using:
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.template:template
    :prog: renku template
    :nested: full

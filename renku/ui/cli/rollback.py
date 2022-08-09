@@ -28,6 +28,8 @@ Renku or manually) after that point.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.rollback:rollback
    :prog: renku rollback
    :nested: full

@@ -29,6 +29,8 @@ later.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: special
+
 .. click:: renku.ui.cli.session:session
    :prog: renku session
    :nested: full

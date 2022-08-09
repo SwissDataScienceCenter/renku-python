@@ -20,6 +20,8 @@
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.save:save
    :prog: renku save
    :nested: full

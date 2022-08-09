@@ -20,6 +20,8 @@ r"""Update outdated files created by the "run" command.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.update:update
    :prog: renku update
    :nested: full
@@ -27,7 +29,7 @@ Commands and options
 Recreating outdated files
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. image:: ../_static/asciicasts/update.delay.gif
+.. image:: ../../_static/asciicasts/update.delay.gif
    :width: 850
    :alt: Update outdated files
 

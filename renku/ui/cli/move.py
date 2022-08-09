@@ -27,6 +27,8 @@ new path and commit. Moreover, tracking information in an external storage
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.move:move
    :prog: renku mv
    :nested: full

@@ -27,6 +27,8 @@ some output file is manually modified.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.githooks:githooks
    :prog: renku githooks
    :nested: full

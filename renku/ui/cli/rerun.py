@@ -20,6 +20,8 @@ r"""Recreate files created by the "run" command.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.rerun:rerun
    :prog: renku rerun
    :nested: full
@@ -27,7 +29,7 @@ Commands and options
 Examples
 ~~~~~~~~
 
-.. image:: ../_static/asciicasts/rerun.delay.gif
+.. image:: ../../_static/asciicasts/rerun.delay.gif
    :width: 850
    :alt: Rerun workflow
 

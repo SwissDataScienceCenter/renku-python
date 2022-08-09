@@ -26,6 +26,8 @@ At the moment, it shows workflow executions and dataset changes.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.log:log
    :prog: renku log
    :nested: full

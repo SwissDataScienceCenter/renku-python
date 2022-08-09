@@ -29,6 +29,8 @@ Remove a file from then project, updating:
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.remove:remove
    :prog: renku rm
    :nested: full

@@ -26,6 +26,8 @@ create a new Renku project or Renku-ize an existing one.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.init:init
    :prog: renku init
    :nested: full

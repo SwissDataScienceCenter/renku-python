@@ -27,6 +27,8 @@ receives and stores a secure token that will be used for future authentications.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.login:login
    :prog: renku login
    :nested: full

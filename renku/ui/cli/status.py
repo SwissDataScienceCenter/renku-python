@@ -27,6 +27,8 @@ or source code (i.e. dependencies).
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.status:status
    :prog: renku status
    :nested: full

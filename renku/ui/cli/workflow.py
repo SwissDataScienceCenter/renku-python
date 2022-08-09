@@ -20,6 +20,8 @@
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.workflow:workflow
    :prog: renku workflow
    :nested: full
@@ -51,7 +53,7 @@ Working with Plans
 Listing Plans
 *************
 
-.. image:: ../_static/asciicasts/list_plans.delay.gif
+.. image:: ../../_static/asciicasts/list_plans.delay.gif
    :width: 850
    :alt: List Plans
 
@@ -78,7 +80,7 @@ combination of values from ``id``, ``name``, ``keywords`` and ``description``.
 Showing Plan Details
 ********************
 
-.. image:: ../_static/asciicasts/show_plan.delay.gif
+.. image:: ../../_static/asciicasts/show_plan.delay.gif
    :width: 850
    :alt: Show Plan
 
@@ -114,7 +116,7 @@ inputs, outputs and parameters.
 Executing Plans
 ***************
 
-.. image:: ../_static/asciicasts/execute_plan.delay.gif
+.. image:: ../../_static/asciicasts/execute_plan.delay.gif
    :width: 850
    :alt: Execute Plans
 
@@ -164,7 +166,7 @@ flag to ``renku workflow execute``.
 Iterate Plans
 *************
 
-.. image:: ../_static/asciicasts/iterate_plan.gif
+.. image:: ../../_static/asciicasts/iterate_plan.gif
    :width: 850
    :alt: Iterate Plans
 
@@ -295,7 +297,7 @@ You can export into a file directly with ``-o <path>``.
 
 Composing Plans into larger workflows
 *************************************
-.. image:: ../_static/asciicasts/compose_plan.delay.gif
+.. image:: ../../_static/asciicasts/compose_plan.delay.gif
    :width: 850
    :alt: Composing Plans
 
@@ -439,7 +441,7 @@ order of precedence (lower precedence first):
 Editing Plans
 *************
 
-.. image:: ../_static/asciicasts/edit_plan.delay.gif
+.. image:: ../../_static/asciicasts/edit_plan.delay.gif
    :width: 850
    :alt: Editing Plans
 
@@ -530,7 +532,7 @@ Refer to the documentation of the :ref:`cli-log` command for more details.
 Visualizing Executions
 **********************
 
-.. image:: ../_static/asciicasts/visualize_runs.delay.gif
+.. image:: ../../_static/asciicasts/visualize_runs.delay.gif
    :width: 850
    :alt: Visualizing Runs
 

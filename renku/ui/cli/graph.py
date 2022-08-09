@@ -31,6 +31,8 @@ produce no output.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.graph:graph
    :prog: renku graph
    :nested: full

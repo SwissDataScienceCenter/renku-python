@@ -34,6 +34,8 @@ to the :ref:`cli-workflow` documentation for more details on this distinction.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.session:session
    :prog: renku session
    :nested: full

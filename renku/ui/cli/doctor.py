@@ -26,6 +26,8 @@
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.doctor:doctor
    :prog: renku doctor
    :nested: full

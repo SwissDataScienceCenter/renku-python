@@ -25,6 +25,8 @@ Show and edit project's metadata.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.project:project
    :prog: renku project
    :nested: full

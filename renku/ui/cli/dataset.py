@@ -29,6 +29,8 @@ listed below to get an idea of how you can create, import, and edit datasets.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-page
+
 .. click:: renku.ui.cli.dataset:dataset
    :prog: renku dataset
    :nested: full
@@ -38,7 +40,7 @@ Examples
 
 Create an empty dataset inside a Renku project:
 
-.. image:: ../_static/asciicasts/dataset-create.delay.gif
+.. image:: ../../_static/asciicasts/dataset-create.delay.gif
    :width: 850
    :alt: Create a Dataset
 
@@ -129,7 +131,7 @@ Working with data
 
 Adding data to the dataset:
 
-.. image:: ../_static/asciicasts/dataset-add.delay.gif
+.. image:: ../../_static/asciicasts/dataset-add.delay.gif
    :width: 850
    :alt: Add data to a Dataset
 
@@ -359,7 +361,7 @@ to the import command:
 
 Importing data from an external provider:
 
-.. image:: ../_static/asciicasts/dataset-import.delay.gif
+.. image:: ../../_static/asciicasts/dataset-import.delay.gif
    :width: 850
    :alt: Import a Dataset
 
