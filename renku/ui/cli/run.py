@@ -36,8 +36,8 @@ Commands and options
 
 .. rst-class:: cli-reference-page
 
-.. click:: renku.ui.cli.session:session
-   :prog: renku session
+.. click:: renku.ui.cli.run:run
+   :prog: renku run
    :nested: full
 
 Examples

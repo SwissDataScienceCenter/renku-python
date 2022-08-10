@@ -24,10 +24,10 @@ Renku projects are initialized using a project template. Renku has a set of
 built-in templates that you can use in your projects. These templates can be
 listed by using:
 
+.. rst-class:: cli-reference-commands
+
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
-
-.. rst-class:: cli-reference-page
 
 .. click:: renku.ui.cli.template:template
    :prog: renku template
