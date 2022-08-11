@@ -391,7 +391,7 @@ def export_dataset(name, provider_name, tag, client_dispatcher: IClientDispatche
     # TODO: all these callbacks are ugly, improve in #737
     config_key_secret = "access_token"
 
-    dataset = datasets_provenance.get_by_name(name, strict=True, immutable=True)
+    dataset: Optional[Dataset] = datasets_provenance.get_by_name(name, strict=True, immutable=True)
 
     provider = ProviderFactory.from_name(provider_name)
 
@@ -765,7 +765,7 @@ def show_dataset(name: str, tag: Optional[str] = None):
         dict: JSON dictionary of dataset details.
     """
     datasets_provenance = DatasetsProvenance()
-    dataset = datasets_provenance.get_by_name(name, strict=True)
+    dataset: Optional[Dataset] = datasets_provenance.get_by_name(name, strict=True)
 
     if tag is None:
         return DatasetDetailsJson().dump(dataset)

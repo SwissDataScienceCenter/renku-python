@@ -238,7 +238,11 @@ def _warn_about_dataset_files(files, dataset_gateway: IDatasetGateway, client_di
     found = []
     for dataset in dataset_gateway.get_all_active_datasets():
         for src, dst in files.items():
-            found_file = dataset.find_file(get_relative_path(src, client.path))
+            relative_src = get_relative_path(src, client.path)
+            if not relative_src:
+                continue
+
+            found_file = dataset.find_file(relative_src)
             if not found_file:
                 continue
             if not found_file.is_external and not is_subpath(dst, client.path / dataset.get_datadir(client)):
