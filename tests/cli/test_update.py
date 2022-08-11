@@ -527,6 +527,9 @@ def test_update_with_external_files(runner, client, directory_tree):
 
     (directory_tree / "file1").write_text("updated file1")
 
+    assert 0 == runner.invoke(cli, ["dataset", "update", "--all", "--no-external"]).exit_code
+    assert "updated file1" not in (client.path / "output").read_text()
+
     assert 0 == runner.invoke(cli, ["dataset", "update", "--all"]).exit_code
 
     result = runner.invoke(cli, ["update", "--all"])

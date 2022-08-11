@@ -226,7 +226,7 @@ def resolve_data_directory(data_dir, path):
 @click.option("--description", help="Provide a description for the project.")
 @click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords.")
 @click.option(
-    "--data-dir",
+    "--datadir",
     default=None,
     type=click.Path(writable=True, file_okay=False),
     help="Data directory within the project",
@@ -279,7 +279,7 @@ def init(
     list_templates,
     force,
     describe,
-    data_dir,
+    datadir,
     initial_branch,
 ):
     """Initialize a project in PATH. Default is the current path."""
@@ -298,7 +298,7 @@ def init(
             "'-i/--template-index' is deprecated: Use '-t/--template-id' to pass a template id."
         )
 
-    data_dir = resolve_data_directory(data_dir, path)
+    datadir = resolve_data_directory(datadir, path)
 
     check_global_git_user_is_configured()
 
@@ -320,7 +320,7 @@ def init(
         input_parameters=parameters,
         custom_metadata=custom_metadata,
         force=force,
-        data_dir=data_dir,
+        data_dir=datadir,
         initial_branch=initial_branch,
         install_mergetool=True,
     )

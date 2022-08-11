@@ -1694,6 +1694,53 @@ def test_lfs_hook_can_be_avoided(runner, project, subdirectory, large_file):
     assert "OK" in result.output
 
 
+def test_datadir_hook(runner, client, subdirectory):
+    """Test pre-commit hook fir checking datadir files."""
+    datadir = client.path / "test"
+    datadir.mkdir()
+
+    result = runner.invoke(cli, ["--no-external-storage", "dataset", "create", "--datadir", str(datadir), "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    file = datadir / "new_file"
+    file.write_text("some updates")
+    file2 = datadir / "another_file"
+    file2.write_text("some updates")
+
+    client.repository.add(all=True)
+
+    # Commit fails when a file in datadir is not added to a dataset
+    with pytest.raises(errors.GitCommandError) as e:
+        client.repository.commit("datadir files not in dataset")
+
+    assert "Files in datasets data directory that aren't up to date" in e.value.stderr
+
+    assert file.name in e.value.stderr
+    assert file2.name in e.value.stderr
+
+    result = runner.invoke(
+        cli, ["--no-external-storage", "dataset", "update", "-c", "--all", "--no-remote", "--no-external"]
+    )
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    file3 = datadir / "yet_another_new_file"
+    file3.write_text("some updates")
+    client.repository.add(all=True)
+
+    # Commit fails when a file in datadir is not added to a dataset
+    with pytest.raises(errors.GitCommandError) as e:
+        client.repository.commit("datadir files not in dataset")
+
+    assert "Files in datasets data directory that aren't up to date" in e.value.stderr
+
+    result = runner.invoke(cli, ["config", "set", "check_datadir_files", "false"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    client.repository.add(all=True)
+    # Commit would fail if a file in datadir is not added to a dataset
+    client.repository.commit("datadir files in dataset")
+
+
 @pytest.mark.parametrize("external", [False, True])
 def test_add_existing_files(runner, client, directory_tree, external, no_lfs_size_limit, load_dataset_with_injection):
     """Check adding/overwriting existing files."""
@@ -2345,7 +2392,7 @@ def test_immutability_of_dataset_files(runner, client, directory_tree, load_data
     v1 = load_dataset_with_injection("my-data", client).find_file(file1)
 
     # DatasetFile changes when Entity is changed
-    write_and_commit_file(client.repository, file1, "changed content")
+    write_and_commit_file(client.repository, file1, "changed content", commit=False)
     assert 0 == runner.invoke(cli, ["dataset", "update", "--all"]).exit_code
     v2 = load_dataset_with_injection("my-data", client).find_file(file1)
 
@@ -2422,17 +2469,13 @@ def test_update_local_file(runner, client, directory_tree, load_dataset_with_inj
 
     file1 = Path(datadir) / directory_tree.name / "file1"
     file1.write_text("some updates")
-    client.repository.add(all=True)
-    client.repository.commit("file1")
     new_checksum_file1 = client.repository.get_object_hash(file1)
 
     file2 = Path(datadir) / directory_tree.name / "dir1" / "file2"
     file2.write_text("some updates")
-    client.repository.add(all=True)
-    client.repository.commit("file2")
     new_checksum_file2 = client.repository.get_object_hash(file2)
 
-    commit_sha_after_file1_delete = client.repository.head.commit.hexsha
+    commit_sha_before_update = client.repository.head.commit.hexsha
 
     old_dataset = load_dataset_with_injection("my-data", client)
 
@@ -2442,20 +2485,72 @@ def test_update_local_file(runner, client, directory_tree, load_dataset_with_inj
     # NOTE: Update dry run
     result = runner.invoke(cli, ["dataset", "update", "my-data", "--dry-run"])
 
-    assert 0 == result.exit_code, format_result_exception(result)
+    assert 1 == result.exit_code, format_result_exception(result)
     assert "The following files will be updated" in result.output
     assert "The following files will be deleted" not in result.output
     assert str(file1) in result.output
     assert str(file2) in result.output
-    assert commit_sha_after_file1_delete == client.repository.head.commit.hexsha
-    assert not client.repository.is_dirty(untracked_files=True)
+    assert commit_sha_before_update == client.repository.head.commit.hexsha
+    assert client.repository.is_dirty(untracked_files=True)
+
+    result = runner.invoke(cli, ["dataset", "update", "my-data", "--no-local"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert commit_sha_before_update == client.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["dataset", "update", "my-data"])
 
     assert 0 == result.exit_code, format_result_exception(result)
+    assert not client.repository.is_dirty(untracked_files=True)
     dataset = load_dataset_with_injection("my-data", client)
     assert new_checksum_file1 == dataset.find_file(file1).entity.checksum
     assert new_checksum_file2 == dataset.find_file(file2).entity.checksum
+    assert_dataset_is_mutated(old=old_dataset, new=dataset)
+
+
+@pytest.mark.parametrize("datadir_option,datadir", [([], f"{DATA_DIR}/my-data"), (["--datadir", "mydir"], "mydir")])
+def test_update_local_file_in_datadir(
+    runner, client, directory_tree, load_dataset_with_injection, datadir_option, datadir
+):
+    """Check updating local files dropped in the datadir."""
+    assert (
+        0
+        == runner.invoke(
+            cli, ["dataset", "add", "--copy", "-c", "my-data", str(directory_tree)] + datadir_option
+        ).exit_code
+    )
+
+    file1 = Path(datadir) / "some_new_file"
+    file1.write_text("some updates")
+    folder = Path(datadir) / "folder"
+    folder.mkdir()
+    file2 = folder / "another_new_file"
+    file2.write_text("some updates")
+
+    old_dataset = load_dataset_with_injection("my-data", client)
+
+    # NOTE: Update dry run
+    result = runner.invoke(
+        cli, ["dataset", "update", "my-data", "--dry-run", "--check-data-directory", "--no-remote", "--no-external"]
+    )
+
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "The following files will be updated" in result.output
+    assert "The following files will be deleted" not in result.output
+    assert str(file1) in result.output
+    assert str(file2) in result.output
+
+    assert client.repository.is_dirty(untracked_files=True)
+
+    result = runner.invoke(
+        cli, ["dataset", "update", "my-data", "--check-data-directory", "--no-remote", "--no-external"]
+    )
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    assert not client.repository.is_dirty(untracked_files=True)
+    dataset = load_dataset_with_injection("my-data", client)
+    assert dataset.find_file(file1)
+    assert dataset.find_file(file2)
     assert_dataset_is_mutated(old=old_dataset, new=dataset)
 
 
@@ -2472,7 +2567,7 @@ def test_update_local_deleted_file(runner, client, directory_tree, load_dataset_
     # NOTE: Update dry run
     result = runner.invoke(cli, ["dataset", "update", "--all", "--dry-run"])
 
-    assert 0 == result.exit_code, format_result_exception(result)
+    assert 1 == result.exit_code, format_result_exception(result)
     assert "The following files will be updated" not in result.output
     assert "The following files will be deleted" in result.output
     assert str(file1) in result.output
@@ -2517,7 +2612,7 @@ def test_update_mixed_types(runner, client, directory_tree, load_dataset_with_in
     external_file.write_text("some external updates")
 
     file2 = Path(DATA_DIR) / "my-data" / "file2"
-    write_and_commit_file(client.repository, file2, "some updates")
+    write_and_commit_file(client.repository, file2, "some updates", commit=False)
     new_checksum_file2 = client.repository.get_object_hash(file2)
 
     old_dataset = load_dataset_with_injection("my-data", client)

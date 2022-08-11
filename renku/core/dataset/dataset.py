@@ -559,29 +559,35 @@ def import_dataset(
 @inject.autoparams()
 def update_datasets(
     names: List[str],
-    creators,
-    include,
-    exclude,
-    ref,
-    delete,
-    no_external,
-    update_all,
-    dry_run,
+    creators: Optional[str],
+    include: Optional[List[str]],
+    exclude: Optional[List[str]],
+    ref: Optional[str],
+    delete: bool,
+    no_external: bool,
+    no_local: bool,
+    no_remote: bool,
+    check_data_directory: bool,
+    update_all: bool,
+    dry_run: bool,
     client_dispatcher: IClientDispatcher,
     dataset_gateway: IDatasetGateway,
 ) -> Tuple[List[DatasetViewModel], List[DatasetFileViewModel]]:
     """Update dataset files.
 
     Args:
-        names: Names of datasets to update.
-        creators: Creators to filter dataset files by.
-        include: Include filter for paths to update.
-        exclude: Exclude filter for paths to update.
-        ref: Git reference to use for update.
-        delete: Whether to delete files that don't exist on remote anymore.
-        no_external: Whether to exclude external files from the update.
-        update_all: Whether to update all datasets.
-        dry_run: Whether to return a preview of what would be updated.
+        names(List[str]): Names of datasets to update.
+        creators(Optional[str]): Creators to filter dataset files by.
+        include(Optional[List[str]]): Include filter for paths to update.
+        exclude(Optional[List[str]]): Exclude filter for paths to update.
+        ref(Optional[str]): Git reference to use for update.
+        delete(bool): Whether to delete files that don't exist on remote anymore.
+        no_external(bool): Whether to exclude external files from the update.
+        no_local(bool): Whether to exclude local files from the update.
+        no_remote(bool): Whether to exclude remote files from the update.
+        check_data_directory(bool): Whether to check the dataset's data directory for new files.
+        update_all(bool): Whether to update all datasets.
+        dry_run(bool): Whether to return a preview of what would be updated.
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
         dataset_gateway(IDatasetGateway): Injected dataset gateway.
     """
@@ -607,7 +613,7 @@ def update_datasets(
     names = names or [d.name for d in all_datasets]
 
     # NOTE: update imported datasets
-    if not include and not exclude:
+    if not include and not exclude and not no_remote:
         must_match_records = False
 
         for dataset in imported_datasets:
@@ -669,7 +675,12 @@ def update_datasets(
 
     # NOTE: Exclude all imported dataset from individual file filter
     records = filter_dataset_files(
-        names=names, creators=creators, include=include, exclude=exclude, ignore=[d.name for d in imported_datasets]
+        names=names,
+        creators=creators,
+        include=include,
+        exclude=exclude,
+        ignore=[d.name for d in imported_datasets],
+        check_data_directory=check_data_directory,
     )
 
     if not records:
@@ -704,15 +715,18 @@ def update_datasets(
         updated = update_external_files(client, external_files, dry_run=dry_run)
         updated_files.extend(updated)
 
-    if git_files:
+    if git_files and not no_remote:
         updated, deleted = update_dataset_git_files(files=git_files, ref=ref, delete=delete, dry_run=dry_run)
         updated_files.extend(updated)
         deleted_files.extend(deleted)
 
-    if local_files:
-        updated, deleted = update_dataset_local_files(records=local_files)
+    if local_files and not no_local:
+        updated, deleted, new = update_dataset_local_files(
+            records=local_files, check_data_directory=check_data_directory
+        )
         updated_files.extend(updated)
         deleted_files.extend(deleted)
+        updated_files.extend(new)
 
     if not dry_run:
         if deleted_files and not delete:
@@ -731,7 +745,8 @@ def update_datasets(
         communication.echo(message)
     else:
         for file in deleted_files:
-            file.date_removed = local_now()
+            if not file.date_removed:
+                file.date_removed = local_now()
 
     dataset_files_view_models = [
         DatasetFileViewModel.from_dataset_file(cast(DatasetFile, f), f.dataset) for f in updated_files + deleted_files
@@ -896,14 +911,14 @@ def move_files(
 
 @inject.autoparams("client_dispatcher")
 def update_dataset_local_files(
-    client_dispatcher: IClientDispatcher, records: List[DynamicProxy]
-) -> Tuple[List[DynamicProxy], List[DynamicProxy]]:
+    client_dispatcher: IClientDispatcher, records: List[DynamicProxy], check_data_directory: bool
+) -> Tuple[List[DynamicProxy], List[DynamicProxy], List[DynamicProxy]]:
     """Update files metadata from the git history.
 
     Args:
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
         records(List[DynamicProxy]): File records to update.
-
+        check_data_directory(bool): Whether to check the dataset's data directory for new files.
     Returns:
         Tuple[List[DynamicProxy], List[DynamicProxy]]: Tuple of updated and deleted file records.
     """
@@ -911,6 +926,7 @@ def update_dataset_local_files(
 
     updated_files: List[DynamicProxy] = []
     deleted_files: List[DynamicProxy] = []
+    new_files: List[DynamicProxy] = []
     progress_text = "Checking for local updates"
 
     try:
@@ -939,10 +955,18 @@ def update_dataset_local_files(
                 deleted_files.append(file)
             elif current_checksum != file.entity.checksum:
                 updated_files.append(file)
+            elif check_data_directory and not any(file.entity.path == f.entity.path for f in file.dataset.files):
+                datadir = file.dataset.get_datadir()
+                try:
+                    get_safe_relative_path(file.entity.path, datadir)
+                except ValueError:
+                    continue
+
+                new_files.append(file)
     finally:
         communication.finalize_progress(progress_text)
 
-    return updated_files, deleted_files
+    return updated_files, deleted_files, new_files
 
 
 def _update_datasets_files_metadata(
@@ -1089,6 +1113,7 @@ def filter_dataset_files(
     exclude: Optional[List[str]] = None,
     ignore: Optional[List[str]] = None,
     immutable: bool = False,
+    check_data_directory: bool = False,
 ) -> List[DynamicProxy]:
     """Filter dataset files by specified filters.
 
@@ -1102,7 +1127,8 @@ def filter_dataset_files(
         exclude(Optional[List[str]]): Tuple containing patterns to which exclude from result (Default value = None).
         ignore(Optional[List[str]]): Ignored datasets (Default value = None).
         immutable(bool): Return immutable copies of dataset objects (Default value = False).
-
+        check_data_directory(bool): Whether to check for new files in dataset's data directory that aren't in the
+            dataset yet (Default value = False).
     Returns:
         List[DynamicProxy]: List of filtered files sorted by date added.
     """
@@ -1134,6 +1160,9 @@ def filter_dataset_files(
     records = []
     unused_names = set(names) if names is not None else set()
 
+    if ignore:
+        unused_names = unused_names - set(ignore)
+
     for dataset in dataset_gateway.get_all_active_datasets():
         if (names and dataset.name not in names) or (ignore and dataset.name in ignore):
             continue
@@ -1162,6 +1191,20 @@ def filter_dataset_files(
             record.dataset = dataset
             record.client = client
             records.append(record)
+
+        if not check_data_directory:
+            continue
+
+        for root, _, files in os.walk(client.path / dataset.get_datadir()):
+            current_folder = Path(root)
+            for current_file in files:
+                file_path = get_safe_relative_path(current_folder / current_file, client.path)
+                if should_include(file_path) and not dataset.find_file(file_path):
+                    # New file in dataset folder
+                    record = DynamicProxy(DatasetFile.from_path(client, file_path))
+                    record.dataset = dataset
+                    record.client = client
+                    records.append(record)
 
     if unused_names:
         unused_names_str = ", ".join(unused_names)
