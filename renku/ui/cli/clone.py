@@ -31,7 +31,7 @@ Mind that, by default, ``renku clone`` pulls data from Git-LFS after cloning.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
-.. rst-class:: cli-reference-page
+.. rst-class:: cli-reference-commands
 
 .. click:: renku.ui.cli.clone:clone
    :prog: renku clone

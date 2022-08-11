@@ -28,7 +28,7 @@ Renku or manually) after that point.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
-.. rst-class:: cli-reference-page
+.. rst-class:: cli-reference-commands
 
 .. click:: renku.ui.cli.rollback:rollback
    :prog: renku rollback

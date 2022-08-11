@@ -34,7 +34,7 @@ to the :ref:`cli-workflow` documentation for more details on this distinction.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
-.. rst-class:: cli-reference-page
+.. rst-class:: cli-reference-commands
 
 .. click:: renku.ui.cli.run:run
    :prog: renku run

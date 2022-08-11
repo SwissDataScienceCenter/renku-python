@@ -18,7 +18,7 @@
 Renku Command Line
 ==================
 
-.. rst-class:: cli-reference-page
+.. rst-class:: cli-reference-commands
 
 .. automodule:: renku.ui.cli
 

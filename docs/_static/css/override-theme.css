@@ -1,12 +1,8 @@
-.cli-reference-page > h2 {
-  display: none !important;
-}
-
-.cli-reference-commands > div.section > div.section {
+.cli-reference-commands > div.section {
   margin-left: 15px;
 }
 
-.cli-reference-commands > div.section > div.section h4 {
+.cli-reference-commands > div.section h4 {
   margin-left: -15px;
   font-style: italic;
 }

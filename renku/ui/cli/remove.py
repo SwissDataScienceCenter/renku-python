@@ -29,7 +29,7 @@ Remove a file from then project, updating:
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
-.. rst-class:: cli-reference-page
+.. rst-class:: cli-reference-commands
 
 .. click:: renku.ui.cli.remove:remove
    :prog: renku rm

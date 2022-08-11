@@ -20,7 +20,7 @@ r"""Recreate files created by the "run" command.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
-.. rst-class:: cli-reference-page
+.. rst-class:: cli-reference-commands
 
 .. click:: renku.ui.cli.rerun:rerun
    :prog: renku rerun

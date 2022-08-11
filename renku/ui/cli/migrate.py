@@ -26,7 +26,7 @@ This does not usually affect how you use Renku and no data is lost.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
-.. rst-class:: cli-reference-page
+.. rst-class:: cli-reference-commands
 
 .. click:: renku.ui.cli.migrate:migrate
    :prog: renku migrate

@@ -35,7 +35,7 @@ You can manually set up the merge tool by running ``renku mergetool install``.
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
-.. rst-class:: cli-reference-page
+.. rst-class:: cli-reference-commands
 
 .. click:: renku.ui.cli.mergetool:mergetool
    :prog: renku mergetool
