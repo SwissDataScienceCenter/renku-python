@@ -1796,7 +1796,7 @@ jupyter = ["ipywidgets (>=7.5.1,<8.0.0)"]
 
 [[package]]
 name = "rq"
-version = "1.10.1"
+version = "1.11.0"
 description = "RQ is a simple, lightweight, library for creating background jobs, and processing them."
 category = "main"
 optional = true
@@ -2573,7 +2573,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "12fe97b71e7e9832daa7c7d978c0c6f32a1c4c25b8d8b189d521e76d870365f3"
+content-hash = "66e6c5c73e5c433f33964007e100bcc3fe12dada4a777c2230139f160d26c1b2"
 
 [metadata.files]
 addict = [
@@ -3904,8 +3904,8 @@ rich = [
     {file = "rich-12.2.0.tar.gz", hash = "sha256:ea74bc9dad9589d8eea3e3fd0b136d8bf6e428888955f215824c2894f0da8b47"},
 ]
 rq = [
-    {file = "rq-1.10.1-py2.py3-none-any.whl", hash = "sha256:92f4cf38b2364c1697b541e77c0fe62b7e5242fa864324f262be126ee2a07e3a"},
-    {file = "rq-1.10.1.tar.gz", hash = "sha256:62d06b44c3acfa5d1933c5a4ec3fbc2484144a8af60e318d0b8447c5236271e2"},
+    {file = "rq-1.11.0-py2.py3-none-any.whl", hash = "sha256:c0bbf898b56817da053cdc992ab46da2729a7ccd70dd50316ad9209b7d7b71c1"},
+    {file = "rq-1.11.0.tar.gz", hash = "sha256:50d0cf687cfb2530eac9396c7426e420958a166e8f4666bd2096bdcf7f4ad03e"},
 ]
 rq-scheduler = [
     {file = "rq-scheduler-0.11.0.tar.gz", hash = "sha256:db79bb56cdbc4f7ffdd8bd659e389e91aa0db9c1abf002dc46f5dd6f0dbd2910"},
