@@ -59,6 +59,8 @@ def test_save_with_remote(runner, project, client_with_remote):
 
 def test_save_with_merge_conflict(runner, project, client_with_remote):
     """Test saving local changes."""
+    branch = client_with_remote.repository.active_branch.name
+    email = client_with_remote.repository.get_user().email
     client = client_with_remote
     with (client.path / "tracked").open("w") as fp:
         fp.write("tracked file")
@@ -82,6 +84,8 @@ def test_save_with_merge_conflict(runner, project, client_with_remote):
     assert 0 == result.exit_code, format_result_exception(result)
     assert "There were conflicts when updating the local data" in result.output
     assert "Successfully saved to remote branch" in result.output
+    assert branch in result.output
+    assert email in result.output
     assert "save changes" in client.repository.head.commit.message
 
 
