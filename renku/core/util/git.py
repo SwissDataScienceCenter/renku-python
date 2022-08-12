@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from renku.infrastructure.repository import Commit, Remote, Repository
 
 
-BRANCH_NAME_LIMIT = 255
+BRANCH_NAME_LIMIT = 250
 CLI_GITLAB_ENDPOINT = "repos"
 PRETECTED_BRANCH_PREFIX = "renku/autobranch"
 RENKU_BACKUP_PREFIX = "renku-backup"
