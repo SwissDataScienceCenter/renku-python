@@ -22,7 +22,7 @@ import functools
 import threading
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type, Union
 
 import click
 import inject
@@ -318,6 +318,15 @@ class Command:
         if hasattr(self, "_builder"):
             return self._builder.finalized
         return self._finalized
+
+    def any_builder_is_instance_of(self, cls: Type) -> bool:
+        """Check if any 'chained' command builder is an instance of a specific command builder class."""
+        if isinstance(self, cls):
+            return True
+        elif "_builder" in self.__dict__:
+            return self._builder.any_builder_is_instance_of(cls)
+        else:
+            return False
 
     @check_finalized
     def add_injection_pre_hook(self, order: int, hook: Callable):
