@@ -17,19 +17,31 @@
 # limitations under the License.
 r"""Renku CLI commands for handling of datasets.
 
-Manipulating datasets
-~~~~~~~~~~~~~~~~~~~~~
+Description
+~~~~~~~~~~~
 
-.. image:: ../_static/asciicasts/dataset-create.delay.gif
+Create, edit and manage the datasets in your Renku project.
+
+This is a core feature of Renku. You might want to go through the examples
+listed below to get an idea of how you can create, import, and edit datasets.
+
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. rst-class:: cli-reference-commands
+
+.. click:: renku.ui.cli.dataset:dataset
+   :prog: renku dataset
+   :nested: full
+
+Examples
+~~~~~~~~
+
+Create an empty dataset inside a Renku project:
+
+.. image:: ../../_static/asciicasts/dataset-create.delay.gif
    :width: 850
    :alt: Create a Dataset
-
-Creating an empty dataset inside a Renku project:
-
-.. code-block:: console
-
-    $ renku dataset create my-dataset
-    Creating a dataset ... OK
 
 .. cheatsheet::
    :group: Datasets
@@ -37,76 +49,11 @@ Creating an empty dataset inside a Renku project:
    :description: Create a new dataset.
    :extended:
 
-You can pass the following options to this command to set various metadata for
-the dataset.
-
-+-------------------+------------------------------------------------------+
-| Option            | Description                                          |
-+===================+======================================================+
-| -t, --title       | A human-readable title for the dataset.              |
-+-------------------+------------------------------------------------------+
-| -d, --description | Dataset's description.                               |
-+-------------------+------------------------------------------------------+
-| -c, --creator     | Creator's name, email, and an optional affiliation.  |
-|                   | Accepted format is                                   |
-|                   | 'Forename Surname <email> [affiliation]'. Pass       |
-|                   | multiple times for a list of creators.               |
-+-------------------+------------------------------------------------------+
-| -k, --keyword     | Dataset's keywords. Pass multiple times for a list   |
-|                   | of keywords.                                         |
-+-------------------+------------------------------------------------------+
-| -m, --metadata    | Path to file containing custom JSON-LD metadata to   |
-|                   | be added to the dataset.                             |
-+-------------------+------------------------------------------------------+
-| -s, --storage     | Define a storage backend for the created dataset.    |
-+-------------------+------------------------------------------------------+
-| --datadir         | Set a custom base directory for a dataset. Default is|
-|                   | ``<project_data_dir>/<dataset_name>``, where         |
-|                   | ``project_data_dir`` is set on project creation      |
-|                   | (usually ``data/``).                                 |
-+-------------------+------------------------------------------------------+
-
-Creating a dataset with a storage backend:
+Edit a dataset's metadata:
 
 By passing a storage URI with the ``--storage`` option, you can tell Renku that
 the data for the dataset is stored in a remote storage. At the moment, Renku
 supports only S3 backends. For example:
-
-.. code-block:: console
-
-    $ renku dataset create s3-data --storage s3://bucket-name/path
-
-Renku prompts for your S3 credentials and can store them for future uses.
-
-.. note:: Data directory for datasets that have a storage backend is ignored by
-    Git. This is needed to avoid committing pulled data from a remote storage to Git.
-
-Editing a dataset's metadata:
-
-.. image:: ../_static/asciicasts/dataset-edit.delay.gif
-   :width: 850
-   :alt: Editing a Dataset
-
-Use the ``edit`` sub-command to change metadata of a dataset. You can edit the same
-set of metadata as the create command by passing the options described in the
-table above. You can also use the ``-u/--unset`` options with one of the values
-from ``creators`` (short ``c``), ``keywords`` (short ``k``) or ``metadata``
-(short ``m``) to delete the respective values from the dataset.
-
-.. code-block:: console
-
-    $ renku dataset edit my-dataset --title 'New title' --unset keywords
-    Successfully updated: title.
-
-Listing all datasets:
-
-.. code-block:: console
-
-    $ renku dataset ls
-    ID        NAME           TITLE          VERSION
-    --------  -------------  -------------  ---------
-    0ad1cb9a  some-dataset   Some Dataset
-    9436e36c  my-dataset     My Dataset
 
 .. cheatsheet::
    :group: Datasets
@@ -163,19 +110,29 @@ Deleting a dataset:
    :description: Remove a dataset.
    :extended:
 
+Creating a dataset with a storage backend:
+
+By passing a storage URI with the ``--storage`` option, you can tell Renku that
+the data for the dataset is stored in a remote storage. At the moment, Renku
+supports only S3 backends. For example:
+
+.. code-block:: console
+
+    $ renku dataset create s3-data --storage s3://bucket-name/path
+
+Renku prompts for your S3 credentials and can store them for future uses.
+
+.. note:: Data directory for datasets that have a storage backend is ignored by
+    Git. This is needed to avoid committing pulled data from a remote storage to Git.
 
 Working with data
 ~~~~~~~~~~~~~~~~~
 
-.. image:: ../_static/asciicasts/dataset-add.delay.gif
-   :width: 850
-   :alt: Add data to a Dataset
-
 Adding data to the dataset:
 
-.. code-block:: console
-
-    $ renku dataset add my-dataset http://data-url
+.. image:: ../../_static/asciicasts/dataset-add.delay.gif
+   :width: 850
+   :alt: Add data to a Dataset
 
 .. cheatsheet::
    :group: Datasets
@@ -404,7 +361,7 @@ to the import command:
 
 Importing data from an external provider:
 
-.. image:: ../_static/asciicasts/dataset-import.delay.gif
+.. image:: ../../_static/asciicasts/dataset-import.delay.gif
    :width: 850
    :alt: Import a Dataset
 
