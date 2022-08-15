@@ -17,8 +17,8 @@
 # limitations under the License.
 r"""The base command for interacting with the Renku platform.
 
-``renku`` (base command)
-------------------------
+renku (base command)
+********************
 
 To list the available commands, either run ``renku`` with no parameters or
 execute ``renku help``:
