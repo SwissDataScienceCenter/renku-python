@@ -551,7 +551,7 @@ def push_changes(repository: "Repository", remote: Optional[str] = None, reset: 
             old_active_branch = str(repository.active_branch)
             fixed_chars_len = len(PRETECTED_BRANCH_PREFIX) + len(last_short_sha) + 2
             if len(old_active_branch) + fixed_chars_len > BRANCH_NAME_LIMIT:
-                old_branch_reference = old_active_branch[0:(BRANCH_NAME_LIMIT - fixed_chars_len)]
+                old_branch_reference = old_active_branch[0 : (BRANCH_NAME_LIMIT - fixed_chars_len)]
             else:
                 old_branch_reference = old_active_branch
             pushed_branch = f"{PRETECTED_BRANCH_PREFIX}/{old_branch_reference}/{last_short_sha}"
