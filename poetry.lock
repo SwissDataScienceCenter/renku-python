@@ -97,10 +97,10 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [package.extras]
-dev = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins", "zope.interface", "furo", "sphinx", "sphinx-notfound-page", "pre-commit", "cloudpickle"]
-docs = ["furo", "sphinx", "zope.interface", "sphinx-notfound-page"]
-tests = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins", "zope.interface", "cloudpickle"]
-tests_no_zope = ["coverage[toml] (>=5.0.2)", "hypothesis", "pympler", "pytest (>=4.3.0)", "six", "mypy", "pytest-mypy-plugins", "cloudpickle"]
+tests_no_zope = ["cloudpickle", "pytest-mypy-plugins", "mypy", "six", "pytest (>=4.3.0)", "pympler", "hypothesis", "coverage[toml] (>=5.0.2)"]
+tests = ["cloudpickle", "zope.interface", "pytest-mypy-plugins", "mypy", "six", "pytest (>=4.3.0)", "pympler", "hypothesis", "coverage[toml] (>=5.0.2)"]
+docs = ["sphinx-notfound-page", "zope.interface", "sphinx", "furo"]
+dev = ["cloudpickle", "pre-commit", "sphinx-notfound-page", "sphinx", "furo", "zope.interface", "pytest-mypy-plugins", "mypy", "six", "pytest (>=4.3.0)", "pympler", "hypothesis", "coverage[toml] (>=5.0.2)"]
 
 [[package]]
 name = "babel"
@@ -139,10 +139,10 @@ typed-ast = {version = ">=1.4.2", markers = "python_version < \"3.8\" and implem
 typing-extensions = {version = ">=3.10.0.0", markers = "python_version < \"3.10\""}
 
 [package.extras]
-colorama = ["colorama (>=0.4.3)"]
-d = ["aiohttp (>=3.7.4)"]
-jupyter = ["ipython (>=7.8.0)", "tokenize-rt (>=3.2.0)"]
 uvloop = ["uvloop (>=0.15.2)"]
+jupyter = ["tokenize-rt (>=3.2.0)", "ipython (>=7.8.0)"]
+d = ["aiohttp (>=3.7.4)"]
+colorama = ["colorama (>=0.4.3)"]
 
 [[package]]
 name = "blessed"
@@ -195,8 +195,8 @@ msgpack = ">=0.5.2"
 requests = "*"
 
 [package.extras]
-filecache = ["lockfile (>=0.9)"]
 redis = ["redis (>=2.10.5)"]
+filecache = ["lockfile (>=0.9)"]
 
 [[package]]
 name = "cachetools"
@@ -221,7 +221,7 @@ pyld = ">=2.0.2,<3.0.0"
 rdflib = ">=6.0.0,<7.0.0"
 
 [package.extras]
-docs = ["sphinx (>=3.0.3,<4.0.0)", "sphinx-rtd-theme (>=0.4.3,<0.5.0)", "sphinxcontrib-spelling (>=5.0.0,<6.0.0)"]
+docs = ["sphinxcontrib-spelling (>=5.0.0,<6.0.0)", "sphinx-rtd-theme (>=0.4.3,<0.5.0)", "sphinx (>=3.0.3,<4.0.0)"]
 
 [[package]]
 name = "certifi"
@@ -267,7 +267,7 @@ pyzmq = ">=17.0"
 tornado = ">=5.0.2"
 
 [package.extras]
-test = ["nose", "nose-cov", "coverage", "mock", "circus-web", "gevent", "papa", "pyyaml", "pyzmq (>=17.0)", "flake8 (==2.1.0)"]
+test = ["flake8 (==2.1.0)", "pyzmq (>=17.0)", "pyyaml", "papa", "gevent", "circus-web", "mock", "coverage", "nose-cov", "nose"]
 
 [[package]]
 name = "click"
@@ -293,8 +293,8 @@ python-versions = ">=3.6,<4"
 Click = ">=7.0,<9"
 
 [package.extras]
-docs = ["sphinx (>=2.3,<3)", "pallets-sphinx-themes", "m2r"]
-tests = ["coverage (<6)", "pytest", "pytest-cov", "coveralls"]
+tests = ["coveralls", "pytest-cov", "pytest", "coverage (<6)"]
+docs = ["m2r", "pallets-sphinx-themes", "sphinx (>=2.3,<3)"]
 
 [[package]]
 name = "click-plugins"
@@ -460,7 +460,7 @@ python-versions = ">=3.6"
 ordered-set = ">=4.1.0,<4.2.0"
 
 [package.extras]
-cli = ["click (==8.0.3)", "pyyaml (==5.4.1)", "toml (==0.10.2)", "clevercsv (==0.7.1)"]
+cli = ["clevercsv (==0.7.1)", "toml (==0.10.2)", "pyyaml (==5.4.1)", "click (==8.0.3)"]
 
 [[package]]
 name = "deepmerge"
@@ -482,7 +482,7 @@ python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 wrapt = ">=1.10,<2"
 
 [package.extras]
-dev = ["tox", "bump2version (<1)", "sphinx (<2)", "importlib-metadata (<3)", "importlib-resources (<4)", "configparser (<5)", "sphinxcontrib-websupport (<2)", "zipp (<2)", "PyTest (<5)", "PyTest-Cov (<2.6)", "pytest", "pytest-cov"]
+dev = ["pytest-cov", "pytest", "PyTest-Cov (<2.6)", "PyTest (<5)", "zipp (<2)", "sphinxcontrib-websupport (<2)", "configparser (<5)", "importlib-resources (<4)", "importlib-metadata (<3)", "sphinx (<2)", "bump2version (<1)", "tox"]
 
 [[package]]
 name = "dill"
@@ -509,8 +509,8 @@ requests = ">=2.14.2,<2.18.0 || >2.18.0"
 websocket-client = ">=0.32.0"
 
 [package.extras]
+tls = ["idna (>=2.0.0)", "cryptography (>=3.4.7)", "pyOpenSSL (>=17.5.0)"]
 ssh = ["paramiko (>=2.4.2)"]
-tls = ["pyOpenSSL (>=17.5.0)", "cryptography (>=3.4.7)", "idna (>=2.0.0)"]
 
 [[package]]
 name = "docutils"
@@ -579,8 +579,8 @@ six = ">=1.12"
 sortedcontainers = "*"
 
 [package.extras]
-aioredis = ["aioredis"]
 lua = ["lupa"]
+aioredis = ["aioredis"]
 
 [[package]]
 name = "filelock"
@@ -591,8 +591,8 @@ optional = false
 python-versions = ">=3.7"
 
 [package.extras]
-docs = ["furo (>=2021.8.17b43)", "sphinx (>=4.1)", "sphinx-autodoc-typehints (>=1.12)"]
-testing = ["covdefaults (>=1.2.0)", "coverage (>=4)", "pytest (>=4)", "pytest-cov", "pytest-timeout (>=1.4.2)"]
+testing = ["pytest-timeout (>=1.4.2)", "pytest-cov", "pytest (>=4)", "coverage (>=4)", "covdefaults (>=1.2.0)"]
+docs = ["sphinx-autodoc-typehints (>=1.12)", "sphinx (>=4.1)", "furo (>=2021.8.17b43)"]
 
 [[package]]
 name = "flake8"
@@ -652,8 +652,8 @@ Jinja2 = ">=3.0"
 Werkzeug = ">=2.0"
 
 [package.extras]
-async = ["asgiref (>=3.2)"]
 dotenv = ["python-dotenv"]
+async = ["asgiref (>=3.2)"]
 
 [[package]]
 name = "frozendict"
@@ -746,7 +746,7 @@ python-versions = ">=3.7"
 importlib-metadata = {version = "*", markers = "python_version < \"3.8\""}
 
 [package.extras]
-tests = ["freezegun", "pytest", "pytest-cov"]
+tests = ["pytest-cov", "pytest", "freezegun"]
 
 [[package]]
 name = "idna"
@@ -777,9 +777,9 @@ typing-extensions = {version = ">=3.6.4", markers = "python_version < \"3.8\""}
 zipp = ">=0.5"
 
 [package.extras]
-docs = ["sphinx", "jaraco.packaging (>=9)", "rst.linker (>=1.9)"]
+testing = ["importlib-resources (>=1.3)", "pytest-mypy (>=0.9.1)", "pytest-black (>=0.3.7)", "pytest-perf (>=0.9.2)", "flufl.flake8", "pyfakefs", "packaging", "pytest-enabler (>=1.3)", "pytest-cov", "pytest-flake8", "pytest-checkdocs (>=2.4)", "pytest (>=6)"]
 perf = ["ipython"]
-testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-cov", "pytest-enabler (>=1.3)", "packaging", "pyfakefs", "flufl.flake8", "pytest-perf (>=0.9.2)", "pytest-black (>=0.3.7)", "pytest-mypy (>=0.9.1)", "importlib-resources (>=1.3)"]
+docs = ["rst.linker (>=1.9)", "jaraco.packaging (>=9)", "sphinx"]
 
 [[package]]
 name = "importlib-resources"
@@ -903,10 +903,10 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, != 3.4.*"
 
 [package.extras]
-cssselect = ["cssselect (>=0.7)"]
-html5 = ["html5lib"]
-htmlsoup = ["beautifulsoup4"]
 source = ["Cython (>=0.29.7)"]
+htmlsoup = ["beautifulsoup4"]
+html5 = ["html5lib"]
+cssselect = ["cssselect (>=0.7)"]
 
 [[package]]
 name = "markupsafe"
@@ -980,9 +980,9 @@ typed-ast = {version = ">=1.4.0,<2", markers = "python_version < \"3.8\""}
 typing-extensions = ">=3.10"
 
 [package.extras]
-dmypy = ["psutil (>=4.0)"]
-python2 = ["typed-ast (>=1.4.0,<2)"]
 reports = ["lxml"]
+python2 = ["typed-ast (>=1.4.0,<2)"]
+dmypy = ["psutil (>=4.0)"]
 
 [[package]]
 name = "mypy-extensions"
@@ -1001,11 +1001,11 @@ optional = false
 python-versions = ">=3.7"
 
 [package.extras]
-default = ["numpy (>=1.19)", "scipy (>=1.5,!=1.6.1)", "matplotlib (>=3.3)", "pandas (>=1.1)"]
-developer = ["black (==21.5b1)", "pre-commit (>=2.12)"]
-doc = ["sphinx (>=4.0,<5.0)", "pydata-sphinx-theme (>=0.6,<1.0)", "sphinx-gallery (>=0.9,<1.0)", "numpydoc (>=1.1)", "pillow (>=8.2)", "nb2plots (>=0.6)", "texext (>=0.6.6)"]
-extra = ["lxml (>=4.5)", "pygraphviz (>=1.7)", "pydot (>=1.4.1)"]
-test = ["pytest (>=6.2)", "pytest-cov (>=2.12)", "codecov (>=2.1)"]
+test = ["codecov (>=2.1)", "pytest-cov (>=2.12)", "pytest (>=6.2)"]
+extra = ["pydot (>=1.4.1)", "pygraphviz (>=1.7)", "lxml (>=4.5)"]
+doc = ["texext (>=0.6.6)", "nb2plots (>=0.6)", "pillow (>=8.2)", "numpydoc (>=1.1)", "sphinx-gallery (>=0.9,<1.0)", "pydata-sphinx-theme (>=0.6,<1.0)", "sphinx (>=4.0,<5.0)"]
+developer = ["pre-commit (>=2.12)", "black (==21.5b1)"]
+default = ["pandas (>=1.1)", "matplotlib (>=3.3)", "scipy (>=1.5,!=1.6.1)", "numpy (>=1.19)"]
 
 [[package]]
 name = "numpy"
@@ -1024,7 +1024,7 @@ optional = false
 python-versions = ">=3.7"
 
 [package.extras]
-dev = ["pytest", "black", "mypy"]
+dev = ["mypy", "black", "pytest"]
 
 [[package]]
 name = "owlrl"
@@ -1108,8 +1108,8 @@ optional = true
 python-versions = ">=3.7"
 
 [package.extras]
-docs = ["olefile", "sphinx (>=2.4)", "sphinx-copybutton", "sphinx-issues (>=3.0.1)", "sphinx-removed-in", "sphinx-rtd-theme (>=1.0)", "sphinxext-opengraph"]
-tests = ["check-manifest", "coverage", "defusedxml", "markdown2", "olefile", "packaging", "pyroma", "pytest", "pytest-cov", "pytest-timeout"]
+tests = ["pytest-timeout", "pytest-cov", "pytest", "pyroma", "packaging", "olefile", "markdown2", "defusedxml", "coverage", "check-manifest"]
+docs = ["sphinxext-opengraph", "sphinx-rtd-theme (>=1.0)", "sphinx-removed-in", "sphinx-issues (>=3.0.1)", "sphinx-copybutton", "sphinx (>=2.4)", "olefile"]
 
 [[package]]
 name = "plantweb"
@@ -1133,8 +1133,8 @@ optional = true
 python-versions = ">=3.7"
 
 [package.extras]
-docs = ["furo (>=2021.7.5b38)", "proselint (>=0.10.2)", "sphinx-autodoc-typehints (>=1.12)", "sphinx (>=4)"]
-test = ["appdirs (==1.4.4)", "pytest-cov (>=2.7)", "pytest-mock (>=3.6)", "pytest (>=6)"]
+test = ["pytest (>=6)", "pytest-mock (>=3.6)", "pytest-cov (>=2.7)", "appdirs (==1.4.4)"]
+docs = ["sphinx (>=4)", "sphinx-autodoc-typehints (>=1.12)", "proselint (>=0.10.2)", "furo (>=2021.7.5b38)"]
 
 [[package]]
 name = "pluggy"
@@ -1213,7 +1213,7 @@ importlib-metadata = {version = "*", markers = "python_version < \"3.8\""}
 wcwidth = "*"
 
 [package.extras]
-tests = ["pytest", "pytest-cov", "pytest-lazy-fixture"]
+tests = ["pytest-lazy-fixture", "pytest-cov", "pytest"]
 
 [[package]]
 name = "prov"
@@ -1242,7 +1242,7 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*"
 
 [package.extras]
-test = ["ipaddress", "mock", "enum34", "pywin32", "wmi"]
+test = ["wmi", "pywin32", "enum34", "mock", "ipaddress"]
 
 [[package]]
 name = "ptyprocess"
@@ -1348,10 +1348,10 @@ optional = false
 python-versions = ">=3.6"
 
 [package.extras]
+tests = ["coverage[toml] (==5.0.4)", "pytest (>=6.0.0,<7.0.0)"]
+docs = ["zope.interface", "sphinx-rtd-theme", "sphinx"]
+dev = ["pre-commit", "mypy", "coverage[toml] (==5.0.4)", "pytest (>=6.0.0,<7.0.0)", "cryptography (>=3.3.1)", "zope.interface", "sphinx-rtd-theme", "sphinx"]
 crypto = ["cryptography (>=3.3.1)"]
-dev = ["sphinx", "sphinx-rtd-theme", "zope.interface", "cryptography (>=3.3.1)", "pytest (>=6.0.0,<7.0.0)", "coverage[toml] (==5.0.4)", "mypy", "pre-commit"]
-docs = ["sphinx", "sphinx-rtd-theme", "zope.interface"]
-tests = ["pytest (>=6.0.0,<7.0.0)", "coverage[toml] (==5.0.4)"]
 
 [[package]]
 name = "pyld"
@@ -1384,8 +1384,8 @@ python-versions = ">=3.6"
 cryptography = ">=35.0"
 
 [package.extras]
-docs = ["sphinx", "sphinx-rtd-theme"]
-test = ["flaky", "pretend", "pytest (>=3.0.1)"]
+test = ["pytest (>=3.0.1)", "pretend", "flaky"]
+docs = ["sphinx-rtd-theme", "sphinx"]
 
 [[package]]
 name = "pyparsing"
@@ -1396,7 +1396,7 @@ optional = false
 python-versions = ">=3.6.8"
 
 [package.extras]
-diagrams = ["railroad-diagrams", "jinja2"]
+diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
 name = "pyreadline"
@@ -1464,7 +1464,7 @@ py = ">=1.8.2"
 tomli = ">=1.0.0"
 
 [package.extras]
-testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "pygments (>=2.7.2)", "requests", "xmlschema"]
+testing = ["xmlschema", "requests", "pygments (>=2.7.2)", "nose", "mock", "hypothesis (>=3.56)", "argcomplete"]
 
 [[package]]
 name = "pytest-black"
@@ -1542,7 +1542,7 @@ python-versions = ">=3.7"
 pytest = ">=5.0"
 
 [package.extras]
-dev = ["pre-commit", "tox", "pytest-asyncio"]
+dev = ["pytest-asyncio", "tox", "pre-commit"]
 
 [[package]]
 name = "pytest-pep8"
@@ -1595,9 +1595,9 @@ pytest = ">=6.2.0"
 pytest-forked = "*"
 
 [package.extras]
-psutil = ["psutil (>=3.0)"]
-setproctitle = ["setproctitle"]
 testing = ["filelock"]
+setproctitle = ["setproctitle"]
+psutil = ["psutil (>=3.0)"]
 
 [[package]]
 name = "python-dateutil"
@@ -1642,8 +1642,8 @@ requests = ">=2.25.0"
 requests-toolbelt = ">=0.9.1"
 
 [package.extras]
-autocompletion = ["argcomplete (>=1.10.0,<3)"]
 yaml = ["PyYaml (>=5.2)"]
+autocompletion = ["argcomplete (>=1.10.0,<3)"]
 
 [[package]]
 name = "pytz"
@@ -1694,9 +1694,9 @@ isodate = "*"
 pyparsing = "*"
 
 [package.extras]
-docs = ["sphinx (<5)", "sphinxcontrib-apidoc"]
+tests = ["doctest-ignore-unicode (==0.1.2)", "flake8", "black (==21.6b0)", "coverage", "nose-timer", "nose (==1.3.7)", "networkx", "html5lib"]
 html = ["html5lib"]
-tests = ["html5lib", "networkx", "nose (==1.3.7)", "nose-timer", "coverage", "black (==21.6b0)", "flake8", "doctest-ignore-unicode (==0.1.2)"]
+docs = ["sphinxcontrib-apidoc", "sphinx (<5)"]
 
 [[package]]
 name = "redis"
@@ -1712,8 +1712,8 @@ importlib-metadata = {version = ">=1.0", markers = "python_version < \"3.8\""}
 packaging = ">=20.4"
 
 [package.extras]
+ocsp = ["requests (>=2.26.0)", "pyopenssl (==20.0.1)", "cryptography (>=36.0.1)"]
 hiredis = ["hiredis (>=1.0.0)"]
-ocsp = ["cryptography (>=36.0.1)", "pyopenssl (==20.0.1)", "requests (>=2.26.0)"]
 
 [[package]]
 name = "renku-sphinx-theme"
@@ -1748,8 +1748,8 @@ idna = ">=2.5,<4"
 urllib3 = ">=1.21.1,<1.27"
 
 [package.extras]
-socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 use_chardet_on_py3 = ["chardet (>=3.0.2,<6)"]
+socks = ["PySocks (>=1.5.6,!=1.5.7)"]
 
 [[package]]
 name = "requests-toolbelt"
@@ -1973,9 +1973,9 @@ sphinxcontrib-qthelp = "*"
 sphinxcontrib-serializinghtml = ">=1.1.5"
 
 [package.extras]
+test = ["typed-ast", "cython", "html5lib", "pytest-cov", "pytest"]
+lint = ["types-requests", "types-typed-ast", "docutils-stubs", "mypy (>=0.931)", "isort", "flake8 (>=3.5.0)"]
 docs = ["sphinxcontrib-websupport"]
-lint = ["flake8 (>=3.5.0)", "isort", "mypy (>=0.931)", "docutils-stubs", "types-typed-ast", "types-requests"]
-test = ["pytest", "pytest-cov", "html5lib", "cython", "typed-ast"]
 
 [[package]]
 name = "sphinx-rtd-theme"
@@ -2006,8 +2006,8 @@ pygments = "*"
 sphinx = ">=2,<5"
 
 [package.extras]
+testing = ["rinohtype", "bs4", "sphinx-testing", "pygments", "pytest-regressions", "pytest-cov", "pytest (>=3.6,<4)", "coverage"]
 code_style = ["pre-commit (==2.13.0)"]
-testing = ["coverage", "pytest (>=3.6,<4)", "pytest-cov", "pytest-regressions", "pygments", "sphinx-testing", "bs4", "rinohtype"]
 
 [[package]]
 name = "sphinxcontrib-applehelp"
@@ -2094,7 +2094,7 @@ PyEnchant = ">=3.1.1"
 Sphinx = ">=3.0.0"
 
 [package.extras]
-test = ["pytest", "pytest-cov", "coverage (>=4.0,!=4.4)"]
+test = ["coverage (>=4.0,!=4.4)", "pytest-cov", "pytest"]
 
 [[package]]
 name = "tabulate"
@@ -2191,9 +2191,9 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,>=2.7"
 colorama = {version = "*", markers = "platform_system == \"Windows\""}
 
 [package.extras]
-dev = ["py-make (>=0.1.0)", "twine", "wheel"]
-notebook = ["ipywidgets (>=6)"]
 telegram = ["requests"]
+notebook = ["ipywidgets (>=6)"]
+dev = ["wheel", "twine", "py-make (>=0.1.0)"]
 
 [[package]]
 name = "transaction"
@@ -2207,9 +2207,9 @@ python-versions = "*"
 "zope.interface" = "*"
 
 [package.extras]
-docs = ["sphinx", "repoze.sphinx.autointerface"]
+testing = ["mock", "coverage", "nose"]
 test = ["mock"]
-testing = ["nose", "coverage", "mock"]
+docs = ["repoze.sphinx.autointerface", "sphinx"]
 
 [[package]]
 name = "typed-ast"
@@ -2276,9 +2276,9 @@ optional = false
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*, <4"
 
 [package.extras]
-brotli = ["brotlicffi (>=0.8.0)", "brotli (>=1.0.9)", "brotlipy (>=0.6.0)"]
-secure = ["pyOpenSSL (>=0.14)", "cryptography (>=1.3.4)", "idna (>=2.0.0)", "certifi", "ipaddress"]
 socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
+secure = ["ipaddress", "certifi", "idna (>=2.0.0)", "cryptography (>=1.3.4)", "pyOpenSSL (>=0.14)"]
+brotli = ["brotlipy (>=0.6.0)", "brotli (>=1.0.9)", "brotlicffi (>=0.8.0)"]
 
 [[package]]
 name = "vcrpy"
@@ -2322,9 +2322,9 @@ optional = false
 python-versions = ">=3.7"
 
 [package.extras]
-docs = ["Sphinx (>=3.4)", "sphinx-rtd-theme (>=0.5)"]
-optional = ["python-socks", "wsaccel"]
 test = ["websockets"]
+optional = ["wsaccel", "python-socks"]
+docs = ["sphinx-rtd-theme (>=0.5)", "Sphinx (>=3.4)"]
 
 [[package]]
 name = "werkzeug"
@@ -2418,8 +2418,8 @@ optional = false
 python-versions = "*"
 
 [package.extras]
+test = ["zope.testrunner", "zope.exceptions", "manuel", "docutils"]
 docs = ["sphinxcontrib-programoutput"]
-test = ["docutils", "manuel", "zope.exceptions", "zope.testrunner"]
 
 [[package]]
 name = "zdaemon"
@@ -2454,10 +2454,10 @@ ZODB = ">=5.1.1"
 "zope.interface" = "*"
 
 [package.extras]
-docs = ["sphinx", "repoze.sphinx.autointerface", "sphinx-rtd-theme"]
-msgpack = ["msgpack-python"]
-test = ["ZODB (>=5.5.1)", "zope.testing", "manuel", "random2", "mock", "msgpack (<1)", "zope.testrunner"]
 uvloop = ["uvloop (>=0.5.1)"]
+test = ["zope.testrunner", "msgpack (<1)", "mock", "random2", "manuel", "zope.testing", "ZODB (>=5.5.1)"]
+msgpack = ["msgpack-python"]
+docs = ["sphinx-rtd-theme", "repoze.sphinx.autointerface", "sphinx"]
 
 [[package]]
 name = "zipp"
@@ -2468,8 +2468,8 @@ optional = false
 python-versions = ">=3.7"
 
 [package.extras]
-docs = ["sphinx", "jaraco.packaging (>=9)", "rst.linker (>=1.9)", "jaraco.tidelift (>=1.4)"]
-testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-cov", "pytest-enabler (>=1.3)", "jaraco.itertools", "func-timeout", "pytest-black (>=0.3.7)", "pytest-mypy (>=0.9.1)"]
+testing = ["pytest-mypy (>=0.9.1)", "pytest-black (>=0.3.7)", "func-timeout", "jaraco.itertools", "pytest-enabler (>=1.3)", "pytest-cov", "pytest-flake8", "pytest-checkdocs (>=2.4)", "pytest (>=6)"]
+docs = ["jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "jaraco.packaging (>=9)", "sphinx"]
 
 [[package]]
 name = "zodb"
@@ -2490,7 +2490,7 @@ zodbpickle = ">=1.0.1"
 "zope.interface" = "*"
 
 [package.extras]
-test = ["manuel", "zope.testing", "zope.testrunner (>=4.4.6)", "mock"]
+test = ["mock", "zope.testrunner (>=4.4.6)", "zope.testing", "manuel"]
 
 [[package]]
 name = "zodb3"
@@ -2543,8 +2543,8 @@ optional = false
 python-versions = "*"
 
 [package.extras]
-docs = ["sphinx", "repoze.sphinx.autointerface", "zope.exceptions", "zope.interface", "mock"]
 test = ["zope.testrunner"]
+docs = ["mock", "zope.interface", "zope.exceptions", "repoze.sphinx.autointerface", "sphinx"]
 
 [[package]]
 name = "zstandard"
