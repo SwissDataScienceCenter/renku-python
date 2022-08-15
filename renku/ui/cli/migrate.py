@@ -17,10 +17,23 @@
 # limitations under the License.
 """Migrate project to the latest Renku version.
 
-When the way Renku stores metadata changes or there are other changes to the
-project structure or data that are needed for Renku to work, ``renku migrate``
-can be used to bring the project up to date with the current version of Renku.
+Description
+~~~~~~~~~~~
+
+Bring the project up to date with the current version of Renku.
 This does not usually affect how you use Renku and no data is lost.
+
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. rst-class:: cli-reference-commands
+
+.. click:: renku.ui.cli.migrate:migrate
+   :prog: renku migrate
+   :nested: full
+
+Dockerfile and template
+~~~~~~~~~~~~~~~~~~~~~~~
 
 In addition, ``renku migrate`` will update your ``Dockerfile` to install the
 latest version of ``renku-python``, if supported, making sure your renku
