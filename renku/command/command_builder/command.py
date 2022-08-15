@@ -328,6 +328,14 @@ class Command:
         else:
             return False
 
+    @property
+    def will_write_to_database(self) -> bool:
+        """Will running the command write anything to the metadata store."""
+        try:
+            return self._write
+        except AttributeError:
+            return False
+
     @check_finalized
     def add_injection_pre_hook(self, order: int, hook: Callable):
         """Add a pre-execution hook for dependency injection.

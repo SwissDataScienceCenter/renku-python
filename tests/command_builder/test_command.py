@@ -23,3 +23,21 @@ from renku.command.command_builder.repo import Commit, Isolation, RequireClean
 )
 def test_any_builder_is_instance_of(input: Command, cls: Type, expected: bool):
     assert input.any_builder_is_instance_of(cls) == expected
+
+
+@pytest.mark.parametrize(
+    "input,expected",
+    [
+        (Command(), False),
+        (Command().with_git_isolation(), False),
+        (Command().with_git_isolation().with_commit(), False),
+        (Command().with_git_isolation().with_commit().with_database(write=True), True),
+        (Command().with_git_isolation().with_commit().with_database(write=False), False),
+        (Command().with_database(write=True), True),
+        (Command().with_database(write=False), False),
+        (Command().with_git_isolation().with_database(write=True).with_commit(), True),
+        (Command().with_git_isolation().with_database(write=False).with_commit(), False),
+    ],
+)
+def test_will_write_to_database(input: Command, expected: bool):
+    assert input.will_write_to_database == expected
