@@ -7,6 +7,7 @@ api
 app
 args
 argv
+ascii
 async
 attrs
 auditability
@@ -69,6 +70,7 @@ dotfiles
 Dropbox
 dropdown
 entrypoint
+env
 executables
 extraEnv
 extraEnvFrom
@@ -83,6 +85,7 @@ graphviz
 gapped
 git-lfs
 gitattributes
+githooks
 github
 gitignore
 gitkeep
@@ -98,6 +101,7 @@ hypervisor
 iframes
 indices
 Indices
+ini
 init
 installable
 interoperability
@@ -127,6 +131,7 @@ lefthand
 lfs
 localhost
 Matlab
+mergetool
 metadata
 microservices
 middleware
@@ -136,11 +141,13 @@ minimalistic
 misconfiguration
 mistyped
 mls
+mv
 mydomain
 namespace
 namespaces
 Nginx
 nodejs
+nt
 oauth
 OAuth
 oid
@@ -149,6 +156,8 @@ online
 OpenID
 openssl
 papermill
+param
+params
 parameterizable
 parametrization
 parametrize
@@ -166,6 +175,7 @@ programmatically
 py
 pyshacl
 rclone
+rdf
 rdflib
 readme
 rebase
