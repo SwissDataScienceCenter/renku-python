@@ -3,7 +3,7 @@ FROM python:3.9-slim as base
 # hadolint ignore=DL3008,DL3009,DL3013
 RUN apt-get update && \
     apt-get install --no-install-recommends -y git git-lfs=2.* python3-dev && \
-    pip install --no-cache-dir --upgrade pip poetry
+    pip install --no-cache-dir --upgrade pip poetry poetry-dynamic-versioning-plugin
 
 FROM base as builder
 
@@ -13,14 +13,16 @@ RUN apt-get install --no-install-recommends -y build-essential && \
 
 # The python install is done in two steps to avoid re-installing all dependencies every
 # time the code changes
+# set the BUILD_CORE_SERVICE to non null to install additional service dependencies
+ARG BUILD_CORE_SERVICE
 COPY pyproject.toml poetry.lock README.rst CHANGES.rst Makefile /code/renku/
-WORKDIR /code/renku
-RUN poetry export --without-hashes -f requirements.txt --output /tmp/requirements.txt && \
-    pip install --no-cache-dir -r /tmp/requirements.txt && \
-    pip install --no-cache-dir poetry-dynamic-versioning==0.17.1
-
 COPY .git /code/renku/.git
 COPY renku /code/renku/renku
+WORKDIR /code/renku
+# hadolint ignore=SC2086
+RUN if [ -n "${BUILD_CORE_SERVICE}" ]; then export EXT_BUILD="--with service" ; fi && \
+    poetry export --without-hashes ${EXT_BUILD} -f requirements.txt --output /tmp/requirements.txt && \
+    pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Set CLEAN_INSTALL to a non-null value to ensure that only a committed version of
 # renku-python is installed in the image. This is the default for chartpress builds.
@@ -28,14 +30,11 @@ ARG CLEAN_INSTALL
 RUN if [ -n "${CLEAN_INSTALL}" ]; then git reset --hard ; fi && \
     make download-templates
 
-# set the BUILD_CORE_SERVICE to non null to install additional service dependencies
 ARG BUILD_CORE_SERVICE
-RUN if [ -n "${BUILD_CORE_SERVICE}" ]; then export EXT_BUILD="[service]" ; fi && \
-    pip wheel --wheel-dir /wheels ".${EXT_BUILD}" && \
+RUN pip wheel --wheel-dir /wheels ".[toil]" && \
     pip install --no-cache-dir --no-index --no-warn-script-location --force --root=/pythonroot/ /wheels/*.whl
 
 FROM base
-
 ARG BUILD_CORE_SERVICE
 RUN addgroup -gid 1000 shuhitsu && \
     useradd -m -u 1000 -g shuhitsu shuhitsu && \

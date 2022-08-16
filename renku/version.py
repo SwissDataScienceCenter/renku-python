@@ -20,11 +20,11 @@
 import re
 
 try:
-    from importlib.metadata import distribution
+    from importlib.metadata import distribution, version
 except ImportError:
-    from importlib_metadata import distribution  # type: ignore
+    from importlib_metadata import distribution, version  # type: ignore
 
-__version__ = "1.10.0"
+__version__ = version("renku")
 __template_version__ = "0.3.1"
 __minimum_project_version__ = "1.7.0"
 
