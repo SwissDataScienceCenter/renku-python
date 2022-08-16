@@ -35,26 +35,43 @@ class StandardOutput(CommunicationCallback):
         super().__init__()
         self._progress_bars = {}
         self._progress_types = ["download"]
+        self._spinner = None
 
     def echo(self, msg, end="\n"):
         """Write a message."""
         with CommunicationCallback.lock:
+            if self._spinner:
+                self._spinner.hide()
             print(msg, end=end)
+            if self._spinner:
+                self._spinner.show()
 
     def info(self, msg):
         """Write an info message."""
         with CommunicationCallback.lock:
+            if self._spinner:
+                self._spinner.hide()
             print(msg)
+            if self._spinner:
+                self._spinner.show()
 
     def warn(self, msg):
         """Write a warning message."""
         with CommunicationCallback.lock:
+            if self._spinner:
+                self._spinner.hide()
             print(msg)
+            if self._spinner:
+                self._spinner.show()
 
     def error(self, msg):
         """Write an error message."""
         with CommunicationCallback.lock:
+            if self._spinner:
+                self._spinner.hide()
             print(msg, file=sys.stderr)
+            if self._spinner:
+                self._spinner.show()
 
     def confirm(self, msg, abort=False, warning=False, default=False):
         """Get confirmation for an action."""
@@ -98,8 +115,13 @@ class StandardOutput(CommunicationCallback):
     @contextmanager
     def busy(self, msg):
         """Indicate busy status using a spinner."""
-        with yaspin(text=msg):
+        self._spinner = yaspin(text=msg)
+        try:
+            self._spinner.start()
             yield
+        finally:
+            self._spinner.stop()
+            self._spinner = None
 
 
 class ClickCallback(StandardOutput):
@@ -115,19 +137,35 @@ class ClickCallback(StandardOutput):
         if end != "\n":
             msg = msg + end
             new_line = False
+        if self._spinner:
+            self._spinner.hide()
         click.echo(msg, nl=new_line)
+        if self._spinner:
+            self._spinner.show()
 
     def info(self, msg):
         """Write an info message."""
+        if self._spinner:
+            self._spinner.hide()
         click.echo(self.INFO + msg)
+        if self._spinner:
+            self._spinner.show()
 
     def warn(self, msg):
         """Write a warning message."""
+        if self._spinner:
+            self._spinner.hide()
         click.echo(self.WARNING + msg)
+        if self._spinner:
+            self._spinner.show()
 
     def error(self, msg):
         """Write an error message."""
+        if self._spinner:
+            self._spinner.hide()
         click.echo(self.ERROR + msg, err=True)
+        if self._spinner:
+            self._spinner.show()
 
     def has_prompt(self):
         """Return True if communicator provides a direct prompt to users."""
@@ -136,8 +174,20 @@ class ClickCallback(StandardOutput):
     def confirm(self, msg, abort=False, warning=False, default=False):
         """Get confirmation for an action using a prompt."""
         prefix = self.WARNING if warning else ""
-        return click.confirm(prefix + msg, abort=abort, default=default)
+        try:
+            if self._spinner:
+                self._spinner.hide()
+            return click.confirm(prefix + msg, abort=abort, default=default)
+        finally:
+            if self._spinner:
+                self._spinner.show()
 
     def prompt(self, msg, type=None, default=None, **kwargs):
         """Show a message prompt from the first callback that has a prompt."""
-        return click.prompt(msg, type=type, default=default, **kwargs)
+        try:
+            if self._spinner:
+                self._spinner.hide()
+            return click.prompt(msg, type=type, default=default, **kwargs)
+        finally:
+            if self._spinner:
+                self._spinner.show()

@@ -463,23 +463,23 @@ class RenkuImporter(ImporterApi):
 
         urls = (self._project_url_ssh, self._project_url_http)
         # Clone the project
-        with communication.busy(msg="Cloning remote repository..."):
-            for url in urls:
-                try:
-                    repository = clone_renku_repository(
-                        url=url,
-                        path=get_cache_directory_for_repository(client=client, url=url),
-                        gitlab_token=self._gitlab_token,
-                        deployment_hostname=parsed_uri.netloc,
-                        depth=None,
-                        reuse_existing_repository=True,
-                        use_renku_credentials=True,
-                    )
-                except errors.GitError:
-                    pass
-                else:
-                    self._project_url = url
-                    break
+        communication.echo(msg="Cloning remote repository...")
+        for url in urls:
+            try:
+                repository = clone_renku_repository(
+                    url=url,
+                    path=get_cache_directory_for_repository(client=client, url=url),
+                    gitlab_token=self._gitlab_token,
+                    deployment_hostname=parsed_uri.netloc,
+                    depth=None,
+                    reuse_existing_repository=True,
+                    use_renku_credentials=True,
+                )
+            except errors.GitError:
+                pass
+            else:
+                self._project_url = url
+                break
 
         if self._project_url is None or repository is None:
             raise errors.ParameterError("Cannot clone remote projects:\n\t" + "\n\t".join(urls), param_hint=self.uri)
