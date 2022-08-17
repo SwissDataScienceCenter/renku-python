@@ -72,7 +72,7 @@ then
     mkdir temp/service_cache
 fi
 
-POD_NAME="${DEV_NAMESPACE}-core-${CORE_VERSION}"
+POD_NAME="${DEV_NAMESPACE}-renku-core-${CORE_VERSION}"
 echo -e ""
 echo -e "Context: ${COLOR_RED}${CURRENT_CONTEXT}${COLOR_RESET}, target: ${COLOR_RED}${POD_NAME}${COLOR_RESET}"
 echo "Starting telepresence..."
