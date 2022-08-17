@@ -130,6 +130,8 @@ def test_create_project_from_template(svc_client_templates_creation, client_data
 
     svc_client, headers, payload, rm_remote = svc_client_templates_creation
 
+    payload["data_directory"] = "my-folder/"
+
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=headers)
 
     assert response
@@ -158,6 +160,7 @@ def test_create_project_from_template(svc_client_templates_creation, client_data
 
     expected_id = f"/projects/{payload['project_namespace']}/{stripped_name}"
     assert expected_id == project.id
+    assert client.data_dir == "my-folder/"
 
     # NOTE: Assert backwards compatibility metadata.yml was created
     old_metadata_path = project_path / ".renku/metadata.yml"
