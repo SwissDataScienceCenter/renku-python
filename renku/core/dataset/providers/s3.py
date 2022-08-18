@@ -74,7 +74,7 @@ class S3Provider(ProviderApi):
 class S3Credentials(ProviderCredentials):
     """S3-specific credentials."""
 
-    def __init__(self, provider: S3Provider):
+    def __init__(self, provider: ProviderApi):
         super().__init__(provider=provider)
 
     @staticmethod

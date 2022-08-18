@@ -21,12 +21,11 @@ from enum import IntEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
-from renku.core.plugin import hookimpl
-from renku.domain_model.dataset_provider import IDatasetProviderPlugin
-
 from renku.core import errors
+from renku.core.plugin import hookimpl
 from renku.core.util.metadata import get_canonical_key, read_credentials, store_credentials
 from renku.core.util.util import NO_VALUE, NoValueType
+from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import (
