@@ -4,7 +4,8 @@ __pycache__/
 *.py[cod]
 
 # VSCode
-.vscode/
+.vscode/*
+!.vscode/settings.json
 
 # Idea software family
 .idea/

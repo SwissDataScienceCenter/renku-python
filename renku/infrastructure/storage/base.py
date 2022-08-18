@@ -58,7 +58,7 @@ def execute_rclone_command(command: str, *args: Any, **kwargs) -> str:
     """Execute an R-clone command."""
     try:
         result = subprocess.run(
-            ("rclone", "--config", "''", command, *transform_kwargs(**kwargs), *transform_args(*args)),
+            ("rclone", "--config", "''", command, *transform_kwargs(**kwargs), *args),
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,

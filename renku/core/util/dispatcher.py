@@ -22,10 +22,11 @@ from typing import TYPE_CHECKING
 from renku.command.command_builder.command import inject
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
-from renku.core.interface.storage import IStorage, IStorageFactory
+from renku.core.interface.storage import IStorageFactory
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials
+    from renku.core.interface.storage import IStorage
     from renku.core.management.client import LocalClient
     from renku.infrastructure.database import Database
     from renku.infrastructure.repository import Repository

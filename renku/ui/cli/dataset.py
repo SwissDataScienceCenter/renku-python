@@ -17,96 +17,37 @@
 # limitations under the License.
 r"""Renku CLI commands for handling of datasets.
 
-Manipulating datasets
-~~~~~~~~~~~~~~~~~~~~~
+Description
+~~~~~~~~~~~
 
-.. image:: ../_static/asciicasts/dataset-create.delay.gif
+Create, edit and manage the datasets in your Renku project.
+
+This is a core feature of Renku. You might want to go through the examples
+listed below to get an idea of how you can create, import, and edit datasets.
+
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. rst-class:: cli-reference-commands
+
+.. click:: renku.ui.cli.dataset:dataset
+   :prog: renku dataset
+   :nested: full
+
+Examples
+~~~~~~~~
+
+Create an empty dataset inside a Renku project:
+
+.. image:: ../../_static/asciicasts/dataset-create.delay.gif
    :width: 850
    :alt: Create a Dataset
-
-Creating an empty dataset inside a Renku project:
-
-.. code-block:: console
-
-    $ renku dataset create my-dataset
-    Creating a dataset ... OK
 
 .. cheatsheet::
    :group: Datasets
    :command: $ renku dataset create <dataset>
    :description: Create a new dataset.
    :extended:
-
-You can pass the following options to this command to set various metadata for
-the dataset.
-
-+-------------------+------------------------------------------------------+
-| Option            | Description                                          |
-+===================+======================================================+
-| -t, --title       | A human-readable title for the dataset.              |
-+-------------------+------------------------------------------------------+
-| -d, --description | Dataset's description.                               |
-+-------------------+------------------------------------------------------+
-| -c, --creator     | Creator's name, email, and an optional affiliation.  |
-|                   | Accepted format is                                   |
-|                   | 'Forename Surname <email> [affiliation]'. Pass       |
-|                   | multiple times for a list of creators.               |
-+-------------------+------------------------------------------------------+
-| -k, --keyword     | Dataset's keywords. Pass multiple times for a list   |
-|                   | of keywords.                                         |
-+-------------------+------------------------------------------------------+
-| -m, --metadata    | Path to file containing custom JSON-LD metadata to   |
-|                   | be added to the dataset.                             |
-+-------------------+------------------------------------------------------+
-| -s, --storage     | Define a storage backend for the created dataset.    |
-+-------------------+------------------------------------------------------+
-| --datadir         | Set a custom base directory for a dataset. Default is|
-|                   | ``<project_data_dir>/<dataset_name>``, where         |
-|                   | ``project_data_dir`` is set on project creation      |
-|                   | (usually ``data/``).                                 |
-+-------------------+------------------------------------------------------+
-
-Creating a dataset with a storage backend:
-
-By passing a storage URI with the ``--storage`` option, you can tell Renku that
-the data for the dataset is stored in a remote storage. At the moment, Renku
-supports only S3 backends. For example:
-
-.. code-block:: console
-
-    $ renku dataset create s3-data --storage s3://bucket-name/path
-
-Renku prompts for your S3 credentials and can store them for future uses.
-
-.. note:: Data directory for datasets that have a storage backend is ignored by
-    Git. This is needed to avoid committing pulled data from a remote storage to Git.
-
-Editing a dataset's metadata:
-
-.. image:: ../_static/asciicasts/dataset-edit.delay.gif
-   :width: 850
-   :alt: Editing a Dataset
-
-Use the ``edit`` sub-command to change metadata of a dataset. You can edit the same
-set of metadata as the create command by passing the options described in the
-table above. You can also use the ``-u/--unset`` options with one of the values
-from ``creators`` (short ``c``), ``keywords`` (short ``k``) or ``metadata``
-(short ``m``) to delete the respective values from the dataset.
-
-.. code-block:: console
-
-    $ renku dataset edit my-dataset --title 'New title' --unset keywords
-    Successfully updated: title.
-
-Listing all datasets:
-
-.. code-block:: console
-
-    $ renku dataset ls
-    ID        NAME           TITLE          VERSION
-    --------  -------------  -------------  ---------
-    0ad1cb9a  some-dataset   Some Dataset
-    9436e36c  my-dataset     My Dataset
 
 .. cheatsheet::
    :group: Datasets
@@ -163,19 +104,29 @@ Deleting a dataset:
    :description: Remove a dataset.
    :extended:
 
+Creating a dataset with a storage backend:
+
+By passing a storage URI with the ``--storage`` option, you can tell Renku that
+the data for the dataset is stored in a remote storage. At the moment, Renku
+supports only S3 backends. For example:
+
+.. code-block:: console
+
+    $ renku dataset create s3-data --storage s3://bucket-name/path
+
+Renku prompts for your S3 credentials and can store them for future uses.
+
+.. note:: Data directory for datasets that have a storage backend is ignored by
+    Git. This is needed to avoid committing pulled data from a remote storage to Git.
 
 Working with data
 ~~~~~~~~~~~~~~~~~
 
-.. image:: ../_static/asciicasts/dataset-add.delay.gif
-   :width: 850
-   :alt: Add data to a Dataset
-
 Adding data to the dataset:
 
-.. code-block:: console
-
-    $ renku dataset add my-dataset http://data-url
+.. image:: ../../_static/asciicasts/dataset-add.delay.gif
+   :width: 850
+   :alt: Add data to a Dataset
 
 .. cheatsheet::
    :group: Datasets
@@ -295,7 +246,8 @@ will prevent them from being updated.
    :extended:
 
 The update command also checks for file changes in the project and updates
-datasets' metadata accordingly.
+datasets' metadata accordingly. You can automatically add new files from
+the dataset's data directory by using the ``--check-data-directory`` flag.
 
 You can limit the scope of updated files by specifying dataset names, using
 ``--include`` and ``--exclude`` to filter based on file names, or using
@@ -403,7 +355,7 @@ to the import command:
 
 Importing data from an external provider:
 
-.. image:: ../_static/asciicasts/dataset-import.delay.gif
+.. image:: ../../_static/asciicasts/dataset-import.delay.gif
    :width: 850
    :alt: Import a Dataset
 
@@ -569,6 +521,7 @@ Unlink all files from a dataset:
 """
 
 import json
+import os
 from pathlib import Path
 
 import click
@@ -1073,7 +1026,8 @@ def import_(uri, name, extract, yes, datadir, **kwargs):
     click.secho("OK", fg=color.GREEN)
 
 
-@dataset.command("update")
+@dataset.command()
+@click.pass_context
 @click.argument("names", nargs=-1, shell_complete=_complete_datasets)
 @click.option(
     "--creators",
@@ -1085,9 +1039,35 @@ def import_(uri, name, extract, yes, datadir, **kwargs):
 @click.option("--delete", is_flag=True, help="Delete local files that are deleted from remote.")
 @click.option("-e", "--external", is_flag=True, help="Deprecated")
 @click.option("--no-external", is_flag=True, help="Skip updating external data.")
+@click.option("--no-local", is_flag=True, help="Skip updating local files.")
+@click.option("--no-remote", is_flag=True, help="Skip updating remote files.")
+@click.option("-c", "--check-data-directory", is_flag=True, help="Check datasets' data directories for new files.")
 @click.option("--all", "-a", "update_all", is_flag=True, default=False, help="Update all datasets.")
 @click.option("-n", "--dry-run", is_flag=True, help="Show what would have been changed")
-def update(names, creators, include, exclude, ref, delete, external, no_external, update_all, dry_run):
+@click.option(
+    "--plain",
+    is_flag=True,
+    default=False,
+    help="Show result as one entry per line for machine readability."
+    " 'd' = dataset update, 'f' = file update, 'r' = file removed.",
+)
+def update(
+    ctx,
+    names,
+    creators,
+    include,
+    exclude,
+    ref,
+    delete,
+    external,
+    no_external,
+    no_local,
+    no_remote,
+    check_data_directory,
+    update_all,
+    dry_run,
+    plain,
+):
     """Updates files in dataset from a remote Git repo."""
     from renku.command.dataset import update_datasets_command
     from renku.core import errors
@@ -1109,7 +1089,7 @@ def update(names, creators, include, exclude, ref, delete, external, no_external
         raise errors.ParameterError("Cannot pass --include/--exclude with -a/--all")
 
     result = (
-        update_datasets_command()
+        update_datasets_command(dry_run=dry_run)
         .with_communicator(communicator)
         .build()
         .execute(
@@ -1120,6 +1100,9 @@ def update(names, creators, include, exclude, ref, delete, external, no_external
             ref=ref,
             delete=delete,
             no_external=no_external,
+            no_local=no_local,
+            no_remote=no_remote,
+            check_data_directory=check_data_directory,
             update_all=update_all,
             dry_run=dry_run,
         )
@@ -1135,26 +1118,42 @@ def update(names, creators, include, exclude, ref, delete, external, no_external
             return tabulate(collection=records, columns="path,dataset,external", columns_mapping=columns)
 
         if not datasets and not dataset_files:
-            click.secho("Everything is up-to-date", fg=color.GREEN)
+            if not plain:
+                click.secho("Everything is up-to-date", fg=color.GREEN)
             return
 
         if datasets:
-            names = "\n\t".join(sorted([d.name for d in datasets]))
-            click.echo(f"The following imported datasets will be updated:\n\t{names}\n")
+            ds_names = sorted([d.name for d in datasets])
+            if plain:
+                ds_names = [f"d {n}" for n in ds_names]
+                click.echo(os.linesep.join(ds_names) + os.linesep)
+            else:
+                names = "\n\t".join(ds_names)
+                click.echo(f"The following imported datasets will be updated:\n\t{names}\n")
 
         if not dataset_files:
             return
 
         files = [f for f in dataset_files if not f.deleted]
         if files:
-            files = get_dataset_files(files)
-            click.echo(f"The following files will be updated:\n\n{files}\n")
+            if plain:
+                files = [f"f {f.path} {f.dataset.name}" for f in files]
+                click.echo(os.linesep.join(files) + os.linesep)
+            else:
+                files = get_dataset_files(files)
+                click.echo(f"The following files will be updated:\n\n{files}\n")
 
         deleted_files = [f for f in dataset_files if f.deleted]
         if deleted_files:
-            files = get_dataset_files(deleted_files)
-            message = " (pass '--delete' to remove them from datasets' metadata)" if not delete else ""
-            click.echo(f"The following files will be deleted{message}:\n\n{files}\n")
+            if plain:
+                files = [f"r {f.path} {f.dataset.name}" for f in deleted_files]
+                click.echo(os.linesep.join(files))
+            else:
+                files = get_dataset_files(deleted_files)
+                message = " (pass '--delete' to remove them from datasets' metadata)" if not delete else ""
+                click.echo(f"The following files will be deleted{message}:\n\n{files}\n")
+
+        ctx.exit(1)
 
 
 @dataset.command(hidden=True)

@@ -74,6 +74,9 @@ class S3Provider(ProviderApi):
 class S3Credentials(ProviderCredentials):
     """S3-specific credentials."""
 
+    def __init__(self, provider: S3Provider):
+        super().__init__(provider=provider)
+
     @staticmethod
     def get_credentials_names() -> Tuple[str, ...]:
         """Return a tuple of the required credentials for a provider."""

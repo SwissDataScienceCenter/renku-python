@@ -130,6 +130,10 @@ def test_move_empty_source(runner, client):
     assert "Invalid parameter value - There are no files to move" in result.output
 
 
+@pytest.mark.skip(
+    reason="Test moves dataset file outside of datadir, "
+    "see https://github.com/SwissDataScienceCenter/renku-python/issues/3061"
+)
 def test_move_dataset_file(runner, client_with_datasets, directory_tree_files, load_dataset_with_injection):
     """Test move of a file that belongs to a dataset."""
     for path in directory_tree_files:

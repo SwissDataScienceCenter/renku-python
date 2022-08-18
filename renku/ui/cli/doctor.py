@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2020-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -22,6 +22,15 @@
    :command: $ renku doctor
    :description: Check your system and repository for potential problems.
    :extended:
+
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. rst-class:: cli-reference-commands
+
+.. click:: renku.ui.cli.doctor:doctor
+   :prog: renku doctor
+   :nested: full
 """
 
 import textwrap
@@ -56,5 +65,5 @@ def doctor(ctx, fix, force):
         click.secho("Everything seems to be ok.", fg=color.GREEN)
         ctx.exit(0)
 
-    click.secho(problems)
+    click.echo(problems)
     ctx.exit(1)

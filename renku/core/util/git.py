@@ -37,7 +37,9 @@ if TYPE_CHECKING:
     from renku.infrastructure.repository import Commit, Remote, Repository
 
 
+BRANCH_NAME_LIMIT = 250
 CLI_GITLAB_ENDPOINT = "repos"
+PROTECTED_BRANCH_PREFIX = "renku/autobranch"
 RENKU_BACKUP_PREFIX = "renku-backup"
 
 
@@ -545,8 +547,14 @@ def push_changes(repository: "Repository", remote: Optional[str] = None, reset: 
 
         if merge_conflict or push_failed:
             # NOTE: Push to a new remote branch and reset the cache.
-            old_active_branch = repository.active_branch
-            pushed_branch = uuid4().hex
+            last_short_sha = repository.head.commit.hexsha[0:8]
+            old_active_branch = str(repository.active_branch)
+            fixed_chars_len = len(PROTECTED_BRANCH_PREFIX) + len(last_short_sha) + 2
+            if len(old_active_branch) + fixed_chars_len > BRANCH_NAME_LIMIT:
+                old_branch_reference = old_active_branch[0 : (BRANCH_NAME_LIMIT - fixed_chars_len)]
+            else:
+                old_branch_reference = old_active_branch
+            pushed_branch = f"{PROTECTED_BRANCH_PREFIX}/{old_branch_reference}/{last_short_sha}"
             try:
                 repository.branches.add(pushed_branch)
                 repository.checkout(pushed_branch)
