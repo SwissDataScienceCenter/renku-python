@@ -19,11 +19,12 @@
 
 import fnmatch
 import hashlib
+import io
 import os
 import re
 import shutil
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Sequence, Union
+from typing import Any, BinaryIO, Dict, Generator, List, Optional, Sequence, Union
 
 from renku.core import errors
 
@@ -194,34 +195,30 @@ def delete_dataset_file(filepath: Union[Path, str], ignore_errors: bool = True, 
 
 
 def hash_file(path: Union[Path, str], hash_type: str = "sha256") -> Optional[str]:
-    """Hash a file."""
-    hash_type = hash_type.lower()
-    assert hash_type in ("sha256", "md5")
-
+    """Calculate the sha256 hash of a file."""
     if not os.path.exists(path):
         return None
 
-    hash_value = hashlib.sha256() if hash_type == "sha256" else hashlib.md5()
-
     with open(path, "rb") as f:
-        for byte_block in iter(lambda: f.read(BLOCK_SIZE), b""):
-            hash_value.update(byte_block)
-
-    return hash_value.hexdigest()
+        return hash_file_descriptor(f, hash_type)
 
 
-def hash_str(content: str, hash_type: str = "sha256"):
-    """Hash a string."""
+def hash_str(content: str, hash_type: str = "sha256") -> str:
+    """Calculate the sha256 hash of a string."""
+    content_bytes = content.encode("utf-8")
+
+    with io.BytesIO(content_bytes) as f:
+        return hash_file_descriptor(f, hash_type)
+
+
+def hash_file_descriptor(file: BinaryIO, hash_type: str = "sha256") -> str:
+    """Hash content of a file descriptor."""
     hash_type = hash_type.lower()
     assert hash_type in ("sha256", "md5")
 
     hash_value = hashlib.sha256() if hash_type == "sha256" else hashlib.md5()
 
-    content_bytes = content.encode("utf-8")
-
-    blocks = (len(content_bytes) - 1) // BLOCK_SIZE + 1
-    for i in range(blocks):
-        byte_block = content_bytes[i * BLOCK_SIZE : (i + 1) * BLOCK_SIZE]
+    for byte_block in iter(lambda: file.read(BLOCK_SIZE), b""):
         hash_value.update(byte_block)
 
     return hash_value.hexdigest()

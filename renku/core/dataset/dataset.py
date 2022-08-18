@@ -38,9 +38,10 @@ from renku.core.dataset.request_model import ImageRequestModel
 from renku.core.dataset.tag import get_dataset_by_tag, prompt_access_token, prompt_tag_selection
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.dataset_gateway import IDatasetGateway
+from renku.core.interface.storage import IStorageFactory
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
-from renku.core.util.dispatcher import get_client, get_database, get_storage
+from renku.core.util.dispatcher import get_client, get_database
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository, get_git_user
 from renku.core.util.metadata import is_external_file, prompt_for_credentials, read_credentials, store_credentials
 from renku.core.util.os import create_symlink, delete_dataset_file, get_absolute_path, get_safe_relative_path, hash_file
@@ -393,7 +394,7 @@ def export_dataset(name, provider_name, tag, client_dispatcher: IClientDispatche
     # TODO: all these callbacks are ugly, improve in #737
     config_key_secret = "access_token"
 
-    dataset = datasets_provenance.get_by_name(name, strict=True, immutable=True)
+    dataset: Optional[Dataset] = datasets_provenance.get_by_name(name, strict=True, immutable=True)
 
     provider = ProviderFactory.from_name(provider_name)
 
@@ -752,7 +753,7 @@ def show_dataset(name: str, tag: Optional[str] = None):
         dict: JSON dictionary of dataset details.
     """
     datasets_provenance = DatasetsProvenance()
-    dataset = datasets_provenance.get_by_name(name, strict=True)
+    dataset: Optional[Dataset] = datasets_provenance.get_by_name(name, strict=True)
 
     if tag is None:
         return DatasetDetailsJson().dump(dataset)
@@ -1172,18 +1173,20 @@ def filter_dataset_files(
     return sorted(records, key=lambda r: r.date_added)
 
 
-def pull_external_data(name: str, location: Optional[Path] = None) -> None:
+@inject.autoparams("client_dispatcher", "storage_factory")
+def pull_external_data(
+    name: str, client_dispatcher: IClientDispatcher, storage_factory: IStorageFactory, location: Optional[Path] = None
+) -> None:
     """Pull/copy data for an external storage to a dataset's data directory or a specified location.
 
     Args:
         name(str): Name of the dataset
         location(Optional[Path]): A directory to copy data to (Default value = None).
     """
-    client = get_client()
+    client = client_dispatcher.current_client
     datasets_provenance = DatasetsProvenance()
 
     dataset = datasets_provenance.get_by_name(name=name, strict=True)
-    assert dataset  # NOTE: To make mypy happy
 
     if not dataset.storage:
         communication.warn(f"Dataset '{name}' doesn't have a storage backend")
@@ -1207,7 +1210,7 @@ def pull_external_data(name: str, location: Optional[Path] = None) -> None:
     credentials = S3Credentials(provider)
     prompt_for_credentials(credentials)
 
-    storage = get_storage(provider=provider, credentials=credentials)
+    storage = storage_factory.get_storage(provider=provider, credentials=credentials)
     updated_files = []
 
     for file in dataset.files:
