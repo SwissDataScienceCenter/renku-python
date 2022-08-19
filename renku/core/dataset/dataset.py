@@ -1230,6 +1230,7 @@ def pull_external_data(
     datasets_provenance = DatasetsProvenance()
 
     dataset = datasets_provenance.get_by_name(name=name, strict=True)
+    assert dataset  # NOTE: To make mypy happy
 
     if not dataset.storage:
         communication.warn(f"Dataset '{name}' doesn't have a storage backend")
