@@ -17,36 +17,21 @@
 # limitations under the License.
 r"""Manage project templates.
 
+Description
+~~~~~~~~~~~
+
 Renku projects are initialized using a project template. Renku has a set of
 built-in templates that you can use in your projects. These templates can be
 listed by using:
 
-.. code-block:: console
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
 
-    $ renku template ls
+.. rst-class:: cli-reference-commands
 
-    INDEX  ID
-    -----  --------------
-        1  python-minimal
-        2  R-minimal
-        3  julia-minimal
-
-You can use other sources of templates that reside inside a git repository:
-
-.. code-block:: console
-
-    $ renku template ls --source https://github.com/SwissDataScienceCenter/contributed-project-templates
-
-    INDEX  ID
-    -----  --------------
-        1  python-minimal
-        2  R-minimal
-        3  julia-minimal
-
-``renku template show <template-id>`` command can be used to see detailed
-information about a single template. If no template ID is passed, then it shows
-current project's template.
-
+.. click:: renku.ui.cli.template:template
+   :prog: renku template
+   :nested: full
 
 Set a template
 ~~~~~~~~~~~~~~

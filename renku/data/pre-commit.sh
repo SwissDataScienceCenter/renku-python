@@ -87,6 +87,38 @@ if [ ${#ADDED_FILES[@]} -ne 0 ]; then
   fi
 fi
 
+if [ ${#MODIFIED_FILES[@]} -ne 0 ] || [ ${#ADDED_FILES[@]} -ne 0 ]; then
+  CHECK_DATADIR=${CHECK_DATADIR:=$(renku config show check_datadir_files)}
+  if [ "$CHECK_DATADIR" = "true" ]; then
+    ALL_FILES=( "${MODIFIED_FILES[@]}" "${ADDED_FILES[@]}")
+    ARGS=()
+    for file in "${ALL_FILES[@]}"; do
+      ARGS+=("-I" "$file")
+    done
+    IFS=$'\n' read -r -d '' -a DATASET_FILES \
+      <<< "$(renku dataset update -n --no-external --no-remote -c --plain "${ARGS[@]}")"
+
+    if [ ${#DATASET_FILES[@]} -ne 0 ]; then
+      echo "Files in datasets data directory that aren't up to date:"
+      echo
+      for entry in "${DATASET_FILES[@]}"; do
+        read -r change path dataset <<< "$entry"
+
+        if [ "$change" = "f" ]; then
+          echo "$path ($dataset) modified"
+        elif [ "$change" = "r" ]; then
+          echo "$path ($dataset) removed"
+        fi
+      done
+      echo
+      echo 'Run "renku dataset update -c --all --no-remote --no-external" to update the datasets.'
+      echo
+      echo 'To disable this check, run "renku config set check_datadir_files false".'
+      exit 1
+    fi
+  fi
+fi
+
 ######################################
 # END RENKU HOOK.
 ######################################

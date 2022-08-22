@@ -1006,7 +1006,9 @@ def test_add_from_git_to_new_path(runner, client, params, path, load_dataset_wit
     ],
 )
 @pytest.mark.vcr
-def test_add_from_git_to_existing_path(runner, client, params, path, load_dataset_with_injection):
+def test_add_from_git_to_existing_path(
+    runner, client, params, path, load_dataset_with_injection, no_datadir_commit_warning
+):
     """Test add data to datasets from a git repository to an existing path."""
     remote = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
     assert 0 == runner.invoke(cli, ["dataset", "create", "remote"], catch_exceptions=False).exit_code
@@ -1541,7 +1543,7 @@ def test_update_specific_refs(ref, runner, client):
 
     result = runner.invoke(cli, ["dataset", "update", "--ref", ref, "--all", "--dry-run"])
 
-    assert 0 == result.exit_code, format_result_exception(result)
+    assert 1 == result.exit_code, format_result_exception(result)
     assert "The following files will be updated" in result.output
     assert str(file) in result.output
     assert commit_sha_after_file1_delete == client.repository.head.commit.hexsha

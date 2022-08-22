@@ -22,9 +22,9 @@ Reference
 Internals of the ``renku-python`` library.
 
 .. toctree::
-    :maxdepth: 1
+    :maxdepth: 2
 
-    commands
+    commands/index
     api
     models/index
     database

@@ -18,7 +18,12 @@
 """Define repository checks for :program:`renku doctor`."""
 
 from .activities import check_migrated_activity_ids
-from .datasets import check_dataset_old_metadata_location, check_invalid_datasets_derivation, check_missing_files
+from .datasets import (
+    check_dataset_files_outside_datadir,
+    check_dataset_old_metadata_location,
+    check_invalid_datasets_derivation,
+    check_missing_files,
+)
 from .external import check_missing_external_files
 from .githooks import check_git_hooks_installed
 from .migration import check_migration
@@ -30,16 +35,17 @@ from .workflow import check_activity_catalog
 # Checks will be executed in the order as they are listed in __all__. They are mostly used in ``doctor`` command to
 # inspect broken things. The order of operations matters when fixing issues, so, don't sort this list.
 __all__ = (
-    "check_migration",
-    "check_dataset_old_metadata_location",
-    "check_git_hooks_installed",
-    "check_missing_files",
-    "check_project_structure",
-    "check_datasets_structure",
-    "check_missing_external_files",
-    "check_lfs_info",
-    "check_invalid_datasets_derivation",
-    "check_migrated_activity_ids",
-    "check_project_id_group",
     "check_activity_catalog",
+    "check_dataset_files_outside_datadir",
+    "check_dataset_old_metadata_location",
+    "check_datasets_structure",
+    "check_git_hooks_installed",
+    "check_invalid_datasets_derivation",
+    "check_lfs_info",
+    "check_migrated_activity_ids",
+    "check_migration",
+    "check_missing_external_files",
+    "check_missing_files",
+    "check_project_id_group",
+    "check_project_structure",
 )
