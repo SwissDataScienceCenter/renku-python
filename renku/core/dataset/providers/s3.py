@@ -76,14 +76,6 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
 
         return [
             ProviderParameter(
-                "sources",
-                flags=["s", "source"],
-                default=None,
-                help="Path(s) within the s3 bucket that should be added",
-                multiple=True,
-                type=str,
-            ),
-            ProviderParameter(
                 "storage",
                 flags=["storage"],
                 default=None,

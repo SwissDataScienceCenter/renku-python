@@ -2007,47 +2007,32 @@ def test_create_with_unauthorized_s3_backend(runner, client, global_config_dir, 
 
 @pytest.mark.integration
 @pytest.mark.parametrize(
-    "args,uris,sources,storage_uri",
+    "args,uris,storage_uri",
     [
-        (["--create", "--storage", "s3://giab"], ["s3://giab"], [], None),
-        ([], ["s3://giab/tools", "s3://giab/use_cases"], [], "s3://giab"),
-        ([], ["s3://giab"], [], "s3://giab"),
-        ([], ["s3://giab"], ["tools", "changelog_details"], "s3://giab"),
+        (["--create", "--storage", "s3://giab"], ["s3://giab"], None),
+        ([], ["s3://giab/tools", "s3://giab/use_cases"], "s3://giab"),
+        ([], ["s3://giab"], "s3://giab"),
+        ([], ["s3://giab/tools", "s3://giab/changelog_details"], "s3://giab"),
     ],
 )
-def test_adding_data_from_s3(runner, client, create_s3_dataset, mocker, args, uris, sources, storage_uri):
+def test_adding_data_from_s3(runner, client, create_s3_dataset, mocker, args, uris, storage_uri):
     """Ensure metadata from a bucket can be added."""
     mock_s3_storage = mocker.patch("renku.infrastructure.storage.s3.S3Storage", autospec=True)
     instance_s3_storage = mock_s3_storage.return_value
     dataset_name = "test-s3-dataset"
-    if sources:
-        instance_s3_storage.get_hashes.return_value = [
-            FileHash(base_uri=uris[0], path=source, hash=source, hash_type="md5") for source in sources
-        ]
-    else:
-        instance_s3_storage.get_hashes.return_value = [
-            FileHash(base_uri=uri, path=uri[5:], hash=uri, hash_type="md5")  # uri[5:] removes s3:// from beginning
-            for uri in uris
-        ]
+    instance_s3_storage.get_hashes.return_value = [
+        FileHash(base_uri=uri, path=uri[5:], hash=uri, hash_type="md5")  # uri[5:] removes s3:// from beginning
+        for uri in uris
+    ]
     if storage_uri:
         res = create_s3_dataset(dataset_name, storage_uri)
         assert res.exit_code == 0
-    sources_args = []
-    for source in sources:
-        sources_args.append("--source")
-        sources_args.append(source)
-    res = runner.invoke(cli, ["dataset", "add", dataset_name, *args, *uris, *sources_args], input="\n\nn\n")
+    res = runner.invoke(cli, ["dataset", "add", dataset_name, *args, *uris], input="\n\nn\n")
     assert res.exit_code == 0
-    if sources:
-        assert instance_s3_storage.get_hashes.call_count == 1
-    else:
-        assert instance_s3_storage.get_hashes.call_count == len(uris)
+    assert instance_s3_storage.get_hashes.call_count == len(uris)
     res = runner.invoke(cli, ["dataset", "ls-files"])
     assert res.exit_code == 0
-    if sources:
-        assert all([source in res.stdout for source in sources])
-    else:
-        assert all([uri[5:] in res.stdout for uri in uris])
+    assert all([uri[5:] in res.stdout for uri in uris])
 
 
 @pytest.mark.integration
@@ -2073,6 +2058,10 @@ def test_adding_data_from_s3(runner, client, create_s3_dataset, mocker, args, ur
         (
             ["s3://giab/test?.txt"],
             "Wildcards like '*' or '?' are not supported in the uri for S3 datasets",
+        ),
+        (
+            ["s3://giab", "--source", "tools"],
+            "Cannot use '-s/--src/--source' with URLs or local files",
         ),
     ],
 )

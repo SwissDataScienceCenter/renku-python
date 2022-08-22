@@ -186,7 +186,7 @@ def _download_files(
     for url in urls:
         _, is_git = check_url(url)
 
-        if not is_git and sources and not urls[0].lower().startswith("s3://"):
+        if not is_git and sources:
             raise errors.ParameterError("Cannot use '-s/--src/--source' with URLs or local files.")
 
         provider = ProviderFactory.get_add_provider(uri=url)
