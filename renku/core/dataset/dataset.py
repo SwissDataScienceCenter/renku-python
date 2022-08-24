@@ -894,7 +894,8 @@ def move_files(
 
                 # NOTE: Update dataset if it contains a destination that is being overwritten
                 modified = dataset.find_file(dst)
-                if modified:
+                added = is_subpath(client.path / dst, client.path / dataset.get_datadir(client))
+                if modified or added:
                     modified_datasets[dataset.name] = dataset
                     dataset.add_or_update_files(new_dataset_file)
 
