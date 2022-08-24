@@ -83,6 +83,12 @@ def add_to_dataset(
 
             client.check_external_storage()  # TODO: This is not required for external storages
 
+            datadir = cast(Path, client.path / dataset.get_datadir())
+            if create and datadir.exists():
+                # NOTE: Add datadir to paths to add missing files on create
+                for file in datadir.rglob("*"):
+                    urls.append(str(file))
+
             files = _download_files(
                 client=client,
                 urls=urls,

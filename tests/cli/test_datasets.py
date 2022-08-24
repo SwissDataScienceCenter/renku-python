@@ -70,6 +70,27 @@ def test_datasets_create_clean_with_datadir(runner, project, client, load_datase
     assert not client.repository.is_dirty(untracked_files=True)
 
 
+def test_datasets_create_with_datadir_with_files(runner, project, client, load_dataset_with_injection):
+    """Test creating a dataset in clean repository."""
+
+    datadir = Path("my/data/dir")
+    datadir.mkdir(parents=True, exist_ok=True)
+
+    file = datadir / "my_file"
+    file.write_text("content")
+
+    result = runner.invoke(cli, ["dataset", "create", "--datadir", datadir, "dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "OK" in result.output
+
+    dataset = load_dataset_with_injection("dataset", client)
+    assert isinstance(dataset, Dataset)
+    assert datadir == dataset.get_datadir(client)
+    assert dataset.find_file(file)
+
+    assert not client.repository.is_dirty(untracked_files=True)
+
+
 def test_datasets_create_dirty(runner, project, client, load_dataset_with_injection):
     """Test creating a dataset in a dirty repository."""
     (client.path / "untracked").write_text("untracked")
@@ -475,6 +496,10 @@ def test_add_and_create_dataset(
     assert 1 == result.exit_code
     assert 'Dataset "new-dataset" does not exist.' in result.output
 
+    existing_file = client.path / datadir / "myfile"
+    existing_file.parent.mkdir(parents=True, exist_ok=True)
+    existing_file.write_text("content")
+
     # Add succeeds with --create
     result = runner.invoke(
         cli,
@@ -491,7 +516,9 @@ def test_add_and_create_dataset(
     assert os.stat(path2)
     assert os.stat(path3)
     dataset = load_dataset_with_injection("new-dataset", client)
-    assert {os.path.relpath(p, client.path) for p in [path1, path2, path3]} == {f.entity.path for f in dataset.files}
+    assert {os.path.relpath(p, client.path) for p in [path1, path2, path3, existing_file]} == {
+        f.entity.path for f in dataset.files
+    }
 
     # Further, add with --create fails
     result = runner.invoke(cli, ["dataset", "add", "--copy", "--create", "new-dataset", str(directory_tree)])
