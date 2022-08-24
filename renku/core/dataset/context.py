@@ -43,6 +43,7 @@ class DatasetContext:
         commit_database: Optional[bool] = False,
         creator: Optional[Person] = None,
         datadir: Optional[Path] = None,
+        storage: Optional[str] = None,
     ) -> None:
         self.name = name
         self.create = create
@@ -51,6 +52,7 @@ class DatasetContext:
         self.dataset_provenance = DatasetsProvenance()
         self.dataset: Optional[Dataset] = None
         self.datadir: Optional[Path] = datadir
+        self.storage = storage
 
     def __enter__(self):
         """Enter context."""
@@ -60,7 +62,9 @@ class DatasetContext:
                 raise errors.DatasetNotFound(name=self.name)
 
             # NOTE: Don't update provenance when creating here because it will be updated later
-            self.dataset = create_dataset(name=self.name, update_provenance=False, datadir=self.datadir)
+            self.dataset = create_dataset(
+                name=self.name, update_provenance=False, datadir=self.datadir, storage=self.storage
+            )
         elif self.create:
             raise errors.DatasetExistsError(self.name)
 

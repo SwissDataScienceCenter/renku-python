@@ -50,4 +50,5 @@ DATASET_METADATA_PATHS = [
     Path(RENKU_HOME) / POINTERS,
     Path(RENKU_HOME) / REFS,
     ".gitattributes",
+    ".gitignore",
 ]
