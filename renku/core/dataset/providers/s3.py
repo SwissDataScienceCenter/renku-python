@@ -89,7 +89,6 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
     def add(client: "LocalClient", uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
         """Add files from a URI to a dataset."""
         dataset = kwargs.get("dataset")
-        sources = kwargs.get("sources", [])
         if dataset and dataset.storage and not dataset.storage.lower().startswith("s3://"):
             raise errors.ParameterError(
                 "Files from S3 buckets can only be added to datasets with S3 storage, "
@@ -109,7 +108,7 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
         if not storage.exists(uri):
             raise errors.ParameterError(f"S3 bucket '{uri}' doesn't exists.")
 
-        hashes = storage.get_hashes(uri=uri, sources=sources)
+        hashes = storage.get_hashes(uri=uri)
         return [
             DatasetAddMetadata(
                 entity_path=Path(destination).relative_to(client.repository.path) / hash.path,
