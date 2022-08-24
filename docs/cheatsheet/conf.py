@@ -44,6 +44,7 @@ suppress_warnings = ["image.nonlocal_uri"]
 extensions = [
     "plantweb.directive",
     "sphinx.ext.autodoc",
+    "sphinx_click",
     "sphinx_tabs.tabs",
     "sphinx.ext.napoleon",
     "cheatsheet",

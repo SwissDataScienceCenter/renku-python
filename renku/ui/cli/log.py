@@ -17,8 +17,23 @@
 # limitations under the License.
 """Renku cli for history of renku commands.
 
-You can use ``renku log`` to get a history of renku commands.
+Description
+~~~~~~~~~~~
+
+Get the history of renku commands.
 At the moment, it shows workflow executions and dataset changes.
+
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. rst-class:: cli-reference-commands
+
+.. click:: renku.ui.cli.log:log
+   :prog: renku log
+   :nested: full
+
+Examples
+~~~~~~~~~~~
 
 .. code-block:: console
 

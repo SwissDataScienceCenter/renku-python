@@ -17,47 +17,19 @@
 # limitations under the License.
 r"""Renku CLI commands for handling of projects.
 
-Showing project metadata
-~~~~~~~~~~~~~~~~~~~~~~~~
+Description
+~~~~~~~~~~~
 
-You can see the metadata of the current project by using ``renku project show``:
-  .. code-block:: console
+Show and edit project's metadata.
 
-     $ renku project show
-     Id: /projects/john.doe/flights-tutorial
-     Name: flights-tutorial
-     Description: Flight tutorial project
-     Creator: John Doe <John Doe@datascience.ch>
-     Created: 2021-11-05T10:32:57+01:00
-     Keywords: keyword1, keyword2
-     Renku Version: 1.0.0
-     Project Template: python-minimal (1.0.0)
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
 
+.. rst-class:: cli-reference-commands
 
-Editing projects
-~~~~~~~~~~~~~~~~
-
-Users can edit some project's metadata using by using ``renku project edit``
-command.
-
-The following options can be passed to this command to set various metadata
-for a project.
-
-+-------------------+------------------------------------------------------+
-| Option            | Description                                          |
-+===================+======================================================+
-| -d, --description | Project's description.                               |
-+-------------------+------------------------------------------------------+
-| -c, --creator     | Creator's name, email, and an optional affiliation.  |
-|                   | Accepted format is                                   |
-|                   | 'Forename Surname <email> [affiliation]'.            |
-+-------------------+------------------------------------------------------+
-| -m, --metadata    | Path to json file containing custom metadata to be   |
-|                   | added to the project knowledge graph.                |
-+-------------------+------------------------------------------------------+
-| -u, --unset <type>| Remove a value from a project. One of ``creators``,  |
-|                   | ``m``, ``keywords``, ``k``, ``metadata``, ``m``      |
-+-------------------+------------------------------------------------------+
+.. click:: renku.ui.cli.project:project
+   :prog: renku project
+   :nested: full
 """
 
 import json
