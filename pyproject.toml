@@ -54,7 +54,7 @@ python = "^3.7.1"
 apispec = { version = ">=4.0.0,<5.3.0", optional = true }
 apispec-webframeworks = { version = "<0.6,>=0.5.2", optional = true }
 appdirs = "<=1.4.4,>=1.4.3"
-attrs = "<21.5.0,>=21.1.0"
+attrs = ">=21.1.0,<22.2.0"
 black = { version = "==22.6.0", optional = true }
 calamus = "<0.4,>=0.3.13"
 circus = { version = "==0.17.1", optional = true }
