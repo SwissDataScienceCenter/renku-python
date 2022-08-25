@@ -764,7 +764,7 @@ def show(tag, name):
 
     click.echo(click.style("Name: ", bold=True, fg=color.MAGENTA) + click.style(ds["name"], bold=True))
     click.echo(click.style("Created: ", bold=True, fg=color.MAGENTA) + (ds.get("created_at", "") or ""))
-    click.echo(click.style("Data Directory: ", bold=True, fg=color.MAGENTA) + str(ds.get("datadir", "") or ""))
+    click.echo(click.style("Data Directory: ", bold=True, fg=color.MAGENTA) + str(ds.get("data_directory", "") or ""))
 
     creators = []
     for creator in ds.get("creators", []):

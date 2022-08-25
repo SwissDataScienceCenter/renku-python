@@ -21,6 +21,7 @@ import os
 import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Set, Union, cast
+from urllib.parse import urlparse
 
 from renku.core import errors
 from renku.core.dataset.constant import renku_pointers_path
@@ -57,6 +58,7 @@ def add_to_dataset(
     clear_files_before: bool = False,
     total_size: Optional[int] = None,
     datadir: Optional[Path] = None,
+    storage: Optional[str] = None,
     **kwargs,
 ) -> Dataset:
     """Import the data into the data directory."""
@@ -65,8 +67,18 @@ def add_to_dataset(
 
     _check_available_space(client, urls, total_size=total_size)
 
+    if not create and storage:
+        raise errors.ParameterError(
+            "Using the '--storage' parameter is only required if the '--create' parameter is also used to "
+            "create the dataset at the same time as when data is added to it"
+        )
+    if create and not storage and any([url.lower().startswith("s3://") for url in urls]):
+        raise errors.ParameterError(
+            "Creating a S3 dataset at the same time as adding data requires the '--storage' parameter to be set"
+        )
+
     try:
-        with DatasetContext(name=dataset_name, create=create, datadir=datadir) as dataset:
+        with DatasetContext(name=dataset_name, create=create, datadir=datadir, storage=storage) as dataset:
             destination_path = _create_destination_directory(client, dataset, destination)
 
             client.check_external_storage()  # TODO: This is not required for external storages
@@ -92,7 +104,7 @@ def add_to_dataset(
                     "Ignored adding paths under a .git directory:\n\t" + "\n\t".join(str(p) for p in paths_to_avoid)
                 )
 
-            files_to_commit = {f.get_absolute_commit_path(client.path) for f in files}
+            files_to_commit = {f.get_absolute_commit_path(client.path) for f in files if not f.gitignored}
 
             if not force:
                 files, files_to_commit = _check_ignored_files(client, files_to_commit, files)
@@ -109,7 +121,8 @@ def add_to_dataset(
                 client.track_paths_in_storage(*files_to_commit)
 
             # Force-add to include possible ignored files
-            client.repository.add(*files_to_commit, renku_pointers_path(client), force=True)
+            if len(files_to_commit) > 0:
+                client.repository.add(*files_to_commit, renku_pointers_path(client), force=True)
 
             n_staged_changes = len(client.repository.staged_changes)
             if n_staged_changes == 0:
@@ -155,6 +168,11 @@ def _download_files(
     **kwargs,
 ) -> List["DatasetAddMetadata"]:
     """Process file URLs for adding to a dataset."""
+    if dataset.storage and any([urlparse(dataset.storage).scheme != urlparse(url).scheme for url in urls]):
+        raise errors.ParameterError(
+            f"The scheme of some urls {urls} does not match the defined storage url {dataset.storage}."
+        )
+
     if importer:
         return importer.download_files(client=client, destination=destination, extract=extract)
 
@@ -230,7 +248,7 @@ def _check_ignored_files(client: "LocalClient", files_to_commit: Set[str], files
     if ignored_files:
         ignored_sources = []
         for file in files:
-            if file.get_absolute_commit_path(client.path) in ignored_files:
+            if not file.gitignored and file.get_absolute_commit_path(client.path) in ignored_files:
                 ignored_sources.append(file.source)
 
         communication.warn(

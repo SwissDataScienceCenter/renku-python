@@ -89,6 +89,31 @@ def test_create_dataset_view(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
+def test_create_dataset_view_with_datadir(svc_client_with_repo):
+    """Create a new dataset successfully."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    payload = {"project_id": project_id, "name": uuid.uuid4().hex, "data_directory": "my-folder/"}
+
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
+    assert_rpc_response(response)
+
+    assert {"name", "remote_branch"} == set(response.json["result"].keys())
+    assert payload["name"] == response.json["result"]["name"]
+
+    params = {
+        "project_id": project_id,
+    }
+    response = svc_client.get("/datasets.list", query_string=params, headers=headers)
+
+    assert_rpc_response(response)
+    ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
+    assert ds["data_directory"] == "my-folder"
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
 def test_remote_create_dataset_view(svc_client_cache, it_remote_repo_url):
     """Create a new dataset successfully."""
     svc_client, headers, cache = svc_client_cache
@@ -606,7 +631,7 @@ def test_list_datasets_view(svc_client_with_repo):
         "keywords",
         "annotations",
         "storage",
-        "datadir",
+        "data_directory",
     } == set(response.json["result"]["datasets"][0].keys())
 
 
@@ -669,7 +694,7 @@ def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo_url):
         "keywords",
         "annotations",
         "storage",
-        "datadir",
+        "data_directory",
     } == set(response.json["result"]["datasets"][0].keys())
 
 
@@ -787,7 +812,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
         "keywords",
         "annotations",
         "storage",
-        "datadir",
+        "data_directory",
     } == set(response.json["result"]["datasets"][0].keys())
 
     assert payload["name"] in [ds["name"] for ds in response.json["result"]["datasets"]]

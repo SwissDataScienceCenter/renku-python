@@ -43,6 +43,7 @@ def dataset_import(
     tag=None,
     timeout=None,
     commit_message=None,
+    data_directory=None,
 ):
     """Job for dataset import."""
     user = cache.ensure_user(user)
@@ -62,7 +63,13 @@ def dataset_import(
 
             command = import_dataset_command().with_commit_message(commit_message)
             command.with_communicator(communicator).build().execute(
-                uri=dataset_uri, name=name, extract=extract, tag=tag, yes=True, gitlab_token=gitlab_token
+                uri=dataset_uri,
+                name=name,
+                extract=extract,
+                tag=tag,
+                yes=True,
+                gitlab_token=gitlab_token,
+                datadir=data_directory,
             )
 
             worker_log.debug("operation successful - syncing with remote")

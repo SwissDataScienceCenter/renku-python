@@ -18,10 +18,28 @@
 """External storage interface."""
 
 import abc
-from typing import TYPE_CHECKING
+from dataclasses import dataclass
+from pathlib import Path
+from typing import TYPE_CHECKING, List, Optional
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials
+
+
+@dataclass
+class FileHash:
+    """The has for a file at a specific location."""
+
+    base_uri: str
+    path: str
+    hash: Optional[str] = None
+    hash_type: Optional[str] = None
+    modified_datetime: Optional[str] = None
+
+    @property
+    def full_uri(self) -> str:
+        """Return the full uri to the file."""
+        return str(Path(self.base_uri) / Path(self.path))
 
 
 class IStorageFactory(abc.ABC):
@@ -59,4 +77,9 @@ class IStorage(abc.ABC):
     @abc.abstractmethod
     def exists(self, uri: str) -> bool:
         """Checks if a remote storage URI exists."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def get_hashes(self, uri: str) -> List[FileHash]:
+        """Get the hashes of all files at the uri."""
         raise NotImplementedError

@@ -88,6 +88,7 @@ gitattributes
 githooks
 github
 gitignore
+gitignored
 gitkeep
 gitlab
 gitlabClientSecret
@@ -268,6 +269,7 @@ untracked
 untracked
 updatable
 url
+uri
 urls
 username
 validator
