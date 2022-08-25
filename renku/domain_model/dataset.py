@@ -650,7 +650,7 @@ class DatasetDetailsJson(marshmallow.Schema):
 
     annotations = marshmallow.fields.List(marshmallow.fields.Nested(AnnotationJson))
 
-    datadir = marshmallow.fields.Method("get_datadir")
+    data_directory = marshmallow.fields.Method("get_datadir")
 
     def get_datadir(self, obj):
         """Get data directory."""
