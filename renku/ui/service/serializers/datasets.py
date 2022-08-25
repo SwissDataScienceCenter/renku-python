@@ -58,6 +58,11 @@ class DatasetCreateRequest(
 ):
     """Request schema for a dataset create view."""
 
+    # NOTE: Override field in DatasetDetails
+    data_directory = fields.String(  # type: ignore
+        missing=None, description="Base dataset data directory. '<project.data_directory>/<dataset.name>' by default"
+    )
+
 
 class DatasetCreateResponse(DatasetNameSchema, RenkuSyncSchema):
     """Response schema for a dataset create view."""
@@ -182,6 +187,9 @@ class DatasetImportRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositoryS
     name = fields.String(description="Optional dataset name.")
     extract = fields.Boolean()
     tag = fields.String(description="Dataset version to import.")
+    data_directory = fields.String(
+        missing=None, description="Base dataset data directory. '<project.data_directory>/<dataset.name>' by default"
+    )
 
 
 class DatasetImportResponseRPC(JsonRPCResponse):
