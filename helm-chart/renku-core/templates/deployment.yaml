@@ -45,6 +45,9 @@ spec:
         - name: shared-volume
           emptyDir: {}
         {{- include "certificates.volumes" $ | nindent 8 }}
+        - name: config
+          configMap:
+            name: {{ include "renku-core.fullname" $ }}-nginx
       initContainers:
         {{- include "certificates.initContainer" $ | nindent 8 }}
       securityContext:
@@ -304,6 +307,31 @@ spec:
             {{- include "certificates.env.python" $ | nindent 12 }}
           volumeMounts:
             {{- include "certificates.volumeMounts.system" $ | nindent 12 }}
+
+        - name: traefik
+          image: traefik:v2.8.3
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+          args:
+            - --entryPoints.web.address=:4180
+            - --providers.file.filename=/traefik-config.yaml
+            - --providers.file.watch=true
+            - --pilot.dashboard=false
+            - --api.dashboard=false
+            - --log.level=DEBUG
+            - --accesslog=true
+          ports:
+            - containerPort: 4180
+              name: traefik
+          volumeMounts:
+            - name: config
+              readOnly: true
+              mountPath: /traefik-config.yaml
+              subPath: traefik-config.yaml
       {{- with $.Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

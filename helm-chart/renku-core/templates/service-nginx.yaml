@@ -1,7 +1,7 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: {{ include "renku-core.fullname" . }}
+  name: {{ include "renku-core.fullname" . }}-nginx
   labels:
 {{ include "renku-core.labels" $ | indent 4 }}
 spec:
