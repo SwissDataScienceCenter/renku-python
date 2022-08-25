@@ -17,12 +17,13 @@
 # limitations under the License.
 """Base storage handler."""
 
+import json
 import os
 import subprocess
 from typing import Any, List
 
 from renku.core import errors
-from renku.core.interface.storage import IStorage
+from renku.core.interface.storage import FileHash, IStorage
 from renku.core.util.util import NO_VALUE
 
 
@@ -47,12 +48,43 @@ class RCloneBaseStorage(IStorage):
         else:
             return True
 
+    def get_hashes(self, uri: str, hash_type: str = "md5") -> List[FileHash]:
+        """Download hashes with rclone and parse them.
+
+        Returns a tuple containing a list of parsed hashes.
+
+        Example raw_hashes json:
+        [
+            {
+                "Path":"resources/hg19.windowmaskerSdust.bed.gz.tbi","Name":"hg19.windowmaskerSdust.bed.gz.tbi",
+                "Size":578288,"MimeType":"application/x-gzip","ModTime":"2022-02-07T18:45:52.000000000Z",
+                "IsDir":false,"Hashes":{"md5":"e93ac5364e7799bbd866628d66c7b773"},"Tier":"STANDARD"
+            }
+        ]
+        """
+        self.set_configurations()
+        hashes_raw = execute_rclone_command("lsjson", "--hash", "-R", "--files-only", uri)
+        hashes = json.loads(hashes_raw)
+        output = []
+        for hash in hashes:
+            hash_content = hash.get("Hashes", {}).get(hash_type)
+            output.append(
+                FileHash(
+                    base_uri=uri,
+                    path=hash["Path"],
+                    hash=hash_content,
+                    hash_type=hash_type if hash_content else None,
+                    modified_datetime=hash.get("ModTime"),
+                )
+            )
+        return output
+
 
 def execute_rclone_command(command: str, *args: str, **kwargs) -> str:
     """Execute an R-clone command."""
     try:
         result = subprocess.run(
-            ("rclone", "--config", "''", command, *transform_kwargs(**kwargs), *args),
+            ("rclone", command, *transform_kwargs(**kwargs), *args),
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
