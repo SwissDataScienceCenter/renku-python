@@ -19,15 +19,14 @@
 
 import re
 import urllib
+from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials, ProviderPriority
+from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata, ProviderParameter
 from renku.core.util.dispatcher import get_repository, get_storage
 from renku.core.util.metadata import prompt_for_credentials
-from pathlib import Path
-
-from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata, ProviderParameter
 from renku.core.util.urls import get_scheme, is_uri_subfolder
 from renku.domain_model.dataset import RemoteEntity
 

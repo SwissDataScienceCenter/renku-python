@@ -86,7 +86,6 @@ class RCloneBaseStorage(IStorage):
                 set_rclone_env_var(name=name, value=value)
 
 
-
 def execute_rclone_command(command: str, *args: Any, **kwargs) -> str:
     """Execute an R-clone command."""
     try:
@@ -94,7 +93,7 @@ def execute_rclone_command(command: str, *args: Any, **kwargs) -> str:
             ("rclone", command, *transform_kwargs(**kwargs), *args),
             text=True,
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=subprocess.PIPE,
         )
     except FileNotFoundError:
         raise errors.RCloneException("RClone is not installed. See https://rclone.org/install/")
@@ -102,12 +101,14 @@ def execute_rclone_command(command: str, *args: Any, **kwargs) -> str:
     # See https://rclone.org/docs/#list-of-exit-codes for rclone exit codes
     if result.returncode == 0:
         return result.stdout
+
+    all_outputs = result.stdout + result.stderr
     if result.returncode in (3, 4):
-        raise errors.StorageObjectNotFound(result.stdout)
-    elif "AccessDenied" in result.stdout:
+        raise errors.StorageObjectNotFound(all_outputs)
+    elif "AccessDenied" in all_outputs:
         raise errors.AuthenticationError("Authentication failed when accessing the remote storage")
     else:
-        raise errors.RCloneException(f"Remote storage operation failed: {result.stdout}")
+        raise errors.RCloneException(f"Remote storage operation failed: {all_outputs}")
 
 
 def transform_args(*args) -> List[str]:
