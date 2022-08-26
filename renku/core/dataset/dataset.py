@@ -44,7 +44,7 @@ from renku.core.util.datetime8601 import local_now
 from renku.core.util.dispatcher import get_client, get_database
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository, get_git_user
 from renku.core.util.metadata import is_external_file, prompt_for_credentials, read_credentials, store_credentials
-from renku.core.util.os import create_symlink, delete_dataset_file, get_absolute_path, get_safe_relative_path, hash_file
+from renku.core.util.os import create_symlink, delete_dataset_file, get_absolute_path, get_safe_relative_path, hash_file, is_subpath
 from renku.core.util.tabulate import tabulate
 from renku.core.util.urls import get_slug
 from renku.core.util.util import NO_VALUE, NoValueType
@@ -879,7 +879,7 @@ def move_files(
         for src, dst in files.items():
             src = src.relative_to(client.path)
             dst = dst.relative_to(client.path)
-            # NOTE: Files are moved at this point, so, we use can use dst
+            # NOTE: Files are moved at this point, so, we can use dst
             new_dataset_file = DatasetFile.from_path(client, dst)
 
             for dataset in datasets:
@@ -888,12 +888,17 @@ def move_files(
                     modified_datasets[dataset.name] = dataset
                     new_dataset_file.based_on = removed.based_on
                     new_dataset_file.source = removed.source
-                    if not to_dataset:
+
+                    if not to_dataset and (
+                        new_dataset_file.is_external
+                        or is_subpath(client.path / dst, client.path / dataset.get_datadir(client))
+                    ):
                         dataset.add_or_update_files(new_dataset_file)
 
                 # NOTE: Update dataset if it contains a destination that is being overwritten
                 modified = dataset.find_file(dst)
-                if modified:
+                added = is_subpath(client.path / dst, client.path / dataset.get_datadir(client))
+                if modified or added:
                     modified_datasets[dataset.name] = dataset
                     dataset.add_or_update_files(new_dataset_file)
 

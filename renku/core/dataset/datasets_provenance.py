@@ -18,7 +18,7 @@
 """Datasets Provenance."""
 
 from datetime import datetime
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Literal, Optional, Union, overload
 from uuid import UUID
 
 from renku.command.command_builder.command import inject
@@ -57,7 +57,19 @@ class DatasetsProvenance:
             return dataset.copy()
         return None
 
-    def get_by_name(self, name: str, immutable: bool = False, strict: bool = False) -> Optional["Dataset"]:
+    @overload
+    def get_by_name(
+        self, name: str, *, immutable: bool = False, strict: Literal[False] = False
+    ) -> Optional["Dataset"]:  # noqa: D102
+        ...
+
+    @overload
+    def get_by_name(self, name: str, *, immutable: bool = False, strict: Literal[True]) -> "Dataset":  # noqa: D102
+        ...
+
+    def get_by_name(
+        self, name: str, immutable: bool = False, strict: bool = False
+    ) -> Union[Optional["Dataset"], "Dataset"]:
         """Return a dataset by its name.
 
         Args:
