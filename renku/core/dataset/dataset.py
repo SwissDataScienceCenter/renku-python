@@ -33,20 +33,30 @@ from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.pointer_file import create_external_file, is_external_file_updated, update_external_file
 from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.models import ProviderDataset
+from renku.core.dataset.providers.s3 import S3Credentials
 from renku.core.dataset.request_model import ImageRequestModel
 from renku.core.dataset.tag import get_dataset_by_tag, prompt_access_token, prompt_tag_selection
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.dataset_gateway import IDatasetGateway
+from renku.core.interface.storage import IStorageFactory
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.dispatcher import get_client, get_database
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository, get_git_user
-from renku.core.util.metadata import is_external_file, read_credentials, store_credentials
-from renku.core.util.os import delete_file, get_safe_relative_path, is_subpath
+from renku.core.util.metadata import is_external_file, prompt_for_credentials, read_credentials, store_credentials
+from renku.core.util.os import (
+    create_symlink,
+    delete_dataset_file,
+    get_absolute_path,
+    get_safe_relative_path,
+    hash_file,
+    is_subpath,
+)
 from renku.core.util.tabulate import tabulate
 from renku.core.util.urls import get_slug
 from renku.core.util.util import NO_VALUE, NoValueType
 from renku.domain_model.dataset import Dataset, DatasetDetailsJson, DatasetFile, RemoteEntity, is_dataset_name_valid
+from renku.domain_model.enums import ConfigFilter
 from renku.domain_model.provenance.agent import Person
 from renku.domain_model.provenance.annotation import Annotation
 from renku.infrastructure.immutable import DynamicProxy
@@ -498,7 +508,7 @@ def import_dataset(
         deleted_paths = previous_paths - current_paths
 
         for path in deleted_paths:
-            delete_file(client.path / path, follow_symlinks=True)
+            delete_dataset_file(client.path / path, follow_symlinks=True)
 
     provider = ProviderFactory.get_import_provider(uri)
 
@@ -1053,7 +1063,7 @@ def update_dataset_git_files(
 
             if not found:
                 if not dry_run and delete:
-                    delete_file(dst, follow_symlinks=True)
+                    delete_dataset_file(dst, follow_symlinks=True)
                     client.repository.add(dst, force=True)
                 deleted_files.append(file)
             elif changed:
@@ -1061,7 +1071,7 @@ def update_dataset_git_files(
                     # Fetch file if it is tracked by Git LFS
                     remote_client.pull_paths_from_storage(remote_client.path / based_on.path)
                     if is_external_file(path=src, client_path=remote_client.path):
-                        delete_file(dst, follow_symlinks=True)
+                        delete_dataset_file(dst, follow_symlinks=True)
                         create_external_file(client=client, target=src.resolve(), path=dst)
                     else:
                         shutil.copy(src, dst)
@@ -1216,3 +1226,92 @@ def filter_dataset_files(
         raise errors.ParameterError(f"These datasets don't exist: {unused_names_str}")
 
     return sorted(records, key=lambda r: r.date_added)
+
+
+@inject.autoparams("client_dispatcher", "storage_factory")
+def pull_external_data(
+    name: str, client_dispatcher: IClientDispatcher, storage_factory: IStorageFactory, location: Optional[Path] = None
+) -> None:
+    """Pull/copy data for an external storage to a dataset's data directory or a specified location.
+
+    Args:
+        name(str): Name of the dataset
+        location(Optional[Path]): A directory to copy data to (Default value = None).
+    """
+    client = client_dispatcher.current_client
+    datasets_provenance = DatasetsProvenance()
+
+    dataset = datasets_provenance.get_by_name(name=name, strict=True)
+
+    if not dataset.storage:
+        communication.warn(f"Dataset '{name}' doesn't have a storage backend")
+        return
+
+    create_symlinks = True
+    destination: Union[Path, str]
+
+    if location:
+        destination = get_absolute_path(location)
+    else:
+        stored_location = read_dataset_data_location(dataset=dataset)
+        if stored_location:
+            destination = stored_location
+        else:
+            destination = client.path
+            create_symlinks = False
+
+    provider = ProviderFactory.get_pull_provider(uri=dataset.storage)
+
+    credentials = S3Credentials(provider)
+    prompt_for_credentials(credentials)
+
+    storage = storage_factory.get_storage(provider=provider, credentials=credentials)
+    updated_files = []
+
+    for file in dataset.files:
+        path = Path(destination) / file.entity.path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # NOTE: Don't check if destination exists. ``IStorage.copy`` won't copy a file if it exists and is not modified.
+
+        if not file.source:
+            raise errors.DatasetImportError(f"Dataset file doesn't have a URI: {file.entity.path}")
+
+        with communication.busy(f"Copying {file.entity.path} ..."):
+            storage.copy(file.source, path)
+
+            if file.based_on and not file.based_on.checksum:
+                md5_hash = hash_file(path, hash_type="md5") or ""
+                file.based_on = RemoteEntity(checksum=md5_hash, url=file.based_on.url, path=file.based_on.path)
+
+            new_file = DynamicProxy(file)
+            new_file.dataset = dataset
+            updated_files.append(new_file)
+
+            if create_symlinks:
+                symlink_path = client.path / file.entity.path
+                symlink_path.parent.mkdir(parents=True, exist_ok=True)
+                create_symlink(path=path, symlink_path=symlink_path, overwrite=True)
+
+    # NOTE: Store location in metadata in case where we want to mount the external storage in the same location
+    store_dataset_data_location(dataset=dataset, location=location)
+
+    if updated_files:
+        _update_datasets_files_metadata(client, updated_files=updated_files, deleted_files=[], delete=False)
+
+
+def store_dataset_data_location(dataset: Dataset, location: Optional[Path]) -> None:
+    """Store data location for a dataset in the config file."""
+    client = get_client()
+
+    section = "dataset-locations"
+    key = dataset.name
+
+    if not location:
+        client.remove_value(section=section, key=key)
+    else:
+        client.set_value(section=section, key=key, value=get_absolute_path(location))
+
+
+def read_dataset_data_location(dataset: Dataset) -> Optional[str]:
+    """Read data location for a dataset in the config file."""
+    return get_client().get_value(section="dataset-locations", key=dataset.name, config_filter=ConfigFilter.LOCAL_ONLY)

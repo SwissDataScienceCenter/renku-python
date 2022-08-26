@@ -20,7 +20,8 @@
 import json
 import os
 import subprocess
-from typing import Any, List
+from pathlib import Path
+from typing import Any, List, Union
 
 from renku.core import errors
 from renku.core.interface.storage import FileHash, IStorage
@@ -30,12 +31,10 @@ from renku.core.util.util import NO_VALUE
 class RCloneBaseStorage(IStorage):
     """Base external storage handler class."""
 
-    def set_configurations(self):
-        """Set required configurations for rclone to access the storage."""
-        for name, value in self.credentials.items():
-            name = get_rclone_env_var_name(self.provider.name, name)
-            if value is not NO_VALUE:
-                set_rclone_env_var(name=name, value=value)
+    def copy(self, source: Union[Path, str], destination: Union[Path, str]) -> None:
+        """Copy data from ``source`` to ``destination``."""
+        self.set_configurations()
+        execute_rclone_command("copyto", source, destination)
 
     def exists(self, uri: str) -> bool:
         """Checks if a remote storage URI exists."""
@@ -79,15 +78,22 @@ class RCloneBaseStorage(IStorage):
             )
         return output
 
+    def set_configurations(self) -> None:
+        """Set required configurations for rclone to access the storage."""
+        for name, value in self.credentials.items():
+            name = get_rclone_env_var_name(self.provider.name, name)
+            if value is not NO_VALUE:
+                set_rclone_env_var(name=name, value=value)
 
-def execute_rclone_command(command: str, *args: str, **kwargs) -> str:
+
+def execute_rclone_command(command: str, *args: Any, **kwargs) -> str:
     """Execute an R-clone command."""
     try:
         result = subprocess.run(
             ("rclone", command, *transform_kwargs(**kwargs), *args),
             text=True,
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=subprocess.PIPE,
         )
     except FileNotFoundError:
         raise errors.RCloneException("RClone is not installed. See https://rclone.org/install/")
@@ -95,12 +101,19 @@ def execute_rclone_command(command: str, *args: str, **kwargs) -> str:
     # See https://rclone.org/docs/#list-of-exit-codes for rclone exit codes
     if result.returncode == 0:
         return result.stdout
+
+    all_outputs = result.stdout + result.stderr
     if result.returncode in (3, 4):
-        raise errors.StorageObjectNotFound(result.stdout)
-    elif "AccessDenied" in result.stdout:
+        raise errors.StorageObjectNotFound(all_outputs)
+    elif "AccessDenied" in all_outputs:
         raise errors.AuthenticationError("Authentication failed when accessing the remote storage")
     else:
-        raise errors.RCloneException(f"Remote storage operation failed: {result.stdout}")
+        raise errors.RCloneException(f"Remote storage operation failed: {all_outputs}")
+
+
+def transform_args(*args) -> List[str]:
+    """Transforms args to command line args."""
+    return [str(a) for a in args]
 
 
 def transform_kwargs(**kwargs) -> List[str]:
@@ -124,7 +137,6 @@ def transform_kwargs(**kwargs) -> List[str]:
 def get_rclone_env_var_name(provider_name, name) -> str:
     """Get name of an RClone env var config."""
     # See https://rclone.org/docs/#config-file
-    # RCLONE_CONFIG_MYS3_TYPE
     name = name.replace(" ", "_").replace("-", "_")
     return f"RCLONE_CONFIG_{provider_name}_{name}".upper()
 

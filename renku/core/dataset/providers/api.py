@@ -19,11 +19,13 @@ import abc
 from collections import UserDict
 from enum import IntEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
 from renku.core import errors
+from renku.core.plugin import hookimpl
 from renku.core.util.metadata import get_canonical_key, read_credentials, store_credentials
 from renku.core.util.util import NO_VALUE, NoValueType
+from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import (
@@ -37,7 +39,10 @@ if TYPE_CHECKING:
 
 
 class ProviderPriority(IntEnum):
-    """Defines the order in which a provider is checked to see if it supports a URI."""
+    """Defines the order in which a provider is checked to see if it supports a URI.
+
+    Providers that support more specific URIs should have a higher priority so that they are checked first.
+    """
 
     HIGHEST = 1
     HIGHER = 2
@@ -48,7 +53,7 @@ class ProviderPriority(IntEnum):
     LOWEST = 7
 
 
-class ProviderApi(abc.ABC):
+class ProviderApi(IDatasetProviderPlugin):
     """Interface defining provider methods."""
 
     priority: Optional[ProviderPriority] = None
@@ -64,6 +69,12 @@ class ProviderApi(abc.ABC):
 
     def __repr__(self):
         return f"<DatasetProvider {self.name}>"
+
+    @classmethod
+    @hookimpl
+    def dataset_provider(cls) -> "Type[ProviderApi]":
+        """The definition of the provider."""
+        return cls
 
     @staticmethod
     @abc.abstractmethod
@@ -142,7 +153,7 @@ class ImporterApi(abc.ABC):
     def provider_dataset(self) -> "ProviderDataset":
         """Return the remote dataset. This is only valid after a call to ``fetch_provider_dataset``."""
         if self._provider_dataset is None:
-            raise errors.ImportError("Dataset is not fetched")
+            raise errors.DatasetImportError("Dataset is not fetched")
 
         return self._provider_dataset
 
@@ -150,7 +161,7 @@ class ImporterApi(abc.ABC):
     def provider_dataset_files(self) -> List["ProviderDatasetFile"]:
         """Return list of dataset files. This is only valid after a call to ``fetch_provider_dataset``."""
         if self._provider_dataset_files is None:
-            raise errors.ImportError("Dataset is not fetched")
+            raise errors.DatasetImportError("Dataset is not fetched")
 
         return self._provider_dataset_files
 
@@ -282,10 +293,7 @@ class ProviderCredentials(abc.ABC, UserDict):
 
         def read_and_convert_credentials(key) -> Union[str, NoValueType]:
             value = read_credentials(section=section, key=key)
-            if value is None:
-                return NO_VALUE
-
-            return value
+            return NO_VALUE if value is None else value
 
         data = {key: read_and_convert_credentials(key) for key in self.get_canonical_credentials_names()}
         self.data.update(data)

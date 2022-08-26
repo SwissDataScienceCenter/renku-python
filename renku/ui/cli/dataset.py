@@ -49,12 +49,6 @@ Create an empty dataset inside a Renku project:
    :description: Create a new dataset.
    :extended:
 
-Edit a dataset's metadata:
-
-By passing a storage URI with the ``--storage`` option, you can tell Renku that
-the data for the dataset is stored in a remote storage. At the moment, Renku
-supports only S3 backends. For example:
-
 .. cheatsheet::
    :group: Datasets
    :command: $ renku dataset ls
@@ -1160,3 +1154,21 @@ def update(
                 click.echo(f"The following files will be deleted{message}:\n\n{files}\n")
 
         ctx.exit(1)
+
+
+@dataset.command(hidden=True)
+@click.argument("name", shell_complete=_complete_datasets)
+@click.option(
+    "-l",
+    "--location",
+    default=None,
+    type=click.Path(exists=False, file_okay=False, writable=True),
+    help="A directory to copy data to, instead of the dataset's data directory.",
+)
+def pull(name, location):
+    """Pull data from an external storage."""
+    from renku.command.dataset import pull_external_data_command
+    from renku.ui.cli.utils.callback import ClickCallback
+
+    communicator = ClickCallback()
+    pull_external_data_command().with_communicator(communicator).build().execute(name=name, location=location)

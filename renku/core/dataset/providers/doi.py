@@ -19,18 +19,16 @@
 
 import urllib
 from pathlib import Path
-from typing import Optional, Type
+from typing import Optional
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ImporterApi, ProviderApi, ProviderPriority
-from renku.core.plugin import hookimpl
 from renku.core.util.doi import extract_doi, is_doi
-from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 DOI_BASE_URL = "https://dx.doi.org"
 
 
-class DOIProvider(ProviderApi, IDatasetProviderPlugin):
+class DOIProvider(ProviderApi):
     """`doi.org <http://doi.org>`_ registry API provider."""
 
     priority = ProviderPriority.HIGHER
@@ -70,16 +68,10 @@ class DOIProvider(ProviderApi, IDatasetProviderPlugin):
             try:
                 return DOIImporter(**data)
             except TypeError:
-                raise errors.ImportError("doi metadata could not be serialized")
+                raise errors.DatasetImportError("doi metadata could not be serialized")
 
         query_response = query(self.uri)
         return serialize(query_response)
-
-    @classmethod
-    @hookimpl
-    def dataset_provider(cls) -> "Type[DOIProvider]":
-        """The definition of the provider."""
-        return cls
 
 
 class DOIImporter(ImporterApi):

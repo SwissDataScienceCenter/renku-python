@@ -35,7 +35,7 @@ from renku.core.util import communication, requests
 from renku.core.util.dataset import check_url
 from renku.core.util.dispatcher import get_client, get_database
 from renku.core.util.git import get_git_user
-from renku.core.util.os import delete_file, get_relative_path
+from renku.core.util.os import delete_dataset_file, get_relative_path
 from renku.domain_model.dataset import Dataset, DatasetFile
 
 if TYPE_CHECKING:
@@ -291,7 +291,7 @@ def move_files_to_dataset(client: "LocalClient", files: List["DatasetAddMetadata
             continue
 
         # Remove existing file if any; required as a safety-net to avoid corrupting external files
-        delete_file(file.destination, follow_symlinks=True)
+        delete_dataset_file(file.destination, follow_symlinks=True)
         file.destination.parent.mkdir(parents=True, exist_ok=True)
 
         if file.action == DatasetAddAction.COPY:

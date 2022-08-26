@@ -17,6 +17,8 @@
 # limitations under the License.
 """Renku core constants."""
 
+import os
+
 CACHE = "cache"
 """Directory to cache transient data."""
 
@@ -24,3 +26,6 @@ RENKU_HOME = ".renku"
 """Project directory name."""
 
 RENKU_TMP = "tmp"
+
+CONFIG_NAME = "renku.ini"
+CONFIG_LOCAL_PATH = os.path.join(RENKU_HOME, CONFIG_NAME)

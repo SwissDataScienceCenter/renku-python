@@ -18,6 +18,7 @@
 """Repository datasets management."""
 
 from renku.command.command_builder.command import Command
+from renku.core.constant import CONFIG_LOCAL_PATH
 from renku.core.dataset.constant import DATASET_METADATA_PATHS
 from renku.core.dataset.dataset import (
     create_dataset,
@@ -27,6 +28,7 @@ from renku.core.dataset.dataset import (
     import_dataset,
     list_dataset_files,
     list_datasets,
+    pull_external_data,
     remove_dataset,
     search_datasets,
     show_dataset,
@@ -123,3 +125,9 @@ def remove_dataset_tags_command():
 def list_tags_command():
     """Command for listing a dataset's tags."""
     return Command().command(list_dataset_tags).with_database().require_migration()
+
+
+def pull_external_data_command():
+    """Command for pulling/copying data from an external storage."""
+    command = Command().command(pull_external_data).lock_dataset().with_database(write=True)
+    return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS + [CONFIG_LOCAL_PATH])

@@ -17,20 +17,22 @@
 # limitations under the License.
 """Dataset providers."""
 
-from abc import ABCMeta, abstractclassmethod
-from typing import Type
+import abc
+from typing import TYPE_CHECKING, Type
 
-from renku.core.dataset.providers.api import ProviderApi
+if TYPE_CHECKING:
+    from renku.core.dataset.providers.api import ProviderApi
 
 
-class IDatasetProviderPlugin(metaclass=ABCMeta):
+class IDatasetProviderPlugin(abc.ABC):
     """Abstract class for a dataset provider plugin."""
 
-    @abstractclassmethod
+    @classmethod
+    @abc.abstractmethod
     def dataset_provider(cls) -> "Type[ProviderApi]":
         """Supported dataset provider plugin.
 
         Returns:
             a ProviderApi class definition (not instance) from a specific plugin
         """
-        pass
+        raise NotImplementedError

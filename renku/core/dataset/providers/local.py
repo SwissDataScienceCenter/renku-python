@@ -21,15 +21,13 @@ import os
 import urllib
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Type
+from typing import TYPE_CHECKING, List, Optional
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
-from renku.core.plugin import hookimpl
 from renku.core.util import communication
 from renku.core.util.dataset import check_url
 from renku.core.util.os import get_absolute_path, is_path_empty
-from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderParameter
@@ -37,7 +35,7 @@ if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset, DatasetTag
 
 
-class FilesystemProvider(ProviderApi, IDatasetProviderPlugin):
+class FilesystemProvider(ProviderApi):
     """Local filesystem provider."""
 
     priority = ProviderPriority.LOW
@@ -228,12 +226,6 @@ class FilesystemProvider(ProviderApi, IDatasetProviderPlugin):
     def get_importer(self, uri, **kwargs):
         """Get import manager."""
         raise NotImplementedError
-
-    @classmethod
-    @hookimpl
-    def dataset_provider(cls) -> "Type[FilesystemProvider]":
-        """The definition of the provider."""
-        return cls
 
 
 class LocalExporter(ExporterApi):

@@ -25,7 +25,7 @@ from pathlib import Path
 import attr
 import click
 
-from renku.core.constant import RENKU_HOME
+from renku.core.constant import CONFIG_NAME
 from renku.core.util.contexts import Lock
 from renku.domain_model.enums import ConfigFilter
 
@@ -41,8 +41,6 @@ def _get_global_config_dir():
 @attr.s
 class ConfigManagerMixin:
     """Client for handling global configuration."""
-
-    CONFIG_NAME = "renku.ini"
 
     DATA_DIR_CONFIG_KEY = "data_directory"
 
@@ -60,12 +58,12 @@ class ConfigManagerMixin:
         if not config.exists():
             config.mkdir(parents=True)
 
-        return str(config / Path(self.CONFIG_NAME))
+        return os.path.join(config, CONFIG_NAME)
 
     @property
     def local_config_path(self):
         """Renku local (project) config path."""
-        return str(self.renku_path / self.CONFIG_NAME)
+        return os.path.join(self.renku_path, CONFIG_NAME)
 
     @property
     def global_config_read_lock(self):
@@ -208,6 +206,3 @@ class ConfigManagerMixin:
 
         if key in readonly_configs.get(section, []):
             raise errors.ParameterError(f"Configuration {key} cannot be modified.")
-
-
-CONFIG_LOCAL_PATH = [Path(RENKU_HOME) / ConfigManagerMixin.CONFIG_NAME]

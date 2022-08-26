@@ -490,7 +490,7 @@ def _lookup_paths_in_paths(client_dispatcher: IClientDispatcher, lookup_paths: L
     files = set()
 
     for p in lookup_paths:
-        path = Path(get_relative_paths(client.path, [p])[0])
+        path = Path(get_relative_paths(base=client.path, paths=[p])[0])
         if path.is_dir():
             dirs.append(path)
         else:

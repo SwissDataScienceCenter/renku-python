@@ -20,7 +20,7 @@
 import abc
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Union
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials
@@ -60,18 +60,18 @@ class IStorage(abc.ABC):
         self._credentials: "ProviderCredentials" = credentials
 
     @property
-    def provider(self) -> "ProviderApi":
-        """Return the dataset provider for this storage handler."""
-        return self._provider
-
-    @property
     def credentials(self) -> "ProviderCredentials":
         """Return the provider credentials for this storage handler."""
         return self._credentials
 
+    @property
+    def provider(self) -> "ProviderApi":
+        """Return the dataset provider for this storage handler."""
+        return self._provider
+
     @abc.abstractmethod
-    def set_configurations(self):
-        """Set required configurations to access the storage."""
+    def copy(self, source: Union[Path, str], destination: Union[Path, str]) -> None:
+        """Copy data from ``source`` to ``destination``."""
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -82,4 +82,9 @@ class IStorage(abc.ABC):
     @abc.abstractmethod
     def get_hashes(self, uri: str) -> List[FileHash]:
         """Get the hashes of all files at the uri."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def set_configurations(self) -> None:
+        """Set required configurations to access the storage."""
         raise NotImplementedError
