@@ -44,7 +44,14 @@ from renku.core.util.datetime8601 import local_now
 from renku.core.util.dispatcher import get_client, get_database
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository, get_git_user
 from renku.core.util.metadata import is_external_file, prompt_for_credentials, read_credentials, store_credentials
-from renku.core.util.os import create_symlink, delete_dataset_file, get_absolute_path, get_safe_relative_path, hash_file, is_subpath
+from renku.core.util.os import (
+    create_symlink,
+    delete_dataset_file,
+    get_absolute_path,
+    get_safe_relative_path,
+    hash_file,
+    is_subpath,
+)
 from renku.core.util.tabulate import tabulate
 from renku.core.util.urls import get_slug
 from renku.core.util.util import NO_VALUE, NoValueType
@@ -1235,7 +1242,6 @@ def pull_external_data(
     datasets_provenance = DatasetsProvenance()
 
     dataset = datasets_provenance.get_by_name(name=name, strict=True)
-    assert dataset  # NOTE: To make mypy happy
 
     if not dataset.storage:
         communication.warn(f"Dataset '{name}' doesn't have a storage backend")

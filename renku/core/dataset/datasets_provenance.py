@@ -18,13 +18,18 @@
 """Datasets Provenance."""
 
 from datetime import datetime
-from typing import TYPE_CHECKING, List, Literal, Optional, Union, overload
+from typing import TYPE_CHECKING, List, Optional, Union, overload
 from uuid import UUID
 
 from renku.command.command_builder.command import inject
 from renku.core import errors
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.util import communication
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 
 if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset, DatasetTag
