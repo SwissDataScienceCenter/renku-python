@@ -44,6 +44,7 @@ class DatasetAddMetadata(NamedTuple):
     source: Path
     destination: Path
     based_on: Optional["RemoteEntity"] = None
+    gitignored: bool = False
 
     @property
     def has_action(self) -> bool:

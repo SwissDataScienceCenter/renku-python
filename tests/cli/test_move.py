@@ -130,10 +130,6 @@ def test_move_empty_source(runner, client):
     assert "Invalid parameter value - There are no files to move" in result.output
 
 
-@pytest.mark.skip(
-    reason="Test moves dataset file outside of datadir, "
-    "see https://github.com/SwissDataScienceCenter/renku-python/issues/3061"
-)
 def test_move_dataset_file(runner, client_with_datasets, directory_tree_files, load_dataset_with_injection):
     """Test move of a file that belongs to a dataset."""
     for path in directory_tree_files:
@@ -142,9 +138,12 @@ def test_move_dataset_file(runner, client_with_datasets, directory_tree_files, l
 
     dataset_before = load_dataset_with_injection("dataset-2", client_with_datasets)
 
-    assert 0 == runner.invoke(cli, ["mv", "data", "files"], catch_exceptions=False).exit_code
+    result = runner.invoke(cli, ["mv", "data", "files"], input="y", catch_exceptions=False)
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Warning: You are trying to move dataset files out of a datasets data directory" in result.output
 
-    assert 0 == runner.invoke(cli, ["doctor"], catch_exceptions=False).exit_code
+    result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # Check immutability
     dataset_after = load_dataset_with_injection("dataset-2", client_with_datasets)
@@ -158,9 +157,7 @@ def test_move_dataset_file(runner, client_with_datasets, directory_tree_files, l
         assert dst.exists()
 
         file = dataset_after.find_file(dst)
-        assert file
-        assert str(dst) in file.entity.id
-        assert not file.is_external
+        assert not file
 
 
 @pytest.mark.parametrize("args", [[], ["--to-dataset", "dataset-2"]])
@@ -192,6 +189,10 @@ def test_move_to_existing_destination_in_a_dataset(runner, client_with_datasets,
     (client_with_datasets.path / "source").write_text("new-content")
     client_with_datasets.repository.add(all=True)
     client_with_datasets.repository.commit("source file")
+
+    result = runner.invoke(cli, ["mv", "-f", "--to-dataset", "dataset-2", "source", "new_file"])
+    assert 2 == result.exit_code, format_result_exception(result)
+    assert "Destination new_file must be in data/dataset-2 when moving to a dataset." in result.output
 
     dst = os.path.join("data", "dataset-2", "file1")
 
@@ -234,7 +235,8 @@ def test_move_external_files(
     """Test move of external files (symlinks)."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-dataset", str(directory_tree)]).exit_code
 
-    assert 0 == runner.invoke(cli, ["mv", os.path.join(DATA_DIR, "my-dataset"), destination]).exit_code
+    result = runner.invoke(cli, ["mv", os.path.join(DATA_DIR, "my-dataset"), destination])
+    assert 0 == result.exit_code, format_result_exception(result)
 
     for path in directory_tree_files:
         dst = Path(destination) / directory_tree.name / path
@@ -268,7 +270,7 @@ def test_move_between_datasets(
     source = Path("data") / "dataset-1"
     destination = Path("data") / "dataset-3"
 
-    result = runner.invoke(cli, ["mv", str(source), str(destination), "--to-dataset", "dataset-3"])
+    result = runner.invoke(cli, ["mv", "-f", str(source), str(destination), "--to-dataset", "dataset-3"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     assert not source.exists()
@@ -288,7 +290,7 @@ def test_move_between_datasets(
     src1 = os.path.join("data", "dataset-3", directory_tree.name, "dir1")
     dst1 = os.path.join("data", "dataset-1")
     shutil.rmtree(dst1, ignore_errors=True)  # NOTE: Remove directory to force a rename
-    assert 0 == runner.invoke(cli, ["mv", src1, dst1, "--to-dataset", "dataset-1"]).exit_code
+    assert 0 == runner.invoke(cli, ["mv", "-f", src1, dst1, "--to-dataset", "dataset-1"]).exit_code
     src2 = os.path.join("data", "dataset-3", directory_tree.name, "file1")
     dst2 = os.path.join("data", "dataset-2")
     (client.path / dst2).mkdir(parents=True, exist_ok=True)

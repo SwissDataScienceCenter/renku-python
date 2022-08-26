@@ -26,7 +26,9 @@ from renku.core import errors
 from renku.core.dataset.dataset import move_files
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.util import communication
+from renku.core.util.os import get_relative_path, is_subpath
 
 
 def move_command():
@@ -48,11 +50,15 @@ def _move(sources, destination, force, verbose, to_dataset, client_dispatcher: I
     """
     client = client_dispatcher.current_client
 
-    if to_dataset:
-        DatasetsProvenance().get_by_name(to_dataset, strict=True)
-
     absolute_destination = _get_absolute_path(destination)
     absolute_sources = [_get_absolute_path(src) for src in sources]
+
+    if to_dataset:
+        target_dataset = DatasetsProvenance().get_by_name(to_dataset, strict=True)
+        if not is_subpath(absolute_destination, _get_absolute_path(target_dataset.get_datadir(client))):
+            raise errors.ParameterError(
+                f"Destination {destination} must be in {target_dataset.get_datadir(client)} when moving to a dataset."
+            )
 
     is_rename = len(absolute_sources) == 1 and (
         not absolute_destination.exists() or (absolute_destination.is_file() and absolute_sources[0].is_file())
@@ -69,6 +75,7 @@ def _move(sources, destination, force, verbose, to_dataset, client_dispatcher: I
         raise errors.ParameterError("There are no files to move.")
     if not force:
         _check_existing_destinations(files.values())
+        _warn_about_dataset_files(files)
 
     # NOTE: we don't check if source and destination are the same or if multiple sources are moved to the same
     # destination; git mv will check those and we raise if git mv fails.
@@ -215,6 +222,42 @@ def _warn_about_git_filters(files, client_dispatcher: IClientDispatcher):
             f"There are custom git attributes for the following files:\n\t{src_attrs_str}\n"
             f"You need to edit '.gitattributes' and add the following:\n\t{dst_attrs_str}"
         )
+
+
+@inject.autoparams()
+def _warn_about_dataset_files(files, dataset_gateway: IDatasetGateway, client_dispatcher: IClientDispatcher):
+    """Check if any of the files are part of a dataset.
+
+    Args:
+        files: Files to check.
+        dataset_gateway(IDatasetGateway): Injected dataset gateway.
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+    """
+    client = client_dispatcher.current_client
+
+    found = []
+    for dataset in dataset_gateway.get_all_active_datasets():
+        for src, dst in files.items():
+            relative_src = get_relative_path(src, client.path)
+            if not relative_src:
+                continue
+
+            found_file = dataset.find_file(relative_src)
+            if not found_file:
+                continue
+            if not found_file.is_external and not is_subpath(dst, client.path / dataset.get_datadir(client)):
+                found.append(str(src))
+
+    if not found:
+        return
+
+    found_str = "\n\t".join(found)
+    communication.confirm(
+        msg="You are trying to move dataset files out of a datasets data directory. "
+        f"These files will be removed from the source dataset:\n\t{found_str}",
+        abort=True,
+        warning=True,
+    )
 
 
 def _show_moved_files(client_path, files):

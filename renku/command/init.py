@@ -333,6 +333,7 @@ def _create_from_template_local(
     commit_message: Optional[str] = None,
     description: Optional[str] = None,
     keywords: Optional[List[str]] = None,
+    data_dir: Optional[str] = None,
 ):
     """Initialize a new project from a template.
 
@@ -352,6 +353,7 @@ def _create_from_template_local(
         commit_message(Optional[str]): Message of initial commit (Default value = None).
         description(Optional[str]): Project description (Default value = None).
         keywords(Optional[List[str]]): Project keywords (Default value = None).
+        data_dir(Optional[str]): Project base data directory (Default value = None).
     """
     client = client_dispatcher.current_client
 
@@ -406,6 +408,7 @@ def _create_from_template_local(
         commit_message=commit_message,
         description=description,
         keywords=keywords,
+        data_dir=data_dir,
     )
 
 
