@@ -496,9 +496,12 @@ def test_add_and_create_dataset(
     assert 1 == result.exit_code
     assert 'Dataset "new-dataset" does not exist.' in result.output
 
-    existing_file = client.path / datadir / "myfile"
+    existing_file = client.path / datadir / "myfolder" / "myfile"
     existing_file.parent.mkdir(parents=True, exist_ok=True)
     existing_file.write_text("content")
+
+    existing_folder = client.path / datadir / "my_other_folder"
+    existing_folder.mkdir(parents=True, exist_ok=True)
 
     # Add succeeds with --create
     result = runner.invoke(

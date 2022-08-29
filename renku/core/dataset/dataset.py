@@ -48,6 +48,7 @@ from renku.core.util.os import (
     create_symlink,
     delete_dataset_file,
     get_absolute_path,
+    get_files,
     get_safe_relative_path,
     hash_file,
     is_subpath,
@@ -174,11 +175,11 @@ def create_dataset(
     if images:
         set_dataset_images(client, dataset, images)
 
-    add_datadir_files_to_dataset(client, dataset)
-
     if storage:
         provider = ProviderFactory.get_create_provider(uri=storage)
         provider.on_create(dataset=dataset)
+    else:
+        add_datadir_files_to_dataset(client, dataset)
 
     if update_provenance:
         datasets_provenance.add_or_update(dataset)
@@ -806,7 +807,7 @@ def add_datadir_files_to_dataset(client: "LocalClient", dataset: Dataset) -> Non
         # NOTE: Add existing files to dataset
         dataset_files: List[DatasetFile] = []
         files: List[Path] = []
-        for file in datadir.rglob("*"):
+        for file in get_files(datadir):
             files.append(file)
             dataset_files.append(DatasetFile.from_path(client=client, path=file, source=file))
 
@@ -1264,7 +1265,9 @@ def pull_external_data(
     """Pull/copy data for an external storage to a dataset's data directory or a specified location.
 
     Args:
-        name(str): Name of the dataset
+        client_dispatcher(IClientDispatcher): The client dispatcher.
+        storage_factory(IStorageFactory): The storage factory.
+        name(str): Name of the dataset.
         location(Optional[Path]): A directory to copy data to (Default value = None).
     """
     client = client_dispatcher.current_client

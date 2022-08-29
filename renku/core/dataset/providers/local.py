@@ -179,10 +179,10 @@ class FilesystemProvider(ProviderApi):
                 if client.check_external_storage():
                     client.track_paths_in_storage(src)
                 client.repository.add(src)
-
+            source_url = os.path.relpath(src, client.path)
             return DatasetAddMetadata(
-                entity_path=dst.relative_to(client.path),
-                url=os.path.relpath(src, client.path),
+                entity_path=Path(source_url) if in_datadir else dst.relative_to(client.path),
+                url=source_url,
                 action=DatasetAddAction.NONE if in_datadir else action,
                 source=src,
                 destination=dst,
