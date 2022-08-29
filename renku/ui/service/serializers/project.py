@@ -49,7 +49,7 @@ class ProjectShowResponse(Schema):
     )
     template_info = fields.String(description="The template that was used in the creation of this project")
     keywords = fields.List(
-        fields.String(), default=None, Missing=None, description="They keywords associated with this project"
+        fields.String(), default=None, missing=None, description="They keywords associated with this project"
     )
 
 
@@ -83,6 +83,12 @@ class ProjectEditResponseRPC(JsonRPCResponse):
 
 class ProjectLockStatusRequest(LocalRepositorySchema, RemoteRepositoryBaseSchema):
     """Project lock status request."""
+
+    timeout = fields.Float(
+        default=0.0,
+        missing=0.0,
+        description="Maximum amount of time to wait trying to acquire a lock when checking status.",
+    )
 
 
 class ProjectLockStatusResponse(Schema):
