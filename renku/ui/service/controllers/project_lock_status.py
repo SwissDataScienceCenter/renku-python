@@ -63,7 +63,7 @@ class ProjectLockStatusCtrl(ServiceCtrl, RenkuOperationMixin):
             raise errors.RenkuException("context does not contain `project_id` or `git_url` or missing `user_id`")
 
         try:
-            with project.read_lock(timeout=0):
+            with project.read_lock(timeout=self.ctx["timeout"]):
                 return False
         except (portalocker.LockException, portalocker.AlreadyLocked):
             return True
