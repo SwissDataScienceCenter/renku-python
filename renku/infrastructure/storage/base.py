@@ -78,6 +78,11 @@ class RCloneBaseStorage(IStorage):
             )
         return output
 
+    def mount(self, path: Union[Path, str]) -> None:
+        """Mount the provider's URI to the given path."""
+        self.set_configurations()
+        execute_rclone_command("mount", self.provider.uri, path, daemon=True, read_only=True, no_modtime=True)
+
     def set_configurations(self) -> None:
         """Set required configurations for rclone to access the storage."""
         for name, value in self.credentials.items():

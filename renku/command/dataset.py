@@ -28,6 +28,7 @@ from renku.core.dataset.dataset import (
     import_dataset,
     list_dataset_files,
     list_datasets,
+    mount_external_storage,
     pull_external_data,
     remove_dataset,
     search_datasets,
@@ -131,3 +132,8 @@ def pull_external_data_command():
     """Command for pulling/copying data from an external storage."""
     command = Command().command(pull_external_data).lock_dataset().with_database(write=True)
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS + [CONFIG_LOCAL_PATH])
+
+
+def mount_external_storage_command():
+    """Command for mounting an external storage."""
+    return Command().command(mount_external_storage).lock_dataset().with_database(write=False).require_migration()

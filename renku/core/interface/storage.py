@@ -80,8 +80,13 @@ class IStorage(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_hashes(self, uri: str) -> List[FileHash]:
+    def get_hashes(self, uri: str, hash_type: str = "md5") -> List[FileHash]:
         """Get the hashes of all files at the uri."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def mount(self, path: Union[Path, str]) -> None:
+        """Mount the provider's URI to the given path."""
         raise NotImplementedError
 
     @abc.abstractmethod

@@ -30,7 +30,7 @@ from renku.core.interface.storage import FileHash
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.util.contexts import chdir
 from renku.core.util.git import get_git_user
-from renku.core.util.os import get_files
+from renku.core.util.os import get_files, unmount_path
 from renku.domain_model.dataset import Url
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository
@@ -190,7 +190,7 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
 
     result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    assert "pyndl_naive_discr_v0.8.2" in result.output
+    assert "pyndl_naive_d_v1.0.0" in result.output
 
 
 @pytest.mark.parametrize(
@@ -458,7 +458,7 @@ def test_dataset_import_renku_missing_project(runner, client, missing_kg_project
     [
         ("https://dev.renku.ch/projects/renku-testing/project-9/", 2),
         ("https://dev.renku.ch/projects/renku-testing/project-9/datasets/b9f7b21b-8b00-42a2-976a-invalid", 1),
-        ("https://dev.renku.ch/datasets/10.5281%2Fzenodo.666", 1),
+        ("https://dev.renku.ch/datasets/10.5281%2Fzenodo.666", 2),
     ],
 )
 def test_dataset_import_renkulab_errors(runner, project, url, exit_code):
@@ -2050,7 +2050,7 @@ def test_pull_data_from_s3_backend(
 @retry_failed
 @pytest.mark.vcr
 def test_pull_data_from_s3_backend_to_a_location(
-    runner, client, global_config_dir, client_database_injection_manager, load_dataset_with_injection, tmp_path
+    runner, client, global_config_dir, load_dataset_with_injection, tmp_path
 ):
     """Test pulling data for a dataset with an S3 backend to a location other than dataset's data directory."""
     result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://giab/"], input="\n\n\n")
@@ -2186,3 +2186,75 @@ def test_adding_s3_data_outside_sub_path_not_allowed(runner, client, create_s3_d
     res = runner.invoke(cli, ["dataset", "add", dataset_name, add_uri])
     assert res.exit_code != 0
     assert "should be located within or at the storage uri" in res.stderr
+
+
+@pytest.mark.integration
+@retry_failed
+def test_mount_unmount_data_from_s3_backend(runner, client, global_config_dir):
+    """Test mounting/unmounting data for a dataset with an S3 backend."""
+    result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://giab/"], input="\n\n\n")
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    s3_data = client.path / "data" / "s3-data" / "Aspera_download_from_ftp.README"
+    assert not s3_data.exists()
+
+    # NOTE: Create some dummy files
+    dummy = client.path / "data" / "s3-data" / "dummy"
+    dummy.parent.mkdir(exist_ok=True, parents=True)
+    dummy.touch()
+
+    try:
+        result = runner.invoke(cli, ["dataset", "mount", "s3-data"], input="y")
+
+        assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+        assert "Warning: Dataset's data directory will be removed: data/s3-data." in result.output
+        assert s3_data.exists()
+    finally:
+        result = runner.invoke(cli, ["dataset", "mount", "s3-data", "--unmount"])
+
+        assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+        assert not s3_data.exists()
+
+
+@pytest.mark.integration
+@retry_failed
+def test_mount_data_from_an_existing_mount_point(runner, client, global_config_dir, tmp_path):
+    """Test get data for a dataset with an S3 backend from an existing mount-point."""
+    result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://giab/"], input="\n\n\n")
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    s3_data = client.path / "data" / "s3-data" / "Aspera_download_from_ftp.README"
+    assert not s3_data.exists()
+
+    # NOTE: Create some dummy files
+    dummy = client.path / "data" / "s3-data" / "dummy"
+    dummy.parent.mkdir(exist_ok=True, parents=True)
+    dummy.touch()
+
+    mount_point = tmp_path / "s3-mount"
+    mount_point.mkdir(exist_ok=True, parents=True)
+    subprocess.run(["rclone", "mount", "--read-only", "--no-modtime", "--daemon", "s3://giab/", str(mount_point)])
+
+    try:
+        result = runner.invoke(cli, ["dataset", "mount", "s3-data", "--yes", "--existing", str(mount_point)])
+
+        assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+        assert "Warning: Dataset's data directory will be removed: data/s3-data." not in result.output
+        assert s3_data.exists()
+
+        datadir = s3_data.parent
+        assert datadir.is_symlink()
+        assert datadir.resolve() == mount_point.resolve()
+
+        result = runner.invoke(cli, ["dataset", "mount", "s3-data", "--unmount"])
+
+        assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+        assert not s3_data.exists()
+        assert not datadir.exists()
+
+        s3_data = tmp_path / "s3-mount" / "Aspera_download_from_ftp.README"
+        assert s3_data.exists()
+    finally:
+        unmount_path(mount_point)

@@ -23,6 +23,7 @@ import io
 import os
 import re
 import shutil
+import subprocess
 from pathlib import Path
 from typing import Any, BinaryIO, Dict, Generator, List, Optional, Sequence, Union
 
@@ -126,6 +127,8 @@ def create_symlink(path: Union[Path, str], symlink_path: Union[Path, str], overw
     absolute_symlink_path = get_absolute_path(symlink_path)
     absolute_path = get_absolute_path(path, resolve_symlinks=True)
 
+    Path(absolute_symlink_path).parent.mkdir(parents=True, exist_ok=True)
+
     try:
         if overwrite:
             delete_path(absolute_symlink_path)
@@ -142,6 +145,28 @@ def delete_path(path: Union[Path, str]) -> None:
         pass
     except (PermissionError, IsADirectoryError, OSError):
         shutil.rmtree(path, ignore_errors=True)
+
+
+def unmount_path(path: Union[Path, str]) -> None:
+    """Unmount the given path and ignore all errors."""
+
+    def execute_command(*command: str) -> bool:
+        try:
+            subprocess.run(command, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return False
+        else:
+            return True
+
+    path = str(path)
+
+    # NOTE: A symlink means that the path is not mounted itself but it's a link to a mount-point; just delete the link.
+    if os.path.islink(path):
+        os.remove(path)
+        return
+
+    # NOTE: ``fusermount`` is available on linux and ``umount`` is for macOS
+    execute_command("fusermount", "-u", "-z", path) or execute_command("umount", path)
 
 
 def is_ascii(data):

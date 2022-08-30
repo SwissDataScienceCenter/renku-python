@@ -47,10 +47,13 @@ from renku.core.util.metadata import is_external_file, prompt_for_credentials, r
 from renku.core.util.os import (
     create_symlink,
     delete_dataset_file,
+    delete_path,
     get_absolute_path,
     get_safe_relative_path,
     hash_file,
+    is_path_empty,
     is_subpath,
+    unmount_path,
 )
 from renku.core.util.tabulate import tabulate
 from renku.core.util.urls import get_slug
@@ -1247,6 +1250,9 @@ def pull_external_data(
         communication.warn(f"Dataset '{name}' doesn't have a storage backend")
         return
 
+    # NOTE: Try to unmount the path in case it was mounted before
+    unmount_path(client.path / dataset.get_datadir())
+
     create_symlinks = True
     destination: Union[Path, str]
 
@@ -1315,3 +1321,60 @@ def store_dataset_data_location(dataset: Dataset, location: Optional[Path]) -> N
 def read_dataset_data_location(dataset: Dataset) -> Optional[str]:
     """Read data location for a dataset in the config file."""
     return get_client().get_value(section="dataset-locations", key=dataset.name, config_filter=ConfigFilter.LOCAL_ONLY)
+
+
+@inject.autoparams("client_dispatcher", "storage_factory")
+def mount_external_storage(
+    name: str,
+    existing: Optional[Path],
+    unmount: bool,
+    yes: bool,
+    client_dispatcher: IClientDispatcher,
+    storage_factory: IStorageFactory,
+) -> None:
+    """Mount an external storage to a dataset's data directory.
+
+    Args:
+        name(str): Name of the dataset
+        existing(Optional[Path]): An existing mount point to use instead of actually mounting the external storage.
+        unmount(bool): Unmount the external storage.
+        yes(bool): Don't prompt when removing non-empty dataset's data directory.
+    """
+    client = client_dispatcher.current_client
+    datasets_provenance = DatasetsProvenance()
+
+    dataset = datasets_provenance.get_by_name(name=name, strict=True)
+
+    if not dataset.storage and not unmount:
+        communication.warn(f"Cannot mount dataset '{name}': Dataset doesn't have a storage backend")
+        return
+
+    datadir = client.path / dataset.get_datadir()
+
+    # NOTE: Try to unmount the path in case it was mounted before
+    unmount_path(datadir)
+
+    if unmount:
+        return
+
+    if not is_path_empty(datadir) and not yes:
+        communication.confirm(
+            f"Dataset's data directory will be removed: {dataset.get_datadir()}. Do you want to continue?",
+            abort=True,
+            warning=True,
+        )
+
+    if existing:
+        create_symlink(path=existing, symlink_path=datadir, overwrite=True)
+        return
+
+    delete_path(datadir)
+    datadir.mkdir(parents=True, exist_ok=True)
+
+    provider = ProviderFactory.get_mount_provider(uri=dataset.storage)
+    credentials = S3Credentials(provider)
+    prompt_for_credentials(credentials)
+
+    storage = storage_factory.get_storage(provider=provider, credentials=credentials)
+    with communication.busy(f"Mounting {provider.uri}"):
+        storage.mount(datadir)
