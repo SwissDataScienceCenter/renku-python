@@ -20,11 +20,13 @@ import contextlib
 import os
 import secrets
 import shutil
+from pathlib import Path
 from typing import Generator
 
 import pytest
 
 from renku.core.management.client import LocalClient
+from renku.core.management.project_config import config
 from renku.infrastructure.repository import Repository
 from tests.utils import format_result_exception
 
@@ -138,7 +140,8 @@ def client(project, global_config_dir) -> Generator[LocalClient, None, None]:
 
     LocalClient.get_value = mocked_get_value  # type: ignore
 
-    yield LocalClient(path=project)
+    with config.with_path(Path(project)):
+        yield LocalClient()
 
     LocalClient.get_value = original_get_value  # type: ignore
 

@@ -23,6 +23,7 @@ from pathlib import Path
 
 import pytest
 
+from renku.core.management.project_config import config
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
@@ -92,7 +93,7 @@ def test_move_protected_paths(runner, client, path):
 
 def test_move_existing_destination(runner, client):
     """Test move to existing destination."""
-    (client.path / "source").write_text("123")
+    (config.path / "source").write_text("123")
     client.repository.add(all=True)
     client.repository.commit("source file")
 
@@ -122,7 +123,7 @@ def test_move_to_ignored_file(runner, client):
 
 def test_move_empty_source(runner, client):
     """Test move from empty directory."""
-    (client.path / "empty").mkdir()
+    (config.path / "empty").mkdir()
 
     result = runner.invoke(cli, ["mv", "empty", "data"])
 
@@ -173,7 +174,7 @@ def test_move_in_the_same_dataset(runner, client_with_datasets, args, load_datas
 
     dataset = load_dataset_with_injection("dataset-2", client_with_datasets)
     assert {dst, dst.replace("file2", "file3")} == {f.entity.path for f in dataset.files}
-    assert not (client_with_datasets.path / src).exists()
+    assert not (config.path / src).exists()
     file_after = dataset.find_file(dst)
     assert file_after.entity.checksum != file_before.entity.checksum
     assert dst == file_after.entity.path
@@ -186,7 +187,7 @@ def test_move_in_the_same_dataset(runner, client_with_datasets, args, load_datas
 
 def test_move_to_existing_destination_in_a_dataset(runner, client_with_datasets, load_dataset_with_injection):
     """Test move to a file in dataset will update file's metadata."""
-    (client_with_datasets.path / "source").write_text("new-content")
+    (config.path / "source").write_text("new-content")
     client_with_datasets.repository.add(all=True)
     client_with_datasets.repository.commit("source file")
 
@@ -293,7 +294,7 @@ def test_move_between_datasets(
     assert 0 == runner.invoke(cli, ["mv", "-f", src1, dst1, "--to-dataset", "dataset-1"]).exit_code
     src2 = os.path.join("data", "dataset-3", directory_tree.name, "file1")
     dst2 = os.path.join("data", "dataset-2")
-    (client.path / dst2).mkdir(parents=True, exist_ok=True)
+    (config.path / dst2).mkdir(parents=True, exist_ok=True)
     result = runner.invoke(cli, ["mv", src2, dst2, "--force", "--to-dataset", "dataset-2"])
     assert 0 == result.exit_code, format_result_exception(result)
 

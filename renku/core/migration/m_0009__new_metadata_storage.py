@@ -37,6 +37,7 @@ from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.management.client import LocalClient
+from renku.core.management.project_config import config
 from renku.core.migration.models import v9 as old_schema
 from renku.core.migration.utils import (
     OLD_DATASETS_PATH,
@@ -142,11 +143,11 @@ def remove_graph_files(client):
     """Remove all graph files."""
     # NOTE: These are required for projects that have new graph files
     try:
-        (client.path / "provenance.json").unlink()
+        (config.path / "provenance.json").unlink()
     except FileNotFoundError:
         pass
     try:
-        (client.path / "dependency.json").unlink()
+        (config.path / "dependency.json").unlink()
     except FileNotFoundError:
         pass
     try:
@@ -154,7 +155,7 @@ def remove_graph_files(client):
     except FileNotFoundError:
         pass
     try:
-        (client.path / "dataset.json").unlink()
+        (config.path / "dataset.json").unlink()
     except FileNotFoundError:
         pass
 
@@ -348,7 +349,7 @@ def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, 
         if not path.startswith(".renku/workflow") or not path.endswith(".yaml"):
             continue
 
-        if not (client.path / path).exists():
+        if not (config.path / path).exists():
             communication.warn(f"Workflow file does not exists: '{path}'")
             continue
 
@@ -656,7 +657,7 @@ def _process_datasets(
 def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], deleted_paths: List[str]):
     from renku.core.migration.models.v9 import Dataset
 
-    datasets_path = client.path / ".renku" / "tmp" / OLD_DATASETS_PATH
+    datasets_path = config.path / ".renku" / "tmp" / OLD_DATASETS_PATH
     shutil.rmtree(datasets_path, ignore_errors=True)
     datasets_path.mkdir(parents=True, exist_ok=True)
 

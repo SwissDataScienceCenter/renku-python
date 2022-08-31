@@ -28,6 +28,7 @@ from pathlib import Path
 import pytest
 
 from renku import __version__
+from renku.core.management.project_config import config
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.management.storage import StorageApiMixin
 from renku.core.util.contexts import chdir
@@ -54,7 +55,7 @@ def test_help(arg, runner):
 @pytest.mark.parametrize("cwd", (DATA_DIR, "notebooks", "subdir"))
 def test_run_from_non_root(runner, client, cwd):
     """Test running renku not from project's root."""
-    path = client.path / cwd
+    path = config.path / cwd
     path.mkdir(parents=True, exist_ok=True)
     with chdir(path):
         result = runner.invoke(cli, ["dataset", "ls"])

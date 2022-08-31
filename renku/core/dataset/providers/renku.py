@@ -31,6 +31,7 @@ from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.providers.api import ImporterApi, ProviderApi, ProviderPriority
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
+from renku.core.management.project_config import config
 from renku.core.util import communication
 from renku.core.util.file_size import bytes_to_unit
 from renku.core.util.git import clone_renku_repository, get_cache_directory_for_repository, get_file_size
@@ -255,6 +256,7 @@ class RenkuImporter(ImporterApi):
         self._project_url = None
         self._remote_repository = None
         self._remote_client = None
+        self._remote_path = None
 
     def fetch_provider_dataset(self) -> "ProviderDataset":
         """Return encapsulated dataset instance."""
@@ -298,7 +300,7 @@ class RenkuImporter(ImporterApi):
                 relative_path = Path(src_entity_path)
 
             dst = destination / relative_path
-            path_in_dst_repo = dst.relative_to(client.path)
+            path_in_dst_repo = dst.relative_to(config.path)
 
             already_copied = path_in_dst_repo in new_files  # A path with the same destination is already copied
             new_files[path_in_dst_repo].append(src_entity_path)
@@ -332,14 +334,15 @@ class RenkuImporter(ImporterApi):
         new_files: Dict[Path, List[str]] = defaultdict(list)
 
         if checksums is None:
-            LocalClient(path=remote_repository.path).pull_paths_from_storage(  # type: ignore
-                *(remote_repository.path / p for p in sources)  # type: ignore
-            )
+            with config.with_path(remote_repository.path):
+                LocalClient().pull_paths_from_storage(  # type: ignore
+                    *(remote_repository.path / p for p in sources)  # type: ignore
+                )
 
             for file in sources:
                 add_file(file, content_path=remote_repository.path / file, checksum=None)  # type: ignore
         else:  # NOTE: Renku dataset import with a tag
-            content_path_root = make_project_temp_dir(client.path)
+            content_path_root = make_project_temp_dir(config.path)
             content_path_root.mkdir(parents=True, exist_ok=True)
             filename = 1
 
@@ -383,19 +386,16 @@ class RenkuImporter(ImporterApi):
 
     def copy_extra_metadata(self, new_dataset: "Dataset") -> None:
         """Copy provider specific metadata once the dataset is created."""
-        from renku.core.util.dispatcher import get_client
 
         if not self.provider_dataset.images:
             return
-
-        client = get_client()
 
         for image in self.provider_dataset.images:
             if image.is_absolute:
                 continue
 
-            remote_image_path = self._remote_client.path / image.content_url
-            local_image_path = client.path / image.content_url
+            remote_image_path = self._remote_path / image.content_url
+            local_image_path = config.path / image.content_url
             local_image_path.parent.mkdir(exist_ok=True, parents=True)
 
             shutil.copy(remote_image_path, local_image_path)
@@ -440,7 +440,7 @@ class RenkuImporter(ImporterApi):
     @property
     def datadir_exists(self):
         """Whether the dataset data directory exists (might be missing in git if empty)."""
-        return (self._remote_client.path / self.provider_dataset.get_datadir()).exists()
+        return (self._remote_path / self.provider_dataset.get_datadir()).exists()
 
     @inject.autoparams()
     def _fetch_dataset(self, client_dispatcher: IClientDispatcher, database_dispatcher: IDatabaseDispatcher):
@@ -476,9 +476,11 @@ class RenkuImporter(ImporterApi):
         if self._project_url is None or repository is None:
             raise errors.ParameterError("Cannot clone remote projects:\n\t" + "\n\t".join(urls), param_hint=self.uri)
 
-        self._remote_client = LocalClient(path=repository.path)
-        client_dispatcher.push_created_client_to_stack(self._remote_client)
-        database_dispatcher.push_database_to_stack(self._remote_client.database_path)
+        with config.with_path(repository.path) as remote_path:
+            self._remote_path = remote_path
+            self._remote_client = LocalClient()
+            client_dispatcher.push_created_client_to_stack(self._remote_client)
+            database_dispatcher.push_database_to_stack(self._remote_client.database_path)
 
         try:
             self._migrate_project()
@@ -521,7 +523,7 @@ class RenkuImporter(ImporterApi):
                 checksum=file.entity.checksum,
                 filename=Path(file.entity.path).name,
                 filetype=Path(file.entity.path).suffix.replace(".", ""),
-                size_in_mb=bytes_to_unit(get_file_size(self._remote_client.path, file.entity.path), "mi"),
+                size_in_mb=bytes_to_unit(get_file_size(self._remote_path, file.entity.path), "mi"),
                 source=file.source,
             )
             for file in dataset.files

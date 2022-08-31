@@ -21,6 +21,7 @@ from pathlib import Path
 
 import pytest
 
+from renku.core.management.project_config import config
 from renku.infrastructure.repository import Repository
 from tests.utils import clone_compressed_repository
 
@@ -88,8 +89,8 @@ def old_dataset_project(request, tmp_path):
     base_path = tmp_path / name
     repository = clone_compressed_repository(base_path=base_path, name=name)
 
-    with chdir(repository.path):
-        yield LocalClient(path=repository.path)
+    with chdir(repository.path), config.with_path(repository.path):
+        yield LocalClient()
 
 
 @pytest.fixture

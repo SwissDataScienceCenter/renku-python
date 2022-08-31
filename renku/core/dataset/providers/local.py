@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, List, Optional
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
+from renku.core.management.project_config import config
 from renku.core.util import communication
 from renku.core.util.dataset import check_url
 from renku.core.util.os import get_absolute_path, is_path_empty
@@ -140,7 +141,7 @@ class FilesystemProvider(ProviderApi):
         path = u.path
 
         action = DatasetAddAction.SYMLINK if external else default_action
-        absolute_dataset_data_dir = (client.path / dataset.get_datadir()).resolve()
+        absolute_dataset_data_dir = (config.path / dataset.get_datadir()).resolve()
         source_root = Path(get_absolute_path(path))
         warnings: List[str] = []
 
@@ -171,15 +172,15 @@ class FilesystemProvider(ProviderApi):
             dst = destination_root / relative_path
 
             if is_tracked and external:
-                warnings.append(str(src.relative_to(client.path)))
+                warnings.append(str(src.relative_to(config.path)))
 
             if not is_tracked and not external and action == DatasetAddAction.SYMLINK:
                 # NOTE: we need to commit src if it is linked to and not external.
                 client.repository.add(src)
 
             return DatasetAddMetadata(
-                entity_path=dst.relative_to(client.path),
-                url=os.path.relpath(src, client.path),
+                entity_path=dst.relative_to(config.path),
+                url=os.path.relpath(src, config.path),
                 action=action,
                 source=src,
                 destination=dst,
@@ -255,10 +256,10 @@ class LocalExporter(ExporterApi):
         from renku.core.util.yaml import write_yaml
 
         if self._path:
-            dst_root = client.path / self._path
+            dst_root = config.path / self._path
         else:
             dataset_dir = f"{self._dataset.name}-{self._tag.name}" if self._tag else self._dataset.name
-            dst_root = client.path / client.data_dir / dataset_dir
+            dst_root = config.path / client.data_dir / dataset_dir
 
         if dst_root.exists() and not dst_root.is_dir():
             raise errors.ParameterError(f"Destination is not a directory: '{dst_root}'")

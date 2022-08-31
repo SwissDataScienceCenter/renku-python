@@ -34,7 +34,7 @@ from renku.core.constant import RENKU_HOME
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.management.git import GitCore
-from renku.core.util.git import default_path
+from renku.core.management.project_config import config
 from renku.domain_model.enums import ConfigFilter
 from renku.domain_model.project import Project
 
@@ -47,24 +47,6 @@ def _convert_data_dir_to_str(value: Optional[Any]) -> str:
         return str(value)
 
     return DEFAULT_DATA_DIR
-
-
-def _path_converter(path) -> Path:
-    """Converter for path in PathMixin."""
-    return Path(path).resolve()
-
-
-@attr.s
-class PathMixin:
-    """Define a default path attribute."""
-
-    path: Path = attr.ib(default=default_path, converter=_path_converter)  # type: ignore
-
-    @path.validator
-    def _check_path(self, _, value):
-        """Check the path exists and it is a directory."""
-        if not (value.exists() and value.is_dir()):
-            raise ValueError("Define an existing directory.")
 
 
 @attr.s
@@ -116,7 +98,7 @@ class RepositoryApiMixin(GitCore):
         #: Configure Renku path.
         path = Path(self.renku_home)
         if not path.is_absolute():
-            path = self.path / path
+            path = config.path / path
 
         path.relative_to(path)
         self.renku_path = path
@@ -133,7 +115,7 @@ class RepositoryApiMixin(GitCore):
         # initialize submodules
         if self.repository:
             try:
-                self.repository.run_git_command("submodule", "update", "--init", "--recursive", cwd=str(self.path))
+                self.repository.run_git_command("submodule", "update", "--init", "--recursive", cwd=str(config.path))
             except errors.GitCommandError:
                 pass
 
@@ -155,7 +137,7 @@ class RepositoryApiMixin(GitCore):
     @property
     def docker_path(self):
         """Path to the Dockerfile."""
-        return self.path / self.DOCKERFILE
+        return config.path / self.DOCKERFILE
 
     @property
     def template_checksums(self):
@@ -235,7 +217,7 @@ class RepositoryApiMixin(GitCore):
         """Resolve filename in submodules."""
         from renku.core.management.client import LocalClient
 
-        original_path = self.path / path
+        original_path = config.path / path
         in_vendor = str(path).startswith(".renku/vendors")
 
         if original_path.is_symlink() or in_vendor:
@@ -248,7 +230,8 @@ class RepositoryApiMixin(GitCore):
                 try:
                     path_within_submodule = resolved_path.relative_to(submodule.path)
                     commit = submodule.get_previous_commit(path=path_within_submodule, revision=commit.hexsha)
-                    subclient = LocalClient(submodule.path)
+                    with config.with_path(submodule.path):
+                        subclient = LocalClient()
                 except (ValueError, errors.GitCommitNotFoundError):
                     pass
                 else:
@@ -312,7 +295,7 @@ class RepositoryApiMixin(GitCore):
         from renku.infrastructure.repository import Repository
 
         # initialize repo and set user data
-        path = self.path.absolute()
+        path = config.path.absolute()
         if force and (path / RENKU_HOME).exists():
             shutil.rmtree(path / RENKU_HOME)
         self.repository = Repository.initialize(path=path, branch=initial_branch)
@@ -327,7 +310,7 @@ class RepositoryApiMixin(GitCore):
     def is_protected_path(self, path):
         """Checks if a path is a protected path."""
         try:
-            path_in_repo = str(path.relative_to(self.path))
+            path_in_repo = str(path.relative_to(config.path))
         except ValueError:
             return False
 

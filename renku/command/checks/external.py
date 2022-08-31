@@ -21,6 +21,7 @@ import click
 from renku.command.command_builder import inject
 from renku.command.echo import WARNING
 from renku.core.interface.dataset_gateway import IDatasetGateway
+from renku.core.management.project_config import config
 
 
 @inject.autoparams("dataset_gateway")
@@ -29,6 +30,7 @@ def check_missing_external_files(client, dataset_gateway: IDatasetGateway, **kwa
 
     Args:
         client: ``LocalClient``.
+        dataset_gateway(IDatasetGateway): The injected dataset gateway.
         kwargs: keyword arguments.
 
     Returns:
@@ -39,7 +41,7 @@ def check_missing_external_files(client, dataset_gateway: IDatasetGateway, **kwa
     for dataset in dataset_gateway.get_all_active_datasets():
         for file_ in dataset.files:
             if file_.is_external:
-                target = (client.path / file_.entity.path).resolve()
+                target = (config.path / file_.entity.path).resolve()
                 if not target.exists():
                     missing.append((file_.entity.path, str(target)))
 

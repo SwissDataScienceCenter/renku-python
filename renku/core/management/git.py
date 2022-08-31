@@ -31,6 +31,7 @@ from typing import List
 import attr
 
 from renku.core import errors
+from renku.core.management.project_config import config
 from renku.core.util.os import get_absolute_path
 from renku.core.util.urls import remove_credentials
 
@@ -101,7 +102,7 @@ def finalize_commit(
 
     if isinstance(commit_only, list):
         for path_ in commit_only:
-            p = client.path / path_
+            p = config.path / path_
             if p.exists() or change_types.get(str(path_)) == "D":
                 client.repository.add(path_)
 
@@ -146,13 +147,15 @@ def prepare_worktree(
     from renku.infrastructure.repository import NULL_TREE
 
     path = path or tempfile.mkdtemp()
+    original_path = config.path
+    config.push_path(Path(path))
+
     branch_name = branch_name or "renku/run/isolation/" + uuid.uuid4().hex
 
     # TODO sys.argv
-
     if commit is NULL_TREE:
         original_client.repository.create_worktree(path, detach=True)
-        client = attr.evolve(original_client, path=path)
+        client = attr.evolve(original_client)
         client.repository.run_git_command("checkout", "--orphan", branch_name)
         client.repository.remove("*", recursive=True, force=True)
     else:
@@ -160,18 +163,18 @@ def prepare_worktree(
         if commit:
             revision = commit.hexsha
         original_client.repository.create_worktree(path, branch=branch_name, reference=revision)
-        client = attr.evolve(original_client, path=path)
+        client = attr.evolve(original_client)
 
     client.repository.get_configuration = original_client.repository.get_configuration
 
     # Keep current directory relative to repository root.
-    relative = Path(os.path.relpath(Path(".").resolve(), original_client.path))
+    relative = Path(os.path.relpath(Path(".").resolve(), original_path))
 
     # Reroute standard streams
     original_mapped_std = get_mapped_std_streams(original_client.candidate_paths)
     mapped_std = {}
     for name, stream in original_mapped_std.items():
-        stream_path = Path(path) / (Path(stream).relative_to(original_client.path))
+        stream_path = Path(path) / (Path(stream).relative_to(original_path))
         stream_path = stream_path.absolute()
 
         if not stream_path.exists():
@@ -212,6 +215,9 @@ def finalize_worktree(
         if new_branch:
             # delete the created temporary branch
             client.repository.branches.remove(branch_name)
+
+    config.pop_path()
+
     if client.external_storage_requested:
         client.checkout_paths_from_storage()
 
@@ -290,7 +296,7 @@ class GitCore:
 
         #: Create an instance of a Git repository for the given path.
         try:
-            self.repository = Repository(self.path)
+            self.repository = Repository(config.path)
         except errors.GitError:
             self.repository = None
 
@@ -357,7 +363,7 @@ class GitCore:
         untracked = self.repository.untracked_files
 
         for file_path in untracked:
-            is_parent = (self.path / file_path).parent == (self.path / path)
+            is_parent = (config.path / file_path).parent == (config.path / path)
             is_equal = path == file_path
 
             if is_parent or is_equal:

@@ -21,12 +21,13 @@ from pathlib import Path
 
 import pytest
 
+from renku.core.management.project_config import config
 from renku.core.util.contexts import chdir
 
 
 def test_indirect_inputs_outputs(renku_cli, client):
     """Test indirect inputs/outputs that are programmatically created."""
-    with chdir(client.path):
+    with chdir(config.path):
         Path("foo").mkdir()
         Path(".renku/tmp").mkdir()
         Path("foo/bar").touch()
@@ -62,7 +63,7 @@ def test_indirect_inputs_outputs(renku_cli, client):
 
 def test_duplicate_indirect_inputs(renku_cli, client):
     """Test duplicate indirect inputs are only included once."""
-    with chdir(client.path):
+    with chdir(config.path):
         Path("foo").mkdir()
         Path(".renku/tmp").mkdir()
         Path("foo/bar").touch()
@@ -90,7 +91,7 @@ def test_duplicate_indirect_inputs(renku_cli, client):
 
 def test_duplicate_indirect_outputs(renku_cli, client):
     """Test duplicate indirect outputs are only included once."""
-    with chdir(client.path):
+    with chdir(config.path):
         Path("foo").mkdir()
         Path(".renku/tmp").mkdir()
         Path("foo/bar").touch()
@@ -119,7 +120,7 @@ def test_duplicate_indirect_outputs(renku_cli, client):
 
 def test_indirect_parameters(renku_cli, client):
     """Test indirect parameters."""
-    with chdir(client.path):
+    with chdir(config.path):
         Path(".renku/tmp").mkdir()
 
         Path("script.sh").write_text(
@@ -148,7 +149,7 @@ def test_indirect_parameters(renku_cli, client):
 @pytest.mark.skip("renku update is not implemented with new database, reenable once it is.")
 def test_indirect_parameters_update(renku_cli, client):
     """Test updating of indirect parameters."""
-    with chdir(client.path):
+    with chdir(config.path):
         Path(".renku/tmp").mkdir(exist_ok=True)
 
         Path("script.sh").write_text(
@@ -164,7 +165,7 @@ def test_indirect_parameters_update(renku_cli, client):
 
     renku_cli("run", "sh", "script.sh", stdout="result")
 
-    with chdir(client.path):
+    with chdir(config.path):
         Path(".renku/tmp").mkdir(exist_ok=True)
 
         Path("script.sh").write_text(

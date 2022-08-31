@@ -32,6 +32,7 @@ from cwl_utils.parser.cwl_v1_0 import CommandLineTool, InitialWorkDirRequirement
 from werkzeug.utils import secure_filename
 
 from renku.core import errors
+from renku.core.management.project_config import config
 from renku.core.migration.models.v3 import Dataset
 from renku.core.migration.models.v9 import (
     Collection,
@@ -134,7 +135,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
     outputs = list(cmd_line_tool.outputs)
 
     # NOTE: Make run ids deterministic to prevent duplication.
-    rel_path = Path(path).relative_to(client.path)
+    rel_path = Path(path).relative_to(config.path)
     if parent_commit:
         label = f"{rel_path}@{parent_commit.hexsha}"
     else:
@@ -154,7 +155,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
         inputs.remove(matched_input)
 
         path = client.renku_path / OLD_WORKFLOW_PATH / Path(matched_input.default["path"])
-        stdin = path.resolve().relative_to(client.path)
+        stdin = path.resolve().relative_to(config.path)
         id_ = CommandInput.generate_id(base_id, "stdin")
 
         run.inputs.append(
@@ -227,7 +228,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
             else:
                 path = Path(matched_input.default)
 
-            path = Path(os.path.realpath(client.path / path)).relative_to(client.path)
+            path = Path(os.path.realpath(config.path / path)).relative_to(config.path)
 
             if matched_input.inputBinding:
                 prefix = matched_input.inputBinding.prefix
@@ -241,7 +242,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
         create_folder = False
 
         check_path = path
-        if not (client.path / path).is_dir():
+        if not (config.path / path).is_dir():
             check_path = path.parent
 
         if check_path != "." and str(check_path) in generated_outputs:
@@ -270,7 +271,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
 
         if isinstance(i.default, dict) and "class" in i.default and i.default["class"] in ["File", "Directory"]:
             path = client.renku_path / OLD_WORKFLOW_PATH / Path(i.default["path"])
-            path = Path(os.path.realpath(path)).relative_to(client.path)
+            path = Path(os.path.realpath(path)).relative_to(config.path)
 
             run.inputs.append(
                 CommandInput(
@@ -300,7 +301,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
     step_name = "{0}_{1}.yaml".format(uuid.uuid4().hex, secure_filename("_".join(cmd_line_tool.baseCommand)))
 
     absolute_path = client.renku_path / OLD_WORKFLOW_PATH / step_name
-    path = absolute_path.relative_to(client.path)
+    path = absolute_path.relative_to(config.path)
 
     run.path = path
     process_run = ProcessRun.from_run(run, client, path, commit=commit)
@@ -320,7 +321,7 @@ def _migrate_composite_step(client, workflow, path, commit=None):
     if not commit:
         commit = client.cache.find_previous_commit(path)
     run = Run(client=client, path=path, commit=commit)
-    rel_path = Path(path).relative_to(client.path)
+    rel_path = Path(path).relative_to(config.path)
     label = f"{rel_path}@{commit.hexsha}"
     identifier = sha1(label.encode("utf-8")).hexdigest()
     run._id = Run.generate_id(client, identifier=identifier)
@@ -328,7 +329,7 @@ def _migrate_composite_step(client, workflow, path, commit=None):
     name = "{0}_migrated.yaml".format(uuid.uuid4().hex)
 
     wf_path = client.renku_path / OLD_WORKFLOW_PATH
-    run.path = (wf_path / name).relative_to(client.path)
+    run.path = (wf_path / name).relative_to(config.path)
 
     for step in workflow.steps:
         if isinstance(step.run, dict):
@@ -359,11 +360,11 @@ def _entity_from_path(client, path, commit):
     client, commit, path = client.get_in_submodules(client.cache.find_previous_commit(path, revision=commit), path)
 
     entity_cls = Entity
-    if (client.path / path).is_dir():
+    if (config.path / path).is_dir():
         entity_cls = Collection
 
     if str(path).startswith(os.path.join(client.renku_home, OLD_DATASETS_PATH)):
-        return Dataset.from_yaml(path=client.path / path, client=client, commit=commit)
+        return Dataset.from_yaml(path=config.path / path, client=client, commit=commit)
     else:
         return entity_cls(commit=commit, client=client, path=str(path))
 
@@ -387,8 +388,8 @@ def _invalidations_from_commit(client, commit: Commit):
 def _get_activity_entity(client, commit, path, collections, deleted=False):
     """Gets the entity associated with this Activity and path."""
     client, commit, path = client.get_in_submodules(commit, path)
-    output_path = client.path / path
-    parents = list(output_path.relative_to(client.path).parents)
+    output_path = config.path / path
+    parents = list(output_path.relative_to(config.path).parents)
 
     collection = None
     members = []
@@ -403,11 +404,11 @@ def _get_activity_entity(client, commit, path, collections, deleted=False):
         members = collection.members
 
     entity_cls = Entity
-    if (client.path / path).is_dir():
+    if (config.path / path).is_dir():
         entity_cls = Collection
 
     if str(path).startswith(os.path.join(client.renku_home, OLD_DATASETS_PATH)) and not deleted:
-        entity = Dataset.from_yaml(path=client.path / path, client=client, commit=commit)
+        entity = Dataset.from_yaml(path=config.path / path, client=client, commit=commit)
     else:
         entity = entity_cls(commit=commit, client=client, path=str(path), parent=collection)
 
@@ -459,7 +460,7 @@ class RepositoryCache:
                 cache[path].append(commit)
 
                 if path.startswith(f"{client.renku_home}/workflow/") and path.endswith(".cwl"):
-                    cwl_files.append(os.path.realpath(client.path / path))
+                    cwl_files.append(os.path.realpath(config.path / path))
 
             cls._update_cwl_files_and_commits(commit, cwl_files_commits_map, cwl_files)
 
@@ -491,7 +492,7 @@ class RepositoryCache:
                 return revision
 
         try:
-            path = (self.client.path / path).relative_to(self.client.path)
+            path = (config.path / path).relative_to(config.path)
         except ValueError:
             pass
         path = str(path)

@@ -22,6 +22,7 @@ from typing import cast
 
 import pytest
 
+from renku.core.management.project_config import config
 from renku.domain_model.workflow.plan import Plan
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.infrastructure.gateway.plan_gateway import PlanGateway
@@ -168,7 +169,7 @@ def test_run_invalid_name(runner, client):
     result = runner.invoke(cli, ["run", "--name", "invalid name", "touch", "foo"])
 
     assert 2 == result.exit_code
-    assert not (client.path / "foo").exists()
+    assert not (config.path / "foo").exists()
     assert "Invalid name: 'invalid name' (Hint: 'invalid_name' is valid)." in result.output
 
 
@@ -255,7 +256,7 @@ def test_run_prints_plan_when_stdout_redirected(runner, client):
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Name: echo-command" in result.stderr
     assert "Name:" not in result.stdout
-    assert "Name:" not in (client.path / "output").read_text()
+    assert "Name:" not in (config.path / "output").read_text()
 
 
 def test_run_prints_plan_when_stderr_redirected(runner, client):
@@ -263,7 +264,7 @@ def test_run_prints_plan_when_stderr_redirected(runner, client):
     result = runner.invoke(cli, ["run", "--verbose", "--name", "echo-command", "echo", "data"], stderr="output")
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Name: echo-command" in (client.path / "output").read_text()
+    assert "Name: echo-command" in (config.path / "output").read_text()
     assert "Name:" not in result.output
 
 
@@ -271,9 +272,9 @@ def test_run_with_external_files(runner, client, directory_tree):
     """Test run commands that use external files."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-dataset", directory_tree]).exit_code
 
-    path = client.path / "data" / "my-dataset" / "directory_tree" / "file1"
+    path = config.path / "data" / "my-dataset" / "directory_tree" / "file1"
 
     result = runner.invoke(cli, ["run", "tail", path], stdout="output")
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "file1" in (client.path / "output").read_text()
+    assert "file1" in (config.path / "output").read_text()

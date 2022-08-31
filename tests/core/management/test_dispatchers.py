@@ -20,46 +20,40 @@ from pathlib import Path
 
 import pytest
 
-from renku.command.command_builder.client_dispatcher import ClientDispatcher
 from renku.command.command_builder.database_dispatcher import DatabaseDispatcher
 from renku.core import errors
-from renku.core.management.client import LocalClient
 
 
-def test_client_dispatcher(tmpdir):
-    """Test getting correct current client."""
-    test_dir = tmpdir.mkdir("test")
-    other_test_dir = tmpdir.mkdir("other_test")
+def test_global_renku_config(tmpdir):
+    """Test RenkuConfig object."""
+    from renku.core.management.project_config import RenkuConfig
 
-    dispatcher = ClientDispatcher()
+    config = RenkuConfig()
 
-    with pytest.raises(errors.ConfigurationError):
-        dispatcher.current_client
+    with pytest.raises(IndexError):
+        config.pop_path()
 
-    dispatcher.push_client_to_stack(Path(tmpdir))
+    previous_path = config.path
+    path = Path(tmpdir.mkdir("push"))
+    config.push_path(path)
 
-    assert dispatcher.current_client.path == Path(tmpdir).resolve()
+    assert config.path == path
 
-    dispatcher.push_client_to_stack(str(Path(test_dir)))
+    assert config.pop_path() == path
+    assert config.path == previous_path
 
-    assert dispatcher.current_client.path == Path(test_dir).resolve()
+    config.replace_path(path)
+    assert config.path == path
 
-    dispatcher.push_created_client_to_stack(LocalClient(Path(other_test_dir)))
+    with pytest.raises(IndexError):
+        config.pop_path()
 
-    assert dispatcher.current_client.path == Path(other_test_dir).resolve()
+    new_path = Path(tmpdir.mkdir("new"))
 
-    dispatcher.pop_client()
+    with config.with_path(new_path):
+        assert config.path == new_path
 
-    assert dispatcher.current_client.path == Path(test_dir).resolve()
-
-    dispatcher.pop_client()
-
-    assert dispatcher.current_client.path == Path(tmpdir).resolve()
-
-    dispatcher.pop_client()
-
-    with pytest.raises(errors.ConfigurationError):
-        dispatcher.current_client
+    assert config.path == path
 
 
 def test_database_dispatcher(tmpdir):

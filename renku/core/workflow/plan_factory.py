@@ -34,6 +34,7 @@ from renku.core import errors
 from renku.core.constant import RENKU_HOME, RENKU_TMP
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
+from renku.core.management.project_config import config
 from renku.core.plugin.pluginmanager import get_plugin_manager
 from renku.core.util.git import is_path_safe
 from renku.core.util.metadata import is_external_file
@@ -578,7 +579,7 @@ class PlanFactory:
 
         pm = get_plugin_manager()
         pm.hook.pre_run(tool=self)
-        self.existing_directories = {str(p.relative_to(client.path)) for p in client.path.glob("**/")}
+        self.existing_directories = {str(p.relative_to(config.path)) for p in config.path.glob("**/")}
 
         yield self
 

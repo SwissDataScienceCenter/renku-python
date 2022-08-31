@@ -51,6 +51,7 @@ from renku.command.schema.calamus import (
 from renku.command.schema.project import ProjectSchema as NewProjectSchema
 from renku.core import errors
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
+from renku.core.management.project_config import config
 from renku.core.migration.models.refs import LinkReference
 from renku.core.migration.utils import (
     OLD_METADATA_PATH,
@@ -246,7 +247,7 @@ class CommitMixin:
         if self.path:
             path = self.path
             if self.client and os.path.isabs(path):
-                path = pathlib.Path(path).relative_to(self.client.path)
+                path = pathlib.Path(path).relative_to(config.path)
             return generate_label(path, hexsha)
         return hexsha
 
@@ -255,7 +256,7 @@ class CommitMixin:
         if self.path and self.client:
             path = pathlib.Path(self.path)
             if path.is_absolute():
-                self.path = str(path.relative_to(self.client.path))
+                self.path = str(path.relative_to(config.path))
 
         # always force "project" to be the current project
         if self.client:
@@ -291,7 +292,7 @@ class Entity(CommitMixin):
 
         client, commit, path = client.get_in_submodules(revision, path)
 
-        path_ = client.path / path
+        path_ = config.path / path
         if path != "." and path_.is_dir():
             entity = Collection(client=client, commit=commit, path=path, members=[], parent=parent)
 
@@ -302,7 +303,7 @@ class Entity(CommitMixin):
                 if member.name == ".gitkeep":
                     continue
 
-                member_path = str(member.relative_to(client.path))
+                member_path = str(member.relative_to(config.path))
                 find_previous = True
 
                 if member_path in files_in_commit:
@@ -359,7 +360,7 @@ class Collection(Entity):
         """Generate default members as entities from current path."""
         if not self.client:
             return []
-        dir_path = self.client.path / self.path
+        dir_path = config.path / self.path
 
         if not dir_path.exists():
             # likely a directory deleted in a previous commit
@@ -373,7 +374,7 @@ class Collection(Entity):
                 continue  # ignore empty directories in Git repository
             cls = Collection if path.is_dir() else Entity
             members.append(
-                cls(commit=self.commit, client=self.client, path=str(path.relative_to(self.client.path)), parent=self)
+                cls(commit=self.commit, client=self.client, path=str(path.relative_to(config.path)), parent=self)
             )
         return members
 
@@ -1395,7 +1396,7 @@ class DatasetFile(Entity):
     @property
     def full_path(self):
         """Return full path in the current reference frame."""
-        path = self.client.path / self.path if self.client else self.path
+        path = config.path / self.path if self.client else self.path
         return Path(os.path.abspath(path))
 
     @property
@@ -1429,7 +1430,7 @@ class DatasetFile(Entity):
 
     def update_metadata(self, path, commit):
         """Update files metadata."""
-        self.path = str((self.client.path / path).relative_to(self.client.path))
+        self.path = str((config.path / path).relative_to(config.path))
         self.update_commit(commit)
         self.filename = self.default_filename()
         self.url = self.default_url()
@@ -1581,7 +1582,7 @@ class Dataset(Entity, CreatorMixin):
 
     def find_files(self, paths):
         """Return all paths that are in files container."""
-        files_paths = {str(self.client.path / f.path) for f in self.files}
+        files_paths = {str(config.path / f.path) for f in self.files}
         return {p for p in paths if str(p) in files_paths}
 
     def find_file(self, path, return_index=False):
@@ -1701,7 +1702,7 @@ class Dataset(Entity, CreatorMixin):
 
         if not self.path and self.client:
             absolute_path = LinkReference(client=self.client, name=f"datasets/{self.name}").reference.parent
-            self.path = str(absolute_path.relative_to(self.client.path))
+            self.path = str(absolute_path.relative_to(config.path))
 
         self._update_files_metadata()
 
@@ -1724,7 +1725,7 @@ class Dataset(Entity, CreatorMixin):
             return
 
         for file_ in files:
-            path = self.client.path / file_.path
+            path = config.path / file_.path
             file_exists = path.exists() or path.is_symlink()
 
             if not file_exists:
@@ -1801,12 +1802,12 @@ class OldPersonSchema(JsonLDSchema):
         model = Person
         unknown = EXCLUDE
 
-    affiliation = StringList(schema.affiliation, missing=None)
-    alternate_name = StringList(schema.alternateName, missing=None)
-    email = fields.String(schema.email, missing=None)
+    affiliation = StringList(schema.affiliation, load_default=None)
+    alternate_name = StringList(schema.alternateName, load_default=None)
+    email = fields.String(schema.email, load_default=None)
     id = fields.Id()
-    label = StringList(rdfs.label, missing=None)
-    name = StringList(schema.name, missing=None)
+    label = StringList(rdfs.label, load_default=None)
+    name = StringList(schema.name, load_default=None)
 
 
 class ProjectSchema(JsonLDSchema):
@@ -1819,19 +1820,19 @@ class ProjectSchema(JsonLDSchema):
         model = Project
         unknown = EXCLUDE
 
-    name = fields.String(schema.name, missing=None)
-    created = DateTimeList(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
-    version = StringList(schema.schemaVersion, missing="1")
-    agent_version = StringList(schema.agent, missing="pre-0.11.0")
-    template_source = fields.String(renku.templateSource, missing=None)
-    template_ref = fields.String(renku.templateReference, missing=None)
-    template_id = fields.String(renku.templateId, missing=None)
-    template_version = fields.String(renku.templateVersion, missing=None)
-    template_metadata = fields.String(renku.templateMetadata, missing=None)
-    immutable_template_files = fields.List(renku.immutableTemplateFiles, fields.String(), missing=[])
-    automated_update = fields.Boolean(renku.automatedTemplateUpdate, missing=True)
-    creator = Nested(schema.creator, OldPersonSchema, missing=None)
-    _id = fields.Id(init_name="id", missing=None)
+    name = fields.String(schema.name, load_default=None)
+    created = DateTimeList(schema.dateCreated, load_default=None, format="iso", extra_formats=("%Y-%m-%d",))
+    version = StringList(schema.schemaVersion, load_default="1")
+    agent_version = StringList(schema.agent, load_default="pre-0.11.0")
+    template_source = fields.String(renku.templateSource, load_default=None)
+    template_ref = fields.String(renku.templateReference, load_default=None)
+    template_id = fields.String(renku.templateId, load_default=None)
+    template_version = fields.String(renku.templateVersion, load_default=None)
+    template_metadata = fields.String(renku.templateMetadata, load_default=None)
+    immutable_template_files = fields.List(renku.immutableTemplateFiles, fields.String(), load_default=[])
+    automated_update = fields.Boolean(renku.automatedTemplateUpdate, load_default=True)
+    creator = Nested(schema.creator, OldPersonSchema, load_default=None)
+    _id = fields.Id(init_name="id", load_default=None)
 
     @pre_dump
     def fix_datetimes(self, obj, many=False, **kwargs):
@@ -1852,8 +1853,8 @@ class OldCommitMixinSchema(JsonLDSchema):
 
     path = fields.String(prov.atLocation)
     _id = fields.Id(init_name="id")
-    _label = fields.String(rdfs.label, init_name="label", missing=None)
-    _project = Nested(schema.isPartOf, [ProjectSchema, NewProjectSchema], init_name="project", missing=None)
+    _label = fields.String(rdfs.label, init_name="label", load_default=None)
+    _project = Nested(schema.isPartOf, [ProjectSchema, NewProjectSchema], init_name="project", load_default=None)
 
 
 class OldEntitySchema(OldCommitMixinSchema):
@@ -1865,7 +1866,7 @@ class OldEntitySchema(OldCommitMixinSchema):
         rdf_type = [prov.Entity, wfprov.Artifact]
         model = Entity
 
-    checksum = fields.String(renku.checksum, missing=None)
+    checksum = fields.String(renku.checksum, load_default=None)
 
 
 class OldCollectionSchema(OldEntitySchema):
@@ -1915,8 +1916,8 @@ class OldUrlSchema(JsonLDSchema):
         model = Url
         unknown = EXCLUDE
 
-    url = Uri(schema.url, missing=None)
-    _id = fields.Id(init_name="id", missing=None)
+    url = Uri(schema.url, load_default=None)
+    _id = fields.Id(init_name="id", load_default=None)
 
 
 class OldDatasetTagSchema(JsonLDSchema):
@@ -1930,9 +1931,9 @@ class OldDatasetTagSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     name = fields.String(schema.name)
-    description = fields.String(schema.description, missing=None)
+    description = fields.String(schema.description, load_default=None)
     commit = fields.String(schema.location)
-    created = fields.DateTime(schema.startDate, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
+    created = fields.DateTime(schema.startDate, load_default=None, format="iso", extra_formats=("%Y-%m-%d",))
     dataset = fields.String(schema.about)
     _id = fields.Id(init_name="id")
 
@@ -1970,11 +1971,11 @@ class OldDatasetFileSchema(OldEntitySchema):
         unknown = EXCLUDE
 
     added = DateTimeList(schema.dateCreated, format="iso", extra_formats=("%Y-%m-%d",))
-    name = fields.String(schema.name, missing=None)
-    url = fields.String(schema.url, missing=None)
-    based_on = Nested(schema.isBasedOn, "OldDatasetFileSchema", missing=None, propagate_client=False)
-    external = fields.Boolean(renku.external, missing=False)
-    source = fields.String(renku.source, missing=None)
+    name = fields.String(schema.name, load_default=None)
+    url = fields.String(schema.url, load_default=None)
+    based_on = Nested(schema.isBasedOn, "OldDatasetFileSchema", load_default=None, propagate_client=False)
+    external = fields.Boolean(renku.external, load_default=False)
+    source = fields.String(renku.source, load_default=None)
 
     @pre_dump
     def fix_datetimes(self, obj, many=False, **kwargs):
@@ -1995,7 +1996,7 @@ class OldImageObjectSchema(JsonLDSchema):
         model = ImageObject
         unknown = EXCLUDE
 
-    id = fields.Id(missing=None)
+    id = fields.Id(load_default=None)
     content_url = fields.String(schema.contentUrl)
     position = fields.Integer(schema.position)
 
@@ -2010,32 +2011,32 @@ class OldDatasetSchema(OldEntitySchema, OldCreatorMixinSchema):
         model = Dataset
         unknown = EXCLUDE
 
-    _id = fields.Id(init_name="id", missing=None)
-    _label = fields.String(rdfs.label, init_name="label", missing=None)
+    _id = fields.Id(init_name="id", load_default=None)
+    _label = fields.String(rdfs.label, init_name="label", load_default=None)
     date_published = fields.DateTime(
         schema.datePublished,
-        missing=None,
+        load_default=None,
         allow_none=True,
         format="%Y-%m-%d",
         extra_formats=("iso", "%Y-%m-%dT%H:%M:%S"),
     )
-    description = fields.String(schema.description, missing=None)
+    description = fields.String(schema.description, load_default=None)
     identifier = fields.String(schema.identifier)
-    in_language = Nested(schema.inLanguage, OldLanguageSchema, missing=None)
-    images = fields.Nested(schema.image, OldImageObjectSchema, many=True, missing=None, allow_none=True)
-    keywords = fields.List(schema.keywords, fields.String(), allow_none=True, missing=None)
-    license = Uri(schema.license, allow_none=True, missing=None)
+    in_language = Nested(schema.inLanguage, OldLanguageSchema, load_default=None)
+    images = fields.Nested(schema.image, OldImageObjectSchema, many=True, load_default=None, allow_none=True)
+    keywords = fields.List(schema.keywords, fields.String(), allow_none=True, load_default=None)
+    license = Uri(schema.license, allow_none=True, load_default=None)
     title = fields.String(schema.name)
-    url = fields.String(schema.url, missing=None)
-    version = fields.String(schema.version, missing=None)
+    url = fields.String(schema.url, load_default=None)
+    version = fields.String(schema.version, load_default=None)
     date_created = fields.DateTime(
-        schema.dateCreated, missing=None, allow_none=True, format="iso", extra_formats=("%Y-%m-%d",)
+        schema.dateCreated, load_default=None, allow_none=True, format="iso", extra_formats=("%Y-%m-%d",)
     )
     files = Nested(schema.hasPart, OldDatasetFileSchema, many=True)
     tags = Nested(schema.subjectOf, OldDatasetTagSchema, many=True)
-    same_as = Nested(schema.sameAs, OldUrlSchema, missing=None)
+    same_as = Nested(schema.sameAs, OldUrlSchema, load_default=None)
     name = fields.String(schema.alternateName)
-    derived_from = Nested(prov.wasDerivedFrom, OldUrlSchema, missing=None)
+    derived_from = Nested(prov.wasDerivedFrom, OldUrlSchema, load_default=None)
 
     @pre_dump
     def fix_datetimes(self, obj, many=False, **kwargs):
@@ -2100,11 +2101,11 @@ class CommandParameterSchema(JsonLDSchema):
 
     _id = fields.Id(init_name="id")
     _label = fields.String(rdfs.label, init_name="label")
-    default_value = fields.Raw(schema.defaultValue, missing=None)
-    description = fields.String(schema.description, missing=None)
-    name = fields.String(schema.name, missing=None)
-    position = fields.Integer(renku.position, missing=None)
-    prefix = fields.String(renku.prefix, missing=None)
+    default_value = fields.Raw(schema.defaultValue, load_default=None)
+    description = fields.String(schema.description, load_default=None)
+    name = fields.String(schema.name, load_default=None)
+    position = fields.Integer(renku.position, load_default=None)
+    prefix = fields.String(renku.prefix, load_default=None)
 
 
 class CommandArgumentSchema(CommandParameterSchema):
@@ -2131,7 +2132,7 @@ class CommandInputSchema(CommandParameterSchema):
         unknown = EXCLUDE
 
     consumes = Nested(renku.consumes, [OldEntitySchema, OldCollectionSchema])
-    mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
+    mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, load_default=None)
 
 
 class CommandOutputSchema(CommandParameterSchema):
@@ -2146,7 +2147,7 @@ class CommandOutputSchema(CommandParameterSchema):
 
     create_folder = fields.Boolean(renku.createFolder)
     produces = Nested(renku.produces, [OldEntitySchema, OldCollectionSchema])
-    mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
+    mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, load_default=None)
 
 
 class RunParameterSchema(JsonLDSchema):
@@ -2176,16 +2177,16 @@ class RunSchema(OldCommitMixinSchema):
         model = Run
         unknown = EXCLUDE
 
-    command = fields.String(renku.command, missing=None)
-    successcodes = fields.List(renku.successCodes, fields.Integer(), missing=[0])
-    subprocesses = Nested(renku.hasSubprocess, nested="OrderedSubprocessSchema", missing=None, many=True)
-    arguments = Nested(renku.hasArguments, CommandArgumentSchema, many=True, missing=None)
-    inputs = Nested(renku.hasInputs, CommandInputSchema, many=True, missing=None)
-    outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, missing=None)
-    run_parameters = Nested(renku.hasRunParameters, RunParameterSchema, many=True, missing=None)
-    name = fields.String(schema.name, missing=None)
-    description = fields.String(schema.description, missing=None)
-    keywords = fields.List(schema.keywords, fields.String(), missing=None)
+    command = fields.String(renku.command, load_default=None)
+    successcodes = fields.List(renku.successCodes, fields.Integer(), load_default=[0])
+    subprocesses = Nested(renku.hasSubprocess, nested="OrderedSubprocessSchema", load_default=None, many=True)
+    arguments = Nested(renku.hasArguments, CommandArgumentSchema, many=True, load_default=None)
+    inputs = Nested(renku.hasInputs, CommandInputSchema, many=True, load_default=None)
+    outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, load_default=None)
+    run_parameters = Nested(renku.hasRunParameters, RunParameterSchema, many=True, load_default=None)
+    name = fields.String(schema.name, load_default=None)
+    description = fields.String(schema.description, load_default=None)
+    keywords = fields.List(schema.keywords, fields.String(), load_default=None)
 
 
 class OrderedSubprocessSchema(JsonLDSchema):
@@ -2230,7 +2231,7 @@ class UsageSchema(JsonLDSchema):
 
     _id = fields.Id(init_name="id")
     entity = Nested(prov.entity, [OldEntitySchema, OldCollectionSchema, OldDatasetSchema, OldDatasetFileSchema])
-    role = fields.String(prov.hadRole, missing=None)
+    role = fields.String(prov.hadRole, load_default=None)
 
 
 class GenerationSchema(JsonLDSchema):
@@ -2249,7 +2250,7 @@ class GenerationSchema(JsonLDSchema):
         [OldEntitySchema, OldCollectionSchema, OldDatasetSchema, OldDatasetFileSchema],
         reverse=True,
     )
-    role = fields.String(prov.hadRole, missing=None)
+    role = fields.String(prov.hadRole, load_default=None)
 
 
 class ActivitySchema(OldCommitMixinSchema):
@@ -2262,11 +2263,11 @@ class ActivitySchema(OldCommitMixinSchema):
         model = Activity
         unknown = EXCLUDE
 
-    _message = fields.String(rdfs.comment, init_name="message", missing=None)
+    _message = fields.String(rdfs.comment, init_name="message", load_default=None)
     _was_informed_by = fields.List(prov.wasInformedBy, fields.IRI(), init_name="was_informed_by")
-    generated = Nested(prov.activity, GenerationSchema, reverse=True, many=True, missing=None)
+    generated = Nested(prov.activity, GenerationSchema, reverse=True, many=True, load_default=None)
     invalidated = Nested(
-        prov.wasInvalidatedBy, [OldEntitySchema, OldCollectionSchema], reverse=True, many=True, missing=None
+        prov.wasInvalidatedBy, [OldEntitySchema, OldCollectionSchema], reverse=True, many=True, load_default=None
     )
     influenced = Nested(prov.influenced, OldCollectionSchema, many=True)
     started_at_time = fields.DateTime(prov.startedAtTime, add_value_types=True)

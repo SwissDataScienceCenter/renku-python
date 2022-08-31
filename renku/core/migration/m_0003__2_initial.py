@@ -22,6 +22,7 @@ import urllib
 from pathlib import Path
 
 from renku.core.constant import RENKU_HOME
+from renku.core.management.project_config import config
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.migration.models.refs import LinkReference
 from renku.core.migration.models.v3 import Collection, Dataset, Project, get_client_datasets
@@ -40,8 +41,8 @@ from renku.domain_model.dataset import generate_default_name
 def migrate(migration_context):
     """Migration function."""
     client = migration_context.client
-    _ensure_clean_lock(client)
-    _do_not_track_lock_file(client)
+    _ensure_clean_lock()
+    _do_not_track_lock_file()
     _migrate_datasets_pre_v0_3(client)
     _migrate_broken_dataset_paths(client)
     _fix_labels_and_ids(client)
@@ -49,26 +50,26 @@ def migrate(migration_context):
     _migrate_dataset_and_files_project(client)
 
 
-def _ensure_clean_lock(client):
+def _ensure_clean_lock():
     """Make sure Renku lock file is not part of repository."""
     if is_using_temporary_datasets_path():
         return
 
-    lock_file = client.path / ".renku.lock"
+    lock_file = config.path / ".renku.lock"
     try:
         lock_file.unlink()
     except FileNotFoundError:
         pass
 
 
-def _do_not_track_lock_file(client):
+def _do_not_track_lock_file():
     """Add lock file to .gitingore if not already exists."""
     # Add lock file to .gitignore.
     if is_using_temporary_datasets_path():
         return
 
     lock_file = ".renku.lock"
-    gitignore = client.path / ".gitignore"
+    gitignore = config.path / ".gitignore"
     if not gitignore.exists() or lock_file not in gitignore.read_text():
         gitignore.open("a").write("\n{0}\n".format(lock_file))
 
@@ -82,7 +83,7 @@ def _migrate_datasets_pre_v0_3(client):
 
     for old_path in get_pre_0_3_4_datasets_metadata(client):
         changed = True
-        name = str(old_path.parent.relative_to(client.path / DATA_DIR))
+        name = str(old_path.parent.relative_to(config.path / DATA_DIR))
 
         dataset = Dataset.from_yaml(old_path, client)
         dataset.title = name
@@ -97,9 +98,9 @@ def _migrate_datasets_pre_v0_3(client):
 
         for file_ in dataset.files:
             if not Path(file_.path).exists():
-                expected_path = client.path / DATA_DIR / dataset.name / file_.path
+                expected_path = config.path / DATA_DIR / dataset.name / file_.path
                 if expected_path.exists():
-                    file_.path = expected_path.relative_to(client.path)
+                    file_.path = expected_path.relative_to(config.path)
 
         dataset.to_yaml(new_path)
 
@@ -141,12 +142,12 @@ def _migrate_broken_dataset_paths(client):
                 expected_path.mkdir(parents=True, exist_ok=True)
                 shutil.move(str(Path(old_dataset_path) / OLD_METADATA_PATH), expected_path)
 
-        dataset.path = os.path.relpath(expected_path, client.path)
+        dataset.path = os.path.relpath(expected_path, config.path)
 
         if not is_using_temporary_datasets_path():
-            base_path = client.path
+            base_path = config.path
         else:
-            base_path = client.path / RENKU_HOME
+            base_path = config.path / RENKU_HOME
 
         collections = [f for f in dataset.files if isinstance(f, Collection)]
         files = [f for f in dataset.files if not isinstance(f, Collection)]
@@ -169,7 +170,7 @@ def _migrate_broken_dataset_paths(client):
                     os.path.abspath(get_datasets_path(client) / dataset.identifier / file_.path)
                 ).relative_to(base_path)
             elif not _exists(client=client, path=file_.path):
-                file_.path = (client.path / DATA_DIR / file_.path).relative_to(client.path)
+                file_.path = (config.path / DATA_DIR / file_.path).relative_to(config.path)
 
             file_.name = os.path.basename(file_.path)
 

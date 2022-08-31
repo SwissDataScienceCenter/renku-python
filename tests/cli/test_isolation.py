@@ -23,6 +23,7 @@ import textwrap
 import time
 from pathlib import Path
 
+from renku.core.management.project_config import config
 from tests.utils import write_and_commit_file
 
 
@@ -53,8 +54,8 @@ def test_run_in_isolation(runner, project, client, run, subdirectory):
 
 def test_file_modification_during_run(tmp_path, runner, client, subdirectory, no_lfs_size_limit, no_lfs_warning):
     """Test run in isolation."""
-    script = client.path / "script.py"
-    output = client.path / "output"
+    script = config.path / "script.py"
+    output = config.path / "output"
     lock_file = tmp_path / "lock"
 
     write_and_commit_file(

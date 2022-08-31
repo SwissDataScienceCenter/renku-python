@@ -18,17 +18,21 @@
 """Test Python SDK client."""
 
 import inspect
+from pathlib import Path
 
 import pytest
+
+from renku.core.management.project_config import config
 
 
 def test_local_client(tmpdir):
     """Test a local client."""
     from renku.core.management.client import LocalClient
 
-    client = LocalClient(str(tmpdir.mkdir("project")))
+    with config.with_path(Path(tmpdir.mkdir("project"))):
+        client = LocalClient()
 
-    assert client.path
+        assert config.path
     assert client.repository is None
 
 
@@ -80,9 +84,12 @@ def test_safe_class_attributes(tmpdir):
         "_global_config_dir",
     ]
 
-    client1 = LocalClient(str(tmpdir.mkdir("project1")))
+    with config.with_path(Path(tmpdir.mkdir("project1"))):
+        client1 = LocalClient()
 
-    client2 = LocalClient(str(tmpdir.mkdir("project2")))
+    with config.with_path(Path(tmpdir.mkdir("project2"))):
+        client2 = LocalClient()
+
     class_attributes = inspect.getmembers(LocalClient, lambda a: not (inspect.isroutine(a)))
     class_attributes = [a for a in class_attributes if not a[0].startswith("__") and not a[0].endswith("__")]
     identical_attributes = []

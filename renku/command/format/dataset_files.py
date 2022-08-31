@@ -23,6 +23,7 @@ from typing import Callable, Dict
 
 from renku.command.command_builder import inject
 from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.project_config import config
 
 
 def tabular(records, *, columns=None):
@@ -80,7 +81,7 @@ def get_lfs_tracking_and_file_sizes(records, has_tag: bool, client_dispatcher: I
         lfs_run = run(
             ("git", "lfs", "ls-files", "--name-only", "--size", "--deleted"),
             stdout=PIPE,
-            cwd=client.path,
+            cwd=config.path,
             universal_newlines=True,
         )
     except SubprocessError:

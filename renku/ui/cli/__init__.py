@@ -165,10 +165,9 @@ def is_allowed_subcommand(ctx):
     and then added to `WARNING_UNPROTECTED_SUBCOMMANDS` so they get checked
     here.
     """
+    from renku.core.management.project_config import config
 
-    client = ctx.obj
-
-    if not _is_renku_project(client.path) and (
+    if not _is_renku_project(config.path) and (
         not WARNING_UNPROTECTED_SUBCOMMANDS.get(ctx.command.name, False)
         or ctx.invoked_subcommand not in WARNING_UNPROTECTED_SUBCOMMANDS[ctx.command.name]
     ):
@@ -176,7 +175,7 @@ def is_allowed_subcommand(ctx):
             (
                 "`{0}` is not a renku repository.\n"
                 "To initialize this as a renku "
-                "repository use: `renku init`".format(client.path)
+                "repository use: `renku init`".format(config.path)
             )
         )
 
@@ -219,9 +218,12 @@ def is_allowed_command(ctx):
 def cli(ctx, path, external_storage_requested):
     """Check common Renku commands used in various situations."""
     from renku.core.management.client import LocalClient
+    from renku.core.management.project_config import config
+
+    path = Path(path)
 
     is_command_allowed = is_allowed_command(ctx)
-    is_renku_project = _is_renku_project(Path(path))
+    is_renku_project = _is_renku_project(path)
 
     if not is_renku_project and not is_command_allowed:
         raise UsageError(
@@ -232,9 +234,10 @@ def cli(ctx, path, external_storage_requested):
             )
         )
 
-    ctx.obj = LocalClient(path=path, external_storage_requested=external_storage_requested)
+    config.push_path(path)
+    ctx.obj = LocalClient(external_storage_requested=external_storage_requested)
 
-    if is_renku_project and path != os.getcwd() and not is_command_allowed:
+    if is_renku_project and path != Path(os.getcwd()) and not is_command_allowed:
         click.secho(WARNING + "Run CLI commands only from project's root directory.\n", err=True)
 
 

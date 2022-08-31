@@ -32,6 +32,7 @@ import pyte
 import pytest
 from cwl_utils.parser import cwl_v1_2 as cwlgen
 
+from renku.core.management.project_config import config
 from renku.core.plugin.provider import available_workflow_providers
 from renku.core.util.yaml import write_yaml
 from renku.infrastructure.database import Database
@@ -551,8 +552,8 @@ def test_workflow_show_outputs_with_directory(runner, client, run):
     base_sh = ["bash", "-c", 'DIR="$0"; mkdir -p "$DIR"; ' 'for x in "$@"; do touch "$DIR/$x"; done']
 
     assert 0 == run(args=["run"] + base_sh + ["output", "foo", "bar"])
-    assert (client.path / "output" / "foo").exists()
-    assert (client.path / "output" / "bar").exists()
+    assert (config.path / "output" / "foo").exists()
+    assert (config.path / "output" / "bar").exists()
 
     cmd = ["workflow", "outputs"]
     result = runner.invoke(cli, cmd)
@@ -702,8 +703,8 @@ def test_workflow_execute_command(
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, project, capsys, client, provider):
     """Test executing a workflow with --set for a renku.ui.api.Parameter."""
-    script = client.path / "script.py"
-    output = client.path / "output"
+    script = config.path / "script.py"
+    output = config.path / "output"
 
     with client.commit():
         script.write_text("from renku.ui.api import Parameter\n" 'print(Parameter("test", "hello world").value)\n')
@@ -731,11 +732,11 @@ def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, proj
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_workflow_execute_command_with_api_input_set(runner, run_shell, project, capsys, client, provider):
     """Test executing a workflow with --set for a renku.ui.api.Input."""
-    script = client.path / "script.py"
-    output = client.path / "output"
-    input = client.path / "input"
+    script = config.path / "script.py"
+    output = config.path / "output"
+    input = config.path / "input"
     input.write_text("input string")
-    other_input = client.path / "other_input"
+    other_input = config.path / "other_input"
     other_input.write_text("my other input string")
 
     with client.commit():
@@ -766,9 +767,9 @@ def test_workflow_execute_command_with_api_input_set(runner, run_shell, project,
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_workflow_execute_command_with_api_output_set(runner, run_shell, project, capsys, client, provider):
     """Test executing a workflow with --set for a renku.ui.api.Output."""
-    script = client.path / "script.py"
-    output = client.path / "output"
-    other_output = client.path / "other_output"
+    script = config.path / "script.py"
+    output = config.path / "output"
+    other_output = config.path / "other_output"
 
     with client.commit():
         script.write_text(
@@ -797,9 +798,9 @@ def test_workflow_execute_command_with_api_output_set(runner, run_shell, project
 
 def test_workflow_execute_command_with_api_duplicate_output(runner, run_shell, project, capsys, client):
     """Test executing a workflow with duplicate output with differing path."""
-    script = client.path / "script.py"
-    output = client.path / "output"
-    other_output = client.path / "other_output"
+    script = config.path / "script.py"
+    output = config.path / "output"
+    other_output = config.path / "other_output"
 
     with client.commit():
         script.write_text(
@@ -815,8 +816,8 @@ def test_workflow_execute_command_with_api_duplicate_output(runner, run_shell, p
 
 def test_workflow_execute_command_with_api_valid_duplicate_output(runner, run_shell, project, capsys, client):
     """Test executing a workflow with duplicate output with same path."""
-    script = client.path / "script.py"
-    output = client.path / "output"
+    script = config.path / "script.py"
+    output = config.path / "output"
 
     with client.commit():
         script.write_text(
@@ -835,9 +836,9 @@ def test_workflow_execute_command_with_api_valid_duplicate_output(runner, run_sh
 
 def test_workflow_execute_command_with_api_duplicate_input(runner, run_shell, project, capsys, client):
     """Test executing a workflow with duplicate input with differing path."""
-    script = client.path / "script.py"
-    input = client.path / "input"
-    other_input = client.path / "other_input"
+    script = config.path / "script.py"
+    input = config.path / "input"
+    other_input = config.path / "other_input"
 
     with client.commit():
         script.write_text(
@@ -853,8 +854,8 @@ def test_workflow_execute_command_with_api_duplicate_input(runner, run_shell, pr
 
 def test_workflow_execute_command_with_api_valid_duplicate_input(runner, run_shell, project, capsys, client):
     """Test executing a workflow with duplicate input with same path."""
-    script = client.path / "script.py"
-    input = client.path / "input"
+    script = config.path / "script.py"
+    input = config.path / "input"
 
     with client.commit():
         script.write_text(
@@ -1201,8 +1202,8 @@ def test_workflow_iterate(
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_workflow_iterate_command_with_parameter_set(runner, run_shell, project, capsys, client, provider):
     """Test executing a workflow with --set float value for a renku.ui.api.Parameter."""
-    script = client.path / "script.py"
-    output = client.path / "output"
+    script = config.path / "script.py"
+    output = config.path / "output"
 
     with client.commit():
         script.write_text("import sys\nprint(sys.argv[1])\n")
@@ -1241,7 +1242,7 @@ def test_workflow_iterate_command_with_parameter_set(runner, run_shell, project,
 
 def test_workflow_cycle_detection(run_shell, project, capsys, client):
     """Test creating a cycle is not possible with renku run or workflow execute."""
-    input = client.path / "input"
+    input = config.path / "input"
 
     with client.commit():
         input.write_text("test")
@@ -1277,7 +1278,7 @@ def test_workflow_execute_docker_toil(runner, client, run_shell, caplog):
     caplog.set_level(logging.INFO)
 
     write_and_commit_file(client.repository, "input", "first line\nsecond line")
-    output = client.path / "output"
+    output = config.path / "output"
 
     run_shell("renku run --name run-1 -- tail -n 1 input > output")
 
@@ -1295,7 +1296,7 @@ def test_workflow_execute_docker_toil(runner, client, run_shell, caplog):
 def test_workflow_execute_docker_toil_stderr(runner, client, run_shell):
     """Test workflow execute using docker with the toil provider and stderr redirection."""
     write_and_commit_file(client.repository, "input", "first line\nsecond line")
-    output = client.path / "output"
+    output = config.path / "output"
 
     run_shell("renku run --name run-1 -- tail -n 1 input 2> output")
 
@@ -1341,9 +1342,9 @@ def test_workflow_templated_params(runner, run_shell, client, capsys, workflow, 
 
 def test_revert_activity(client, runner, client_database_injection_manager):
     """Test reverting activities."""
-    input = client.path / "input"
-    intermediate = client.path / "intermediate"
-    output = client.path / "output"
+    input = config.path / "input"
+    intermediate = config.path / "intermediate"
+    output = config.path / "output"
 
     assert 0 == runner.invoke(cli, ["run", "--name", "r1", "--", "echo", "some-data"], stdout=input).exit_code
     assert 0 == runner.invoke(cli, ["run", "--name", "r2", "--", "head", input], stdout=intermediate).exit_code
@@ -1389,9 +1390,9 @@ def test_revert_activity(client, runner, client_database_injection_manager):
 
 def test_reverted_activity_status(client, runner, client_database_injection_manager):
     """Test that reverted activity doesn't affect status/update/log/etc."""
-    input = client.path / "input"
+    input = config.path / "input"
     write_and_commit_file(client.repository, input, "content")
-    output = client.path / "output"
+    output = config.path / "output"
 
     assert 0 == runner.invoke(cli, ["run", "cat", input], stdout=output).exit_code
     write_and_commit_file(client.repository, input, "changes")

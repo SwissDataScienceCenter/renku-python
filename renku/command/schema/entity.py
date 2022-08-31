@@ -30,7 +30,7 @@ class EntitySchema(JsonLDSchema):
         rdf_type = [prov.Entity]
         model = Entity
 
-    checksum = fields.String(renku.checksum, missing=None)
+    checksum = fields.String(renku.checksum, load_default=None)
     id = fields.Id()
     path = fields.String(prov.atLocation)
 

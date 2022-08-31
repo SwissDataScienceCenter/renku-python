@@ -18,6 +18,7 @@
 """Test ``gc`` command."""
 
 from renku.core.constant import CACHE, RENKU_HOME, RENKU_TMP
+from renku.core.management.project_config import config
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
@@ -25,17 +26,17 @@ from tests.utils import format_result_exception
 def test_gc(runner, client):
     """Test clean caches and temporary files."""
     # NOTE: Mock caches
-    tmp = client.path / RENKU_HOME / RENKU_TMP
+    tmp = config.path / RENKU_HOME / RENKU_TMP
     tmp.mkdir(parents=True, exist_ok=True)
     (tmp / "temp-file").touch()
-    cache = client.path / RENKU_HOME / CACHE
+    cache = config.path / RENKU_HOME / CACHE
     cache.mkdir(parents=True, exist_ok=True)
     (tmp / "cache").touch()
 
-    (client.path / "tracked").write_text("tracked file")
+    (config.path / "tracked").write_text("tracked file")
     client.repository.add("tracked")
 
-    (client.path / "untracked").write_text("untracked file")
+    (config.path / "untracked").write_text("untracked file")
 
     commit_sha_before = client.repository.head.commit.hexsha
 

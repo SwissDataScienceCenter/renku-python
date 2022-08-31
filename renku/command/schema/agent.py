@@ -34,11 +34,11 @@ class PersonSchema(JsonLDSchema):
         model = Person
         unknown = EXCLUDE
 
-    affiliation = StringList(schema.affiliation, missing=None)
-    alternate_name = StringList(schema.alternateName, missing=None)
-    email = fields.String(schema.email, missing=None)
+    affiliation = StringList(schema.affiliation, load_default=None)
+    alternate_name = StringList(schema.alternateName, load_default=None)
+    email = fields.String(schema.email, load_default=None)
     id = fields.Id()
-    name = StringList(schema.name, missing=None)
+    name = StringList(schema.name, load_default=None)
 
 
 class SoftwareAgentSchema(JsonLDSchema):
@@ -52,4 +52,4 @@ class SoftwareAgentSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     id = fields.Id()
-    name = StringList(schema.name, missing=None)
+    name = StringList(schema.name, load_default=None)

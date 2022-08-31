@@ -27,6 +27,7 @@ import click
 from renku.command.command_builder import inject
 from renku.core.errors import WorkflowRerunError
 from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.project_config import config
 
 from .echo import progressbar
 
@@ -97,7 +98,7 @@ def execute(output_file, client_dispatcher: IClientDispatcher, output_paths=None
             for output_dir in output_dirs:
                 if location.startswith(output_dir):
                     output_path = location[len(output_dir) :].lstrip(os.path.sep)
-                    destination = client.path / output_path
+                    destination = config.path / output_path
                     if destination.is_dir():
                         shutil.rmtree(str(destination))
                         destination = destination.parent

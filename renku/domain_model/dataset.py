@@ -29,6 +29,7 @@ from uuid import uuid4
 import marshmallow
 
 from renku.core import errors
+from renku.core.management.project_config import config
 from renku.core.util.datetime8601 import fix_datetime, local_now, parse_date
 from renku.core.util.dispatcher import get_client
 from renku.core.util.git import get_entity_from_revision
@@ -266,7 +267,7 @@ class DatasetFile(Slots):
         """Return an instance from a path."""
         entity = get_entity_from_revision(repository=client.repository, path=path, bypass_cache=True)
 
-        is_external = is_external_file(path=path, client_path=client.path)
+        is_external = is_external_file(path=path, client_path=config.path)
         return cls(entity=entity, is_external=is_external, source=source, based_on=based_on)
 
     @staticmethod
@@ -691,12 +692,12 @@ class ImageObjectRequestJson(marshmallow.Schema):
     file_id = marshmallow.fields.String()
     content_url = marshmallow.fields.String()
     position = marshmallow.fields.Integer()
-    mirror_locally = marshmallow.fields.Bool(default=False)
+    mirror_locally = marshmallow.fields.Bool(dump_default=False)
 
 
 def get_file_path_in_dataset(client, dataset: Dataset, dataset_file: DatasetFile) -> Path:
     """Return path of a file relative to dataset's data dir."""
     try:
-        return (client.path / dataset_file.entity.path).relative_to(client.path / dataset.get_datadir(client))
+        return (config.path / dataset_file.entity.path).relative_to(config.path / dataset.get_datadir(client))
     except ValueError:  # NOTE: File is not in the dataset's data dir
         return Path(dataset_file.entity.path)

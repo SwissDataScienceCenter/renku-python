@@ -31,6 +31,7 @@ from renku.core.dataset.pointer_file import create_external_file
 from renku.core.dataset.providers.api import ImporterApi
 from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.models import DatasetAddAction
+from renku.core.management.project_config import config
 from renku.core.util import communication, requests
 from renku.core.util.dataset import check_url
 from renku.core.util.dispatcher import get_client, get_database
@@ -65,7 +66,7 @@ def add_to_dataset(
     client = get_client()
     sources = sources or []
 
-    _check_available_space(client, urls, total_size=total_size)
+    _check_available_space(urls, total_size=total_size)
 
     if not create and storage:
         raise errors.ParameterError(
@@ -79,7 +80,7 @@ def add_to_dataset(
 
     try:
         with DatasetContext(name=dataset_name, create=create, datadir=datadir, storage=storage) as dataset:
-            destination_path = _create_destination_directory(client, dataset, destination)
+            destination_path = _create_destination_directory(dataset, destination)
 
             client.check_external_storage()  # TODO: This is not required for external storages
 
@@ -104,7 +105,7 @@ def add_to_dataset(
                     "Ignored adding paths under a .git directory:\n\t" + "\n\t".join(str(p) for p in paths_to_avoid)
                 )
 
-            files_to_commit = {f.get_absolute_commit_path(client.path) for f in files if not f.gitignored}
+            files_to_commit = {f.get_absolute_commit_path(config.path) for f in files if not f.gitignored}
 
             if not force:
                 files, files_to_commit = _check_ignored_files(client, files_to_commit, files)
@@ -112,7 +113,7 @@ def add_to_dataset(
             # all files at this point can be force-added
 
             if not overwrite:
-                files, files_to_commit = _check_existing_files(client, dataset, files_to_commit, files)
+                files, files_to_commit = _check_existing_files(dataset, files_to_commit, files)
 
             move_files_to_dataset(client, files)
 
@@ -208,7 +209,7 @@ def _download_files(
     return files
 
 
-def _check_available_space(client: "LocalClient", urls: List[str], total_size: Optional[int] = None):
+def _check_available_space(urls: List[str], total_size: Optional[int] = None):
     """Check that there is enough space available on the device for download."""
     if total_size is None:
         total_size = 0
@@ -218,7 +219,7 @@ def _check_available_space(client: "LocalClient", urls: List[str], total_size: O
                 total_size += int(response.headers.get("content-length", 0))
             except errors.RequestError:
                 pass
-    usage = shutil.disk_usage(client.path)
+    usage = shutil.disk_usage(config.path)
 
     if total_size > usage.free:
         mb = 2**20
@@ -228,11 +229,9 @@ def _check_available_space(client: "LocalClient", urls: List[str], total_size: O
         raise errors.OperationError(message)
 
 
-def _create_destination_directory(
-    client: "LocalClient", dataset: Dataset, destination: Optional[Union[Path, str]] = None
-) -> Path:
+def _create_destination_directory(dataset: Dataset, destination: Optional[Union[Path, str]] = None) -> Path:
     """Create directory for dataset add."""
-    dataset_datadir = client.path / dataset.get_datadir()
+    dataset_datadir = config.path / dataset.get_datadir()
     # NOTE: Make sure that dataset's data dir exists because we check for existence of a destination later to decide
     # what will be its name
     dataset_datadir.mkdir(parents=True, exist_ok=True)
@@ -248,7 +247,7 @@ def _check_ignored_files(client: "LocalClient", files_to_commit: Set[str], files
     if ignored_files:
         ignored_sources = []
         for file in files:
-            if not file.gitignored and file.get_absolute_commit_path(client.path) in ignored_files:
+            if not file.gitignored and file.get_absolute_commit_path(config.path) in ignored_files:
                 ignored_sources.append(file.source)
 
         communication.warn(
@@ -257,18 +256,16 @@ def _check_ignored_files(client: "LocalClient", files_to_commit: Set[str], files
         )
 
         files_to_commit = files_to_commit.difference(ignored_files)
-        files = [f for f in files if f.get_absolute_commit_path(client.path) not in ignored_files]
+        files = [f for f in files if f.get_absolute_commit_path(config.path) not in ignored_files]
 
     return files, files_to_commit
 
 
-def _check_existing_files(
-    client: "LocalClient", dataset: Dataset, files_to_commit: Set[str], files: List["DatasetAddMetadata"]
-):
+def _check_existing_files(dataset: Dataset, files_to_commit: Set[str], files: List["DatasetAddMetadata"]):
     """Check if files added already exist."""
     existing_files = set()
     for path in files_to_commit:
-        relative_path = Path(path).relative_to(client.path)
+        relative_path = Path(path).relative_to(config.path)
         if dataset.find_file(relative_path):
             existing_files.add(path)
 
@@ -279,7 +276,7 @@ def _check_existing_files(
         )
 
         files_to_commit = files_to_commit.difference(existing_files)
-        files = [f for f in files if f.get_absolute_commit_path(client.path) not in existing_files]
+        files = [f for f in files if f.get_absolute_commit_path(config.path) not in existing_files]
 
     return files, files_to_commit
 

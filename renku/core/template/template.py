@@ -28,6 +28,7 @@ from typing import Any, Dict, List, Optional, Tuple, cast
 from packaging.version import Version
 
 from renku.core import errors
+from renku.core.management.project_config import config
 from renku.core.util import communication
 from renku.core.util.git import clone_repository
 from renku.core.util.os import hash_file
@@ -137,7 +138,7 @@ def copy_template_to_client(
 
     for relative_path, action in get_sorted_actions(actions=actions).items():
         source = rendered_template.path / relative_path
-        destination = client.path / relative_path
+        destination = config.path / relative_path
 
         operation, message = actions_mapping[action]
         communication.echo(f"{message} {relative_path} ...")
@@ -252,7 +253,7 @@ def get_file_actions(
     actions: Dict[str, FileAction] = {}
 
     for relative_path in sorted(rendered_template.get_files()):
-        destination = client.path / relative_path
+        destination = config.path / relative_path
 
         if destination.is_dir():
             raise errors.TemplateUpdateError(

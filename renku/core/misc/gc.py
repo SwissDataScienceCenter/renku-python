@@ -20,6 +20,7 @@
 from renku.command.command_builder.command import inject
 from renku.core.constant import CACHE, RENKU_HOME, RENKU_TMP
 from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.management.project_config import config
 
 
 @inject.autoparams()
@@ -33,6 +34,6 @@ def remove_caches(client_dispatcher: IClientDispatcher):
     client = client_dispatcher.current_client
 
     cache_paths = [CACHE, RENKU_TMP]
-    paths = [client.path / RENKU_HOME / p for p in cache_paths]
+    paths = [config.path / RENKU_HOME / p for p in cache_paths]
 
     client.repository.clean(paths=paths)

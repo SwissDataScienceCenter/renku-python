@@ -27,6 +27,7 @@ from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
+from renku.core.management.project_config import config
 from renku.core.util import communication
 from renku.domain_model.dataset import Dataset
 from renku.domain_model.provenance.activity import Activity
@@ -131,7 +132,7 @@ def _get_modifications_from_diff(client, diff):
 
     for diff_index in diff:
         entry = diff_index.a_path or diff_index.b_path
-        entry_path = client.path / entry
+        entry_path = config.path / entry
 
         if str(client.database_path) == os.path.commonpath([client.database_path, entry_path]):
             # metadata file

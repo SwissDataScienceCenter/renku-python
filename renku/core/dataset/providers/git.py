@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ProviderApi, ProviderPriority
+from renku.core.management.project_config import config
 from renku.core.util import communication
 from renku.core.util.dataset import check_url
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository
@@ -138,7 +139,7 @@ class GitProvider(ProviderApi):
 
         def get_metadata(src: Path, dst: Path) -> Optional["DatasetAddMetadata"]:
             path_in_src_repo = src.relative_to(remote_repository.path)  # type: ignore
-            path_in_dst_repo = dst.relative_to(client.path)
+            path_in_dst_repo = dst.relative_to(config.path)
 
             already_copied = path_in_dst_repo in new_files  # A path with the same destination is already copied
             new_files[path_in_dst_repo].append(path_in_src_repo)
@@ -164,7 +165,8 @@ class GitProvider(ProviderApi):
         new_files: Dict[Path, List[Path]] = defaultdict(list)
 
         paths = get_source_paths()
-        LocalClient(path=remote_repository.path).pull_paths_from_storage(*paths)
+        with config.with_path(remote_repository.path):
+            LocalClient().pull_paths_from_storage(*paths)
         is_copy = should_copy(list(paths))
 
         for path in paths:

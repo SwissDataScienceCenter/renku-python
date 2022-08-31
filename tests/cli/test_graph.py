@@ -21,6 +21,7 @@ import os
 
 import pytest
 
+from renku.core.management.project_config import config
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.domain_model.dataset import Url
 from renku.ui.cli import cli
@@ -32,8 +33,8 @@ def test_graph_export_validation(runner, client, directory_tree, run, revision):
     """Test graph validation when exporting."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-data", str(directory_tree)]).exit_code
 
-    file1 = client.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
-    file2 = client.path / DATA_DIR / "my-data" / directory_tree.name / "dir1" / "file2"
+    file1 = config.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
+    file2 = config.path / DATA_DIR / "my-data" / directory_tree.name / "dir1" / "file2"
     assert 0 == run(["run", "head", str(file1)], stdout="out1")
     assert 0 == run(["run", "tail", str(file2)], stdout="out2")
 

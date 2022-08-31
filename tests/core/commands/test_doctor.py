@@ -18,6 +18,7 @@
 """Renku doctor tests."""
 from pathlib import Path
 
+from renku.core.management.project_config import config
 from renku.domain_model.dataset import DatasetFile, Url
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.ui.cli import cli
@@ -89,7 +90,7 @@ def test_lfs_broken_history(runner, client, tmp_path):
     assert "*.bin" in result.output
 
     # Exclude *.ipynb files from LFS in .renkulfsignore
-    (client.path / client.RENKU_LFS_IGNORE_PATH).write_text("\n".join(["*swp", "*.bin", ".DS_Store"]))
+    (config.path / client.RENKU_LFS_IGNORE_PATH).write_text("\n".join(["*swp", "*.bin", ".DS_Store"]))
 
     result = runner.invoke(cli, ["doctor"])
     assert 0 == result.exit_code, format_result_exception(result)

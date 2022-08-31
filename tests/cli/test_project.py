@@ -19,6 +19,7 @@
 
 import json
 
+from renku.core.management.project_config import config
 from renku.domain_model.provenance.agent import Person
 from renku.infrastructure.gateway.project_gateway import ProjectGateway
 from renku.ui.cli import cli
@@ -38,7 +39,7 @@ def test_project_show(runner, client, subdirectory, client_database_injection_ma
 
 def test_project_edit(runner, client, subdirectory, client_database_injection_manager):
     """Check project metadata editing."""
-    (client.path / "README.md").write_text("Make repo dirty.")
+    (config.path / "README.md").write_text("Make repo dirty.")
 
     creator = "Forename Surname [Affiliation]"
 
@@ -47,7 +48,7 @@ def test_project_edit(runner, client, subdirectory, client_database_injection_ma
         "@type": "https://schema.org/specialType",
         "https://schema.org/specialProperty": "some_unique_value",
     }
-    metadata_path = client.path / "metadata.json"
+    metadata_path = config.path / "metadata.json"
     metadata_path.write_text(json.dumps(metadata))
 
     commit_sha_before = client.repository.head.commit.hexsha
@@ -104,7 +105,7 @@ def test_project_edit(runner, client, subdirectory, client_database_injection_ma
 
 def test_project_edit_no_change(runner, client):
     """Check project metadata editing does not commit when there is no change."""
-    (client.path / "README.md").write_text("Make repo dirty.")
+    (config.path / "README.md").write_text("Make repo dirty.")
 
     commit_sha_before = client.repository.head.commit.hexsha
 
@@ -120,7 +121,7 @@ def test_project_edit_no_change(runner, client):
 
 def test_project_edit_unset(runner, client, subdirectory, client_database_injection_manager):
     """Check project metadata editing."""
-    (client.path / "README.md").write_text("Make repo dirty.")
+    (config.path / "README.md").write_text("Make repo dirty.")
 
     creator = "Forename Surname [Affiliation]"
 
@@ -129,7 +130,7 @@ def test_project_edit_unset(runner, client, subdirectory, client_database_inject
         "@type": "https://schema.org/specialType",
         "https://schema.org/specialProperty": "some_unique_value",
     }
-    metadata_path = client.path / "metadata.json"
+    metadata_path = config.path / "metadata.json"
     metadata_path.write_text(json.dumps(metadata))
 
     result = runner.invoke(

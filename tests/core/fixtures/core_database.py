@@ -218,10 +218,11 @@ def path_injection(injection_manager, database_injection_bindings, client_inject
 
     def create_client_and_bindings(path: Union[Path, str]):
         from renku.core.management.client import LocalClient
+        from renku.core.management.project_config import config
         from renku.core.util.contexts import chdir
 
-        with chdir(path):
-            client = LocalClient(path=path)
+        with chdir(path), config.with_path(Path(path)):
+            client = LocalClient()
             return injection_manager(database_injection_bindings(client_injection_bindings(client)))
 
     return create_client_and_bindings
