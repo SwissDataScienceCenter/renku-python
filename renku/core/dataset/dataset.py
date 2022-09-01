@@ -1285,6 +1285,9 @@ def pull_external_data(
         with communication.busy(f"Copying {file.entity.path} ..."):
             storage.copy(file.source, path)
 
+            # NOTE: Make files read-only since we don't support pushing data to the remote storage
+            os.chmod(path, 0o400)
+
             if file.based_on and not file.based_on.checksum:
                 md5_hash = hash_file(path, hash_type="md5") or ""
                 file.based_on = RemoteEntity(checksum=md5_hash, url=file.based_on.url, path=file.based_on.path)
@@ -1327,9 +1330,7 @@ def read_dataset_data_location(dataset: Dataset) -> Optional[str]:
 def mount_external_storage(
     name: str,
     existing: Optional[Path],
-    unmount: bool,
     yes: bool,
-    client_dispatcher: IClientDispatcher,
     storage_factory: IStorageFactory,
 ) -> None:
     """Mount an external storage to a dataset's data directory.
@@ -1337,25 +1338,13 @@ def mount_external_storage(
     Args:
         name(str): Name of the dataset
         existing(Optional[Path]): An existing mount point to use instead of actually mounting the external storage.
-        unmount(bool): Unmount the external storage.
         yes(bool): Don't prompt when removing non-empty dataset's data directory.
+        storage_factory(IStorageFactory): Injected storage factory.
     """
-    client = client_dispatcher.current_client
-    datasets_provenance = DatasetsProvenance()
-
-    dataset = datasets_provenance.get_by_name(name=name, strict=True)
-
-    if not dataset.storage and not unmount:
-        communication.warn(f"Cannot mount dataset '{name}': Dataset doesn't have a storage backend")
-        return
-
-    datadir = client.path / dataset.get_datadir()
+    dataset, datadir = _get_dataset_with_external_storage(name=name)
 
     # NOTE: Try to unmount the path in case it was mounted before
     unmount_path(datadir)
-
-    if unmount:
-        return
 
     if not is_path_empty(datadir) and not yes:
         communication.confirm(
@@ -1378,3 +1367,29 @@ def mount_external_storage(
     storage = storage_factory.get_storage(provider=provider, credentials=credentials)
     with communication.busy(f"Mounting {provider.uri}"):
         storage.mount(datadir)
+
+
+def unmount_external_storage(name: str) -> None:
+    """Mount an external storage to a dataset's data directory.
+
+    Args:
+        name(str): Name of the dataset
+    """
+    _, datadir = _get_dataset_with_external_storage(name=name)
+    unmount_path(datadir)
+
+
+@inject.autoparams("client_dispatcher")
+def _get_dataset_with_external_storage(name: str, client_dispatcher: IClientDispatcher) -> Tuple[Dataset, Path]:
+
+    client = client_dispatcher.current_client
+    datasets_provenance = DatasetsProvenance()
+
+    dataset = datasets_provenance.get_by_name(name=name, strict=True)
+
+    if not dataset.storage:
+        raise errors.ParameterError(f"Dataset '{name}' doesn't have a storage backend")
+
+    datadir = client.path / dataset.get_datadir()
+
+    return dataset, datadir

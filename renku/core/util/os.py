@@ -166,7 +166,12 @@ def unmount_path(path: Union[Path, str]) -> None:
         return
 
     # NOTE: ``fusermount`` is available on linux and ``umount`` is for macOS
-    execute_command("fusermount", "-u", "-z", path) or execute_command("umount", path)
+    result = False
+    if shutil.which("fusermount"):
+        result = execute_command("fusermount", "-u", "-z", path)
+
+    if not result:
+        execute_command("umount", path)
 
 
 def is_ascii(data):

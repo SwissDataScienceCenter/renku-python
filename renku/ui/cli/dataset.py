@@ -813,16 +813,26 @@ def add(name, urls, force, overwrite, create, destination, datadir, **kwargs):
     from renku.ui.cli.utils.callback import ClickCallback
 
     communicator = ClickCallback()
-    add_to_dataset_command().with_communicator(communicator).build().execute(
-        urls=urls,
-        dataset_name=name,
-        force=force,
-        overwrite=overwrite,
-        create=create,
-        destination=destination,
-        datadir=datadir,
-        **kwargs,
+    result = (
+        add_to_dataset_command()
+        .with_communicator(communicator)
+        .build()
+        .execute(
+            urls=urls,
+            dataset_name=name,
+            force=force,
+            overwrite=overwrite,
+            create=create,
+            destination=destination,
+            datadir=datadir,
+            **kwargs,
+        )
     )
+
+    dataset = result.output
+    if dataset.storage:
+        communicator.info(f"To download files from the remote storage use 'renku dataset pull {dataset.name}'")
+
     click.secho("OK", fg=color.GREEN)
 
 
@@ -1190,5 +1200,9 @@ def mount(name, existing, unmount, yes):
     from renku.command.dataset import mount_external_storage_command
     from renku.ui.cli.utils.callback import ClickCallback
 
-    command = mount_external_storage_command().with_communicator(ClickCallback()).build()
-    command.execute(name=name, existing=existing, unmount=unmount, yes=yes)
+    command = mount_external_storage_command(unmount=unmount).with_communicator(ClickCallback()).build()
+
+    if unmount:
+        command.execute(name=name)
+    else:
+        command.execute(name=name, existing=existing, yes=yes)

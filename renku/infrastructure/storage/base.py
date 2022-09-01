@@ -62,8 +62,12 @@ class RCloneBaseStorage(IStorage):
         ]
         """
         self.set_configurations()
+
         hashes_raw = execute_rclone_command("lsjson", "--hash", "-R", "--files-only", uri)
         hashes = json.loads(hashes_raw)
+        if not hashes:
+            raise errors.ParameterError(f"Cannot find URI: {uri}")
+
         output = []
         for hash in hashes:
             hash_content = hash.get("Hashes", {}).get(hash_type)

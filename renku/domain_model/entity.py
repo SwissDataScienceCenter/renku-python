@@ -24,6 +24,8 @@ from urllib.parse import quote
 
 from renku.infrastructure.immutable import Immutable
 
+NON_EXISTING_ENTITY_CHECKSUM = "0" * 40
+
 
 class Entity(Immutable):
     """Represent a file."""

@@ -19,6 +19,7 @@
 import os
 import shutil
 import subprocess
+import time
 from pathlib import Path
 from typing import NamedTuple
 from urllib import parse
@@ -2206,6 +2207,7 @@ def test_mount_unmount_data_from_s3_backend(runner, client, global_config_dir):
 
     try:
         result = runner.invoke(cli, ["dataset", "mount", "s3-data"], input="y")
+        time.sleep(1)
 
         assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
         assert "Warning: Dataset's data directory will be removed: data/s3-data." in result.output

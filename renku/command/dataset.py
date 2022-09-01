@@ -33,6 +33,7 @@ from renku.core.dataset.dataset import (
     remove_dataset,
     search_datasets,
     show_dataset,
+    unmount_external_storage,
     update_datasets,
 )
 from renku.core.dataset.dataset_add import add_to_dataset
@@ -134,6 +135,7 @@ def pull_external_data_command():
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS + [CONFIG_LOCAL_PATH])
 
 
-def mount_external_storage_command():
+def mount_external_storage_command(unmount: bool):
     """Command for mounting an external storage."""
-    return Command().command(mount_external_storage).lock_dataset().with_database(write=False).require_migration()
+    command = unmount_external_storage if unmount else mount_external_storage
+    return Command().command(command).lock_dataset().with_database(write=False).require_migration()
