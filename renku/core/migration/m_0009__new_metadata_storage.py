@@ -49,7 +49,7 @@ from renku.core.migration.utils import (
 from renku.core.migration.utils.conversion import convert_dataset
 from renku.core.util import communication
 from renku.core.util.yaml import load_yaml
-from renku.domain_model.entity import Collection, Entity
+from renku.domain_model.entity import NON_EXISTING_ENTITY_CHECKSUM, Collection, Entity
 from renku.domain_model.project import Project
 from renku.domain_model.provenance.activity import Activity, Association, Generation, Usage
 from renku.domain_model.provenance.agent import Person, SoftwareAgent
@@ -63,8 +63,6 @@ from renku.domain_model.workflow.parameter import (
 )
 from renku.domain_model.workflow.plan import Plan
 from renku.infrastructure.repository import Commit
-
-NON_EXISTING_ENTITY_CHECKSUM = "0" * 40
 
 PLAN_CACHE = {}
 
