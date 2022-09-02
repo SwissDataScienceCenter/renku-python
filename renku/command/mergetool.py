@@ -19,9 +19,7 @@
 
 from pathlib import Path
 
-from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.project.project_properties import project_properties
 
 
@@ -30,7 +28,6 @@ def mergetool_command():
     return Command().command(_mergetool).require_migration().with_database()
 
 
-@inject.autoparams()
 def _mergetool(local: Path, remote: Path, base: Path) -> None:
     """Merge renku metadata files.
 
@@ -51,12 +48,11 @@ def mergetool_install_command():
     return Command().command(setup_mergetool)
 
 
-@inject.autoparams("client_dispatcher")
-def setup_mergetool(client_dispatcher: IClientDispatcher, with_attributes: bool = True):
+def setup_mergetool(with_attributes: bool = True):
     """Setup renku custom mergetool."""
-    client = client_dispatcher.current_client
+    repository = project_properties.repository
 
-    with client.repository.get_configuration(writable=True) as config_writer:
+    with repository.get_configuration(writable=True) as config_writer:
         config_writer.set_value('merge "renkumerge"', "name", "Renku merge driver")
         config_writer.set_value('merge "renkumerge"', "driver", "renku mergetool merge %O %A %B")
         config_writer.set_value('merge "renkumerge"', "trustExitCode", "true")

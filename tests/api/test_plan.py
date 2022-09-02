@@ -19,13 +19,14 @@
 
 import os
 
+from renku.core.project.project_properties import project_properties
 from renku.ui.api import Activity, CompositePlan, Input, Output, Parameter, Plan
 from renku.ui.api.util import get_plan_gateway
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
-def test_list_plans(client_with_runs):
+def test_list_plans(project_with_runs):
     """Test listing plans."""
     plans = Plan.list()
 
@@ -34,7 +35,7 @@ def test_list_plans(client_with_runs):
     assert isinstance(plans[1], Plan)
 
 
-def test_list_deleted_plans(client_with_runs, runner):
+def test_list_deleted_plans(project_with_runs, runner):
     """Test listing deleted plans."""
     result = runner.invoke(cli, ["workflow", "remove", "--force", "plan-1"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -55,7 +56,7 @@ def test_list_datasets_outside_a_renku_project(directory_tree):
     assert [] == Plan.list()
 
 
-def test_get_plan_attributes(client_with_runs):
+def test_get_plan_attributes(project_with_runs):
     """Test getting attributes of a plan."""
     plan = next(p for p in Plan.list() if p.name == "plan-1")
 
@@ -66,7 +67,7 @@ def test_get_plan_attributes(client_with_runs):
     assert [0, 1] == plan.success_codes
 
 
-def test_get_plan_parameters(client_with_runs):
+def test_get_plan_parameters(project_with_runs):
     """Test getting parameters of a plan."""
     plan = next(p for p in Plan.list() if p.name == "plan-1")
 
@@ -80,7 +81,7 @@ def test_get_plan_parameters(client_with_runs):
     assert 1 == parameter.position
 
 
-def test_get_plan_inputs(client_with_runs):
+def test_get_plan_inputs(project_with_runs):
     """Test getting inputs of a plan."""
     plan = next(p for p in Plan.list() if p.name == "plan-1")
 
@@ -95,7 +96,7 @@ def test_get_plan_inputs(client_with_runs):
     assert input.mapped_stream is None
 
 
-def test_get_plan_outputs(client_with_runs):
+def test_get_plan_outputs(project_with_runs):
     """Test getting outputs of a plan."""
     plan = next(p for p in Plan.list() if p.name == "plan-1")
 
@@ -110,7 +111,7 @@ def test_get_plan_outputs(client_with_runs):
     assert "stdout" == output.mapped_stream
 
 
-def test_list_composite_plans(client_with_runs, runner):
+def test_list_composite_plans(project_with_runs, runner):
     """Test listing plans."""
     result = runner.invoke(
         cli,
@@ -159,7 +160,7 @@ def test_list_composite_plans(client_with_runs, runner):
     assert ["input-1"] == [s.name for s in link.sinks]
 
 
-def test_get_plan_activities(client_with_runs):
+def test_get_plan_activities(project_with_runs):
     """Test getting activities that are based on a plan."""
     plan = next(p for p in Plan.list() if p.name == "plan-1")
 
@@ -169,13 +170,13 @@ def test_get_plan_activities(client_with_runs):
     assert isinstance(activity, Activity)
 
 
-def test_get_latest_version(client_with_runs):
+def test_get_latest_version(project_with_runs):
     """Test getting the latest version of a plan."""
     plan_gateway = get_plan_gateway()
     plan = next(p for p in plan_gateway.get_all_plans() if p.name == "plan-1")
     newer_plan = plan.derive()
     plan_gateway.add(newer_plan)
-    plan_gateway.database_dispatcher.current_database.commit()
+    project_properties.database.commit()
 
     latest_version = Plan.from_plan(plan).get_latest_version()
 
@@ -189,13 +190,13 @@ def test_get_latest_version(client_with_runs):
     assert plan is latest_version
 
 
-def test_list_returns_latest_versions(client_with_runs):
+def test_list_returns_latest_versions(project_with_runs):
     """Test Plan.list returns the latest versions of plans."""
     plan_gateway = get_plan_gateway()
     plan = next(p for p in plan_gateway.get_all_plans() if p.name == "plan-1")
     newer_plan = plan.derive()
     plan_gateway.add(newer_plan)
-    plan_gateway.database_dispatcher.current_database.commit()
+    project_properties.database.commit()
 
     plans = Plan.list()
 

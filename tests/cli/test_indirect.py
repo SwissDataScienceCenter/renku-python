@@ -42,8 +42,8 @@ def test_indirect_inputs_outputs(renku_cli, client):
             """
         )
 
-        client.repository.add(all=True)
-        client.repository.commit("test setup")
+        project_properties.repository.add(all=True)
+        project_properties.repository.commit("test setup")
 
     exit_code, activity = renku_cli("run", "sh", "-c", "sh script.sh")
 
@@ -80,8 +80,8 @@ def test_duplicate_indirect_inputs(renku_cli, client):
             """
         )
 
-        client.repository.add(all=True)
-        client.repository.commit("test setup")
+        project_properties.repository.add(all=True)
+        project_properties.repository.commit("test setup")
 
     exit_code, activity = renku_cli("run", "--no-output", "sh", "-c", "sh script.sh", "baz")
 
@@ -109,8 +109,8 @@ def test_duplicate_indirect_outputs(renku_cli, client):
             """
         )
 
-        client.repository.add(all=True)
-        client.repository.commit("test setup")
+        project_properties.repository.add(all=True)
+        project_properties.repository.commit("test setup")
 
     exit_code, activity = renku_cli("run", "sh", "-c", "sh script.sh")
 
@@ -132,8 +132,8 @@ def test_indirect_parameters(renku_cli, client):
             """
         )
 
-        client.repository.add(all=True)
-        client.repository.commit("test setup")
+        project_properties.repository.add(all=True)
+        project_properties.repository.commit("test setup")
 
     exit_code, activity = renku_cli("run", "--no-output", "sh", "-c", "sh script.sh")
 
@@ -160,8 +160,8 @@ def test_indirect_parameters_update(renku_cli, client):
             """
         )
 
-        client.repository.add(all=True)
-        client.repository.commit("test setup")
+        project_properties.repository.add(all=True)
+        project_properties.repository.commit("test setup")
 
     renku_cli("run", "sh", "script.sh", stdout="result")
 
@@ -175,8 +175,8 @@ def test_indirect_parameters_update(renku_cli, client):
             """
         )
 
-        client.repository.add(all=True)
-        client.repository.commit("test setup")
+        project_properties.repository.add(all=True)
+        project_properties.repository.commit("test setup")
 
     exit_code, activity = renku_cli("update", "--all")
 

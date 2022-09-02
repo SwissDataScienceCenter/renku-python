@@ -21,8 +21,6 @@ import re
 from subprocess import PIPE, SubprocessError, run
 from typing import Callable, Dict
 
-from renku.command.command_builder import inject
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.project.project_properties import project_properties
 
 
@@ -52,22 +50,20 @@ def tabular(records, *, columns=None):
     )
 
 
-@inject.autoparams()
-def get_lfs_tracking_and_file_sizes(records, has_tag: bool, client_dispatcher: IClientDispatcher):
+def get_lfs_tracking_and_file_sizes(records, has_tag: bool):
     """Try to get file size from Git LFS and check if files are tracked in git lfs.
 
     Args:
         records: File records tog et size for.
         has_tag(bool): Whether sizes are retrieved for a given tag instead of HEAD commit
-        client_dispatcher(IClientDispatcher):  Injected client dispatcher.
     """
     from humanize import naturalsize  # Slow import
 
-    client = client_dispatcher.current_client
+    repository = project_properties.repository
 
     def get_lfs_tracking():
         paths = (r.path for r in records)
-        attrs = client.repository.get_attributes(*paths)
+        attrs = repository.get_attributes(*paths)
 
         for record in records:
             if attrs.get(str(record.path), {}).get("filter") == "lfs":
@@ -103,13 +99,13 @@ def get_lfs_tracking_and_file_sizes(records, has_tag: bool, client_dispatcher: I
 
     if has_tag:
         checksums = [r.entity.checksum for r in records]
-        sizes = client.repository.get_sizes(*checksums)
+        sizes = repository.get_sizes(*checksums)
         non_lfs_files_sizes = {
             r.entity.path: naturalsize(s).upper().replace("BYTES", " B") for r, s in zip(records, sizes)
         }
     else:
         non_lfs_files_sizes = {
-            o.path: o.size for o in client.repository.head.commit.traverse() if o.path not in lfs_files_sizes
+            o.path: o.size for o in repository.head.commit.traverse() if o.path not in lfs_files_sizes
         }
         non_lfs_files_sizes = {k: naturalsize(v).upper().replace("BYTES", " B") for k, v in non_lfs_files_sizes.items()}
 

@@ -16,9 +16,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku doctor tests."""
-from pathlib import Path
 
+from renku.core.constant import RENKU_LFS_IGNORE_PATH
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import get_minimum_lfs_file_size
 from renku.domain_model.dataset import DatasetFile, Url
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.ui.cli import cli
@@ -48,7 +49,7 @@ def test_git_hooks_modified(runner, project):
     result = runner.invoke(cli, ["githooks", "install", "--force"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    hook_path = Path(project) / ".git" / "hooks" / "pre-commit"
+    hook_path = project.path / ".git" / "hooks" / "pre-commit"
     lines = hook_path.read_text().split("\n")
 
     # Append some more commands
@@ -73,7 +74,7 @@ def test_lfs_broken_history(runner, client, tmp_path):
     """Test lfs migrate info check on a broken history."""
     big_file = tmp_path / "big-file.bin"
     with open(big_file, "w") as file_:
-        file_.seek(client.minimum_lfs_file_size)
+        file_.seek(get_minimum_lfs_file_size())
         file_.write("some-data")
 
     # Add a file without adding it to LFS
@@ -90,17 +91,17 @@ def test_lfs_broken_history(runner, client, tmp_path):
     assert "*.bin" in result.output
 
     # Exclude *.ipynb files from LFS in .renkulfsignore
-    (project_properties.path / client.RENKU_LFS_IGNORE_PATH).write_text("\n".join(["*swp", "*.bin", ".DS_Store"]))
+    (project_properties.path / RENKU_LFS_IGNORE_PATH).write_text("\n".join(["*swp", "*.bin", ".DS_Store"]))
 
     result = runner.invoke(cli, ["doctor"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Git history contains large files" not in result.output
 
 
-def test_check_invalid_imported_dataset(runner, client_with_datasets, client_database_injection_manager):
+def test_check_invalid_imported_dataset(runner, project_with_datasets, client_database_injection_manager):
     """Test checking imported datasets that have both derived_from and same_as set."""
-    with client_database_injection_manager(client_with_datasets):
-        with with_dataset(client_with_datasets, name="dataset-1", commit_database=True) as dataset:
+    with client_database_injection_manager(project_with_datasets):
+        with with_dataset(project_with_datasets, name="dataset-1", commit_database=True) as dataset:
             # NOTE: Set both same_as and derived_from for a dataset
             dataset.same_as = Url(url_str="http://example.com")
             dataset.derived_from = Url(url_id="datasets/non-existing-id")
@@ -118,43 +119,43 @@ def test_check_invalid_imported_dataset(runner, client_with_datasets, client_dat
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_fix_invalid_imported_dataset(runner, client_with_datasets, client_database_injection_manager):
+def test_fix_invalid_imported_dataset(runner, project_with_datasets, client_database_injection_manager):
     """Test fixing imported datasets that have both derived_from and same_as set."""
-    with client_database_injection_manager(client_with_datasets):
-        with with_dataset(client_with_datasets, name="dataset-1", commit_database=True) as dataset:
+    with client_database_injection_manager(project_with_datasets):
+        with with_dataset(project_with_datasets, name="dataset-1", commit_database=True) as dataset:
             # NOTE: Set both same_as and derived_from for a dataset
             dataset.same_as = Url(url_str="http://example.com")
             dataset.derived_from = Url(url_id="datasets/non-existing-id")
 
-    client_with_datasets.repository.add(all=True)
-    client_with_datasets.repository.commit("modified dataset")
+    project_with_datasets.add(all=True)
+    project_with_datasets.commit("modified dataset")
 
-    before_commit_sha = client_with_datasets.repository.head.commit.hexsha
+    before_commit_sha = project_with_datasets.head.commit.hexsha
 
     result = runner.invoke(cli, ["doctor", "--fix"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Fixing dataset 'dataset-1'" in result.output
 
-    assert before_commit_sha != client_with_datasets.repository.head.commit.hexsha
-    assert not client_with_datasets.repository.is_dirty(untracked_files=True)
+    assert before_commit_sha != project_with_datasets.head.commit.hexsha
+    assert not project_with_datasets.is_dirty(untracked_files=True)
 
-    with client_database_injection_manager(client_with_datasets):
-        with with_dataset(client_with_datasets, name="dataset-1") as dataset:
+    with client_database_injection_manager(project_with_datasets):
+        with with_dataset(project_with_datasets, name="dataset-1") as dataset:
             # NOTE: Set both same_as and derived_from for a dataset
             assert dataset.same_as.value == "http://example.com"
             assert dataset.derived_from is None
 
 
-def test_file_outside_datadir(runner, client_with_datasets, client_database_injection_manager):
+def test_file_outside_datadir(runner, project_with_datasets, client_database_injection_manager):
     """Test doctor check deal with files outside a datasets datadir."""
-    write_and_commit_file(client_with_datasets.repository, "some_file", "content_a")
+    write_and_commit_file(project_with_datasets, "some_file", "content_a")
 
-    with client_database_injection_manager(client_with_datasets):
-        with with_dataset(client_with_datasets, name="dataset-1", commit_database=True) as dataset:
-            dataset.add_or_update_files([DatasetFile.from_path(client_with_datasets, "some_file")])
-    client_with_datasets.repository.add(all=True)
-    client_with_datasets.repository.commit("modified dataset")
+    with client_database_injection_manager(project_with_datasets):
+        with with_dataset(project_with_datasets, name="dataset-1", commit_database=True) as dataset:
+            dataset.add_or_update_files([DatasetFile.from_path(project_with_datasets, "some_file")])
+    project_with_datasets.add(all=True)
+    project_with_datasets.commit("modified dataset")
 
     result = runner.invoke(cli, ["doctor"])
     assert 1 == result.exit_code, format_result_exception(result)
@@ -164,8 +165,8 @@ def test_file_outside_datadir(runner, client_with_datasets, client_database_inje
     result = runner.invoke(cli, ["doctor", "--fix"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    with client_database_injection_manager(client_with_datasets):
-        with with_dataset(client_with_datasets, name="dataset-1", commit_database=True) as dataset:
+    with client_database_injection_manager(project_with_datasets):
+        with with_dataset(project_with_datasets, name="dataset-1", commit_database=True) as dataset:
             assert 1 == len(dataset.files)
             assert dataset.files[0].entity.path.startswith(str(dataset.get_datadir()))
 
@@ -183,27 +184,27 @@ def test_doctor_fix_activity_catalog(runner, client, client_database_injection_m
         activity_gateway.add(downstream)
 
         # Clear the activity catalog to imitate a project that hasn't persisted it
-        database = activity_gateway.database_dispatcher.current_database
+        database = project_properties.database
         database["activity-catalog"].clear()
 
         database.commit()
 
-    client.repository.add(all=True)
-    client.repository.commit("Added dummy activities")
+    project_properties.repository.add(all=True)
+    project_properties.repository.commit("Added dummy activities")
 
     result = runner.invoke(cli, ["doctor"])
 
     assert 1 == result.exit_code, format_result_exception(result)
     assert "The project's workflow metadata needs to be rebuilt" in result.output
 
-    before_commit_sha = client.repository.head.commit.hexsha
+    before_commit_sha = project_properties.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["doctor", "--fix"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Workflow metadata was rebuilt" in result.output
-    assert before_commit_sha != client.repository.head.commit.hexsha
-    assert not client.repository.is_dirty(untracked_files=True)
+    assert before_commit_sha != project_properties.repository.head.commit.hexsha
+    assert not project_properties.repository.is_dirty(untracked_files=True)
 
     result = runner.invoke(cli, ["doctor", "--fix", "--force"])
 

@@ -23,6 +23,7 @@ import pyld
 import pytest
 
 from renku.command.schema.dataset import dump_dataset_as_jsonld
+from renku.core.project.project_properties import project_properties
 from renku.core.util.shacl import validate_graph
 from renku.ui.cli import cli
 from tests.utils import load_dataset
@@ -50,7 +51,7 @@ def test_dataset_shacl(tmpdir, runner, project, client):
 
     runner.invoke(cli, ["dataset", "tag", "dataset", "1.0"], catch_exceptions=False)
 
-    dataset = load_dataset(client, "dataset")
+    dataset = load_dataset("dataset")
     g = dump_dataset_as_jsonld(dataset)
     rdf = pyld.jsonld.to_rdf(g, options={"format": "application/n-quads", "produceGeneralizedRdf": True})
 
@@ -67,15 +68,15 @@ def test_dataset_shacl(tmpdir, runner, project, client):
     assert r is True, t
 
 
-def test_project_shacl(project, client, client_database_injection_manager):
+def test_project_shacl(project, with_injections_manager):
     """Test project metadata structure."""
     from renku.command.schema.project import ProjectSchema
     from renku.domain_model.provenance.agent import Person
 
     path = Path(__file__).parent.parent.parent / "data" / "force_project_shacl.json"
 
-    with client_database_injection_manager(client):
-        project = client.project
+    with with_injections_manager(project):
+        project = project_properties.project
         project.creator = Person(email="johndoe@example.com", name="Johnny Doe")
 
         g = ProjectSchema().dump(project)

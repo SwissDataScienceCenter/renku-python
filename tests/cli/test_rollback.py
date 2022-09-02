@@ -33,8 +33,8 @@ def test_rollback(client, runner, project):
     metadata_path = project_properties.path / "input"
     metadata_path.write_text("input")
 
-    client.repository.add(["input"])
-    client.repository.commit("add input")
+    project_properties.repository.add(["input"])
+    project_properties.repository.commit("add input")
 
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -50,8 +50,8 @@ def test_rollback(client, runner, project):
 
     metadata_path.write_text("changed input")
 
-    client.repository.add(["input"])
-    client.repository.commit("change input")
+    project_properties.repository.add(["input"])
+    project_properties.repository.commit("change input")
 
     result = runner.invoke(cli, ["run", "--name", "run3", "cp", "input", "output"])
     assert 0 == result.exit_code, format_result_exception(result)

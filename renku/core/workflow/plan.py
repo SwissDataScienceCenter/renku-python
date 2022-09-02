@@ -343,11 +343,7 @@ def compose_workflow(
 
         sinks = get_relative_paths(base=project_properties.path, paths=sinks)
 
-        activities = list(
-            get_activities_until_paths(
-                sinks, sources, activity_gateway=activity_gateway, client_dispatcher=client_dispatcher
-            )
-        )
+        activities = list(get_activities_until_paths(sinks, sources, activity_gateway=activity_gateway))
         activities = sort_activities(activities)
 
         # we need to get the actual plans from the DB as plan_with_values returns a copy
@@ -552,11 +548,7 @@ def visualize_graph(
         targets = get_relative_paths(base=project_properties.path, paths=[Path.cwd() / p for p in targets])
 
     activities = get_activities_until_paths(
-        paths=targets,
-        sources=sources,
-        revision=revision,
-        activity_gateway=activity_gateway,
-        client_dispatcher=client_dispatcher,
+        paths=targets, sources=sources, revision=revision, activity_gateway=activity_gateway
     )
     graph = create_activity_graph(list(activities), with_inputs_outputs=show_files)
     return ActivityGraphViewModel(graph)

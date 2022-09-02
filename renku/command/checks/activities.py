@@ -24,21 +24,19 @@ import click
 from renku.command.command_builder import inject
 from renku.command.echo import WARNING
 from renku.core.interface.activity_gateway import IActivityGateway
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
+from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 
 
-@inject.autoparams("activity_gateway", "database_dispatcher")
-def check_migrated_activity_ids(
-    client, fix, activity_gateway: IActivityGateway, database_dispatcher: IDatabaseDispatcher, **kwargs
-):
+@inject.autoparams("activity_gateway")
+def check_migrated_activity_ids(client, fix, activity_gateway: IActivityGateway, **kwargs):
     """Check that activity ids were correctly migrated in the past."""
     activities = activity_gateway.get_all_activities(include_deleted=True)
 
     wrong_activities = [a for a in activities if not a.id.startswith("/activities/")]
 
     if fix:
-        current_database = database_dispatcher.current_database
+        current_database = project_properties.database
         for activity in wrong_activities:
             communication.info(f"Fixing activity '{activity.id}'")
 

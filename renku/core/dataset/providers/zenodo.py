@@ -28,6 +28,7 @@ from urllib.parse import urlparse
 from renku.core import errors
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
 from renku.core.dataset.providers.repository import RepositoryImporter, make_request
+from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.doi import is_doi
 from renku.core.util.urls import remove_credentials
@@ -377,7 +378,9 @@ class ZenodoExporter(ExporterApi):
         # Step 3. Upload all files to created deposition
         with communication.progress("Uploading files ...", total=len(self.dataset.files)) as progressbar:
             for file in self.dataset.files:
-                filepath = client.repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
+                filepath = project_properties.repository.copy_content_to_file(
+                    path=file.entity.path, checksum=file.entity.checksum
+                )
                 deposition.upload_file(filepath, path_in_repo=file.entity.path)
                 progressbar.update()
 

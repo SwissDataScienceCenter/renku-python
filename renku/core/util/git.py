@@ -25,12 +25,13 @@ import urllib
 from functools import reduce
 from pathlib import Path
 from subprocess import PIPE, SubprocessError, run
-from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union, cast
 from uuid import uuid4
 
 from renku.core import errors
 
 if TYPE_CHECKING:
+    from renku.core.management.client import LocalClient
     from renku.domain_model.entity import Collection, Entity
     from renku.domain_model.git import GitURL
     from renku.domain_model.provenance.agent import Person, SoftwareAgent
@@ -96,18 +97,18 @@ def is_valid_git_repository(repository: Optional["Repository"]) -> bool:
     return repository is not None and repository.head.is_valid()
 
 
-def get_hook_path(repository, name: str) -> Path:
+def get_hook_path(path: Path, name: str) -> Path:
     """Return path to the given named hook in the given repository.
 
     Args:
-        repository: The current Git repository.
+        path(Path): The current Git repository's path.
         name(str): The name of the hook.
 
     Returns:
         Path: Path to the hook.
 
     """
-    return repository.path / ".git" / "hooks" / name
+    return path / ".git" / "hooks" / name
 
 
 def get_oauth_url(url, gitlab_token):
@@ -141,8 +142,9 @@ def get_cache_directory_for_repository(client, url) -> Path:
 
     """
     from renku.core.constant import CACHE
+    from renku.core.project.project_properties import project_properties
 
-    return client.renku_path / CACHE / get_full_repository_path(url)
+    return project_properties.metadata_path / CACHE / get_full_repository_path(url)
 
 
 def parse_git_url(url: Optional[str]) -> "GitURL":
@@ -416,14 +418,33 @@ def get_entity_from_revision(
     return entity
 
 
-def default_path(path="."):
-    """Return default repository path."""
-    from renku.command.git import get_git_home
+def get_git_path(path: Union[Path, str] = ".") -> Path:
+    """Return the repository path."""
+    # TODO: Implement this using ``git rev-parse --git-dir``
+    try:
+        path = get_git_repository(path=path).path
+    except ValueError:
+        path = Path(path)
+
+    return path.resolve()
+
+
+def get_git_repository(path: Union[Path, str] = ".") -> "Repository":
+    """Get Git repository from the current path or any of its parents.
+
+    Args:
+        path: Path to start from (Default value = ".").
+    Raises:
+        ValueError: If not inside a git repository.
+    Returns:
+        Git repository
+    """
+    from renku.infrastructure.repository import Repository
 
     try:
-        return get_git_home(path=path)
-    except ValueError:
-        return Path(path)
+        return Repository(path, search_parent_directories=True)
+    except errors.GitError:
+        raise ValueError(f"Cannot find a git repository at '{path}'")
 
 
 def commit_changes(*paths: Union[Path, str], repository: "Repository", message=None) -> List[str]:
@@ -688,7 +709,7 @@ def clone_repository(
     Returns:
         The cloned repository.
     """
-    from renku.core.management.githooks import install
+    from renku.core.githooks import install
     from renku.infrastructure.repository import Repository
 
     def handle_git_exception():
@@ -797,7 +818,7 @@ def clone_repository(
                 config_writer.set_value(section, option, value)
 
     if install_githooks:
-        install(force=True, repository=repository)
+        install(force=True, path=repository.path)
 
     if install_lfs:
         repository.lfs.install(skip_smudge=skip_smudge)
@@ -914,3 +935,43 @@ def shorten_message(message: str, line_length: int = 100, body_length: int = 650
         ("", 0),
     )[0]
     return wrapped_message[1:]
+
+
+def get_in_submodules(
+    repository: "Repository", commit: "Commit", path: Union[Path, str]
+) -> Tuple["LocalClient", "Repository", "Commit", Path]:
+    """Resolve filename in submodules."""
+    from renku.core.management.client import LocalClient
+    from renku.core.project.project_properties import project_properties
+
+    original_path = repository.path / path
+    in_vendor = str(path).startswith(".renku/vendors")
+
+    client = LocalClient()
+
+    if original_path.is_symlink() or in_vendor:
+        resolved_path = original_path.resolve()
+
+        for submodule in repository.submodules:  # type: ignore
+            if not (submodule.path / ".git").exists():
+                continue
+
+            try:
+                path_within_submodule = resolved_path.relative_to(submodule.path)
+                commit = submodule.get_previous_commit(path=path_within_submodule, revision=commit.hexsha)
+                with project_properties.with_path(submodule.path):
+                    subclient = LocalClient()
+            except (ValueError, errors.GitCommitNotFoundError):
+                pass
+            else:
+                return subclient, submodule, commit, path_within_submodule
+
+    return client, repository, commit, Path(path)
+
+
+def get_dirty_paths(repository: "Repository") -> Set[str]:
+    """Get paths of dirty files in the repository."""
+    modified_files = [item.b_path for item in repository.unstaged_changes if item.b_path]
+    staged_files = [d.a_path for d in repository.staged_changes] if repository.head.is_valid() else []
+
+    return {os.path.join(repository.path, p) for p in repository.untracked_files + modified_files + staged_files}

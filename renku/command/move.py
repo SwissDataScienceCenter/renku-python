@@ -25,10 +25,11 @@ from renku.command.command_builder.command import Command
 from renku.core import errors
 from renku.core.dataset.dataset import move_files
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import track_paths_in_storage, untrack_paths_from_storage
 from renku.core.util import communication
+from renku.core.util.metadata import is_protected_path
 from renku.core.util.os import get_relative_path, is_subpath
 
 
@@ -37,8 +38,7 @@ def move_command():
     return Command().command(_move).require_migration().require_clean().with_database(write=True).with_commit()
 
 
-@inject.autoparams()
-def _move(sources, destination, force, verbose, to_dataset, client_dispatcher: IClientDispatcher):
+def _move(sources, destination, force, verbose, to_dataset):
     """Move files and check repository for potential problems.
 
     Args:
@@ -47,18 +47,17 @@ def _move(sources, destination, force, verbose, to_dataset, client_dispatcher: I
         force: Whether or not to overwrite destination files.
         verbose: Toggle verbose output.
         to_dataset: Target dataset to move files into.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
     """
-    client = client_dispatcher.current_client
+    repository = project_properties.repository
 
     absolute_destination = _get_absolute_path(destination)
     absolute_sources = [_get_absolute_path(src) for src in sources]
 
     if to_dataset:
         target_dataset = DatasetsProvenance().get_by_name(to_dataset, strict=True)
-        if not is_subpath(absolute_destination, _get_absolute_path(target_dataset.get_datadir(client))):
+        if not is_subpath(absolute_destination, _get_absolute_path(target_dataset.get_datadir())):
             raise errors.ParameterError(
-                f"Destination {destination} must be in {target_dataset.get_datadir(client)} when moving to a dataset."
+                f"Destination {destination} must be in {target_dataset.get_datadir()} when moving to a dataset."
             )
 
     is_rename = len(absolute_sources) == 1 and (
@@ -90,7 +89,7 @@ def _move(sources, destination, force, verbose, to_dataset, client_dispatcher: I
             absolute_destination.mkdir(parents=True, exist_ok=True)
 
     try:
-        client.repository.move(*sources, destination=destination, force=force)
+        repository.move(*sources, destination=destination, force=force)
     except errors.GitCommandError as e:
         raise errors.OperationError(f"Git operation failed: {e}")
 
@@ -102,13 +101,13 @@ def _move(sources, destination, force, verbose, to_dataset, client_dispatcher: I
             Path(dst).symlink_to(os.path.relpath(target, start=os.path.dirname(dst)))
 
     files_to_untrack = (str(src.relative_to(project_properties.path)) for src in files)
-    client.untrack_paths_from_storage(*files_to_untrack)
+    untrack_paths_from_storage(*files_to_untrack)
     # NOTE: Warn about filter after untracking from LFS to avoid warning about LFS filters
     _warn_about_git_filters(files)
-    client.track_paths_in_storage(*[dst for dst in files.values() if not dst.is_dir()])
+    track_paths_in_storage(*[dst for dst in files.values() if not dst.is_dir()])
 
     # NOTE: Force-add to include possible ignored files
-    client.repository.add(*files.values(), force=True)
+    repository.add(*files.values(), force=True)
 
     move_files(files=files, to_dataset_name=to_dataset)
 
@@ -138,22 +137,18 @@ def _get_dst(path, src_root, dst_root, is_rename):
     return dst_root / parent / os.path.relpath(path, start=src_root)
 
 
-@inject.autoparams()
-def _get_absolute_path(path, client_dispatcher: IClientDispatcher):
+def _get_absolute_path(path):
     """Resolve path and raise if path is outside the repo or is protected.
 
     Args:
         path: Path to make absolute.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
 
     Returns:
         Absolute path.
     """
-    client = client_dispatcher.current_client
-
     abs_path = Path(os.path.abspath(path))
 
-    if client.is_protected_path(abs_path):
+    if is_protected_path(abs_path):
         raise errors.ParameterError(f"Path '{path}' is protected.")
 
     try:
@@ -177,30 +172,25 @@ def _check_existing_destinations(destinations):
     raise errors.ParameterError(f"The following move target exist, use '--force' flag to overwrite them:\n\t{existing}")
 
 
-@inject.autoparams()
-def _warn_about_ignored_destinations(destinations, client_dispatcher: IClientDispatcher):
-    client = client_dispatcher.current_client
-
-    ignored = client.find_ignored_paths(*destinations)
+def _warn_about_ignored_destinations(destinations):
+    ignored = project_properties.repository.get_ignored_paths(*destinations)
     if ignored:
         ignored_str = "\n\t".join((str(Path(p).relative_to(project_properties.path)) for p in ignored))
         communication.warn(f"The following moved path match .gitignore:\n\t{ignored_str}")
 
 
-@inject.autoparams()
-def _warn_about_git_filters(files, client_dispatcher: IClientDispatcher):
+def _warn_about_git_filters(files):
     """Check if there are any git attributes for files including LFS.
 
     Args:
         files: Files to check.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
     """
-    client = client_dispatcher.current_client
+    repository = project_properties.repository
 
     src_attrs = []
     dst_attrs = []
 
-    for path, attrs in client.repository.get_attributes(*files).items():
+    for path, attrs in repository.get_attributes(*files).items():
         src = Path(path)
         dst = files[src].relative_to(project_properties.path)
         src = src.relative_to(project_properties.path)
@@ -226,16 +216,13 @@ def _warn_about_git_filters(files, client_dispatcher: IClientDispatcher):
 
 
 @inject.autoparams()
-def _warn_about_dataset_files(files, dataset_gateway: IDatasetGateway, client_dispatcher: IClientDispatcher):
+def _warn_about_dataset_files(files, dataset_gateway: IDatasetGateway):
     """Check if any of the files are part of a dataset.
 
     Args:
         files: Files to check.
         dataset_gateway(IDatasetGateway): Injected dataset gateway.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
     """
-    client = client_dispatcher.current_client
-
     found = []
     for dataset in dataset_gateway.get_all_active_datasets():
         for src, dst in files.items():
@@ -246,9 +233,7 @@ def _warn_about_dataset_files(files, dataset_gateway: IDatasetGateway, client_di
             found_file = dataset.find_file(relative_src)
             if not found_file:
                 continue
-            if not found_file.is_external and not is_subpath(
-                dst, project_properties.path / dataset.get_datadir(client)
-            ):
+            if not found_file.is_external and not is_subpath(dst, project_properties.path / dataset.get_datadir()):
                 found.append(str(src))
 
     if not found:

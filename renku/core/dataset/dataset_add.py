@@ -24,7 +24,6 @@ from typing import TYPE_CHECKING, List, Optional, Set, Union, cast
 from urllib.parse import urlparse
 
 from renku.core import errors
-from renku.core.dataset.constant import renku_pointers_path
 from renku.core.dataset.context import DatasetContext
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.pointer_file import create_external_file
@@ -32,9 +31,10 @@ from renku.core.dataset.providers.api import ImporterApi
 from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.models import DatasetAddAction
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import check_external_storage, track_paths_in_storage
 from renku.core.util import communication, requests
 from renku.core.util.dataset import check_url
-from renku.core.util.dispatcher import get_client, get_database
+from renku.core.util.dispatcher import get_client
 from renku.core.util.git import get_git_user
 from renku.core.util.os import delete_dataset_file, get_files, get_relative_path
 from renku.domain_model.dataset import Dataset, DatasetFile
@@ -64,6 +64,7 @@ def add_to_dataset(
 ) -> Dataset:
     """Import the data into the data directory."""
     client = get_client()
+    repository = project_properties.repository
     sources = sources or []
 
     _check_available_space(urls, total_size=total_size)
@@ -82,7 +83,7 @@ def add_to_dataset(
         with DatasetContext(name=dataset_name, create=create, datadir=datadir, storage=storage) as dataset:
             destination_path = _create_destination_directory(dataset, destination)
 
-            client.check_external_storage()  # TODO: This is not required for external storages
+            check_external_storage()  # TODO: This is not required for external storages
 
             datadir = cast(Path, project_properties.path / dataset.get_datadir())
             if create and datadir.exists():
@@ -114,7 +115,7 @@ def add_to_dataset(
             files_to_commit = {f.get_absolute_commit_path(project_properties.path) for f in files if not f.gitignored}
 
             if not force:
-                files, files_to_commit = _check_ignored_files(client, files_to_commit, files)
+                files, files_to_commit = _check_ignored_files(files_to_commit, files)
 
             # all files at this point can be force-added
 
@@ -124,14 +125,14 @@ def add_to_dataset(
             move_files_to_dataset(client, files)
 
             # Track non-symlinks in LFS
-            if client.check_external_storage():
-                client.track_paths_in_storage(*files_to_commit)
+            if check_external_storage():
+                track_paths_in_storage(*files_to_commit)
 
             # Force-add to include possible ignored files
             if len(files_to_commit) > 0:
-                client.repository.add(*files_to_commit, renku_pointers_path(client), force=True)
+                repository.add(*files_to_commit, project_properties.pointers_path, force=True)
 
-            n_staged_changes = len(client.repository.staged_changes)
+            n_staged_changes = len(repository.staged_changes)
             if n_staged_changes == 0:
                 communication.warn("No new file was added to project")
 
@@ -145,9 +146,9 @@ def add_to_dataset(
 
             dataset.add_or_update_files(dataset_files)
             datasets_provenance = DatasetsProvenance()
-            datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
+            datasets_provenance.add_or_update(dataset, creator=get_git_user(repository))
 
-        get_database().commit()
+        project_properties.database.commit()
     except errors.DatasetNotFound:
         raise errors.DatasetNotFound(
             message='Dataset "{0}" does not exist.\n'
@@ -251,9 +252,9 @@ def _create_destination_directory(dataset: Dataset, destination: Optional[Union[
     return dataset_datadir / relative_path
 
 
-def _check_ignored_files(client: "LocalClient", files_to_commit: Set[str], files: List["DatasetAddMetadata"]):
+def _check_ignored_files(files_to_commit: Set[str], files: List["DatasetAddMetadata"]):
     """Check if any files added were ignored."""
-    ignored_files = set(client.find_ignored_paths(*files_to_commit))
+    ignored_files = set(project_properties.repository.get_ignored_paths(*files_to_commit))
     if ignored_files:
         ignored_sources = []
         for file in files:

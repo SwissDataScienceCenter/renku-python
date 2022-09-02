@@ -27,10 +27,10 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
 from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.plugin.provider import execute
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import check_external_storage, pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.os import safe_read_yaml
@@ -45,10 +45,9 @@ if TYPE_CHECKING:
     from networkx import DiGraph
 
 
-@inject.params(client_dispatcher=IClientDispatcher, activity_gateway=IActivityGateway, plan_gateway=IPlanGateway)
+@inject.params(activity_gateway=IActivityGateway, plan_gateway=IPlanGateway)
 def execute_workflow_graph(
     dag: "DiGraph",
-    client_dispatcher: IClientDispatcher,
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
     provider="cwltool",
@@ -58,18 +57,15 @@ def execute_workflow_graph(
 
     Args:
         dag(DiGraph): The workflow graph to execute.
-        client_dispatcher(IClientDispatcher): The injected client dispatcher.
         activity_gateway(IActivityGateway): The injected activity gateway.
         plan_gateway(IPlanGateway): The injected plan gateway.
         provider: Provider to run the workflow with (Default value = "cwltool").
         config: Path to config for the workflow provider (Default value = None).
     """
-    client = client_dispatcher.current_client
-
     inputs = {i.actual_value for p in dag.nodes for i in p.inputs}
     # NOTE: Pull inputs from Git LFS or other storage backends
-    if client.check_external_storage():
-        client.pull_paths_from_storage(*inputs)
+    if check_external_storage():
+        pull_paths_from_storage(project_properties.repository, *inputs)
 
     # check whether the none generated inputs of workflows are available
     outputs = {o.actual_value for p in dag.nodes for o in p.outputs}

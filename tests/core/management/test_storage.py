@@ -22,32 +22,36 @@ import re
 import pytest
 
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import get_lfs_migrate_filters, track_paths_in_storage
 
 
 @pytest.mark.parametrize("path", [".", "datasets"])
-def test_no_renku_metadata_in_lfs(client_with_datasets, no_lfs_size_limit, path, subdirectory):
+def test_no_renku_metadata_in_lfs(
+    project_with_datasets, no_lfs_size_limit, path, subdirectory, with_injections_manager
+):
     """Test .renku directory and its content are not included in the LFS."""
     # Explicitly set .renku to not being ignored
-    (project_properties.path / ".renkulfsignore").write_text("!.renku")
+    (project_with_datasets.path / ".renkulfsignore").write_text("!.renku")
 
-    file1 = project_properties.path / "file1"
+    file1 = project_with_datasets.path / "file1"
     file1.write_text("123")
-    path_in_renku_metadata_directory = client_with_datasets.database_path.parent / path
+    path_in_renku_metadata_directory = project_properties.database_path.parent / path
     path_in_renku_metadata_directory.mkdir(parents=True, exist_ok=True)
     file2 = path_in_renku_metadata_directory / "file2"
     file2.write_text("123")
 
-    client_with_datasets.track_paths_in_storage(file1, file2, path_in_renku_metadata_directory)
+    with with_injections_manager(project_with_datasets):
+        track_paths_in_storage(file1, file2, path_in_renku_metadata_directory)
 
-    attributes = (project_properties.path / ".gitattributes").read_text()
+    attributes = (project_with_datasets.path / ".gitattributes").read_text()
     assert "file1" in attributes
     assert "file2" not in attributes
     assert not re.match("^renku/.* filter=lfs diff=lfs merge=lfs -text$", attributes)
 
 
-def test_renku_in_lfs_migrate_exclude_filter(client):
+def test_renku_in_lfs_migrate_exclude_filter(project):
     """Test .renku directory is in exclude filter of `lfs migrate info`."""
-    _, excludes = client.get_lfs_migrate_filters()
+    _, excludes = get_lfs_migrate_filters()
 
     assert ",.renku," in excludes[1]
     assert ",.renku/**," in excludes[1]

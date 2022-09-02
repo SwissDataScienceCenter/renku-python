@@ -17,6 +17,7 @@
 # limitations under the License.
 """Helpers functions for metadata management/parsing."""
 
+import fnmatch
 import os
 import re
 import tempfile
@@ -27,9 +28,9 @@ from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 from packaging.version import Version
 
 from renku.core import errors
-from renku.core.constant import RENKU_HOME, RENKU_TMP
+from renku.core.config import get_value, set_value
+from renku.core.constant import RENKU_HOME, RENKU_PROTECTED_PATHS, RENKU_TMP
 from renku.core.util import communication
-from renku.core.util.dispatcher import get_client
 from renku.core.util.os import is_subpath
 
 if TYPE_CHECKING:
@@ -92,8 +93,7 @@ def construct_creator(creator: Union[dict, str], ignore_email) -> Tuple[Optional
 
 def is_external_file(path: Union[Path, str], client_path: Path):
     """Checks if a path is an external file."""
-    from renku.core.constant import RENKU_HOME
-    from renku.core.dataset.constant import POINTERS
+    from renku.core.constant import POINTERS, RENKU_HOME
 
     path = client_path / path
     if not path.is_symlink() or not is_subpath(path=path, base=client_path):
@@ -103,9 +103,11 @@ def is_external_file(path: Union[Path, str], client_path: Path):
     return str(os.path.join(RENKU_HOME, POINTERS)) in pointer
 
 
-def get_renku_version(client) -> Optional[str]:
+def get_renku_version() -> Optional[str]:
     """Return project's Renku version from its Dockerfile."""
-    return read_renku_version_from_dockerfile(client.docker_path)
+    from renku.core.project.project_properties import project_properties
+
+    return read_renku_version_from_dockerfile(project_properties.docker_path)
 
 
 def read_renku_version_from_dockerfile(path: Union[Path, str]) -> Optional[str]:
@@ -136,13 +138,13 @@ def make_project_temp_dir(client_path: Path) -> Path:
 def store_credentials(section: str, key: str, value: str) -> None:
     """Write provider's credentials."""
     section, key = _get_section_and_key(section=section, key=key)
-    get_client().set_value(section=section, key=key, value=value, global_only=True)
+    set_value(section=section, key=key, value=value, global_only=True)
 
 
 def read_credentials(section: str, key: str) -> Optional[str]:
     """Read provider's credentials."""
     section, key = _get_section_and_key(section=section, key=key)
-    return get_client().get_value(section=section, key=key)
+    return get_value(section=section, key=key)
 
 
 def get_canonical_key(key: str) -> str:
@@ -173,3 +175,19 @@ def prompt_for_credentials(provider_credentials: "ProviderCredentials") -> None:
     if prompt_to_store:
         if communication.confirm("Store credentials?", default=True):
             provider_credentials.store()
+
+
+def is_protected_path(path: Path) -> bool:
+    """Checks if a path is a protected path."""
+    from renku.core.project.project_properties import project_properties
+
+    try:
+        path_in_repo = str(path.relative_to(project_properties.path))
+    except ValueError:
+        return False
+
+    for protected_path in RENKU_PROTECTED_PATHS:
+        if fnmatch.fnmatch(path_in_repo, protected_path):
+            return True
+
+    return False

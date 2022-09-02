@@ -55,12 +55,8 @@ def test_cli_initialization_err(cmd, runner):
             result = runner.invoke(cli, ["--disable-version-check"] + cmd)
             assert 2 == result.exit_code
 
-            expected_output = (
-                "Error: `.` is not a renku repository.\n"
-                "To initialize this as a "
-                "renku repository use: `renku init`\n"
-            )
-            assert expected_output == result.output
+            assert "is not a renku repository.\n" in result.output
+            assert "To initialize this as a renku repository use: 'renku init'" in result.output
 
 
 @pytest.mark.parametrize(

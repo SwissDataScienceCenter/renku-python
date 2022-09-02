@@ -17,21 +17,18 @@
 # limitations under the License.
 """Renku project gateway interface."""
 
-from renku.command.command_builder.command import inject
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
+from renku.core.project.project_properties import project_properties
 from renku.domain_model.project import Project
 
 
 class ProjectGateway(IProjectGateway):
     """Gateway for project database operations."""
 
-    database_dispatcher = inject.attr(IDatabaseDispatcher)
-
     def get_project(self) -> Project:
         """Get project metadata."""
         try:
-            return self.database_dispatcher.current_database["project"]
+            return project_properties.database["project"]  # type: ignore
         except KeyError as e:
             raise ValueError() from e
 
@@ -39,7 +36,7 @@ class ProjectGateway(IProjectGateway):
         """Update project metadata."""
         from renku import __version__
 
-        database = self.database_dispatcher.current_database
+        database = project_properties.database
 
         try:
             if database["project"]:

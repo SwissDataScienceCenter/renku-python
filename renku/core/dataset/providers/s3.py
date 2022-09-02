@@ -25,7 +25,8 @@ from typing import TYPE_CHECKING, List, Optional, Tuple
 from renku.core import errors
 from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials, ProviderPriority
 from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata, ProviderParameter
-from renku.core.util.dispatcher import get_repository, get_storage
+from renku.core.project.project_properties import project_properties
+from renku.core.util.dispatcher import get_storage
 from renku.core.util.metadata import prompt_for_credentials
 from renku.core.util.urls import get_scheme, is_uri_subfolder
 from renku.domain_model.dataset import RemoteEntity
@@ -100,15 +101,16 @@ class S3Provider(ProviderApi):
         if not storage.exists(uri):
             raise errors.ParameterError(f"S3 bucket '{uri}' doesn't exists.")
 
+        repository = project_properties.repository
         hashes = storage.get_hashes(uri=uri)
         return [
             DatasetAddMetadata(
-                entity_path=Path(destination).relative_to(client.repository.path) / hash.path,
+                entity_path=Path(destination).relative_to(repository.path) / hash.path,
                 url=hash.base_uri,
                 action=DatasetAddAction.NONE,
                 based_on=RemoteEntity(checksum=hash.hash if hash.hash else "", url=hash.base_uri, path=hash.path),
                 source=Path(hash.full_uri),
-                destination=Path(destination).relative_to(client.repository.path),
+                destination=Path(destination).relative_to(repository.path),
                 gitignored=True,
             )
             for hash in hashes
@@ -130,8 +132,7 @@ class S3Provider(ProviderApi):
         if not storage.exists(self.uri):
             raise errors.ParameterError(f"S3 bucket '{self.bucket}' doesn't exists.")
 
-        repository = get_repository()
-        repository.add_ignored_pattern(pattern=str(dataset.get_datadir()))
+        project_properties.repository.add_ignored_pattern(pattern=str(dataset.get_datadir()))
 
 
 class S3Credentials(ProviderCredentials):

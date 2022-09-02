@@ -27,13 +27,11 @@ from renku.core.project.project_properties import project_properties
 
 def test_local_client(tmpdir):
     """Test a local client."""
-    from renku.core.management.client import LocalClient
-
     with project_properties.with_path(Path(tmpdir.mkdir("project"))):
-        client = LocalClient()
-
         assert project_properties.path
-    assert client.repository is None
+
+        with pytest.raises(ValueError):
+            _ = project_properties.repository
 
 
 @pytest.mark.parametrize(
@@ -46,7 +44,7 @@ def test_local_client(tmpdir):
 )
 def test_ignored_paths(paths, ignored, client):
     """Test resolution of ignored paths."""
-    assert client.find_ignored_paths(*paths) == ignored
+    assert project_properties.repository.get_ignored_paths(*paths) == ignored
 
 
 def test_safe_class_attributes(tmpdir):
@@ -59,30 +57,7 @@ def test_safe_class_attributes(tmpdir):
     from renku.core.management.client import LocalClient
 
     # NOTE: attributes that are allowed on LocalClient
-    safe_attributes = [
-        "DATABASE_PATH",
-        "DATA_DIR_CONFIG_KEY",
-        "DEPENDENCY_GRAPH",
-        "DOCKERFILE",
-        "LOCK_SUFFIX",
-        "METADATA",
-        "RENKU_LFS_IGNORE_PATH",
-        "RENKU_PROTECTED_PATHS",
-        "TEMPLATE_CHECKSUMS",
-        "_CMD_STORAGE_CHECKOUT",
-        "_CMD_STORAGE_CLEAN",
-        "_CMD_STORAGE_INSTALL",
-        "_CMD_STORAGE_LIST",
-        "_CMD_STORAGE_MIGRATE_INFO",
-        "_CMD_STORAGE_MIGRATE_IMPORT",
-        "_CMD_STORAGE_PULL",
-        "_CMD_STORAGE_STATUS",
-        "_CMD_STORAGE_TRACK",
-        "_CMD_STORAGE_UNTRACK",
-        "_LFS_HEADER",
-        "_database",
-        "_global_config_dir",
-    ]
+    safe_attributes = []
 
     with project_properties.with_path(Path(tmpdir.mkdir("project1"))):
         client1 = LocalClient()

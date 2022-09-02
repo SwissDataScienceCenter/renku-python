@@ -18,11 +18,15 @@
 """Renku core fixtures for datasets testing."""
 
 from contextlib import contextmanager
+from typing import TYPE_CHECKING, Generator
 
 import pytest
 
 from renku.core.dataset.dataset import create_dataset
 from renku.core.dataset.dataset_add import add_to_dataset
+
+if TYPE_CHECKING:
+    from renku.infrastructure.repository import Repository
 
 
 @pytest.fixture
@@ -46,42 +50,34 @@ def dataset_responses():
 
 
 @pytest.fixture
-def client_with_injection(client, client_database_injection_manager):
-    """Return a Renku repository with injected dependencies."""
-
-    with client_database_injection_manager(client):
-        yield client
-
-
-@pytest.fixture
-def client_with_datasets(client, directory_tree, client_database_injection_manager):
+def project_with_datasets(repository, directory_tree, with_injections_manager) -> Generator["Repository", None, None]:
     """A client with datasets."""
     from renku.domain_model.provenance.agent import Person
 
     person_1 = Person.from_string("P1 <p1@example.com> [IANA]")
     person_2 = Person.from_string("P2 <p2@example.com>")
 
-    with client_database_injection_manager(client):
+    with with_injections_manager(repository):
         create_dataset(name="dataset-1", keywords=["dataset", "1"], creators=[person_1])
 
         dataset = add_to_dataset("dataset-2", urls=[str(p) for p in directory_tree.glob("*")], create=True, copy=True)
         dataset.keywords = ["dataset", "2"]
         dataset.creators = [person_1, person_2]
 
-    client.repository.add(all=True)
-    client.repository.commit("add files to datasets")
+    repository.add(all=True)
+    repository.commit("add files to datasets")
 
-    yield client
+    yield repository
 
 
 @pytest.fixture
-def load_dataset_with_injection(client_database_injection_manager):
+def load_dataset_with_injection(with_injections_manager):
     """Load dataset method with injection setup."""
 
     def _inner(name, client):
         from tests.utils import load_dataset
 
-        with client_database_injection_manager(client):
+        with with_injections_manager(client):
             return load_dataset(name)
 
     return _inner

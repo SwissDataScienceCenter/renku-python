@@ -20,7 +20,6 @@ from pathlib import Path
 from typing import Union
 
 from renku.core import errors
-from renku.core.constant import RENKU_HOME
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.client import LocalClient
 from renku.core.project.project_properties import project_properties
@@ -43,9 +42,7 @@ class ClientDispatcher(IClientDispatcher):
 
         return self.client_stack[-1]
 
-    def push_client_to_stack(
-        self, path: Union[Path, str], renku_home: str = RENKU_HOME, external_storage_requested: bool = True
-    ) -> LocalClient:
+    def push_client_to_stack(self, path: Union[Path, str], external_storage_requested: bool = True) -> LocalClient:
         """Create and push a new client to the stack."""
         if isinstance(path, str):
             path = Path(path)

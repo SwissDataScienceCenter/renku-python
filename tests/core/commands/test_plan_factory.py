@@ -38,8 +38,8 @@ def test_03_input(client, client_database_injection_manager):
     whale = Path(project_properties.path) / "whale.txt"
     whale.touch()
 
-    client.repository.add(whale)
-    client.repository.commit("add whale.txt")
+    project_properties.repository.add(whale)
+    project_properties.repository.commit("add whale.txt")
 
     argv = [
         "echo",
@@ -71,8 +71,8 @@ def test_base_command_detection(client, client_database_injection_manager):
     hello = Path(project_properties.path) / "hello.tar"
     hello.touch()
 
-    client.repository.add(hello)
-    client.repository.commit("add hello.tar")
+    project_properties.repository.add(hello)
+    project_properties.repository.commit("add hello.tar")
 
     argv = ["tar", "xf", "hello.tar"]
     with client_database_injection_manager(client):
@@ -94,8 +94,8 @@ def test_base_command_as_file_input(client, client_database_injection_manager):
     input_file = cwd / "input.csv"
     input_file.touch()
 
-    client.repository.add(script, input_file)
-    client.repository.commit("add file")
+    project_properties.repository.add(script, input_file)
+    project_properties.repository.commit("add file")
 
     argv = ["script.py", "input.csv"]
     with client_database_injection_manager(client):
@@ -119,8 +119,8 @@ def test_04_output(client, client_database_injection_manager):
     hello = Path(project_properties.path) / "hello.tar"
     hello.touch()
 
-    client.repository.add(hello)
-    client.repository.commit("add hello.tar")
+    project_properties.repository.add(hello)
+    project_properties.repository.commit("add hello.tar")
 
     argv = ["tar", "xf", "hello.tar"]
     factory = PlanFactory(argv, directory=project_properties.path, working_dir=project_properties.path)
@@ -146,8 +146,8 @@ def test_05_stdout(client, client_database_injection_manager):
     output = Path(project_properties.path) / "output.txt"
     output.touch()
 
-    client.repository.add(output)
-    client.repository.commit("add output")
+    project_properties.repository.add(output)
+    project_properties.repository.commit("add output")
 
     argv = ["echo", "Hello world!"]
     factory = PlanFactory(
@@ -170,8 +170,8 @@ def test_stdout_with_conflicting_arg(client, client_database_injection_manager):
     output = Path(project_properties.path) / "lalala"
     output.touch()
 
-    client.repository.add(output)
-    client.repository.commit("add lalala")
+    project_properties.repository.add(output)
+    project_properties.repository.commit("add lalala")
 
     argv = ["echo", "lalala"]
     factory = PlanFactory(argv, directory=project_properties.path, working_dir=project_properties.path, stdout="lalala")
@@ -189,8 +189,8 @@ def test_06_params(client, client_database_injection_manager):
     """Test referencing input parameters in other fields."""
     hello = Path(project_properties.path) / "hello.tar"
     hello.touch()
-    client.repository.add(hello)
-    client.repository.commit("add hello.tar")
+    project_properties.repository.add(hello)
+    project_properties.repository.commit("add hello.tar")
 
     argv = ["tar", "xf", "hello.tar", "goodbye.txt"]
     factory = PlanFactory(argv, directory=project_properties.path, working_dir=project_properties.path)
@@ -235,8 +235,8 @@ def test_stdin_and_stdout(argv, client, client_database_injection_manager):
     error = Path(project_properties.path) / "error.txt"
     error.touch()
 
-    client.repository.add(input_, output, error)
-    client.repository.commit("add files")
+    project_properties.repository.add(input_, output, error)
+    project_properties.repository.commit("add files")
 
     factory = PlanFactory(
         argv,
@@ -283,8 +283,8 @@ def test_input_directory(client, client_database_injection_manager):
     src_tar = cwd / "src.tar"
     src_tar.touch()
 
-    client.repository.add(src, src_tar)
-    client.repository.commit("add file and folder")
+    project_properties.repository.add(src, src_tar)
+    project_properties.repository.commit("add file and folder")
 
     argv = ["tar", "czvf", "src.tar", "src"]
     factory = PlanFactory(argv, directory=project_properties.path, working_dir=project_properties.path)

@@ -28,7 +28,7 @@ from tests.utils import format_result_exception, write_and_commit_file
 
 
 @pytest.mark.parametrize("sub_path", [".", "src", "src/notebooks"])
-def test_get_project(client, sub_path):
+def test_get_project(project, sub_path):
     """Test getting Project context within a repository."""
     working_dir = project_properties.path / sub_path
     working_dir.mkdir(exist_ok=True, parents=True)
@@ -38,7 +38,7 @@ def test_get_project(client, sub_path):
         assert project_properties.path == project.path
 
 
-def test_get_project_multiple(client):
+def test_get_project_multiple(project):
     """Test getting Project context multiple times within a repository."""
     with Project() as project_1:
         pass
@@ -49,7 +49,7 @@ def test_get_project_multiple(client):
     assert project_1.path == project_2.path
 
 
-def test_get_or_create_project(client):
+def test_get_or_create_project(project):
     """Test getting Project context or creating one yields similar results."""
     with Project() as project_1:
         pass
@@ -64,15 +64,17 @@ def test_get_project_outside_a_renku_project(directory_tree):
     os.chdir(directory_tree)
 
     with Project() as project:
-        assert project.client is None
+        assert project.repository is None
 
 
-def test_status(runner, client):
+def test_status(runner, project):
     """Test status check."""
     source = project_properties.path / "source.txt"
     output = project_properties.path / "data" / "output.txt"
 
-    write_and_commit_file(client.repository, source, "content")
+    repository = project_properties.repository
+
+    write_and_commit_file(repository, source, "content")
 
     result = runner.invoke(cli, ["run", "cp", source, output])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -80,7 +82,7 @@ def test_status(runner, client):
     result = runner.invoke(cli, ["run", "cat", "--no-output", source])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    write_and_commit_file(client.repository, source, "new content")
+    write_and_commit_file(repository, source, "new content")
 
     result = Project().status()
 

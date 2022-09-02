@@ -24,25 +24,19 @@ from urllib.parse import unquote
 
 import click
 
-from renku.command.command_builder import inject
+from renku.command.echo import progressbar
 from renku.core.errors import WorkflowRerunError
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.project.project_properties import project_properties
+from renku.core.util.os import expand_directories
 
-from .echo import progressbar
 
-
-@inject.autoparams()
-def execute(output_file, client_dispatcher: IClientDispatcher, output_paths=None):
+def execute(output_file, output_paths=None):
     """Run the generated workflow using cwltool library.
 
     Args:
         output_file: Path to CWL file.
-        client_dispatcher(IClientDispatcher):  Injected client dispatcher.
         output_paths: List of generated paths (Default value = None).
     """
-    client = client_dispatcher.current_client
-
     output_paths = output_paths or set()
 
     import cwltool.factory
@@ -105,8 +99,23 @@ def execute(output_file, client_dispatcher: IClientDispatcher, output_paths=None
                     shutil.move(location, str(destination))
                     continue
 
-    unchanged_paths = client.remove_unmodified(output_paths)
+    unchanged_paths = remove_unmodified(output_paths)
     if unchanged_paths:
         click.echo(
             "Unchanged files:\n\n\t{0}".format("\n\t".join(click.style(path, fg="yellow") for path in unchanged_paths))
         )
+
+
+def remove_unmodified(paths):
+    """Remove unmodified paths and return their names."""
+    tested_paths = set(expand_directories(paths))
+
+    # Keep only unchanged files in the output paths.
+    tracked_paths = {
+        d.b_path
+        for d in project_properties.repository.unstaged_changes
+        if d.change_type in {"A", "R", "M", "T"} and d.b_path in tested_paths
+    }
+    unchanged_paths = tested_paths - tracked_paths
+
+    return unchanged_paths

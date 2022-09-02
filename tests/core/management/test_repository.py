@@ -17,28 +17,25 @@
 # limitations under the License.
 """Repository tests."""
 
+import tempfile
 from pathlib import Path
 
 from renku.command.dataset import create_dataset_command
-from renku.core.management.client import LocalClient
+from renku.command.init import init_repository
 from renku.core.project.project_properties import project_properties
-from renku.infrastructure.repository import Repository
 
 
-def test_latest_version(project, client_database_injection_manager):
+def test_latest_version(project):
     """Test returning the latest version of `SoftwareAgent`."""
     from renku import __version__
 
     create_dataset_command().build().execute("ds1", title="", description="", creators=[])
 
-    with project_properties.with_path(Path(project)):
-        client = LocalClient()
-        with client_database_injection_manager(client):
-            agent_version = client.latest_agent
-        assert __version__ == agent_version
+    with project_properties.with_path(project.path):
+        assert __version__ == project_properties.latest_agent
 
 
-def test_latest_version_user_commits(project, client_database_injection_manager):
+def test_latest_version_user_commits(repository):
     """Test retrieval of `SoftwareAgent` with latest non-renku command."""
     from renku import __version__
 
@@ -47,20 +44,20 @@ def test_latest_version_user_commits(project, client_database_injection_manager)
     file = Path("my-file")
     file.write_text("123")
 
-    repository = Repository(project)
     repository.add(file)
     repository.commit("added my-file")
 
-    with project_properties.with_path(Path(project)):
-        client = LocalClient()
-        with client_database_injection_manager(client):
-            agent_version = client.latest_agent
-        assert __version__ == agent_version
+    with project_properties.with_path(repository.path):
+        assert __version__ == project_properties.latest_agent
 
 
-def test_init_repository(local_client):
+def test_init_repository():
     """Test initializing an empty repository."""
-    local_client.init_repository()
-    assert (project_properties.path / ".git").exists()
-    assert (project_properties.path / ".git" / "HEAD").exists()
-    assert not (project_properties.path / ".renku").exists()
+    with tempfile.TemporaryDirectory() as tempdir, project_properties.with_path(tempdir):
+        assert not (project_properties.path / ".git").exists()
+
+        init_repository()
+
+        assert (project_properties.path / ".git").exists()
+        assert (project_properties.path / ".git" / "HEAD").exists()
+        assert not (project_properties.path / ".renku").exists()

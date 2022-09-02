@@ -20,11 +20,9 @@
 from pathlib import Path
 from typing import Optional
 
-from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
 from renku.core import errors
 from renku.core.errors import ParameterError
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.project.project_properties import project_properties
 from renku.core.util.os import get_relative_paths
 from renku.core.workflow.activity import (
@@ -47,12 +45,10 @@ def update_command(skip_metadata_update: bool):
     return command
 
 
-@inject.autoparams()
 def _update(
     update_all: bool,
     dry_run: bool,
     ignore_deleted: bool,
-    client_dispatcher: IClientDispatcher,
     provider: str,
     config: Optional[str],
     paths=None,
@@ -62,12 +58,10 @@ def _update(
     if paths and update_all:
         raise ParameterError("Cannot use PATHS and --all/-a at the same time.")
 
-    client = client_dispatcher.current_client
-
     paths = paths or []
     paths = get_relative_paths(base=project_properties.path, paths=[Path.cwd() / p for p in paths])
 
-    modified, _ = get_all_modified_and_deleted_activities_and_entities(client.repository)
+    modified, _ = get_all_modified_and_deleted_activities_and_entities(project_properties.repository)
     modified_activities = {a for a, _ in modified if not a.deleted and is_activity_valid(a)}
     modified_paths = {e.path for _, e in modified}
 

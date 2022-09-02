@@ -18,7 +18,7 @@
 """Project management."""
 
 from renku.command.command_builder.command import Command
-from renku.core.management.repository import DATABASE_METADATA_PATH
+from renku.core.constant import DATABASE_METADATA_PATH
 from renku.core.project.project import edit_project, show_project
 
 

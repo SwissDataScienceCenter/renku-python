@@ -31,7 +31,7 @@ def test_hostname():
     try:
         os.environ["RENKU_DOMAIN"] = "alternative-domain"
 
-        assert "alternative-domain" == get_host(None)
+        assert "alternative-domain" == get_host(False)
     finally:
         if renku_domain:
             os.environ["RENKU_DOMAIN"] = renku_domain

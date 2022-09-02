@@ -22,6 +22,7 @@ from typing import List, Optional, Union
 
 from renku.command.command_builder.command import Command, CommandResult, check_finalized
 from renku.core import errors
+from renku.core.git import ensure_clean
 
 
 class Commit(Command):
@@ -60,18 +61,14 @@ class Commit(Command):
             builder(Command): The current ``CommandBuilder``.
             context(dict): The current context object.
         """
+        from renku.core.git import prepare_commit
+
         if "client_dispatcher" not in context:
             raise ValueError("Commit builder needs a IClientDispatcher to be set.")
         if "stack" not in context:
             raise ValueError("Commit builder needs a stack to be set.")
 
-        from renku.core.management.git import prepare_commit
-
-        self.diff_before = prepare_commit(
-            context["client_dispatcher"].current_client,
-            commit_only=self._commit_filter_paths,
-            skip_staging=self._skip_staging,
-        )
+        self.diff_before = prepare_commit(commit_only=self._commit_filter_paths, skip_staging=self._skip_staging)
 
     def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs):
         """Hook that commits changes.
@@ -81,7 +78,7 @@ class Commit(Command):
             context(dict): The current context object.
             result(CommandResult): The result of the command execution.
         """
-        from renku.core.management.git import finalize_commit
+        from renku.core.git import finalize_commit
 
         if result.error:
             # TODO: Cleanup repo
@@ -89,8 +86,7 @@ class Commit(Command):
 
         try:
             finalize_commit(
-                context["client_dispatcher"].current_client,
-                self.diff_before,
+                diff_before=self.diff_before,
                 commit_only=self._commit_filter_paths,
                 commit_empty=self._commit_if_empty,
                 raise_if_empty=self._raise_if_empty,
@@ -146,7 +142,7 @@ class RequireClean(Command):
         if "client_dispatcher" not in context:
             raise ValueError("Commit builder needs a IClientDispatcher to be set.")
 
-        context["client_dispatcher"].current_client.ensure_clean(ignore_std_streams=not builder._track_std_streams)
+        ensure_clean(ignore_std_streams=not builder._track_std_streams)
 
     @check_finalized
     def build(self) -> Command:
@@ -179,14 +175,15 @@ class Isolation(Command):
             builder(Command): Current ``CommandBuilder``.
             context(dict): Current context.
         """
+        from renku.core.git import prepare_worktree
+
         if "client_dispatcher" not in context:
             raise ValueError("Commit builder needs a IClientDispatcher to be set.")
-        from renku.core.management.git import prepare_worktree
 
         self.original_client = context["client_dispatcher"].current_client
 
         self.new_client, self.isolation, self.path, self.branch_name = prepare_worktree(
-            context["client_dispatcher"].current_client, path=None, branch_name=None, commit=None
+            path=None, branch_name=None, commit=None
         )
 
         context["client_dispatcher"].push_created_client_to_stack(self.new_client)
@@ -198,16 +195,15 @@ class Isolation(Command):
             builder(Command): Current ``CommandBuilder``.
             context(dict): Current context.
         """
-        from renku.core.management.git import finalize_worktree
+        from renku.core.git import finalize_worktree
 
         context["client_dispatcher"].pop_client()
 
         try:
             finalize_worktree(
-                self.original_client,
-                self.isolation,
-                self.path,
-                self.branch_name,
+                isolation=self.isolation,
+                path=self.path,
+                branch_name=self.branch_name,
                 delete=True,
                 new_branch=True,
                 exception=result.error,

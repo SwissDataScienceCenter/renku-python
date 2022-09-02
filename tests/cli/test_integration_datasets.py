@@ -27,8 +27,9 @@ from urllib import parse
 import pytest
 
 from renku.core import errors
+from renku.core.config import get_value, remove_value, set_value
+from renku.core.constant import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.interface.storage import FileHash
-from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.project.project_properties import project_properties
 from renku.core.util.contexts import chdir
 from renku.core.util.git import get_git_user
@@ -135,14 +136,14 @@ def test_dataset_import_real_doi(runner, client, doi, prefix, sleep_after, load_
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.vcr
-def test_dataset_import_real_param(doi, input, runner, project, sleep_after, client, load_dataset_with_injection):
+def test_dataset_import_real_param(doi, input, runner, project, sleep_after, load_dataset_with_injection):
     """Test dataset import and check metadata parsing."""
     result = runner.invoke(cli, ["dataset", "import", "--name", "remote", doi], input=input)
 
     if "y" == input:
         assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
         assert "OK" in result.output
-        dataset = load_dataset_with_injection("remote", client)
+        dataset = load_dataset_with_injection("remote", project)
         assert doi in dataset.same_as.url
     else:
         assert 1 == result.exit_code, format_result_exception(result)
@@ -239,13 +240,13 @@ def test_dataset_import_real_http(runner, project, url, sleep_after):
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.vcr
-def test_dataset_import_and_extract(runner, project, client, sleep_after, load_dataset_with_injection):
+def test_dataset_import_and_extract(runner, project, sleep_after, load_dataset_with_injection):
     """Test dataset import and extract files."""
     url = "https://zenodo.org/record/2658634"
     result = runner.invoke(cli, ["dataset", "import", "--extract", "--short-name", "remote", url], input="y")
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    dataset = load_dataset_with_injection("remote", client)
+    dataset = load_dataset_with_injection("remote", project)
     extracted_file = "data/remote/quantling-pyndl-c34259c/doc/make.bat"
     assert dataset.find_file(extracted_file)
 
@@ -403,16 +404,16 @@ def test_dataset_import_renkulab_dataset_with_image(runner, project, client, cli
     "datadir_option,expected_datadir", [([], Path(DATA_DIR) / "remote"), (["--datadir", "mydir"], Path("mydir"))]
 )
 def test_import_renku_dataset_preserves_directory_hierarchy(
-    runner, project, client, load_dataset_with_injection, datadir_option, expected_datadir
+    runner, project, load_dataset_with_injection, datadir_option, expected_datadir
 ):
     """Test dataset imported from Renku projects have correct directory hierarchy."""
     url = "https://dev.renku.ch/datasets/1a637fd1a7a64d1fb9aa157e7033cd1c"
     assert 0 == runner.invoke(cli, ["dataset", "import", "--yes", "--name", "remote", url] + datadir_option).exit_code
 
-    dataset = load_dataset_with_injection("remote", client)
+    dataset = load_dataset_with_injection("remote", project)
     paths = ["README.md", os.path.join("python", "data", "README.md"), os.path.join("r", "data", "README.md")]
 
-    data_dir = Path(dataset.get_datadir(client))
+    data_dir = Path(dataset.get_datadir())
     assert data_dir == expected_datadir
     for path in paths:
         assert (data_dir / path).exists()
@@ -532,7 +533,7 @@ def test_renku_dataset_import_missing_lfs_objects(runner, project):
     [
         ("zenodo", [], "zenodo.org/deposit", None),
         ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:", "1"),
-        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/", None),
+        # ("olos",["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/", None),
     ],
 )
 def test_dataset_export_upload_file(
@@ -567,8 +568,8 @@ def test_dataset_export_upload_file(
             dataset.description = "awesome dataset"
             dataset.creators[0].affiliation = "eth"
 
-    client.repository.add(all=True)
-    client.repository.commit("metadata updated")
+    project_properties.repository.add(all=True)
+    project_properties.repository.commit("metadata updated")
 
     result = runner.invoke(
         cli, ["dataset", "export", "my-dataset", provider] + params, input=input, catch_exceptions=False
@@ -590,7 +591,7 @@ def test_dataset_export_upload_file(
     [
         ("zenodo", [], "zenodo.org/deposit", None),
         ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:", "1"),
-        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/", None),
+        # ("olos",["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/", None),
     ],
 )
 def test_dataset_export_upload_tag(
@@ -624,8 +625,8 @@ def test_dataset_export_upload_tag(
             dataset.description = "awesome dataset"
             dataset.creators[0].affiliation = "eth"
 
-    client.repository.add(all=True)
-    client.repository.commit("metadata updated")
+    project_properties.repository.add(all=True)
+    project_properties.repository.commit("metadata updated")
 
     # tag dataset
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "1.0"])
@@ -715,7 +716,7 @@ def test_dataset_export_to_local(runner, tmp_path):
     [
         ("zenodo", [], "zenodo.org/deposit", None),
         ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:", "1"),
-        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/", None),
+        # ("olos",["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/", None),
     ],
 )
 def test_dataset_export_upload_multiple(
@@ -753,8 +754,8 @@ def test_dataset_export_upload_multiple(
             dataset.description = "awesome dataset"
             dataset.creators[0].affiliation = "eth"
 
-    client.repository.add(all=True)
-    client.repository.commit("metadata updated")
+    project_properties.repository.add(all=True)
+    project_properties.repository.commit("metadata updated")
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params, input=input)
 
@@ -814,8 +815,8 @@ def test_dataset_export_published_url(runner, tmpdir, client, zenodo_sandbox, da
         dataset.description = "awesome dataset"
         dataset.creators[0].affiliation = "eth"
 
-    client.repository.add(all=True)
-    client.repository.commit("metadata updated")
+    project_properties.repository.add(all=True)
+    project_properties.repository.commit("metadata updated")
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider, "--publish"] + params)
 
@@ -872,9 +873,9 @@ def test_export_dataset_unauthorized(
     runner, project, client, tmpdir, zenodo_sandbox, dataverse_demo, olos_sandbox, provider, params
 ):
     """Test unauthorized exception raised."""
-    client.set_value(provider, "access_token", "not-a-token")
-    client.repository.add(".renku/renku.ini")
-    client.repository.commit("update renku.ini")
+    set_value(provider, "access_token", "not-a-token")
+    project_properties.repository.add(".renku/renku.ini")
+    project_properties.repository.commit("update renku.ini")
 
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
@@ -893,7 +894,7 @@ def test_export_dataset_unauthorized(
     assert 1 == result.exit_code, result.output + str(result.stderr_bytes)
     assert "Access unauthorized - update access token." in result.output, format_result_exception(result)
 
-    secret = client.get_value("zenodo", "secret")
+    secret = get_value("zenodo", "secret")
     assert secret is None
 
 
@@ -914,11 +915,11 @@ def test_export_dataverse_no_dataverse_name(runner, project, client, dataverse_d
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.vcr
-def test_export_dataverse_no_dataverse_url(runner, client, dataverse_demo, global_config_dir):
+def test_export_dataverse_no_dataverse_url(runner, client, dataverse_demo):
     """Test export without providing a dataverse server url."""
-    client.remove_value("dataverse", "server_url")
-    client.repository.add(".renku/renku.ini")
-    client.repository.commit("renku.ini")
+    remove_value("dataverse", "server_url")
+    project_properties.repository.add(".renku/renku.ini")
+    project_properties.repository.commit("renku.ini")
 
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
@@ -950,7 +951,7 @@ def test_export_imported_dataset_to_dataverse(runner, client, dataverse_demo, ze
 
 @pytest.mark.integration
 @pytest.mark.vcr
-def test_add_from_url_to_destination(runner, client, load_dataset_with_injection):
+def test_add_from_url_to_destination(runner, project, load_dataset_with_injection):
     """Test add data from a URL to a new destination."""
     url = "https://raw.githubusercontent.com/SwissDataScienceCenter/renku-python/master/docs/Makefile"
     assert 0 == runner.invoke(cli, ["dataset", "create", "remote"], catch_exceptions=False).exit_code
@@ -958,11 +959,11 @@ def test_add_from_url_to_destination(runner, client, load_dataset_with_injection
     result = runner.invoke(cli, ["dataset", "add", "--copy", "remote", "-d", "new-name", url])
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    relative_path = os.path.join(client.data_dir, "remote", "new-name")
+    relative_path = os.path.join("data", "remote", "new-name")
     assert (project_properties.path / relative_path).exists()
     assert (project_properties.path / relative_path).is_file()
 
-    dataset = load_dataset_with_injection("remote", client)
+    dataset = load_dataset_with_injection("remote", project)
     assert dataset.find_file(relative_path) is not None
 
 
@@ -1015,7 +1016,9 @@ def test_add_from_git_to_existing_path(
     remote = "https://github.com/SwissDataScienceCenter/renku-jupyter.git"
     assert 0 == runner.invoke(cli, ["dataset", "create", "remote"], catch_exceptions=False).exit_code
 
-    write_and_commit_file(client.repository, project_properties.path / "data" / "remote" / "existing" / ".gitkeep", "")
+    write_and_commit_file(
+        project_properties.repository, project_properties.path / "data" / "remote" / "existing" / ".gitkeep", ""
+    )
 
     result = runner.invoke(cli, ["dataset", "add", "--copy", "remote", "--ref", "0.3.0", remote] + params)
 
@@ -1092,7 +1095,7 @@ def test_add_data_in_multiple_places_from_git(runner, client, load_dataset_with_
     assert 0 == runner.invoke(cli, args + ["-s", "docker/base/Dockerfile", url]).exit_code
 
     dataset = load_dataset_with_injection("remote", client)
-    data_dir = Path(dataset.get_datadir(client))
+    data_dir = Path(dataset.get_datadir())
     based_on_id = dataset.find_file(data_dir / "Dockerfile").based_on.id
 
     assert 0 == runner.invoke(cli, args + ["-s", "docker", url]).exit_code
@@ -1181,7 +1184,7 @@ def test_dataset_update_zenodo(client, runner, doi, load_dataset_with_injection)
         cli, ["dataset", "import", "--short-name", "imported_dataset", doi], input="y", catch_exceptions=False
     )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    commit_sha_after_file1_delete = client.repository.head.commit.hexsha
+    commit_sha_after_file1_delete = project_properties.repository.head.commit.hexsha
 
     before_dataset = load_dataset_with_injection("imported_dataset", client)
 
@@ -1190,8 +1193,8 @@ def test_dataset_update_zenodo(client, runner, doi, load_dataset_with_injection)
     assert 0 == result.exit_code, format_result_exception(result)
     assert "The following imported datasets will be updated" in result.output
     assert "imported_dataset" in result.output
-    assert commit_sha_after_file1_delete == client.repository.head.commit.hexsha
-    assert not client.repository.is_dirty(untracked_files=True)
+    assert commit_sha_after_file1_delete == project_properties.repository.head.commit.hexsha
+    assert not project_properties.repository.is_dirty(untracked_files=True)
 
     result = runner.invoke(cli, ["dataset", "update", "imported_dataset"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
@@ -1226,8 +1229,8 @@ def test_dataset_update_dataverse(client, runner, doi, load_dataset_with_injecti
         with with_dataset(client, name="imported_dataset", commit_database=True) as dataset:
             dataset.version = "0.1"
 
-    client.repository.add(all=True)
-    client.repository.commit("metadata updated")
+    project_properties.repository.add(all=True)
+    project_properties.repository.commit("metadata updated")
 
     before_dataset = load_dataset_with_injection("imported_dataset", client)
 
@@ -1258,10 +1261,10 @@ def test_dataset_update_renku(client, runner, load_dataset_with_injection, clien
             update_uri = "https://dev.renku.ch/datasets/04b463b01b514833b236186a941f6259"
             dataset.same_as = Url(url_id=update_uri)
 
-    client.repository.add(all=True)
-    client.repository.commit("metadata updated")
+    project_properties.repository.add(all=True)
+    project_properties.repository.commit("metadata updated")
 
-    commit_sha_after_file1_delete = client.repository.head.commit.hexsha
+    commit_sha_after_file1_delete = project_properties.repository.head.commit.hexsha
 
     before_dataset = load_dataset_with_injection("imported_dataset", client)
 
@@ -1270,8 +1273,8 @@ def test_dataset_update_renku(client, runner, load_dataset_with_injection, clien
     assert 0 == result.exit_code, format_result_exception(result)
     assert "The following imported datasets will be updated" in result.output
     assert "remote-dataset" in result.output
-    assert commit_sha_after_file1_delete == client.repository.head.commit.hexsha
-    assert not client.repository.is_dirty(untracked_files=True)
+    assert commit_sha_after_file1_delete == project_properties.repository.head.commit.hexsha
+    assert not project_properties.repository.is_dirty(untracked_files=True)
 
     result = runner.invoke(cli, ["dataset", "update", "--all"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
@@ -1426,10 +1429,10 @@ def test_empty_update(client, runner, data_repository):
     )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    commit_sha_before = client.repository.head.commit.hexsha
+    commit_sha_before = project_properties.repository.head.commit.hexsha
     result = runner.invoke(cli, ["dataset", "update", "--ref", "0.3.0", "--all"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    commit_sha_after = client.repository.head.commit.hexsha
+    commit_sha_after = project_properties.repository.head.commit.hexsha
     assert commit_sha_after == commit_sha_before
 
 
@@ -1437,20 +1440,17 @@ def test_empty_update(client, runner, data_repository):
 @retry_failed
 def test_import_from_renku_project(tmpdir, client, runner, load_dataset_with_injection):
     """Check metadata for an imported dataset from other renkulab repo."""
-    from renku.core.management.client import LocalClient
-
     url = "https://dev.renku.ch/gitlab/renku-testing/project-9.git"
 
     path = tmpdir.mkdir("remote_repo")
     os.environ["GIT_LFS_SKIP_SMUDGE"] = "1"
     Repository.clone_from(url=url, path=path, recursive=True)
 
-    with project_properties.with_path(Path(path)):
-        remote_client = LocalClient()
+    with project_properties.with_path(path):
         with chdir(project_properties.path):
             runner.invoke(cli, ["migrate", "--strict"])
 
-        file = load_dataset_with_injection("testing-create-04", remote_client).find_file(
+        file = load_dataset_with_injection("testing-create-04", project_properties.repository).find_file(
             "data/testing-create-04/ie_data_with_TRCAPE.xls"
         )
 
@@ -1542,15 +1542,15 @@ def test_update_specific_refs(ref, runner, client):
     content = (project_properties.path / file).read_text()
     assert "v0.3.1" not in content
 
-    commit_sha_after_file1_delete = client.repository.head.commit.hexsha
+    commit_sha_after_file1_delete = project_properties.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["dataset", "update", "--ref", ref, "--all", "--dry-run"])
 
     assert 1 == result.exit_code, format_result_exception(result)
     assert "The following files will be updated" in result.output
     assert str(file) in result.output
-    assert commit_sha_after_file1_delete == client.repository.head.commit.hexsha
-    assert not client.repository.is_dirty(untracked_files=True)
+    assert commit_sha_after_file1_delete == project_properties.repository.head.commit.hexsha
+    assert not project_properties.repository.is_dirty(untracked_files=True)
 
     # update data to a later version
     result = runner.invoke(cli, ["dataset", "update", "--ref", ref, "--all"])
@@ -1712,8 +1712,6 @@ def test_check_disk_space(runner, client, monkeypatch, url):
 @retry_failed
 def test_migration_submodule_datasets(isolated_runner, old_repository_with_submodules, load_dataset_with_injection):
     """Test migration of datasets that use submodules."""
-    from renku.core.management.client import LocalClient
-
     project_path = old_repository_with_submodules.path
     os.chdir(project_path)
 
@@ -1725,9 +1723,7 @@ def test_migration_submodule_datasets(isolated_runner, old_repository_with_submo
     assert [] == list(old_repository_with_submodules.submodules)
 
     with project_properties.with_path(project_path):
-        client = LocalClient()
-
-        dataset = load_dataset_with_injection("remote", client)
+        dataset = load_dataset_with_injection("remote", project_properties.repository)
 
     for file in dataset.files:
         path = Path(file.entity.path)
@@ -1742,7 +1738,7 @@ def test_migration_submodule_datasets(isolated_runner, old_repository_with_submo
 @pytest.mark.parametrize("url,size", [("https://www.dropbox.com/s/qcpts6fc81x6j4f/addme?dl=0", 5)])
 @retry_failed
 @pytest.mark.vcr
-def test_dataset_add_dropbox(runner, client, project, url, size):
+def test_dataset_add_dropbox(runner, project, url, size):
     """Test importing data from dropbox."""
     result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-dropbox-data", url], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
@@ -1750,7 +1746,7 @@ def test_dataset_add_dropbox(runner, client, project, url, size):
     filename = Path(parse.urlparse(url).path).name
     assert url
 
-    datafile = Path(project) / "data/my-dropbox-data" / filename
+    datafile = project.path / "data/my-dropbox-data" / filename
     assert size == len(datafile.read_text())
 
 
@@ -1779,7 +1775,7 @@ def test_immutability_after_import(runner, client, load_dataset_with_injection):
     assert 0 == runner.invoke(cli, ["dataset", "edit", "my-dataset", "-k", "new-data"]).exit_code
 
     dataset = load_dataset_with_injection("my-dataset", client)
-    mutator = get_git_user(client.repository)
+    mutator = get_git_user(project_properties.repository)
     assert_dataset_is_mutated(old=old_dataset, new=dataset, mutator=mutator)
 
 
@@ -1797,7 +1793,7 @@ def test_immutability_after_update(client, runner, load_dataset_with_injection):
     assert 0 == runner.invoke(cli, ["dataset", "update", "--all"], catch_exceptions=False).exit_code
 
     dataset = load_dataset_with_injection("my-data", client)
-    mutator = get_git_user(client.repository)
+    mutator = get_git_user(project_properties.repository)
     assert_dataset_is_mutated(old=old_dataset, new=dataset, mutator=mutator)
 
 
@@ -1886,7 +1882,7 @@ def test_datasets_import_with_tag(client, runner, get_datasets_provenance_with_i
     assert doi == dataset.same_as.value
     assert "Updated on 01.06.2022" not in (dataset_path / "parts.csv").read_text()
 
-    git_attributes = (client.repository.path / ".gitattributes").read_text()
+    git_attributes = (project_properties.repository.path / ".gitattributes").read_text()
     assert "data/parts/parts.csv" in git_attributes
     assert "data/parts/part_relationships.csv" in git_attributes
 
@@ -1904,11 +1900,11 @@ def test_datasets_imported_with_tag_are_not_updated(client, runner):
     doi = "https://dev.renku.ch/datasets/ddafee6bb38a46f99346cb563afc2c64"
     assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--tag", "v1", doi]).exit_code
 
-    commit_sha_before = client.repository.head.commit.hexsha
+    commit_sha_before = project_properties.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["dataset", "update", "--all"])
 
-    commit_sha_after = client.repository.head.commit.hexsha
+    commit_sha_after = project_properties.repository.head.commit.hexsha
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Skipped updating imported Renku dataset 'parts' with tag 'v1'" in result.output
@@ -1930,8 +1926,8 @@ def test_dataset_update_removes_deleted_files(
         with with_dataset(client, name="parts", commit_database=True) as dataset:
             dataset.version = None
             dataset.same_as = Url(url_id="https://dev.renku.ch/datasets/abc934939cbf45dca0cfef61d05fa132")
-    client.repository.add(all=True)
-    client.repository.commit("metadata updated")
+    project_properties.repository.add(all=True)
+    project_properties.repository.commit("metadata updated")
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
         dataset = datasets_provenance.get_by_name("parts")
@@ -1973,7 +1969,7 @@ def test_dataset_ls_with_tag(runner, tmp_path):
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.vcr
-def test_create_with_s3_backend(runner, client, global_config_dir, load_dataset_with_injection):
+def test_create_with_s3_backend(runner, client, load_dataset_with_injection):
     """Test creating a dataset with a valid S3 backend storage."""
     result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://giab/"], input="\n\n\n")
 
@@ -1985,13 +1981,13 @@ def test_create_with_s3_backend(runner, client, global_config_dir, load_dataset_
 
     # NOTE: Dataset's data dir is git-ignored
     dataset_datadir = os.path.join(DATA_DIR, "s3-data")
-    assert {dataset_datadir} == set(client.repository.get_ignored_paths(dataset_datadir))
+    assert {dataset_datadir} == set(project_properties.repository.get_ignored_paths(dataset_datadir))
 
 
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.vcr
-def test_create_with_non_existing_s3_backend(runner, client, global_config_dir, load_dataset_with_injection):
+def test_create_with_non_existing_s3_backend(runner, client, load_dataset_with_injection):
     """Test creating a dataset with an invalid S3 backend storage."""
     result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://no-giab/"], input="\n\n\n")
 
@@ -2002,7 +1998,7 @@ def test_create_with_non_existing_s3_backend(runner, client, global_config_dir, 
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.vcr
-def test_create_with_unauthorized_s3_backend(runner, client, global_config_dir, load_dataset_with_injection):
+def test_create_with_unauthorized_s3_backend(runner, client, load_dataset_with_injection):
     """Test creating a dataset with an invalid credentials."""
     result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://amazon/"], input="\n\n\n")
 
@@ -2013,9 +2009,7 @@ def test_create_with_unauthorized_s3_backend(runner, client, global_config_dir, 
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.vcr
-def test_pull_data_from_s3_backend(
-    runner, client, global_config_dir, client_database_injection_manager, load_dataset_with_injection
-):
+def test_pull_data_from_s3_backend(runner, client, load_dataset_with_injection):
     """Test pulling data for a dataset with an S3 backend."""
     result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://giab/"], input="\n\n\n")
 
@@ -2054,9 +2048,7 @@ def test_pull_data_from_s3_backend(
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.vcr
-def test_pull_data_from_s3_backend_to_a_location(
-    runner, client, global_config_dir, load_dataset_with_injection, tmp_path
-):
+def test_pull_data_from_s3_backend_to_a_location(runner, client, load_dataset_with_injection, tmp_path):
     """Test pulling data for a dataset with an S3 backend to a location other than dataset's data directory."""
     result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://giab/"], input="\n\n\n")
 
@@ -2195,7 +2187,7 @@ def test_adding_s3_data_outside_sub_path_not_allowed(runner, client, create_s3_d
 
 @pytest.mark.integration
 @retry_failed
-def test_mount_unmount_data_from_s3_backend(runner, client, global_config_dir):
+def test_mount_unmount_data_from_s3_backend(runner, client):
     """Test mounting/unmounting data for a dataset with an S3 backend."""
     result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://giab/"], input="\n\n\n")
 
@@ -2225,7 +2217,7 @@ def test_mount_unmount_data_from_s3_backend(runner, client, global_config_dir):
 
 @pytest.mark.integration
 @retry_failed
-def test_mount_data_from_an_existing_mount_point(runner, client, global_config_dir, tmp_path):
+def test_mount_data_from_an_existing_mount_point(runner, client, tmp_path):
     """Test get data for a dataset with an S3 backend from an existing mount-point."""
     result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://giab/"], input="\n\n\n")
 

@@ -29,63 +29,63 @@ from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from tests.utils import create_dummy_plan
 
 
-def _create_run(name: str) -> Plan:
-
-    run_id = Plan.generate_id()
-    input1 = CommandInput(
-        id=CommandInput.generate_id(run_id, 1),
-        position=1,
-        default_value="1",
-        name=f"{name}_input1",
-    )
-    input2 = CommandInput(
-        id=CommandInput.generate_id(run_id, 2),
-        position=2,
-        default_value="2",
-        name=f"{name}_input2",
-    )
-
-    output1 = CommandOutput(
-        id=CommandOutput.generate_id(run_id, 3),
-        position=3,
-        default_value="3",
-        name=f"{name}_output1",
-    )
-    output2 = CommandOutput(
-        id=CommandOutput.generate_id(run_id, 4),
-        position=4,
-        default_value="4",
-        name=f"{name}_output2",
-    )
-
-    param1 = CommandParameter(
-        id=CommandParameter.generate_id(run_id, 5),
-        position=5,
-        default_value=5,
-        name=f"{name}_param1",
-    )
-    param2 = CommandParameter(
-        id=CommandParameter.generate_id(run_id, 6),
-        position=6,
-        default_value=6,
-        name=f"{name}_param2",
-    )
-
-    return Plan(
-        id=run_id,
-        name=name,
-        command="cat",
-        inputs=[input1, input2],
-        outputs=[output1, output2],
-        parameters=[param1, param2],
-    )
-
-
 @pytest.fixture
 def composite_plan():
     """Fixture for a basic CompositePlan."""
-    run1 = _create_run("run1")
-    run2 = _create_run("run2")
+
+    def create_run(name: str) -> Plan:
+
+        run_id = Plan.generate_id()
+        input1 = CommandInput(
+            id=CommandInput.generate_id(run_id, 1),
+            position=1,
+            default_value="1",
+            name=f"{name}_input1",
+        )
+        input2 = CommandInput(
+            id=CommandInput.generate_id(run_id, 2),
+            position=2,
+            default_value="2",
+            name=f"{name}_input2",
+        )
+
+        output1 = CommandOutput(
+            id=CommandOutput.generate_id(run_id, 3),
+            position=3,
+            default_value="3",
+            name=f"{name}_output1",
+        )
+        output2 = CommandOutput(
+            id=CommandOutput.generate_id(run_id, 4),
+            position=4,
+            default_value="4",
+            name=f"{name}_output2",
+        )
+
+        param1 = CommandParameter(
+            id=CommandParameter.generate_id(run_id, 5),
+            position=5,
+            default_value=5,
+            name=f"{name}_param1",
+        )
+        param2 = CommandParameter(
+            id=CommandParameter.generate_id(run_id, 6),
+            position=6,
+            default_value=6,
+            name=f"{name}_param2",
+        )
+
+        return Plan(
+            id=run_id,
+            name=name,
+            command="cat",
+            inputs=[input1, input2],
+            outputs=[output1, output2],
+            parameters=[param1, param2],
+        )
+
+    run1 = create_run("run1")
+    run2 = create_run("run2")
 
     grouped = CompositePlan(id=CompositePlan.generate_id(), plans=[run1, run2], name="grouped1")
 
@@ -93,7 +93,7 @@ def composite_plan():
 
 
 @pytest.fixture
-def client_with_runs(client, client_database_injection_manager):
+def project_with_runs(repository, with_injections_manager):
     """A client with runs."""
 
     def create_activity(plan, date, index) -> Activity:
@@ -133,7 +133,7 @@ def client_with_runs(client, client_database_injection_manager):
         parameters=[("int-parameter", 43, "-n "), ("str-parameter", "some value", None)],
     )
 
-    with client_database_injection_manager(client):
+    with with_injections_manager(repository):
         activity_1 = create_activity(plan_1, date_1, index=1)
         activity_2 = create_activity(plan_2, date_2, index=2)
 
@@ -142,7 +142,7 @@ def client_with_runs(client, client_database_injection_manager):
         activity_gateway.add(activity_1)
         activity_gateway.add(activity_2)
 
-    client.repository.add(all=True)
-    client.repository.commit("Add runs")
+    repository.add(all=True)
+    repository.commit("Add runs")
 
-    yield client
+    yield repository

@@ -24,10 +24,10 @@ from typing import TYPE_CHECKING, List, Optional
 from urllib import parse as urlparse
 from uuid import UUID, uuid4
 
-from renku.command.command_builder import inject
 from renku.core import errors
+from renku.core.config import get_value, set_value
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
-from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 
 if TYPE_CHECKING:
@@ -69,17 +69,14 @@ class OLOSProvider(ProviderApi):
     ) -> "OLOSExporter":
         """Create export manager for given dataset."""
 
-        @inject.autoparams()
-        def set_export_parameters(client_dispatcher: IClientDispatcher):
+        def set_export_parameters():
             """Set and validate required parameters for exporting for a provider."""
-            client = client_dispatcher.current_client
-
             server = dlcm_server
             config_base_url = "server_url"
             if not server:
-                server = client.get_value("olos", config_base_url)
+                server = get_value("olos", config_base_url)
             else:
-                client.set_value("olos", config_base_url, server, global_only=True)
+                set_value("olos", config_base_url, server, global_only=True)
 
             if not server:
                 raise errors.ParameterError("OLOS server URL is required.")
@@ -111,6 +108,7 @@ class OLOSExporter(ExporterApi):
         from renku.domain_model.dataset import get_file_path_in_dataset
 
         deposition = _OLOSDeposition(server_url=self._server_url, access_token=self._access_token)
+        repository = project_properties.repository
 
         metadata = self._get_dataset_metadata()
         metadata["organizationalUnitId"] = deposition.get_org_unit()
@@ -118,8 +116,8 @@ class OLOSExporter(ExporterApi):
 
         with communication.progress("Uploading files ...", total=len(self.dataset.files)) as progressbar:
             for file in self.dataset.files:
-                filepath = client.repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
-                path_in_dataset = get_file_path_in_dataset(client=client, dataset=self.dataset, dataset_file=file)
+                filepath = repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
+                path_in_dataset = get_file_path_in_dataset(dataset=self.dataset, dataset_file=file)
                 deposition.upload_file(full_path=filepath, path_in_dataset=path_in_dataset)
                 progressbar.update()
 

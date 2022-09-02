@@ -19,7 +19,7 @@
 
 import pytest
 
-from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.core.constant import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.project.project_properties import project_properties
 from renku.ui.cli import cli
 from tests.utils import format_result_exception

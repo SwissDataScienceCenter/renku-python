@@ -43,7 +43,7 @@ def check_dataset_old_metadata_location(client, **kwargs):
     Returns:
         Tuple of whether dataset metadata location is valid and string of found problems.
     """
-    old_metadata = get_pre_0_3_4_datasets_metadata(client)
+    old_metadata = get_pre_0_3_4_datasets_metadata()
 
     if not old_metadata:
         return True, None
@@ -163,7 +163,7 @@ def check_dataset_files_outside_datadir(client, fix, dataset_gateway: IDatasetGa
         if dataset.date_removed:
             continue
 
-        data_dir = dataset.get_datadir(client=client)
+        data_dir = dataset.get_datadir()
 
         detected_files = []
 

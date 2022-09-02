@@ -74,7 +74,12 @@ class WebProvider(ProviderApi):
             )
 
         return download_file(
-            client=client, uri=uri, destination=destination, extract=extract, filename=filename, multiple=multiple
+            project_path=project_properties.path,
+            uri=uri,
+            destination=destination,
+            extract=extract,
+            filename=filename,
+            multiple=multiple,
         )
 
 
@@ -107,7 +112,7 @@ def _provider_check(url):
 
 
 def download_file(
-    client: "LocalClient",
+    project_path: Path,
     uri: str,
     destination: Path,
     extract: bool = False,
@@ -122,40 +127,41 @@ def download_file(
     uri = requests.get_redirect_url(uri)  # TODO: Check that this is not duplicate
     uri = _provider_check(uri)
 
-    try:
-        # NOTE: If execution time was less than the delay, block the request until delay seconds are passed
-        with wait_for(delay):
-            tmp_root, paths = requests.download_file(
-                base_directory=client.renku_path / CACHE, url=uri, filename=filename, extract=extract
+    with project_properties.with_path(project_path):
+        try:
+            # NOTE: If execution time was less than the delay, block the request until delay seconds are passed
+            with wait_for(delay):
+                tmp_root, paths = requests.download_file(
+                    base_directory=project_properties.metadata_path / CACHE, url=uri, filename=filename, extract=extract
+                )
+        except errors.RequestError as e:  # pragma nocover
+            raise errors.OperationError(f"Cannot download from {uri}") from e
+
+        paths = [p for p in paths if not p.is_dir()]
+
+        if len(paths) > 1 or multiple:
+            if destination.exists() and not destination.is_dir():
+                raise errors.ParameterError(f"Destination is not a directory: '{destination}'")
+            destination.mkdir(parents=True, exist_ok=True)
+        elif len(paths) == 1:
+            tmp_root = paths[0].parent if destination.exists() else paths[0]
+
+        paths = [(src, destination / src.relative_to(tmp_root)) for src in paths if not src.is_dir()]
+
+        return [
+            DatasetAddMetadata(
+                entity_path=dst.relative_to(project_properties.path),
+                url=remove_credentials(uri),
+                action=DatasetAddAction.MOVE,
+                source=src,
+                destination=dst,
             )
-    except errors.RequestError as e:  # pragma nocover
-        raise errors.OperationError(f"Cannot download from {uri}") from e
-
-    paths = [p for p in paths if not p.is_dir()]
-
-    if len(paths) > 1 or multiple:
-        if destination.exists() and not destination.is_dir():
-            raise errors.ParameterError(f"Destination is not a directory: '{destination}'")
-        destination.mkdir(parents=True, exist_ok=True)
-    elif len(paths) == 1:
-        tmp_root = paths[0].parent if destination.exists() else paths[0]
-
-    paths = [(src, destination / src.relative_to(tmp_root)) for src in paths if not src.is_dir()]
-
-    return [
-        DatasetAddMetadata(
-            entity_path=dst.relative_to(project_properties.path),
-            url=remove_credentials(uri),
-            action=DatasetAddAction.MOVE,
-            source=src,
-            destination=dst,
-        )
-        for src, dst in paths
-    ]
+            for src, dst in paths
+        ]
 
 
 def download_files(
-    client: "LocalClient", urls: Tuple[str, ...], destination: Path, names: Tuple[str, ...], extract: bool
+    urls: Tuple[str, ...], destination: Path, names: Tuple[str, ...], extract: bool
 ) -> List["DatasetAddMetadata"]:
     """Download multiple files and return their metadata."""
     assert len(urls) == len(names), f"Number of URL and names don't match {len(urls)} != {len(names)}"
@@ -184,7 +190,7 @@ def download_files(
             executor.submit(
                 subscribe_communication_listeners,
                 download_file,
-                client=client,
+                project_path=project_properties.path,
                 uri=url,
                 destination=destination,
                 extract=extract,

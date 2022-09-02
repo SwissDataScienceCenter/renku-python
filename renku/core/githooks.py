@@ -20,8 +20,7 @@
 import stat
 from pathlib import Path
 
-from renku.command.command_builder.command import inject
-from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.project.project_properties import project_properties
 from renku.core.util.git import get_hook_path
 
 try:
@@ -32,11 +31,11 @@ except ImportError:
 HOOKS = ("pre-commit",)
 
 
-def install(force, repository):
+def install(force: bool, path: Path):
     """Install Git hooks."""
     warning_messages = []
     for hook in HOOKS:
-        hook_path = get_hook_path(name=hook, repository=repository)
+        hook_path = get_hook_path(name=hook, path=path)
         if hook_path.exists():
             if not force:
                 warning_messages.append("Hook already exists. Skipping {0}".format(str(hook_path)))
@@ -53,12 +52,9 @@ def install(force, repository):
     return warning_messages
 
 
-@inject.autoparams()
-def uninstall(client_dispatcher: IClientDispatcher):
+def uninstall():
     """Uninstall Git hooks."""
-    client = client_dispatcher.current_client
-
     for hook in HOOKS:
-        hook_path = get_hook_path(name=hook, repository=client.repository)
+        hook_path = get_hook_path(name=hook, path=project_properties.path)
         if hook_path.exists():
             hook_path.unlink()

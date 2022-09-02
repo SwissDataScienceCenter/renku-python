@@ -19,20 +19,16 @@
 
 from typing import List, Tuple
 
-from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
 from renku.core import errors
-from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.project.project_properties import project_properties
+from renku.core.storage import track_paths_in_storage
 
 
-@inject.autoparams()
-def _save_and_push(
-    client_dispatcher: IClientDispatcher, message=None, remote=None, paths=None
-) -> Tuple[List[str], str]:
+def _save_and_push(message=None, remote=None, paths=None) -> Tuple[List[str], str]:
     """Save and push local changes.
 
     Args:
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         message: The commit message (Default value = None).
         remote: The remote to push to (Default value = None).
         paths: The paths to include in the commit (Default value = None).
@@ -40,15 +36,16 @@ def _save_and_push(
     Returns:
         Tuple[List[str], str]: Tuple of paths that were committed and branch that was pushed.
     """
-    from renku.core.util.git import commit_changes, get_remote, push_changes
+    from renku.core.util.git import commit_changes, get_dirty_paths, get_remote, push_changes
 
-    client = client_dispatcher.current_client
+    repository = project_properties.repository
 
-    client.setup_credential_helper()
+    setup_credential_helper()
+
     if not paths:
-        paths = client.dirty_paths
+        paths = get_dirty_paths(repository)
     else:
-        staged_changes = client.repository.staged_changes
+        staged_changes = repository.staged_changes
         if staged_changes:
             staged_paths = {c.a_path for c in staged_changes}
             not_passed = staged_paths - set(paths)
@@ -62,17 +59,28 @@ def _save_and_push(
 
     # NOTE: Check if a remote is setup for the repository
     if not remote:
-        default_remote = get_remote(client.repository)
+        default_remote = get_remote(repository)
         if not default_remote:
             raise errors.GitError("No remote has been set up for the current branch")
 
     if paths:
-        client.track_paths_in_storage(*paths)
-        paths = commit_changes(*paths, repository=client.repository, message=message)
+        track_paths_in_storage(*paths)
+        paths = commit_changes(*paths, repository=repository, message=message)
 
-    branch = push_changes(repository=client.repository, remote=remote)
+    branch = push_changes(repository=repository, remote=remote)
 
     return paths, branch
+
+
+def setup_credential_helper():
+    """Setup git credential helper to ``cache`` if not set already."""
+    repository = project_properties.repository
+
+    credential_helper = repository.get_configuration().get_value("credential", "helper", "")
+
+    if not credential_helper:
+        with repository.get_configuration(writable=True) as w:
+            w.set_value("credential", "helper", "cache")
 
 
 def save_and_push_command():

@@ -23,7 +23,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Optional, Tuple, Union, cast
 
 from renku.core import errors
-from renku.core.dataset.constant import renku_pointers_path
 from renku.core.project.project_properties import project_properties
 from renku.core.util.os import is_subpath
 from renku.infrastructure.repository import Repository
@@ -42,7 +41,7 @@ def create_pointer_file(client: "LocalClient", target: Union[str, Path], checksu
 
     while True:
         filename = f"{uuid.uuid4()}-{checksum}"
-        path = renku_pointers_path(client) / filename
+        path = project_properties.pointers_path / filename
         if not path.exists():
             break
 

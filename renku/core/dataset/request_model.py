@@ -17,7 +17,6 @@
 # limitations under the License.
 """Renku management dataset request models."""
 
-
 import imghdr
 import os
 import shutil
@@ -26,10 +25,7 @@ from pathlib import Path
 from typing import List, Optional, Union, cast
 from urllib.request import urlretrieve
 
-from renku.command.command_builder.command import inject
 from renku.core import errors
-from renku.core.dataset.constant import renku_dataset_images_path
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.project.project_properties import project_properties
 from renku.domain_model.dataset import Dataset, ImageObject
 
@@ -49,14 +45,12 @@ class ImageRequestModel:
         self.mirror_locally = mirror_locally
         self.safe_image_paths: List[Union[str, Path]] = cast(List[Union[str, Path]], safe_image_paths) or []
 
-    @inject.autoparams()
-    def to_image_object(self, dataset: Dataset, client_dispatcher: IClientDispatcher) -> ImageObject:
+    def to_image_object(self, dataset: Dataset) -> ImageObject:
         """Convert request model to ``ImageObject``."""
-        client = client_dispatcher.current_client
         image_type = None
         self.safe_image_paths.append(project_properties.path)
 
-        image_folder = renku_dataset_images_path(client) / dataset.initial_identifier
+        image_folder = project_properties.dataset_images_path / dataset.initial_identifier
         image_folder.mkdir(exist_ok=True, parents=True)
 
         if urllib.parse.urlparse(self.content_url).netloc:
@@ -101,7 +95,7 @@ class ImageRequestModel:
             img_path = image_folder / f"{self.position}{ext}"
             shutil.copy(path, img_path)
         else:
-            img_path = path
+            img_path = Path(path)
 
         return ImageObject(
             content_url=str(img_path.relative_to(project_properties.path)),

@@ -27,6 +27,7 @@ import jwt
 import pytest
 
 from renku.core.dataset.context import DatasetContext
+from renku.core.git import commit
 from renku.core.project.project_properties import project_properties
 from renku.domain_model.git import GitURL
 from renku.domain_model.project import Project
@@ -1026,16 +1027,13 @@ def test_cache_gets_synchronized(
     local_remote_repository, directory_tree, quick_cache_synchronization, client_database_injection_manager
 ):
     """Test that the cache stays synchronized with the remote repository."""
-    from renku.core.management.client import LocalClient
     from renku.domain_model.provenance.agent import Person
 
     svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout = local_remote_repository
 
     with project_properties.with_path(remote_repo_checkout.path):
-        client = LocalClient()
-
-        with client_database_injection_manager(client):
-            with client.commit(commit_message="Create dataset"):
+        with client_database_injection_manager(remote_repo_checkout):
+            with commit(commit_message="Create dataset"):
                 with DatasetContext(name="my_dataset", create=True, commit_database=True) as dataset:
                     dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
 
@@ -1064,7 +1062,7 @@ def test_cache_gets_synchronized(
 
     remote_repo_checkout.pull()
 
-    with client_database_injection_manager(client):
+    with client_database_injection_manager(remote_repo_checkout):
         datasets = DatasetGateway().get_all_active_datasets()
         assert 2 == len(datasets)
 
@@ -1093,7 +1091,7 @@ def test_check_migrations_local_minimum_version(svc_client_setup, mocker, monkey
 
     svc_client, headers, project_id, _, _ = svc_client_setup
 
-    def _mock_database_project(project):
+    def mock_database_project(project):
         def mocked_getter(self, key):
             if key == "project":
                 return project
@@ -1103,9 +1101,7 @@ def test_check_migrations_local_minimum_version(svc_client_setup, mocker, monkey
 
     mocker.patch("renku.domain_model.project.Project.minimum_renku_version", "2.0.0")
     project = Project(creator=Person(name="John Doe", email="jd@example.com"), name="testproject")
-    mocker.patch(
-        "renku.command.command_builder.database_dispatcher.Database.__getitem__", _mock_database_project(project)
-    )
+    mocker.patch("renku.infrastructure.database.Database.__getitem__", mock_database_project(project))
     mocker.patch("renku.version.__version__", "1.0.0")
 
     response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)

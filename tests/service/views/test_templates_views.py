@@ -125,7 +125,6 @@ def test_read_manifest_from_wrong_template(svc_client_with_templates, template_u
 @retry_failed
 def test_create_project_from_template(svc_client_templates_creation, client_database_injection_manager):
     """Check creating project from a valid template."""
-    from renku.core.management.client import LocalClient
     from renku.ui.service.serializers.headers import RenkuHeaders
     from renku.ui.service.utils import CACHE_PROJECTS_PATH
 
@@ -156,13 +155,12 @@ def test_create_project_from_template(svc_client_templates_creation, client_data
     assert reader.get_value("user", "name") == user_data["name"]
 
     with project_properties.with_path(project_path):
-        client = LocalClient()
-        with client_database_injection_manager(client):
-            project = client.project
+        with client_database_injection_manager(project_properties.repository):
+            project = project_properties.project
+        assert project_properties.datadir == "my-folder/"
 
     expected_id = f"/projects/{payload['project_namespace']}/{stripped_name}"
     assert expected_id == project.id
-    assert client.data_dir == "my-folder/"
 
     # NOTE: Assert backwards compatibility metadata.yml was created
     old_metadata_path = project_path / ".renku/metadata.yml"

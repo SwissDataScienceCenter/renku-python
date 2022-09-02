@@ -30,7 +30,7 @@ import inject
 from renku.core import errors
 from renku.core.project.project_properties import project_properties
 from renku.core.util.communication import CommunicationCallback
-from renku.core.util.git import default_path
+from renku.core.util.git import get_git_path
 
 if TYPE_CHECKING:
     from renku.core.management.client import LocalClient
@@ -133,31 +133,6 @@ def replace_injection(bindings: Dict, constructor_bindings=None):
             _LOCAL.injector = old_injector
 
 
-def update_injected_client(new_client, update_database: bool = True):
-    """Update the injected client instance.
-
-    Necessary because we sometimes use attr.evolve to modify a client and this doesn't affect the injected instance.
-
-    Args:
-        new_client: New ``LocalClient`` to inject.
-        update_database(bool, optional): Whether to also update bound database (Default value = True).
-    """
-    from renku.core.management.client import LocalClient
-    from renku.infrastructure.database import Database
-
-    injector = getattr(_LOCAL, "injector", None)
-
-    if not injector:
-        raise inject.InjectorException("No injector is configured")
-
-    injector._bindings[LocalClient] = lambda: new_client
-    injector._bindings["LocalClient"] = lambda: new_client
-
-    if update_database and Database in injector._bindings:
-        database = Database.from_path(path=new_client.database_path)
-        injector._bindings[Database] = lambda: database
-
-
 class Command:
     """Base renku command builder."""
 
@@ -207,7 +182,7 @@ class Command:
             if self._client:
                 dispatcher.push_created_client_to_stack(self._client)
             else:
-                path = default_path(self._working_directory or ".")
+                path = get_git_path(self._working_directory or ".")
                 project_properties.push_path(path)
                 self._client = dispatcher.push_client_to_stack(path=path)
                 self._client_was_created = True
@@ -243,9 +218,9 @@ class Command:
         """
         remove_injector()
 
-        if self._client_was_created and self._client and self._client.repository is not None:
-            self._client.repository.close()
-            context["client_dispatcher"].pop_client()
+        if self._client_was_created:
+            if self._client:
+                context["client_dispatcher"].pop_client()
             project_properties.pop_path()
 
         if result.error:
@@ -420,9 +395,13 @@ class Command:
         return self
 
     @check_finalized
-    def with_client(self, client: "LocalClient") -> "Command":
-        """Set a client."""
-        self._client = client
+    def with_client_path(self, path: Path) -> "Command":
+        """Set a client from the given path."""
+        from renku.core.management.client import LocalClient
+        from renku.core.util.contexts import chdir
+
+        with chdir(path=path):
+            self._client = LocalClient()
 
         return self
 

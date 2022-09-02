@@ -51,7 +51,7 @@ def test_project_edit(runner, client, subdirectory, client_database_injection_ma
     metadata_path = project_properties.path / "metadata.json"
     metadata_path.write_text(json.dumps(metadata))
 
-    commit_sha_before = client.repository.head.commit.hexsha
+    commit_sha_before = project_properties.repository.head.commit.hexsha
 
     result = runner.invoke(
         cli,
@@ -86,8 +86,8 @@ def test_project_edit(runner, client, subdirectory, client_database_injection_ma
     assert metadata == project.annotations[0].body
     assert {"keyword1", "keyword2"} == set(project.keywords)
 
-    assert client.repository.is_dirty(untracked_files=True)
-    commit_sha_after = client.repository.head.commit.hexsha
+    assert project_properties.repository.is_dirty(untracked_files=True)
+    commit_sha_after = project_properties.repository.head.commit.hexsha
     assert commit_sha_before != commit_sha_after
 
     result = runner.invoke(cli, ["project", "show"])
@@ -107,16 +107,16 @@ def test_project_edit_no_change(runner, client):
     """Check project metadata editing does not commit when there is no change."""
     (project_properties.path / "README.md").write_text("Make repo dirty.")
 
-    commit_sha_before = client.repository.head.commit.hexsha
+    commit_sha_before = project_properties.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["project", "edit"], catch_exceptions=False)
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Nothing to update." in result.output
 
-    commit_sha_after = client.repository.head.commit.hexsha
+    commit_sha_after = project_properties.repository.head.commit.hexsha
     assert commit_sha_after == commit_sha_before
-    assert client.repository.is_dirty(untracked_files=True)
+    assert project_properties.repository.is_dirty(untracked_files=True)
 
 
 def test_project_edit_unset(runner, client, subdirectory, client_database_injection_manager):
@@ -155,7 +155,7 @@ def test_project_edit_unset(runner, client, subdirectory, client_database_inject
     assert "Successfully updated: creator, description, keywords, custom_metadata." in result.output
     assert "Warning: No email or wrong format for: Forename Surname" in result.output
 
-    commit_sha_before = client.repository.head.commit.hexsha
+    commit_sha_before = project_properties.repository.head.commit.hexsha
 
     result = runner.invoke(
         cli,
@@ -172,8 +172,8 @@ def test_project_edit_unset(runner, client, subdirectory, client_database_inject
     assert not project.annotations
     assert not project.keywords
 
-    assert client.repository.is_dirty(untracked_files=True)
-    commit_sha_after = client.repository.head.commit.hexsha
+    assert project_properties.repository.is_dirty(untracked_files=True)
+    commit_sha_after = project_properties.repository.head.commit.hexsha
     assert commit_sha_before != commit_sha_after
 
     result = runner.invoke(cli, ["project", "show"])

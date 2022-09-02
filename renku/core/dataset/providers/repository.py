@@ -39,7 +39,7 @@ class RepositoryImporter(ImporterApi, abc.ABC):
 
         urls, names = zip(*[(f.source, f.filename) for f in self.provider_dataset_files])
 
-        return download_files(client=client, urls=urls, destination=destination, names=names, extract=extract)
+        return download_files(urls=urls, destination=destination, names=names, extract=extract)
 
     def tag_dataset(self, name: str) -> None:
         """Create a tag for the dataset ``name`` if the remote dataset has a tag/version."""

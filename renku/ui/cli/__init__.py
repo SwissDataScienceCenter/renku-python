@@ -72,8 +72,10 @@ from click_plugins import with_plugins
 from renku.command.echo import WARNING
 from renku.command.options import option_external_storage_requested
 from renku.command.version import check_version, print_version
-from renku.core.errors import UsageError
-from renku.core.util.git import default_path
+from renku.core import errors
+from renku.core.constant import DATABASE_PATH
+from renku.core.project.project_properties import project_properties
+from renku.core.util.git import get_git_path
 from renku.ui.cli.clone import clone
 from renku.ui.cli.config import config
 from renku.ui.cli.dataset import dataset
@@ -133,13 +135,12 @@ def _uuid_representer(dumper, data):
 def _is_renku_project(path: Path) -> bool:
     """Check if a path is a renku project."""
     from renku.core.constant import RENKU_HOME
-    from renku.core.management.repository import RepositoryApiMixin
     from renku.core.migration.utils import OLD_METADATA_PATH
     from renku.infrastructure.database import Database
 
-    renku_path = Path(path) / RENKU_HOME
-    old_metadata = renku_path / OLD_METADATA_PATH
-    new_metadata = renku_path / RepositoryApiMixin.DATABASE_PATH / Database.ROOT_OID
+    metadata_path = Path(path) / RENKU_HOME
+    old_metadata = metadata_path / OLD_METADATA_PATH
+    new_metadata = metadata_path / DATABASE_PATH / Database.ROOT_OID
 
     return old_metadata.exists() or new_metadata.exists()
 
@@ -149,21 +150,18 @@ yaml.add_representer(uuid.UUID, _uuid_representer)
 
 def print_global_config_path(ctx, param, value):
     """Print global application's config path."""
-    from renku.core.management.config import ConfigManagerMixin
-
     if not value or ctx.resilient_parsing:
         return
-    click.echo(ConfigManagerMixin().global_config_path)
+
+    click.echo(project_properties.global_config_path)
     ctx.exit()
 
 
 def is_allowed_subcommand(ctx):
-    """Called from subcommands to check if their subsubcommand is allowed.
+    """Called from subcommands to check if their sub-subcommand is allowed.
 
-    Subcommands where some subsubcommands are allowed should be added to
-    `WARNING_UNPROTECTED_COMMANDS` so they pass through the parent check
-    and then added to `WARNING_UNPROTECTED_SUBCOMMANDS` so they get checked
-    here.
+    Subcommands where some sub-subcommands are allowed should be added to ``WARNING_UNPROTECTED_COMMANDS`` so they pass
+    through the parent check and then added to ``WARNING_UNPROTECTED_SUBCOMMANDS`` so they get checked here.
     """
     from renku.core.project.project_properties import project_properties
 
@@ -171,12 +169,9 @@ def is_allowed_subcommand(ctx):
         not WARNING_UNPROTECTED_SUBCOMMANDS.get(ctx.command.name, False)
         or ctx.invoked_subcommand not in WARNING_UNPROTECTED_SUBCOMMANDS[ctx.command.name]
     ):
-        raise UsageError(
-            (
-                "`{0}` is not a renku repository.\n"
-                "To initialize this as a renku "
-                "repository use: `renku init`".format(project_properties.path)
-            )
+        raise errors.UsageError(
+            f"{project_properties.path} is not a renku repository.\n"
+            "To initialize this as a renku repository use: 'renku init'"
         )
 
 
@@ -202,7 +197,7 @@ def is_allowed_command(ctx):
     help=print_global_config_path.__doc__,
 )
 @click.option(
-    "--path", show_default=True, metavar="<path>", default=default_path, help="Location of a Renku repository."
+    "--path", show_default=True, metavar="<path>", default=get_git_path, help="Location of a Renku repository."
 )
 @option_external_storage_requested
 @click.option(
@@ -226,16 +221,13 @@ def cli(ctx, path, external_storage_requested):
     is_renku_project = _is_renku_project(path)
 
     if not is_renku_project and not is_command_allowed:
-        raise UsageError(
-            (
-                "`{0}` is not a renku repository.\n"
-                "To initialize this as a renku "
-                "repository use: `renku init`".format(path)
-            )
+        raise errors.UsageError(
+            f"{path} is not a renku repository.\n" "To initialize this as a renku repository use: 'renku init'"
         )
 
     project_properties.push_path(path)
-    ctx.obj = LocalClient(external_storage_requested=external_storage_requested)
+    project_properties.external_storage_requested = external_storage_requested
+    ctx.obj = LocalClient()
 
     if is_renku_project and path != Path(os.getcwd()) and not is_command_allowed:
         click.secho(WARNING + "Run CLI commands only from project's root directory.\n", err=True)

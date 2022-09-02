@@ -21,8 +21,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Set, Union
 
-from renku.command.command_builder import inject
-from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.config import get_value
 from renku.core.project.project_properties import project_properties
 from renku.core.util.os import get_relative_path_to_cwd, get_relative_paths
 from renku.core.workflow.activity import (
@@ -45,14 +44,10 @@ class StatusResult(NamedTuple):
     deleted_inputs: Set[str]
 
 
-@inject.autoparams("client_dispatcher")
-def get_status(
-    client_dispatcher: IClientDispatcher, paths: Optional[List[Union[Path, str]]] = None, ignore_deleted: bool = False
-) -> StatusResult:
+def get_status(paths: Optional[List[Union[Path, str]]] = None, ignore_deleted: bool = False) -> StatusResult:
     """Return status of a project.
 
     Args:
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         paths(Optional[List[Union[Path, str]]]): Limit the status to this list of paths (Default value = None).
         ignore_deleted(bool): Whether to ignore deleted generations (Default value = False).
 
@@ -66,11 +61,11 @@ def get_status(
             generation_path = get_relative_path_to_cwd(project_properties.path / generation.entity.path)
             stale_outputs[generation_path].add(usage_path)
 
-    client = client_dispatcher.current_client
+    repository = project_properties.repository
 
-    ignore_deleted = ignore_deleted or client.get_value("renku", "update_ignore_delete")
+    ignore_deleted = ignore_deleted or get_value("renku", "update_ignore_delete")
 
-    modified, deleted = get_all_modified_and_deleted_activities_and_entities(client.repository)
+    modified, deleted = get_all_modified_and_deleted_activities_and_entities(repository)
 
     modified = {(a, e) for a, e in modified if is_activity_valid(a)}
     deleted = {(a, e) for a, e in deleted if is_activity_valid(a)}

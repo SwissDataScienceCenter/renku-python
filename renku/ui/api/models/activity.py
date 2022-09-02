@@ -53,9 +53,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Iterable, List, NamedTuple, Optional, Set, Union
 
-from renku.command.command_builder.command import replace_injection
 from renku.core import errors
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.util.os import matches
 from renku.domain_model.provenance import activity as core_activity
 from renku.domain_model.provenance import parameter as core_parameter
@@ -317,8 +315,7 @@ class Activity:
         if activity_gateway is None:
             return []
 
-        with replace_injection({IDatabaseDispatcher: activity_gateway.database_dispatcher}):
-            return [Activity.from_activity(a) for a in activity_gateway.get_upstream_activities(self._activity)]
+        return [Activity.from_activity(a) for a in activity_gateway.get_upstream_activities(self._activity)]
 
     @property
     def following_activities(self) -> List["Activity"]:
@@ -327,8 +324,7 @@ class Activity:
         if activity_gateway is None:
             return []
 
-        with replace_injection({IDatabaseDispatcher: activity_gateway.database_dispatcher}):
-            return [Activity.from_activity(a) for a in activity_gateway.get_downstream_activities(self._activity)]
+        return [Activity.from_activity(a) for a in activity_gateway.get_downstream_activities(self._activity)]
 
     @property
     def values(self) -> List["FieldValue"]:

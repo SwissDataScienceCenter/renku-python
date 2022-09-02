@@ -16,13 +16,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Initial migrations."""
+
 import os
 import shutil
 import urllib
 from pathlib import Path
 
+from renku.core.constant import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.constant import RENKU_HOME
-from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.core.git import with_project_metadata
 from renku.core.migration.models.refs import LinkReference
 from renku.core.migration.models.v3 import Collection, Dataset, Project, get_client_datasets
 from renku.core.migration.models.v9 import generate_file_id, generate_label
@@ -34,6 +36,7 @@ from renku.core.migration.utils import (
     is_using_temporary_datasets_path,
 )
 from renku.core.project.project_properties import project_properties
+from renku.core.util.git import get_in_submodules
 from renku.core.util.urls import url_to_string
 from renku.domain_model.dataset import generate_default_name
 
@@ -80,8 +83,9 @@ def _migrate_datasets_pre_v0_3(client):
         return
 
     changed = False
+    repository = project_properties.repository
 
-    for old_path in get_pre_0_3_4_datasets_metadata(client):
+    for old_path in get_pre_0_3_4_datasets_metadata():
         changed = True
         name = str(old_path.parent.relative_to(project_properties.path / DATA_DIR))
 
@@ -91,10 +95,10 @@ def _migrate_datasets_pre_v0_3(client):
         new_path = get_datasets_path(client) / dataset.identifier / OLD_METADATA_PATH
         new_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with client.with_metadata(read_only=True) as meta:
-            for submodule in client.repository.submodules:
+        with with_project_metadata(read_only=True) as meta:
+            for submodule in repository.submodules:
                 if Path(submodule.url).name == meta.name:
-                    client.repository.submodules.remove(submodule)
+                    repository.submodules.remove(submodule)
 
         for file_ in dataset.files:
             if not Path(file_.path).exists():
@@ -109,13 +113,13 @@ def _migrate_datasets_pre_v0_3(client):
         ref.set_reference(new_path)
 
     if changed:
-        project_path = client.renku_path.joinpath(OLD_METADATA_PATH)
-        project = Project.from_yaml(project_path, client)
+        project_path = project_properties.metadata_path.joinpath(OLD_METADATA_PATH)
+        project = Project.from_yaml(project_path)
         project.version = "3"
         project.to_yaml(project_path)
 
-        client.repository.add(all=True)
-        client.repository.commit("renku migrate: committing structural changes" + client.transaction_id)
+        repository.add(all=True)
+        repository.commit("renku migrate: committing structural changes" + project_properties.transaction_id)
 
 
 def _migrate_broken_dataset_paths(client):
@@ -186,8 +190,8 @@ def _fix_labels_and_ids(client):
         for file_ in dataset.files:
             if not _exists(client=client, path=file_.path):
                 continue
-            _, commit, _ = client.get_in_submodules(
-                _get_previous_commit(client, file_.path, revision="HEAD"), file_.path
+            _, _, commit, _ = get_in_submodules(
+                project_properties.repository, _get_previous_commit(client, file_.path, revision="HEAD"), file_.path
             )
 
             if not _is_file_id_valid(file_._id, file_.path, commit.hexsha):
@@ -212,8 +216,8 @@ def _fix_dataset_urls(client):
 
 def _migrate_dataset_and_files_project(client):
     """Ensure dataset files have correct project."""
-    project_path = client.renku_path.joinpath(OLD_METADATA_PATH)
-    project = Project.from_yaml(project_path, client)
+    project_path = project_properties.metadata_path.joinpath(OLD_METADATA_PATH)
+    project = Project.from_yaml(project_path)
     if not is_using_temporary_datasets_path():
         project.to_yaml(project_path)
 
@@ -255,4 +259,4 @@ def _get_previous_commit(client, path, revision):
     dmc = getattr(client, "dataset_migration_context", None)
     if dmc:
         return dmc.get_previous_commit(path)
-    return client.repository.get_previous_commit(path, revision=revision)
+    return project_properties.repository.get_previous_commit(path, revision=revision)

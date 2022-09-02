@@ -25,27 +25,24 @@ from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
 from renku.core import errors
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import check_external_storage, untrack_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.git import get_git_user
-from renku.core.util.os import delete_dataset_file
+from renku.core.util.os import delete_dataset_file, expand_directories
 
 
 @inject.autoparams()
-def _remove(sources, edit_command, client_dispatcher: IClientDispatcher, dataset_gateway: IDatasetGateway):
+def _remove(sources, edit_command, dataset_gateway: IDatasetGateway):
     """Remove files and check repository for potential problems.
 
     Args:
         sources: Files to remove.
         edit_command: Command to execute for editing .gitattributes.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         dataset_gateway(IDatasetGateway): Injected dataset gateway.
     """
-    from renku.core.management.git import _expand_directories
-
-    client = client_dispatcher.current_client
+    repository = project_properties.repository
 
     def get_relative_path(path):
         """Format path as relative to the client path."""
@@ -58,7 +55,7 @@ def _remove(sources, edit_command, client_dispatcher: IClientDispatcher, dataset
     files = {
         get_relative_path(source): get_relative_path(file_or_dir)
         for file_or_dir in sources
-        for source in _expand_directories((file_or_dir,))
+        for source in expand_directories((file_or_dir,))
     }
 
     # 1. Update dataset metadata files.
@@ -81,18 +78,16 @@ def _remove(sources, edit_command, client_dispatcher: IClientDispatcher, dataset
                     delete_dataset_file(project_properties.path / key, follow_symlinks=True)
 
                 datasets_provenance = DatasetsProvenance()
-                datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
+                datasets_provenance.add_or_update(dataset, creator=get_git_user(repository))
             communication.update_progress(progress_text, amount=1)
     finally:
         communication.finalize_progress(progress_text)
 
     # 2. Manage .gitattributes for external storage.
-    if client.check_external_storage():
-        tracked = tuple(
-            path for path, attr in client.repository.get_attributes(*files).items() if attr.get("filter") == "lfs"
-        )
-        client.untrack_paths_from_storage(*tracked)
-        existing = client.repository.get_attributes(*tracked)
+    if check_external_storage():
+        tracked = tuple(path for path, attr in repository.get_attributes(*files).items() if attr.get("filter") == "lfs")
+        untrack_paths_from_storage(*tracked)
+        existing = repository.get_attributes(*tracked)
         if existing:
             communication.warn("There are custom .gitattributes.\n")
             if communication.confirm('Do you want to edit ".gitattributes" now?'):

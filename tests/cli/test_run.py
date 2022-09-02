@@ -49,8 +49,8 @@ def test_run_many_args(client, run):
     output = "output.txt"
     for i in range(103):
         os.system("touch files/{}.txt".format(i))
-    client.repository.add("files/")
-    client.repository.commit("add many files")
+    project_properties.repository.add("files/")
+    project_properties.repository.commit("add many files")
 
     exit_code = run(args=("run", "ls", "files/"), stdout=output)
     assert 0 == exit_code

@@ -23,7 +23,7 @@ from pathlib import Path
 
 import pytest
 
-from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.core.constant import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.project.project_properties import project_properties
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
@@ -37,8 +37,8 @@ def test_move(runner, client):
     src2 = Path("src2") / "sub" / "src2.txt"
     src2.parent.mkdir(parents=True, exist_ok=True)
     src2.touch()
-    client.repository.add(all=True)
-    client.repository.commit("Add some files")
+    project_properties.repository.add(all=True)
+    project_properties.repository.commit("Add some files")
 
     result = runner.invoke(cli, ["mv", "-v", "src1", "src2", "dst/sub"])
 
@@ -94,8 +94,8 @@ def test_move_protected_paths(runner, client, path):
 def test_move_existing_destination(runner, client):
     """Test move to existing destination."""
     (project_properties.path / "source").write_text("123")
-    client.repository.add(all=True)
-    client.repository.commit("source file")
+    project_properties.repository.add(all=True)
+    project_properties.repository.commit("source file")
 
     result = runner.invoke(cli, ["mv", "source", "README.md"])
 
@@ -131,13 +131,13 @@ def test_move_empty_source(runner, client):
     assert "Invalid parameter value - There are no files to move" in result.output
 
 
-def test_move_dataset_file(runner, client_with_datasets, directory_tree_files, load_dataset_with_injection):
+def test_move_dataset_file(runner, project_with_datasets, directory_tree_files, load_dataset_with_injection):
     """Test move of a file that belongs to a dataset."""
     for path in directory_tree_files:
         src = Path("data") / "dataset-2" / path
         assert src.exists()
 
-    dataset_before = load_dataset_with_injection("dataset-2", client_with_datasets)
+    dataset_before = load_dataset_with_injection("dataset-2", project_with_datasets)
 
     result = runner.invoke(cli, ["mv", "data", "files"], input="y", catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
@@ -147,7 +147,7 @@ def test_move_dataset_file(runner, client_with_datasets, directory_tree_files, l
     assert 0 == result.exit_code, format_result_exception(result)
 
     # Check immutability
-    dataset_after = load_dataset_with_injection("dataset-2", client_with_datasets)
+    dataset_after = load_dataset_with_injection("dataset-2", project_with_datasets)
     assert dataset_before.id != dataset_after.id
     assert dataset_before.identifier != dataset_after.identifier
 
@@ -162,17 +162,17 @@ def test_move_dataset_file(runner, client_with_datasets, directory_tree_files, l
 
 
 @pytest.mark.parametrize("args", [[], ["--to-dataset", "dataset-2"]])
-def test_move_in_the_same_dataset(runner, client_with_datasets, args, load_dataset_with_injection):
+def test_move_in_the_same_dataset(runner, project_with_datasets, args, load_dataset_with_injection):
     """Test move and overwrite a file in the same dataset."""
     src = os.path.join("data", "dataset-2", "file1")
     dst = os.path.join("data", "dataset-2", "dir1", "file2")
-    dataset = load_dataset_with_injection("dataset-2", client_with_datasets)
+    dataset = load_dataset_with_injection("dataset-2", project_with_datasets)
     file_before = dataset.find_file(dst)
 
     result = runner.invoke(cli, ["mv", "-f", src, dst] + args)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    dataset = load_dataset_with_injection("dataset-2", client_with_datasets)
+    dataset = load_dataset_with_injection("dataset-2", project_with_datasets)
     assert {dst, dst.replace("file2", "file3")} == {f.entity.path for f in dataset.files}
     assert not (project_properties.path / src).exists()
     file_after = dataset.find_file(dst)
@@ -182,14 +182,14 @@ def test_move_in_the_same_dataset(runner, client_with_datasets, args, load_datas
 
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not client_with_datasets.repository.is_dirty(untracked_files=True)
+    assert not project_with_datasets.is_dirty(untracked_files=True)
 
 
-def test_move_to_existing_destination_in_a_dataset(runner, client_with_datasets, load_dataset_with_injection):
+def test_move_to_existing_destination_in_a_dataset(runner, project_with_datasets, load_dataset_with_injection):
     """Test move to a file in dataset will update file's metadata."""
     (project_properties.path / "source").write_text("new-content")
-    client_with_datasets.repository.add(all=True)
-    client_with_datasets.repository.commit("source file")
+    project_with_datasets.add(all=True)
+    project_with_datasets.commit("source file")
 
     result = runner.invoke(cli, ["mv", "-f", "--to-dataset", "dataset-2", "source", "new_file"])
     assert 2 == result.exit_code, format_result_exception(result)
@@ -197,13 +197,13 @@ def test_move_to_existing_destination_in_a_dataset(runner, client_with_datasets,
 
     dst = os.path.join("data", "dataset-2", "file1")
 
-    dataset_before = load_dataset_with_injection("dataset-2", client_with_datasets)
+    dataset_before = load_dataset_with_injection("dataset-2", project_with_datasets)
     file_before = dataset_before.find_file(dst)
 
     result = runner.invoke(cli, ["mv", "-f", "source", dst])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    dataset_after = load_dataset_with_injection("dataset-2", client_with_datasets)
+    dataset_after = load_dataset_with_injection("dataset-2", project_with_datasets)
     file_after = dataset_after.find_file(dst)
 
     # Check dataset immutability
@@ -217,7 +217,7 @@ def test_move_to_existing_destination_in_a_dataset(runner, client_with_datasets,
 
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not client_with_datasets.repository.is_dirty(untracked_files=True)
+    assert not project_with_datasets.is_dirty(untracked_files=True)
 
 
 @pytest.mark.parametrize(
@@ -253,7 +253,7 @@ def test_move_external_files(
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
 
     assert 0 == result.exit_code, result.output
-    assert not client.repository.is_dirty(untracked_files=True)
+    assert not project_properties.repository.is_dirty(untracked_files=True)
 
 
 def test_move_between_datasets(
@@ -307,4 +307,4 @@ def test_move_between_datasets(
     }
 
     assert 0 == runner.invoke(cli, ["doctor"], catch_exceptions=False).exit_code
-    assert not client.repository.is_dirty(untracked_files=True)
+    assert not project_properties.repository.is_dirty(untracked_files=True)

@@ -18,22 +18,24 @@
 """Project initialization logic."""
 
 import os
+import shutil
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import TYPE_CHECKING, Dict, List, Optional
 from uuid import uuid4
 
 import attr
 
 from renku.command.command_builder.command import Command, inject
-from renku.command.git import set_git_home
 from renku.command.mergetool import setup_mergetool
 from renku.core import errors
-from renku.core.constant import RENKU_HOME
+from renku.core.config import set_value
+from renku.core.constant import DATA_DIR_CONFIG_KEY, RENKU_HOME
+from renku.core.git import commit, with_project_metadata, worktree
 from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.migration.utils import OLD_METADATA_PATH
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import init_external_storage, storage_installed
 from renku.core.template.template import (
     FileAction,
     RenderedTemplate,
@@ -50,52 +52,37 @@ from renku.domain_model.project import Project
 from renku.domain_model.template import Template, TemplateMetadata
 from renku.version import __version__, is_release
 
-
-def store_directory(value):
-    """Store directory as a new Git home.
-
-    Args:
-        value: Path to new git home.
-
-    Returns:
-        Path to new git home.
-    """
-    value = Path(value)
-    value.mkdir(parents=True, exist_ok=True)
-    set_git_home(value)
-    return value
+if TYPE_CHECKING:
+    from renku.infrastructure.repository import Repository
 
 
-@inject.autoparams()
-def create_backup_branch(path, client_dispatcher: IClientDispatcher):
+def create_backup_branch(path):
     """Creates a backup branch of the repository.
 
     Args:
         path: Repository path.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
 
     Returns:
         Name of the backup branch.
     """
-    client = client_dispatcher.current_client
+    repository = project_properties.repository
 
     branch_name = None
     if not is_path_empty(path):
         try:
-            if client.repository.head.is_valid():
-                commit = client.repository.head.commit
-                hexsha = commit.hexsha[:7]
+            if repository.head.is_valid():
+                hexsha = repository.head.commit.hexsha[:7]
 
                 branch_name = f"pre_renku_init_{hexsha}"
 
-                for ref in client.repository.branches:
+                for ref in repository.branches:
                     if branch_name == ref.name:
                         branch_name = f"pre_renku_init_{hexsha}_{uuid4().hex}"
                         break
 
-                with client.worktree(
+                with worktree(
                     branch_name=branch_name,
-                    commit=commit,
+                    commit=repository.head.commit,
                     merge_args=["--no-ff", "-s", "recursive", "-X", "ours", "--allow-unrelated-histories"],
                 ):
                     communication.warn("Saving current data in branch {0}".format(branch_name))
@@ -105,6 +92,11 @@ def create_backup_branch(path, client_dispatcher: IClientDispatcher):
             raise
 
     return branch_name
+
+
+def init_command():
+    """Init command builder."""
+    return Command().command(_init).with_database()
 
 
 @inject.autoparams()
@@ -125,7 +117,6 @@ def _init(
     initial_branch,
     install_mergetool,
     client_dispatcher: IClientDispatcher,
-    database_dispatcher: IDatabaseDispatcher,
 ):
     """Initialize a renku project.
 
@@ -146,23 +137,20 @@ def _init(
         initial_branch: Default git branch.
         install_mergetool(bool): Whether to set up the renku metadata mergetool in the created project.
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
-        database_dispatcher(IDatabaseDispatcher): Injected database dispatcher.
     """
     client = client_dispatcher.current_client
 
-    # NOTE: set local path and storage
-    store_directory(path)
-    if not client.external_storage_requested:
+    if not project_properties.external_storage_requested:
         external_storage_requested = False
 
-    # NOTE: create new copy of LocalClient with modified values
-    project_properties.push_path(Path(path))
-    ctx.obj = client = attr.evolve(client, data_dir=data_dir, external_storage_requested=external_storage_requested)
+    project_properties.push_path(path, save_changes=True)
+    project_properties.datadir = data_dir
+    project_properties.external_storage_requested = external_storage_requested
+    ctx.obj = client = attr.evolve(client)
     client_dispatcher.push_created_client_to_stack(client)
-    database_dispatcher.push_database_to_stack(client.database_path, commit=True)
 
     communication.echo("Initializing Git repository...")
-    client.init_repository(force, None, initial_branch=initial_branch)
+    project_properties.repository = init_repository(force=force, user=None, initial_branch=initial_branch)
 
     # Initialize an empty database
     database_gateway = inject.instance(IDatabaseGateway)
@@ -174,7 +162,7 @@ def _init(
     if template is None:
         raise errors.TemplateNotFoundError(f"Couldn't find template with id {template_id}")
 
-    namespace, name = Project.get_namespace_and_name(client=client, name=name)
+    namespace, name = Project.get_namespace_and_name(use_project_properties=True, name=name)
     name = name or os.path.basename(path.rstrip(os.path.sep))
 
     metadata = dict()
@@ -201,10 +189,7 @@ def _init(
 
     rendered_template = template.render(metadata=template_metadata)
     actions = get_file_actions(
-        rendered_template=rendered_template,
-        template_action=TemplateAction.INITIALIZE,
-        client=client,
-        interactive=False,
+        rendered_template=rendered_template, template_action=TemplateAction.INITIALIZE, interactive=False
     )
 
     if not force:
@@ -225,12 +210,11 @@ def _init(
 
     # NOTE: clone the repo
     communication.echo("Initializing new Renku repository... ")
-    with client.lock:
+    with project_properties.lock:
         try:
             create_from_template(
                 rendered_template=rendered_template,
                 actions=actions,
-                client=client,
                 name=name,
                 custom_metadata=custom_metadata,
                 data_dir=data_dir,
@@ -243,23 +227,42 @@ def _init(
 
     if branch_name:
         communication.echo(
-            "Project initialized.\n"
+            "Project initialized.\n"  # type: ignore
             f"You can undo this command by running 'git reset --hard {branch_name}'\n"
-            f"You can see changes made by running 'git diff {branch_name} {client.repository.head.reference.name}'"
+            "You can see changes made by running "
+            f"'git diff {branch_name} {project_properties.repository.head.reference.name}'"
         )
     else:
         communication.echo("Project initialized.")
 
 
-def init_command():
-    """Init command builder."""
-    return Command().command(_init).with_database()
+def init_repository(force=False, user=None, initial_branch=None) -> "Repository":
+    """Initialize an empty Renku repository."""
+    from renku.infrastructure.repository import Repository
+
+    # initialize repo and set user data
+    path = project_properties.path
+    if force and (path / RENKU_HOME).exists():
+        shutil.rmtree(path / RENKU_HOME)
+    repository = Repository.initialize(path=path, branch=initial_branch)
+    if user:
+        with repository.get_configuration(writable=True) as config_writer:
+            for key, value in user.items():
+                config_writer.set_value("user", key, value)
+
+    # verify if git user information is available
+    _ = repository.get_user()
+
+    # initialize LFS if it is requested and installed
+    if project_properties.external_storage_requested and storage_installed():
+        init_external_storage(force=force)
+
+    return repository
 
 
 def create_from_template(
     rendered_template: RenderedTemplate,
     actions: Dict[str, FileAction],
-    client,
     name: Optional[str] = None,
     namespace: Optional[str] = None,
     custom_metadata: Optional[Dict] = None,
@@ -274,7 +277,6 @@ def create_from_template(
     Args:
         rendered_template(RenderedTemplate): Rendered template.
         actions(Dict[str, FileAction]): mapping of paths and actions to take.
-        client: ``LocalClient``.
         name(Optional[str]): Name of the project (Default value = None).
         namespace(Optional[str]): Namespace of the project (Default value = None).
         custom_metadata(Optional[Dict]): Custom JSON-LD metadata (Default value = None).
@@ -284,7 +286,9 @@ def create_from_template(
         keywords(Optional[List[str]]): Keywords for project (Default value = None).
         install_mergetool(bool): Whether to setup renku metadata mergetool (Default value = False).
     """
-    commit_only = [f"{RENKU_HOME}/", str(client.template_checksums)] + list(rendered_template.get_files())
+    commit_only = [f"{RENKU_HOME}/", str(project_properties.template_checksums_path)] + list(
+        rendered_template.get_files()
+    )
 
     if install_mergetool:
         commit_only.append(".gitattributes")
@@ -294,37 +298,33 @@ def create_from_template(
         data_path.mkdir(parents=True, exist_ok=True)
         keep = data_path / ".gitkeep"
         keep.touch(exist_ok=True)
-        commit_only.append(keep)
+        commit_only.append(str(keep))
 
     # add metadata.yml for backwards compatibility
-    metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
+    metadata_path = project_properties.metadata_path.joinpath(OLD_METADATA_PATH)
     with open(metadata_path, "w") as f:
         f.write(
             "# Dummy file kept for backwards compatibility, does not contain actual version\n"
             "'http://schema.org/schemaVersion': '9'"
         )
 
-    with client.commit(commit_message=commit_message, commit_only=commit_only, skip_dirty_checks=True):
-        with client.with_metadata(
+    with commit(commit_message=commit_message, commit_only=commit_only, skip_dirty_checks=True):
+        with with_project_metadata(
             name=name, namespace=namespace, description=description, custom_metadata=custom_metadata, keywords=keywords
         ) as project:
-            copy_template_to_client(
-                rendered_template=rendered_template, client=client, project=project, actions=actions
-            )
+            copy_template_to_client(rendered_template=rendered_template, project=project, actions=actions)
 
         if install_mergetool:
             setup_mergetool()
 
         if data_dir:
-            client.set_value("renku", client.DATA_DIR_CONFIG_KEY, str(data_dir))
+            set_value("renku", DATA_DIR_CONFIG_KEY, str(data_dir))
 
 
-@inject.autoparams("client_dispatcher")
 def _create_from_template_local(
     template_path: Path,
     name: str,
     namespace: str,
-    client_dispatcher: IClientDispatcher,
     metadata: Optional[Dict] = None,
     custom_metadata: Optional[Dict] = None,
     default_metadata: Optional[Dict] = None,
@@ -344,28 +344,25 @@ def _create_from_template_local(
         template_path(Path): Path to template.
         name(str): project name.
         namespace(str): project namespace.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         metadata(Optional[Dict]): Project metadata (Default value = None).
         custom_metadata(Optional[Dict]): Custom JSON-LD metadata (Default value = None).
         default_metadata(Optional[Dict]): Default project metadata (Default value = None).
         template_version(Optional[str]): Version of the template (Default value = None).
         immutable_template_files(Optional[List[str]]): Immutable template files (Default value = None).
         automated_template_update(bool): If template can be updated automatically (Default value = True).
-        user(Optional[Doct[str, str]]): Git user (Default value = None).
+        user(Optional[Dict[str, str]]): Git user (Default value = None).
         initial_branch(Optional[str]): Name of initial/main branch (Default value = None).
         commit_message(Optional[str]): Message of initial commit (Default value = None).
         description(Optional[str]): Project description (Default value = None).
         keywords(Optional[List[str]]): Project keywords (Default value = None).
         data_dir(Optional[str]): Project base data directory (Default value = None).
     """
-    client = client_dispatcher.current_client
-
     metadata = metadata or {}
     default_metadata = default_metadata or {}
 
     metadata = {**default_metadata, **metadata}
 
-    client.init_repository(False, user, initial_branch=initial_branch)
+    project_properties.repository = init_repository(force=False, user=user, initial_branch=initial_branch)
 
     # Initialize an empty database
     database_gateway = inject.instance(IDatabaseGateway)
@@ -398,13 +395,12 @@ def _create_from_template_local(
 
     rendered_template = template.render(metadata=template_metadata)
     actions = get_file_actions(
-        rendered_template=rendered_template, template_action=TemplateAction.INITIALIZE, client=client, interactive=False
+        rendered_template=rendered_template, template_action=TemplateAction.INITIALIZE, interactive=False
     )
 
     create_from_template(
         rendered_template=rendered_template,
         actions=actions,
-        client=client,
         name=name,
         namespace=namespace,
         custom_metadata=custom_metadata,

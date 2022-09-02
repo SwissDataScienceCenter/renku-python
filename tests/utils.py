@@ -17,7 +17,6 @@
 # limitations under the License.
 """Test utility functions."""
 
-import contextlib
 import itertools
 import os
 import traceback
@@ -31,10 +30,10 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 import pytest
 from flaky import flaky
 
-from renku.command.command_builder.command import inject, remove_injector
+from renku.command.command_builder.command import inject
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.interface.dataset_gateway import IDatasetGateway
+from renku.core.project.project_properties import project_properties
 from renku.domain_model.dataset import Dataset
 from renku.domain_model.entity import Entity
 from renku.domain_model.provenance.activity import Activity, Association, Generation, Usage
@@ -156,13 +155,12 @@ def load_dataset(name: str) -> Optional[Dataset]:
 
 
 @contextmanager
-@inject.autoparams("dataset_gateway", "database_dispatcher")
+@inject.autoparams("dataset_gateway")
 def with_dataset(
     client,
     *,
     name: str,
     dataset_gateway: IDatasetGateway,
-    database_dispatcher: IDatabaseDispatcher,
     commit_database: bool = False,
 ) -> Iterator[Optional[Dataset]]:
     """Yield an editable metadata object for a dataset."""
@@ -177,7 +175,7 @@ def with_dataset(
 
     if commit_database:
         dataset_gateway.add_or_remove(dataset)
-        database_dispatcher.current_database.commit()
+        project_properties.database.commit()
 
 
 def retry_failed(fn=None, extended: bool = False):
@@ -200,29 +198,6 @@ def retry_failed(fn=None, extended: bool = False):
         return wrapper
 
     return decorate() if fn else decorate
-
-
-@contextlib.contextmanager
-def injection_manager(bindings):
-    """Context manager to temporarily do injections."""
-
-    def _bind(binder):
-        for key, value in bindings["bindings"].items():
-            binder.bind(key, value)
-        for key, value in bindings["constructor_bindings"].items():
-            binder.bind_to_constructor(key, value)
-
-        return binder
-
-    inject.configure(_bind, bind_in_runtime=False)
-    try:
-        yield
-    finally:
-        try:
-            if IDatabaseDispatcher in bindings["bindings"]:
-                bindings["bindings"][IDatabaseDispatcher].finalize_dispatcher()
-        finally:
-            remove_injector()
 
 
 def write_and_commit_file(repository: Repository, path: Union[Path, str], content: str, commit: bool = True):

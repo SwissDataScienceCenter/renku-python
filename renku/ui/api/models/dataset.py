@@ -41,12 +41,15 @@ property:
 
 from operator import attrgetter
 from pathlib import Path
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
-from renku.command.command_builder.database_dispatcher import DatabaseDispatcher
+from renku.core.project.project_properties import has_graph_files
 from renku.domain_model import dataset as core_dataset
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.ui.api.util import ensure_project_context
+
+if TYPE_CHECKING:
+    from renku.ui.api import Project
 
 
 class Dataset:
@@ -90,7 +93,7 @@ class Dataset:
 
     @staticmethod
     @ensure_project_context
-    def list(project) -> List["Dataset"]:
+    def list(project: "Project") -> List["Dataset"]:
         """List all datasets in a project.
 
         Args:
@@ -99,13 +102,10 @@ class Dataset:
         Returns:
             List["Dataset"]: A list of all datasets in the supplied project.
         """
-        client = project.client
-        if not client or not client.has_graph_files():
+        if not project.repository or not has_graph_files():
             return []
-        database_dispatcher = DatabaseDispatcher()
-        database_dispatcher.push_database_to_stack(client.database_path)
+
         dataset_gateway = DatasetGateway()
-        dataset_gateway.database_dispatcher = database_dispatcher
 
         return [Dataset._from_dataset(d) for d in dataset_gateway.get_all_active_datasets()]
 
@@ -132,7 +132,7 @@ class DatasetFile:
 
     @classmethod
     @ensure_project_context
-    def _from_dataset_file(cls, dataset_file: core_dataset.DatasetFile, project):
+    def _from_dataset_file(cls, dataset_file: core_dataset.DatasetFile, project: "Project"):
         """Create an instance from Dataset metadata.
 
         Args:

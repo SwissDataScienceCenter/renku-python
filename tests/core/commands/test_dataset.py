@@ -33,12 +33,12 @@ from renku.command.dataset import (
     list_files_command,
 )
 from renku.core import errors
+from renku.core.constant import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.dataset.context import DatasetContext
 from renku.core.dataset.dataset_add import add_to_dataset
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.tag import get_dataset_by_tag
 from renku.core.errors import ParameterError
-from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.project.project_properties import project_properties
 from renku.core.util.contexts import chdir
 from renku.core.util.git import get_git_user
@@ -61,7 +61,7 @@ from tests.utils import assert_dataset_is_mutated, load_dataset, raises
         ("https://", "example.com/file1", True, None),
     ],
 )
-def test_data_add(scheme, path, overwrite, error, client_with_injection, directory_tree, dataset_responses):
+def test_data_add(scheme, path, overwrite, error, project_with_injection, directory_tree, dataset_responses):
     """Test data import."""
     with raises(error):
         if path == "temp":
@@ -88,7 +88,7 @@ def test_data_add(scheme, path, overwrite, error, client_with_injection, directo
             assert os.path.exists(target_path)
 
 
-def test_data_add_recursive(directory_tree, client_with_injection):
+def test_data_add_recursive(directory_tree, project_with_injection):
     """Test recursive data imports."""
     dataset = add_to_dataset("dataset", [str(directory_tree / "dir1")], create=True)
 
@@ -110,7 +110,7 @@ def test_creator_parse():
         Dataset(name="dataset", creators=["name"])
 
 
-def test_creators_with_same_email(client_with_injection, load_dataset_with_injection):
+def test_creators_with_same_email(project_with_injection, load_dataset_with_injection):
     """Test creators with different names and same email address."""
     with DatasetContext(name="dataset", create=True) as dataset:
         dataset.creators = [Person(name="me", email="me@example.com"), Person(name="me2", email="me@example.com")]
@@ -184,14 +184,14 @@ def test_mutate(client):
 
     dataset.mutate()
 
-    mutator = get_git_user(client.repository)
+    mutator = get_git_user(project_properties.repository)
     assert_dataset_is_mutated(old=old_dataset, new=dataset, mutator=mutator)
 
 
 @pytest.mark.xfail
 def test_mutator_is_added_once(client):
     """Test mutator of a dataset is added only once to its creators list."""
-    mutator = get_git_user(client.repository)
+    mutator = get_git_user(project_properties.repository)
 
     dataset = Dataset(
         name="my-dataset",
@@ -246,12 +246,12 @@ def test_uppercase_dataset_name_is_valid():
 
 
 @pytest.mark.integration
-def test_get_dataset_by_tag(path_injection, tmp_path):
+def test_get_dataset_by_tag(with_injections_manager, tmp_path):
     """Test getting datasets by a given tag."""
     url = "https://dev.renku.ch/gitlab/renku-python-integration-tests/lego-datasets.git"
     repository = Repository.clone_from(url=url, path=tmp_path / "repo")
 
-    with path_injection(repository.path):
+    with with_injections_manager(repository), project_properties.with_path(repository.path):
         dataset_gateway = DatasetGateway()
 
         parts_dataset = dataset_gateway.get_by_name("parts")

@@ -23,6 +23,9 @@ from typing import List
 
 import pytest
 
+from renku.core.config import set_value
+from renku.core.storage import get_minimum_lfs_file_size
+
 
 @pytest.fixture
 def directory_tree_files() -> List[str]:
@@ -75,31 +78,31 @@ def data_repository(directory_tree):
 
 
 @pytest.fixture
-def no_lfs_size_limit(client):
+def no_lfs_size_limit(repository):
     """Configure environment to track all files in LFS independent of size."""
-    client.set_value("renku", "lfs_threshold", "0b")
-    client.repository.add(".renku/renku.ini")
-    client.repository.commit("update renku.ini")
+    set_value("renku", "lfs_threshold", "0b")
+    repository.add(".renku/renku.ini")
+    repository.commit("update renku.ini")
 
-    yield client
+    yield
 
 
 @pytest.fixture
-def no_datadir_commit_warning(client):
+def no_datadir_commit_warning(repository):
     """Configure pre-commit hook to ignore files added to a datasets data directory."""
-    client.set_value("renku", "check_datadir_files", "false")
-    client.repository.add(".renku/renku.ini")
-    client.repository.commit("update renku.ini")
+    set_value("renku", "check_datadir_files", "false")
+    repository.add(".renku/renku.ini")
+    repository.commit("update renku.ini")
 
-    yield client
+    yield
 
 
 @pytest.fixture
-def large_file(tmp_path, client):
+def large_file(tmp_path):
     """A file larger than the minimum LFS file size."""
     path = tmp_path / "large-file"
-    with open(path, "w") as file_:
-        file_.seek(client.minimum_lfs_file_size)
-        file_.write("some data")
+    with open(path, "w") as file:
+        file.seek(get_minimum_lfs_file_size())
+        file.write("some data")
 
     yield path

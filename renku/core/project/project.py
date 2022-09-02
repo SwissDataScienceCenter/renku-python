@@ -22,8 +22,8 @@ from typing import Dict, List, Optional, Union, cast
 
 from renku.command.command_builder import inject
 from renku.command.view_model.project import ProjectViewModel
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
+from renku.core.project.project_properties import project_properties
 from renku.core.util.metadata import construct_creator
 from renku.core.util.util import NO_VALUE, NoValueType
 from renku.domain_model.provenance.agent import Person
@@ -74,14 +74,10 @@ def edit_project(
     return updated, no_email_warnings
 
 
-@inject.autoparams()
-def show_project(client_dispatcher: IClientDispatcher) -> ProjectViewModel:
+def show_project() -> ProjectViewModel:
     """Show project metadata.
-
-    Args:
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
 
     Returns:
         Project view model.
     """
-    return ProjectViewModel.from_project(client_dispatcher.current_client.project)
+    return ProjectViewModel.from_project(project_properties.project)

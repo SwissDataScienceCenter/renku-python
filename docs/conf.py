@@ -356,7 +356,6 @@ nitpick_ignore = [
     ("py:class", "DynamicProxy"),
     ("py:class", "IActivityGateway"),
     ("py:class", "IClientDispatcher"),
-    ("py:class", "IDatabaseDispatcher"),
     ("py:class", "IDatasetGateway"),
     ("py:class", "IPlanGateway"),
     ("py:class", "IStorageFactory"),

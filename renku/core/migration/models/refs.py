@@ -23,10 +23,8 @@ from pathlib import Path
 
 import attr
 
-from renku.command.command_builder import inject
 from renku.core import errors
-from renku.core.dataset.constant import REFS
-from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.constant import REFS
 from renku.core.project.project_properties import project_properties
 
 
@@ -34,7 +32,7 @@ from renku.core.project.project_properties import project_properties
 class LinkReference:
     """Manage linked object names."""
 
-    client = attr.ib(default=None, kw_only=True)
+    metadata_path = attr.ib(default=None, kw_only=True)
     name = attr.ib()
 
     @classmethod
@@ -64,7 +62,7 @@ class LinkReference:
     @property
     def path(self):
         """Return full reference path."""
-        return self.client.renku_path / REFS / self.name
+        return self.metadata_path / REFS / self.name
 
     @property
     def reference(self):
@@ -83,27 +81,21 @@ class LinkReference:
         os.symlink(os.path.relpath(str(reference_path), start=str(self.path.parent)), str(self.path))
 
     @classmethod
-    @inject.autoparams()
-    def iter_items(cls, client_dispatcher: IClientDispatcher, common_path=None):
+    def iter_items(cls, common_path=None):
         """Find all references in the repository."""
-        client = client_dispatcher.current_client
-
-        refs_path = path = client.renku_path / REFS
+        refs_path = path = project_properties.metadata_path / REFS
         if common_path:
             path = path / common_path
 
         for name in path.rglob("*"):
             if name.is_dir():
                 continue
-            yield cls(client=client, name=str(name.relative_to(refs_path)))
+            yield cls(metadata_path=project_properties.metadata_path, name=str(name.relative_to(refs_path)))
 
     @classmethod
-    @inject.autoparams()
-    def create(cls, client_dispatcher: IClientDispatcher, name, force=False):
+    def create(cls, name, force=False):
         """Create symlink to object in reference path."""
-        client = client_dispatcher.current_client
-
-        ref = cls(client=client, name=name)
+        ref = cls(metadata_path=project_properties.metadata_path, name=name)
         path = ref.path
         if os.path.lexists(path):
             if not force:
@@ -115,7 +107,7 @@ class LinkReference:
 
     def rename(self, new_name, force=False):
         """Rename self to a new name."""
-        new_ref = self.create(client=self.client, name=new_name, force=force)
+        new_ref = self.create(name=new_name, force=force)
         new_ref.set_reference(self.reference)
         self.delete()
         return new_ref

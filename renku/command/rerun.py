@@ -68,11 +68,7 @@ def _rerun(
     paths = paths or []
     paths = get_relative_paths(base=project_properties.path, paths=paths)
 
-    activities = list(
-        get_activities_until_paths(
-            paths, sources, activity_gateway=activity_gateway, client_dispatcher=client_dispatcher
-        )
-    )
+    activities = list(get_activities_until_paths(paths, sources, activity_gateway=activity_gateway))
 
     if len(activities) == 0:
         raise errors.NothingToExecuteError()

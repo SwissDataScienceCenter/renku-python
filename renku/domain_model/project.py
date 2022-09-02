@@ -24,6 +24,7 @@ from urllib.parse import quote
 import persistent
 
 from renku.core import errors
+from renku.core.project.project_properties import project_properties
 from renku.core.util.datetime8601 import fix_datetime, local_now, parse_date
 from renku.core.util.git import get_git_user
 from renku.core.util.os import normalize_to_ascii
@@ -33,7 +34,7 @@ from renku.domain_model.provenance.annotation import Annotation
 from renku.version import __minimum_project_version__
 
 if TYPE_CHECKING:
-    from renku.core.management.client import LocalClient
+    pass
 
 
 class Project(persistent.Persistent):
@@ -98,7 +99,6 @@ class Project(persistent.Persistent):
     @classmethod
     def from_client(
         cls,
-        client: "LocalClient",
         name: Optional[str] = None,
         namespace: Optional[str] = None,
         description: Optional[str] = None,
@@ -106,11 +106,10 @@ class Project(persistent.Persistent):
         custom_metadata: Optional[Dict] = None,
         creator: Optional[Person] = None,
     ) -> "Project":
-        """Create an instance from a LocalClient.
+        """Create an instance from a path.
 
         Args:
             cls: The class.
-            client(LocalClient): Local client instance.
             name(Optional[str]): Name of the project (when creating a new one) (Default value = None).
             namespace(Optional[str]): Namespace of the project (when creating a new one) (Default value = None).
             description(Optional[str]): Project description (when creating a new one) (Default value = None).
@@ -119,8 +118,10 @@ class Project(persistent.Persistent):
                 (Default value = None).
             creator(Optional[Person]): The project creator.
         """
-        namespace, name = cls.get_namespace_and_name(client=client, name=name, namespace=namespace, creator=creator)
-        creator = creator or get_git_user(client.repository)
+        namespace, name = cls.get_namespace_and_name(
+            use_project_properties=True, name=name, namespace=namespace, creator=creator
+        )
+        creator = creator or get_git_user(repository=project_properties.repository)
         annotations = None
 
         if custom_metadata:
@@ -142,17 +143,20 @@ class Project(persistent.Persistent):
 
     @staticmethod
     def get_namespace_and_name(
-        *, client=None, name: Optional[str] = None, namespace: Optional[str] = None, creator: Optional[Person] = None
+        *,
+        use_project_properties: bool = False,
+        name: Optional[str] = None,
+        namespace: Optional[str] = None,
+        creator: Optional[Person] = None,
     ):
         """Return Project's namespace and name from various objects."""
-
-        if client:
-            remote = client.remote
-            namespace = namespace or remote.get("owner")
-            name = name or remote.get("name")
+        if use_project_properties:
+            remote = project_properties.remote
+            namespace = namespace or remote.owner
+            name = name or remote.name
 
             if not creator:
-                creator = get_git_user(client.repository)
+                creator = get_git_user(repository=project_properties.repository)
 
         if not namespace and creator:
             namespace = creator.email.split("@")[0]

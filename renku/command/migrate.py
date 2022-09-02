@@ -19,6 +19,8 @@
 from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
 from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.interface.project_gateway import IProjectGateway
+from renku.core.project.project_properties import project_properties
 from renku.core.template.usecase import check_for_template_update
 
 SUPPORTED_RENKU_PROJECT = 1
@@ -57,7 +59,7 @@ def _migrations_check(client_dispatcher: IClientDispatcher):
         "project_renku_version": latest_version,
         "core_compatibility_status": _metadata_migration_check(client),
         "dockerfile_renku_status": _dockerfile_migration_check(client),
-        "template_status": _template_migration_check(client),
+        "template_status": _template_migration_check(),
     }
 
 
@@ -66,55 +68,45 @@ def migrations_versions():
     return Command().command(_migrations_versions).lock_project().with_database()
 
 
-@inject.autoparams()
-def _migrations_versions(client_dispatcher: IClientDispatcher):
+def _migrations_versions():
     """Return source and destination migration versions.
-
-    Args:
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
 
     Returns:
         Tuple of current version and project version.
     """
     from renku import __version__
 
-    client = client_dispatcher.current_client
-
     try:
-        latest_agent = client.latest_agent
+        latest_agent = project_properties.latest_agent
     except ValueError:
         # NOTE: maybe old project
         from renku.core.migration.utils import read_latest_agent
 
-        latest_agent = read_latest_agent(client)
+        latest_agent = read_latest_agent()
 
     return __version__, latest_agent
 
 
-def template_migration_check():
-    """Return a command for a template migrations check."""
-    return Command().command(_template_migration_check)
-
-
-def _template_migration_check(client):
+def _template_migration_check():
     """Return template migration status.
-
-    Args:
-        client: ``LocalClient``.
 
     Returns:
         Dictionary of template migration status.
     """
-    update_available, update_allowed, current_version, new_version = check_for_template_update(client)
 
     try:
-        template_source = client.project.template_source
-        template_ref = client.project.template_ref
-        template_id = client.project.template_id
+        project = project_properties.project
     except ValueError:
+        project = None
         template_source = None
         template_ref = None
         template_id = None
+    else:
+        template_source = project.template_source
+        template_ref = project.template_ref
+        template_id = project.template_id
+
+    update_available, update_allowed, current_version, new_version = check_for_template_update(project)
 
     return {
         "automated_template_update": update_allowed,
@@ -221,7 +213,7 @@ def check_project():
 
 
 @inject.autoparams()
-def _check_project(client_dispatcher: IClientDispatcher):
+def _check_project(project_gateway: IProjectGateway):
     from renku.core.management.migrate import (
         is_docker_update_possible,
         is_migration_required,
@@ -229,22 +221,20 @@ def _check_project(client_dispatcher: IClientDispatcher):
         is_renku_project,
     )
 
-    client = client_dispatcher.current_client
-
     if not is_renku_project():
         return NON_RENKU_REPOSITORY
     elif is_project_unsupported():
         return UNSUPPORTED_PROJECT
 
     try:
-        client.project
+        project_gateway.get_project()
     except ValueError:
         return MIGRATION_REQUIRED
 
     # NOTE: ``project.automated_update`` is deprecated and we always allow template update for a project
     status = AUTOMATED_TEMPLATE_UPDATE_SUPPORTED
 
-    if check_for_template_update(client)[0]:
+    if check_for_template_update(project_properties.project)[0]:
         status |= TEMPLATE_UPDATE_POSSIBLE
     if is_docker_update_possible()[0]:
         status |= DOCKERFILE_UPDATE_POSSIBLE
@@ -256,22 +246,22 @@ def _check_project(client_dispatcher: IClientDispatcher):
 
 
 @inject.autoparams()
-def _check_immutable_template_files(paths, client_dispatcher: IClientDispatcher):
+def _check_immutable_template_files(paths, project_gateway: IProjectGateway):
     """Check paths and return a list of those that are marked immutable in the project template.
 
     Args:
         paths: Paths to check.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        project_gateway(IProjectGateway): Injected project gateway.
 
     Returns:
         List of immutable template files.
     """
-    client = client_dispatcher.current_client
+    project = project_gateway.get_project()
 
-    if not client.project.immutable_template_files:
+    if not project.immutable_template_files:
         return []
 
-    immutable_template_files = client.project.immutable_template_files or []
+    immutable_template_files = project.immutable_template_files or []
     return [p for p in paths if str(p) in immutable_template_files]
 
 

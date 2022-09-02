@@ -32,10 +32,10 @@ import yaml
 from renku.command.command_builder.command import inject
 from renku.core import errors
 from renku.core.constant import RENKU_HOME, RENKU_TMP
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.plugin.pluginmanager import get_plugin_manager
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import check_external_storage, track_paths_in_storage
 from renku.core.util.git import is_path_safe
 from renku.core.util.metadata import is_external_file
 from renku.core.util.os import get_absolute_path, get_relative_path, is_subpath
@@ -67,7 +67,7 @@ class PlanFactory:
         explicit_outputs: Optional[List[Tuple[str, str]]] = None,
         explicit_parameters: Optional[List[Tuple[str, Optional[str]]]] = None,
         directory: Optional[str] = None,
-        working_dir: Optional[str] = None,
+        working_dir: Optional[Union[Path, str]] = None,
         no_input_detection: bool = False,
         no_output_detection: bool = False,
         success_codes: Optional[List[int]] = None,
@@ -564,13 +564,11 @@ class PlanFactory:
                 self.add_command_parameter(explicit_parameter, name=name)
 
     @contextmanager
-    @inject.autoparams()
-    def watch(self, client_dispatcher: IClientDispatcher, no_output=False):
+    def watch(self, no_output=False):
         """Watch a Renku repository for changes to detect outputs."""
-        client = client_dispatcher.current_client
-        client.check_external_storage()
+        check_external_storage()
 
-        repository = client.repository
+        repository = project_properties.repository
 
         # Remove indirect files list if any
         delete_indirect_files_list(self.working_dir)
@@ -647,10 +645,10 @@ class PlanFactory:
             if not no_output and not output_paths:
                 raise errors.OutputsNotFound()
 
-            if client.check_external_storage():
-                client.track_paths_in_storage(*output_paths)
+            if check_external_storage():
+                track_paths_in_storage(*output_paths)
 
-            client.repository.add(*output_paths)
+            repository.add(*output_paths)
 
     def _path_relative_to_root(self, path) -> str:
         """Make a potentially relative path in a subdirectory relative to the root of the repository."""

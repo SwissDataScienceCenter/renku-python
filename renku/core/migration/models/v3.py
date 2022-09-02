@@ -85,19 +85,19 @@ class Project(Base):
     agent_version = None
 
     @classmethod
-    def from_yaml(cls, path, client):
+    def from_yaml(cls, path):
         """Read content from YAML file."""
         data = yaml.read_yaml(path)
         self = ProjectSchemaV3().load(data)
 
         if not self.creator:
-            self.creator = Person.from_repository(client.repository)
+            self.creator = Person.from_repository(repository=project_properties.repository)
 
         if not self.name:
-            self.name = client.remote.get("name")
+            self.name = project_properties.remote.name
 
         if not self._id or "NULL/NULL" in self._id:
-            self._id = generate_project_id(client=client, name=self.name, creator=self.creator)
+            self._id = generate_project_id(name=self.name, creator=self.creator)
 
         return self
 

@@ -28,7 +28,7 @@ import patoolib
 from renku.command.command_builder.command import inject
 from renku.command.view_model.dataset import DatasetFileViewModel, DatasetViewModel
 from renku.core import errors
-from renku.core.dataset.constant import renku_dataset_images_path, renku_pointers_path
+from renku.core.config import get_value, remove_value, set_value
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.pointer_file import create_external_file, is_external_file_updated, update_external_file
 from renku.core.dataset.providers.factory import ProviderFactory
@@ -40,9 +40,9 @@ from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.interface.storage import IStorageFactory
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import check_external_storage, pull_paths_from_storage, track_paths_in_storage
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
-from renku.core.util.dispatcher import get_client, get_database
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository, get_git_user
 from renku.core.util.metadata import is_external_file, prompt_for_credentials, read_credentials, store_credentials
 from renku.core.util.os import (
@@ -130,11 +130,9 @@ def create_dataset(
     Returns:
         Dataset: The created dataset.
     """
-    client = get_client()
-
     if not creators:
         creators = []
-        user = get_git_user(client.repository)
+        user = get_git_user(repository=project_properties.repository)
 
         if user:
             creators.append(user)
@@ -170,20 +168,20 @@ def create_dataset(
         description=description,
         creators=creators,
         keywords=keywords,
-        project_id=client.project.id,
+        project_id=project_properties.project.id,
         annotations=annotations,
         storage=storage,
         datadir=datadir,
     )
 
     if images:
-        set_dataset_images(client, dataset, images)
+        set_dataset_images(dataset=dataset, images=images)
 
     if storage:
         provider = ProviderFactory.get_create_provider(uri=storage)
         provider.on_create(dataset=dataset)
     else:
-        add_datadir_files_to_dataset(client, dataset)
+        add_datadir_files_to_dataset(dataset)
 
     if update_provenance:
         datasets_provenance.add_or_update(dataset)
@@ -191,13 +189,11 @@ def create_dataset(
     return dataset
 
 
-@inject.autoparams("client_dispatcher")
 def edit_dataset(
     name: str,
     title: Optional[Union[str, NoValueType]],
     description: Optional[Union[str, NoValueType]],
     creators: Optional[Union[List[Person], NoValueType]],
-    client_dispatcher: IClientDispatcher,
     keywords: Optional[Union[List[str], NoValueType]] = NO_VALUE,
     images: Optional[Union[List[ImageRequestModel], NoValueType]] = NO_VALUE,
     custom_metadata: Optional[Union[Dict, NoValueType]] = NO_VALUE,
@@ -209,7 +205,6 @@ def edit_dataset(
         title(Optional[Union[str, NoValueType]]): New title for the dataset.
         description(Optional[Union[str, NoValueType]]): New description for the dataset.
         creators(Optional[Union[List[Person], NoValueType]]): New creators for the dataset.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         keywords(Optional[Union[List[str], NoValueType]]): New keywords for dataset (Default value = ``NO_VALUE``).
         images(Optional[Union[List[ImageRequestModel], NoValueType]]): New images for dataset
             (Default value = ``NO_VALUE``).
@@ -218,8 +213,6 @@ def edit_dataset(
     Returns:
         bool: True if updates were performed.
     """
-    client = client_dispatcher.current_client
-
     if isinstance(title, str):
         title = title.strip()
 
@@ -247,7 +240,7 @@ def edit_dataset(
     if images == NO_VALUE:
         images_updated = False
     else:
-        images_updated = set_dataset_images(client, dataset, cast(Optional[List[ImageRequestModel]], images))
+        images_updated = set_dataset_images(dataset=dataset, images=cast(Optional[List[ImageRequestModel]], images))
 
     if images_updated:
         updated["images"] = (
@@ -262,7 +255,7 @@ def edit_dataset(
         return []
 
     datasets_provenance = DatasetsProvenance()
-    datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
+    datasets_provenance.add_or_update(dataset, creator=get_git_user(project_properties.repository))
 
     return updated
 
@@ -277,7 +270,6 @@ def list_dataset_files(
     """List dataset files.
 
     Args:
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         datasets(List[str]): Datasets to list files for (Default value = None).
         tag(str): Tag to filter by (Default value = None).
         creators: Creators to filter by (Default value = None).
@@ -308,21 +300,19 @@ def list_dataset_files(
     return records
 
 
-@inject.autoparams()
-def file_unlink(name, include, exclude, client_dispatcher: IClientDispatcher, yes=False):
+def file_unlink(name, include, exclude, yes=False):
     """Remove matching files from a dataset.
 
     Args:
         name: Dataset name.
         include: Include filter for files.
         exclude: Exclude filter for files.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         yes: Whether to skip user confirmation or not (Default value = False).
 
     Returns:
         List[DynamicProxy]: List of files that were removed.
     """
-    client = client_dispatcher.current_client
+    repository = project_properties.repository
 
     if not include and not exclude:
         raise errors.ParameterError("include or exclude filters not specified.")
@@ -368,9 +358,9 @@ def file_unlink(name, include, exclude, client_dispatcher: IClientDispatcher, ye
                     f"Dataset file {path_file} could not be removed from {dataset_datadir} because of {err}."
                 )
             else:
-                client.repository.add(path_file)
+                repository.add(path_file)
 
-    datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
+    datasets_provenance.add_or_update(dataset, creator=get_git_user(repository))
 
     return records
 
@@ -427,9 +417,6 @@ def export_dataset(name, provider_name, tag, client_dispatcher: IClientDispatche
 
     dataset = cast(Dataset, DynamicProxy(dataset))
 
-    data_dir = dataset.get_datadir()
-    dataset.data_dir = data_dir
-
     exporter = provider.get_exporter(dataset=dataset, tag=selected_tag, **kwargs)
 
     if exporter.requires_access_token():
@@ -448,7 +435,7 @@ def export_dataset(name, provider_name, tag, client_dispatcher: IClientDispatche
     try:
         destination = exporter.export(client=client)
     except errors.AuthenticationError:
-        client.remove_value(provider_name, config_key_secret, global_only=True)
+        remove_value(provider_name, config_key_secret, global_only=True)
         raise
 
     communication.echo(f"Exported to: {destination}")
@@ -564,7 +551,7 @@ def import_dataset(
     importer.tag_dataset(name)
     importer.copy_extra_metadata(new_dataset)
 
-    get_database().commit()
+    project_properties.database.commit()
 
 
 @inject.autoparams()
@@ -745,8 +732,9 @@ def update_datasets(
         if updated_files or (deleted_files and delete):
             file_paths = {str(project_properties.path / f.entity.path) for f in updated_files}
             # Force-add to include possible ignored files that are in datasets
-            client.repository.add(*file_paths, force=True)
-            client.repository.add(renku_pointers_path(client), force=True)
+            repository = project_properties.repository
+            repository.add(*file_paths, force=True)
+            repository.add(project_properties.pointers_path, force=True)
 
             _update_datasets_files_metadata(client, updated_files, deleted_files, delete)
 
@@ -792,13 +780,16 @@ def show_dataset(name: str, tag: Optional[str] = None):
     return DatasetDetailsJson().dump(dataset)
 
 
-def add_datadir_files_to_dataset(client: "LocalClient", dataset: Dataset) -> None:
+@inject.autoparams("client_dispatcher")
+def add_datadir_files_to_dataset(dataset: Dataset, client_dispatcher: IClientDispatcher) -> None:
     """Add all files in a datasets data directory to the dataset.
 
     Args:
-        client(LocalClient): The ``LocalClient``.
+        client_dispatcher(IClientDispatcher): The client dispatcher.
         dataset(Dataset): The dataset to add data dir files to.
     """
+    client = client_dispatcher.current_client
+
     datadir = get_safe_relative_path(dataset.get_datadir(), project_properties.path)
 
     if datadir.exists():
@@ -812,18 +803,17 @@ def add_datadir_files_to_dataset(client: "LocalClient", dataset: Dataset) -> Non
         if not dataset_files:
             return
 
-        if client.check_external_storage():
-            client.track_paths_in_storage(*files)
-        client.repository.add(*files)
+        if check_external_storage():
+            track_paths_in_storage(*files)
+        project_properties.repository.add(*files)
 
         dataset.add_or_update_files(dataset_files)
 
 
-def set_dataset_images(client: "LocalClient", dataset: Dataset, images: Optional[List[ImageRequestModel]]):
+def set_dataset_images(dataset: Dataset, images: Optional[List[ImageRequestModel]]):
     """Set a dataset's images.
 
     Args:
-        client(LocalClient): The ``LocalClient``.
         dataset(Dataset): The dataset to set images on.
         images(List[ImageRequestModel]): The images to set.
 
@@ -833,7 +823,7 @@ def set_dataset_images(client: "LocalClient", dataset: Dataset, images: Optional
     if not images:
         images = []
 
-    image_folder = renku_dataset_images_path(client) / dataset.initial_identifier
+    image_folder = project_properties.dataset_images_path / dataset.initial_identifier
     image_folder.mkdir(exist_ok=True, parents=True)
     previous_images = dataset.images or []
 
@@ -926,15 +916,13 @@ def move_files(
 
                     if not to_dataset and (
                         new_dataset_file.is_external
-                        or is_subpath(
-                            project_properties.path / dst, project_properties.path / dataset.get_datadir(client)
-                        )
+                        or is_subpath(project_properties.path / dst, project_properties.path / dataset.get_datadir())
                     ):
                         dataset.add_or_update_files(new_dataset_file)
 
                 # NOTE: Update dataset if it contains a destination that is being overwritten
                 modified = dataset.find_file(dst)
-                added = is_subpath(project_properties.path / dst, project_properties.path / dataset.get_datadir(client))
+                added = is_subpath(project_properties.path / dst, project_properties.path / dataset.get_datadir())
                 if modified or added:
                     modified_datasets[dataset.name] = dataset
                     dataset.add_or_update_files(new_dataset_file)
@@ -948,27 +936,24 @@ def move_files(
 
     datasets_provenance = DatasetsProvenance()
     modified_dataset_values = list(modified_datasets.values())
+    creator = get_git_user(repository=project_properties.repository)
     for modified_dataset in modified_dataset_values:
-        datasets_provenance.add_or_update(modified_dataset, creator=get_git_user(client.repository))
+        datasets_provenance.add_or_update(modified_dataset, creator=creator)
     if to_dataset and to_dataset not in modified_dataset_values:
-        datasets_provenance.add_or_update(to_dataset, creator=get_git_user(client.repository))
+        datasets_provenance.add_or_update(to_dataset, creator=creator)
 
 
-@inject.autoparams("client_dispatcher")
 def update_dataset_local_files(
-    client_dispatcher: IClientDispatcher, records: List[DynamicProxy], check_data_directory: bool
+    records: List[DynamicProxy], check_data_directory: bool
 ) -> Tuple[List[DynamicProxy], List[DynamicProxy], List[DynamicProxy]]:
     """Update files metadata from the git history.
 
     Args:
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         records(List[DynamicProxy]): File records to update.
         check_data_directory(bool): Whether to check the dataset's data directory for new files.
     Returns:
         Tuple[List[DynamicProxy], List[DynamicProxy]]: Tuple of updated and deleted file records.
     """
-    client = client_dispatcher.current_client
-
     updated_files: List[DynamicProxy] = []
     deleted_files: List[DynamicProxy] = []
     new_files: List[DynamicProxy] = []
@@ -992,7 +977,7 @@ def update_dataset_local_files(
             check_paths.append(file.entity.path)
             records_to_check.append(file)
 
-        checksums = client.repository.get_object_hashes(check_paths)
+        checksums = project_properties.repository.get_object_hashes(check_paths)
 
         for file in records_to_check:
             current_checksum = checksums.get(file.entity.path)
@@ -1036,7 +1021,7 @@ def _update_datasets_files_metadata(
 
     datasets_provenance = DatasetsProvenance()
     for dataset in modified_datasets.values():
-        datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
+        datasets_provenance.add_or_update(dataset, creator=get_git_user(repository=project_properties.repository))
 
 
 @inject.autoparams("client_dispatcher")
@@ -1090,18 +1075,18 @@ def update_dataset_git_files(
             changed = found and based_on.checksum != checksum
 
             src = remote_repository.path / based_on.path
-            dst = client.renku_path.parent / file.entity.path
+            dst = project_properties.metadata_path.parent / file.entity.path
 
             if not found:
                 if not dry_run and delete:
                     delete_dataset_file(dst, follow_symlinks=True)
-                    client.repository.add(dst, force=True)
+                    project_properties.repository.add(dst, force=True)
                 deleted_files.append(file)
             elif changed:
                 if not dry_run:
                     # Fetch file if it is tracked by Git LFS
-                    remote_client.pull_paths_from_storage(remote_client.repository.path / based_on.path)
-                    if is_external_file(path=src, client_path=remote_client.repository.path):
+                    pull_paths_from_storage(remote_repository, remote_repository.path / based_on.path)
+                    if is_external_file(path=src, client_path=remote_repository.path):
                         delete_dataset_file(dst, follow_symlinks=True)
                         create_external_file(client=client, target=src.resolve(), path=dst)
                     else:
@@ -1340,20 +1325,18 @@ def pull_external_data(
 
 def store_dataset_data_location(dataset: Dataset, location: Optional[Path]) -> None:
     """Store data location for a dataset in the config file."""
-    client = get_client()
-
     section = "dataset-locations"
     key = dataset.name
 
     if not location:
-        client.remove_value(section=section, key=key)
+        remove_value(section=section, key=key)
     else:
-        client.set_value(section=section, key=key, value=get_absolute_path(location))
+        set_value(section=section, key=key, value=get_absolute_path(location))
 
 
 def read_dataset_data_location(dataset: Dataset) -> Optional[str]:
     """Read data location for a dataset in the config file."""
-    return get_client().get_value(section="dataset-locations", key=dataset.name, config_filter=ConfigFilter.LOCAL_ONLY)
+    return get_value(section="dataset-locations", key=dataset.name, config_filter=ConfigFilter.LOCAL_ONLY)
 
 
 @inject.autoparams("client_dispatcher", "storage_factory")

@@ -17,6 +17,8 @@
 # limitations under the License.
 """Template tests."""
 
+from pathlib import Path
+
 import pytest
 
 from renku.core import errors
@@ -66,7 +68,8 @@ def test_check_for_template_update(client_with_template, templates_source, clien
     templates_source.update(id="dummy", version="2.0.0")
 
     with client_database_injection_manager(client_with_template):
-        updates_available, _, current_version, new_version = check_for_template_update(client_with_template)
+        project = project_properties.project
+        updates_available, _, current_version, new_version = check_for_template_update(project)
 
     assert updates_available is True
     assert "1.0.0" == current_version
@@ -77,13 +80,13 @@ def test_template_update_files(client_with_template, templates_source, client_da
     """Test template update."""
     templates_source.update(id="dummy", version="2.0.0")
 
-    files_before = {p: p.read_text() for p in client_with_template.template_files}
+    files_before = {p: Path(p).read_text() for p in project_properties.project.template_files}
 
     with client_database_injection_manager(client_with_template):
         update_template(force=False, interactive=False, dry_run=False)
 
-    for file in client_with_template.template_files:
-        assert file.read_text() != files_before[file]
+    for file in project_properties.project.template_files:
+        assert Path(file).read_text() != files_before[file]
 
 
 def test_template_update_source_failure(client_with_template, client_database_injection_manager):
@@ -106,7 +109,7 @@ def test_template_update_source_failure(client_with_template, client_database_in
         (FileAction.KEEP, "project"),
     ],
 )
-def test_copy_template_actions(client, rendered_template, action, content_type, client_database_injection_manager):
+def test_copy_template_actions(project, rendered_template, action, content_type, client_database_injection_manager):
     """Test FileActions when copying a template."""
     project_content = (project_properties.path / "Dockerfile").read_text()
     template_content = (rendered_template.path / "Dockerfile").read_text()
@@ -114,9 +117,9 @@ def test_copy_template_actions(client, rendered_template, action, content_type, 
     # NOTE: Ignore all other files expect the Dockerfile
     actions = {f: FileAction.IGNORE_UNCHANGED_REMOTE for f in rendered_template.get_files()}
     actions["Dockerfile"] = action
-    with client_database_injection_manager(client):
+    with client_database_injection_manager(project):
         copy_template_to_client(
-            rendered_template=rendered_template, client=client, project=client.project, actions=actions
+            rendered_template=rendered_template, project=project_properties.project, actions=actions
         )
 
     # NOTE: Make sure that files have some content
@@ -138,10 +141,7 @@ def test_get_file_actions_for_initialize(client, rendered_template, client_datab
     """Test getting file action when initializing."""
     with client_database_injection_manager(client):
         actions = get_file_actions(
-            rendered_template=rendered_template,
-            template_action=TemplateAction.INITIALIZE,
-            client=client,
-            interactive=False,
+            rendered_template=rendered_template, template_action=TemplateAction.INITIALIZE, interactive=False
         )
 
     appended_file = ".gitignore"
@@ -158,7 +158,7 @@ def test_get_file_actions_for_set(client, rendered_template, client_database_inj
     """Test getting file action when setting a template."""
     with client_database_injection_manager(client):
         actions = get_file_actions(
-            rendered_template=rendered_template, template_action=TemplateAction.SET, client=client, interactive=False
+            rendered_template=rendered_template, template_action=TemplateAction.SET, interactive=False
         )
 
     new_file = ".dummy"
@@ -175,10 +175,7 @@ def test_get_file_actions_for_update(
     """Test getting file action when updating a template."""
     with client_database_injection_manager(client_with_template):
         actions = get_file_actions(
-            rendered_template=rendered_template_with_update,
-            template_action=TemplateAction.UPDATE,
-            client=client_with_template,
-            interactive=False,
+            rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
         )
 
     identical_file = ".dummy"
@@ -195,10 +192,7 @@ def test_update_with_locally_modified_file(
 
     with client_database_injection_manager(client_with_template):
         actions = get_file_actions(
-            rendered_template=rendered_template_with_update,
-            template_action=TemplateAction.UPDATE,
-            client=client_with_template,
-            interactive=False,
+            rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
         )
 
     assert FileAction.KEEP == actions["Dockerfile"]
@@ -212,10 +206,7 @@ def test_update_with_locally_deleted_file(
 
     with client_database_injection_manager(client_with_template):
         actions = get_file_actions(
-            rendered_template=rendered_template_with_update,
-            template_action=TemplateAction.UPDATE,
-            client=client_with_template,
-            interactive=False,
+            rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
         )
 
     assert FileAction.DELETED == actions["Dockerfile"]
@@ -235,8 +226,5 @@ def test_update_with_locally_changed_immutable_file(
         errors.TemplateUpdateError, match="Can't update template as immutable template file .* has local changes."
     ), client_database_injection_manager(client_with_template):
         get_file_actions(
-            rendered_template=rendered_template_with_update,
-            template_action=TemplateAction.UPDATE,
-            client=client_with_template,
-            interactive=False,
+            rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
         )

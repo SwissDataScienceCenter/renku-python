@@ -26,27 +26,28 @@ import warnings
 import pytest
 
 from renku.core import errors
+from renku.core.config import set_value
 
 
 @pytest.fixture
-def zenodo_sandbox(client):
+def zenodo_sandbox(repository):
     """Configure environment to use Zenodo sandbox environment."""
     os.environ["ZENODO_USE_SANDBOX"] = "true"
 
     access_token = os.getenv("ZENODO_ACCESS_TOKEN", "")
-    client.set_value("zenodo", "access_token", access_token)
+    set_value("zenodo", "access_token", access_token)
 
-    client.repository.add(".renku/renku.ini")
-    client.repository.commit("update renku.ini")
+    repository.add(".renku/renku.ini")
+    repository.commit("update renku.ini")
 
 
 @pytest.fixture
-def olos_sandbox(client):
+def olos_sandbox(repository):
     """Configure environment to use Zenodo sandbox environment."""
     access_token = os.getenv("OLOS_ACCESS_TOKEN", "")
-    client.set_value("olos", "access_token", access_token)
-    client.repository.add(".renku/renku.ini")
-    client.repository.commit("update renku.ini")
+    set_value("olos", "access_token", access_token)
+    repository.add(".renku/renku.ini")
+    repository.commit("update renku.ini")
 
 
 @pytest.fixture(scope="module")
@@ -85,14 +86,14 @@ def dataverse_demo_cleanup(request):
 
 
 @pytest.fixture
-def dataverse_demo(client, dataverse_demo_cleanup):
+def dataverse_demo(repository, dataverse_demo_cleanup):
     """Configure environment to use Dataverse demo environment."""
     access_token = os.getenv("DATAVERSE_ACCESS_TOKEN", "")
-    client.set_value("dataverse", "access_token", access_token)
-    client.set_value("dataverse", "server_url", "https://demo.dataverse.org")
+    set_value("dataverse", "access_token", access_token)
+    set_value("dataverse", "server_url", "https://demo.dataverse.org")
 
-    client.repository.add(".renku/renku.ini")
-    client.repository.commit("renku.ini")
+    repository.add(".renku/renku.ini")
+    repository.commit("renku.ini")
 
 
 @pytest.fixture
@@ -106,7 +107,7 @@ def doi_responses():
     with responses.RequestsMock(assert_all_requests_are_fired=False) as response:
 
         def doi_callback(request):
-            response_url = "https://dataverse.harvard.edu/citation" "?persistentId=doi:10.11588/data/yyxx1122"
+            response_url = "https://dataverse.harvard.edu/citation" "?persistentId=doi:10.11588/data/xyz12345"
             if "zenodo" in request.url:
                 response_url = "https://zenodo.org/record/3363060"
             return (
@@ -120,7 +121,7 @@ def doi_responses():
                         "contributor": [{"contributorType": "ContactPerson", "family": "Doe", "given": "John"}],
                         "issued": {"date-parts": [[2019]]},
                         "abstract": "Test Dataset",
-                        "DOI": "10.11588/data/yyxx1122",
+                        "DOI": "10.11588/data/xyz12345",
                         "publisher": "heiDATA",
                         "title": "dataset",
                         "URL": response_url,
@@ -132,11 +133,11 @@ def doi_responses():
             method="GET", url=re.compile("{base_url}/.*".format(base_url=DOI_BASE_URL)), callback=doi_callback
         )
 
-        def version_callback(request):
+        def version_callback(_):
             return (
                 200,
                 {"Content-Type": "application/json"},
-                json.dumps({"status": "OK", "data": {"version": "4.1.3", "build": "abcdefg"}}),
+                json.dumps({"status": "OK", "data": {"version": "4.1.3", "build": "abc123"}}),
             )
 
         base_url = "https://dataverse.harvard.edu"

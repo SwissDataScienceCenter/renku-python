@@ -246,7 +246,7 @@ def test_explicit_inputs_in_subdirectories(client, runner):
     assert 0 == result.exit_code, format_result_exception(result)
 
     # Status must be dirty if foo/bar changes
-    write_and_commit_file(client.repository, project_properties.path / "foo" / "bar", "new changes")
+    write_and_commit_file(project_properties.repository, project_properties.path / "foo" / "bar", "new changes")
 
     assert 0 == result.exit_code, format_result_exception(result)
 

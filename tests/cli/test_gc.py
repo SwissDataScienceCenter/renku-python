@@ -34,19 +34,19 @@ def test_gc(runner, client):
     (tmp / "cache").touch()
 
     (project_properties.path / "tracked").write_text("tracked file")
-    client.repository.add("tracked")
+    client.add("tracked")
 
     (project_properties.path / "untracked").write_text("untracked file")
 
-    commit_sha_before = client.repository.head.commit.hexsha
+    commit_sha_before = client.head.commit.hexsha
 
     result = runner.invoke(cli, ["gc"])
 
-    commit_sha_after = client.repository.head.commit.hexsha
+    commit_sha_after = client.head.commit.hexsha
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert not tmp.exists()
     assert not cache.exists()
-    assert "tracked" in [f.a_path for f in client.repository.staged_changes]
-    assert "untracked" in client.repository.untracked_files
+    assert "tracked" in [f.a_path for f in client.staged_changes]
+    assert "untracked" in client.untracked_files
     assert commit_sha_after == commit_sha_before

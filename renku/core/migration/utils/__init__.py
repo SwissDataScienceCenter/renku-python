@@ -25,6 +25,9 @@ from enum import IntFlag
 from typing import TYPE_CHECKING, NamedTuple
 from urllib.parse import ParseResult, quote, urljoin, urlparse
 
+from renku.command.command_builder import inject
+from renku.core.constant import RENKU_HOME
+from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.project.project_properties import project_properties
 from renku.core.util.yaml import read_yaml
 
@@ -74,7 +77,7 @@ def generate_url_id(client, url_str, url_id):
 
     host = "localhost"
     if client:
-        host = client.remote.get("host") or host
+        host = project_properties.remote.host or host
     host = os.environ.get("RENKU_DOMAIN") or host
 
     return urljoin("https://{host}".format(host=host), pathlib.posixpath.join("/urls", quote(id_, safe="")))
@@ -84,7 +87,7 @@ def generate_dataset_tag_id(client, name, commit):
     """Generate @id field for DatasetTag."""
     host = "localhost"
     if client:
-        host = client.remote.get("host") or host
+        host = project_properties.remote.host or host
     host = os.environ.get("RENKU_DOMAIN") or host
 
     name = "{0}@{1}".format(name, commit)
@@ -99,26 +102,27 @@ def generate_dataset_id(client, identifier):
     # Default is localhost.
     host = "localhost"
     if client:
-        host = client.remote.get("host") or host
+        host = project_properties.remote.host or host
     host = os.environ.get("RENKU_DOMAIN") or host
 
     # always set the id by the identifier
     return urljoin(f"https://{host}", pathlib.posixpath.join("/datasets", quote(identifier, safe="")))
 
 
-def generate_dataset_file_url(client, filepath):
+@inject.autoparams()
+def generate_dataset_file_url(client, filepath, project_gateway: IProjectGateway):
     """Generate url for DatasetFile."""
     if not client:
         return
 
     try:
-        if not client.project:
+        project = project_gateway.get_project()
+        if not project:
             return
-        project = client.project
     except ValueError:
         from renku.core.migration.models.v9 import Project
 
-        metadata_path = client.renku_path.joinpath(OLD_METADATA_PATH)
+        metadata_path = project_properties.metadata_path.joinpath(OLD_METADATA_PATH)
         project = Project.from_yaml(metadata_path, client=client)
 
         project_id = urlparse(project._id)
@@ -174,36 +178,36 @@ def migrate_types(data):
     return data
 
 
-def get_pre_0_3_4_datasets_metadata(client):
+def get_pre_0_3_4_datasets_metadata():
     """Return paths of dataset metadata for pre 0.3.4."""
-    from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+    from renku.core.constant import DEFAULT_DATA_DIR as DATA_DIR
 
-    project_is_pre_0_3 = int(read_project_version(client)) < 2
+    project_is_pre_0_3 = int(read_project_version()) < 2
     if project_is_pre_0_3:
         return (project_properties.path / DATA_DIR).glob(f"*/{OLD_METADATA_PATH}")
     return []
 
 
-def read_project_version(client):
+def read_project_version():
     """Read project version from metadata file."""
     try:
-        return client.project.version
+        return project_properties.project.version
     except (NotImplementedError, ValueError):
-        yaml_data = read_yaml(client.renku_path.joinpath(OLD_METADATA_PATH))
+        yaml_data = read_yaml(project_properties.metadata_path.joinpath(OLD_METADATA_PATH))
         return read_project_version_from_yaml(yaml_data)
 
 
-def read_latest_agent(client):
+def read_latest_agent():
     """Read project version from metadata file."""
     import pyld
 
     try:
-        return client.latest_agent
+        return project_properties.latest_agent
     except (NotImplementedError, ValueError):
-        if not os.path.exists(client.renku_path.joinpath(OLD_METADATA_PATH)):
+        if not os.path.exists(project_properties.metadata_path.joinpath(OLD_METADATA_PATH)):
             raise
 
-        yaml_data = read_yaml(client.renku_path.joinpath(OLD_METADATA_PATH))
+        yaml_data = read_yaml(project_properties.metadata_path.joinpath(OLD_METADATA_PATH))
         jsonld = pyld.jsonld.expand(yaml_data)[0]
         jsonld = normalize(jsonld)
         return _get_jsonld_property(jsonld, "http://schema.org/agent", "pre-0.11.0")
@@ -247,7 +251,7 @@ def normalize(value):
 def get_datasets_path(client):
     """Get the old datasets metadata path."""
     return getattr(
-        thread_local_storage, "temporary_datasets_path", project_properties.path / client.renku_home / OLD_DATASETS_PATH
+        thread_local_storage, "temporary_datasets_path", project_properties.path / RENKU_HOME / OLD_DATASETS_PATH
     )
 
 

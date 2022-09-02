@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test ``migrate`` command."""
+
 import json
 import os
 import sys
@@ -25,7 +26,6 @@ import pytest
 
 from renku.core.constant import RENKU_HOME, RENKU_TMP
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.management.client import LocalClient
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
 from renku.core.project.project_properties import project_properties
 from renku.domain_model.dataset import RemoteEntity
@@ -44,17 +44,15 @@ def test_migrate_datasets_with_old_repository(isolated_runner, old_project):
 
 
 @pytest.mark.migration
-def test_migrate_project(isolated_runner, old_project, client_database_injection_manager):
+def test_migrate_project(isolated_runner, old_project):
     """Test migrate on old repository."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert not old_project.is_dirty(untracked_files=True)
 
     with project_properties.with_path(old_project.path):
-        client = LocalClient()
-        with client_database_injection_manager(client):
-            assert client.project
-            assert client.project.name
+        assert project_properties.project
+        assert project_properties.project.name
 
 
 @pytest.mark.migration
@@ -101,8 +99,7 @@ def test_correct_path_migrated(isolated_runner, old_project, client_database_inj
     assert 0 == result.exit_code, format_result_exception(result)
 
     with project_properties.with_path(old_project.path):
-        client = LocalClient()
-        with client_database_injection_manager(client):
+        with client_database_injection_manager(old_project):
             datasets = DatasetGateway().get_all_active_datasets()
             assert datasets
 
@@ -121,9 +118,7 @@ def test_correct_relative_path(isolated_runner, old_project, client_database_inj
     assert 0 == result.exit_code, format_result_exception(result)
 
     with project_properties.with_path(path=old_project.path):
-        client = LocalClient()
-
-        with client_database_injection_manager(client):
+        with client_database_injection_manager(old_project):
             datasets_provenance = DatasetsProvenance()
 
             assert len(list(datasets_provenance.datasets)) > 0

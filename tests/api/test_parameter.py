@@ -30,7 +30,7 @@ from renku.core.workflow.plan_factory import (
 from renku.ui.api import Input, Output, Parameter, Project
 
 
-def test_indirect_inputs(client):
+def test_indirect_inputs(project):
     """Test defining indirect inputs."""
     path_1 = "/some/absolute/path"
     path_2 = "relative/path"
@@ -53,7 +53,7 @@ def test_indirect_inputs(client):
     assert {input_1.name, input_2.name, input_3.name} == set(yaml.safe_load(content).keys())
 
 
-def test_indirect_outputs(client):
+def test_indirect_outputs(project):
     """Test defining indirect outputs."""
     path_1 = "/some/absolute/path"
     path_2 = "relative/path"
@@ -76,7 +76,7 @@ def test_indirect_outputs(client):
     assert {output_1.name, output_2.name, output_3.name} == set(yaml.safe_load(content).keys())
 
 
-def test_indirect_inputs_outputs(client):
+def test_indirect_inputs_outputs(project):
     """Test defining indirect inputs and outputs together."""
     path_1 = "/some/absolute/path"
     path_2 = "relative/path"
@@ -96,7 +96,7 @@ def test_indirect_inputs_outputs(client):
     assert output_2.name == list(yaml.safe_load(output_content).keys())[0]
 
 
-def test_open_inputs(client):
+def test_open_inputs(project):
     """Test inputs can be passed to open function."""
     with open(Input("input-1", "input.txt"), "w") as f:
         f.write("some data")
@@ -104,7 +104,7 @@ def test_open_inputs(client):
     assert "some data" == (project_properties.path / "input.txt").read_text()
 
 
-def test_open_outputs(client):
+def test_open_outputs(project):
     """Test outputs can be passed to open function."""
     with open(Output("output-1", "output.txt"), "w") as f:
         f.write("some data")
@@ -112,7 +112,7 @@ def test_open_outputs(client):
     assert "some data" == (project_properties.path / "output.txt").read_text()
 
 
-def test_parameters(client):
+def test_parameters(project):
     """Test defining parameters."""
     p1 = Parameter("parameter 1", 42)
 

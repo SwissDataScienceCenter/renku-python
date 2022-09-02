@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
 from renku.core import errors
 from renku.core.dataset.providers.api import ProviderApi, ProviderPriority
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.dataset import check_url
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository
@@ -89,7 +90,6 @@ class GitProvider(ProviderApi):
     ) -> List["DatasetAddMetadata"]:
         """Add files from a URI to a dataset."""
         from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
-        from renku.core.management.client import LocalClient
 
         destination_exists = destination.exists()
         destination_is_dir = destination.is_dir()
@@ -166,7 +166,7 @@ class GitProvider(ProviderApi):
 
         paths = get_source_paths()
         with project_properties.with_path(remote_repository.path):
-            LocalClient().pull_paths_from_storage(*paths)
+            pull_paths_from_storage(project_properties.repository, *paths)
         is_copy = should_copy(list(paths))
 
         for path in paths:
