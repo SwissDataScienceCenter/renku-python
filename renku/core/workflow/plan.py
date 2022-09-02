@@ -32,7 +32,7 @@ from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.interface.project_gateway import IProjectGateway
-from renku.core.management.project_config import config
+from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.os import are_paths_related, get_relative_paths, safe_read_yaml
@@ -333,7 +333,7 @@ def compose_workflow(
             child_workflows.append(child_workflow)
     else:
         sources = sources or []
-        sources = get_relative_paths(base=config.path, paths=sources)
+        sources = get_relative_paths(base=project_properties.path, paths=sources)
 
         if not sinks:
             usages = activity_gateway.get_all_usage_paths()
@@ -341,7 +341,7 @@ def compose_workflow(
 
             sinks = [g for g in generations if all(not are_paths_related(g, u) for u in usages)]
 
-        sinks = get_relative_paths(base=config.path, paths=sinks)
+        sinks = get_relative_paths(base=project_properties.path, paths=sinks)
 
         activities = list(
             get_activities_until_paths(
@@ -476,7 +476,7 @@ def export_workflow(
     from renku.core.plugin.workflow import workflow_converter
 
     converter = workflow_converter(format)
-    return converter(workflow=workflow, basedir=config.path, output=output_path, output_format=format)
+    return converter(workflow=workflow, basedir=project_properties.path, output=output_path, output_format=format)
 
 
 def _lookup_paths_in_paths(lookup_paths: List[str], target_paths: List[str]):
@@ -486,7 +486,7 @@ def _lookup_paths_in_paths(lookup_paths: List[str], target_paths: List[str]):
     files = set()
 
     for p in lookup_paths:
-        path = Path(get_relative_paths(base=config.path, paths=[p])[0])
+        path = Path(get_relative_paths(base=project_properties.path, paths=[p])[0])
         if path.is_dir():
             dirs.append(path)
         else:
@@ -541,7 +541,7 @@ def visualize_graph(
     from renku.core.workflow.activity import create_activity_graph, get_activities_until_paths
 
     sources = sources or []
-    sources = get_relative_paths(base=config.path, paths=[Path.cwd() / p for p in sources])
+    sources = get_relative_paths(base=project_properties.path, paths=[Path.cwd() / p for p in sources])
 
     if not targets:
         usages = activity_gateway.get_all_usage_paths()
@@ -549,7 +549,7 @@ def visualize_graph(
 
         targets = [g for g in generations if all(not are_paths_related(g, u) for u in usages)]
     else:
-        targets = get_relative_paths(base=config.path, paths=[Path.cwd() / p for p in targets])
+        targets = get_relative_paths(base=project_properties.path, paths=[Path.cwd() / p for p in targets])
 
     activities = get_activities_until_paths(
         paths=targets,

@@ -31,7 +31,7 @@ from typing import List
 import attr
 
 from renku.core import errors
-from renku.core.management.project_config import config
+from renku.core.project.project_properties import project_properties
 from renku.core.util.os import get_absolute_path
 from renku.core.util.urls import remove_credentials
 
@@ -102,7 +102,7 @@ def finalize_commit(
 
     if isinstance(commit_only, list):
         for path_ in commit_only:
-            p = config.path / path_
+            p = project_properties.path / path_
             if p.exists() or change_types.get(str(path_)) == "D":
                 client.repository.add(path_)
 
@@ -147,8 +147,8 @@ def prepare_worktree(
     from renku.infrastructure.repository import NULL_TREE
 
     path = path or tempfile.mkdtemp()
-    original_path = config.path
-    config.push_path(Path(path))
+    original_path = project_properties.path
+    project_properties.push_path(Path(path))
 
     branch_name = branch_name or "renku/run/isolation/" + uuid.uuid4().hex
 
@@ -216,7 +216,7 @@ def finalize_worktree(
             # delete the created temporary branch
             client.repository.branches.remove(branch_name)
 
-    config.pop_path()
+    project_properties.pop_path()
 
     if client.external_storage_requested:
         client.checkout_paths_from_storage()
@@ -296,7 +296,7 @@ class GitCore:
 
         #: Create an instance of a Git repository for the given path.
         try:
-            self.repository = Repository(config.path)
+            self.repository = Repository(project_properties.path)
         except errors.GitError:
             self.repository = None
 
@@ -363,7 +363,7 @@ class GitCore:
         untracked = self.repository.untracked_files
 
         for file_path in untracked:
-            is_parent = (config.path / file_path).parent == (config.path / path)
+            is_parent = (project_properties.path / file_path).parent == (project_properties.path / path)
             is_equal = path == file_path
 
             if is_parent or is_equal:

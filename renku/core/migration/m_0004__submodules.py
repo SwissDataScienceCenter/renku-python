@@ -26,10 +26,10 @@ from renku.core import errors
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.management.client import LocalClient
-from renku.core.management.project_config import config
 from renku.core.migration.m_0009__new_metadata_storage import _fetch_datasets
 from renku.core.migration.models.v3 import DatasetFileSchemaV3, get_client_datasets
 from renku.core.migration.models.v9 import DatasetFile, OldDatasetFileSchema, generate_file_id, generate_label
+from renku.core.project.project_properties import project_properties
 from renku.core.util.urls import remove_credentials
 from renku.infrastructure.repository import Repository
 
@@ -56,7 +56,7 @@ def _migrate_submodule_based_datasets(
 
     for dataset in get_client_datasets(client):
         for file_ in dataset.files:
-            path = config.path / file_.path
+            path = project_properties.path / file_.path
             if not path.is_symlink():
                 continue
 
@@ -78,7 +78,7 @@ def _migrate_submodule_based_datasets(
 
     remote_clients = dict()
     for repo_path in repo_paths:
-        with config.with_path(repo_path):
+        with project_properties.with_path(repo_path):
             remote_client = LocalClient()
             remote_clients[repo_path] = remote_client
             client_dispatcher.push_created_client_to_stack(remote_client)
@@ -99,12 +99,12 @@ def _migrate_submodule_based_datasets(
 
         repo_is_remote = ".renku/vendors/local" not in str(repo_path)
         based_on = None
-        submodule_path = repo_path.relative_to(config.path)
+        submodule_path = repo_path.relative_to(project_properties.path)
 
         url = submodules_urls.get(submodule_path, "")
 
         if repo_is_remote:
-            with config.with_path(repo_path):
+            with project_properties.with_path(repo_path):
                 based_on = _fetch_file_metadata(remote_client, path_within_repo)
                 if based_on:
                     based_on.url = url
@@ -116,12 +116,12 @@ def _migrate_submodule_based_datasets(
         else:
             if url:
                 full_path = Path(url) / path_within_repo
-                rel_path = os.path.relpath(full_path, config.path)
+                rel_path = os.path.relpath(full_path, project_properties.path)
                 url = f"file://{rel_path}"
 
         metadata[path] = (based_on, url)
 
-        path = config.path / path
+        path = project_properties.path / path
         path.unlink()
 
         try:
@@ -151,7 +151,7 @@ def _migrate_submodule_based_datasets(
 
 def _fetch_file_metadata(client, path):
     """Return metadata for a single file."""
-    paths = glob.glob(f"{config.path}/.renku/datasets/*/*.yml" "")
+    paths = glob.glob(f"{project_properties.path}/.renku/datasets/*/*.yml" "")
     for dataset in _fetch_datasets(client, client.repository.head.commit.hexsha, paths, [])[0]:
         for file in dataset.files:
             if file.entity.path == path:

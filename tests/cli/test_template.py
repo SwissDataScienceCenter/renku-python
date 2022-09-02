@@ -24,7 +24,7 @@ from pathlib import Path
 import pytest
 from packaging.version import Version
 
-from renku.core.management.project_config import config
+from renku.core.project.project_properties import project_properties
 from renku.core.util.contexts import chdir
 from renku.core.util.yaml import write_yaml
 from renku.domain_model.template import TemplateMetadata, TemplateParameter
@@ -163,7 +163,7 @@ def test_template_set_overwrites_modified(runner, client, client_database_inject
     assert 0 == result.exit_code, format_result_exception(result)
     with client_database_injection_manager(client):
         assert "R-minimal" == client.project.template_id
-    assert "my-modifications" not in (config.path / "Dockerfile").read_text()
+    assert "my-modifications" not in (project_properties.path / "Dockerfile").read_text()
     assert not client.repository.is_dirty(untracked_files=True)
 
 
@@ -177,13 +177,13 @@ def test_template_set_interactive(runner, client, client_database_injection_mana
     assert 0 == result.exit_code, format_result_exception(result)
     with client_database_injection_manager(client):
         assert "R-minimal" == client.project.template_id
-    assert ("my-modifications" in (config.path / "Dockerfile").read_text()) is found
+    assert ("my-modifications" in (project_properties.path / "Dockerfile").read_text()) is found
     assert not client.repository.is_dirty(untracked_files=True)
 
 
 def test_template_set_preserve_renku_version(runner, client):
     """Test setting a template and overwriting Dockerfile still preserves Renku version."""
-    content = (config.path / "Dockerfile").read_text()
+    content = (project_properties.path / "Dockerfile").read_text()
     new_content = re.sub(r"^\s*ARG RENKU_VERSION=(.+)$", "ARG RENKU_VERSION=0.0.42", content, flags=re.MULTILINE)
     write_and_commit_file(client.repository, "Dockerfile", new_content)
 
@@ -191,7 +191,7 @@ def test_template_set_preserve_renku_version(runner, client):
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    content = (config.path / "Dockerfile").read_text()
+    content = (project_properties.path / "Dockerfile").read_text()
 
     assert new_content != content
     assert "ARG RENKU_VERSION=0.0.42" in content
@@ -281,9 +281,9 @@ def test_template_update_dry_run(runner, client):
 
 def test_git_hook_for_modified_immutable_template_files(runner, client_with_template):
     """Test check for modified immutable template files."""
-    (config.path / "immutable.file").write_text("Locally modified immutable files")
+    (project_properties.path / "immutable.file").write_text("Locally modified immutable files")
 
-    with chdir(config.path):
+    with chdir(project_properties.path):
         result = runner.invoke(cli, ["check-immutable-template-files", "Dockerfile"])
         assert result.exit_code == 0, result.output
 

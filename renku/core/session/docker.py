@@ -25,8 +25,8 @@ import docker
 
 from renku.core import errors
 from renku.core.management.client import LocalClient
-from renku.core.management.project_config import config as project_config
 from renku.core.plugin import hookimpl
+from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.domain_model.session import ISessionProvider, Session
 
@@ -175,7 +175,7 @@ class DockerSessionProvider(ISessionProvider):
 
             work_dir = Path(working_dir) / "work" / project_name.split("/")[-1]
 
-            volumes = [f"{str(project_config.path.resolve())}:{work_dir}"]
+            volumes = [f"{str(project_properties.path.resolve())}:{work_dir}"]
 
             user = client.repository.get_user()
             environment = {

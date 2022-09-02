@@ -27,7 +27,7 @@ from renku.core.constant import RENKU_HOME, RENKU_TMP
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.client import LocalClient
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
-from renku.core.management.project_config import config
+from renku.core.project.project_properties import project_properties
 from renku.domain_model.dataset import RemoteEntity
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository
@@ -50,7 +50,7 @@ def test_migrate_project(isolated_runner, old_project, client_database_injection
     assert 0 == result.exit_code, format_result_exception(result)
     assert not old_project.is_dirty(untracked_files=True)
 
-    with config.with_path(old_project.path):
+    with project_properties.with_path(old_project.path):
         client = LocalClient()
         with client_database_injection_manager(client):
             assert client.project
@@ -100,7 +100,7 @@ def test_correct_path_migrated(isolated_runner, old_project, client_database_inj
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    with config.with_path(old_project.path):
+    with project_properties.with_path(old_project.path):
         client = LocalClient()
         with client_database_injection_manager(client):
             datasets = DatasetGateway().get_all_active_datasets()
@@ -120,7 +120,7 @@ def test_correct_relative_path(isolated_runner, old_project, client_database_inj
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    with config.with_path(path=old_project.path):
+    with project_properties.with_path(path=old_project.path):
         client = LocalClient()
 
         with client_database_injection_manager(client):

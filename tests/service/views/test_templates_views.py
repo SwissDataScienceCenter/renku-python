@@ -24,7 +24,7 @@ from time import sleep
 
 import pytest
 
-from renku.core.management.project_config import config
+from renku.core.project.project_properties import project_properties
 from renku.core.template.template import fetch_templates_source
 from renku.core.util.os import normalize_to_ascii
 from renku.domain_model.template import TEMPLATE_MANIFEST, TemplatesManifest
@@ -155,7 +155,7 @@ def test_create_project_from_template(svc_client_templates_creation, client_data
     assert reader.get_value("user", "email") == user_data["email"]
     assert reader.get_value("user", "name") == user_data["name"]
 
-    with config.with_path(project_path):
+    with project_properties.with_path(project_path):
         client = LocalClient()
         with client_database_injection_manager(client):
             project = client.project

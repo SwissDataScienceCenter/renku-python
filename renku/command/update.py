@@ -25,7 +25,7 @@ from renku.command.command_builder.command import Command
 from renku.core import errors
 from renku.core.errors import ParameterError
 from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.management.project_config import config as project_config
+from renku.core.project.project_properties import project_properties
 from renku.core.util.os import get_relative_paths
 from renku.core.workflow.activity import (
     get_all_modified_and_deleted_activities_and_entities,
@@ -65,7 +65,7 @@ def _update(
     client = client_dispatcher.current_client
 
     paths = paths or []
-    paths = get_relative_paths(base=project_config.path, paths=[Path.cwd() / p for p in paths])
+    paths = get_relative_paths(base=project_properties.path, paths=[Path.cwd() / p for p in paths])
 
     modified, _ = get_all_modified_and_deleted_activities_and_entities(client.repository)
     modified_activities = {a for a, _ in modified if not a.deleted and is_activity_valid(a)}
@@ -75,7 +75,7 @@ def _update(
         starting_activities=modified_activities,
         paths=paths,
         ignore_deleted=ignore_deleted,
-        client_path=project_config.path,
+        client_path=project_properties.path,
     )
 
     if len(activities) == 0:

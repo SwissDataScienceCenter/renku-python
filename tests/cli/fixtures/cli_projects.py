@@ -71,9 +71,9 @@ def no_lfs_warning(client):
 def client_with_lfs_warning(project):
     """Return a Renku repository with lfs warnings active."""
     from renku.core.management.client import LocalClient
-    from renku.core.management.project_config import config
+    from renku.core.project.project_properties import project_properties
 
-    with config.with_path(Path(project)):
+    with project_properties.with_path(Path(project)):
         client = LocalClient()
         client.set_value("renku", "lfs_threshold", "0b")
 

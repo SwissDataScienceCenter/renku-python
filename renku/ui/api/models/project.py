@@ -51,7 +51,7 @@ from werkzeug.local import LocalStack
 
 from renku.command.status import get_status_command
 from renku.core import errors
-from renku.core.management.project_config import config
+from renku.core.project.project_properties import project_properties
 from renku.core.workflow.run import StatusResult
 
 if TYPE_CHECKING:
@@ -84,7 +84,7 @@ class Project:
     @property
     def path(self):
         """Absolute path to project's root directory."""
-        return config.path.resolve()
+        return project_properties.path.resolve()
 
     def status(self, paths: Optional[List[Union[Path, str]]] = None, ignore_deleted: bool = False) -> StatusResult:
         """Return status of a project.
@@ -113,6 +113,6 @@ def _get_local_client() -> "LocalClient":
     else:
         path = repository.path
 
-    config.replace_path(path)
+    project_properties.replace_path(path)
 
     return LocalClient()

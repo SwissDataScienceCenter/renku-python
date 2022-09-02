@@ -27,7 +27,7 @@ from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.dataset.constant import REFS
 from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.management.project_config import config
+from renku.core.project.project_properties import project_properties
 
 
 @attr.s(slots=True)
@@ -78,7 +78,7 @@ class LinkReference:
     def set_reference(self, reference):
         """Set ourselves to the given reference path."""
         reference_path = Path(reference).resolve().absolute()
-        reference_path.relative_to(config.path)
+        reference_path.relative_to(project_properties.path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         os.symlink(os.path.relpath(str(reference_path), start=str(self.path.parent)), str(self.path))
 

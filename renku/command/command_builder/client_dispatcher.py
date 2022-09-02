@@ -23,7 +23,7 @@ from renku.core import errors
 from renku.core.constant import RENKU_HOME
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.client import LocalClient
-from renku.core.management.project_config import config
+from renku.core.project.project_properties import project_properties
 
 
 class ClientDispatcher(IClientDispatcher):
@@ -50,7 +50,7 @@ class ClientDispatcher(IClientDispatcher):
         if isinstance(path, str):
             path = Path(path)
 
-        with config.with_path(path):
+        with project_properties.with_path(path):
             new_client = LocalClient()
             self.push_created_client_to_stack(new_client)
 

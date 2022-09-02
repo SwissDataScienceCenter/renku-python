@@ -17,7 +17,7 @@
 # limitations under the License.
 """Test ``log`` command."""
 
-from renku.core.management.project_config import config
+from renku.core.project.project_properties import project_properties
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
@@ -30,7 +30,7 @@ def test_rollback(client, runner, project):
     result = runner.invoke(cli, ["run", "--name", "run2", "cp", "foo", "bar"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    metadata_path = config.path / "input"
+    metadata_path = project_properties.path / "input"
     metadata_path.write_text("input")
 
     client.repository.add(["input"])

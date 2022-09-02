@@ -28,7 +28,7 @@ from renku.core import errors
 from renku.core.constant import CACHE
 from renku.core.dataset.context import wait_for
 from renku.core.dataset.providers.api import ProviderApi, ProviderPriority
-from renku.core.management.project_config import config
+from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.dataset import check_url
 from renku.core.util.urls import remove_credentials
@@ -144,7 +144,7 @@ def download_file(
 
     return [
         DatasetAddMetadata(
-            entity_path=dst.relative_to(config.path),
+            entity_path=dst.relative_to(project_properties.path),
             url=remove_credentials(uri),
             action=DatasetAddAction.MOVE,
             source=src,

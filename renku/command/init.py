@@ -32,8 +32,8 @@ from renku.core.constant import RENKU_HOME
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.interface.database_gateway import IDatabaseGateway
-from renku.core.management.project_config import config
 from renku.core.migration.utils import OLD_METADATA_PATH
+from renku.core.project.project_properties import project_properties
 from renku.core.template.template import (
     FileAction,
     RenderedTemplate,
@@ -156,7 +156,7 @@ def _init(
         external_storage_requested = False
 
     # NOTE: create new copy of LocalClient with modified values
-    config.push_path(Path(path))
+    project_properties.push_path(Path(path))
     ctx.obj = client = attr.evolve(client, data_dir=data_dir, external_storage_requested=external_storage_requested)
     client_dispatcher.push_created_client_to_stack(client)
     database_dispatcher.push_database_to_stack(client.database_path, commit=True)
@@ -290,7 +290,7 @@ def create_from_template(
         commit_only.append(".gitattributes")
 
     if data_dir:
-        data_path = config.path / data_dir
+        data_path = project_properties.path / data_dir
         data_path.mkdir(parents=True, exist_ok=True)
         keep = data_path / ".gitkeep"
         keep.touch(exist_ok=True)

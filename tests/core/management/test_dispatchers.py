@@ -25,10 +25,10 @@ from renku.core import errors
 
 
 def test_global_renku_config(tmpdir):
-    """Test RenkuConfig object."""
-    from renku.core.management.project_config import RenkuConfig
+    """Test ProjectProperties object."""
+    from renku.core.project.project_properties import ProjectProperties
 
-    config = RenkuConfig()
+    config = ProjectProperties()
 
     with pytest.raises(IndexError):
         config.pop_path()

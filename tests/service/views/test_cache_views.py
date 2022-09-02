@@ -27,7 +27,7 @@ import jwt
 import pytest
 
 from renku.core.dataset.context import DatasetContext
-from renku.core.management.project_config import config
+from renku.core.project.project_properties import project_properties
 from renku.domain_model.git import GitURL
 from renku.domain_model.project import Project
 from renku.domain_model.provenance.agent import Person
@@ -1031,7 +1031,7 @@ def test_cache_gets_synchronized(
 
     svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout = local_remote_repository
 
-    with config.with_path(remote_repo_checkout.path):
+    with project_properties.with_path(remote_repo_checkout.path):
         client = LocalClient()
 
         with client_database_injection_manager(client):

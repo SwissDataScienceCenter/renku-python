@@ -38,8 +38,8 @@ from renku.core.dataset.dataset_add import add_to_dataset
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.tag import get_dataset_by_tag
 from renku.core.errors import ParameterError
-from renku.core.management.project_config import config
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.core.project.project_properties import project_properties
 from renku.core.util.contexts import chdir
 from renku.core.util.git import get_git_user
 from renku.core.util.urls import get_slug
@@ -161,7 +161,7 @@ def test_list_files_default(project, tmpdir):
 
 def test_unlink_default(directory_tree, client):
     """Test unlink default behaviour."""
-    with chdir(config.path):
+    with chdir(project_properties.path):
         create_dataset_command().with_database(write=True).build().execute("dataset")
         add_to_dataset_command().with_database(write=True).build().execute(
             dataset_name="dataset", urls=[str(directory_tree / "dir1")]

@@ -110,10 +110,10 @@ def click_context(path, command):
     """Provide a click context with repo path injected."""
     from renku.core.constant import RENKU_HOME
     from renku.core.management.client import LocalClient
-    from renku.core.management.project_config import config
+    from renku.core.project.project_properties import project_properties
     from renku.core.util.git import default_path
 
-    with config.with_path(default_path(path)) as p, click.Context(
+    with project_properties.with_path(default_path(path)) as p, click.Context(
         click.Command(command),
         obj=LocalClient(renku_home=RENKU_HOME, external_storage_requested=True),
     ).scope() as ctx:

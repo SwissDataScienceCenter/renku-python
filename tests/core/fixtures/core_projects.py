@@ -27,10 +27,10 @@ import pytest
 def local_client():
     """Add a Renku local client."""
     from renku.core.management.client import LocalClient
-    from renku.core.management.project_config import config
+    from renku.core.project.project_properties import project_properties
 
     with tempfile.TemporaryDirectory() as tempdir:
-        with config.with_path(Path(tempdir)):
+        with project_properties.with_path(Path(tempdir)):
             yield LocalClient()
 
 

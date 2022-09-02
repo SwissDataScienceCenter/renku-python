@@ -21,14 +21,14 @@ import os
 import subprocess
 from pathlib import Path
 
-from renku.core.management.project_config import config
+from renku.core.project.project_properties import project_properties
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
 def test_lfs_storage_clean_no_remote(runner, project, client):
     """Test ``renku storage clean`` command with no remote set."""
-    with (config.path / "tracked").open("w") as fp:
+    with (project_properties.path / "tracked").open("w") as fp:
         fp.write("tracked file")
     client.repository.add("*")
     client.repository.commit("tracked file")
@@ -42,7 +42,7 @@ def test_lfs_storage_clean(runner, project, client_with_remote):
     """Test ``renku storage clean`` command."""
     client = client_with_remote
 
-    with (config.path / "tracked").open("w") as fp:
+    with (project_properties.path / "tracked").open("w") as fp:
         fp.write("tracked file")
     client.repository.add("*")
     client.repository.commit("tracked file")
@@ -56,13 +56,13 @@ def test_lfs_storage_clean(runner, project, client_with_remote):
     client.repository.commit("Tracked in lfs")
     client.repository.push("origin", no_verify=True)
 
-    with (config.path / "tracked").open("r") as fp:
+    with (project_properties.path / "tracked").open("r") as fp:
         assert "tracked file" in fp.read()
 
     assert "tracked" in Path(".gitattributes").read_text()
 
     lfs_objects = []
-    for _, _, files in os.walk(str(config.path / ".git" / "lfs" / "objects")):
+    for _, _, files in os.walk(str(project_properties.path / ".git" / "lfs" / "objects")):
         lfs_objects.extend(files)
 
     assert 1 == len(lfs_objects)
@@ -70,10 +70,10 @@ def test_lfs_storage_clean(runner, project, client_with_remote):
     result = runner.invoke(cli, ["storage", "clean", "tracked"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    assert "version https://git-lfs.github.com/spec/v1" in (config.path / "tracked").read_text()
+    assert "version https://git-lfs.github.com/spec/v1" in (project_properties.path / "tracked").read_text()
 
     lfs_objects = []
-    for _, _, files in os.walk(str(config.path / ".git" / "lfs" / "objects")):
+    for _, _, files in os.walk(str(project_properties.path / ".git" / "lfs" / "objects")):
         lfs_objects.extend(files)
 
     assert 0 == len(lfs_objects)
@@ -85,7 +85,7 @@ def test_lfs_storage_clean(runner, project, client_with_remote):
 
 def test_lfs_storage_unpushed_clean(runner, project, client_with_remote):
     """Test ``renku storage clean`` command for unpushed files."""
-    with (config.path / "tracked").open("w") as fp:
+    with (project_properties.path / "tracked").open("w") as fp:
         fp.write("tracked file")
     subprocess.call(["git", "lfs", "track", "tracked"])
     client_with_remote.repository.add("*")
@@ -101,7 +101,7 @@ def test_lfs_migrate(runner, project, client):
     """Test ``renku storage migrate`` command for large files in git."""
 
     for _file in ["dataset_file", "workflow_file", "regular_file"]:
-        (config.path / _file).write_text(_file)
+        (project_properties.path / _file).write_text(_file)
 
     client.repository.add("*")
     client.repository.commit("add files")
@@ -140,7 +140,7 @@ def test_lfs_migrate_no_changes(runner, project, client):
     """Test ``renku storage migrate`` command without broken files."""
 
     for _file in ["dataset_file", "workflow_file", "regular_file"]:
-        (config.path / _file).write_text(_file)
+        (project_properties.path / _file).write_text(_file)
 
     client.repository.add("*")
     client.repository.commit("add files")
@@ -164,7 +164,7 @@ def test_lfs_migrate_explicit_path(runner, project, client):
     """Test ``renku storage migrate`` command explicit path."""
 
     for _file in ["dataset_file", "workflow_file", "regular_file"]:
-        (config.path / _file).write_text(_file)
+        (project_properties.path / _file).write_text(_file)
 
     client.repository.add("*")
     client.repository.commit("add files")
@@ -182,4 +182,4 @@ def test_lfs_migrate_explicit_path(runner, project, client):
 
     assert previous_head != client.repository.head.commit.hexsha
 
-    assert "oid sha256:" in (config.path / "regular_file").read_text()
+    assert "oid sha256:" in (project_properties.path / "regular_file").read_text()

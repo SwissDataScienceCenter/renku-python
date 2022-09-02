@@ -21,7 +21,7 @@ import os
 from pathlib import Path
 
 from renku.command.status import get_status_command
-from renku.core.management.project_config import config
+from renku.core.project.project_properties import project_properties
 from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
@@ -189,14 +189,14 @@ def test_status_with_path_all_generation(runner, project):
 
 def test_status_works_in_dirty_repository(runner, client):
     """Test status doesn't need a clean project and doesn't change anything."""
-    source = config.path / "source"
+    source = project_properties.path / "source"
     write_and_commit_file(client.repository, source, "source content")
     assert 0 == runner.invoke(cli, ["run", "head", source], stdout="output").exit_code
 
     commit_sha_before = client.repository.head.commit.hexsha
 
     source.write_text("modified content")
-    (config.path / "untracked").write_text("untracked file")
+    (project_properties.path / "untracked").write_text("untracked file")
 
     result = get_status_command().build().execute().output
 

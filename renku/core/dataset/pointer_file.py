@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, Optional, Tuple, Union, cast
 
 from renku.core import errors
 from renku.core.dataset.constant import renku_pointers_path
-from renku.core.management.project_config import config
+from renku.core.project.project_properties import project_properties
 from renku.core.util.os import is_subpath
 from renku.infrastructure.repository import Repository
 
@@ -47,7 +47,7 @@ def create_pointer_file(client: "LocalClient", target: Union[str, Path], checksu
             break
 
     # NOTE: If target is within the repo, add it as a relative symlink
-    is_within_repo = is_subpath(target, base=config.path)
+    is_within_repo = is_subpath(target, base=project_properties.path)
     source = cast(Union[str, bytes, Path], os.path.relpath(target, path.parent) if is_within_repo else target)
 
     try:
@@ -81,11 +81,11 @@ def is_external_file_updated(client_path: Path, path: Union[Path, str]) -> Tuple
 
 def update_external_file(client: "LocalClient", path: Union[Path, str], checksum: Optional[str]):
     """Delete existing external file and create a new one."""
-    pointer_file = get_pointer_file(config.path, path)
+    pointer_file = get_pointer_file(project_properties.path, path)
     target = pointer_file.resolve()
 
     os.remove(pointer_file)
-    absolute_path = config.path / path
+    absolute_path = project_properties.path / path
     os.remove(absolute_path)
 
     create_external_file(client=client, target=target, path=absolute_path, checksum=checksum)

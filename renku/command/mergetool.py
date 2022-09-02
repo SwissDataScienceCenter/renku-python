@@ -22,7 +22,7 @@ from pathlib import Path
 from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
 from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.management.project_config import config
+from renku.core.project.project_properties import project_properties
 
 
 def mergetool_command():
@@ -65,7 +65,7 @@ def setup_mergetool(client_dispatcher: IClientDispatcher, with_attributes: bool 
     if not with_attributes:
         return
 
-    attributes_path = config.path / ".gitattributes"
+    attributes_path = project_properties.path / ".gitattributes"
     pattern_string = ".renku/metadata/**    merge=renkumerge\n"
 
     if attributes_path.exists():

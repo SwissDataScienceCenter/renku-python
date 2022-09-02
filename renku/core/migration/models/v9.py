@@ -51,7 +51,6 @@ from renku.command.schema.calamus import (
 from renku.command.schema.project import ProjectSchema as NewProjectSchema
 from renku.core import errors
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
-from renku.core.management.project_config import config
 from renku.core.migration.models.refs import LinkReference
 from renku.core.migration.utils import (
     OLD_METADATA_PATH,
@@ -61,6 +60,7 @@ from renku.core.migration.utils import (
     generate_url_id,
     get_datasets_path,
 )
+from renku.core.project.project_properties import project_properties
 from renku.core.util import yaml as yaml
 from renku.core.util.datetime8601 import fix_datetime, parse_date
 from renku.core.util.doi import extract_doi, is_doi
@@ -247,7 +247,7 @@ class CommitMixin:
         if self.path:
             path = self.path
             if self.client and os.path.isabs(path):
-                path = pathlib.Path(path).relative_to(config.path)
+                path = pathlib.Path(path).relative_to(project_properties.path)
             return generate_label(path, hexsha)
         return hexsha
 
@@ -256,7 +256,7 @@ class CommitMixin:
         if self.path and self.client:
             path = pathlib.Path(self.path)
             if path.is_absolute():
-                self.path = str(path.relative_to(config.path))
+                self.path = str(path.relative_to(project_properties.path))
 
         # always force "project" to be the current project
         if self.client:
@@ -292,7 +292,7 @@ class Entity(CommitMixin):
 
         client, commit, path = client.get_in_submodules(revision, path)
 
-        path_ = config.path / path
+        path_ = project_properties.path / path
         if path != "." and path_.is_dir():
             entity = Collection(client=client, commit=commit, path=path, members=[], parent=parent)
 
@@ -303,7 +303,7 @@ class Entity(CommitMixin):
                 if member.name == ".gitkeep":
                     continue
 
-                member_path = str(member.relative_to(config.path))
+                member_path = str(member.relative_to(project_properties.path))
                 find_previous = True
 
                 if member_path in files_in_commit:
@@ -360,7 +360,7 @@ class Collection(Entity):
         """Generate default members as entities from current path."""
         if not self.client:
             return []
-        dir_path = config.path / self.path
+        dir_path = project_properties.path / self.path
 
         if not dir_path.exists():
             # likely a directory deleted in a previous commit
@@ -374,7 +374,12 @@ class Collection(Entity):
                 continue  # ignore empty directories in Git repository
             cls = Collection if path.is_dir() else Entity
             members.append(
-                cls(commit=self.commit, client=self.client, path=str(path.relative_to(config.path)), parent=self)
+                cls(
+                    commit=self.commit,
+                    client=self.client,
+                    path=str(path.relative_to(project_properties.path)),
+                    parent=self,
+                )
             )
         return members
 
@@ -1396,7 +1401,7 @@ class DatasetFile(Entity):
     @property
     def full_path(self):
         """Return full path in the current reference frame."""
-        path = config.path / self.path if self.client else self.path
+        path = project_properties.path / self.path if self.client else self.path
         return Path(os.path.abspath(path))
 
     @property
@@ -1430,7 +1435,7 @@ class DatasetFile(Entity):
 
     def update_metadata(self, path, commit):
         """Update files metadata."""
-        self.path = str((config.path / path).relative_to(config.path))
+        self.path = str((project_properties.path / path).relative_to(project_properties.path))
         self.update_commit(commit)
         self.filename = self.default_filename()
         self.url = self.default_url()
@@ -1582,7 +1587,7 @@ class Dataset(Entity, CreatorMixin):
 
     def find_files(self, paths):
         """Return all paths that are in files container."""
-        files_paths = {str(config.path / f.path) for f in self.files}
+        files_paths = {str(project_properties.path / f.path) for f in self.files}
         return {p for p in paths if str(p) in files_paths}
 
     def find_file(self, path, return_index=False):
@@ -1702,7 +1707,7 @@ class Dataset(Entity, CreatorMixin):
 
         if not self.path and self.client:
             absolute_path = LinkReference(client=self.client, name=f"datasets/{self.name}").reference.parent
-            self.path = str(absolute_path.relative_to(config.path))
+            self.path = str(absolute_path.relative_to(project_properties.path))
 
         self._update_files_metadata()
 
@@ -1725,7 +1730,7 @@ class Dataset(Entity, CreatorMixin):
             return
 
         for file_ in files:
-            path = config.path / file_.path
+            path = project_properties.path / file_.path
             file_exists = path.exists() or path.is_symlink()
 
             if not file_exists:

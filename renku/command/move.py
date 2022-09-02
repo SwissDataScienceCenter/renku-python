@@ -27,7 +27,7 @@ from renku.core.dataset.dataset import move_files
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.dataset_gateway import IDatasetGateway
-from renku.core.management.project_config import config
+from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.os import get_relative_path, is_subpath
 
@@ -101,7 +101,7 @@ def _move(sources, destination, force, verbose, to_dataset, client_dispatcher: I
             dst.unlink()
             Path(dst).symlink_to(os.path.relpath(target, start=os.path.dirname(dst)))
 
-    files_to_untrack = (str(src.relative_to(config.path)) for src in files)
+    files_to_untrack = (str(src.relative_to(project_properties.path)) for src in files)
     client.untrack_paths_from_storage(*files_to_untrack)
     # NOTE: Warn about filter after untracking from LFS to avoid warning about LFS filters
     _warn_about_git_filters(files)
@@ -113,7 +113,7 @@ def _move(sources, destination, force, verbose, to_dataset, client_dispatcher: I
     move_files(files=files, to_dataset_name=to_dataset)
 
     if verbose:
-        _show_moved_files(config.path, files)
+        _show_moved_files(project_properties.path, files)
 
 
 def _traverse_path(path):
@@ -157,7 +157,7 @@ def _get_absolute_path(path, client_dispatcher: IClientDispatcher):
         raise errors.ParameterError(f"Path '{path}' is protected.")
 
     try:
-        abs_path.relative_to(config.path)
+        abs_path.relative_to(project_properties.path)
     except ValueError:
         raise errors.ParameterError(f"Path '{path}' is outside the project.")
 
@@ -183,7 +183,7 @@ def _warn_about_ignored_destinations(destinations, client_dispatcher: IClientDis
 
     ignored = client.find_ignored_paths(*destinations)
     if ignored:
-        ignored_str = "\n\t".join((str(Path(p).relative_to(config.path)) for p in ignored))
+        ignored_str = "\n\t".join((str(Path(p).relative_to(project_properties.path)) for p in ignored))
         communication.warn(f"The following moved path match .gitignore:\n\t{ignored_str}")
 
 
@@ -202,8 +202,8 @@ def _warn_about_git_filters(files, client_dispatcher: IClientDispatcher):
 
     for path, attrs in client.repository.get_attributes(*files).items():
         src = Path(path)
-        dst = files[src].relative_to(config.path)
-        src = src.relative_to(config.path)
+        dst = files[src].relative_to(project_properties.path)
+        src = src.relative_to(project_properties.path)
         attrs_text = ""
         for name, value in attrs.items():
             if value == "unset":
@@ -239,14 +239,16 @@ def _warn_about_dataset_files(files, dataset_gateway: IDatasetGateway, client_di
     found = []
     for dataset in dataset_gateway.get_all_active_datasets():
         for src, dst in files.items():
-            relative_src = get_relative_path(src, config.path)
+            relative_src = get_relative_path(src, project_properties.path)
             if not relative_src:
                 continue
 
             found_file = dataset.find_file(relative_src)
             if not found_file:
                 continue
-            if not found_file.is_external and not is_subpath(dst, config.path / dataset.get_datadir(client)):
+            if not found_file.is_external and not is_subpath(
+                dst, project_properties.path / dataset.get_datadir(client)
+            ):
                 found.append(str(src))
 
     if not found:

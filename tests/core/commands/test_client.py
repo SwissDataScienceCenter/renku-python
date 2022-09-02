@@ -22,17 +22,17 @@ from pathlib import Path
 
 import pytest
 
-from renku.core.management.project_config import config
+from renku.core.project.project_properties import project_properties
 
 
 def test_local_client(tmpdir):
     """Test a local client."""
     from renku.core.management.client import LocalClient
 
-    with config.with_path(Path(tmpdir.mkdir("project"))):
+    with project_properties.with_path(Path(tmpdir.mkdir("project"))):
         client = LocalClient()
 
-        assert config.path
+        assert project_properties.path
     assert client.repository is None
 
 
@@ -84,10 +84,10 @@ def test_safe_class_attributes(tmpdir):
         "_global_config_dir",
     ]
 
-    with config.with_path(Path(tmpdir.mkdir("project1"))):
+    with project_properties.with_path(Path(tmpdir.mkdir("project1"))):
         client1 = LocalClient()
 
-    with config.with_path(Path(tmpdir.mkdir("project2"))):
+    with project_properties.with_path(Path(tmpdir.mkdir("project2"))):
         client2 = LocalClient()
 
     class_attributes = inspect.getmembers(LocalClient, lambda a: not (inspect.isroutine(a)))

@@ -25,7 +25,7 @@ from enum import IntFlag
 from typing import TYPE_CHECKING, NamedTuple
 from urllib.parse import ParseResult, quote, urljoin, urlparse
 
-from renku.core.management.project_config import config
+from renku.core.project.project_properties import project_properties
 from renku.core.util.yaml import read_yaml
 
 if TYPE_CHECKING:
@@ -180,7 +180,7 @@ def get_pre_0_3_4_datasets_metadata(client):
 
     project_is_pre_0_3 = int(read_project_version(client)) < 2
     if project_is_pre_0_3:
-        return (config.path / DATA_DIR).glob(f"*/{OLD_METADATA_PATH}")
+        return (project_properties.path / DATA_DIR).glob(f"*/{OLD_METADATA_PATH}")
     return []
 
 
@@ -246,7 +246,9 @@ def normalize(value):
 
 def get_datasets_path(client):
     """Get the old datasets metadata path."""
-    return getattr(thread_local_storage, "temporary_datasets_path", config.path / client.renku_home / OLD_DATASETS_PATH)
+    return getattr(
+        thread_local_storage, "temporary_datasets_path", project_properties.path / client.renku_home / OLD_DATASETS_PATH
+    )
 
 
 def set_temporary_datasets_path(temporary_datasets_path):
