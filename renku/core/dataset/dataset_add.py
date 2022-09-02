@@ -233,6 +233,10 @@ def _create_destination_directory(
 ) -> Path:
     """Create directory for dataset add."""
     dataset_datadir = client.path / dataset.get_datadir()
+
+    if dataset_datadir.is_symlink():
+        dataset_datadir.unlink()
+
     # NOTE: Make sure that dataset's data dir exists because we check for existence of a destination later to decide
     # what will be its name
     dataset_datadir.mkdir(parents=True, exist_ok=True)
