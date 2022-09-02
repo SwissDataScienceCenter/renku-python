@@ -30,7 +30,6 @@ from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderP
 from renku.core.dataset.providers.repository import RepositoryImporter, make_request
 from renku.core.util import communication
 from renku.core.util.doi import is_doi
-from renku.core.util.file_size import bytes_to_unit
 from renku.core.util.urls import remove_credentials
 
 if TYPE_CHECKING:
@@ -219,7 +218,7 @@ class ZenodoImporter(RepositoryImporter):
                 source=file.remote_url.geturl(),
                 filename=Path(file.filename).name,
                 checksum=file.checksum,
-                size_in_mb=bytes_to_unit(file.filesize, "mi"),
+                filesize=file.filesize,
                 filetype=file.type,
                 path="",
             )

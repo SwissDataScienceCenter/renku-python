@@ -482,17 +482,17 @@ def import_dataset(
         if yes:
             return
 
-        headers = {"checksum": "checksum", "filename": "name", "size_in_mb": "size (b)", "filetype": "type"}
+        headers = {"checksum": "checksum", "filename": "name", "filesize_str": "size", "filetype": "type"}
         communication.echo(tabulate(files, headers=headers, floatfmt=".2f"))
         communication.confirm("Do you wish to download this version?", abort=True, warning=True)
 
     def calculate_total_size(files):
         total_size = 0.0
         for file in files:
-            if file.size_in_mb is not None:
-                total_size += file.size_in_mb
+            if file.filesize is not None:
+                total_size += file.filesize
 
-        return total_size * 2**20
+        return total_size
 
     def remove_files(dataset):
         """Remove files that exist in ``previous_dataset`` but not in ``dataset``.
