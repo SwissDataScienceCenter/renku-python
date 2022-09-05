@@ -397,10 +397,10 @@ python-versions = ">=3.6, <4"
 
 [package.dependencies]
 "ruamel.yaml" = [
+    {version = ">=0.15.71,<0.17.22", markers = "python_version < \"3.8\""},
     {version = ">=0.15.98,<0.17.22", markers = "python_version >= \"3.9\""},
     {version = ">=0.15.78,<0.17.22", markers = "python_version >= \"3.8\""},
     {version = ">=0.16.0,<0.17.22", markers = "python_version >= \"3.10\""},
-    {version = ">=0.15.71,<0.17.22", markers = "python_version < \"3.8\""},
 ]
 schema-salad = "*"
 setuptools = "*"
@@ -1868,8 +1868,8 @@ mistune = ">=0.8.1,<0.9"
 rdflib = ">=4.2.2,<7.0.0"
 requests = ">=1.0"
 "ruamel.yaml" = [
-    {version = ">=0.17.6,<0.17.22", markers = "python_version >= \"3.7\""},
     {version = ">=0.16.12,<0.17.22", markers = "python_version < \"3.7\""},
+    {version = ">=0.17.6,<0.17.22", markers = "python_version >= \"3.7\""},
 ]
 setuptools = "*"
 

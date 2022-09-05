@@ -23,6 +23,8 @@ from typing import List
 
 import pytest
 
+from renku.core.storage import minimum_lfs_file_size
+
 
 @pytest.fixture
 def directory_tree_files() -> List[str]:
@@ -99,7 +101,7 @@ def large_file(tmp_path, client):
     """A file larger than the minimum LFS file size."""
     path = tmp_path / "large-file"
     with open(path, "w") as file_:
-        file_.seek(client.minimum_lfs_file_size)
+        file_.seek(minimum_lfs_file_size(client))
         file_.write("some data")
 
     yield path

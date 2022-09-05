@@ -23,6 +23,7 @@ from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
 from renku.core import errors
 from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.storage import track_paths_in_storage
 
 
 @inject.autoparams()
@@ -67,7 +68,7 @@ def _save_and_push(
             raise errors.GitError("No remote has been set up for the current branch")
 
     if paths:
-        client.track_paths_in_storage(*paths)
+        track_paths_in_storage(client, *paths)
         paths = commit_changes(*paths, repository=client.repository, message=message)
 
     branch = push_changes(repository=client.repository, remote=remote)

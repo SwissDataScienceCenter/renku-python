@@ -17,7 +17,6 @@
 # limitations under the License.
 """Wrap Git client."""
 
-import glob
 import itertools
 import os
 import sys
@@ -32,7 +31,8 @@ import attr
 
 from renku.core import errors
 from renku.core.project.project_properties import project_properties
-from renku.core.util.os import get_absolute_path
+from renku.core.storage import checkout_paths_from_storage
+from renku.core.util.os import expand_directories, get_absolute_path
 from renku.core.util.urls import remove_credentials
 
 COMMIT_DIFF_STRATEGY = "DIFF"
@@ -218,8 +218,8 @@ def finalize_worktree(
 
     project_properties.pop_path()
 
-    if client.external_storage_requested:
-        client.checkout_paths_from_storage()
+    if project_properties.external_storage_requested:
+        checkout_paths_from_storage()
 
 
 def get_mapped_std_streams(lookup_paths, streams=("stdin", "stdout", "stderr")):
@@ -265,23 +265,6 @@ def _clean_streams(repository, mapped_streams):
         else:
             checksum = repository.get_object_hash(path=absolute_path, revision="HEAD")
             repository.copy_content_to_file(path=absolute_path, checksum=checksum, output_path=path)
-
-
-def _expand_directories(paths):
-    """Expand directory with all files it contains."""
-    processed_paths = set()
-    for path in paths:
-        for matched_path in glob.iglob(str(path), recursive=True):
-            if matched_path in processed_paths:
-                continue
-            path_ = Path(matched_path)
-            if path_.is_dir():
-                for expanded in path_.rglob("*"):
-                    processed_paths.add(str(expanded))
-                    yield str(expanded)
-            else:
-                processed_paths.add(matched_path)
-                yield matched_path
 
 
 @attr.s
@@ -332,7 +315,7 @@ class GitCore:
 
     def remove_unmodified(self, paths, autocommit=True):
         """Remove unmodified paths and return their names."""
-        tested_paths = set(_expand_directories(paths))
+        tested_paths = set(expand_directories(paths))
 
         # Keep only unchanged files in the output paths.
         tracked_paths = {

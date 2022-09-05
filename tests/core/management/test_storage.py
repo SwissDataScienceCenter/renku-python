@@ -22,10 +22,13 @@ import re
 import pytest
 
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import get_lfs_migrate_filters, track_paths_in_storage
 
 
 @pytest.mark.parametrize("path", [".", "datasets"])
-def test_no_renku_metadata_in_lfs(client_with_datasets, no_lfs_size_limit, path, subdirectory):
+def test_no_renku_metadata_in_lfs(
+    client_with_datasets, no_lfs_size_limit, path, subdirectory, client_database_injection_manager
+):
     """Test .renku directory and its content are not included in the LFS."""
     # Explicitly set .renku to not being ignored
     (project_properties.path / ".renkulfsignore").write_text("!.renku")
@@ -36,8 +39,8 @@ def test_no_renku_metadata_in_lfs(client_with_datasets, no_lfs_size_limit, path,
     path_in_renku_metadata_directory.mkdir(parents=True, exist_ok=True)
     file2 = path_in_renku_metadata_directory / "file2"
     file2.write_text("123")
-
-    client_with_datasets.track_paths_in_storage(file1, file2, path_in_renku_metadata_directory)
+    with client_database_injection_manager(client_with_datasets):
+        track_paths_in_storage(client_with_datasets, file1, file2, path_in_renku_metadata_directory)
 
     attributes = (project_properties.path / ".gitattributes").read_text()
     assert "file1" in attributes
@@ -47,7 +50,7 @@ def test_no_renku_metadata_in_lfs(client_with_datasets, no_lfs_size_limit, path,
 
 def test_renku_in_lfs_migrate_exclude_filter(client):
     """Test .renku directory is in exclude filter of `lfs migrate info`."""
-    _, excludes = client.get_lfs_migrate_filters()
+    _, excludes = get_lfs_migrate_filters()
 
     assert ",.renku," in excludes[1]
     assert ",.renku/**," in excludes[1]

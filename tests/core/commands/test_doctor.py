@@ -18,7 +18,9 @@
 """Renku doctor tests."""
 from pathlib import Path
 
+from renku.core.constant import RENKU_LFS_IGNORE_PATH
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import minimum_lfs_file_size
 from renku.domain_model.dataset import DatasetFile, Url
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.ui.cli import cli
@@ -73,7 +75,7 @@ def test_lfs_broken_history(runner, client, tmp_path):
     """Test lfs migrate info check on a broken history."""
     big_file = tmp_path / "big-file.bin"
     with open(big_file, "w") as file_:
-        file_.seek(client.minimum_lfs_file_size)
+        file_.seek(minimum_lfs_file_size(client))
         file_.write("some-data")
 
     # Add a file without adding it to LFS
@@ -90,7 +92,7 @@ def test_lfs_broken_history(runner, client, tmp_path):
     assert "*.bin" in result.output
 
     # Exclude *.ipynb files from LFS in .renkulfsignore
-    (project_properties.path / client.RENKU_LFS_IGNORE_PATH).write_text("\n".join(["*swp", "*.bin", ".DS_Store"]))
+    (project_properties.path / RENKU_LFS_IGNORE_PATH).write_text("\n".join(["*swp", "*.bin", ".DS_Store"]))
 
     result = runner.invoke(cli, ["doctor"])
     assert 0 == result.exit_code, format_result_exception(result)

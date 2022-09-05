@@ -115,8 +115,9 @@ def click_context(path, command):
 
     with project_properties.with_path(default_path(path)) as p, click.Context(
         click.Command(command),
-        obj=LocalClient(renku_home=RENKU_HOME, external_storage_requested=True),
+        obj=LocalClient(renku_home=RENKU_HOME),
     ).scope() as ctx:
+        project_properties.external_storage_requested = True
         yield p, ctx
 
 

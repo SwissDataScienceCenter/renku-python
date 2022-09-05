@@ -20,6 +20,13 @@
 from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
 from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.storage import (
+    check_lfs_migrate_info,
+    check_requires_tracking,
+    clean_storage_cache,
+    migrate_files_to_lfs,
+    pull_paths_from_storage,
+)
 from renku.core.util import communication
 
 
@@ -34,7 +41,7 @@ def _check_lfs(client_dispatcher: IClientDispatcher, everything=False):
     Returns:
         List of large files.
     """
-    files = client_dispatcher.current_client.check_lfs_migrate_info(everything)
+    files = check_lfs_migrate_info(client_dispatcher.current_client, everything)
 
     if files:
         communication.warn("Git history contains large files\n\t" + "\n\t".join(files))
@@ -55,7 +62,7 @@ def _fix_lfs(paths, client_dispatcher: IClientDispatcher):
         paths: Paths to migrate to LFS.
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
     """
-    client_dispatcher.current_client.migrate_files_to_lfs(paths)
+    migrate_files_to_lfs(client_dispatcher.current_client, paths)
 
 
 def fix_lfs_command():
@@ -78,7 +85,7 @@ def _pull(paths, client_dispatcher: IClientDispatcher):
         paths: Paths to pull from LFS.
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
     """
-    client_dispatcher.current_client.pull_paths_from_storage(*paths)
+    pull_paths_from_storage(client_dispatcher.current_client, *paths)
 
 
 def pull_command():
@@ -94,7 +101,7 @@ def _clean(paths, client_dispatcher: IClientDispatcher):
         paths: Paths to turn back to pointer files.
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
     """
-    untracked_paths, local_only_paths = client_dispatcher.current_client.clean_storage_cache(*paths)
+    untracked_paths, local_only_paths = clean_storage_cache(client_dispatcher.current_client, *paths)
 
     if untracked_paths:
         communication.warn(
@@ -125,7 +132,7 @@ def _check_lfs_hook(paths, client_dispatcher: IClientDispatcher):
     Returns:
         List of files that should be in LFS.
     """
-    return client_dispatcher.current_client.check_requires_tracking(*paths)
+    return check_requires_tracking(client_dispatcher.current_client, *paths)
 
 
 def check_lfs_hook_command():

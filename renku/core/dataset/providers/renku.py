@@ -32,6 +32,7 @@ from renku.core.dataset.providers.api import ImporterApi, ProviderApi, ProviderP
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.file_size import bytes_to_unit
 from renku.core.util.git import clone_renku_repository, get_cache_directory_for_repository, get_file_size
@@ -335,8 +336,9 @@ class RenkuImporter(ImporterApi):
 
         if checksums is None:
             with project_properties.with_path(remote_repository.path):
-                LocalClient().pull_paths_from_storage(  # type: ignore
-                    *(remote_repository.path / p for p in sources)  # type: ignore
+                pull_paths_from_storage(
+                    LocalClient(),  # type: ignore
+                    *(remote_repository.path / p for p in sources),  # type: ignore
                 )
 
             for file in sources:

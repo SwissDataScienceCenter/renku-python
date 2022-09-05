@@ -18,6 +18,7 @@
 """OS utility functions."""
 
 import fnmatch
+import glob
 import hashlib
 import io
 import os
@@ -103,6 +104,23 @@ def get_files(path: Path) -> Generator[Path, None, None]:
         for subpath in path.rglob("*"):
             if not subpath.is_dir():
                 yield subpath
+
+
+def expand_directories(paths):
+    """Expand directory with all files it contains."""
+    processed_paths = set()
+    for path in paths:
+        for matched_path in glob.iglob(str(path), recursive=True):
+            if matched_path in processed_paths:
+                continue
+            path_ = Path(matched_path)
+            if path_.is_dir():
+                for expanded in path_.rglob("*"):
+                    processed_paths.add(str(expanded))
+                    yield str(expanded)
+            else:
+                processed_paths.add(matched_path)
+                yield matched_path
 
 
 def are_paths_related(a, b) -> bool:

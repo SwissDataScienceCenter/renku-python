@@ -66,8 +66,6 @@ def test_safe_class_attributes(tmpdir):
         "DOCKERFILE",
         "LOCK_SUFFIX",
         "METADATA",
-        "RENKU_LFS_IGNORE_PATH",
-        "RENKU_PROTECTED_PATHS",
         "TEMPLATE_CHECKSUMS",
         "_CMD_STORAGE_CHECKOUT",
         "_CMD_STORAGE_CLEAN",

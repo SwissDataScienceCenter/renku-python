@@ -31,6 +31,7 @@ from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.plugin.provider import execute
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import check_external_storage, pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.os import safe_read_yaml
@@ -68,8 +69,8 @@ def execute_workflow_graph(
 
     inputs = {i.actual_value for p in dag.nodes for i in p.inputs}
     # NOTE: Pull inputs from Git LFS or other storage backends
-    if client.check_external_storage():
-        client.pull_paths_from_storage(*inputs)
+    if check_external_storage(client_dispatcher):
+        pull_paths_from_storage(client, *inputs)
 
     # check whether the none generated inputs of workflows are available
     outputs = {o.actual_value for p in dag.nodes for o in p.outputs}

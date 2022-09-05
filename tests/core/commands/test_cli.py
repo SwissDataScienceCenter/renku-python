@@ -27,9 +27,9 @@ from pathlib import Path
 
 import pytest
 
+import renku.core.storage
 from renku import __version__
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
-from renku.core.management.storage import StorageApiMixin
 from renku.core.project.project_properties import project_properties
 from renku.core.util.contexts import chdir
 from renku.domain_model.enums import ConfigFilter
@@ -251,7 +251,7 @@ def test_configuration_of_no_external_storage(isolated_runner, monkeypatch, proj
     assert 0 == result.exit_code, format_result_exception(result)
     # Pretend that git-lfs is not installed.
     with monkeypatch.context() as monkey:
-        monkey.setattr(StorageApiMixin, "storage_installed", False)
+        monkey.setattr(renku.core.storage, "storage_installed", lambda: False)
         # Missing --no-external-storage flag.
         result = runner.invoke(cli, ["run", "touch", "output"])
         assert "External storage is not configured" in result.output
@@ -277,7 +277,7 @@ def test_configuration_of_external_storage(isolated_runner, monkeypatch, project
     assert 0 == result.exit_code, format_result_exception(result)
     # Pretend that git-lfs is not installed.
     with monkeypatch.context() as monkey:
-        monkey.setattr(StorageApiMixin, "storage_installed", False)
+        monkey.setattr(renku.core.storage, "storage_installed", lambda: False)
         # Repo is using external storage but it's not installed.
         result = runner.invoke(cli, ["run", "touch", "output"])
         assert 1 == result.exit_code
@@ -307,7 +307,7 @@ def test_early_check_of_external_storage(isolated_runner, monkeypatch, directory
 
     # Pretend that git-lfs is not installed.
     with monkeypatch.context() as monkey:
-        monkey.setattr(StorageApiMixin, "storage_installed", False)
+        monkey.setattr(renku.core.storage, "storage_installed", lambda: False)
 
         failing_command = ["dataset", "add", "--copy", "-s", "src", "my-dataset", str(directory_tree)]
         result = isolated_runner.invoke(cli, failing_command)
@@ -366,7 +366,7 @@ def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
 
     os.chdir("../foo")
     with monkeypatch.context() as monkey:
-        monkey.setattr(StorageApiMixin, "storage_installed", False)
+        monkey.setattr(renku.core.storage, "storage_installed", lambda: False)
 
         result = runner.invoke(cli, ["dataset", "add", "--copy", "f", "../woop"], catch_exceptions=False)
 

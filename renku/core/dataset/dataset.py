@@ -40,6 +40,7 @@ from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.interface.storage import IStorageFactory
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.dispatcher import get_client, get_database
@@ -1070,7 +1071,7 @@ def update_dataset_git_files(
             elif changed:
                 if not dry_run:
                     # Fetch file if it is tracked by Git LFS
-                    remote_client.pull_paths_from_storage(remote_client.repository.path / based_on.path)
+                    pull_paths_from_storage(remote_client, remote_client.repository.path / based_on.path)
                     if is_external_file(path=src, client_path=remote_client.repository.path):
                         delete_dataset_file(dst, follow_symlinks=True)
                         create_external_file(client=client, target=src.resolve(), path=dst)

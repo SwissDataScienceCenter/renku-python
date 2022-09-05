@@ -32,6 +32,7 @@ from renku.core.dataset.providers.api import ImporterApi
 from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.models import DatasetAddAction
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import check_external_storage, track_paths_in_storage
 from renku.core.util import communication, requests
 from renku.core.util.dataset import check_url
 from renku.core.util.dispatcher import get_client, get_database
@@ -82,7 +83,7 @@ def add_to_dataset(
         with DatasetContext(name=dataset_name, create=create, datadir=datadir, storage=storage) as dataset:
             destination_path = _create_destination_directory(dataset, destination)
 
-            client.check_external_storage()  # TODO: This is not required for external storages
+            check_external_storage()  # TODO: This is not required for external storages
 
             files = _download_files(
                 client=client,
@@ -118,8 +119,8 @@ def add_to_dataset(
             move_files_to_dataset(client, files)
 
             # Track non-symlinks in LFS
-            if client.check_external_storage():
-                client.track_paths_in_storage(*files_to_commit)
+            if check_external_storage():
+                track_paths_in_storage(client, *files_to_commit)
 
             # Force-add to include possible ignored files
             if len(files_to_commit) > 0:

@@ -36,6 +36,7 @@ from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.plugin.pluginmanager import get_plugin_manager
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import check_external_storage, track_paths_in_storage
 from renku.core.util.git import is_path_safe
 from renku.core.util.metadata import is_external_file
 from renku.core.util.os import get_absolute_path, get_relative_path, is_subpath
@@ -568,7 +569,7 @@ class PlanFactory:
     def watch(self, client_dispatcher: IClientDispatcher, no_output=False):
         """Watch a Renku repository for changes to detect outputs."""
         client = client_dispatcher.current_client
-        client.check_external_storage()
+        check_external_storage(client_dispatcher)
 
         repository = client.repository
 
@@ -647,8 +648,8 @@ class PlanFactory:
             if not no_output and not output_paths:
                 raise errors.OutputsNotFound()
 
-            if client.check_external_storage():
-                client.track_paths_in_storage(*output_paths)
+            if check_external_storage(client_dispatcher):
+                track_paths_in_storage(client, *output_paths)
 
             client.repository.add(*output_paths)
 

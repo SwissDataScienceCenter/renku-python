@@ -28,6 +28,7 @@ from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import check_external_storage, untrack_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.git import get_git_user
 from renku.core.util.os import delete_dataset_file
@@ -43,7 +44,7 @@ def _remove(sources, edit_command, client_dispatcher: IClientDispatcher, dataset
         client_dispatcher(IClientDispatcher): Injected client dispatcher.
         dataset_gateway(IDatasetGateway): Injected dataset gateway.
     """
-    from renku.core.management.git import _expand_directories
+    from renku.core.util.os import expand_directories
 
     client = client_dispatcher.current_client
 
@@ -58,7 +59,7 @@ def _remove(sources, edit_command, client_dispatcher: IClientDispatcher, dataset
     files = {
         get_relative_path(source): get_relative_path(file_or_dir)
         for file_or_dir in sources
-        for source in _expand_directories((file_or_dir,))
+        for source in expand_directories((file_or_dir,))
     }
 
     # 1. Update dataset metadata files.
@@ -87,11 +88,11 @@ def _remove(sources, edit_command, client_dispatcher: IClientDispatcher, dataset
         communication.finalize_progress(progress_text)
 
     # 2. Manage .gitattributes for external storage.
-    if client.check_external_storage():
+    if check_external_storage(client_dispatcher):
         tracked = tuple(
             path for path, attr in client.repository.get_attributes(*files).items() if attr.get("filter") == "lfs"
         )
-        client.untrack_paths_from_storage(*tracked)
+        untrack_paths_from_storage(*tracked)
         existing = client.repository.get_attributes(*tracked)
         if existing:
             communication.warn("There are custom .gitattributes.\n")

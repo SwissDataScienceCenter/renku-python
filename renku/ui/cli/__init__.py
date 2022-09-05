@@ -235,7 +235,8 @@ def cli(ctx, path, external_storage_requested):
         )
 
     project_properties.push_path(path)
-    ctx.obj = LocalClient(external_storage_requested=external_storage_requested)
+    project_properties.external_storage_requested = external_storage_requested
+    ctx.obj = LocalClient()
 
     if is_renku_project and path != Path(os.getcwd()) and not is_command_allowed:
         click.secho(WARNING + "Run CLI commands only from project's root directory.\n", err=True)

@@ -20,6 +20,7 @@ from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
+from renku.core.project.project_properties import project_properties
 
 
 @inject.autoparams()
@@ -64,7 +65,7 @@ def _project_clone(
     from renku.core.management.migrate import is_renku_project
     from renku.core.util.git import clone_renku_repository
 
-    install_lfs = client_dispatcher.current_client.external_storage_requested
+    install_lfs = project_properties.external_storage_requested
 
     repository = clone_renku_repository(
         url=url,
@@ -81,7 +82,7 @@ def _project_clone(
         use_renku_credentials=use_renku_credentials,
     )
 
-    client_dispatcher.push_client_to_stack(path=repository.path, external_storage_requested=install_lfs)
+    client_dispatcher.push_client_to_stack(path=repository.path)
     database_dispatcher.push_database_to_stack(client_dispatcher.current_client.database_path)
 
     try:

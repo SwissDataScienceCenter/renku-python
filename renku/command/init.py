@@ -152,12 +152,13 @@ def _init(
 
     # NOTE: set local path and storage
     store_directory(path)
-    if not client.external_storage_requested:
+    if not project_properties.external_storage_requested:
         external_storage_requested = False
 
     # NOTE: create new copy of LocalClient with modified values
     project_properties.push_path(Path(path))
-    ctx.obj = client = attr.evolve(client, data_dir=data_dir, external_storage_requested=external_storage_requested)
+    project_properties.external_storage_requested = external_storage_requested
+    ctx.obj = client = attr.evolve(client, data_dir=data_dir)
     client_dispatcher.push_created_client_to_stack(client)
     database_dispatcher.push_database_to_stack(client.database_path, commit=True)
 

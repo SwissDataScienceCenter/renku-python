@@ -28,6 +28,7 @@ from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import track_paths_in_storage, untrack_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.os import get_relative_path, is_subpath
 
@@ -102,10 +103,10 @@ def _move(sources, destination, force, verbose, to_dataset, client_dispatcher: I
             Path(dst).symlink_to(os.path.relpath(target, start=os.path.dirname(dst)))
 
     files_to_untrack = (str(src.relative_to(project_properties.path)) for src in files)
-    client.untrack_paths_from_storage(*files_to_untrack)
+    untrack_paths_from_storage(*files_to_untrack)
     # NOTE: Warn about filter after untracking from LFS to avoid warning about LFS filters
     _warn_about_git_filters(files)
-    client.track_paths_in_storage(*[dst for dst in files.values() if not dst.is_dir()])
+    track_paths_in_storage(client, *[dst for dst in files.values() if not dst.is_dir()])
 
     # NOTE: Force-add to include possible ignored files
     client.repository.add(*files.values(), force=True)

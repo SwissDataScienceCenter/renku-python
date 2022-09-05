@@ -30,11 +30,12 @@ import filelock
 
 from renku.command.command_builder import inject
 from renku.core import errors
-from renku.core.constant import RENKU_HOME
+from renku.core.constant import RENKU_HOME, RENKU_PROTECTED_PATHS
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.management.git import GitCore
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import init_external_storage, storage_installed
 from renku.domain_model.enums import ConfigFilter
 from renku.domain_model.project import Project
 
@@ -75,21 +76,6 @@ class RepositoryApiMixin(GitCore):
     """Name of the Dockerfile in the repository."""
 
     TEMPLATE_CHECKSUMS = "template_checksums.json"
-
-    RENKU_PROTECTED_PATHS = [
-        ".dockerignore",
-        ".git",
-        ".git/*",
-        ".gitattributes",
-        ".gitignore",
-        ".gitlab-ci.yml",
-        ".renku",
-        ".renku/**",
-        ".renkulfsignore",
-        "Dockerfile*",
-        "environment.yml",
-        "requirements.txt",
-    ]
 
     _remote_cache = attr.ib(factory=dict)
 
@@ -309,6 +295,10 @@ class RepositoryApiMixin(GitCore):
         # verify if git user information is available
         _ = self.repository.get_user()
 
+        # initialize LFS if it is requested and installed
+        if project_properties.external_storage_requested and storage_installed():
+            init_external_storage(force=force)
+
     def is_protected_path(self, path):
         """Checks if a path is a protected path."""
         try:
@@ -316,7 +306,7 @@ class RepositoryApiMixin(GitCore):
         except ValueError:
             return False
 
-        for protected_path in self.RENKU_PROTECTED_PATHS:
+        for protected_path in RENKU_PROTECTED_PATHS:
             if fnmatch(path_in_repo, protected_path):
                 return True
 

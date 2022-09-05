@@ -32,6 +32,7 @@ from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.management.git import get_mapped_std_streams
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import check_external_storage, pull_paths_from_storage
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.urls import get_slug
 from renku.core.workflow.plan_factory import PlanFactory
@@ -159,10 +160,10 @@ def _run_command(
         )
         with factory.watch(no_output=no_output) as tool:
             # Don't compute paths if storage is disabled.
-            if client.check_external_storage():
+            if check_external_storage(client_dispatcher):
                 # Make sure all inputs are pulled from a storage.
                 paths_ = (path for _, path in tool.iter_input_files(project_properties.path))
-                client.pull_paths_from_storage(*paths_)
+                pull_paths_from_storage(client, *paths_)
 
             if tty_exists:
                 # apply original output redirection

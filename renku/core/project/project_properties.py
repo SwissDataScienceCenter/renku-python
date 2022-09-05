@@ -27,6 +27,9 @@ from renku.core.util.git import default_path
 class ProjectProperties(threading.local):
     """A configuration class to hold global configuration."""
 
+    external_storage_requested = True
+    """External storage (e.g. LFS) requested for Renku command."""
+
     def __init__(self) -> None:
         path = default_path()
 

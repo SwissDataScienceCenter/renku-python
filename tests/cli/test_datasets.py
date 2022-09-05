@@ -36,6 +36,7 @@ from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.zenodo import ZenodoProvider
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.project.project_properties import project_properties
+from renku.core.storage import track_paths_in_storage
 from renku.core.util.urls import get_slug
 from renku.domain_model.dataset import Dataset
 from renku.ui.cli import cli
@@ -1631,7 +1632,7 @@ def test_pull_data_from_lfs(runner, client, tmpdir, subdirectory, no_lfs_size_li
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_lfs_hook(client, subdirectory, large_file):
+def test_lfs_hook(client, subdirectory, large_file, client_database_injection_manager):
     """Test committing large files to Git."""
     filenames = {"large-file", "large file with whitespace", "large*file?with wildcards"}
 
@@ -1648,7 +1649,8 @@ def test_lfs_hook(client, subdirectory, large_file):
         assert filename in e.value.stderr
 
     # Can be committed after being tracked in LFS
-    client.track_paths_in_storage(*filenames)
+    with client_database_injection_manager(client):
+        track_paths_in_storage(client, *filenames)
     client.repository.add(all=True)
     commit = client.repository.commit("large files tracked")
     assert "large files tracked\n" == commit.message

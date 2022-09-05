@@ -18,6 +18,7 @@
 """Check for large files in Git history."""
 
 from renku.command.echo import WARNING
+from renku.core.storage import check_external_storage, check_lfs_migrate_info
 
 
 def check_lfs_info(client, **kwargs):
@@ -30,10 +31,10 @@ def check_lfs_info(client, **kwargs):
     Returns:
         Tuple of whether project structure is valid and string of found problems.
     """
-    if not client.check_external_storage():
+    if not check_external_storage():
         return True, None
 
-    files = client.check_lfs_migrate_info()
+    files = check_lfs_migrate_info(client)
 
     if not files:
         return True, None

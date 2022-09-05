@@ -29,3 +29,23 @@ RENKU_TMP = "tmp"
 
 CONFIG_NAME = "renku.ini"
 CONFIG_LOCAL_PATH = os.path.join(RENKU_HOME, CONFIG_NAME)
+
+
+RENKU_LFS_IGNORE_PATH = ".renkulfsignore"
+""".gitignore like file specifying paths that are not tracked in LFS."""
+
+
+RENKU_PROTECTED_PATHS = [
+    ".dockerignore",
+    ".git",
+    ".git/*",
+    ".gitattributes",
+    ".gitignore",
+    ".gitlab-ci.yml",
+    ".renku",
+    ".renku/**",
+    ".renkulfsignore",
+    "Dockerfile*",
+    "environment.yml",
+    "requirements.txt",
+]
