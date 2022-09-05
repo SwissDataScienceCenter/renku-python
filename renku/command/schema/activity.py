@@ -27,8 +27,6 @@ from renku.command.schema.plan import PlanSchema
 from renku.domain_model.provenance.activity import Activity, Association, Generation, Usage
 from renku.domain_model.provenance.parameter import ParameterValue
 
-NON_EXISTING_ENTITY_CHECKSUM = "0" * 40
-
 
 class _ObjectWrapper:
     """Object wrapper that allows temporarily overriding fields of immutable objects."""

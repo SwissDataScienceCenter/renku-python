@@ -232,6 +232,10 @@ def _check_available_space(urls: List[str], total_size: Optional[int] = None):
 def _create_destination_directory(dataset: Dataset, destination: Optional[Union[Path, str]] = None) -> Path:
     """Create directory for dataset add."""
     dataset_datadir = project_properties.path / dataset.get_datadir()
+
+    if dataset_datadir.is_symlink():
+        dataset_datadir.unlink()
+
     # NOTE: Make sure that dataset's data dir exists because we check for existence of a destination later to decide
     # what will be its name
     dataset_datadir.mkdir(parents=True, exist_ok=True)

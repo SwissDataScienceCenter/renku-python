@@ -265,7 +265,15 @@ class DatasetFile(Slots):
         cls, client, path: Union[str, Path], source=None, based_on: Optional[RemoteEntity] = None
     ) -> "DatasetFile":
         """Return an instance from a path."""
-        entity = get_entity_from_revision(repository=client.repository, path=path, bypass_cache=True)
+        from renku.domain_model.entity import NON_EXISTING_ENTITY_CHECKSUM, Entity
+
+        # NOTE: Data is added from an external storage and isn't pulled yet
+        if based_on and not (client.path / path).exists():
+            checksum = based_on.checksum if based_on.checksum else NON_EXISTING_ENTITY_CHECKSUM
+            id = Entity.generate_id(checksum=checksum, path=path)
+            entity = Entity(id=id, checksum=checksum, path=path)
+        else:
+            entity = get_entity_from_revision(repository=client.repository, path=path, bypass_cache=True)
 
         is_external = is_external_file(path=path, client_path=project_properties.path)
         return cls(entity=entity, is_external=is_external, source=source, based_on=based_on)
