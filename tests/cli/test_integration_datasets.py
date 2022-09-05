@@ -2201,11 +2201,11 @@ def test_mount_unmount_data_from_s3_backend(runner, client, global_config_dir):
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    s3_data = client.path / "data" / "s3-data" / "Aspera_download_from_ftp.README"
+    s3_data = project_properties.path / "data" / "s3-data" / "Aspera_download_from_ftp.README"
     assert not s3_data.exists()
 
     # NOTE: Create some dummy files
-    dummy = client.path / "data" / "s3-data" / "dummy"
+    dummy = project_properties.path / "data" / "s3-data" / "dummy"
     dummy.parent.mkdir(exist_ok=True, parents=True)
     dummy.touch()
 
@@ -2231,11 +2231,11 @@ def test_mount_data_from_an_existing_mount_point(runner, client, global_config_d
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    s3_data = client.path / "data" / "s3-data" / "Aspera_download_from_ftp.README"
+    s3_data = project_properties.path / "data" / "s3-data" / "Aspera_download_from_ftp.README"
     assert not s3_data.exists()
 
     # NOTE: Create some dummy files
-    dummy = client.path / "data" / "s3-data" / "dummy"
+    dummy = project_properties.path / "data" / "s3-data" / "dummy"
     dummy.parent.mkdir(exist_ok=True, parents=True)
     dummy.touch()
 

@@ -268,7 +268,7 @@ class DatasetFile(Slots):
         from renku.domain_model.entity import NON_EXISTING_ENTITY_CHECKSUM, Entity
 
         # NOTE: Data is added from an external storage and isn't pulled yet
-        if based_on and not (client.path / path).exists():
+        if based_on and not (project_properties.path / path).exists():
             checksum = based_on.checksum if based_on.checksum else NON_EXISTING_ENTITY_CHECKSUM
             id = Entity.generate_id(checksum=checksum, path=path)
             entity = Entity(id=id, checksum=checksum, path=path)
