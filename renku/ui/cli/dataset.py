@@ -813,16 +813,26 @@ def add(name, urls, force, overwrite, create, destination, datadir, **kwargs):
     from renku.ui.cli.utils.callback import ClickCallback
 
     communicator = ClickCallback()
-    add_to_dataset_command().with_communicator(communicator).build().execute(
-        urls=list(urls),
-        dataset_name=name,
-        force=force,
-        overwrite=overwrite,
-        create=create,
-        destination=destination,
-        datadir=datadir,
-        **kwargs,
+    result = (
+        add_to_dataset_command()
+        .with_communicator(communicator)
+        .build()
+        .execute(
+            urls=list(urls),
+            dataset_name=name,
+            force=force,
+            overwrite=overwrite,
+            create=create,
+            destination=destination,
+            datadir=datadir,
+            **kwargs,
+        )
     )
+
+    dataset = result.output
+    if dataset.storage:
+        communicator.info(f"To download files from the remote storage use 'renku dataset pull {dataset.name}'")
+
     click.secho("OK", fg=color.GREEN)
 
 
@@ -1172,3 +1182,27 @@ def pull(name, location):
 
     communicator = ClickCallback()
     pull_external_data_command().with_communicator(communicator).build().execute(name=name, location=location)
+
+
+@dataset.command(hidden=True)
+@click.argument("name", shell_complete=_complete_datasets)
+@click.option(
+    "-e",
+    "--existing",
+    default=None,
+    type=click.Path(exists=True, file_okay=False),
+    help="Use an existing mount point instead of mounting the remote storage.",
+)
+@click.option("-u", "--unmount", is_flag=True, help="Unmount dataset's external storage.")
+@click.option("-y", "--yes", is_flag=True, help="No prompt when removing non-empty dataset's data directory.")
+def mount(name, existing, unmount, yes):
+    """Mount an external storage in the dataset's data directory."""
+    from renku.command.dataset import mount_external_storage_command
+    from renku.ui.cli.utils.callback import ClickCallback
+
+    command = mount_external_storage_command(unmount=unmount).with_communicator(ClickCallback()).build()
+
+    if unmount:
+        command.execute(name=name)
+    else:
+        command.execute(name=name, existing=existing, yes=yes)

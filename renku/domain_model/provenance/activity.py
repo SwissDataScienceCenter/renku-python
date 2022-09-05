@@ -38,8 +38,6 @@ from renku.infrastructure.database import Persistent
 from renku.infrastructure.immutable import Immutable
 from renku.version import __version__, version_url
 
-NON_EXISTING_ENTITY_CHECKSUM = "0" * 40
-
 
 class Association:
     """Assign responsibility to an agent for an activity."""
