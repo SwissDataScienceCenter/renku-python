@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -22,7 +22,7 @@ import shutil
 import urllib
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from renku.command.command_builder.command import inject
 from renku.command.login import read_renku_token
@@ -49,14 +49,14 @@ class RenkuProvider(ProviderApi):
     priority = ProviderPriority.HIGH
     name = "Renku"
 
-    def __init__(self, is_doi: bool = False):
-        self.is_doi = is_doi
+    def __init__(self, uri: Optional[str], **_):
+        super().__init__(uri=uri)
+
         self._accept = "application/json"
         self._authorization_header = None
-        self._uri = ""
-        self._gitlab_token = None
+        self._gitlab_token: Optional[str] = None
         self._renku_token = None
-        self._tag = None
+        self._tag: Optional[str] = None
 
     @staticmethod
     def supports(uri):
@@ -81,27 +81,27 @@ class RenkuProvider(ProviderApi):
 
         return [ProviderParameter("tag", help="Import a specific tag instead of the latest version.", type=str)]
 
-    def get_importer(self, uri, tag=None, **kwargs):
+    def get_importer(self, tag: Optional[str] = None, gitlab_token: Optional[str] = None, **kwargs):
         """Retrieves a dataset import manager from Renku.
 
         Args:
-            uri: URL to search for.
+            tag(Optional[str]): Dataset version to import.
+            gitlab_token(Optional[str]): Gitlab access token.
 
         Returns:
-            RenkuImporter: Serializer containing record data.
+            RenkuImporter: A Renku import manager.
         """
-        self._uri = uri
         self._tag = tag
-        self._gitlab_token = kwargs.get("gitlab_token")
+        self._gitlab_token = gitlab_token
 
-        self._prepare_auth(uri)
+        self._prepare_auth(self.uri)
 
-        name, identifier, latest_version_uri, kg_url = self._fetch_dataset_info(uri)
+        name, identifier, latest_version_uri, kg_url = self._fetch_dataset_info(self.uri)
 
         project_url_ssh, project_url_http = self._get_project_urls(kg_url)
 
         return RenkuImporter(
-            uri=uri,
+            uri=self.uri,
             name=name,
             identifier=identifier,
             tag=self._tag,
@@ -194,7 +194,7 @@ class RenkuProvider(ProviderApi):
         except errors.RequestError as e:
             raise errors.OperationError(f"Cannot access knowledge graph: {url}") from e
 
-        parsed_uri = urllib.parse.urlparse(self._uri)
+        parsed_uri = urllib.parse.urlparse(self.uri)
         if response.status_code == 404:
             raise errors.NotFound(
                 f"Resource not found in knowledge graph: {url}\n"
@@ -268,11 +268,9 @@ class RenkuImporter(ImporterApi):
         from renku.core.management.client import LocalClient
         from renku.domain_model.dataset import RemoteEntity
 
-        if not self.provider_dataset.data_dir:
-            raise errors.OperationError(f"Data directory for dataset must be set: {self.provider_dataset.name}")
-
         url = remove_credentials(self.project_url)
-        dataset_datadir = self.provider_dataset.data_dir
+
+        dataset_datadir = self.provider_dataset.get_datadir()
         remote_repository = self.repository
 
         if self.provider_dataset.version:  # NOTE: A tag was specified for import
@@ -442,41 +440,41 @@ class RenkuImporter(ImporterApi):
     @property
     def datadir_exists(self):
         """Whether the dataset data directory exists (might be missing in git if empty)."""
-        return (self._remote_client.path / self.provider_dataset.data_dir).exists()
+        return (self._remote_client.path / self.provider_dataset.get_datadir()).exists()
 
     @inject.autoparams()
     def _fetch_dataset(self, client_dispatcher: IClientDispatcher, database_dispatcher: IDatabaseDispatcher):
         from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile
         from renku.core.management.client import LocalClient
-        from renku.domain_model.dataset import Url, get_dataset_data_dir
+        from renku.domain_model.dataset import Url
 
         repository = None
         client = client_dispatcher.current_client
 
-        parsed_uri = urllib.parse.urlparse(self._uri)
+        parsed_uri = urllib.parse.urlparse(self.uri)
 
         urls = (self._project_url_ssh, self._project_url_http)
         # Clone the project
-        with communication.busy(msg="Cloning remote repository..."):
-            for url in urls:
-                try:
-                    repository = clone_renku_repository(
-                        url=url,
-                        path=get_cache_directory_for_repository(client=client, url=url),
-                        gitlab_token=self._gitlab_token,
-                        deployment_hostname=parsed_uri.netloc,
-                        depth=None,
-                        reuse_existing_repository=True,
-                        use_renku_credentials=True,
-                    )
-                except errors.GitError:
-                    pass
-                else:
-                    self._project_url = url
-                    break
+        communication.echo(msg="Cloning remote repository...")
+        for url in urls:
+            try:
+                repository = clone_renku_repository(
+                    url=url,
+                    path=get_cache_directory_for_repository(client=client, url=url),
+                    gitlab_token=self._gitlab_token,
+                    deployment_hostname=parsed_uri.netloc,
+                    depth=None,
+                    reuse_existing_repository=True,
+                    use_renku_credentials=True,
+                )
+            except errors.GitError:
+                pass
+            else:
+                self._project_url = url
+                break
 
         if self._project_url is None or repository is None:
-            raise errors.ParameterError("Cannot clone remote projects:\n\t" + "\n\t".join(urls), param_hint=self._uri)
+            raise errors.ParameterError("Cannot clone remote projects:\n\t" + "\n\t".join(urls), param_hint=self.uri)
 
         self._remote_client = LocalClient(path=repository.path)
         client_dispatcher.push_created_client_to_stack(self._remote_client)
@@ -514,7 +512,6 @@ class RenkuImporter(ImporterApi):
             database_dispatcher.pop_database()
             client_dispatcher.pop_client()
 
-        provider_dataset.data_dir = get_dataset_data_dir(self._remote_client, provider_dataset.name)
         provider_dataset.derived_from = None
         provider_dataset.same_as = Url(url_id=remove_credentials(self.latest_uri))
 

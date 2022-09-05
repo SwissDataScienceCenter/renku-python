@@ -101,4 +101,6 @@ DATASETS_COLUMNS = {
     "title": ("title", "title"),
     "keywords": ("keywords_csv", "keywords"),
     "description": ("short_description", "description"),
+    "storage": ("storage", None),
+    "datadir": ("datadir_path", "datadir"),
 }

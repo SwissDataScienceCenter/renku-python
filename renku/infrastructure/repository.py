@@ -33,10 +33,11 @@ from typing import Any, Callable, Dict, Generator, List, NamedTuple, Optional, S
 import git
 
 from renku.core import errors
-from renku.core.util.os import delete_file, get_absolute_path
+from renku.core.util.os import delete_dataset_file, get_absolute_path
 
 NULL_TREE = git.NULL_TREE
 _MARKER = object()
+GIT_IGNORE = ".gitignore"
 
 
 def git_unicode_unescape(s: Optional[str], encoding: str = "utf-8") -> str:
@@ -205,6 +206,15 @@ class BaseRepository:
         else:
             for batch in split_paths(*paths):
                 self.run_git_command("add", *batch, force=force)
+
+    def add_ignored_pattern(self, pattern: str) -> None:
+        """Add the pattern to the ``.gitignore`` file."""
+        with open(self.path / GIT_IGNORE, "a+b") as file:
+            file.seek(-1, os.SEEK_END)
+            last_character = file.read(1)
+            has_newline = last_character == b"\n"
+            pattern = f"{pattern}{os.linesep}" if has_newline else f"{os.linesep}{pattern}{os.linesep}"
+            file.write(pattern.encode("utf-8"))
 
     def commit(
         self,
@@ -525,7 +535,7 @@ class BaseRepository:
         output_path = Path(output)
 
         content: Union[bytes, str] = output_path.read_bytes() if binary else output_path.read_text()
-        delete_file(output)
+        delete_dataset_file(output)
 
         return content
 

@@ -17,8 +17,17 @@
 # limitations under the License.
 """Manage the set of CWL files created by ``renku`` commands.
 
-Runs and Plans
-~~~~~~~~~~~~~~
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. rst-class:: cli-reference-commands
+
+.. click:: renku.ui.cli.workflow:workflow
+   :prog: renku workflow
+   :nested: full
+
+Description
+~~~~~~~~~~~
 
 Renku records two different kinds of metadata when a workflow is executed,
 ``Run`` and ``Plan``.
@@ -44,7 +53,7 @@ Working with Plans
 Listing Plans
 *************
 
-.. image:: ../_static/asciicasts/list_plans.delay.gif
+.. image:: ../../_static/asciicasts/list_plans.delay.gif
    :width: 850
    :alt: List Plans
 
@@ -71,7 +80,7 @@ combination of values from ``id``, ``name``, ``keywords`` and ``description``.
 Showing Plan Details
 ********************
 
-.. image:: ../_static/asciicasts/show_plan.delay.gif
+.. image:: ../../_static/asciicasts/show_plan.delay.gif
    :width: 850
    :alt: Show Plan
 
@@ -107,7 +116,7 @@ inputs, outputs and parameters.
 Executing Plans
 ***************
 
-.. image:: ../_static/asciicasts/execute_plan.delay.gif
+.. image:: ../../_static/asciicasts/execute_plan.delay.gif
    :width: 850
    :alt: Execute Plans
 
@@ -157,7 +166,7 @@ flag to ``renku workflow execute``.
 Iterate Plans
 *************
 
-.. image:: ../_static/asciicasts/iterate_plan.gif
+.. image:: ../../_static/asciicasts/iterate_plan.gif
    :width: 850
    :alt: Iterate Plans
 
@@ -214,7 +223,7 @@ variable is going to be substituted with the iteration index (0, 1, 2, ...).
             --map output=output_{iter_index}.txt my-run
 
 This would execute ``my-run`` three times, where ``parameter-1`` values would be
-``10``, `20`` and ``30`` and the producing output files ``output_0.txt``,
+``10``, ``20`` and ``30`` and the producing output files ``output_0.txt``,
 ``output_1.txt`` and ``output_2.txt`` files in this order.
 
 In some cases it may be desirable to avoid updating the renku metadata
@@ -288,7 +297,7 @@ You can export into a file directly with ``-o <path>``.
 
 Composing Plans into larger workflows
 *************************************
-.. image:: ../_static/asciicasts/compose_plan.delay.gif
+.. image:: ../../_static/asciicasts/compose_plan.delay.gif
    :width: 850
    :alt: Composing Plans
 
@@ -300,7 +309,7 @@ The basic usage is:
 
 .. code-block:: console
 
-   $ renku run --name step1-- cp input intermediate
+   $ renku run --name step1 -- cp input intermediate
    $ renku run --name step2 -- cp intermediate output
    $ renku workflow compose my-composed-workflow step1 step2
 
@@ -432,7 +441,7 @@ order of precedence (lower precedence first):
 Editing Plans
 *************
 
-.. image:: ../_static/asciicasts/edit_plan.delay.gif
+.. image:: ../../_static/asciicasts/edit_plan.delay.gif
    :width: 850
    :alt: Editing Plans
 
@@ -523,7 +532,7 @@ Refer to the documentation of the :ref:`cli-log` command for more details.
 Visualizing Executions
 **********************
 
-.. image:: ../_static/asciicasts/visualize_runs.delay.gif
+.. image:: ../../_static/asciicasts/visualize_runs.delay.gif
    :width: 850
    :alt: Visualizing Runs
 
@@ -622,6 +631,18 @@ You can also run in interactive mode using the ``--interactive`` flag.
 This will allow you to navigate between workflow execution and see details
 by pressing the <Enter> key.
 
+If you prefer to elaborate the output graph further, or if you wish to export
+it for any reason, you can use the ``--format`` option to specify an output
+format.
+
+The following example generates the graph using the `dot` format. It can
+be stored in a file or piped directly to any compatible tool. Here we
+use the ``dot`` command line tool from graphviz to generate an SVG file.
+
+.. code-block:: console
+
+   $ renku workflow visualize --format dot <path> | dot -Tsvg > graph.svg
+
 Use ``renku workflow visualize -h`` to see all available options.
 
 .. cheatsheet::
@@ -702,7 +723,7 @@ from lazy_object_proxy import Proxy
 
 import renku.ui.cli.utils.color as color
 from renku.command.echo import ERROR
-from renku.command.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS
+from renku.command.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS, WORKFLOW_VISUALIZE_FORMATS
 from renku.command.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
 from renku.core import errors
 from renku.ui.cli.utils.callback import ClickCallback
@@ -1148,24 +1169,32 @@ def execute(
 )
 @click.option("-x", "--exclude-files", is_flag=True, help="Hide file nodes, only show Runs.")
 @click.option("-a", "--ascii", is_flag=True, help="Only use Ascii characters for formatting.")
-@click.option("-i", "--interactive", is_flag=True, help="Interactively explore run graph.")
-@click.option("--no-color", is_flag=True, help="Don't colorize output.")
-@click.option("--pager", is_flag=True, help="Force use pager (less) for output.")
-@click.option("--no-pager", is_flag=True, help="Don't use pager (less) for output.")
 @click.option(
     "--revision",
     type=click.STRING,
     help="Git revision to generate the graph for.",
 )
+@click.option(
+    "--format",
+    type=click.Choice(list(WORKFLOW_VISUALIZE_FORMATS.keys())),
+    default="console",
+    help="Choose an output format.",
+)
+@click.option(
+    "-i", "--interactive", is_flag=True, help="Interactively explore run graph. Only available for console output"
+)
+@click.option("--no-color", is_flag=True, help="Don't colorize console output.")
+@click.option("--pager", is_flag=True, help="Force use pager (less) for console output.")
+@click.option("--no-pager", is_flag=True, help="Don't use pager (less) for console output.")
 @click.argument("paths", type=click.Path(exists=False, dir_okay=True), nargs=-1)
-def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pager, no_pager, revision, paths):
+def visualize(sources, columns, exclude_files, ascii, revision, format, interactive, no_color, pager, no_pager, paths):
     """Visualization of workflows that produced outputs at the specified paths.
 
     Either PATHS or --from need to be set.
     """
     from renku.command.workflow import visualize_graph_command
 
-    if pager and no_pager:
+    if format == WORKFLOW_VISUALIZE_FORMATS["console"] and pager and no_pager:
         raise errors.ParameterError("Can't use both --pager and --no-pager.")
     if revision and not paths:
         raise errors.ParameterError("Can't use --revision without specifying PATHS.")
@@ -1175,36 +1204,47 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
         .build()
         .execute(sources=sources, targets=paths, show_files=not exclude_files, revision=revision)
     )
-    text_output, navigation_data = result.output.text_representation(columns=columns, color=not no_color, ascii=ascii)
+    if format == WORKFLOW_VISUALIZE_FORMATS["dot"]:
+        output = result.output.dot_representation(columns=columns)
 
-    if not text_output:
+        if not output:
+            return
+
+        click.echo(output)
         return
+    else:
+        text_output, navigation_data = result.output.text_representation(
+            columns=columns, color=not no_color, ascii=ascii
+        )
 
-    if not interactive:
-        max_width = max(node[1].x for layer in navigation_data for node in layer)
-        tty_size = shutil.get_terminal_size(fallback=(120, 120))
+        if not text_output:
+            return
 
-        if no_pager or not sys.stdout.isatty() or os.system(f"less 2>{os.devnull}") != 0:
-            use_pager = False
-        elif pager:
-            use_pager = True
-        elif max_width < tty_size.columns:
-            use_pager = False
-        else:
-            use_pager = True
+        if not interactive:
+            max_width = max(node[1].x for layer in navigation_data for node in layer)
+            tty_size = shutil.get_terminal_size(fallback=(120, 120))
 
-        if use_pager:
-            show_text_with_pager(text_output)
-        else:
-            click.echo(text_output)
-        return
+            if no_pager or not sys.stdout.isatty() or os.system(f"less 2>{os.devnull}") != 0:
+                use_pager = False
+            elif pager:
+                use_pager = True
+            elif max_width < tty_size.columns:
+                use_pager = False
+            else:
+                use_pager = True
 
-    from renku.ui.cli.utils.curses import CursesActivityGraphViewer
+            if use_pager:
+                show_text_with_pager(text_output)
+            else:
+                click.echo(text_output)
+            return
 
-    viewer = CursesActivityGraphViewer(
-        text_output, navigation_data, result.output.vertical_space, use_color=not no_color
-    )
-    viewer.run()
+        from renku.ui.cli.utils.curses import CursesActivityGraphViewer
+
+        viewer = CursesActivityGraphViewer(
+            text_output, navigation_data, result.output.vertical_space, use_color=not no_color
+        )
+        viewer.run()
 
 
 @workflow.command()

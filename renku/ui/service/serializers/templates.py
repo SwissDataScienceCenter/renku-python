@@ -53,15 +53,18 @@ class TemplateParameterSchema(Schema):
 class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
     """Request schema for listing manifest templates."""
 
-    identifier = fields.String(required=True)
-    initial_branch = fields.String(missing=None)
-    parameters = fields.List(fields.Nested(TemplateParameterSchema), missing=[])
-    project_name = fields.String(required=True)
-    project_namespace = fields.String(required=True)
-    project_repository = fields.String(required=True)
-    project_description = fields.String(missing=None)
-    project_keywords = fields.List(fields.String(), missing=None)
-    project_custom_metadata = fields.Dict(missing=None)
+    identifier = fields.String(required=True, description="Indentifier of the template")
+    initial_branch = fields.String(missing=None, description="Name for the initial branch in the new project.")
+    parameters = fields.List(fields.Nested(TemplateParameterSchema), missing=[], description="Template parameters")
+    project_name = fields.String(required=True, description="Project name")
+    project_namespace = fields.String(required=True, description="Project namespace")
+    project_repository = fields.String(required=True, description="Project remote repository")
+    project_description = fields.String(missing=None, description="Project description")
+    project_keywords = fields.List(fields.String(), missing=None, description="Project keywords")
+    project_custom_metadata = fields.Dict(missing=None, description="Project custom JSON-LD metadata")
+    data_directory = fields.String(
+        missing=None, description="Base dataset data directory in project. Defaults to 'data/'"
+    )
 
     @post_load()
     def add_required_fields(self, data, **kwargs):

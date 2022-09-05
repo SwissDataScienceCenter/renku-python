@@ -307,6 +307,9 @@ class DirectoryNotEmptyError(RenkuException):
 class DatasetExistsError(DatasetException):
     """Raise when trying to create an existing dataset."""
 
+    def __init__(self, name):
+        super().__init__(f"Dataset exists: '{name}'")
+
 
 class ExternalStorageNotInstalled(RenkuException):
     """Raise when LFS is required but not found or installed in the repository."""
@@ -501,8 +504,8 @@ class MigrationError(RenkuException):
     """Raised when something went wrong during migrations."""
 
 
-class ImportError(RenkuException):
-    """Raised when a dataset cannot be imported."""
+class DatasetImportError(DatasetException):
+    """Raised when a dataset cannot be imported/pulled from a remote source."""
 
 
 class CommandNotFinalizedError(RenkuException):
@@ -656,7 +659,7 @@ class MinimumVersionError(RenkuException):
 
 
 class DatasetProviderNotFound(DatasetException, ParameterError):
-    """Raised when a dataset provider cannot be found based on a URL or a provider name."""
+    """Raised when a dataset provider cannot be found based on a URI or a provider name."""
 
     def __init__(self, *, name: str = None, uri: str = None, message: str = None):
         if message is None:
@@ -666,5 +669,27 @@ class DatasetProviderNotFound(DatasetException, ParameterError):
                 message = f"Cannot find a provider to process '{uri}'"
             else:
                 message = "Provider not found"
+
+        super().__init__(message)
+
+
+class StorageProviderNotFound(DatasetException, ParameterError):
+    """Raised when a storage provider cannot be found based on a URI."""
+
+    def __init__(self, uri: str):
+        super().__init__(f"Cannot find a storage provider to process '{uri}'")
+
+
+class RCloneException(DatasetException):
+    """Base class for all rclone-related exceptions."""
+
+
+class StorageObjectNotFound(RCloneException):
+    """Raised when a file or directory cannot be found in the remote storage."""
+
+    def __init__(self, error: str = None):
+        message = "Cannot find file/directory"
+        if error:
+            message = f"{message}: {error}"
 
         super().__init__(message)

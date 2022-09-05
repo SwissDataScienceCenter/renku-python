@@ -34,6 +34,8 @@ from tests.utils import format_result_exception, raises
 
 
 def test_parse_parameters(project_init):
+    """Test parsing parameters."""
+
     def clean_param(p):
         return [v for v in p if v != "--parameter"]
 
@@ -420,7 +422,7 @@ def test_init_with_data_dir(isolated_runner, data_dir, directory_tree, project_i
     data, commands = project_init
 
     new_project = Path(data["test_project"])
-    result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"] + ["--data-dir", data_dir])
+    result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"] + ["--datadir", data_dir])
     assert 0 == result.exit_code, format_result_exception(result)
 
     assert (new_project / data_dir).exists()
@@ -428,7 +430,7 @@ def test_init_with_data_dir(isolated_runner, data_dir, directory_tree, project_i
     assert not Repository(new_project).is_dirty(untracked_files=True)
 
     os.chdir(new_project.resolve())
-    result = isolated_runner.invoke(cli, ["dataset", "add", "-c", "my-data", str(directory_tree)])
+    result = isolated_runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-data", str(directory_tree)])
     assert 0 == result.exit_code, format_result_exception(result)
     assert (Path(data_dir) / "my-data" / directory_tree.name / "file1").exists()
 
@@ -438,7 +440,7 @@ def test_init_with_wrong_data_dir(isolated_runner, data_dir, project_init):
     """Test initialization fails with wrong data directory."""
     data, commands = project_init
 
-    result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"] + ["--data-dir", data_dir])
+    result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"] + ["--datadir", data_dir])
     assert 2 == result.exit_code
     assert f"Data directory {data_dir} is not within project" in result.output
 
@@ -448,7 +450,7 @@ def test_init_with_invalid_data_dir(isolated_runner, data_dir, project_init):
     """Test initialization fails with invalid data directory."""
     data, commands = project_init
 
-    result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"] + ["--data-dir", data_dir])
+    result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"] + ["--datadir", data_dir])
     assert 2 == result.exit_code
     data_dir = data_dir.rstrip("/")
     assert f"Cannot use {data_dir} as data directory." in result.output

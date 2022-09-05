@@ -1,4 +1,4 @@
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -44,6 +44,7 @@ class DatasetAddMetadata(NamedTuple):
     source: Path
     destination: Path
     based_on: Optional["RemoteEntity"] = None
+    gitignored: bool = False
 
     @property
     def has_action(self) -> bool:

@@ -138,9 +138,12 @@ def test_move_dataset_file(runner, client_with_datasets, directory_tree_files, l
 
     dataset_before = load_dataset_with_injection("dataset-2", client_with_datasets)
 
-    assert 0 == runner.invoke(cli, ["mv", "data", "files"], catch_exceptions=False).exit_code
+    result = runner.invoke(cli, ["mv", "data", "files"], input="y", catch_exceptions=False)
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Warning: You are trying to move dataset files out of a datasets data directory" in result.output
 
-    assert 0 == runner.invoke(cli, ["doctor"], catch_exceptions=False).exit_code
+    result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
+    assert 0 == result.exit_code, format_result_exception(result)
 
     # Check immutability
     dataset_after = load_dataset_with_injection("dataset-2", client_with_datasets)
@@ -154,9 +157,7 @@ def test_move_dataset_file(runner, client_with_datasets, directory_tree_files, l
         assert dst.exists()
 
         file = dataset_after.find_file(dst)
-        assert file
-        assert str(dst) in file.entity.id
-        assert not file.is_external
+        assert not file
 
 
 @pytest.mark.parametrize("args", [[], ["--to-dataset", "dataset-2"]])
@@ -188,6 +189,10 @@ def test_move_to_existing_destination_in_a_dataset(runner, client_with_datasets,
     (client_with_datasets.path / "source").write_text("new-content")
     client_with_datasets.repository.add(all=True)
     client_with_datasets.repository.commit("source file")
+
+    result = runner.invoke(cli, ["mv", "-f", "--to-dataset", "dataset-2", "source", "new_file"])
+    assert 2 == result.exit_code, format_result_exception(result)
+    assert "Destination new_file must be in data/dataset-2 when moving to a dataset." in result.output
 
     dst = os.path.join("data", "dataset-2", "file1")
 
@@ -230,7 +235,8 @@ def test_move_external_files(
     """Test move of external files (symlinks)."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-dataset", str(directory_tree)]).exit_code
 
-    assert 0 == runner.invoke(cli, ["mv", os.path.join(DATA_DIR, "my-dataset"), destination]).exit_code
+    result = runner.invoke(cli, ["mv", os.path.join(DATA_DIR, "my-dataset"), destination])
+    assert 0 == result.exit_code, format_result_exception(result)
 
     for path in directory_tree_files:
         dst = Path(destination) / directory_tree.name / path
@@ -255,18 +261,21 @@ def test_move_between_datasets(
     """Test move files between datasets."""
     shutil.copy(large_file, directory_tree / "file1")
     shutil.copy(large_file, directory_tree / "dir1" / "file2")
-    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "dataset-1", str(directory_tree)]).exit_code
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "dataset-1", str(directory_tree)])
+    assert 0 == result.exit_code, format_result_exception(result)
     file1 = Path("data") / "dataset-1" / directory_tree.name / "file1"
-    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "dataset-2", str(file1)]).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "add", "--copy", "-c", "dataset-2", str(file1)]).exit_code
     assert 0 == runner.invoke(cli, ["dataset", "create", "dataset-3"]).exit_code
 
     source = Path("data") / "dataset-1"
     destination = Path("data") / "dataset-3"
-    assert 0 == runner.invoke(cli, ["mv", str(source), str(destination), "--to-dataset", "dataset-3"]).exit_code
+
+    result = runner.invoke(cli, ["mv", "-f", str(source), str(destination), "--to-dataset", "dataset-3"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
     assert not source.exists()
     assert 0 == len(load_dataset_with_injection("dataset-1", client).files)
-    assert 0 == len(load_dataset_with_injection("dataset-2", client).files)
+    assert 1 == len(load_dataset_with_injection("dataset-2", client).files)
 
     dataset = load_dataset_with_injection("dataset-3", client)
     assert 3 == len(dataset.files)
@@ -276,19 +285,17 @@ def test_move_between_datasets(
         assert path.exists()
         assert dataset.find_file(path)
 
-    tracked = set(client.repository.run_git_command("lfs", "ls-files", "--name-only").split("\n"))
-    assert {"data/dataset-3/directory_tree/file1", "data/dataset-3/directory_tree/dir1/file2"} == tracked
-
     # Some more moves and dataset operations
-    assert 0 == runner.invoke(cli, ["dataset", "add", "dataset-3", str(large_file)]).exit_code
+    assert 0 == runner.invoke(cli, ["dataset", "add", "--copy", "dataset-3", str(large_file)]).exit_code
     src1 = os.path.join("data", "dataset-3", directory_tree.name, "dir1")
     dst1 = os.path.join("data", "dataset-1")
     shutil.rmtree(dst1, ignore_errors=True)  # NOTE: Remove directory to force a rename
-    assert 0 == runner.invoke(cli, ["mv", src1, dst1, "--to-dataset", "dataset-1"]).exit_code
+    assert 0 == runner.invoke(cli, ["mv", "-f", src1, dst1, "--to-dataset", "dataset-1"]).exit_code
     src2 = os.path.join("data", "dataset-3", directory_tree.name, "file1")
     dst2 = os.path.join("data", "dataset-2")
     (client.path / dst2).mkdir(parents=True, exist_ok=True)
-    assert 0 == runner.invoke(cli, ["mv", src2, dst2, "--to-dataset", "dataset-2"]).exit_code
+    result = runner.invoke(cli, ["mv", src2, dst2, "--force", "--to-dataset", "dataset-2"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
     assert {"data/dataset-1/file2", "data/dataset-1/file3"} == {
         f.entity.path for f in load_dataset_with_injection("dataset-1", client).files
@@ -297,9 +304,6 @@ def test_move_between_datasets(
     assert {"data/dataset-3/large-file"} == {
         f.entity.path for f in load_dataset_with_injection("dataset-3", client).files
     }
-
-    tracked = set(client.repository.run_git_command("lfs", "ls-files", "--name-only").split("\n"))
-    assert {"data/dataset-1/file2", "data/dataset-2/file1", "data/dataset-3/large-file"} == tracked
 
     assert 0 == runner.invoke(cli, ["doctor"], catch_exceptions=False).exit_code
     assert not client.repository.is_dirty(untracked_files=True)

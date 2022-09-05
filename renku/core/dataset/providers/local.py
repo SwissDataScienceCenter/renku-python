@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -27,7 +27,7 @@ from renku.core import errors
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
 from renku.core.util import communication
 from renku.core.util.dataset import check_url
-from renku.core.util.os import get_absolute_path, is_path_empty, is_subpath
+from renku.core.util.os import get_absolute_path, is_path_empty
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderParameter
@@ -41,7 +41,9 @@ class FilesystemProvider(ProviderApi):
     priority = ProviderPriority.LOW
     name = "Local"
 
-    def __init__(self):
+    def __init__(self, uri: Optional[str]):
+        super().__init__(uri=uri)
+
         self._path: Optional[str] = None
 
     @staticmethod
@@ -69,6 +71,27 @@ class FilesystemProvider(ProviderApi):
             ProviderParameter(
                 "external", flags=["e", "external"], help="Creates a link to external data.", is_flag=True
             ),
+            ProviderParameter(
+                "copy",
+                flags=["cp", "copy"],
+                help="Copy files to the dataset's data directory. Mutually exclusive with --move and --link.",
+                is_flag=True,
+                default=False,
+            ),
+            ProviderParameter(
+                "move",
+                flags=["mv", "move"],
+                help="Move files to the dataset's data directory. Mutually exclusive with --copy and --link.",
+                is_flag=True,
+                default=False,
+            ),
+            ProviderParameter(
+                "link",
+                flags=["ln", "link"],
+                help="Symlink files to the dataset's data directory. Mutually exclusive with --copy and --move.",
+                is_flag=True,
+                default=False,
+            ),
         ]
 
     @staticmethod
@@ -84,24 +107,42 @@ class FilesystemProvider(ProviderApi):
         uri: str,
         destination: Path,
         *,
-        dataset_name: str = None,
+        dataset: Optional["Dataset"] = None,
         external: bool = False,
+        move: bool = False,
+        copy: bool = False,
+        link: bool = False,
+        force: bool = False,
         **kwargs,
     ) -> List["DatasetAddMetadata"]:
         """Add files from a URI to a dataset."""
         from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
-        from renku.domain_model.dataset import get_dataset_data_dir
 
-        assert dataset_name is not None, "Dataset name is not passed"
+        if sum([move, copy, link]) > 1:
+            raise errors.ParameterError("--move, --copy and --link are mutually exclusive.")
+
+        default_action = DatasetAddAction.COPY
+        prompt_action = True
+
+        if move:
+            default_action = DatasetAddAction.MOVE
+            prompt_action = False
+        elif link:
+            default_action = DatasetAddAction.SYMLINK
+            prompt_action = False
+        elif copy:
+            prompt_action = False
+
+        if dataset is None:
+            raise errors.ParameterError("Dataset is not passed")
 
         u = urllib.parse.urlparse(uri)
         path = u.path
 
-        action = DatasetAddAction.SYMLINK if external else DatasetAddAction.COPY
-        absolute_dataset_data_dir = (client.path / get_dataset_data_dir(client, dataset_name)).resolve()
+        action = DatasetAddAction.SYMLINK if external else default_action
+        absolute_dataset_data_dir = (client.path / dataset.get_datadir()).resolve()
         source_root = Path(get_absolute_path(path))
-        is_within_repo = is_subpath(path=source_root, base=client.path)
-        warnings = []
+        warnings: List[str] = []
 
         def check_recursive_addition(src: Path):
             if src.resolve() == absolute_dataset_data_dir:
@@ -126,28 +167,23 @@ class FilesystemProvider(ProviderApi):
         def get_metadata(src: Path) -> DatasetAddMetadata:
             is_tracked = client.repository.contains(src)
 
-            if is_tracked or (is_within_repo and not external):
-                path_in_repo = src.relative_to(client.path)
-                if external:
-                    warnings.append(str(path_in_repo))
-                return DatasetAddMetadata(
-                    entity_path=path_in_repo,
-                    url=str(path_in_repo),
-                    action=DatasetAddAction.NONE,
-                    source=path_in_repo,
-                    destination=path_in_repo,
-                )
-            else:
-                relative_path = src.relative_to(source_root)
-                dst = destination_root / relative_path
+            relative_path = src.relative_to(source_root)
+            dst = destination_root / relative_path
 
-                return DatasetAddMetadata(
-                    entity_path=dst.relative_to(client.path),
-                    url=os.path.relpath(src, client.path),
-                    action=action,
-                    source=src,
-                    destination=dst,
-                )
+            if is_tracked and external:
+                warnings.append(str(src.relative_to(client.path)))
+
+            if not is_tracked and not external and action == DatasetAddAction.SYMLINK:
+                # NOTE: we need to commit src if it is linked to and not external.
+                client.repository.add(src)
+
+            return DatasetAddMetadata(
+                entity_path=dst.relative_to(client.path),
+                url=os.path.relpath(src, client.path),
+                action=action,
+                source=src,
+                destination=dst,
+            )
 
         destination_root = get_destination_root()
 
@@ -163,6 +199,16 @@ class FilesystemProvider(ProviderApi):
                 results.append(get_metadata(file))
         else:
             results = [get_metadata(source_root)]
+
+        if not force and prompt_action and not external:
+            communication.confirm(
+                f"The following files will be copied to {dataset.get_datadir()} "
+                "(use '--move' or '--link' to move or symlink them instead, '--copy' to not show this warning):\n\t"
+                + "\n\t".join(str(e.source) for e in results)
+                + "\nProceed?",
+                abort=True,
+                warning=True,
+            )
 
         if warnings:
             message = "\n\t".join(warnings)
@@ -207,7 +253,6 @@ class LocalExporter(ExporterApi):
         """Execute entire export process."""
         from renku.command.schema.dataset import dump_dataset_as_jsonld
         from renku.core.util.yaml import write_yaml
-        from renku.domain_model.dataset import get_dataset_data_dir
 
         if self._path:
             dst_root = client.path / self._path
@@ -222,7 +267,7 @@ class LocalExporter(ExporterApi):
 
         dst_root.mkdir(parents=True, exist_ok=True)
 
-        data_dir = get_dataset_data_dir(client=client, dataset_name=self._dataset.name)
+        data_dir = self._dataset.get_datadir()
 
         with communication.progress("Copying dataset files ...", total=len(self._dataset.files)) as progressbar:
             for file in self.dataset.files:

@@ -17,9 +17,11 @@
 # limitations under the License.
 """Pytest configuration."""
 import importlib
+import os
 
 CLI_FIXTURE_LOCATIONS = [
     "tests.cli.fixtures.cli_gateway",
+    "tests.cli.fixtures.cli_integration_datasets",
     "tests.cli.fixtures.cli_kg",
     "tests.cli.fixtures.cli_old_projects",
     "tests.cli.fixtures.cli_projects",
@@ -73,3 +75,5 @@ def pytest_configure(config):
             if hasattr(module, "__all__")
             else {k: v for (k, v) in module.__dict__.items() if not k.startswith("_")}
         )
+
+    os.environ["RENKU_SKIP_MIN_VERSION_CHECK"] = "1"

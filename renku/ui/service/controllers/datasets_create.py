@@ -79,6 +79,7 @@ class DatasetsCreateCtrl(ServiceCtrl, RenkuOpSyncMixin):
                 keywords=self.ctx.get("keywords"),
                 images=images,
                 custom_metadata=self.ctx.get("custom_metadata"),
+                datadir=self.ctx.get("data_directory"),
             )
         )
 

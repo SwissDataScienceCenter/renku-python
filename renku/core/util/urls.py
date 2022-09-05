@@ -22,12 +22,13 @@ import re
 import unicodedata
 import urllib
 from typing import List, Optional
-from urllib.parse import ParseResult
+from urllib.parse import ParseResult, urlparse
 
 from renku.command.command_builder.command import inject
 from renku.core import errors
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.util.git import get_remote, parse_git_url
+from renku.core.util.os import is_subpath
 
 
 def url_to_string(url):
@@ -68,6 +69,11 @@ def get_host(client):
 def get_path(url: str) -> str:
     """Return path part of a url."""
     return urllib.parse.urlparse(url).path
+
+
+def get_scheme(uri: str) -> str:
+    """Return scheme of a URI."""
+    return urllib.parse.urlparse(uri).scheme.lower()
 
 
 @inject.autoparams("client_dispatcher")
@@ -117,3 +123,26 @@ def get_slug(name: str, invalid_chars: Optional[List[str]] = None, lowercase: bo
     valid_end = re.sub(r"[._-]$", "", valid_start)
     no_dot_lock_at_end = re.sub(r"\.lock$", "_lock", valid_end)
     return no_dot_lock_at_end
+
+
+def is_uri_subfolder(uri: str, subfolder_uri: str) -> bool:
+    """Check if one uri is a 'subfolder' of another."""
+    parsed_uri = urlparse(uri)
+    parsed_subfolder_uri = urlparse(subfolder_uri)
+    parsed_uri_path = parsed_uri.path
+    parsed_subfolder_uri_path = parsed_subfolder_uri.path
+    if parsed_uri_path in ["", "."]:
+        # NOTE: s3://test has a path that equals "" and Path("") gets interpreted as Path(".")
+        # this becomes a problem then when s3://test/1 has an "absolute-like" path of Path("/1")
+        # and Path(".") is not considered a subpath of Path("/1") but from the uris we see that this
+        # is indeed a subpath
+        parsed_uri_path = "/"
+    if parsed_subfolder_uri_path in ["", "."]:
+        parsed_subfolder_uri_path = "/"
+    if parsed_uri.scheme != parsed_subfolder_uri.scheme:
+        # INFO: catch s3://test vs http://test
+        return False
+    if parsed_uri.netloc != parsed_subfolder_uri.netloc:
+        # INFO: catch s3://test1 vs s3://test2
+        return False
+    return is_subpath(parsed_subfolder_uri_path, parsed_uri_path)

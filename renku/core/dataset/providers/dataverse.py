@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -78,7 +78,9 @@ class DataverseProvider(ProviderApi):
     priority = ProviderPriority.HIGH
     name = "Dataverse"
 
-    def __init__(self, is_doi: bool = False):
+    def __init__(self, uri: Optional[str], is_doi: bool = False):
+        super().__init__(uri=uri)
+
         self.is_doi = is_doi
         self._server_url = None
         self._dataverse_name = None
@@ -121,30 +123,27 @@ class DataverseProvider(ProviderApi):
         parsed = urlparse.urlparse(uri)
         return urlparse.parse_qs(parsed.query)["persistentId"][0]
 
-    def get_importer(self, uri, **kwargs) -> "DataverseImporter":
+    def get_importer(self, **kwargs) -> "DataverseImporter":
         """Get importer for a record from Dataverse.
-
-        Args:
-            uri: DOI or URL.
 
         Returns:
             DataverseImporter: The found record
         """
-        original_uri = uri
 
         def get_export_uri(uri):
             """Gets a dataverse api export URI from a dataverse entry."""
             record_id = DataverseProvider.record_id(uri)
             return make_records_url(record_id, uri)
 
+        uri = self.uri
         if self.is_doi:
-            doi = DOIProvider().get_importer(uri)
+            doi = DOIProvider(uri=uri).get_importer()
             uri = doi.uri
 
         uri = get_export_uri(uri)
         response = make_request(uri)
 
-        return DataverseImporter(json=response.json(), uri=uri, original_uri=original_uri)
+        return DataverseImporter(json=response.json(), uri=uri, original_uri=self.uri)
 
     def get_exporter(
         self,
@@ -548,7 +547,7 @@ def check_dataverse_uri(url):
 def check_dataverse_doi(doi):
     """Check if a DOI points to a dataverse dataset."""
     try:
-        doi = DOIProvider().get_importer(doi)
+        doi = DOIProvider(uri=doi).get_importer()
     except LookupError:
         return False
 

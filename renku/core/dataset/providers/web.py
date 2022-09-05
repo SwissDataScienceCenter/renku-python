@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -22,6 +22,7 @@ import os
 import urllib
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Tuple
+from urllib.parse import urlparse
 
 from renku.core import errors
 from renku.core.constant import CACHE
@@ -65,6 +66,12 @@ class WebProvider(ProviderApi):
         **kwargs,
     ) -> List["DatasetAddMetadata"]:
         """Add files from a URI to a dataset."""
+        dataset = kwargs.get("dataset")
+        if dataset and dataset.storage and urlparse(dataset.storage).scheme != urlparse(uri).scheme:
+            raise errors.ParameterError(
+                f"The scheme of the url {uri} does not match the defined storage url {dataset.storage}."
+            )
+
         return download_file(
             client=client, uri=uri, destination=destination, extract=extract, filename=filename, multiple=multiple
         )

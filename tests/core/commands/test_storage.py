@@ -105,7 +105,7 @@ def test_lfs_migrate(runner, project, client):
     client.repository.add("*")
     client.repository.commit("add files")
 
-    result = runner.invoke(cli, ["dataset", "add", "-c", "my_dataset", "dataset_file"])
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my_dataset", "dataset_file"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["run", "cp", "workflow_file", "output_file"])
@@ -144,7 +144,7 @@ def test_lfs_migrate_no_changes(runner, project, client):
     client.repository.add("*")
     client.repository.commit("add files")
 
-    result = runner.invoke(cli, ["dataset", "add", "-c", "my_dataset", "dataset_file"])
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my_dataset", "dataset_file"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["run", "cp", "workflow_file", "output_file"])
@@ -168,7 +168,7 @@ def test_lfs_migrate_explicit_path(runner, project, client):
     client.repository.add("*")
     client.repository.commit("add files")
 
-    result = runner.invoke(cli, ["dataset", "add", "-c", "my_dataset", "dataset_file"])
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my_dataset", "dataset_file"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["run", "cp", "workflow_file", "output_file"])

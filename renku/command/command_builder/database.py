@@ -19,6 +19,7 @@
 
 
 import json
+import os
 from typing import TYPE_CHECKING, Optional, cast
 
 from packaging.version import Version
@@ -32,11 +33,13 @@ from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.interface.project_gateway import IProjectGateway
+from renku.core.interface.storage import IStorageFactory
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.infrastructure.gateway.database_gateway import DatabaseGateway
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.gateway.plan_gateway import PlanGateway
 from renku.infrastructure.gateway.project_gateway import ProjectGateway
+from renku.infrastructure.storage.factory import StorageFactory
 
 if TYPE_CHECKING:
     from renku.domain_model.project import Project
@@ -76,6 +79,11 @@ class DatabaseCommand(Command):
         context["constructor_bindings"][IDatabaseGateway] = lambda: DatabaseGateway()
         context["constructor_bindings"][IDatasetGateway] = lambda: DatasetGateway()
         context["constructor_bindings"][IProjectGateway] = lambda: ProjectGateway()
+        context["constructor_bindings"][IStorageFactory] = lambda: StorageFactory
+
+        if int(os.environ.get("RENKU_SKIP_MIN_VERSION_CHECK", "0")) == 1:
+            # NOTE: Used for unit tests
+            return
 
         try:
             self.project = cast("Project", self.dispatcher.current_database["project"])

@@ -32,8 +32,9 @@ def test_version():
     assert __version__
 
 
-def test_minimum_version(mocker, tmpdir):
+def test_minimum_version(mocker, tmpdir, monkeypatch):
     """Test minimum version required."""
+    monkeypatch.setenv("RENKU_SKIP_MIN_VERSION_CHECK", "0")
 
     def _mock_database_project(project):
         def mocked_getter(self, key):

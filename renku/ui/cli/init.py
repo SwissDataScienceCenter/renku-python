@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017, 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,32 +17,20 @@
 # limitations under the License.
 r"""Create an empty Renku project or reinitialize an existing one.
 
-Start a Renku project
-~~~~~~~~~~~~~~~~~~~~~
+Description
+~~~~~~~~~~~
 
-If you have an existing directory which you want to turn into a Renku project,
-you can type:
+Use existing renku templates, either official or from the community, to
+create a new Renku project or Renku-ize an existing one.
 
-.. code-block:: console
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
 
-    $ cd ~/my_project
-    $ renku init
+.. rst-class:: cli-reference-commands
 
-or:
-
-.. code-block:: console
-
-    $ renku init ~/my_project
-
-This creates a new subdirectory named ``.renku`` that contains all the
-necessary files for managing the project configuration.
-
-Every project requires a ``name`` that can either be provided using
-``--name`` or automatically taken from the target folder.
-
-You can also provide a description for a project using ``--description``.
-
-If provided directory does not exist, it will be created.
+.. click:: renku.ui.cli.init:init
+   :prog: renku init
+   :nested: full
 
 Use a different template
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -238,7 +226,7 @@ def resolve_data_directory(data_dir, path):
 @click.option("--description", help="Provide a description for the project.")
 @click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords.")
 @click.option(
-    "--data-dir",
+    "--datadir",
     default=None,
     type=click.Path(writable=True, file_okay=False),
     help="Data directory within the project",
@@ -291,7 +279,7 @@ def init(
     list_templates,
     force,
     describe,
-    data_dir,
+    datadir,
     initial_branch,
 ):
     """Initialize a project in PATH. Default is the current path."""
@@ -310,7 +298,7 @@ def init(
             "'-i/--template-index' is deprecated: Use '-t/--template-id' to pass a template id."
         )
 
-    data_dir = resolve_data_directory(data_dir, path)
+    datadir = resolve_data_directory(datadir, path)
 
     check_global_git_user_is_configured()
 
@@ -332,7 +320,7 @@ def init(
         input_parameters=parameters,
         custom_metadata=custom_metadata,
         force=force,
-        data_dir=data_dir,
+        data_dir=datadir,
         initial_branch=initial_branch,
         install_mergetool=True,
     )

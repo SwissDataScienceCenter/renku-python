@@ -29,7 +29,7 @@ from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.util import communication
 from renku.core.util.git import get_git_user
-from renku.core.util.os import delete_file
+from renku.core.util.os import delete_dataset_file
 
 
 @inject.autoparams()
@@ -77,7 +77,7 @@ def _remove(sources, edit_command, client_dispatcher: IClientDispatcher, dataset
                 dataset = dataset.copy()
                 for key in remove:
                     dataset.unlink_file(key)
-                    delete_file(client.path / key, follow_symlinks=True)
+                    delete_dataset_file(client.path / key, follow_symlinks=True)
 
                 datasets_provenance = DatasetsProvenance()
                 datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -58,7 +58,9 @@ class ZenodoProvider(ProviderApi):
     priority = ProviderPriority.HIGH
     name = "Zenodo"
 
-    def __init__(self, is_doi: bool = False):
+    def __init__(self, uri: Optional[str], is_doi: bool = False):
+        super().__init__(uri=uri)
+
         self.is_doi = is_doi
         self._publish: bool = False
 
@@ -92,26 +94,18 @@ class ZenodoProvider(ProviderApi):
 
         return [ProviderParameter("publish", help="Publish the exported dataset.", is_flag=True)]
 
-    def get_importer(self, uri, **kwargs) -> "ZenodoImporter":
-        """Get importer for a record from Zenodo.
-
-        Args:
-            uri: DOI or URL.
-
-        Returns:
-            ZenodoImporter: Record found.
-        """
+    def get_importer(self, **kwargs) -> "ZenodoImporter":
+        """Get importer for a record from Zenodo."""
         from renku.core.dataset.providers.doi import DOIProvider
 
-        original_uri = uri
-
+        uri = self.uri
         if self.is_doi:
             # NOTE: Resolve the DOI and make a record for the retrieved record id
-            doi = DOIProvider().get_importer(uri)
+            doi = DOIProvider(uri=uri).get_importer()
             uri = doi.uri
 
         response = _make_request(uri)
-        return ZenodoImporter(uri=uri, original_uri=original_uri, json=response.json())
+        return ZenodoImporter(uri=uri, original_uri=self.uri, json=response.json())
 
     def get_exporter(
         self, dataset: "Dataset", *, tag: Optional["DatasetTag"], publish: bool = False, **kwargs

@@ -18,13 +18,18 @@
 """Datasets Provenance."""
 
 from datetime import datetime
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Union, overload
 from uuid import UUID
 
 from renku.command.command_builder.command import inject
 from renku.core import errors
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.util import communication
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 
 if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset, DatasetTag
@@ -57,8 +62,30 @@ class DatasetsProvenance:
             return dataset.copy()
         return None
 
-    def get_by_name(self, name: str, immutable: bool = False, strict: bool = False) -> Optional["Dataset"]:
-        """Return a dataset by its name."""
+    @overload
+    def get_by_name(
+        self, name: str, *, immutable: bool = False, strict: Literal[False] = False
+    ) -> Optional["Dataset"]:  # noqa: D102
+        ...
+
+    @overload
+    def get_by_name(self, name: str, *, immutable: bool = False, strict: Literal[True]) -> "Dataset":  # noqa: D102
+        ...
+
+    def get_by_name(
+        self, name: str, immutable: bool = False, strict: bool = False
+    ) -> Union[Optional["Dataset"], "Dataset"]:
+        """Return a dataset by its name.
+
+        Args:
+            name(str): Name of the dataset
+            immutable(bool): Whether the dataset will be used as an immutable instance or will be modified (Default
+                value = False).
+            strict(bool): Whether to raise an exception if the dataset doesn't exist or not (Default value = False)
+
+        Returns:
+            Optional[Dataset]: Dataset with the specified name if exists.
+        """
         dataset = self.dataset_gateway.get_by_name(name)
         if not dataset:
             if strict:

@@ -162,6 +162,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
                 initial_branch=self.ctx["initial_branch"],
                 commit_message=self.ctx["commit_message"],
                 description=self.ctx["project_description"],
+                data_dir=self.ctx.get("data_directory"),
             )
 
         self.new_project_push(new_project_path)

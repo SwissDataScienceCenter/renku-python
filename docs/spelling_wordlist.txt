@@ -7,6 +7,7 @@ api
 app
 args
 argv
+ascii
 async
 attrs
 auditability
@@ -46,6 +47,7 @@ Cuda
 customizable
 cwl
 CWL
+datadir
 dataset
 datasets
 datetimes
@@ -68,6 +70,7 @@ dotfiles
 Dropbox
 dropdown
 entrypoint
+env
 executables
 extraEnv
 extraEnvFrom
@@ -78,11 +81,14 @@ Fortran
 GitLab
 GitPython
 GraphQL
+graphviz
 gapped
 git-lfs
 gitattributes
+githooks
 github
 gitignore
+gitignored
 gitkeep
 gitlab
 gitlabClientSecret
@@ -96,6 +102,7 @@ hypervisor
 iframes
 indices
 Indices
+ini
 init
 installable
 interoperability
@@ -125,6 +132,7 @@ lefthand
 lfs
 localhost
 Matlab
+mergetool
 metadata
 microservices
 middleware
@@ -134,11 +142,13 @@ minimalistic
 misconfiguration
 mistyped
 mls
+mv
 mydomain
 namespace
 namespaces
 Nginx
 nodejs
+nt
 oauth
 OAuth
 oid
@@ -147,6 +157,8 @@ online
 OpenID
 openssl
 papermill
+param
+params
 parameterizable
 parametrization
 parametrize
@@ -163,6 +175,8 @@ preprocessing
 programmatically
 py
 pyshacl
+rclone
+rdf
 rdflib
 readme
 rebase
@@ -242,6 +256,7 @@ tutorialLink
 txt
 typesystem
 Ubuntu
+Unmount
 ui
 unhandled
 unicode
@@ -255,6 +270,7 @@ untracked
 untracked
 updatable
 url
+uri
 urls
 username
 validator
