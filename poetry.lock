@@ -397,10 +397,10 @@ python-versions = ">=3.6, <4"
 
 [package.dependencies]
 "ruamel.yaml" = [
+    {version = ">=0.15.71,<0.17.22", markers = "python_version < \"3.8\""},
     {version = ">=0.15.98,<0.17.22", markers = "python_version >= \"3.9\""},
     {version = ">=0.15.78,<0.17.22", markers = "python_version >= \"3.8\""},
     {version = ">=0.16.0,<0.17.22", markers = "python_version >= \"3.10\""},
-    {version = ">=0.15.71,<0.17.22", markers = "python_version < \"3.8\""},
 ]
 schema-salad = "*"
 setuptools = "*"
@@ -1868,8 +1868,8 @@ mistune = ">=0.8.1,<0.9"
 rdflib = ">=4.2.2,<7.0.0"
 requests = ">=1.0"
 "ruamel.yaml" = [
-    {version = ">=0.17.6,<0.17.22", markers = "python_version >= \"3.7\""},
     {version = ">=0.16.12,<0.17.22", markers = "python_version < \"3.7\""},
+    {version = ">=0.17.6,<0.17.22", markers = "python_version >= \"3.7\""},
 ]
 setuptools = "*"
 
@@ -2155,7 +2155,7 @@ python-versions = "*"
 
 [[package]]
 name = "toil"
-version = "5.6.0"
+version = "5.7.1"
 description = "Pipeline management software for clusters."
 category = "main"
 optional = true
@@ -2174,15 +2174,15 @@ requests = ">=2,<3"
 typing-extensions = {version = "*", markers = "python_version < \"3.8\""}
 
 [package.extras]
-all = ["boto (>=2.48.0,<3)", "boto3 (>=1.17,<2)", "boto3-stubs[s3] (>=1.17,<2)", "futures (>=3.1.1,<4)", "cwltool (==3.1.20211107152837)", "galaxy-tool-util", "ruamel.yaml (==0.17.16)", "ruamel.yaml.clib (>=0.2.6)", "pynacl (>=1.4.0,<2)", "apache-libcloud (>=2.2.1,<3)", "google-cloud-storage (==1.6.0)", "kubernetes (>=12.0.1,<22)", "idna (>=2)", "pymesos (>=0.3.15,<0.4)", "wdlparse (==0.1.0)", "connexion[swagger-ui] (>=2.5.1,<3)", "flask-cors (==3.0.10)", "gunicorn (==20.1.0)", "celery (>=5.1.0,<6)"]
-aws = ["boto (>=2.48.0,<3)", "boto3 (>=1.17,<2)", "boto3-stubs[s3] (>=1.17,<2)", "futures (>=3.1.1,<4)"]
-cwl = ["cwltool (==3.1.20211107152837)", "galaxy-tool-util", "ruamel.yaml (==0.17.16)", "ruamel.yaml.clib (>=0.2.6)"]
+all = ["boto (>=2.48.0,<3)", "boto3 (>=1.20.46,<2)", "boto3-stubs[iam,s3,sdb] (==1.24.0)", "mypy-boto3-s3 (==1.24.0)", "mypy-boto3-sdb (==1.24.0)", "mypy-boto3-iam (==1.24.0)", "cwltool (==3.1.20220628170238)", "galaxy-tool-util", "ruamel.yaml (>=0.15,<=0.17.21)", "ruamel.yaml.clib (>=0.2.6)", "networkx (>=2,<2.8.5)", "pynacl (>=1.4.0,<2)", "apache-libcloud (>=2.2.1,<3)", "google-cloud-storage (>=1.6.0,<2)", "kubernetes (>=12.0.1,<22)", "idna (>=2)", "pymesos (>=0.3.15,<0.4)", "wdlparse (==0.1.0)", "connexion[swagger-ui] (>=2.10.0,<3)", "flask (>=2.0,<3)", "werkzeug (>=2.0,<3)", "flask-cors (==3.0.10)", "gunicorn (==20.1.0)", "celery (>=5.1.0,<6)", "wes-service (>=4.0.0,<5)", "ruamel.yaml (>=0.15,<0.17.22)"]
+aws = ["boto (>=2.48.0,<3)", "boto3 (>=1.20.46,<2)", "boto3-stubs[iam,s3,sdb] (==1.24.0)", "mypy-boto3-s3 (==1.24.0)", "mypy-boto3-sdb (==1.24.0)", "mypy-boto3-iam (==1.24.0)"]
+cwl = ["cwltool (==3.1.20220628170238)", "galaxy-tool-util", "ruamel.yaml (>=0.15,<=0.17.21)", "ruamel.yaml.clib (>=0.2.6)", "networkx (>=2,<2.8.5)"]
 encryption = ["pynacl (>=1.4.0,<2)"]
-google = ["apache-libcloud (>=2.2.1,<3)", "google-cloud-storage (==1.6.0)"]
+google = ["apache-libcloud (>=2.2.1,<3)", "google-cloud-storage (>=1.6.0,<2)"]
 htcondor = ["htcondor (>=8.6.0,<9)"]
 kubernetes = ["kubernetes (>=12.0.1,<22)", "idna (>=2)"]
 mesos = ["pymesos (>=0.3.15,<0.4)"]
-server = ["connexion[swagger-ui] (>=2.5.1,<3)", "flask-cors (==3.0.10)", "gunicorn (==20.1.0)", "celery (>=5.1.0,<6)"]
+server = ["connexion[swagger-ui] (>=2.10.0,<3)", "flask (>=2.0,<3)", "werkzeug (>=2.0,<3)", "flask-cors (==3.0.10)", "gunicorn (==20.1.0)", "celery (>=5.1.0,<6)", "wes-service (>=4.0.0,<5)", "ruamel.yaml (>=0.15,<0.17.22)"]
 wdl = ["wdlparse (==0.1.0)"]
 
 [[package]]
@@ -2622,7 +2622,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "11dfcfaa336f014753774d6803916754438ef283a6a6fa2eecf69039d0985218"
+content-hash = "eca1b4cb0bc1a2e9f39a8e446a7845d70b073a2a2bc4ccbdff92328ffe995973"
 
 [metadata.files]
 addict = [
@@ -4119,9 +4119,7 @@ termcolor = [
     {file = "termcolor-1.1.0.tar.gz", hash = "sha256:1d6d69ce66211143803fbc56652b41d73b4a400a2891d7bf7a1cdf4c02de613b"},
 ]
 toil = [
-    {file = "toil-5.6.0-py3-none-any.whl", hash = "sha256:2eec8d2f8c01d4db1911d8ce270dd0220373bbd66f0c019038a9755bd0c44eda"},
-    {file = "toil-5.6.0-py3.8.egg", hash = "sha256:23a7f10097c7958583b50fca1c1051466151c079cfbdd070bf28156bbfdda8c2"},
-    {file = "toil-5.6.0.tar.gz", hash = "sha256:9bab73ad10822d42cefb007c86d525b7428448b9bfbdd21e4f306b8a19c0a3f2"},
+    {file = "toil-5.7.1-py3-none-any.whl", hash = "sha256:81041ba89867a3a37e265a5e073c60a6dfe9ed03342fb3a53bb48f7c04ef1b4b"},
 ]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},
