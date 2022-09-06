@@ -90,6 +90,7 @@ def test_rerun_with_special_paths(project, renku_cli, runner, provider, source, 
     output = cwd / output
 
     assert 0 == renku_cli("run", "python", "-S", "-c", "import random; print(random.random())", stdout=source).exit_code
+    time.sleep(1)
     assert 0 == renku_cli("run", "cat", source, stdout=output).exit_code
 
     content = output.read_text().strip()
