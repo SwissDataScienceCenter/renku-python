@@ -28,6 +28,7 @@ import click
 import inject
 
 from renku.core import errors
+from renku.core.project.project_properties import project_properties
 from renku.core.util.communication import CommunicationCallback
 from renku.core.util.git import default_path
 
@@ -206,7 +207,9 @@ class Command:
             if self._client:
                 dispatcher.push_created_client_to_stack(self._client)
             else:
-                self._client = dispatcher.push_client_to_stack(path=default_path(self._working_directory or "."))
+                path = default_path(self._working_directory or ".")
+                project_properties.push_path(path)
+                self._client = dispatcher.push_client_to_stack(path=path)
                 self._client_was_created = True
             ctx = click.Context(click.Command(builder._operation))  # type: ignore
         else:
@@ -242,6 +245,8 @@ class Command:
 
         if self._client_was_created and self._client and self._client.repository is not None:
             self._client.repository.close()
+            context["client_dispatcher"].pop_client()
+            project_properties.pop_path()
 
         if result.error:
             raise result.error

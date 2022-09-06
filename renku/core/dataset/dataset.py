@@ -39,6 +39,7 @@ from renku.core.dataset.tag import get_dataset_by_tag, prompt_access_token, prom
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.interface.storage import IStorageFactory
+from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.dispatcher import get_client, get_database
@@ -157,7 +158,7 @@ def create_dataset(
 
     if datadir:
         try:
-            datadir = get_safe_relative_path(datadir, client.path)
+            datadir = get_safe_relative_path(datadir, project_properties.path)
         except ValueError as e:
             raise errors.ParameterError("Datadir must be inside repository.") from e
 
@@ -263,9 +264,7 @@ def edit_dataset(
     return updated
 
 
-@inject.autoparams("client_dispatcher")
 def list_dataset_files(
-    client_dispatcher: IClientDispatcher,
     datasets: List[str] = None,
     tag: Optional[str] = None,
     creators=None,
@@ -287,8 +286,6 @@ def list_dataset_files(
     """
     from renku.command.format.dataset_files import get_lfs_tracking_and_file_sizes
 
-    client = client_dispatcher.current_client
-
     records = filter_dataset_files(
         names=datasets, tag=tag, creators=creators, include=include, exclude=exclude, immutable=True
     )
@@ -298,7 +295,7 @@ def list_dataset_files(
         record.dataset_id = record.dataset.id
         record.creators_csv = record.dataset.creators_csv
         record.creators_full_csv = record.dataset.creators_full_csv
-        record.full_path = client.path / record.entity.path
+        record.full_path = project_properties.path / record.entity.path
         record.path = record.entity.path
         record.name = Path(record.entity.path).name
         record.added = record.date_added
@@ -479,8 +476,6 @@ def import_dataset(
     """
     from renku.core.dataset.dataset_add import add_to_dataset
 
-    client = get_client()
-
     def confirm_download(files):
         if yes:
             return
@@ -511,7 +506,7 @@ def import_dataset(
         deleted_paths = previous_paths - current_paths
 
         for path in deleted_paths:
-            delete_dataset_file(client.path / path, follow_symlinks=True)
+            delete_dataset_file(project_properties.path / path, follow_symlinks=True)
 
     provider = ProviderFactory.get_import_provider(uri)
 
@@ -538,7 +533,7 @@ def import_dataset(
         raise errors.ParameterError("Can't specify datadir when updating a previously imported dataset.")
     elif datadir:
         try:
-            datadir = get_safe_relative_path(datadir, client.path)
+            datadir = get_safe_relative_path(datadir, project_properties.path)
         except ValueError as e:
             raise errors.ParameterError("Datadir must be inside repository.") from e
 
@@ -745,7 +740,7 @@ def update_datasets(
         if deleted_files and not delete:
             communication.echo("Some files are deleted: Pass '--delete' to remove them from datasets' metadata")
         if updated_files or (deleted_files and delete):
-            file_paths = {str(client.path / f.entity.path) for f in updated_files}
+            file_paths = {str(project_properties.path / f.entity.path) for f in updated_files}
             # Force-add to include possible ignored files that are in datasets
             client.repository.add(*file_paths, force=True)
             client.repository.add(renku_pointers_path(client), force=True)
@@ -835,7 +830,7 @@ def set_dataset_images(client: "LocalClient", dataset: Dataset, images: Optional
 
         path = prev.content_url
         if not os.path.isabs(path):
-            path = os.path.normpath(os.path.join(client.path, path))
+            path = os.path.normpath(os.path.join(project_properties.path, path))
 
         os.remove(path)
 
@@ -887,8 +882,8 @@ def move_files(
     communication.start_progress(progress_name, total=len(files))
     try:
         for src, dst in files.items():
-            src = src.relative_to(client.path)
-            dst = dst.relative_to(client.path)
+            src = src.relative_to(project_properties.path)
+            dst = dst.relative_to(project_properties.path)
             # NOTE: Files are moved at this point, so, we can use dst
             new_dataset_file = DatasetFile.from_path(client, dst)
 
@@ -901,13 +896,15 @@ def move_files(
 
                     if not to_dataset and (
                         new_dataset_file.is_external
-                        or is_subpath(client.path / dst, client.path / dataset.get_datadir(client))
+                        or is_subpath(
+                            project_properties.path / dst, project_properties.path / dataset.get_datadir(client)
+                        )
                     ):
                         dataset.add_or_update_files(new_dataset_file)
 
                 # NOTE: Update dataset if it contains a destination that is being overwritten
                 modified = dataset.find_file(dst)
-                added = is_subpath(client.path / dst, client.path / dataset.get_datadir(client))
+                added = is_subpath(project_properties.path / dst, project_properties.path / dataset.get_datadir(client))
                 if modified or added:
                     modified_datasets[dataset.name] = dataset
                     dataset.add_or_update_files(new_dataset_file)
@@ -958,7 +955,7 @@ def update_dataset_local_files(
             if file.based_on or file.is_external:
                 continue
 
-            if not (client.path / file.entity.path).exists():
+            if not (project_properties.path / file.entity.path).exists():
                 deleted_files.append(file)
                 continue
 
@@ -1054,7 +1051,8 @@ def update_dataset_git_files(
                 remote_repository = clone_repository(
                     url=url, path=get_cache_directory_for_repository(client=client, url=url), checkout_revision=ref
                 )
-                remote_client = LocalClient(path=remote_repository.path)
+                with project_properties.with_path(remote_repository.path):
+                    remote_client = LocalClient()
                 visited_repos[url] = remote_repository, remote_client
 
             checksum = remote_repository.get_object_hash(path=based_on.path, revision="HEAD")
@@ -1072,8 +1070,8 @@ def update_dataset_git_files(
             elif changed:
                 if not dry_run:
                     # Fetch file if it is tracked by Git LFS
-                    remote_client.pull_paths_from_storage(remote_client.path / based_on.path)
-                    if is_external_file(path=src, client_path=remote_client.path):
+                    remote_client.pull_paths_from_storage(remote_client.repository.path / based_on.path)
+                    if is_external_file(path=src, client_path=remote_client.repository.path):
                         delete_dataset_file(dst, follow_symlinks=True)
                         create_external_file(client=client, target=src.resolve(), path=dst)
                     else:
@@ -1105,7 +1103,7 @@ def update_external_files(client: "LocalClient", records: List[DynamicProxy], dr
     for file in records:
         if file.is_external:
             try:
-                updated, checksum = is_external_file_updated(client_path=client.path, path=file.entity.path)
+                updated, checksum = is_external_file_updated(client_path=project_properties.path, path=file.entity.path)
             except errors.ExternalFileNotFound as e:
                 if not dry_run:
                     raise
@@ -1213,10 +1211,10 @@ def filter_dataset_files(
         if not check_data_directory:
             continue
 
-        for root, _, files in os.walk(client.path / dataset.get_datadir()):
+        for root, _, files in os.walk(project_properties.path / dataset.get_datadir()):
             current_folder = Path(root)
             for current_file in files:
-                file_path = get_safe_relative_path(current_folder / current_file, client.path)
+                file_path = get_safe_relative_path(current_folder / current_file, project_properties.path)
                 if should_include(file_path) and not dataset.find_file(file_path):
                     # New file in dataset folder
                     record = DynamicProxy(DatasetFile.from_path(client, file_path))
@@ -1239,6 +1237,8 @@ def pull_external_data(
 
     Args:
         name(str): Name of the dataset
+        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        storage_factory(IStorageFactory):Injected storage factory.
         location(Optional[Path]): A directory to copy data to (Default value = None).
     """
     client = client_dispatcher.current_client
@@ -1251,7 +1251,7 @@ def pull_external_data(
         return
 
     # NOTE: Try to unmount the path in case it was mounted before
-    unmount_path(client.path / dataset.get_datadir())
+    unmount_path(project_properties.path / dataset.get_datadir())
 
     create_symlinks = True
     destination: Union[Path, str]
@@ -1263,7 +1263,7 @@ def pull_external_data(
         if stored_location:
             destination = stored_location
         else:
-            destination = client.path
+            destination = project_properties.path
             create_symlinks = False
 
     provider = ProviderFactory.get_pull_provider(uri=dataset.storage)
@@ -1297,7 +1297,7 @@ def pull_external_data(
             updated_files.append(new_file)
 
             if create_symlinks:
-                symlink_path = client.path / file.entity.path
+                symlink_path = project_properties.path / file.entity.path
                 symlink_path.parent.mkdir(parents=True, exist_ok=True)
                 create_symlink(path=path, symlink_path=symlink_path, overwrite=True)
 
@@ -1379,10 +1379,7 @@ def unmount_external_storage(name: str) -> None:
     unmount_path(datadir)
 
 
-@inject.autoparams("client_dispatcher")
-def _get_dataset_with_external_storage(name: str, client_dispatcher: IClientDispatcher) -> Tuple[Dataset, Path]:
-
-    client = client_dispatcher.current_client
+def _get_dataset_with_external_storage(name: str) -> Tuple[Dataset, Path]:
     datasets_provenance = DatasetsProvenance()
 
     dataset = datasets_provenance.get_by_name(name=name, strict=True)
@@ -1390,6 +1387,6 @@ def _get_dataset_with_external_storage(name: str, client_dispatcher: IClientDisp
     if not dataset.storage:
         raise errors.ParameterError(f"Dataset '{name}' doesn't have a storage backend")
 
-    datadir = client.path / dataset.get_datadir()
+    datadir = project_properties.path / dataset.get_datadir()
 
     return dataset, datadir

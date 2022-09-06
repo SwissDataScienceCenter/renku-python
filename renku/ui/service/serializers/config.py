@@ -36,13 +36,13 @@ class ConfigShowRequest(LocalRepositorySchema, RemoteRepositorySchema):
 class ConfigShowSchema(Schema):
     """Config generic schema."""
 
-    config = fields.Dict(description="Dictionary of configuration items.", required=True)
+    config = fields.Dict(metadata={"description": "Dictionary of configuration items."}, required=True)
 
 
 class ConfigShowResponse(ConfigShowSchema):
     """Response schema for project config show."""
 
-    default = fields.Dict(description="Dictionary of default configuration items.", required=True)
+    default = fields.Dict(metadata={"description": "Dictionary of default configuration items."}, required=True)
 
 
 class ConfigShowResponseRPC(JsonRPCResponse):
@@ -58,7 +58,7 @@ class ConfigSetRequest(AsyncSchema, ConfigShowSchema, LocalRepositorySchema, Mig
 class ConfigSetResponse(ConfigShowSchema, RenkuSyncSchema):
     """Response schema for project config set."""
 
-    default = fields.Dict(description="Dictionary of default configuration items.")
+    default = fields.Dict(metadata={"description": "Dictionary of default configuration items."})
 
 
 class ConfigSetResponseRPC(JsonRPCResponse):

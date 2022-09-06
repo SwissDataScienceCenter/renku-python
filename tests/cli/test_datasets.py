@@ -35,6 +35,7 @@ from renku.core.dataset.providers.dataverse import DataverseProvider
 from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.zenodo import ZenodoProvider
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.core.project.project_properties import project_properties
 from renku.core.util.urls import get_slug
 from renku.domain_model.dataset import Dataset
 from renku.ui.cli import cli
@@ -72,8 +73,8 @@ def test_datasets_create_clean_with_datadir(runner, project, client, load_datase
 
 def test_datasets_create_dirty(runner, project, client, load_dataset_with_injection):
     """Test creating a dataset in a dirty repository."""
-    (client.path / "untracked").write_text("untracked")
-    (client.path / "staged").write_text("staged")
+    (project_properties.path / "untracked").write_text("untracked")
+    (project_properties.path / "staged").write_text("staged")
     client.repository.add("staged")
 
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
@@ -101,7 +102,7 @@ def test_dataset_show(runner, client, subdirectory, datadir_option, datadir):
         "@type": "https://schema.org/specialType",
         "https://schema.org/specialProperty": "some_unique_value",
     }
-    metadata_path = client.path / "metadata.json"
+    metadata_path = project_properties.path / "metadata.json"
     metadata_path.write_text(json.dumps(metadata))
 
     result = runner.invoke(
@@ -159,7 +160,7 @@ def test_dataset_show_tag(runner, client, subdirectory):
         "@type": "https://schema.org/specialType",
         "https://schema.org/specialProperty": "some_unique_value",
     }
-    metadata_path = client.path / "metadata.json"
+    metadata_path = project_properties.path / "metadata.json"
     metadata_path.write_text(json.dumps(metadata))
 
     result = runner.invoke(
@@ -265,7 +266,7 @@ def test_datasets_invalid_name(runner, client, name):
 def test_datasets_create_dirty_exception_untracked(runner, project, client):
     """Test exception raise for untracked file in renku directory."""
     # 1. Create a problem.
-    datasets_dir = client.path / RENKU_HOME / client.database_path
+    datasets_dir = project_properties.path / RENKU_HOME / client.database_path
     if not datasets_dir.exists():
         datasets_dir.mkdir()
 
@@ -281,7 +282,7 @@ def test_datasets_create_dirty_exception_untracked(runner, project, client):
 def test_datasets_create_dirty_exception_staged(runner, project, client):
     """Test exception raise for staged file in renku directory."""
     # 1. Create a problem within .renku directory
-    datasets_dir = client.path / RENKU_HOME / client.database_path
+    datasets_dir = project_properties.path / RENKU_HOME / client.database_path
     if not datasets_dir.exists():
         datasets_dir.mkdir()
 
@@ -300,11 +301,11 @@ def test_datasets_create_dirty_exception_staged(runner, project, client):
 def test_dataset_create_dirty_exception_all_untracked(runner, project, client):
     """Test exception raise for all untracked files."""
     # 1. Create unclean root to enforce ensure checks.
-    with (client.path / "a").open("w") as fp:
+    with (project_properties.path / "a").open("w") as fp:
         fp.write("a")
 
     # 2. Create a problem.
-    datasets_dir = client.path / RENKU_HOME / client.database_path
+    datasets_dir = project_properties.path / RENKU_HOME / client.database_path
     if not datasets_dir.exists():
         datasets_dir.mkdir()
 
@@ -320,13 +321,13 @@ def test_dataset_create_dirty_exception_all_untracked(runner, project, client):
 def test_datasets_create_dirty_exception_all_staged(runner, project, client):
     """Test exception raise for all staged files."""
     # 1. Create unclean root to enforce ensure checks.
-    with (client.path / "a").open("w") as fp:
+    with (project_properties.path / "a").open("w") as fp:
         fp.write("a")
 
     client.repository.add("a")
 
     # 2. Create a problem.
-    datasets_dir = client.path / RENKU_HOME / client.database_path
+    datasets_dir = project_properties.path / RENKU_HOME / client.database_path
     if not datasets_dir.exists():
         datasets_dir.mkdir()
 
@@ -343,17 +344,17 @@ def test_datasets_create_dirty_exception_all_staged(runner, project, client):
 
 def test_dataset_create_exception_refs(runner, project, client):
     """Test untracked/unstaged exception raise in dirty renku home dir."""
-    with (client.path / "a").open("w") as fp:
+    with (project_properties.path / "a").open("w") as fp:
         fp.write("a")
 
-    datasets_dir = client.path / RENKU_HOME / client.database_path
+    datasets_dir = project_properties.path / RENKU_HOME / client.database_path
     if not datasets_dir.exists():
         datasets_dir.mkdir()
 
     with (datasets_dir / "a").open("w") as fp:
         fp.write("a")
 
-    refs_dir = client.path / RENKU_HOME / REFS
+    refs_dir = project_properties.path / RENKU_HOME / REFS
     if not refs_dir.exists():
         refs_dir.mkdir()
 
@@ -483,15 +484,17 @@ def test_add_and_create_dataset(
     )
     assert 0 == result.exit_code, format_result_exception(result)
 
-    path1 = os.path.join(client.path, datadir, directory_tree.name, "file1")
-    path2 = os.path.join(client.path, datadir, directory_tree.name, "dir1", "file2")
-    path3 = os.path.join(client.path, datadir, directory_tree.name, "dir1", "file3")
+    path1 = os.path.join(project_properties.path, datadir, directory_tree.name, "file1")
+    path2 = os.path.join(project_properties.path, datadir, directory_tree.name, "dir1", "file2")
+    path3 = os.path.join(project_properties.path, datadir, directory_tree.name, "dir1", "file3")
 
     assert os.stat(path1)
     assert os.stat(path2)
     assert os.stat(path3)
     dataset = load_dataset_with_injection("new-dataset", client)
-    assert {os.path.relpath(p, client.path) for p in [path1, path2, path3]} == {f.entity.path for f in dataset.files}
+    assert {os.path.relpath(p, project_properties.path) for p in [path1, path2, path3]} == {
+        f.entity.path for f in dataset.files
+    }
 
     # Further, add with --create fails
     result = runner.invoke(cli, ["dataset", "add", "--copy", "--create", "new-dataset", str(directory_tree)])
@@ -513,14 +516,14 @@ def test_add_and_create_dataset_with_lfs_warning(directory_tree, runner, project
 
 def test_add_to_dirty_repo(directory_tree, runner, project, client):
     """Test adding to a dataset in a dirty repo commits only added files."""
-    with (client.path / "tracked").open("w") as fp:
+    with (project_properties.path / "tracked").open("w") as fp:
         fp.write("tracked file")
     client.repository.add(all=True)
     client.repository.commit("tracked file")
 
-    with (client.path / "tracked").open("w") as fp:
+    with (project_properties.path / "tracked").open("w") as fp:
         fp.write("modified tracked file")
-    with (client.path / "untracked").open("w") as fp:
+    with (project_properties.path / "untracked").open("w") as fp:
         fp.write("untracked file")
 
     result = runner.invoke(
@@ -593,7 +596,7 @@ def test_add_with_relative_path(runner, client, directory_tree, subdirectory, da
     result = runner.invoke(cli, ["dataset", "add", "--copy", "--create", "local", relative_path] + datadir_option)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    path = client.path / datadir / "file1"
+    path = project_properties.path / datadir / "file1"
     assert path.exists()
     assert "file1 content" == path.read_text()
 
@@ -608,7 +611,7 @@ def test_add_with_relative_path(runner, client, directory_tree, subdirectory, da
 )
 def test_add_local_actions(runner, client, action, existing_paths, missing_paths, existing_links):
     """Test adding local data with different actions."""
-    with (client.path / "myfile").open("w") as fp:
+    with (project_properties.path / "myfile").open("w") as fp:
         fp.write("my file")
 
     result = runner.invoke(cli, ["dataset", "add", action, "--create", "local", "myfile"])
@@ -643,7 +646,7 @@ def test_repository_file_to_dataset(runner, client, subdirectory, load_dataset_w
     # create a dataset
     assert 0 == runner.invoke(cli, ["dataset", "create", "dataset"]).exit_code
 
-    a_path = client.path / "a"
+    a_path = project_properties.path / "a"
     a_path.write_text("a content")
 
     client.repository.add(a_path)
@@ -684,9 +687,9 @@ def test_relative_import_to_dataset(tmpdir, runner, client, subdirectory, load_d
     result = runner.invoke(cli, ["dataset", "add", "--copy", "dataset"] + paths, catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    assert os.stat(client.path / DATA_DIR / "dataset" / "zero.txt")
-    assert os.stat(client.path / DATA_DIR / "dataset" / "first" / "first.txt")
-    assert os.stat(client.path / DATA_DIR / "dataset" / "first" / "second" / "second.txt")
+    assert os.stat(project_properties.path / DATA_DIR / "dataset" / "zero.txt")
+    assert os.stat(project_properties.path / DATA_DIR / "dataset" / "first" / "first.txt")
+    assert os.stat(project_properties.path / DATA_DIR / "dataset" / "first" / "second" / "second.txt")
 
 
 @pytest.mark.parametrize(
@@ -705,7 +708,7 @@ def test_usage_error_in_add_from_url(runner, client, params, message):
 
 def test_add_untracked_file(runner, project, client, load_dataset_with_injection):
     """Test adding an untracked file to a dataset."""
-    untracked = client.path / "untracked"
+    untracked = project_properties.path / "untracked"
     untracked.write_text("untracked")
 
     result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", "--create", str(untracked)])
@@ -713,13 +716,13 @@ def test_add_untracked_file(runner, project, client, load_dataset_with_injection
     assert 0 == result.exit_code, format_result_exception(result)
 
     assert client.repository.is_dirty(untracked_files=True)
-    assert client.repository.contains(client.path / "data" / "my-dataset" / "untracked")
+    assert client.repository.contains(project_properties.path / "data" / "my-dataset" / "untracked")
     assert load_dataset_with_injection("my-dataset", client).find_file("data/my-dataset/untracked")
 
 
 def test_add_untracked_file_as_external(runner, project, client, load_dataset_with_injection):
     """Test adding an untracked directory to a dataset as external."""
-    untracked = client.path / "untracked"
+    untracked = project_properties.path / "untracked"
     untracked.mkdir(exist_ok=True)
     some_file = untracked / "some-file"
     some_file.write_text("untracked file")
@@ -728,11 +731,11 @@ def test_add_untracked_file_as_external(runner, project, client, load_dataset_wi
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    path = client.path / DATA_DIR / "my-dataset" / "untracked" / "some-file"
+    path = project_properties.path / DATA_DIR / "my-dataset" / "untracked" / "some-file"
 
     assert client.repository.is_dirty(untracked_files=True)
     assert not client.repository.contains(untracked)
-    assert load_dataset_with_injection("my-dataset", client).find_file(path.relative_to(client.path))
+    assert load_dataset_with_injection("my-dataset", client).find_file(path.relative_to(project_properties.path))
     assert path.is_symlink()
     assert path.resolve() == some_file.resolve()
 
@@ -780,7 +783,7 @@ def test_dataset_add_with_copy(tmpdir, runner, project, client, load_dataset_wit
     assert dataset.title == "my-dataset"
 
     for file in dataset.files:
-        path = (client.path / file.entity.path).resolve()
+        path = (project_properties.path / file.entity.path).resolve()
         received_inodes.append(os.lstat(path)[stat.ST_INO])
 
     # check that original inodes are within created ones
@@ -817,7 +820,7 @@ def test_dataset_file_path_from_subdirectory(runner, client, subdirectory, load_
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
-    a_path = client.path / "a"
+    a_path = project_properties.path / "a"
     a_path.write_text("a text")
 
     client.repository.add(a_path)
@@ -1037,7 +1040,7 @@ def test_datasets_ls_files_correct_paths(runner, client, directory_tree):
             path = entity.get("http://www.w3.org/ns/prov#atLocation")
             if path:
                 path = path[0]["@value"]
-                assert (client.path / path).exists()
+                assert (project_properties.path / path).exists()
 
 
 def test_datasets_ls_files_with_name(directory_tree, runner, project):
@@ -1063,7 +1066,7 @@ def test_datasets_ls_files_correct_size(runner, client, directory_tree, large_fi
         == runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", "-c", str(directory_tree / "file1")]).exit_code
     )
 
-    path = client.path / DATA_DIR / "my-dataset" / "file1"
+    path = project_properties.path / DATA_DIR / "my-dataset" / "file1"
     shutil.copy(large_file, path)
 
     # check include / exclude filters
@@ -1084,7 +1087,7 @@ def test_datasets_ls_files_correct_commit(runner, client, directory_tree):
         == runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", "-c", str(directory_tree / "file1")]).exit_code
     )
 
-    commit = client.repository.get_previous_commit(path=client.path / DATA_DIR / "my-dataset" / "file1")
+    commit = client.repository.get_previous_commit(path=project_properties.path / DATA_DIR / "my-dataset" / "file1")
 
     # check include / exclude filters
     result = runner.invoke(cli, ["dataset", "ls-files", "--columns=commit,path"])
@@ -1208,14 +1211,14 @@ def test_dataset_overwrite_no_confirm(runner, project):
 def test_dataset_edit(runner, client, project, dirty, subdirectory, load_dataset_with_injection):
     """Check dataset metadata editing."""
     if dirty:
-        (client.path / "README.md").write_text("Make repo dirty.")
+        (project_properties.path / "README.md").write_text("Make repo dirty.")
 
     metadata = {
         "@id": "https://example.com/annotation1",
         "@type": "https://schema.org/specialType",
         "https://schema.org/specialProperty": "some_unique_value",
     }
-    metadata_path = client.path / "metadata.json"
+    metadata_path = project_properties.path / "metadata.json"
     metadata_path.write_text(json.dumps(metadata))
 
     result = runner.invoke(
@@ -1281,14 +1284,14 @@ def test_dataset_edit(runner, client, project, dirty, subdirectory, load_dataset
 def test_dataset_edit_unset(runner, client, project, dirty, subdirectory, load_dataset_with_injection):
     """Check dataset metadata editing unsetting values."""
     if dirty:
-        (client.path / "README.md").write_text("Make repo dirty.")
+        (project_properties.path / "README.md").write_text("Make repo dirty.")
 
     metadata = {
         "@id": "https://example.com/annotation1",
         "@type": "https://schema.org/specialType",
         "https://schema.org/specialProperty": "some_unique_value",
     }
-    metadata_path = client.path / "metadata.json"
+    metadata_path = project_properties.path / "metadata.json"
     metadata_path.write_text(json.dumps(metadata))
 
     result = runner.invoke(
@@ -1329,7 +1332,7 @@ def test_dataset_edit_no_change(runner, client, project, dirty):
     assert 0 == result.exit_code, format_result_exception(result)
 
     if dirty:
-        (client.path / "README.md").write_text("Make repo dirty.")
+        (project_properties.path / "README.md").write_text("Make repo dirty.")
 
     commit_sha_before = client.repository.head.commit.hexsha
 
@@ -1580,7 +1583,9 @@ def test_multiple_dataset_commits(runner, client, directory_tree):
 @pytest.mark.parametrize("filename", [".renku", ".renku/", "Dockerfile"])
 def test_add_protected_file(runner, client, filename, subdirectory):
     """Check adding a protected file."""
-    result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-dataset1", str(client.path / filename)])
+    result = runner.invoke(
+        cli, ["dataset", "add", "--copy", "-c", "my-dataset1", str(project_properties.path / filename)]
+    )
 
     assert 1 == result.exit_code
     assert "Error: The following paths are protected" in result.output
@@ -1603,7 +1608,7 @@ def test_add_removes_local_path_information(runner, client, directory_tree, load
     assert 0 == result.exit_code, format_result_exception(result)
 
     dataset = load_dataset_with_injection("my-dataset", client)
-    relative_path = os.path.relpath(directory_tree, client.path)
+    relative_path = os.path.relpath(directory_tree, project_properties.path)
     for file in dataset.files:
         assert file.source.startswith(relative_path)
         assert file.source.endswith(Path(file.entity.path).name)
@@ -1616,10 +1621,10 @@ def test_pull_data_from_lfs(runner, client, tmpdir, subdirectory, no_lfs_size_li
 
     result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-data", str(data)])
     assert 0 == result.exit_code, format_result_exception(result)
-    attributes = (client.path / ".gitattributes").read_text().split()
+    attributes = (project_properties.path / ".gitattributes").read_text().split()
     assert "data/my-data/data.txt" in attributes
 
-    path = client.path / DATA_DIR / "my-data" / "data.txt"
+    path = project_properties.path / DATA_DIR / "my-data" / "data.txt"
     relative_path = os.path.relpath(path, os.getcwd())
 
     result = runner.invoke(cli, ["storage", "pull", relative_path])
@@ -1631,7 +1636,7 @@ def test_lfs_hook(client, subdirectory, large_file):
     filenames = {"large-file", "large file with whitespace", "large*file?with wildcards"}
 
     for filename in filenames:
-        shutil.copy(large_file, client.path / filename)
+        shutil.copy(large_file, project_properties.path / filename)
     client.repository.add(all=True)
 
     # Commit fails when file is not tracked in LFS
@@ -1663,7 +1668,7 @@ def test_lfs_hook_autocommit(runner, client, subdirectory, large_file, use_env_v
     filenames = {"large-file", "large file with whitespace", "large*file?with wildcards"}
 
     for filename in filenames:
-        shutil.copy(large_file, client.path / filename)
+        shutil.copy(large_file, project_properties.path / filename)
     client.repository.add(all=True)
 
     result = client.repository.run_git_command(
@@ -1696,7 +1701,7 @@ def test_lfs_hook_can_be_avoided(runner, project, subdirectory, large_file):
 
 def test_datadir_hook(runner, client, subdirectory):
     """Test pre-commit hook fir checking datadir files."""
-    datadir = client.path / "test"
+    datadir = project_properties.path / "test"
     datadir.mkdir()
 
     result = runner.invoke(cli, ["--no-external-storage", "dataset", "create", "--datadir", str(datadir), "my-dataset"])
@@ -1823,8 +1828,8 @@ def test_add_ignored_files(runner, client, directory_tree, load_dataset_with_inj
     """Check adding/force-adding ignored files."""
     source_path = directory_tree / ".DS_Store"
     source_path.write_text("ignored-file")
-    path = client.path / DATA_DIR / "my-dataset" / directory_tree.name / ".DS_Store"
-    relative_path = str(path.relative_to(client.path))
+    path = project_properties.path / DATA_DIR / "my-dataset" / directory_tree.name / ".DS_Store"
+    relative_path = str(path.relative_to(project_properties.path))
 
     result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-dataset", str(directory_tree)])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -1853,17 +1858,17 @@ def test_add_external_files(runner, client, directory_tree, no_lfs_size_limit, l
     result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "--external", "my-data", str(directory_tree)])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    path = client.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
+    path = project_properties.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
     assert path.exists()
     assert path.is_symlink()
     external_path = directory_tree / "file1"
     assert path.resolve() == external_path
 
     dataset = load_dataset_with_injection("my-data", client)
-    assert dataset.find_file(path.relative_to(client.path)) is not None
+    assert dataset.find_file(path.relative_to(project_properties.path)) is not None
 
     # Symbolic links should not be tracked
-    attr_path = client.path / ".gitattributes"
+    attr_path = project_properties.path / ".gitattributes"
     assert not attr_path.exists() or "file1" not in attr_path.read_text()
 
 
@@ -1897,7 +1902,7 @@ def test_overwrite_external_file_keeps_original_content(runner, client, director
 
     assert 0 == runner.invoke(cli, ["dataset", "add", "--create", "--external", "my-data", str(origin)]).exit_code
 
-    path = client.path / DATA_DIR / "my-data" / "file1"
+    path = project_properties.path / DATA_DIR / "my-data" / "file1"
     assert "file1 content" == path.read_text()
     assert path.is_symlink()
 
@@ -1929,7 +1934,7 @@ def test_remove_external_file(runner, client, directory_tree, subdirectory):
     assert 0 == result.exit_code, format_result_exception(result)
 
     targets_before = {str(p.resolve()) for p in renku_pointers_path(client).rglob("*")}
-    path = client.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
+    path = project_properties.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
 
     result = runner.invoke(cli, ["rm", str(path)])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -1947,7 +1952,7 @@ def test_unavailable_external_files(runner, client, directory_tree, subdirectory
     assert 0 == result.exit_code, format_result_exception(result)
 
     path = Path(DATA_DIR) / "my-data" / directory_tree.name / "file1"
-    target = (client.path / path).resolve()
+    target = (project_properties.path / path).resolve()
 
     directory_tree.joinpath("file1").unlink()
     assert not path.exists()
@@ -1973,7 +1978,7 @@ def test_external_file_update(runner, client, directory_tree, subdirectory):
 
     directory_tree.joinpath("file1").write_text("some updates")
 
-    path = client.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
+    path = project_properties.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
     previous_commit = client.repository.get_previous_commit(path)
 
     result = runner.invoke(cli, ["dataset", "update", "--external", "my-data"])
@@ -1990,8 +1995,8 @@ def test_workflow_with_external_file(runner, client, directory_tree, run, subdir
     result = runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    source = client.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
-    output = client.path / DATA_DIR / "output.txt"
+    source = project_properties.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
+    output = project_properties.path / DATA_DIR / "output.txt"
 
     assert 0 == run(args=("run", "wc", "-c"), stdin=source, stdout=output)
 
@@ -2017,7 +2022,7 @@ def test_workflow_with_external_file(runner, client, directory_tree, run, subdir
     current_commit = client.repository.get_previous_commit(source)
     assert current_commit != previous_commit
 
-    attributes = (client.path / ".gitattributes").read_text().split()
+    attributes = (project_properties.path / ".gitattributes").read_text().split()
     assert "data/output.txt" in attributes
 
 

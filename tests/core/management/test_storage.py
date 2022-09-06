@@ -21,14 +21,16 @@ import re
 
 import pytest
 
+from renku.core.project.project_properties import project_properties
+
 
 @pytest.mark.parametrize("path", [".", "datasets"])
 def test_no_renku_metadata_in_lfs(client_with_datasets, no_lfs_size_limit, path, subdirectory):
     """Test .renku directory and its content are not included in the LFS."""
     # Explicitly set .renku to not being ignored
-    (client_with_datasets.path / ".renkulfsignore").write_text("!.renku")
+    (project_properties.path / ".renkulfsignore").write_text("!.renku")
 
-    file1 = client_with_datasets.path / "file1"
+    file1 = project_properties.path / "file1"
     file1.write_text("123")
     path_in_renku_metadata_directory = client_with_datasets.database_path.parent / path
     path_in_renku_metadata_directory.mkdir(parents=True, exist_ok=True)
@@ -37,7 +39,7 @@ def test_no_renku_metadata_in_lfs(client_with_datasets, no_lfs_size_limit, path,
 
     client_with_datasets.track_paths_in_storage(file1, file2, path_in_renku_metadata_directory)
 
-    attributes = (client_with_datasets.path / ".gitattributes").read_text()
+    attributes = (project_properties.path / ".gitattributes").read_text()
     assert "file1" in attributes
     assert "file2" not in attributes
     assert not re.match("^renku/.* filter=lfs diff=lfs merge=lfs -text$", attributes)

@@ -146,14 +146,14 @@ class ActivitySchema(JsonLDSchema):
     annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
     association = Nested(prov.qualifiedAssociation, AssociationSchema)
     ended_at_time = fields.DateTime(prov.endedAtTime, add_value_types=True)
-    generations = Nested(prov.activity, GenerationSchema, reverse=True, many=True, missing=None)
+    generations = Nested(prov.activity, GenerationSchema, reverse=True, many=True, load_default=None)
     id = fields.Id()
-    invalidations = Nested(prov.wasInvalidatedBy, EntitySchema, reverse=True, many=True, missing=None)
+    invalidations = Nested(prov.wasInvalidatedBy, EntitySchema, reverse=True, many=True, load_default=None)
     parameters = Nested(
         renku.parameter,
         ParameterValueSchema,
         many=True,
-        missing=None,
+        load_default=None,
     )
     path = fields.String(prov.atLocation)
     project_id = fields.IRI(renku.hasActivity, reverse=True)
