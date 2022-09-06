@@ -28,15 +28,15 @@ from renku.ui.service.serializers.common import CreationSchema, MandatoryUserSch
 class JobSchema(CreationSchema, MandatoryUserSchema):
     """Job serialization."""
 
-    updated_at = fields.DateTime(missing=datetime.utcnow)
+    updated_at = fields.DateTime(load_default=datetime.utcnow)
 
-    job_id = fields.String(missing=lambda: uuid.uuid4().hex)
+    job_id = fields.String(load_default=lambda: uuid.uuid4().hex)
     project_id = fields.String()
     renku_op = fields.String()
 
-    state = fields.String(required=False, missing=USER_JOB_STATE_ENQUEUED)
+    state = fields.String(required=False, load_default=USER_JOB_STATE_ENQUEUED)
     extras = fields.Dict(required=False)
-    client_extras = fields.String(required=False, missing=None)
+    client_extras = fields.String(required=False, load_default=None)
 
     ctrl_result = fields.Dict(required=False)
     ctrl_context = fields.Dict(required=False)

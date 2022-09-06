@@ -47,6 +47,10 @@ Interfaces that the Gateways implement.
    :members:
    :show-inheritance:
 
+.. automodule:: renku.core.interface.storage
+   :members:
+   :show-inheritance:
+
 .. automodule:: renku.core.interface.plan_gateway
    :members:
    :show-inheritance:
@@ -69,6 +73,18 @@ Implementation of Gateway interfaces.
    :show-inheritance:
 
 .. automodule:: renku.infrastructure.gateway.dataset_gateway
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.infrastructure.storage.base
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.infrastructure.storage.factory
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.infrastructure.storage.s3
    :members:
    :show-inheritance:
 

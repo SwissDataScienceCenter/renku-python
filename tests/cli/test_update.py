@@ -25,6 +25,7 @@ import pytest
 
 from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.plugin.provider import available_workflow_providers
+from renku.core.project.project_properties import project_properties
 from renku.domain_model.workflow.plan import Plan
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.infrastructure.repository import Repository
@@ -36,8 +37,8 @@ from tests.utils import delete_and_commit_file, format_result_exception, write_a
 @pytest.mark.parametrize("skip_metadata_update", [True, False])
 def test_update(runner, client, renku_cli, client_database_injection_manager, provider, skip_metadata_update):
     """Test output is updated when source changes."""
-    source = os.path.join(client.path, "source.txt")
-    output = os.path.join(client.path, "output.txt")
+    source = os.path.join(project_properties.path, "source.txt")
+    output = os.path.join(project_properties.path, "output.txt")
 
     write_and_commit_file(client.repository, source, "content")
 
@@ -85,9 +86,9 @@ def test_update_multiple_steps(
     runner, client, renku_cli, client_database_injection_manager, provider, skip_metadata_update
 ):
     """Test update in a multi-step workflow."""
-    source = os.path.join(client.path, "source.txt")
-    intermediate = os.path.join(client.path, "intermediate.txt")
-    output = os.path.join(client.path, "output.txt")
+    source = os.path.join(project_properties.path, "source.txt")
+    intermediate = os.path.join(project_properties.path, "intermediate.txt")
+    output = os.path.join(project_properties.path, "output.txt")
 
     write_and_commit_file(client.repository, source, "content")
 
@@ -330,11 +331,11 @@ def test_update_siblings_in_output_directory(project, run, provider):
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_update_relative_path_for_directory_input(client, run, renku_cli, provider):
     """Test having a directory input generates relative path in CWL."""
-    write_and_commit_file(client.repository, client.path / DATA_DIR / "file1", "file1")
+    write_and_commit_file(client.repository, project_properties.path / DATA_DIR / "file1", "file1")
 
     assert 0 == run(args=["run", "ls", DATA_DIR], stdout="ls.data")
 
-    write_and_commit_file(client.repository, client.path / DATA_DIR / "file2", "file2")
+    write_and_commit_file(client.repository, project_properties.path / DATA_DIR / "file2", "file2")
 
     exit_code, activity = renku_cli("update", "-p", provider, "--all")
 
@@ -484,8 +485,8 @@ def test_update_with_execute(runner, client, renku_cli, client_database_injectio
         ).exit_code
     )
 
-    assert "content_a" == (client.path / output1).read_text()
-    assert "content_b" == (client.path / output2).read_text()
+    assert "content_a" == (project_properties.path / output1).read_text()
+    assert "content_b" == (project_properties.path / output2).read_text()
 
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -500,8 +501,8 @@ def test_update_with_execute(runner, client, renku_cli, client_database_injectio
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code
 
-    assert "content_amodified\n" == (client.path / output1).read_text()
-    assert "content_bmodified\n" == (client.path / output2).read_text()
+    assert "content_amodified\n" == (project_properties.path / output1).read_text()
+    assert "content_bmodified\n" == (project_properties.path / output2).read_text()
 
     write_and_commit_file(client.repository, script, "cp $1 $2\necho 'even more modified' >> $2")
 
@@ -513,34 +514,34 @@ def test_update_with_execute(runner, client, renku_cli, client_database_injectio
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code
 
-    assert "content_aeven more modified\n" == (client.path / output1).read_text()
-    assert "content_beven more modified\n" == (client.path / output2).read_text()
+    assert "content_aeven more modified\n" == (project_properties.path / output1).read_text()
+    assert "content_beven more modified\n" == (project_properties.path / output2).read_text()
 
 
 def test_update_with_external_files(runner, client, directory_tree):
     """Test update commands that use external files."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-dataset", directory_tree]).exit_code
 
-    path = client.path / "data" / "my-dataset" / "directory_tree" / "file1"
+    path = project_properties.path / "data" / "my-dataset" / "directory_tree" / "file1"
 
     assert 0 == runner.invoke(cli, ["run", "tail", path], stdout="output").exit_code
 
     (directory_tree / "file1").write_text("updated file1")
 
     assert 0 == runner.invoke(cli, ["dataset", "update", "--all", "--no-external"]).exit_code
-    assert "updated file1" not in (client.path / "output").read_text()
+    assert "updated file1" not in (project_properties.path / "output").read_text()
 
     assert 0 == runner.invoke(cli, ["dataset", "update", "--all"]).exit_code
 
     result = runner.invoke(cli, ["update", "--all"])
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "updated file1" in (client.path / "output").read_text()
+    assert "updated file1" in (project_properties.path / "output").read_text()
 
 
 def test_update_ignore_deleted_files(runner, client):
     """Test update can ignore deleted files."""
-    deleted = client.path / "deleted"
+    deleted = project_properties.path / "deleted"
     write_and_commit_file(client.repository, "source", "source content")
     assert 0 == runner.invoke(cli, ["run", "--name", "run-1", "head", "source"], stdout="upstream").exit_code
     assert 0 == runner.invoke(cli, ["run", "--name", "run-2", "tail", "upstream"], stdout=deleted).exit_code
@@ -582,7 +583,7 @@ def test_update_ignore_deleted_files_config(runner, client):
 
 def test_update_deleted_files_reported_with_siblings(runner, client):
     """Test update regenerates deleted file if they have existing siblings."""
-    deleted = client.path / "deleted"
+    deleted = project_properties.path / "deleted"
     write_and_commit_file(client.repository, "source", "source content")
     assert 0 == runner.invoke(cli, ["run", "--input", "source", "touch", deleted, "sibling"]).exit_code
 
@@ -597,7 +598,7 @@ def test_update_deleted_files_reported_with_siblings(runner, client):
 
 def test_update_deleted_files_reported_with_downstream(runner, client):
     """Test update reports deleted file if they have existing downstreams."""
-    deleted = client.path / "deleted"
+    deleted = project_properties.path / "deleted"
     write_and_commit_file(client.repository, "source", "source content")
     assert 0 == runner.invoke(cli, ["run", "head", "source"], stdout=deleted).exit_code
     assert 0 == runner.invoke(cli, ["run", "tail", deleted], stdout="downstream").exit_code

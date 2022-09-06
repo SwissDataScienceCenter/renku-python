@@ -15,15 +15,4 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku repository manager."""
-
-import attr
-
-from renku.core.management.config import ConfigManagerMixin
-from renku.core.management.repository import RepositoryApiMixin
-from renku.core.management.storage import StorageApiMixin
-
-
-@attr.s
-class LocalClient(StorageApiMixin, RepositoryApiMixin, ConfigManagerMixin):
-    """A low-level client for communicating with a local Renku repository."""
+"""Renku interactive session module."""

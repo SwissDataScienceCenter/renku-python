@@ -91,21 +91,21 @@ class DatasetSchemaV8(CreatorMixinSchemaV3, EntitySchemaV3):
         unknown = EXCLUDE
 
     creators = fields.Nested(schema.creator, PersonSchemaV3, many=True)
-    date_created = fields.DateTime(schema.dateCreated, missing=None)
-    date_published = fields.DateTime(schema.datePublished, missing=None)
-    derived_from = fields.Nested(prov.wasDerivedFrom, UrlSchemaV3, missing=None)
-    description = fields.String(schema.description, missing=None)
+    date_created = fields.DateTime(schema.dateCreated, load_default=None)
+    date_published = fields.DateTime(schema.datePublished, load_default=None)
+    derived_from = fields.Nested(prov.wasDerivedFrom, UrlSchemaV3, load_default=None)
+    description = fields.String(schema.description, load_default=None)
     files = fields.Nested(schema.hasPart, DatasetFileSchemaV8, many=True)
     identifier = fields.String(schema.identifier)
-    in_language = fields.Nested(schema.inLanguage, LanguageSchemaV3, missing=None)
-    keywords = fields.List(schema.keywords, fields.String(), missing=None)
-    license = Uri(schema.license, allow_none=True, missing=None)
-    name = fields.String(schema.alternateName, missing=None)
-    same_as = fields.Nested(schema.sameAs, UrlSchemaV3, missing=None)
-    tags = fields.Nested(schema.subjectOf, DatasetTagSchemaV3, many=True, missing=None)
+    in_language = fields.Nested(schema.inLanguage, LanguageSchemaV3, load_default=None)
+    keywords = fields.List(schema.keywords, fields.String(), load_default=None)
+    license = Uri(schema.license, allow_none=True, load_default=None)
+    name = fields.String(schema.alternateName, load_default=None)
+    same_as = fields.Nested(schema.sameAs, UrlSchemaV3, load_default=None)
+    tags = fields.Nested(schema.subjectOf, DatasetTagSchemaV3, many=True, load_default=None)
     title = fields.String(schema.name)
-    url = fields.String(schema.url, missing=None)
-    version = fields.String(schema.version, missing=None)
+    url = fields.String(schema.url, load_default=None)
+    version = fields.String(schema.version, load_default=None)
 
     @pre_dump
     def fix_license(self, data, **kwargs):

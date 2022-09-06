@@ -30,6 +30,7 @@ from renku.command.command_builder.command import inject
 from renku.core import errors
 from renku.core.dataset.constant import renku_dataset_images_path
 from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.project.project_properties import project_properties
 from renku.domain_model.dataset import Dataset, ImageObject
 
 
@@ -53,7 +54,7 @@ class ImageRequestModel:
         """Convert request model to ``ImageObject``."""
         client = client_dispatcher.current_client
         image_type = None
-        self.safe_image_paths.append(client.path)
+        self.safe_image_paths.append(project_properties.path)
 
         image_folder = renku_dataset_images_path(client) / dataset.initial_identifier
         image_folder.mkdir(exist_ok=True, parents=True)
@@ -82,7 +83,7 @@ class ImageRequestModel:
 
         path = self.content_url
         if not os.path.isabs(path):
-            path = os.path.normpath(os.path.join(client.path, path))
+            path = os.path.normpath(os.path.join(project_properties.path, path))
 
         if not os.path.exists(path) or not any(
             os.path.commonprefix([path, p]) == str(p) for p in self.safe_image_paths
@@ -103,7 +104,7 @@ class ImageRequestModel:
             img_path = path
 
         return ImageObject(
-            content_url=str(img_path.relative_to(client.path)),
+            content_url=str(img_path.relative_to(project_properties.path)),
             position=self.position,
             id=ImageObject.generate_id(dataset_id=dataset.id, position=self.position),
         )

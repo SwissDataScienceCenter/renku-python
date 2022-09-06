@@ -27,6 +27,7 @@ from renku.core import errors
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.dataset_gateway import IDatasetGateway
+from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.git import get_git_user
 from renku.core.util.os import delete_dataset_file
@@ -48,9 +49,9 @@ def _remove(sources, edit_command, client_dispatcher: IClientDispatcher, dataset
 
     def get_relative_path(path):
         """Format path as relative to the client path."""
-        abs_path = os.path.abspath(client.path / path)
+        abs_path = os.path.abspath(project_properties.path / path)
         try:
-            return str(Path(abs_path).relative_to(client.path))
+            return str(Path(abs_path).relative_to(project_properties.path))
         except ValueError:
             raise errors.ParameterError(f"File {abs_path} is not within the project.")
 
@@ -77,7 +78,7 @@ def _remove(sources, edit_command, client_dispatcher: IClientDispatcher, dataset
                 dataset = dataset.copy()
                 for key in remove:
                     dataset.unlink_file(key)
-                    delete_dataset_file(client.path / key, follow_symlinks=True)
+                    delete_dataset_file(project_properties.path / key, follow_symlinks=True)
 
                 datasets_provenance = DatasetsProvenance()
                 datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
@@ -95,10 +96,10 @@ def _remove(sources, edit_command, client_dispatcher: IClientDispatcher, dataset
         if existing:
             communication.warn("There are custom .gitattributes.\n")
             if communication.confirm('Do you want to edit ".gitattributes" now?'):
-                edit_command(filename=str(client.path / ".gitattributes"))
+                edit_command(filename=str(project_properties.path / ".gitattributes"))
 
     # Finally remove the files.
-    files_to_remove = set(str(client.path / f) for f in files.values())
+    files_to_remove = set(str(project_properties.path / f) for f in files.values())
     final_sources = list(files_to_remove)
     if final_sources:
         run(["git", "rm", "-rf"] + final_sources, check=True)

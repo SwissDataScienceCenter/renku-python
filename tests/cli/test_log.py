@@ -17,6 +17,7 @@
 # limitations under the License.
 """Test ``log`` command."""
 
+from renku.core.project.project_properties import project_properties
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
@@ -57,7 +58,7 @@ def test_dataset_log(runner, project, client):
     result = runner.invoke(cli, ["dataset", "create", "testset"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    with (client.path / "my_file").open("w") as fp:
+    with (project_properties.path / "my_file").open("w") as fp:
         fp.write("dataset file")
 
     result = runner.invoke(cli, ["dataset", "add", "--copy", "testset", "my_file"])
