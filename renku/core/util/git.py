@@ -423,7 +423,7 @@ def default_path(path="."):
     try:
         return get_git_home(path=path)
     except ValueError:
-        return path
+        return Path(path)
 
 
 def commit_changes(*paths: Union[Path, str], repository: "Repository", message=None) -> List[str]:

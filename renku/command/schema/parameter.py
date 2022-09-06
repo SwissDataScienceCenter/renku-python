@@ -55,13 +55,13 @@ class CommandParameterBaseSchema(JsonLDSchema):
         model = CommandParameterBase
         unknown = EXCLUDE
 
-    default_value = fields.Raw(schema.defaultValue, missing=None)
-    description = fields.String(schema.description, missing=None)
+    default_value = fields.Raw(schema.defaultValue, load_default=None)
+    description = fields.String(schema.description, load_default=None)
     id = fields.Id()
-    name = fields.String(schema.name, missing=None)
-    position = fields.Integer(renku.position, missing=None)
-    prefix = fields.String(renku.prefix, missing=None)
-    derived_from = fields.String(prov.wasDerivedFrom, missing=None)
+    name = fields.String(schema.name, load_default=None)
+    position = fields.Integer(renku.position, load_default=None)
+    prefix = fields.String(renku.prefix, load_default=None)
+    derived_from = fields.String(prov.wasDerivedFrom, load_default=None)
 
 
 class CommandParameterSchema(CommandParameterBaseSchema):
@@ -85,8 +85,8 @@ class CommandInputSchema(CommandParameterBaseSchema):
         model = CommandInput
         unknown = EXCLUDE
 
-    mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
-    encoding_format = fields.List(schema.encodingFormat, fields.String(), missing=None)
+    mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, load_default=None)
+    encoding_format = fields.List(schema.encodingFormat, fields.String(), load_default=None)
 
 
 class CommandOutputSchema(CommandParameterBaseSchema):
@@ -99,9 +99,9 @@ class CommandOutputSchema(CommandParameterBaseSchema):
         model = CommandOutput
         unknown = EXCLUDE
 
-    create_folder = fields.Boolean(renku.createFolder, missing=False)
-    mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, missing=None)
-    encoding_format = fields.List(schema.encodingFormat, fields.String(), missing=None)
+    create_folder = fields.Boolean(renku.createFolder, load_default=False)
+    mapped_to = Nested(renku.mappedTo, MappedIOStreamSchema, load_default=None)
+    encoding_format = fields.List(schema.encodingFormat, fields.String(), load_default=None)
 
 
 class ParameterMappingSchema(CommandParameterBaseSchema):

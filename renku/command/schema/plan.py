@@ -39,19 +39,19 @@ class PlanSchema(JsonLDSchema):
         model = Plan
         unknown = marshmallow.EXCLUDE
 
-    command = fields.String(renku.command, missing=None)
-    description = fields.String(schema.description, missing=None)
+    command = fields.String(renku.command, load_default=None)
+    description = fields.String(schema.description, load_default=None)
     id = fields.Id()
-    inputs = Nested(renku.hasInputs, CommandInputSchema, many=True, missing=None)
+    inputs = Nested(renku.hasInputs, CommandInputSchema, many=True, load_default=None)
     date_created = fields.DateTime(schema.dateCreated, format="iso")
     invalidated_at = fields.DateTime(prov.invalidatedAtTime, format="iso")
-    keywords = fields.List(schema.keywords, fields.String(), missing=None)
-    name = fields.String(schema.name, missing=None)
-    derived_from = fields.String(prov.wasDerivedFrom, missing=None)
+    keywords = fields.List(schema.keywords, fields.String(), load_default=None)
+    name = fields.String(schema.name, load_default=None)
+    derived_from = fields.String(prov.wasDerivedFrom, load_default=None)
     project_id = fields.IRI(renku.hasPlan, reverse=True)
-    outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, missing=None)
-    parameters = Nested(renku.hasArguments, CommandParameterSchema, many=True, missing=None)
-    success_codes = fields.List(renku.successCodes, fields.Integer(), missing=[0])
+    outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, load_default=None)
+    parameters = Nested(renku.hasArguments, CommandParameterSchema, many=True, load_default=None)
+    success_codes = fields.List(renku.successCodes, fields.Integer(), load_default=[0])
     annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
 
     @marshmallow.pre_dump

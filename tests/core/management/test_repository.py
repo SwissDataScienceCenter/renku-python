@@ -21,6 +21,7 @@ from pathlib import Path
 
 from renku.command.dataset import create_dataset_command
 from renku.core.management.client import LocalClient
+from renku.core.project.project_properties import project_properties
 from renku.infrastructure.repository import Repository
 
 
@@ -30,10 +31,11 @@ def test_latest_version(project, client_database_injection_manager):
 
     create_dataset_command().build().execute("ds1", title="", description="", creators=[])
 
-    client = LocalClient(project)
-    with client_database_injection_manager(client):
-        agent_version = client.latest_agent
-    assert __version__ == agent_version
+    with project_properties.with_path(Path(project)):
+        client = LocalClient()
+        with client_database_injection_manager(client):
+            agent_version = client.latest_agent
+        assert __version__ == agent_version
 
 
 def test_latest_version_user_commits(project, client_database_injection_manager):
@@ -49,15 +51,16 @@ def test_latest_version_user_commits(project, client_database_injection_manager)
     repository.add(file)
     repository.commit("added my-file")
 
-    client = LocalClient(project)
-    with client_database_injection_manager(client):
-        agent_version = client.latest_agent
-    assert __version__ == agent_version
+    with project_properties.with_path(Path(project)):
+        client = LocalClient()
+        with client_database_injection_manager(client):
+            agent_version = client.latest_agent
+        assert __version__ == agent_version
 
 
 def test_init_repository(local_client):
     """Test initializing an empty repository."""
     local_client.init_repository()
-    assert (local_client.path / ".git").exists()
-    assert (local_client.path / ".git" / "HEAD").exists()
-    assert not (local_client.path / ".renku").exists()
+    assert (project_properties.path / ".git").exists()
+    assert (project_properties.path / ".git" / "HEAD").exists()
+    assert not (project_properties.path / ".renku").exists()

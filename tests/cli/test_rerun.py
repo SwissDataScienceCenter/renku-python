@@ -25,6 +25,7 @@ from pathlib import Path
 import pytest
 
 from renku.core.plugin.provider import available_workflow_providers
+from renku.core.project.project_properties import project_properties
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.infrastructure.gateway.plan_gateway import PlanGateway
 from renku.infrastructure.repository import Repository
@@ -346,7 +347,7 @@ def test_rerun_multiple_paths_common_output(project, renku_cli, runner):
 
 def test_rerun_output_in_subdirectory(runner, client):
     """Test re-run when an output is in a sub-directory."""
-    output = client.path / "sub-dir" / "output"
+    output = project_properties.path / "sub-dir" / "output"
     write_and_commit_file(client.repository, output, "")
 
     result = runner.invoke(cli, ["run", "bash", "-c", 'touch "$0" ; echo data > "$0"', output])

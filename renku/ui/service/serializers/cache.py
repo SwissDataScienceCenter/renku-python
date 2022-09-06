@@ -61,17 +61,29 @@ class FileUploadRequest(ArchiveSchema):
     """Request schema for file upload."""
 
     override_existing = fields.Boolean(
-        missing=False,
-        description="Overried files. Useful when extracting from archives.",
+        load_default=False,
+        metadata={"description": "Overried files. Useful when extracting from archives."},
     )
 
-    chunked_id = fields.String(data_key="dzuuid", missing=None, description="Dropzone upload id.")
-    chunk_index = fields.Integer(data_key="dzchunkindex", missing=None, description="Dropzone chunk index.")
-    chunk_count = fields.Integer(data_key="dztotalchunkcount", missing=None, description="Dropzone total chunk count.")
-    chunk_size = fields.Integer(data_key="dzchunksize", missing=None, description="Dropzone chunk size.")
-    chunk_byte_offset = fields.Integer(data_key="dzchunkbyteoffset", missing=None, description="Dropzone chunk offset.")
-    chunked_content_type = fields.String(missing=None, description="Content type of file file for chunked uploads.")
-    total_size = fields.Integer(data_key="dztotalfilesize", missing=None, description="Dropzone total file size.")
+    chunked_id = fields.String(data_key="dzuuid", load_default=None, metadata={"description": "Dropzone upload id."})
+    chunk_index = fields.Integer(
+        data_key="dzchunkindex", load_default=None, metadata={"description": "Dropzone chunk index."}
+    )
+    chunk_count = fields.Integer(
+        data_key="dztotalchunkcount", load_default=None, metadata={"description": "Dropzone total chunk count."}
+    )
+    chunk_size = fields.Integer(
+        data_key="dzchunksize", load_default=None, metadata={"description": "Dropzone chunk size."}
+    )
+    chunk_byte_offset = fields.Integer(
+        data_key="dzchunkbyteoffset", load_default=None, metadata={"description": "Dropzone chunk offset."}
+    )
+    chunked_content_type = fields.String(
+        load_default=None, metadata={"description": "Content type of file file for chunked uploads."}
+    )
+    total_size = fields.Integer(
+        data_key="dztotalfilesize", load_default=None, metadata={"description": "Dropzone total file size."}
+    )
 
     @validates_schema
     def validate_requires(self, data, **kwargs):
@@ -95,7 +107,7 @@ class FileUploadResponseRPC(JsonRPCResponse):
 class FileChunksDeleteRequest(Schema):
     """Request schema for deleting uploaded chunks."""
 
-    chunked_id = fields.String(data_key="dzuuid", missing=None, description="Dropzone upload id.")
+    chunked_id = fields.String(data_key="dzuuid", load_default=None, metadata={"description": "Dropzone upload id."})
 
 
 class FileChunksDeleteResponseRPC(JsonRPCResponse):
@@ -119,15 +131,15 @@ class FileListResponseRPC(JsonRPCResponse):
 class RepositoryCloneRequest(RemoteRepositorySchema):
     """Request schema for repository clone."""
 
-    depth = fields.Integer(description="Git fetch depth", missing=PROJECT_CLONE_DEPTH_DEFAULT)
-    ref = fields.String(description="Repository reference (branch, commit or tag)", missing=None)
+    depth = fields.Integer(metadata={"description": "Git fetch depth"}, load_default=PROJECT_CLONE_DEPTH_DEFAULT)
+    ref = fields.String(metadata={"description": "Repository reference (branch, commit or tag)"}, load_default=None)
 
 
 class ProjectCloneContext(RepositoryCloneRequest):
     """Context schema for project clone."""
 
     # measured in ms
-    timestamp = fields.Integer(missing=time.time() * 1e3)
+    timestamp = fields.Integer(load_default=time.time() * 1e3)
 
     # user data
     name = fields.String()
@@ -200,7 +212,7 @@ class ProjectCloneResponse(Schema):
 
     project_id = fields.String(required=True)
     git_url = fields.String(required=True)
-    initialized = fields.Boolean(default=False)
+    initialized = fields.Boolean(dump_default=False)
 
 
 class ProjectCloneResponseRPC(JsonRPCResponse):
@@ -224,10 +236,10 @@ class ProjectListResponseRPC(JsonRPCResponse):
 class ProjectMigrateRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySchema):
     """Request schema for project migrate."""
 
-    force_template_update = fields.Boolean(default=False)
-    skip_template_update = fields.Boolean(default=False)
-    skip_docker_update = fields.Boolean(default=False)
-    skip_migrations = fields.Boolean(default=False)
+    force_template_update = fields.Boolean(dump_default=False)
+    skip_template_update = fields.Boolean(dump_default=False)
+    skip_docker_update = fields.Boolean(dump_default=False)
+    skip_migrations = fields.Boolean(dump_default=False)
 
     @pre_load()
     def handle_ref(self, data, **kwargs):
@@ -266,10 +278,14 @@ class ProjectMigrationCheckRequest(LocalRepositorySchema, RemoteRepositorySchema
 class ProjectCompatibilityResponse(Schema):
     """Response schema outlining service compatibility for migrations check."""
 
-    project_metadata_version = fields.String(description="Current version of the Renku metadata in the project.")
-    current_metadata_version = fields.String(description="Highest metadata version supported by this service.")
+    project_metadata_version = fields.String(
+        metadata={"description": "Current version of the Renku metadata in the project."}
+    )
+    current_metadata_version = fields.String(
+        metadata={"description": "Highest metadata version supported by this service."}
+    )
     migration_required = fields.Boolean(
-        description="Whether or not a metadata migration is required to be compatible with this service."
+        metadata={"description": "Whether or not a metadata migration is required to be compatible with this service."}
     )
 
 
@@ -277,39 +293,50 @@ class DockerfileStatusResponse(Schema):
     """Response schema outlining dockerfile status for migrations check."""
 
     newer_renku_available = fields.Boolean(
-        description="Whether the version of Renku in this service is newer than the one in the Dockerfile."
+        metadata={
+            "description": "Whether the version of Renku in this service is newer than the one in the Dockerfile."
+        }
     )
     automated_dockerfile_update = fields.Boolean(
-        description="Whether or not the Dockerfile supports automated Renku version updates."
+        metadata={"description": "Whether or not the Dockerfile supports automated Renku version updates."}
     )
-    latest_renku_version = fields.String(description="The current version of Renku available in this service.")
-    dockerfile_renku_version = fields.String(description="Version of Renku specified in the Dockerfile.")
+    latest_renku_version = fields.String(
+        metadata={"description": "The current version of Renku available in this service."}
+    )
+    dockerfile_renku_version = fields.String(metadata={"description": "Version of Renku specified in the Dockerfile."})
 
 
 class TemplateStatusResponse(Schema):
     """Response schema outlining template status for migrations check."""
 
     automated_template_update = fields.Boolean(
-        description="Whether or not the project template explicitly supports automated updates."
+        metadata={"description": "Whether or not the project template explicitly supports automated updates."}
     )
     newer_template_available = fields.Boolean(
-        description=(
-            "Whether or not the current version of the project template differs from the " "one used in the project."
-        )
+        metadata={
+            "description": "Whether or not the current version of the project template differs from the "
+            "one used in the project."
+        }
     )
     template_source = fields.String(
-        description="Source of the template repository, either a Git URL or 'renku' if an embedded template was used."
+        metadata={
+            "description": "Source of the template repository, "
+            "either a Git URL or 'renku' if an embedded template was used."
+        }
     )
     template_ref = fields.String(
-        description="The branch/tag/commit from the template_source repository that was used to create this project."
+        metadata={
+            "description": "The branch/tag/commit from the template_source repository "
+            "that was used to create this project."
+        }
     )
-    template_id = fields.String(description="The id of the template in the template repository.")
+    template_id = fields.String(metadata={"description": "The id of the template in the template repository."})
 
     project_template_version = fields.String(
-        allow_none=True, description="The version of the template last used in the user's project."
+        allow_none=True, metadata={"description": "The version of the template last used in the user's project."}
     )
     latest_template_version = fields.String(
-        allow_none=True, description="The current version of the template in the template repository."
+        allow_none=True, metadata={"description": "The current version of the template in the template repository."}
     )
 
 
@@ -317,23 +344,25 @@ class ProjectMigrationCheckResponse(Schema):
     """Response schema for project migration check."""
 
     project_supported = fields.Boolean(
-        description=(
-            "Determines whether this project is a Renku project that is supported by the version "
+        metadata={
+            "description": "Determines whether this project is a Renku project that is supported by the version "
             "running on this service (not made with a newer version)."
-        )
+        }
     )
-    core_renku_version = fields.String(description="Version of Renku running in this service.")
-    project_renku_version = fields.String(description="Version of Renku last used to change the project.")
+    core_renku_version = fields.String(metadata={"description": "Version of Renku running in this service."})
+    project_renku_version = fields.String(metadata={"description": "Version of Renku last used to change the project."})
 
     core_compatibility_status = fields.Nested(
         ProjectCompatibilityResponse,
-        description="Fields detailing the compatibility of the project with this core service version.",
+        metadata={"description": "Fields detailing the compatibility of the project with this core service version."},
     )
     dockerfile_renku_status = fields.Nested(
-        DockerfileStatusResponse, description="Fields detailing the status of the Dockerfile in the project."
+        DockerfileStatusResponse,
+        metadata={"description": "Fields detailing the status of the Dockerfile in the project."},
     )
     template_status = fields.Nested(
-        TemplateStatusResponse, description="Fields detailing the status of the project template used by this project."
+        TemplateStatusResponse,
+        metadata={"description": "Fields detailing the status of the project template used by this project."},
     )
 
 
