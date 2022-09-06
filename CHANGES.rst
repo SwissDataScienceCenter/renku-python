@@ -18,6 +18,21 @@
 Changes
 =======
 
+`1.7.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.7.0...v1.7.1>`__ (2022-09-06)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** fix bug with adding file to dataset that's already in its data directory
+   (`#3090 <https://github.com/SwissDataScienceCenter/renku-python/pull/3090>`__)
+
+Features
+~~~~~~~~
+
+-  **cli:** add existing data directory files to dataset on creation
+   (`#3090 <https://github.com/SwissDataScienceCenter/renku-python/pull/3090>`__)
+
 `1.7.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.6.0...v1.7.0>`__ (2022-09-05)
 -------------------------------------------------------------------------------------------------------
 
