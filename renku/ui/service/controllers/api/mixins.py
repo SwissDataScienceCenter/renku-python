@@ -328,8 +328,8 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
             if not (self.project_path / RENKU_HOME).exists():
                 raise UninitializedProject(self.project_path)
-
-            return self.renku_op()
+            with click_context(self.project_path, "renku_op"):
+                return self.renku_op()
 
 
 class RenkuOpSyncMixin(RenkuOperationMixin, metaclass=ABCMeta):

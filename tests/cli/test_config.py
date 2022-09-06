@@ -24,6 +24,7 @@ from time import sleep
 
 import pytest
 
+from renku.core.project.project_properties import project_properties
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, retry_failed
 
@@ -279,8 +280,8 @@ def test_config_commit(client, runner, data_repository, global_config_dir):
     """Test config changes only commits the renku config file."""
     commit_sha_before = client.repository.head.commit.hexsha
 
-    (client.path / "untracked").write_text("untracked")
-    (client.path / "staged").write_text("staged")
+    (project_properties.path / "untracked").write_text("untracked")
+    (project_properties.path / "staged").write_text("staged")
     client.repository.add("staged")
 
     result = runner.invoke(cli, ["config", "set", "key", "value"])

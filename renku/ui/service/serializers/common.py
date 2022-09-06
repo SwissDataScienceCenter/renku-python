@@ -30,13 +30,13 @@ class LocalRepositorySchema(Schema):
     """Schema for identifying a locally stored repository."""
 
     # In the long term, the id should be used only for internal operations
-    project_id = fields.String(description="Reference to access the project in the local cache.")
+    project_id = fields.String(metadata={"description": "Reference to access the project in the local cache."})
 
 
 class RemoteRepositoryBaseSchema(Schema):
     """Schema for tracking a remote repository."""
 
-    git_url = fields.String(description="Remote git repository url.")
+    git_url = fields.String(metadata={"description": "Remote git repository url."})
 
     @validates("git_url")
     def validate_git_url(self, value):
@@ -53,13 +53,13 @@ class RemoteRepositoryBaseSchema(Schema):
 class RemoteRepositorySchema(RemoteRepositoryBaseSchema):
     """Schema for tracking a remote repository and branch."""
 
-    branch = fields.String(description="Remote git branch.")
+    branch = fields.String(metadata={"description": "Remote git branch."})
 
 
 class AsyncSchema(Schema):
     """Schema for adding a commit at the end of the operation."""
 
-    is_delayed = fields.Boolean(description="Whether the job should be delayed or not.")
+    is_delayed = fields.Boolean(metadata={"description": "Whether the job should be delayed or not."})
 
 
 class MigrateSchema(Schema):
@@ -67,8 +67,8 @@ class MigrateSchema(Schema):
 
     migrate_project = fields.Boolean(
         default=False,
-        missing=False,
-        description="Whether the project should be migrated before the other operations take place.",
+        load_default=False,
+        metadata={"description": "Whether the project should be migrated before the other operations take place."},
     )
 
 
@@ -76,8 +76,8 @@ class ArchiveSchema(Schema):
     """Schema for unpacking archives."""
 
     unpack_archive = fields.Boolean(
-        missing=False,
-        description="Whether to automatically extract archive content.",
+        load_default=False,
+        metadata={"description": "Whether to automatically extract archive content."},
     )
 
 
@@ -86,7 +86,7 @@ class MandatoryUserSchema(Schema):
 
     user_id = fields.String(
         required=True,
-        description="Mandatory user id.",
+        metadata={"description": "Mandatory user id."},
     )
 
 
@@ -94,23 +94,23 @@ class CreationSchema(Schema):
     """Schema for creation date."""
 
     created_at = fields.DateTime(
-        missing=datetime.utcnow,
-        description="Creation date.",
+        load_default=datetime.utcnow,
+        metadata={"description": "Creation date."},
     )
 
 
 class FileDetailsSchema(ArchiveSchema, CreationSchema):
     """Schema for file details."""
 
-    file_id = fields.String(missing=lambda: uuid.uuid4().hex)
-    content_type = fields.String(missing="unknown")
+    file_id = fields.String(load_default=lambda: uuid.uuid4().hex)
+    content_type = fields.String(load_default="unknown")
     file_name = fields.String(required=True)
 
     # measured in bytes (comes from stat() - st_size)
     file_size = fields.Integer(required=True)
 
     relative_path = fields.String(required=True)
-    is_archive = fields.Boolean(missing=False)
+    is_archive = fields.Boolean(load_default=False)
     is_dir = fields.Boolean(required=True)
 
 

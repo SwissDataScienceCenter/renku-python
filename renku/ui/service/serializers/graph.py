@@ -31,8 +31,10 @@ class GraphExportRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySch
     """Request schema for dataset list view."""
 
     callback_url = fields.URL()
-    revision = fields.String(missing="HEAD", allow_none=True)
-    format = fields.String(missing="json-ld", validate=validate.OneOf(["json-ld", "nt", "rdf", "dot", "dot-landscape"]))
+    revision = fields.String(load_default="HEAD", allow_none=True)
+    format = fields.String(
+        load_default="json-ld", validate=validate.OneOf(["json-ld", "nt", "rdf", "dot", "dot-landscape"])
+    )
 
 
 class GraphExportResponse(Schema):
@@ -52,13 +54,13 @@ class GraphExportCallback(Schema):
 
     project_url = fields.String()
     commit_id = fields.String()
-    type = fields.String(default="RENKU_LOG")
+    type = fields.String(dump_default="RENKU_LOG")
 
 
 class GraphExportCallbackSuccess(GraphExportCallback):
     """Success callback serializer for graph build."""
 
-    payload = fields.String(default=None, missing=None)
+    payload = fields.String(dump_default=None, load_default=None)
 
 
 class GraphExportCallbackError(GraphExportCallback):

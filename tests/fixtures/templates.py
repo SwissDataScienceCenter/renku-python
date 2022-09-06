@@ -24,6 +24,7 @@ from typing import List, Optional, Tuple
 import pytest
 from packaging.version import Version
 
+from renku.core.project.project_properties import project_properties
 from renku.version import __version__ as renku_version
 
 
@@ -259,7 +260,7 @@ def client_with_template(client, rendered_template, client_database_injection_ma
             rendered_template=rendered_template, client=client, project=client.project, actions=actions
         )
 
-        client.template_files = [client.path / f for f in rendered_template.get_files()]
+        client.template_files = [project_properties.path / f for f in rendered_template.get_files()]
 
     client.repository.add(all=True)
     client.repository.commit("Set a dummy template")

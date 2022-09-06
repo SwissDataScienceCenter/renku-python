@@ -20,6 +20,7 @@
 import pytest
 
 from renku.core import errors
+from renku.core.project.project_properties import project_properties
 from renku.core.template.template import (
     FileAction,
     TemplateAction,
@@ -107,7 +108,7 @@ def test_template_update_source_failure(client_with_template, client_database_in
 )
 def test_copy_template_actions(client, rendered_template, action, content_type, client_database_injection_manager):
     """Test FileActions when copying a template."""
-    project_content = (client.path / "Dockerfile").read_text()
+    project_content = (project_properties.path / "Dockerfile").read_text()
     template_content = (rendered_template.path / "Dockerfile").read_text()
 
     # NOTE: Ignore all other files expect the Dockerfile
@@ -130,7 +131,7 @@ def test_copy_template_actions(client, rendered_template, action, content_type, 
     else:
         expected_content = project_content
 
-    assert expected_content == (client.path / "Dockerfile").read_text()
+    assert expected_content == (project_properties.path / "Dockerfile").read_text()
 
 
 def test_get_file_actions_for_initialize(client, rendered_template, client_database_injection_manager):
@@ -190,7 +191,7 @@ def test_update_with_locally_modified_file(
     client_with_template, rendered_template_with_update, client_database_injection_manager
 ):
     """Test a locally modified file that is remotely updated won't change."""
-    (client_with_template.path / "Dockerfile").write_text("Local modification")
+    (project_properties.path / "Dockerfile").write_text("Local modification")
 
     with client_database_injection_manager(client_with_template):
         actions = get_file_actions(
@@ -207,7 +208,7 @@ def test_update_with_locally_deleted_file(
     client_with_template, rendered_template_with_update, client_database_injection_manager
 ):
     """Test a locally deleted file that is remotely updated won't be re-created."""
-    (client_with_template.path / "Dockerfile").unlink()
+    (project_properties.path / "Dockerfile").unlink()
 
     with client_database_injection_manager(client_with_template):
         actions = get_file_actions(
@@ -226,9 +227,9 @@ def test_update_with_locally_changed_immutable_file(
 ):
     """Test a locally deleted file that is remotely updated won't be re-created."""
     if delete:
-        (client_with_template.path / "immutable.file").unlink()
+        (project_properties.path / "immutable.file").unlink()
     else:
-        (client_with_template.path / "immutable.file").write_text("Locally modified immutable files")
+        (project_properties.path / "immutable.file").write_text("Locally modified immutable files")
 
     with pytest.raises(
         errors.TemplateUpdateError, match="Can't update template as immutable template file .* has local changes."
