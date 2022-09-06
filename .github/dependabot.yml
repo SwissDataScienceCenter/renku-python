@@ -7,8 +7,8 @@ updates:
     commit-message:
       prefix: "build(deps): "
       include: "scope"
-    target-branch: "dependabot-updates"
-    open-pull-requests-limit: 1
+    target-branch: "develop"
+    open-pull-requests-limit: 0
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
