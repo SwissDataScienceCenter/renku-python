@@ -8,7 +8,7 @@ updates:
       prefix: "build(deps): "
       include: "scope"
     target-branch: "dependabot-updates"
-    open-pull-requests-limit: 1
+    open-pull-requests-limit: 0
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
