@@ -818,7 +818,7 @@ def add(name, urls, force, overwrite, create, destination, datadir, **kwargs):
         .with_communicator(communicator)
         .build()
         .execute(
-            urls=urls,
+            urls=list(urls),
             dataset_name=name,
             force=force,
             overwrite=overwrite,
