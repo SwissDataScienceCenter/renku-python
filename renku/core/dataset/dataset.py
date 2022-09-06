@@ -49,6 +49,7 @@ from renku.core.util.os import (
     delete_dataset_file,
     delete_path,
     get_absolute_path,
+    get_files,
     get_safe_relative_path,
     hash_file,
     is_path_empty,
@@ -180,6 +181,8 @@ def create_dataset(
     if storage:
         provider = ProviderFactory.get_create_provider(uri=storage)
         provider.on_create(dataset=dataset)
+    else:
+        add_datadir_files_to_dataset(client, dataset)
 
     if update_provenance:
         datasets_provenance.add_or_update(dataset)
@@ -794,11 +797,38 @@ def show_dataset(name: str, tag: Optional[str] = None):
     return DatasetDetailsJson().dump(dataset)
 
 
+def add_datadir_files_to_dataset(client: "LocalClient", dataset: Dataset) -> None:
+    """Add all files in a datasets data directory to the dataset.
+
+    Args:
+        client(LocalClient): The ``LocalClient``.
+        dataset(Dataset): The dataset to add data dir files to.
+    """
+    datadir = get_safe_relative_path(dataset.get_datadir(), client.path)
+
+    if datadir.exists():
+        # NOTE: Add existing files to dataset
+        dataset_files: List[DatasetFile] = []
+        files: List[Path] = []
+        for file in get_files(datadir):
+            files.append(file)
+            dataset_files.append(DatasetFile.from_path(client=client, path=file, source=file))
+
+        if not dataset_files:
+            return
+
+        if client.check_external_storage():
+            client.track_paths_in_storage(*files)
+        client.repository.add(*files)
+
+        dataset.add_or_update_files(dataset_files)
+
+
 def set_dataset_images(client: "LocalClient", dataset: Dataset, images: Optional[List[ImageRequestModel]]):
     """Set a dataset's images.
 
     Args:
-        client("LocalClient"): The ``LocalClient``.
+        client(LocalClient): The ``LocalClient``.
         dataset(Dataset): The dataset to set images on.
         images(List[ImageRequestModel]): The images to set.
 
@@ -1238,7 +1268,9 @@ def pull_external_data(
     """Pull/copy data for an external storage to a dataset's data directory or a specified location.
 
     Args:
-        name(str): Name of the dataset
+        client_dispatcher(IClientDispatcher): The client dispatcher.
+        storage_factory(IStorageFactory): The storage factory.
+        name(str): Name of the dataset.
         location(Optional[Path]): A directory to copy data to (Default value = None).
     """
     client = client_dispatcher.current_client

@@ -35,7 +35,7 @@ from renku.core.util import communication, requests
 from renku.core.util.dataset import check_url
 from renku.core.util.dispatcher import get_client, get_database
 from renku.core.util.git import get_git_user
-from renku.core.util.os import delete_dataset_file, get_relative_path
+from renku.core.util.os import delete_dataset_file, get_files, get_relative_path
 from renku.domain_model.dataset import Dataset, DatasetFile
 
 if TYPE_CHECKING:
@@ -82,6 +82,12 @@ def add_to_dataset(
             destination_path = _create_destination_directory(client, dataset, destination)
 
             client.check_external_storage()  # TODO: This is not required for external storages
+
+            datadir = cast(Path, client.path / dataset.get_datadir())
+            if create and datadir.exists():
+                # NOTE: Add datadir to paths to add missing files on create
+                for file in get_files(datadir):
+                    urls.append(str(file))
 
             files = _download_files(
                 client=client,

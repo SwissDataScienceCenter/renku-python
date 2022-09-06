@@ -27,7 +27,7 @@ from renku.core import errors
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
 from renku.core.util import communication
 from renku.core.util.dataset import check_url
-from renku.core.util.os import get_absolute_path, is_path_empty
+from renku.core.util.os import get_absolute_path, is_path_empty, is_subpath
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderParameter
@@ -166,6 +166,7 @@ class FilesystemProvider(ProviderApi):
 
         def get_metadata(src: Path) -> DatasetAddMetadata:
             is_tracked = client.repository.contains(src)
+            in_datadir = is_subpath(src, absolute_dataset_data_dir)
 
             relative_path = src.relative_to(source_root)
             dst = destination_root / relative_path
@@ -175,12 +176,14 @@ class FilesystemProvider(ProviderApi):
 
             if not is_tracked and not external and action == DatasetAddAction.SYMLINK:
                 # NOTE: we need to commit src if it is linked to and not external.
+                if client.check_external_storage():
+                    client.track_paths_in_storage(src)
                 client.repository.add(src)
-
+            source_url = os.path.relpath(src, client.path)
             return DatasetAddMetadata(
-                entity_path=dst.relative_to(client.path),
-                url=os.path.relpath(src, client.path),
-                action=action,
+                entity_path=Path(source_url) if in_datadir else dst.relative_to(client.path),
+                url=source_url,
+                action=DatasetAddAction.NONE if in_datadir else action,
                 source=src,
                 destination=dst,
             )
