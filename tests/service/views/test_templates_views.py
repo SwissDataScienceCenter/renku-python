@@ -24,6 +24,7 @@ from time import sleep
 
 import pytest
 
+from renku.core.project.project_properties import project_properties
 from renku.core.template.template import fetch_templates_source
 from renku.core.util.os import normalize_to_ascii
 from renku.domain_model.template import TEMPLATE_MANIFEST, TemplatesManifest
@@ -130,6 +131,8 @@ def test_create_project_from_template(svc_client_templates_creation, client_data
 
     svc_client, headers, payload, rm_remote = svc_client_templates_creation
 
+    payload["data_directory"] = "my-folder/"
+
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=headers)
 
     assert response
@@ -152,12 +155,14 @@ def test_create_project_from_template(svc_client_templates_creation, client_data
     assert reader.get_value("user", "email") == user_data["email"]
     assert reader.get_value("user", "name") == user_data["name"]
 
-    client = LocalClient(project_path)
-    with client_database_injection_manager(client):
-        project = client.project
+    with project_properties.with_path(project_path):
+        client = LocalClient()
+        with client_database_injection_manager(client):
+            project = client.project
 
     expected_id = f"/projects/{payload['project_namespace']}/{stripped_name}"
     assert expected_id == project.id
+    assert client.data_dir == "my-folder/"
 
     # NOTE: Assert backwards compatibility metadata.yml was created
     old_metadata_path = project_path / ".renku/metadata.yml"

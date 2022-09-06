@@ -19,6 +19,7 @@
 import os
 import shutil
 from datetime import datetime
+from typing import Optional
 
 import portalocker
 from walrus import BooleanField, DateTimeField, IntegerField, Model, TextField
@@ -59,7 +60,7 @@ class Project(Model):
         """Full path of cached project."""
         return CACHE_PROJECTS_PATH / self.user_id / self.project_id / self.owner / self.slug
 
-    def read_lock(self, timeout: int = None):
+    def read_lock(self, timeout: Optional[float] = None):
         """Shared read lock on the project."""
         timeout = timeout if timeout is not None else LOCK_TIMEOUT
         return portalocker.Lock(

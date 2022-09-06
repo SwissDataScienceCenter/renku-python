@@ -19,8 +19,8 @@
 from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
 from renku.core import errors
+from renku.core.constant import CONFIG_LOCAL_PATH
 from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.management.config import CONFIG_LOCAL_PATH
 from renku.domain_model.enums import ConfigFilter
 
 
@@ -61,7 +61,7 @@ def update_multiple_config():
         .command(_update_multiple_config)
         .with_database()
         .require_migration()
-        .with_commit(commit_if_empty=False, commit_only=CONFIG_LOCAL_PATH)
+        .with_commit(commit_if_empty=False, commit_only=[CONFIG_LOCAL_PATH])
     )
 
 
@@ -100,7 +100,7 @@ def update_config():
         Command()
         .command(_update_config)
         .require_migration()
-        .with_commit(commit_if_empty=False, commit_only=CONFIG_LOCAL_PATH, skip_staging=True)
+        .with_commit(commit_if_empty=False, commit_only=[CONFIG_LOCAL_PATH], skip_staging=True)
         .with_database()
     )
 

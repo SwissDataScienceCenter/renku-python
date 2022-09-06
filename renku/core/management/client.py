@@ -20,10 +20,10 @@
 import attr
 
 from renku.core.management.config import ConfigManagerMixin
-from renku.core.management.repository import PathMixin, RepositoryApiMixin
+from renku.core.management.repository import RepositoryApiMixin
 from renku.core.management.storage import StorageApiMixin
 
 
 @attr.s
-class LocalClient(PathMixin, StorageApiMixin, RepositoryApiMixin, ConfigManagerMixin):
+class LocalClient(StorageApiMixin, RepositoryApiMixin, ConfigManagerMixin):
     """A low-level client for communicating with a local Renku repository."""

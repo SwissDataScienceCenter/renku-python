@@ -17,11 +17,27 @@
 # limitations under the License.
 """Rollback project to a previous point in time.
 
-If you want to undo actions taken using Renku in a project, you can use the
-``renku rollback`` command to do so.
+Description
+~~~~~~~~~~~
+
+Undo actions taken using Renku in a project.
 This command shows a list of all actions done by renku and lets you pick
 one that you want to return to, discarding any changes done in the repo (by
-Renku or manually) after that point. Once you pick a checkpoint to return to,
+Renku or manually) after that point.
+
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. rst-class:: cli-reference-commands
+
+.. click:: renku.ui.cli.rollback:rollback
+   :prog: renku rollback
+   :nested: full
+
+Examples
+~~~~~~~~
+
+Once you pick a checkpoint to return to,
 the commands shows all files and Renku objects that would be affected by the
 rollback and how they would be affected. If you confirm, the project will be
 reset to that point in time, with anything done after that point being

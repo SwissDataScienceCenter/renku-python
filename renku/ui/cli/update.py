@@ -17,12 +17,22 @@
 # limitations under the License.
 r"""Update outdated files created by the "run" command.
 
-.. image:: ../_static/asciicasts/update.delay.gif
-   :width: 850
-   :alt: Update outdated files
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. rst-class:: cli-reference-commands
+
+.. click:: renku.ui.cli.update:update
+   :prog: renku update
+   :nested: full
 
 Recreating outdated files
 ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. image:: ../../_static/asciicasts/update.delay.gif
+   :width: 850
+   :alt: Update outdated files
+
 
 The information about dependencies for each file in a Renku project is stored
 in various metadata.

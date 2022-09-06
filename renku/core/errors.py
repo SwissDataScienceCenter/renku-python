@@ -504,8 +504,8 @@ class MigrationError(RenkuException):
     """Raised when something went wrong during migrations."""
 
 
-class ImportError(RenkuException):
-    """Raised when a dataset cannot be imported."""
+class DatasetImportError(DatasetException):
+    """Raised when a dataset cannot be imported/pulled from a remote source."""
 
 
 class CommandNotFinalizedError(RenkuException):

@@ -23,7 +23,7 @@ import re
 import urllib
 from pathlib import Path
 from string import Template
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from urllib import parse as urlparse
 
 from renku.command.command_builder import inject
@@ -37,12 +37,10 @@ from renku.core.dataset.providers.dataverse_metadata_templates import (
 from renku.core.dataset.providers.doi import DOIProvider
 from renku.core.dataset.providers.repository import RepositoryImporter, make_request
 from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.plugin import hookimpl
 from renku.core.util import communication
 from renku.core.util.doi import extract_doi, get_doi_url, is_doi
 from renku.core.util.file_size import bytes_to_unit
 from renku.core.util.urls import remove_credentials
-from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderDataset, ProviderParameter
@@ -74,7 +72,7 @@ DATAVERSE_SUBJECTS = [
 ]
 
 
-class DataverseProvider(ProviderApi, IDatasetProviderPlugin):
+class DataverseProvider(ProviderApi):
     """Dataverse API provider."""
 
     priority = ProviderPriority.HIGH
@@ -183,12 +181,6 @@ class DataverseProvider(ProviderApi, IDatasetProviderPlugin):
 
         set_export_parameters()
         return DataverseExporter(dataset=dataset, server_url=self._server_url, dataverse_name=self._dataverse_name)
-
-    @classmethod
-    @hookimpl
-    def dataset_provider(cls) -> "Type[DataverseProvider]":
-        """The definition of the provider."""
-        return cls
 
 
 class DataverseImporter(RepositoryImporter):

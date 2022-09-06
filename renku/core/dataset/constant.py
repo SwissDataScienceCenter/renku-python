@@ -21,6 +21,7 @@ from pathlib import Path
 
 from renku.core.constant import RENKU_HOME
 from renku.core.management.repository import RepositoryApiMixin
+from renku.core.project.project_properties import project_properties
 
 POINTERS = "pointers"
 """Directory for storing external pointer files."""
@@ -34,12 +35,12 @@ REFS = "refs"
 
 def renku_dataset_images_path(client):
     """Return a ``Path`` instance of Renku dataset metadata folder."""
-    return client.path / client.renku_home / DATASET_IMAGES
+    return project_properties.path / client.renku_home / DATASET_IMAGES
 
 
 def renku_pointers_path(client):
     """Return a ``Path`` instance of Renku pointer files folder."""
-    path = client.path / client.renku_home / POINTERS
+    path = project_properties.path / client.renku_home / POINTERS
     path.mkdir(exist_ok=True)
     return path
 
@@ -50,4 +51,5 @@ DATASET_METADATA_PATHS = [
     Path(RENKU_HOME) / POINTERS,
     Path(RENKU_HOME) / REFS,
     ".gitattributes",
+    ".gitignore",
 ]

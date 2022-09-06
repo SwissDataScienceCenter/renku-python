@@ -21,15 +21,14 @@ import os
 import urllib
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Type
+from typing import TYPE_CHECKING, List, Optional
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
-from renku.core.plugin import hookimpl
+from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.dataset import check_url
-from renku.core.util.os import get_absolute_path, is_path_empty
-from renku.domain_model.dataset_provider import IDatasetProviderPlugin
+from renku.core.util.os import get_absolute_path, is_path_empty, is_subpath
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderParameter
@@ -37,7 +36,7 @@ if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset, DatasetTag
 
 
-class FilesystemProvider(ProviderApi, IDatasetProviderPlugin):
+class FilesystemProvider(ProviderApi):
     """Local filesystem provider."""
 
     priority = ProviderPriority.LOW
@@ -142,7 +141,7 @@ class FilesystemProvider(ProviderApi, IDatasetProviderPlugin):
         path = u.path
 
         action = DatasetAddAction.SYMLINK if external else default_action
-        absolute_dataset_data_dir = (client.path / dataset.get_datadir()).resolve()
+        absolute_dataset_data_dir = (project_properties.path / dataset.get_datadir()).resolve()
         source_root = Path(get_absolute_path(path))
         warnings: List[str] = []
 
@@ -168,21 +167,24 @@ class FilesystemProvider(ProviderApi, IDatasetProviderPlugin):
 
         def get_metadata(src: Path) -> DatasetAddMetadata:
             is_tracked = client.repository.contains(src)
+            in_datadir = is_subpath(src, absolute_dataset_data_dir)
 
             relative_path = src.relative_to(source_root)
             dst = destination_root / relative_path
 
             if is_tracked and external:
-                warnings.append(str(src.relative_to(client.path)))
+                warnings.append(str(src.relative_to(project_properties.path)))
 
             if not is_tracked and not external and action == DatasetAddAction.SYMLINK:
                 # NOTE: we need to commit src if it is linked to and not external.
+                if client.check_external_storage():
+                    client.track_paths_in_storage(src)
                 client.repository.add(src)
-
+            source_url = os.path.relpath(src, project_properties.path)
             return DatasetAddMetadata(
-                entity_path=dst.relative_to(client.path),
-                url=os.path.relpath(src, client.path),
-                action=action,
+                entity_path=Path(source_url) if in_datadir else dst.relative_to(project_properties.path),
+                url=os.path.relpath(src, project_properties.path),
+                action=DatasetAddAction.NONE if in_datadir else action,
                 source=src,
                 destination=dst,
             )
@@ -229,12 +231,6 @@ class FilesystemProvider(ProviderApi, IDatasetProviderPlugin):
         """Get import manager."""
         raise NotImplementedError
 
-    @classmethod
-    @hookimpl
-    def dataset_provider(cls) -> "Type[FilesystemProvider]":
-        """The definition of the provider."""
-        return cls
-
 
 class LocalExporter(ExporterApi):
     """Local export manager."""
@@ -263,10 +259,10 @@ class LocalExporter(ExporterApi):
         from renku.core.util.yaml import write_yaml
 
         if self._path:
-            dst_root = client.path / self._path
+            dst_root = project_properties.path / self._path
         else:
             dataset_dir = f"{self._dataset.name}-{self._tag.name}" if self._tag else self._dataset.name
-            dst_root = client.path / client.data_dir / dataset_dir
+            dst_root = project_properties.path / client.data_dir / dataset_dir
 
         if dst_root.exists() and not dst_root.is_dir():
             raise errors.ParameterError(f"Destination is not a directory: '{dst_root}'")

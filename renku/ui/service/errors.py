@@ -354,7 +354,7 @@ class UserNewerRenkuProjectError(ServiceError):
 
     def __init__(self, exception=None, minimum_version=ERROR_NOT_AVAILABLE, current_version=ERROR_NOT_AVAILABLE):
         super().__init__(
-            devMessage=self.devMessage.format(minimum_version=minimum_version, current_version=current_version),
+            userMessage=self.userMessage.format(minimum_version=minimum_version, current_version=current_version),
             exception=exception,
         )
 

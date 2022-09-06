@@ -81,6 +81,13 @@ jobs:
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: ./run-tests.sh -s
+      - name: Upload poetry lock file
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: poetry-lock
+          path: poetry.lock
+          retention-days: 5
 
   docs-linux:
     runs-on: ubuntu-latest
@@ -172,7 +179,7 @@ jobs:
       - name: Set up Python 3.7
         uses: actions/setup-python@v1
         with:
-          python-version: 3.7
+          python-version: 3.9
       - name: Install xetex
         run: |
           sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu jammy main restricted multiverse universe"
@@ -724,7 +731,7 @@ jobs:
       - name: Install system packages
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y libyaml-0-2 libyaml-dev rclone
+          sudo apt-get install -y libyaml-0-2 libyaml-dev rclone fuse
       - uses: actions/cache@master
         id: dependency-cache
         with:
@@ -815,7 +822,7 @@ jobs:
       - name: Install system packages
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y libyaml-0-2 libyaml-dev rclone
+          sudo apt-get install -y libyaml-0-2 libyaml-dev rclone fuse
       - uses: actions/cache@master
         id: dependency-cache
         with:
@@ -914,7 +921,7 @@ jobs:
           python -m pip install .[all]
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
-          brew install rclone
+          brew install rclone osxfuse
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false

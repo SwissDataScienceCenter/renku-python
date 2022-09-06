@@ -19,6 +19,7 @@
 
 import os
 
+from renku.core.project.project_properties import project_properties
 from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
@@ -26,7 +27,7 @@ from tests.utils import format_result_exception, write_and_commit_file
 
 def test_save_without_remote(runner, project, client, tmpdir_factory):
     """Test saving local changes."""
-    with (client.path / "tracked").open("w") as fp:
+    with (project_properties.path / "tracked").open("w") as fp:
         fp.write("tracked file")
 
     result = runner.invoke(cli, ["save", "-m", "save changes", "tracked"], catch_exceptions=False)
@@ -47,7 +48,7 @@ def test_save_without_remote(runner, project, client, tmpdir_factory):
 
 def test_save_with_remote(runner, project, client_with_remote):
     """Test saving local changes."""
-    with (client_with_remote.path / "tracked").open("w") as fp:
+    with (project_properties.path / "tracked").open("w") as fp:
         fp.write("tracked file")
 
     result = runner.invoke(cli, ["save", "-m", "save changes", "tracked"], catch_exceptions=False)
@@ -59,8 +60,9 @@ def test_save_with_remote(runner, project, client_with_remote):
 
 def test_save_with_merge_conflict(runner, project, client_with_remote):
     """Test saving local changes."""
+    branch = client_with_remote.repository.active_branch.name
     client = client_with_remote
-    with (client.path / "tracked").open("w") as fp:
+    with (project_properties.path / "tracked").open("w") as fp:
         fp.write("tracked file")
 
     result = runner.invoke(cli, ["save", "-m", "save changes", "tracked"], catch_exceptions=False)
@@ -69,12 +71,12 @@ def test_save_with_merge_conflict(runner, project, client_with_remote):
     assert "tracked" in result.output
     assert "save changes" in client.repository.head.commit.message
 
-    with (client.path / "tracked").open("w") as fp:
+    with (project_properties.path / "tracked").open("w") as fp:
         fp.write("local changes")
-    client.repository.add(client.path / "tracked")
+    client.repository.add(project_properties.path / "tracked")
     client.repository.commit("amended commit", amend=True)
 
-    with (client.path / "tracked").open("w") as fp:
+    with (project_properties.path / "tracked").open("w") as fp:
         fp.write("new version")
 
     result = runner.invoke(cli, ["save", "-m", "save changes", "tracked"], input="n", catch_exceptions=False)
@@ -82,6 +84,7 @@ def test_save_with_merge_conflict(runner, project, client_with_remote):
     assert 0 == result.exit_code, format_result_exception(result)
     assert "There were conflicts when updating the local data" in result.output
     assert "Successfully saved to remote branch" in result.output
+    assert branch in result.output
     assert "save changes" in client.repository.head.commit.message
 
 
@@ -89,12 +92,12 @@ def test_save_with_staged(runner, project, client_with_remote):
     """Test saving local changes."""
     client = client_with_remote
 
-    write_and_commit_file(client.repository, client.path / "deleted", "deleted file")
-    os.remove(client.path / "deleted")
+    write_and_commit_file(client.repository, project_properties.path / "deleted", "deleted file")
+    os.remove(project_properties.path / "deleted")
 
-    (client.path / "tracked").write_text("tracked file")
+    (project_properties.path / "tracked").write_text("tracked file")
 
-    (client.path / "untracked").write_text("untracked file")
+    (project_properties.path / "untracked").write_text("untracked file")
 
     client.repository.add("tracked", "deleted")
 

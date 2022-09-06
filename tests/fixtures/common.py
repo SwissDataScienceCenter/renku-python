@@ -76,8 +76,18 @@ def data_repository(directory_tree):
 
 @pytest.fixture
 def no_lfs_size_limit(client):
-    """Configure environment track all files in LFS independent of size."""
+    """Configure environment to track all files in LFS independent of size."""
     client.set_value("renku", "lfs_threshold", "0b")
+    client.repository.add(".renku/renku.ini")
+    client.repository.commit("update renku.ini")
+
+    yield client
+
+
+@pytest.fixture
+def no_datadir_commit_warning(client):
+    """Configure pre-commit hook to ignore files added to a datasets data directory."""
+    client.set_value("renku", "check_datadir_files", "false")
     client.repository.add(".renku/renku.ini")
     client.repository.commit("update renku.ini")
 

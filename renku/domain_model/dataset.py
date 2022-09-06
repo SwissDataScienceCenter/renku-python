@@ -29,6 +29,7 @@ from uuid import uuid4
 import marshmallow
 
 from renku.core import errors
+from renku.core.project.project_properties import project_properties
 from renku.core.util.datetime8601 import fix_datetime, local_now, parse_date
 from renku.core.util.dispatcher import get_client
 from renku.core.util.git import get_entity_from_revision
@@ -264,9 +265,17 @@ class DatasetFile(Slots):
         cls, client, path: Union[str, Path], source=None, based_on: Optional[RemoteEntity] = None
     ) -> "DatasetFile":
         """Return an instance from a path."""
-        entity = get_entity_from_revision(repository=client.repository, path=path, bypass_cache=True)
+        from renku.domain_model.entity import NON_EXISTING_ENTITY_CHECKSUM, Entity
 
-        is_external = is_external_file(path=path, client_path=client.path)
+        # NOTE: Data is added from an external storage and isn't pulled yet
+        if based_on and not (project_properties.path / path).exists():
+            checksum = based_on.checksum if based_on.checksum else NON_EXISTING_ENTITY_CHECKSUM
+            id = Entity.generate_id(checksum=checksum, path=path)
+            entity = Entity(id=id, checksum=checksum, path=path)
+        else:
+            entity = get_entity_from_revision(repository=client.repository, path=path, bypass_cache=True)
+
+        is_external = is_external_file(path=path, client_path=project_properties.path)
         return cls(entity=entity, is_external=is_external, source=source, based_on=based_on)
 
     @staticmethod
@@ -326,6 +335,7 @@ class Dataset(Persistent):
         *,
         annotations: Optional[List["Annotation"]] = None,
         creators: Optional[List["Person"]] = None,
+        datadir: Optional[Path] = None,
         dataset_files: Optional[List[DatasetFile]] = None,
         date_created: Optional[datetime] = None,
         date_published: Optional[datetime] = None,
@@ -345,7 +355,6 @@ class Dataset(Persistent):
         storage: Optional[str] = None,
         title: Optional[str] = None,
         version: Optional[str] = None,
-        datadir: Optional[Path] = None,
     ):
         if not name:
             assert title, "Either 'name' or 'title' must be set."
@@ -650,7 +659,7 @@ class DatasetDetailsJson(marshmallow.Schema):
 
     annotations = marshmallow.fields.List(marshmallow.fields.Nested(AnnotationJson))
 
-    datadir = marshmallow.fields.Method("get_datadir")
+    data_directory = marshmallow.fields.Method("get_datadir")
 
     def get_datadir(self, obj):
         """Get data directory."""
@@ -691,12 +700,14 @@ class ImageObjectRequestJson(marshmallow.Schema):
     file_id = marshmallow.fields.String()
     content_url = marshmallow.fields.String()
     position = marshmallow.fields.Integer()
-    mirror_locally = marshmallow.fields.Bool(default=False)
+    mirror_locally = marshmallow.fields.Bool(dump_default=False)
 
 
 def get_file_path_in_dataset(client, dataset: Dataset, dataset_file: DatasetFile) -> Path:
     """Return path of a file relative to dataset's data dir."""
     try:
-        return (client.path / dataset_file.entity.path).relative_to(client.path / dataset.get_datadir(client))
+        return (project_properties.path / dataset_file.entity.path).relative_to(
+            project_properties.path / dataset.get_datadir(client)
+        )
     except ValueError:  # NOTE: File is not in the dataset's data dir
         return Path(dataset_file.entity.path)

@@ -49,8 +49,8 @@ class Dataset(Base):
 class DatasetFileSchemaV7(DatasetFileSchemaV3):
     """DatasetFile schema."""
 
-    based_on = fields.Nested(schema.isBasedOn, "DatasetFileSchemaV7", missing=None)
-    source = fields.String(renku.source, missing=None)
+    based_on = fields.Nested(schema.isBasedOn, "DatasetFileSchemaV7", load_default=None)
+    source = fields.String(renku.source, load_default=None)
 
 
 class DatasetSchemaV7(DatasetSchemaV3):
@@ -63,7 +63,7 @@ class DatasetSchemaV7(DatasetSchemaV3):
         model = Dataset
         unknown = EXCLUDE
 
-    derived_from = fields.Nested(prov.wasDerivedFrom, UrlSchemaV3, missing=None)
+    derived_from = fields.Nested(prov.wasDerivedFrom, UrlSchemaV3, load_default=None)
     files = fields.Nested(schema.hasPart, DatasetFileSchemaV7, many=True)
 
 

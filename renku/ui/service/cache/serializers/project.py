@@ -28,21 +28,21 @@ from renku.ui.service.serializers.common import CreationSchema, MandatoryUserSch
 class ProjectSchema(CreationSchema, MandatoryUserSchema):
     """Context schema for project clone."""
 
-    last_fetched_at = fields.DateTime(missing=datetime.utcnow)
+    last_fetched_at = fields.DateTime(load_default=datetime.utcnow)
 
-    project_id = fields.String(missing=lambda: uuid.uuid4().hex)
+    project_id = fields.String(load_default=lambda: uuid.uuid4().hex)
 
     clone_depth = fields.Integer()
     git_url = fields.String()
 
     name = fields.String(required=True)
     slug = fields.String(required=True)
-    description = fields.String(missing=None)
+    description = fields.String(load_default=None)
     fullname = fields.String(required=True)
     email = fields.String(required=True)
     owner = fields.String(required=True)
     token = fields.String(required=True)
-    initialized = fields.Boolean(default=False)
+    initialized = fields.Boolean(dump_default=False)
 
     @post_load
     def make_project(self, data, **options):

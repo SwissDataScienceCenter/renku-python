@@ -17,83 +17,17 @@
 # limitations under the License.
 """Project management."""
 
-from typing import Dict, List, Optional, Union, cast
-
-from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
-from renku.command.view_model.project import ProjectViewModel
-from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.management.repository import DATABASE_METADATA_PATH
-from renku.core.util.metadata import construct_creator
-from renku.core.util.util import NO_VALUE, NoValueType
-from renku.domain_model.provenance.agent import Person
-
-
-@inject.autoparams()
-def _edit_project(
-    description: Optional[Union[str, NoValueType]],
-    creator: Union[Dict, str, NoValueType],
-    keywords: Optional[Union[List[str], NoValueType]],
-    custom_metadata: Optional[Union[Dict, NoValueType]],
-    project_gateway: IProjectGateway,
-):
-    """Edit dataset metadata.
-
-    Args:
-        description(Union[Optional[str], NoValueType]): New description.
-        creator(Union[Dict, str, NoValueType]): New creators.
-        keywords(Union[Optional[List[str]]): New keywords.
-        custom_metadata(Union[Optional[Dict]): Custom JSON-LD metadata.
-        project_gateway(IProjectGateway): Injected project gateway.
-
-    Returns:
-        Tuple of fields that were updated and dictionary of warnings.
-    """
-    possible_updates = {
-        "creator": creator,
-        "description": description,
-        "keywords": keywords,
-        "custom_metadata": custom_metadata,
-    }
-
-    no_email_warnings: Optional[Union[Dict, str]] = None
-    parsed_creator: Optional[Union[NoValueType, Person]] = NO_VALUE
-
-    if creator is not NO_VALUE:
-        parsed_creator, no_email_warnings = construct_creator(cast(Union[Dict, str], creator), ignore_email=True)
-
-    updated = {k: v for k, v in possible_updates.items() if v is not NO_VALUE}
-
-    if updated:
-        project = project_gateway.get_project()
-        project.update_metadata(
-            creator=parsed_creator, description=description, keywords=keywords, custom_metadata=custom_metadata
-        )
-        project_gateway.update_project(project)
-
-    return updated, no_email_warnings
+from renku.core.project.project import edit_project, show_project
 
 
 def edit_project_command():
     """Command for editing project metadata."""
-    command = Command().command(_edit_project).lock_project().with_database(write=True)
+    command = Command().command(edit_project).lock_project().with_database(write=True)
     return command.require_migration().with_commit(commit_only=DATABASE_METADATA_PATH)
-
-
-@inject.autoparams()
-def _show_project(client_dispatcher: IClientDispatcher) -> ProjectViewModel:
-    """Show project metadata.
-
-    Args:
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
-
-    Returns:
-        Project view model.
-    """
-    return ProjectViewModel.from_project(client_dispatcher.current_client.project)
 
 
 def show_project_command():
     """Command for showing project metadata."""
-    return Command().command(_show_project).lock_project().with_database().require_migration()
+    return Command().command(show_project).lock_project().with_database().require_migration()

@@ -21,6 +21,7 @@ from pathlib import Path
 
 import yaml
 
+from renku.core.project.project_properties import project_properties
 from renku.core.workflow.plan_factory import (
     get_indirect_inputs_path,
     get_indirect_outputs_path,
@@ -86,8 +87,8 @@ def test_indirect_inputs_outputs(client):
     assert Path(path_1) == input_1.path
     assert Path(path_2) == output_2.path
 
-    input_content = get_indirect_inputs_path(client.path).read_text()
-    output_content = get_indirect_outputs_path(client.path).read_text()
+    input_content = get_indirect_inputs_path(project_properties.path).read_text()
+    output_content = get_indirect_outputs_path(project_properties.path).read_text()
 
     assert path_1 == list(yaml.safe_load(input_content).values())[0]
     assert input_1.name == list(yaml.safe_load(input_content).keys())[0]
@@ -100,7 +101,7 @@ def test_open_inputs(client):
     with open(Input("input-1", "input.txt"), "w") as f:
         f.write("some data")
 
-    assert "some data" == (client.path / "input.txt").read_text()
+    assert "some data" == (project_properties.path / "input.txt").read_text()
 
 
 def test_open_outputs(client):
@@ -108,7 +109,7 @@ def test_open_outputs(client):
     with open(Output("output-1", "output.txt"), "w") as f:
         f.write("some data")
 
-    assert "some data" == (client.path / "output.txt").read_text()
+    assert "some data" == (project_properties.path / "output.txt").read_text()
 
 
 def test_parameters(client):
@@ -122,7 +123,7 @@ def test_parameters(client):
 
     assert (42, "42", 42.42) == (p1.value, p2.value, p3.value)
 
-    data = read_indirect_parameters(client.path)
+    data = read_indirect_parameters(project_properties.path)
 
     assert {"parameter 1", "param-2", "parameter_3 "} == set(data.keys())
     assert {42, "42", 42.42} == set(data.values())

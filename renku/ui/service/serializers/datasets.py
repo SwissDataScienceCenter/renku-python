@@ -36,13 +36,13 @@ from renku.ui.service.serializers.rpc import JsonRPCResponse
 class DatasetRefSchema(Schema):
     """Schema for specifying a reference."""
 
-    ref = fields.String(description="Target reference.")
+    ref = fields.String(metadata={"description": "Target reference."})
 
 
 class DatasetNameSchema(Schema):
     """Schema for dataset name."""
 
-    name = fields.String(description="Mandatory dataset name.", required=True)
+    name = fields.String(metadata={"description": "Mandatory dataset name."}, required=True)
 
 
 class DatasetDetailsRequest(DatasetDetails):
@@ -57,6 +57,12 @@ class DatasetCreateRequest(
     AsyncSchema, DatasetDetailsRequest, DatasetRefSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
 ):
     """Request schema for a dataset create view."""
+
+    # NOTE: Override field in DatasetDetails
+    data_directory = fields.String(  # type: ignore
+        load_default=None,
+        metadata={"description": "Base dataset data directory. '<project.data_directory>/<dataset.name>' by default"},
+    )
 
 
 class DatasetCreateResponse(DatasetNameSchema, RenkuSyncSchema):
@@ -101,8 +107,8 @@ class DatasetAddRequest(
 
     files = fields.List(fields.Nested(DatasetAddFile), required=True)
 
-    create_dataset = fields.Boolean(missing=False)
-    force = fields.Boolean(missing=False)
+    create_dataset = fields.Boolean(load_default=False)
+    force = fields.Boolean(load_default=False)
 
     client_extras = fields.String()
 
@@ -179,9 +185,13 @@ class DatasetImportRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositoryS
     """Dataset import request."""
 
     dataset_uri = fields.String(required=True)
-    name = fields.String(description="Optional dataset name.")
+    name = fields.String(metadata={"description": "Optional dataset name."})
     extract = fields.Boolean()
-    tag = fields.String(description="Dataset version to import.")
+    tag = fields.String(metadata={"description": "Dataset version to import."})
+    data_directory = fields.String(
+        load_default=None,
+        metadata={"description": "Base dataset data directory. '<project.data_directory>/<dataset.name>' by default"},
+    )
 
 
 class DatasetImportResponseRPC(JsonRPCResponse):
@@ -201,12 +211,14 @@ class DatasetEditRequest(
 ):
     """Dataset edit metadata request."""
 
-    title = fields.String(description="New title of the dataset")
-    description = fields.String(description="New description of the dataset")
-    creators = fields.List(fields.Nested(DatasetCreators), description="New creators of the dataset")
-    keywords = fields.List(fields.String(), allow_none=True, description="New keywords for the dataset")
-    images = fields.List(fields.Nested(ImageObjectRequest), allow_none=True, description="New dataset images")
-    custom_metadata = fields.Dict(allow_none=True, description="New custom metadata for the dataset")
+    title = fields.String(metadata={"description": "New title of the dataset"})
+    description = fields.String(metadata={"description": "New description of the dataset"})
+    creators = fields.List(fields.Nested(DatasetCreators), metadata={"description": "New creators of the dataset"})
+    keywords = fields.List(fields.String(), allow_none=True, metadata={"description": "New keywords for the dataset"})
+    images = fields.List(
+        fields.Nested(ImageObjectRequest), allow_none=True, metadata={"description": "New dataset images"}
+    )
+    custom_metadata = fields.Dict(allow_none=True, metadata={"description": "New custom metadata for the dataset"})
 
 
 class DatasetEditResponse(RenkuSyncSchema):

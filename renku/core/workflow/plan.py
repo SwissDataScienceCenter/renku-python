@@ -32,6 +32,7 @@ from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.interface.project_gateway import IProjectGateway
+from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.os import are_paths_related, get_relative_paths, safe_read_yaml
@@ -331,9 +332,8 @@ def compose_workflow(
 
             child_workflows.append(child_workflow)
     else:
-        client = client_dispatcher.current_client
         sources = sources or []
-        sources = get_relative_paths(base=client.path, paths=sources)
+        sources = get_relative_paths(base=project_properties.path, paths=sources)
 
         if not sinks:
             usages = activity_gateway.get_all_usage_paths()
@@ -341,7 +341,7 @@ def compose_workflow(
 
             sinks = [g for g in generations if all(not are_paths_related(g, u) for u in usages)]
 
-        sinks = get_relative_paths(base=client.path, paths=sinks)
+        sinks = get_relative_paths(base=project_properties.path, paths=sinks)
 
         activities = list(
             get_activities_until_paths(
@@ -434,7 +434,6 @@ def compose_workflow(
 @inject.autoparams()
 def export_workflow(
     name_or_id,
-    client_dispatcher: IClientDispatcher,
     plan_gateway: IPlanGateway,
     format: str,
     output: Optional[Union[str, Path]],
@@ -452,7 +451,6 @@ def export_workflow(
     Returns:
         The exported workflow as string.
     """
-    client = client_dispatcher.current_client
 
     workflow = plan_gateway.get_by_name_or_id(name_or_id)
 
@@ -478,19 +476,17 @@ def export_workflow(
     from renku.core.plugin.workflow import workflow_converter
 
     converter = workflow_converter(format)
-    return converter(workflow=workflow, basedir=client.path, output=output_path, output_format=format)
+    return converter(workflow=workflow, basedir=project_properties.path, output=output_path, output_format=format)
 
 
-@inject.autoparams()
-def _lookup_paths_in_paths(client_dispatcher: IClientDispatcher, lookup_paths: List[str], target_paths: List[str]):
+def _lookup_paths_in_paths(lookup_paths: List[str], target_paths: List[str]):
     """Return all lookup_paths that are in or under target_paths."""
-    client = client_dispatcher.current_client
 
     dirs = []
     files = set()
 
     for p in lookup_paths:
-        path = Path(get_relative_paths(client.path, [p])[0])
+        path = Path(get_relative_paths(base=project_properties.path, paths=[p])[0])
         if path.is_dir():
             dirs.append(path)
         else:
@@ -524,8 +520,8 @@ def visualize_graph(
     sources: List[str],
     targets: List[str],
     show_files: bool,
-    activity_gateway: IActivityGateway,
     client_dispatcher: IClientDispatcher,
+    activity_gateway: IActivityGateway,
     revision: Optional[str] = None,
 ):
     """Visualize an activity graph.
@@ -534,8 +530,8 @@ def visualize_graph(
         sources(List[str]): Input paths to start the visualized graph at.
         targets(List[str]): Output paths to end the visualized graph at.
         show_files(bool): Whether or not to show file nodes.
+        client_dispatcher(IClientDispatcher): The client dispatcher.
         activity_gateway(IActivityGateway): The injected activity gateway.
-        client_dispatcher(IClientDispatcher): The injected client dispatcher.
         revision(Optional[str], optional): Revision or revision range to show
             the graph for  (Default value = None)
 
@@ -544,10 +540,8 @@ def visualize_graph(
     """
     from renku.core.workflow.activity import create_activity_graph, get_activities_until_paths
 
-    client = client_dispatcher.current_client
-
     sources = sources or []
-    sources = get_relative_paths(base=client.path, paths=[Path.cwd() / p for p in sources])
+    sources = get_relative_paths(base=project_properties.path, paths=[Path.cwd() / p for p in sources])
 
     if not targets:
         usages = activity_gateway.get_all_usage_paths()
@@ -555,7 +549,7 @@ def visualize_graph(
 
         targets = [g for g in generations if all(not are_paths_related(g, u) for u in usages)]
     else:
-        targets = get_relative_paths(base=client.path, paths=[Path.cwd() / p for p in targets])
+        targets = get_relative_paths(base=project_properties.path, paths=[Path.cwd() / p for p in targets])
 
     activities = get_activities_until_paths(
         paths=targets,
