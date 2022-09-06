@@ -30,6 +30,7 @@ from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.plugin.provider import execute
+from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.os import safe_read_yaml
@@ -76,14 +77,14 @@ def execute_workflow_graph(
         if not Path(i).exists():
             raise errors.ParameterError(f"Input '{i}' for the workflow does not exists!")
 
-    delete_indirect_files_list(client.path)
+    delete_indirect_files_list(project_properties.path)
 
     if config:
         config = safe_read_yaml(config)
 
     started_at_time = local_now()
 
-    execute(dag=dag, basedir=client.path, provider=provider, config=config)
+    execute(dag=dag, basedir=project_properties.path, provider=provider, config=config)
 
     ended_at_time = local_now()
 

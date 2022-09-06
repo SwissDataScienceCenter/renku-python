@@ -35,6 +35,7 @@ from renku.core.constant import RENKU_HOME, RENKU_TMP
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.plugin.pluginmanager import get_plugin_manager
+from renku.core.project.project_properties import project_properties
 from renku.core.util.git import is_path_safe
 from renku.core.util.metadata import is_external_file
 from renku.core.util.os import get_absolute_path, get_relative_path, is_subpath
@@ -578,7 +579,9 @@ class PlanFactory:
 
         pm = get_plugin_manager()
         pm.hook.pre_run(tool=self)
-        self.existing_directories = {str(p.relative_to(client.path)) for p in client.path.glob("**/")}
+        self.existing_directories = {
+            str(p.relative_to(project_properties.path)) for p in project_properties.path.glob("**/")
+        }
 
         yield self
 

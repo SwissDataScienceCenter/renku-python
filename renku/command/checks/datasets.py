@@ -28,6 +28,7 @@ from renku.core import errors
 from renku.core.dataset.dataset_add import add_to_dataset
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.migration.utils import get_pre_0_3_4_datasets_metadata
+from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.os import get_safe_relative_path
 
@@ -50,7 +51,7 @@ def check_dataset_old_metadata_location(client, **kwargs):
     problems = (
         WARNING + "There are metadata files in the old location."
         '\n  (use "renku migrate" to move them)\n\n\t'
-        + "\n\t".join(click.style(str(path.relative_to(client.path)), fg="yellow") for path in old_metadata)
+        + "\n\t".join(click.style(str(path.relative_to(project_properties.path)), fg="yellow") for path in old_metadata)
         + "\n"
     )
 
@@ -73,7 +74,7 @@ def check_missing_files(client, dataset_gateway: IDatasetGateway, **kwargs):
 
     for dataset in dataset_gateway.get_all_active_datasets():
         for file_ in dataset.files:
-            path = client.path / file_.entity.path
+            path = project_properties.path / file_.entity.path
             file_exists = path.exists() or (file_.is_external and os.path.lexists(path))
             if not file_exists:
                 missing[dataset.name].append(file_.entity.path)
@@ -170,7 +171,7 @@ def check_dataset_files_outside_datadir(client, fix, dataset_gateway: IDatasetGa
             if file.is_external:
                 continue
             try:
-                get_safe_relative_path(client.path / file.entity.path, client.path / data_dir)
+                get_safe_relative_path(project_properties.path / file.entity.path, project_properties.path / data_dir)
             except ValueError:
                 detected_files.append(file)
 

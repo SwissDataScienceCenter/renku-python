@@ -27,6 +27,7 @@ from renku.core.constant import RENKU_HOME, RENKU_TMP
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.client import LocalClient
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
+from renku.core.project.project_properties import project_properties
 from renku.domain_model.dataset import RemoteEntity
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository
@@ -49,10 +50,11 @@ def test_migrate_project(isolated_runner, old_project, client_database_injection
     assert 0 == result.exit_code, format_result_exception(result)
     assert not old_project.is_dirty(untracked_files=True)
 
-    client = LocalClient(path=old_project.path)
-    with client_database_injection_manager(client):
-        assert client.project
-        assert client.project.name
+    with project_properties.with_path(old_project.path):
+        client = LocalClient()
+        with client_database_injection_manager(client):
+            assert client.project
+            assert client.project.name
 
 
 @pytest.mark.migration
@@ -98,17 +100,18 @@ def test_correct_path_migrated(isolated_runner, old_project, client_database_inj
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    client = LocalClient(path=old_project.path)
-    with client_database_injection_manager(client):
-        datasets = DatasetGateway().get_all_active_datasets()
-        assert datasets
+    with project_properties.with_path(old_project.path):
+        client = LocalClient()
+        with client_database_injection_manager(client):
+            datasets = DatasetGateway().get_all_active_datasets()
+            assert datasets
 
-        for ds in datasets:
-            for file in ds.files:
-                path = Path(file.entity.path)
-                assert path.exists()
-                assert not path.is_absolute()
-                assert file.id
+            for ds in datasets:
+                for file in ds.files:
+                    path = Path(file.entity.path)
+                    assert path.exists()
+                    assert not path.is_absolute()
+                    assert file.id
 
 
 @pytest.mark.migration
@@ -117,12 +120,13 @@ def test_correct_relative_path(isolated_runner, old_project, client_database_inj
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    client = LocalClient(path=old_project.path)
+    with project_properties.with_path(path=old_project.path):
+        client = LocalClient()
 
-    with client_database_injection_manager(client):
-        datasets_provenance = DatasetsProvenance()
+        with client_database_injection_manager(client):
+            datasets_provenance = DatasetsProvenance()
 
-        assert len(list(datasets_provenance.datasets)) > 0
+            assert len(list(datasets_provenance.datasets)) > 0
 
 
 @pytest.mark.migration

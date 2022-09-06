@@ -29,6 +29,7 @@ from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.workflow.plan import get_activities, is_plan_removed, remove_plan
@@ -493,7 +494,7 @@ def revert_activity(
 
         for path in deleted_paths:
             try:
-                os.unlink(client.path / path)
+                os.unlink(project_properties.path / path)
             except OSError:
                 communication.warn(f"Cannot delete '{path}'")
 

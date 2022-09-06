@@ -25,6 +25,7 @@ from renku.command.schema.calamus import DateTimeList, JsonLDSchema, StringList,
 from renku.core.migration.models.v9 import Person as OldPerson
 from renku.core.migration.models.v9 import generate_project_id, wfprov
 from renku.core.migration.utils import OLD_METADATA_PATH, generate_dataset_tag_id, generate_url_id, get_datasets_path
+from renku.core.project.project_properties import project_properties
 from renku.core.util import yaml
 from renku.core.util.urls import get_host
 
@@ -190,10 +191,10 @@ class PersonSchemaV3(JsonLDSchema):
 
     _id = fields.Id()
     name = StringList(schema.name)
-    email = fields.String(schema.email, missing=None)
-    label = StringList(rdfs.label, missing=None)
-    affiliation = StringList(schema.affiliation, missing=None)
-    alternate_name = StringList(schema.alternateName, missing=None)
+    email = fields.String(schema.email, load_default=None)
+    label = StringList(rdfs.label, load_default=None)
+    affiliation = StringList(schema.affiliation, load_default=None)
+    alternate_name = StringList(schema.alternateName, load_default=None)
 
     @post_load
     def make_instance(self, data, **kwargs):
@@ -213,12 +214,12 @@ class ProjectSchemaV3(JsonLDSchema):
         model = Project
         unknown = EXCLUDE
 
-    _id = fields.Id(missing=None)
-    agent_version = fields.String(schema.agent, missing="pre-0.11.0")
-    name = fields.String(schema.name, missing=None)
-    created = DateTimeList(schema.dateCreated, missing=None)
-    version = StringList(schema.schemaVersion, missing="1")
-    creator = fields.Nested(schema.creator, PersonSchemaV3, missing=None)
+    _id = fields.Id(load_default=None)
+    agent_version = fields.String(schema.agent, load_default="pre-0.11.0")
+    name = fields.String(schema.name, load_default=None)
+    created = DateTimeList(schema.dateCreated, load_default=None)
+    version = StringList(schema.schemaVersion, load_default="1")
+    creator = fields.Nested(schema.creator, PersonSchemaV3, load_default=None)
 
 
 class CreatorMixinSchemaV3(JsonLDSchema):
@@ -230,10 +231,10 @@ class CreatorMixinSchemaV3(JsonLDSchema):
 class CommitMixinSchemaV3(JsonLDSchema):
     """CommitMixin schema."""
 
-    _id = fields.Id(missing=None)
-    _label = fields.String(rdfs.label, missing=None)
-    _project = fields.Nested(schema.isPartOf, ProjectSchemaV3, missing=None)
-    path = fields.String(prov.atLocation, missing=None)
+    _id = fields.Id(load_default=None)
+    _label = fields.String(rdfs.label, load_default=None)
+    _project = fields.Nested(schema.isPartOf, ProjectSchemaV3, load_default=None)
+    path = fields.String(prov.atLocation, load_default=None)
 
 
 class EntitySchemaV3(CommitMixinSchemaV3):
@@ -269,10 +270,10 @@ class DatasetFileSchemaV3(EntitySchemaV3):
         unknown = EXCLUDE
 
     added = fields.DateTime(schema.dateCreated)
-    based_on = fields.Nested(schema.isBasedOn, "DatasetFileSchemaV3", missing=None)
-    name = fields.String(schema.name, missing=None)
-    url = fields.String(schema.url, missing=None)
-    external = fields.Boolean(renku.external, missing=False)
+    based_on = fields.Nested(schema.isBasedOn, "DatasetFileSchemaV3", load_default=None)
+    name = fields.String(schema.name, load_default=None)
+    url = fields.String(schema.url, load_default=None)
+    external = fields.Boolean(renku.external, load_default=False)
 
 
 class LanguageSchemaV3(JsonLDSchema):
@@ -301,7 +302,7 @@ class DatasetTagSchemaV3(JsonLDSchema):
 
     _id = fields.Id()
     commit = fields.String(schema.location)
-    created = fields.DateTime(schema.startDate, missing=None)
+    created = fields.DateTime(schema.startDate, load_default=None)
     dataset = fields.String(schema.about)
     description = fields.String(schema.description)
     name = fields.String(schema.name)
@@ -317,8 +318,8 @@ class UrlSchemaV3(JsonLDSchema):
         model = Url
         unknown = EXCLUDE
 
-    _id = fields.Id(missing=None)
-    url = Uri(schema.url, missing=None)
+    _id = fields.Id(load_default=None)
+    url = Uri(schema.url, load_default=None)
 
 
 class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
@@ -331,21 +332,21 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
         model = Dataset
         unknown = EXCLUDE
 
-    creators = fields.Nested(schema.creator, PersonSchemaV3, many=True, missing=None)
-    date_created = fields.DateTime(schema.dateCreated, missing=None)
-    date_published = fields.DateTime(schema.datePublished, missing=None)
-    description = fields.String(schema.description, missing=None)
+    creators = fields.Nested(schema.creator, PersonSchemaV3, many=True, load_default=None)
+    date_created = fields.DateTime(schema.dateCreated, load_default=None)
+    date_published = fields.DateTime(schema.datePublished, load_default=None)
+    description = fields.String(schema.description, load_default=None)
     files = fields.Nested(schema.hasPart, [DatasetFileSchemaV3, CollectionSchemaV3], many=True)
     identifier = fields.String(schema.identifier)
-    in_language = fields.Nested(schema.inLanguage, LanguageSchemaV3, missing=None)
-    keywords = fields.List(schema.keywords, fields.String(), missing=None)
-    license = Uri(schema.license, missing=None, allow_none=True)
-    name = fields.String(schema.alternateName, missing=None)
-    same_as = fields.Nested(schema.sameAs, UrlSchemaV3, missing=None)
-    tags = fields.Nested(schema.subjectOf, DatasetTagSchemaV3, many=True, missing=None)
+    in_language = fields.Nested(schema.inLanguage, LanguageSchemaV3, load_default=None)
+    keywords = fields.List(schema.keywords, fields.String(), load_default=None)
+    license = Uri(schema.license, load_default=None, allow_none=True)
+    name = fields.String(schema.alternateName, load_default=None)
+    same_as = fields.Nested(schema.sameAs, UrlSchemaV3, load_default=None)
+    tags = fields.Nested(schema.subjectOf, DatasetTagSchemaV3, many=True, load_default=None)
     title = fields.String(schema.name)
-    url = fields.String(schema.url, missing=None)
-    version = fields.String(schema.version, missing=None)
+    url = fields.String(schema.url, load_default=None)
+    version = fields.String(schema.version, load_default=None)
 
     @pre_load
     def fix_files_context(self, data, **kwargs):
@@ -383,7 +384,7 @@ def get_client_datasets(client):
     datasets = []
     for path in paths:
         dataset = Dataset.from_yaml(path=path, client=client)
-        dataset.path = getattr(dataset, "path", None) or os.path.relpath(path.parent, client.path)
+        dataset.path = getattr(dataset, "path", None) or os.path.relpath(path.parent, project_properties.path)
         datasets.append(dataset)
 
     return datasets

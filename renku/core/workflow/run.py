@@ -23,6 +23,7 @@ from typing import Dict, List, NamedTuple, Optional, Set, Union
 
 from renku.command.command_builder import inject
 from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.project.project_properties import project_properties
 from renku.core.util.os import get_relative_path_to_cwd, get_relative_paths
 from renku.core.workflow.activity import (
     get_all_modified_and_deleted_activities_and_entities,
@@ -62,7 +63,7 @@ def get_status(
 
     def mark_generations_as_stale(activity):
         for generation in activity.generations:
-            generation_path = get_relative_path_to_cwd(client.path / generation.entity.path)
+            generation_path = get_relative_path_to_cwd(project_properties.path / generation.entity.path)
             stale_outputs[generation_path].add(usage_path)
 
     client = client_dispatcher.current_client
@@ -78,14 +79,14 @@ def get_status(
         return StatusResult({}, {}, set(), set())
 
     paths = paths or []
-    paths = get_relative_paths(base=client.path, paths=[Path.cwd() / p for p in paths])  # type: ignore
+    paths = get_relative_paths(base=project_properties.path, paths=[Path.cwd() / p for p in paths])  # type: ignore
 
     modified_inputs: Set[str] = set()
     stale_outputs: Dict[str, Set[str]] = defaultdict(set)
     stale_activities: Dict[str, Set[str]] = defaultdict(set)
 
     for start_activity, entity in modified:
-        usage_path = get_relative_path_to_cwd(client.path / entity.path)
+        usage_path = get_relative_path_to_cwd(project_properties.path / entity.path)
 
         # NOTE: Add all downstream activities if the modified entity is in paths; otherwise, add only activities that
         # chain-generate at least one of the paths
@@ -95,7 +96,7 @@ def get_status(
             starting_activities={start_activity},
             paths=generation_paths,
             ignore_deleted=ignore_deleted,
-            client_path=client.path,
+            client_path=project_properties.path,
         )
         if activities:
             modified_inputs.add(usage_path)
@@ -107,6 +108,8 @@ def get_status(
                     mark_generations_as_stale(activity)
 
     deleted_paths = {e.path for _, e in deleted}
-    deleted_paths = {get_relative_path_to_cwd(client.path / d) for d in deleted_paths if not paths or d in paths}
+    deleted_paths = {
+        get_relative_path_to_cwd(project_properties.path / d) for d in deleted_paths if not paths or d in paths
+    }
 
     return StatusResult(stale_outputs, stale_activities, modified_inputs, deleted_paths)
