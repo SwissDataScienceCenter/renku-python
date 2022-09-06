@@ -10,9 +10,11 @@ jobs:
         with:
           fetch-depth: 0
           token: "${{ secrets.RENKUBOT_GITHUB_TOKEN }}"
-      - name: Setup local branch
+      - name: Setup local branch and merge tool
         run: |
           git branch --track dependabot-updates origin/dependabot-updates
+          echo "poetry.lock merge=ours" >> .git/info/attributes
+          git config merge.ours.driver true
       - uses: mark-hingston/combine-dependabot-prs@main
         with:
           branchPrefix: "dependabot"
@@ -20,7 +22,7 @@ jobs:
           combineBranchName: "combined-prs"
           includeLabel: ""
           ignoreLabel: "nocombine"
-          baseBranch: "dependabot-updates"
+          baseBranch: "develop"
           openPR: true
           allowSkipped: false
           closeOnceCombined: true
