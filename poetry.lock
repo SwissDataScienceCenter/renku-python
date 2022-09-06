@@ -200,7 +200,7 @@ python-versions = "~=3.7"
 
 [[package]]
 name = "calamus"
-version = "0.3.14"
+version = "0.4.1"
 description = "calamus is a library built on top of marshmallow to allow (de-)Serialization of Python classes to JSON-LD."
 category = "main"
 optional = false
@@ -208,12 +208,12 @@ python-versions = ">=3.7.1,<4.0.0"
 
 [package.dependencies]
 lazy-object-proxy = ">=1.4.3,<2.0.0"
-marshmallow = ">=3.5.1,<4.0.0"
+marshmallow = ">=3.14.0,<4.0.0"
 pyld = ">=2.0.2,<3.0.0"
 rdflib = ">=6.0.0,<7.0.0"
 
 [package.extras]
-docs = ["sphinx (>=3.0.3,<4.0.0)", "sphinx-rtd-theme (>=0.4.3,<0.5.0)", "sphinxcontrib-spelling (>=5.0.0,<6.0.0)"]
+docs = ["Jinja2 (>=3.0.0,<3.1.0)", "sphinx (>=3.0.3,<4.0.0)", "sphinx-rtd-theme (>=0.4.3,<0.5.0)", "sphinxcontrib-spelling (>=5.0.0,<6.0.0)"]
 
 [[package]]
 name = "certifi"
@@ -389,10 +389,10 @@ python-versions = ">=3.6, <4"
 
 [package.dependencies]
 "ruamel.yaml" = [
+    {version = ">=0.15.71,<0.17.22", markers = "python_version < \"3.8\""},
     {version = ">=0.15.98,<0.17.22", markers = "python_version >= \"3.9\""},
     {version = ">=0.15.78,<0.17.22", markers = "python_version >= \"3.8\""},
     {version = ">=0.16.0,<0.17.22", markers = "python_version >= \"3.10\""},
-    {version = ">=0.15.71,<0.17.22", markers = "python_version < \"3.8\""},
 ]
 schema-salad = "*"
 setuptools = "*"
@@ -1859,8 +1859,8 @@ mistune = ">=0.8.1,<0.9"
 rdflib = ">=4.2.2,<7.0.0"
 requests = ">=1.0"
 "ruamel.yaml" = [
-    {version = ">=0.17.6,<0.17.22", markers = "python_version >= \"3.7\""},
     {version = ">=0.16.12,<0.17.22", markers = "python_version < \"3.7\""},
+    {version = ">=0.17.6,<0.17.22", markers = "python_version >= \"3.7\""},
 ]
 setuptools = "*"
 
@@ -2616,7 +2616,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "440c215aa1c8824ea0cdf2ffcef0cba287ed0d3a31abc1b34306bc66a3bd762b"
+content-hash = "b31dfc2d91fb2ea30cce4e9a23b7548ec88f357d1a8efc6477b925e39e1e9566"
 
 [metadata.files]
 addict = [
@@ -2739,8 +2739,8 @@ cachetools = [
     {file = "cachetools-5.2.0.tar.gz", hash = "sha256:6a94c6402995a99c3970cc7e4884bb60b4a8639938157eeed436098bf9831757"},
 ]
 calamus = [
-    {file = "calamus-0.3.14-py3-none-any.whl", hash = "sha256:d614c4b489f12933363abc2c46d45a58b1a53946f22ce1417047b7c9f33f45e4"},
-    {file = "calamus-0.3.14.tar.gz", hash = "sha256:114b6e4461561aab7c8f44c52ea988f0718ae505242c613487727c3724d68fe3"},
+    {file = "calamus-0.4.1-py3-none-any.whl", hash = "sha256:f46dad6376e6d708cafa76642b99127db20ba09ee46a37fd268afd17e925f541"},
+    {file = "calamus-0.4.1.tar.gz", hash = "sha256:a3b2c7ec870fea7de28b2fda414ce0c12362aac5596e66a697716ec19f745346"},
 ]
 certifi = [
     {file = "certifi-2022.6.15-py3-none-any.whl", hash = "sha256:fe86415d55e84719d75f8b69414f6438ac3547d2078ab91b67e779ef69378412"},
