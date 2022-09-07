@@ -1,0 +1,29 @@
+name: "Combine Dependabot PRs"
+on:
+  workflow_dispatch:
+
+jobs:
+  combine-prs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          token: "${{ secrets.RENKUBOT_GITHUB_TOKEN }}"
+      - name: Setup local branch and merge tool
+        run: |
+          git branch --track dependabot-updates origin/dependabot-updates
+          echo "poetry.lock merge=ours" >> .git/info/attributes
+          git config merge.ours.driver true
+      - uses: mark-hingston/combine-dependabot-prs@main
+        with:
+          branchPrefix: "dependabot"
+          mustBeGreen: false
+          combineBranchName: "combined-prs"
+          includeLabel: ""
+          ignoreLabel: "nocombine"
+          baseBranch: "develop"
+          openPR: true
+          allowSkipped: false
+          closeOnceCombined: true
+          githubToken: "${{ secrets.RENKUBOT_GITHUB_TOKEN }}"
