@@ -26,7 +26,7 @@ interface (CLI).
    :group: Getting Started
    :command: $ pip install renku
    :description: Install with pip
-   :extended:
+   :target: rp
 
 Start by creating for folder where you want to keep your Renku project:
 
@@ -40,7 +40,7 @@ Start by creating for folder where you want to keep your Renku project:
    :command: $ renku init my-renku-project|||
              $ cd my-renku-project
    :description: Starting a Renku project.
-   :extended:
+   :target: rp
 
 Create a dataset and add data to it:
 

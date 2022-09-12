@@ -56,7 +56,7 @@ belong to one or more datasets then they will be removed from their metadata.
    :group: Misc
    :command: $ renku mv <path>... <destination>
    :description: Safely move files within a project.
-   :extended:
+   :target: rp
 
 """
 

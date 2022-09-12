@@ -39,7 +39,7 @@ Commands and options
    :group: Misc
    :command: $ renku rm <path>...
    :description: Safely delete files from a project.
-   :extended:
+   :target: rp
 """
 
 import click

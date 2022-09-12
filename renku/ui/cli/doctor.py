@@ -21,7 +21,7 @@
    :group: Misc
    :command: $ renku doctor
    :description: Check your system and repository for potential problems.
-   :extended:
+   :target: rp
 
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
