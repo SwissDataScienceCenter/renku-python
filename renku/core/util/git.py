@@ -831,7 +831,7 @@ def get_git_progress_instance():
     return GitProgress()
 
 
-def get_file_size(repository_path: Path, path: str) -> Optional[float]:
+def get_file_size(repository_path: Path, path: str) -> Optional[int]:
     """Return file size for a file inside a git repository."""
     # NOTE: First try to get file size from Git LFS
     try:
@@ -865,11 +865,11 @@ def get_file_size(repository_path: Path, path: str) -> Optional[float]:
             multiplier = conversions.get(unit, None)
             if multiplier is None:
                 continue
-            return size * multiplier
+            return int(size * multiplier)
 
     # Return size of the file on disk
     full_path = repository_path / path
-    return float(os.path.getsize(full_path)) if full_path.exists() else None
+    return os.path.getsize(full_path) if full_path.exists() else None
 
 
 def shorten_message(message: str, line_length: int = 100, body_length: int = 65000) -> str:
