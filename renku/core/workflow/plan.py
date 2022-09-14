@@ -19,8 +19,9 @@
 
 import itertools
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
-from typing import Dict, Generator, List, Optional, Union, cast
+from typing import Dict, Generator, List, Optional, Set, Tuple, Union, cast, overload
 
 from renku.command.command_builder import inject
 from renku.command.format.workflow import WORKFLOW_FORMATS
@@ -38,14 +39,28 @@ from renku.core.util.os import are_paths_related, get_relative_paths, safe_read_
 from renku.core.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.value_resolution import CompositePlanValueResolver, ValueResolver
 from renku.domain_model.project_context import project_context
-from renku.domain_model.provenance.activity import Activity
+from renku.domain_model.provenance.activity import Activity, Generation, Usage
 from renku.domain_model.provenance.annotation import Annotation
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.plan import AbstractPlan, Plan
+from renku.infrastructure.immutable import DynamicProxy
 
 
+@overload
+def get_latest_plan(plan: None = ..., plan_gateway: IPlanGateway = ...) -> None:  # noqa: D103
+    ...
+
+
+@overload
+def get_latest_plan(plan: AbstractPlan, plan_gateway: IPlanGateway = ...) -> AbstractPlan:  # noqa: D103
+    ...
+
+
+@lru_cache
 @inject.autoparams()
-def get_latest_plan(plan: Optional[AbstractPlan], plan_gateway: IPlanGateway) -> Optional[AbstractPlan]:
+def get_latest_plan(
+    plan: Optional[AbstractPlan], plan_gateway: IPlanGateway
+) -> Union[Optional[AbstractPlan], AbstractPlan]:
     """Return the latest version of a given plan in its derivative chain."""
     if plan is None:
         return None
@@ -644,3 +659,83 @@ def get_composite_plans_by_child(plan: AbstractPlan, plan_gateway: IPlanGateway)
     composites_containing_child = [c for c in composites if {p.id for p in c.plans}.intersection(derivatives)]
 
     return composites_containing_child
+
+
+@inject.autoparams("activity_gateway", "plan_gateway")
+def get_active_plans(activity_gateway: IActivityGateway, plan_gateway: IPlanGateway) -> List[AbstractPlan]:
+    """Get all plans that are active in the project.
+
+    Active means not deleted and with at least one of the used/created files existing.
+    """
+    from renku.core.workflow.activity import filter_overridden_activities
+
+    all_activities = activity_gateway.get_all_activities()
+    relevant_activities = filter_overridden_activities(all_activities)
+    latest_plan_chains: Set[Tuple[AbstractPlan]] = set(
+        cast(Tuple[AbstractPlan], tuple(get_derivative_chain(p)))
+        for p in plan_gateway.get_newest_plans_by_names().values()
+    )
+
+    result: Dict[str, DynamicProxy] = {}
+    composites: List[DynamicProxy] = []
+
+    # check which plans where involved in using/creating existing files
+    for plan_chain in latest_plan_chains:
+        latest_plan = DynamicProxy(plan_chain[0])
+        latest_plan.touches_existing_files = False
+        latest_plan.number_of_executions = 0
+        latest_plan.created = latest_plan.date_created
+
+        if isinstance(plan_chain[0], Plan):
+            latest_plan.last_executed = None
+            for activity in all_activities:
+                if activity.association.plan not in plan_chain:
+                    continue
+
+                if not latest_plan.last_executed or latest_plan.last_executed < activity.ended_at_time:
+                    latest_plan.last_executed = activity.ended_at_time
+
+                latest_plan.number_of_executions += 1
+
+                if (
+                    not latest_plan.touches_existing_files
+                    and activity in relevant_activities
+                    and any(
+                        Path(entry.entity.path).exists()
+                        for entry in cast(
+                            List[Union[Usage, Generation]], itertools.chain(activity.usages, activity.generations)
+                        )
+                    )
+                ):
+                    latest_plan.touches_existing_files = True
+            latest_plan.type = "Plan"
+        else:
+            latest_plan.number_of_executions = None
+            composites.append(latest_plan)
+            latest_plan.type = "CompositePlan"
+
+        result[latest_plan.id] = latest_plan
+
+    # check composites status based on plans status
+    while len(composites) > 0:
+        composite = composites.pop()
+        stack = [composite]
+        while len(stack) > 0:
+            composite = stack.pop()
+            unprocessed_children = [
+                p for p in composite.plans if isinstance(p, CompositePlan) and get_latest_plan(p).id in composites
+            ]
+            if unprocessed_children:
+                # Has child composite plans, process those first
+                stack.append(composite)
+                for child in unprocessed_children:
+                    stack.append(result[get_latest_plan(child).id])
+                continue
+            composite.touches_existing_files = any(
+                result[get_latest_plan(p).id].touches_existing_files for p in composite.plans
+            )
+
+            if composite in composites:
+                composites.remove(composite)
+
+    return list(result.values())  # type: ignore
