@@ -532,7 +532,7 @@ def test_renku_dataset_import_missing_lfs_objects(runner, project):
     [
         ("zenodo", [], "zenodo.org/deposit", None),
         ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:", "1"),
-        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/", None),
+        # ("olos",["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/", None),
     ],
 )
 def test_dataset_export_upload_file(
@@ -590,7 +590,7 @@ def test_dataset_export_upload_file(
     [
         ("zenodo", [], "zenodo.org/deposit", None),
         ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:", "1"),
-        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/", None),
+        # ("olos",["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/", None),
     ],
 )
 def test_dataset_export_upload_tag(
@@ -715,7 +715,7 @@ def test_dataset_export_to_local(runner, tmp_path):
     [
         ("zenodo", [], "zenodo.org/deposit", None),
         ("dataverse", ["--dataverse-name", "sdsc-test-dataverse"], "doi:", "1"),
-        ("olos", ["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/", None),
+        # ("olos",["--dlcm-server", "https://sandbox.dlcm.ch/"], "sandbox.dlcm.ch/ingestion/preingest/deposits/", None),
     ],
 )
 def test_dataset_export_upload_multiple(
