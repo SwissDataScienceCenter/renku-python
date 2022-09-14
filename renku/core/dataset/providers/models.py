@@ -20,6 +20,7 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Any, List, NamedTuple, Optional, Type
 
+from humanize import naturalsize
 from marshmallow import EXCLUDE
 
 from renku.command.schema.dataset import DatasetSchema
@@ -132,13 +133,16 @@ class ProviderDatasetFile:
     """Store metadata for dataset files that will be downloaded from a provider."""
 
     def __init__(
-        self, source: Optional[str], filename: str, checksum: str, size_in_mb: Optional[float], filetype: str, path: str
+        self, source: Optional[str], filename: str, checksum: str, filesize: Optional[int], filetype: str, path: str
     ):
         self.checksum: str = checksum
         self.filename: str = filename
         self.filetype: str = filetype
         self.path: str = path
-        self.size_in_mb: Optional[float] = size_in_mb
+        self.filesize: Optional[int] = filesize
+        self.filesize_str: Optional[str] = (
+            naturalsize(filesize).upper().replace("BYTES", " B") if filesize is not None else None
+        )
         self.source: Optional[str] = source
 
 

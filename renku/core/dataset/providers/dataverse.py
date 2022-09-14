@@ -39,7 +39,6 @@ from renku.core.dataset.providers.repository import RepositoryImporter, make_req
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.util import communication
 from renku.core.util.doi import extract_doi, get_doi_url, is_doi
-from renku.core.util.file_size import bytes_to_unit
 from renku.core.util.urls import remove_credentials
 
 if TYPE_CHECKING:
@@ -283,7 +282,7 @@ class DataverseImporter(RepositoryImporter):
                 source=file.remote_url.geturl(),
                 filename=Path(file.name).name,
                 checksum="",
-                size_in_mb=bytes_to_unit(file.content_size, "mi"),
+                filesize=file.content_size,
                 filetype=file.file_format,
                 path="",
             )
