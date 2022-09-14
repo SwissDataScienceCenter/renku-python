@@ -519,7 +519,7 @@ def test_graph_view_model():
 
     result = model.as_nt_string()
     assert isinstance(result, str)
-    assert len(result) == 1626
+    assert len(result.strip()) == 1625
 
     result = model.as_rdf_string()
     assert isinstance(result, str)
