@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.action != 'closed'
     steps:
-      - uses: rokroskar/workflow-run-cleanup-action@v0.3.0
+      - uses: rokroskar/workflow-run-cleanup-action@v0.3.3
         env:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
   check-deploy:
@@ -31,7 +31,7 @@ jobs:
       persist: ${{ steps.deploy-comment.outputs.persist}}
     steps:
       - id: deploy-comment
-        uses: SwissDataScienceCenter/renku-actions/check-pr-description@v1.0.0
+        uses: SwissDataScienceCenter/renku-actions/check-pr-description@v1.1.0
         with:
           string: /deploy
           pr_ref: ${{ github.event.number }}
@@ -43,7 +43,7 @@ jobs:
       name: renku-ci-rp-${{ github.event.number }}
     steps:
       - name: deploy-pr
-        uses: SwissDataScienceCenter/renku-actions/deploy-renku@v1.0.0
+        uses: SwissDataScienceCenter/renku-actions/deploy-renku@v1.1.0
         env:
           DOCKER_PASSWORD: ${{ secrets.RENKU_DOCKER_PASSWORD }}
           DOCKER_USERNAME: ${{ secrets.RENKU_DOCKER_USERNAME }}
@@ -68,7 +68,7 @@ jobs:
           renku_ui: "${{ needs.check-deploy.outputs.renku-ui }}"
           extra_values: "${{ needs.check-deploy.outputs.extra-values }}"
       - name: Check existing renkubot comment
-        uses: peter-evans/find-comment@v1
+        uses: peter-evans/find-comment@v2
         id: findcomment
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -76,7 +76,7 @@ jobs:
           body-includes: "You can access the deployment of this PR at"
       - name: Create comment pre deploy
         if: steps.findcomment.outputs.comment-id == 0
-        uses: peter-evans/create-or-update-comment@v1
+        uses: peter-evans/create-or-update-comment@v2
         with:
           token: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
@@ -88,7 +88,7 @@ jobs:
     if: ${{ github.event.action != 'closed' && needs.check-deploy.outputs.pr-contains-string == 'true' && needs.check-deploy.outputs.test-enabled == 'true' }}
     needs: [check-deploy, deploy-pr]
     steps:
-      - uses: SwissDataScienceCenter/renku-actions/test-renku@v1.0.0
+      - uses: SwissDataScienceCenter/renku-actions/test-renku@v1.1.0
         with:
           kubeconfig: ${{ secrets.RENKUBOT_DEV_KUBECONFIG }}
           renku-release: renku-ci-rp-${{ github.event.number }}
@@ -103,7 +103,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: renku teardown
-        uses: SwissDataScienceCenter/renku-actions/cleanup-renku-ci-deployments@v1.0.0
+        uses: SwissDataScienceCenter/renku-actions/cleanup-renku-ci-deployments@v1.1.0
         env:
           HELM_RELEASE_REGEX: "^renku-ci-rp-${{ github.event.number }}$"
           GITLAB_TOKEN: ${{ secrets.DEV_GITLAB_TOKEN }}
