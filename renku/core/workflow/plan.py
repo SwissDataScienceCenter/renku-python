@@ -35,11 +35,14 @@ from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
+from renku.core.util.git import get_git_user
 from renku.core.util.os import are_paths_related, get_relative_paths, safe_read_yaml
+from renku.core.util.util import NO_VALUE, NoValueType
 from renku.core.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.value_resolution import CompositePlanValueResolver, ValueResolver
 from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.activity import Activity, Generation, Usage
+from renku.domain_model.provenance.agent import Person
 from renku.domain_model.provenance.annotation import Annotation
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.plan import AbstractPlan, Plan
@@ -199,6 +202,7 @@ def edit_workflow(
     map_params: List[str],
     rename_params: List[str],
     describe_params: List[str],
+    creators: Union[List[Person], NoValueType],
     plan_gateway: IPlanGateway,
     custom_metadata: Optional[Dict] = None,
 ):
@@ -212,6 +216,7 @@ def edit_workflow(
         map_params(List[str]): New mappings for Plan.
         rename_params(List[str]): New names for parameters.
         describe_params(List[str]): New descriptions for parameters.
+        creators(Union[List[Person], NoValueType]): Creators of the workflow.
         plan_gateway(IPlanGateway): Injected plan gateway.
         custom_metadata(Dict, optional): Custom JSON-LD metadata (Default value = None).
 
@@ -232,6 +237,7 @@ def edit_workflow(
         and not rename_params
         and not describe_params
         and not custom_metadata
+        and creators == NO_VALUE
     ):
         # NOTE: Nothing to do
         return plan_view(derived_from)
@@ -242,6 +248,9 @@ def edit_workflow(
 
     if description:
         workflow.description = description
+
+    if creators != NO_VALUE:
+        workflow.creators = cast(List[Person], creators)
 
     if isinstance(workflow, Plan):
         if custom_metadata:
@@ -297,6 +306,7 @@ def compose_workflow(
     steps: List[str],
     sources: List[str],
     sinks: List[str],
+    creators: Optional[List[Person]],
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
     project_gateway: IProjectGateway,
@@ -319,6 +329,7 @@ def compose_workflow(
         steps(List[str]): Child steps to include.
         sources(List[str]): Starting files when automatically detecting child Plans.
         sinks(List[str]): Ending files when automatically detecting child Plans.
+        creators(Optional[List[Person]]): Creator(s) of the composite plan.
         activity_gateway(IActivityGateway): Injected activity gateway.
         plan_gateway(IPlanGateway): Injected plan gateway.
         project_gateway(IProjectGateway): Injected project gateway.
@@ -372,12 +383,16 @@ def compose_workflow(
             child_workflows.append(child_workflow)
             plan_activities.append((i, activity.plan_with_values))
 
+    if not creators:
+        creators = [cast(Person, get_git_user(client_dispatcher.current_client.repository))]
+
     plan = CompositePlan(
         description=description,
         id=CompositePlan.generate_id(),
         keywords=keywords,
         name=name,
         plans=child_workflows,
+        creators=creators,
         project_id=project_gateway.get_project().id,
     )
 
@@ -685,9 +700,9 @@ def get_active_plans(activity_gateway: IActivityGateway, plan_gateway: IPlanGate
         latest_plan.touches_existing_files = False
         latest_plan.number_of_executions = 0
         latest_plan.created = latest_plan.date_created
+        latest_plan.last_executed = None
 
         if isinstance(plan_chain[0], Plan):
-            latest_plan.last_executed = None
             for activity in all_activities:
                 if activity.association.plan not in plan_chain:
                     continue

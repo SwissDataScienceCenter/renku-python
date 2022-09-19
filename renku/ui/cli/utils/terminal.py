@@ -28,6 +28,7 @@ import click
 from renku.ui.cli.utils import color
 
 if TYPE_CHECKING:
+    from renku.command.view_model.composite_plan import CompositePlanViewModel
     from renku.command.view_model.plan import PlanViewModel
 
 style_header = functools.partial(click.style, bold=True, fg=color.YELLOW)
@@ -64,6 +65,28 @@ def print_markdown(text: str):
     Console().print(Markdown(text))
 
 
+def print_key_value(key, value, print_empty: bool = True, err: bool = False):
+    """Print a key value pair."""
+    if print_empty or value:
+        click.echo(style_key(key) + style_value(value), err=err)
+
+
+def print_key(key, err: bool = False):
+    """Print a key."""
+    click.echo(style_key(key), err=err)
+
+
+def print_value(value, err: bool = False):
+    """Print a value."""
+    click.echo(style_value(value), err=err)
+
+
+def print_description(description, err: bool = False):
+    """Print a description."""
+    if description:
+        click.echo(f"\t\t{description}", err=err)
+
+
 def print_plan(plan: "PlanViewModel", err: bool = False):
     """Print a plan to stderr.
 
@@ -71,56 +94,83 @@ def print_plan(plan: "PlanViewModel", err: bool = False):
         plan(PlanViewModel): The plan to print.
         err(bool,optional): Print to ``stderr`` (Default value = False).
     """
-
-    def print_key_value(key, value, print_empty: bool = True):
-        if print_empty or value:
-            click.echo(style_key(key) + style_value(value), err=err)
-
-    def print_key(key):
-        click.echo(style_key(key), err=err)
-
-    def print_value(value):
-        click.echo(style_value(value), err=err)
-
-    def print_description(description):
-        if description:
-            click.echo(f"\t\t{description}", err=err)
-
-    print_key_value("Id: ", plan.id)
-    print_key_value("Name: ", plan.name)
+    print_key_value("Id: ", plan.id, err)
+    print_key_value("Name: ", plan.name, err)
 
     if plan.description:
         print_markdown(plan.description)
 
-    print_key_value("Command: ", plan.full_command)
-    print_key_value("Success Codes: ", plan.success_codes)
+    if plan.creators:
+        print_key_value("Creators: ", ",".join(str(c) for c in plan.creators), err)
+
+    print_key_value("Command: ", plan.full_command, err)
+    print_key_value("Success Codes: ", plan.success_codes, err)
 
     if plan.annotations:
-        print_key_value("Annotations:\n", plan.annotations)
+        print_key_value("Annotations:\n", plan.annotations, err)
 
     if plan.inputs:
-        print_key("Inputs:")
+        print_key("Inputs:", err)
         for run_input in plan.inputs:
-            print_value(f"\t- {run_input.name}:")
-            print_description(run_input.description)
-            print_key_value("\t\tDefault Value: ", run_input.default_value)
-            print_key_value("\t\tPosition: ", run_input.position, print_empty=False)
-            print_key_value("\t\tPrefix: ", run_input.prefix, print_empty=False)
+            print_value(f"\t- {run_input.name}:", err)
+            print_description(run_input.description, err)
+            print_key_value("\t\tDefault Value: ", run_input.default_value, err)
+            print_key_value("\t\tPosition: ", run_input.position, print_empty=False, err=err)
+            print_key_value("\t\tPrefix: ", run_input.prefix, print_empty=False, err=err)
 
     if plan.outputs:
         print_key("Outputs:")
         for run_output in plan.outputs:
-            print_value(f"\t- {run_output.name}:")
-            print_description(run_output.description)
-            print_key_value("\t\tDefault Value: ", run_output.default_value)
-            print_key_value("\t\tPosition: ", run_output.position, print_empty=False)
-            print_key_value("\t\tPrefix: ", run_output.prefix, print_empty=False)
+            print_value(f"\t- {run_output.name}:", err)
+            print_description(run_output.description, err)
+            print_key_value("\t\tDefault Value: ", run_output.default_value, err)
+            print_key_value("\t\tPosition: ", run_output.position, print_empty=False, err=err)
+            print_key_value("\t\tPrefix: ", run_output.prefix, print_empty=False, err=err)
 
     if plan.parameters:
-        print_key("Parameters:")
+        print_key("Parameters:", err)
         for run_parameter in plan.parameters:
-            print_value(f"\t- {run_parameter.name}:")
-            print_description(run_parameter.description)
-            print_key_value("\t\tDefault Value: ", run_parameter.default_value)
-            print_key_value("\t\tPosition: ", run_parameter.position, print_empty=False)
-            print_key_value("\t\tPrefix: ", run_parameter.prefix, print_empty=False)
+            print_value(f"\t- {run_parameter.name}:", err)
+            print_description(run_parameter.description, err)
+            print_key_value("\t\tDefault Value: ", run_parameter.default_value, err)
+            print_key_value("\t\tPosition: ", run_parameter.position, print_empty=False, err=err)
+            print_key_value("\t\tPrefix: ", run_parameter.prefix, print_empty=False, err=err)
+
+
+def print_composite_plan(composite_plan: "CompositePlanViewModel"):
+    """Print a CompositePlan to stdout."""
+
+    print_key_value("Id: ", composite_plan.id)
+    print_key_value("Name: ", composite_plan.name)
+
+    if composite_plan.creators:
+        print_key_value("Creators: ", ",".join(str(c) for c in composite_plan.creators))
+
+    if composite_plan.description:
+        print_markdown(composite_plan.description)
+
+    print_key("Steps:")
+    for step in composite_plan.steps:
+        print_value(f"\t- {step.name}:")
+        print_key_value("\t\tId: ", f"{step.id}")
+
+    if composite_plan.mappings:
+        print_key("Mappings:")
+        for mapping in composite_plan.mappings:
+            print_value(f"\t- {mapping.name}:")
+
+            if mapping.description:
+                print_description(mapping.description)
+
+            print_key_value("\t\tDefault Value: ", mapping.default_value)
+            print_key("\t\tMaps to: ")
+            for maps_to in mapping.maps_to:
+                print_value(f"\t\t\t{maps_to}")
+
+    if composite_plan.links:
+        print_key("Links: ")
+        for link in composite_plan.links:
+            print_key_value("\t- From: ", link.source)
+            print_key("\t\t To: ")
+            for sink in link.sinks:
+                print_value(f"\t\t\t- {sink}")

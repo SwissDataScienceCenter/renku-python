@@ -18,6 +18,7 @@
 """Renku service workflow serializers."""
 from marshmallow import Schema, fields
 
+from renku.domain_model.dataset import DatasetCreatorsJson
 from renku.ui.service.serializers.common import LocalRepositorySchema, RemoteRepositorySchema
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
@@ -34,6 +35,7 @@ class WorflowPlanEntryResponse(Schema):
     description = fields.String()
     type = fields.String()
     created = fields.DateTime()
+    creators = fields.List(fields.Nested(DatasetCreatorsJson))
     last_executed = fields.DateTime()
     keywords = fields.List(fields.String())
     number_of_executions = fields.Integer()

@@ -30,6 +30,7 @@ from werkzeug.utils import secure_filename
 
 from renku.core import errors
 from renku.core.util.datetime8601 import local_now
+from renku.domain_model.provenance.agent import Person
 from renku.domain_model.provenance.annotation import Annotation
 from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter, CommandParameterBase
 from renku.infrastructure.database import Persistent
@@ -51,12 +52,14 @@ class AbstractPlan(Persistent, ABC):
         name: Optional[str] = None,
         project_id: Optional[str] = None,
         derived_from: Optional[str] = None,
+        creators: Optional[List[Person]] = None,
     ):
         self.description: Optional[str] = description
         self.id: str = id
         self.date_created: datetime = date_created or local_now()
         self.invalidated_at: Optional[datetime] = invalidated_at
         self.keywords: List[str] = keywords or []
+        self.creators: Optional[List[Person]] = creators
 
         self.project_id: Optional[str] = project_id
         self.derived_from: Optional[str] = derived_from
@@ -173,6 +176,7 @@ class Plan(AbstractPlan):
         outputs: Optional[List[CommandOutput]] = None,
         success_codes: Optional[List[int]] = None,
         annotations: Optional[List[Annotation]] = None,
+        creators: Optional[List[Person]] = None,
     ):
         self.command: str = command
         self.inputs: List[CommandInput] = inputs or []
@@ -189,6 +193,7 @@ class Plan(AbstractPlan):
             name=name,
             project_id=project_id,
             derived_from=derived_from,
+            creators=creators,
         )
 
         # NOTE: Validate plan

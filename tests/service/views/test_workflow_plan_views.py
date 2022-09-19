@@ -30,7 +30,7 @@ def test_list_workflow_plans_view(svc_client_with_repo):
     svc_client, headers, project_id, _ = svc_client_with_repo
 
     params = {
-        "project_id": project_id,
+        "git_url": "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-it-workflows",
     }
 
     response = svc_client.get("/workflow_plans.list", query_string=params, headers=headers)
@@ -39,16 +39,14 @@ def test_list_workflow_plans_view(svc_client_with_repo):
     assert {"plans"} == set(response.json["result"].keys())
     assert 0 != len(response.json["result"]["plans"])
     assert {
-        "version",
-        "description",
-        "identifier",
-        "images",
-        "created_at",
-        "name",
-        "title",
+        "created",
         "creators",
+        "description",
+        "id",
         "keywords",
-        "annotations",
-        "storage",
-        "data_directory",
+        "name",
+        "number_of_executions",
+        "touches_existing_files",
+        "type",
+        "last_executed",
     } == set(response.json["result"]["plans"][0].keys())

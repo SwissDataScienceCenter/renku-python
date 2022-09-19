@@ -25,6 +25,7 @@ from uuid import uuid4
 
 from renku.core import errors
 from renku.core.util.datetime8601 import local_now
+from renku.domain_model.provenance.agent import Person
 from renku.domain_model.workflow.parameter import (
     CommandInput,
     CommandOutput,
@@ -53,6 +54,7 @@ class CompositePlan(AbstractPlan):
         name: str,
         plans: List[Union["CompositePlan", Plan]],
         project_id: Optional[str] = None,
+        creators: Optional[List[Person]] = None,
     ):
         super().__init__(
             derived_from=derived_from,
@@ -63,6 +65,7 @@ class CompositePlan(AbstractPlan):
             keywords=keywords,
             name=name,
             project_id=project_id,
+            creators=creators,
         )
 
         self.plans: List[Union["CompositePlan", Plan]] = plans

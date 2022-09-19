@@ -20,13 +20,15 @@
 from __future__ import annotations
 
 import json
-from typing import List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
+from renku.domain_model.provenance.agent import Person
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter
 from renku.domain_model.workflow.plan import AbstractPlan, Plan
 
-from .composite_plan import CompositePlanViewModel
+if TYPE_CHECKING:
+    from .composite_plan import CompositePlanViewModel
 
 
 class CommandInputViewModel:
@@ -143,6 +145,37 @@ class CommandParameterViewModel:
         )
 
 
+class PersonViewModel:
+    """View model for ``Person``."""
+
+    def __init__(self, name: str, email: str, affiliation: Optional[str]) -> None:
+        self.name = name
+        self.email = email
+        self.affiliation = affiliation
+
+    @classmethod
+    def from_person(cls, person: Person):
+        """Create view model from ``Person``.
+
+        Args:
+            person(Person): The person to convert.
+        Returns:
+            View model for person
+        """
+        return cls(name=person.name, email=person.email, affiliation=person.affiliation)
+
+    def __str__(self) -> str:
+        email = affiliation = ""
+
+        if self.email:
+            email = f"<{self.email}>"
+
+        if self.affiliation:
+            affiliation = f"[{self.affiliation}]"
+
+        return f"{self.name}{email}{affiliation}"
+
+
 class PlanViewModel:
     """A view model for a ``Plan``."""
 
@@ -157,6 +190,7 @@ class PlanViewModel:
         description: Optional[str] = None,
         success_codes: Optional[str] = None,
         annotations: Optional[str] = None,
+        creators: Optional[List[PersonViewModel]] = None,
     ):
         self.id = id
         self.name = name
@@ -167,6 +201,7 @@ class PlanViewModel:
         self.outputs = outputs
         self.parameters = parameters
         self.annotations = annotations
+        self.creators = creators
 
     @classmethod
     def from_plan(cls, plan: Plan):
@@ -190,10 +225,11 @@ class PlanViewModel:
             annotations=json.dumps([{"id": a.id, "body": a.body, "source": a.source} for a in plan.annotations])
             if plan.annotations
             else None,
+            creators=[PersonViewModel.from_person(p) for p in plan.creators] if plan.creators else None,
         )
 
 
-def plan_view(workflow: AbstractPlan) -> Union[CompositePlanViewModel, PlanViewModel]:
+def plan_view(workflow: AbstractPlan) -> Union["CompositePlanViewModel", PlanViewModel]:
     """Convert an ``CompositePlan`` or ``Plan`` to a ``ViewModel``.
 
     Args:
@@ -202,6 +238,8 @@ def plan_view(workflow: AbstractPlan) -> Union[CompositePlanViewModel, PlanViewM
     Returns:
         View model for converted Plan.
     """
+    from .composite_plan import CompositePlanViewModel
+
     if isinstance(workflow, CompositePlan):
         return CompositePlanViewModel.from_composite_plan(workflow)
     return PlanViewModel.from_plan(workflow)
