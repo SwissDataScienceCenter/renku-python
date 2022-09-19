@@ -61,7 +61,8 @@ def test_rerun(project, client, client_database_injection_manager, renku_cli, pr
                 assert len(activities) > 1
         return output.read_text().strip()
 
-    for _ in range(10):
+    for _ in range(5):
+        time.sleep(1)
         new_content = rerun()
         if content != new_content:
             break
@@ -89,6 +90,7 @@ def test_rerun_with_special_paths(project, renku_cli, runner, provider, source, 
     output = cwd / output
 
     assert 0 == renku_cli("run", "python", "-S", "-c", "import random; print(random.random())", stdout=source).exit_code
+    time.sleep(1)
     assert 0 == renku_cli("run", "cat", source, stdout=output).exit_code
 
     content = output.read_text().strip()
@@ -97,7 +99,8 @@ def test_rerun_with_special_paths(project, renku_cli, runner, provider, source, 
         assert 0 == renku_cli("rerun", "-p", provider, output).exit_code
         return output.read_text().strip()
 
-    for _ in range(10):
+    for _ in range(5):
+        time.sleep(1)
         new_content = rerun()
         if content != new_content:
             break

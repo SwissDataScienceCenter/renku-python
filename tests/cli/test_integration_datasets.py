@@ -378,7 +378,7 @@ def test_dataset_import_renkulab_dataset_with_image(runner, project, client, cli
     assert 0 == result.exit_code, format_result_exception(result)
     assert "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391" in result.output
 
-    assert "0.00" in result.output
+    assert "0" in result.output
     assert "OK" in result.output
 
     result = runner.invoke(cli, ["dataset", "ls-files"])
