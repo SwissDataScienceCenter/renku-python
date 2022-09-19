@@ -33,7 +33,6 @@ from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
-from renku.core.util.file_size import bytes_to_unit
 from renku.core.util.git import clone_renku_repository, get_cache_directory_for_repository, get_file_size
 from renku.core.util.metadata import is_external_file, make_project_temp_dir
 from renku.core.util.urls import remove_credentials
@@ -523,7 +522,7 @@ class RenkuImporter(ImporterApi):
                 checksum=file.entity.checksum,
                 filename=Path(file.entity.path).name,
                 filetype=Path(file.entity.path).suffix.replace(".", ""),
-                size_in_mb=bytes_to_unit(get_file_size(self._remote_path, file.entity.path), "mi"),
+                filesize=get_file_size(self._remote_path, file.entity.path),
                 source=file.source,
             )
             for file in dataset.files

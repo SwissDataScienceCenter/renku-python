@@ -1405,9 +1405,9 @@ class DatasetFile(Entity):
         return Path(os.path.abspath(path))
 
     @property
-    def size_in_mb(self):
-        """Return file size in megabytes."""
-        return None if self.filesize is None else self.filesize * 1e-6
+    def filesize(self):
+        """Return file size."""
+        return None if self.filesize is None else self.filesize
 
     def __attrs_post_init__(self):
         """Set the property "name" after initialization."""
