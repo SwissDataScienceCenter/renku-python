@@ -202,7 +202,7 @@ def _run_command(
                 raise errors.InvalidSuccessCode(return_code, success_codes=success_codes)
 
         if not creators:
-            creators = [cast(Person, get_git_user(client.repository))]
+            creators = [cast(Person, get_git_user(project_context.repository))]
 
         plan = tool.to_plan(name=name, description=description, keywords=keyword, creators=creators)
         activity = Activity.from_plan(

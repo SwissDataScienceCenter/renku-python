@@ -168,10 +168,10 @@ class PersonViewModel:
         email = affiliation = ""
 
         if self.email:
-            email = f"<{self.email}>"
+            email = f" <{self.email}>"
 
         if self.affiliation:
-            affiliation = f"[{self.affiliation}]"
+            affiliation = f" [{self.affiliation}]"
 
         return f"{self.name}{email}{affiliation}"
 
@@ -187,6 +187,7 @@ class PlanViewModel:
         inputs: List[CommandInputViewModel],
         outputs: List[CommandOutputViewModel],
         parameters: List[CommandParameterViewModel],
+        keywords: List[str],
         description: Optional[str] = None,
         success_codes: Optional[str] = None,
         annotations: Optional[str] = None,
@@ -202,6 +203,7 @@ class PlanViewModel:
         self.parameters = parameters
         self.annotations = annotations
         self.creators = creators
+        self.keywords = keywords
 
     @classmethod
     def from_plan(cls, plan: Plan):
@@ -226,6 +228,7 @@ class PlanViewModel:
             if plan.annotations
             else None,
             creators=[PersonViewModel.from_person(p) for p in plan.creators] if plan.creators else None,
+            keywords=plan.keywords,
         )
 
 

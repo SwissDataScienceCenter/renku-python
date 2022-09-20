@@ -102,6 +102,7 @@ class CompositePlanViewModel:
         mappings: List[ParameterMappingViewModel],
         links: List[ParameterLinkViewModel],
         steps: List[StepViewModel],
+        keywords: List[str],
         description: Optional[str] = None,
         creators: Optional[List[PersonViewModel]] = None,
     ):
@@ -113,6 +114,7 @@ class CompositePlanViewModel:
         self.steps = steps
         self.full_command = ""
         self.creators = creators
+        self.keywords = keywords
 
     @classmethod
     def from_composite_plan(cls, plan: CompositePlan):
@@ -132,4 +134,5 @@ class CompositePlanViewModel:
             links=[ParameterLinkViewModel.from_link(link, plan) for link in plan.links],
             steps=[StepViewModel(id=s.id, name=s.name) for s in plan.plans],
             creators=[PersonViewModel.from_person(p) for p in plan.creators] if plan.creators else None,
+            keywords=plan.keywords,
         )

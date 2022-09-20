@@ -308,7 +308,6 @@ from renku.ui.cli.utils.callback import ClickCallback
 @click.argument("command_line", nargs=-1, required=True, type=click.UNPROCESSED)
 @click.option("--verbose", is_flag=True, default=False, help="Print generated plan after the execution.")
 @click.option(
-    "-c",
     "--creator",
     "creators",
     default=None,

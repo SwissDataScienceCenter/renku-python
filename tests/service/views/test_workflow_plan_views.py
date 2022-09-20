@@ -25,12 +25,12 @@ from tests.utils import assert_rpc_response, retry_failed
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
-def test_list_workflow_plans_view(svc_client_with_repo):
+def test_list_workflow_plans_view(svc_workflow_repo):
     """Check listing of plans."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id = svc_workflow_repo
 
     params = {
-        "git_url": "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-it-workflows",
+        "project_id": project_id,
     }
 
     response = svc_client.get("/workflow_plans.list", query_string=params, headers=headers)
@@ -39,6 +39,7 @@ def test_list_workflow_plans_view(svc_client_with_repo):
     assert {"plans"} == set(response.json["result"].keys())
     assert 0 != len(response.json["result"]["plans"])
     assert {
+        "children",
         "created",
         "creators",
         "description",

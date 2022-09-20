@@ -832,7 +832,6 @@ def remove(name, force):
     help="End a composite plan at this file as output.",
 )
 @click.option(
-    "-c",
     "--creator",
     "creators",
     default=None,
@@ -947,7 +946,6 @@ def compose(
     help="Custom metadata to be associated with the workflow.",
 )
 @click.option(
-    "-c",
     "--creator",
     "creators",
     default=[NO_VALUE],
@@ -955,7 +953,26 @@ def compose(
     type=click.UNPROCESSED,
     help="Creator's name, email, and affiliation. Accepted format is 'Forename Surname <email> [affiliation]'.",
 )
-def edit(workflow_name, name, description, set_params, map_params, rename_params, describe_params, metadata, creators):
+@click.option(
+    "--keyword",
+    "keywords",
+    default=[NO_VALUE],
+    type=click.UNPROCESSED,
+    multiple=True,
+    help="List of keywords for the workflow.",
+)
+def edit(
+    workflow_name,
+    name,
+    description,
+    set_params,
+    map_params,
+    rename_params,
+    describe_params,
+    metadata,
+    creators,
+    keywords,
+):
     """Edit workflow details."""
     from renku.command.view_model.plan import PlanViewModel
     from renku.command.workflow import edit_workflow_command
@@ -964,6 +981,10 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
 
     if list(creators) == [NO_VALUE]:
         creators = NO_VALUE
+
+    keywords = list(keywords)
+    if keywords == [NO_VALUE]:
+        keywords = NO_VALUE
 
     if creators and creators is not NO_VALUE:
         creators, _ = construct_creators(creators, ignore_email=True)
@@ -985,6 +1006,7 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
             rename_params=rename_params,
             describe_params=describe_params,
             creators=creators,
+            keywords=keywords,
             custom_metadata=custom_metadata,
         )
     )

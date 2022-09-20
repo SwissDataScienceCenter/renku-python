@@ -368,7 +368,7 @@ class CompositePlan(AbstractPlan):
     def _get_default_name(self) -> str:
         return uuid4().hex[:MAX_GENERATED_NAME_LENGTH]
 
-    def derive(self) -> "CompositePlan":
+    def derive(self, creator: Optional[Person] = None) -> "CompositePlan":
         """Create a new ``CompositePlan`` that is derived from self."""
         derived = copy.copy(self)
         derived.derived_from = self.id
@@ -377,6 +377,10 @@ class CompositePlan(AbstractPlan):
         derived.mappings = self.mappings.copy()
         derived.links = self.links.copy()
         derived.assign_new_id()
+
+        if creator and hasattr(creator, "email") and not any(c for c in self.creators if c.email == creator.email):
+            self.creators.append(creator)
+
         return derived
 
     def is_derivation(self) -> bool:

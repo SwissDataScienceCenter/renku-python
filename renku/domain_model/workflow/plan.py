@@ -41,6 +41,8 @@ MAX_GENERATED_NAME_LENGTH = 25
 class AbstractPlan(Persistent, ABC):
     """Abstract base class for all plans."""
 
+    creators: List[Person] = list()
+
     def __init__(
         self,
         *,
@@ -59,7 +61,9 @@ class AbstractPlan(Persistent, ABC):
         self.date_created: datetime = date_created or local_now()
         self.invalidated_at: Optional[datetime] = invalidated_at
         self.keywords: List[str] = keywords or []
-        self.creators: Optional[List[Person]] = creators
+
+        if creators:
+            self.creators = creators
 
         self.project_id: Optional[str] = project_id
         self.derived_from: Optional[str] = derived_from
@@ -135,7 +139,7 @@ class AbstractPlan(Persistent, ABC):
         """Return the workflow a parameter belongs to."""
         raise NotImplementedError()
 
-    def derive(self) -> "AbstractPlan":
+    def derive(self, creator: Optional[Person] = None) -> "AbstractPlan":
         """Create a new ``AbstractPlan`` that is derived from self."""
         raise NotImplementedError()
 
@@ -304,7 +308,7 @@ class Plan(AbstractPlan):
             for a in self.parameters:
                 a.id = a.id.replace(current_uuid, new_uuid)
 
-    def derive(self) -> "Plan":
+    def derive(self, creator: Optional[Person] = None) -> "Plan":
         """Create a new ``Plan`` that is derived from self."""
         derived = copy.copy(self)
         derived.derived_from = self.id
@@ -315,6 +319,10 @@ class Plan(AbstractPlan):
         derived.outputs = self.outputs.copy()
         derived.success_codes = self.success_codes.copy()
         derived.assign_new_id()
+
+        if creator and hasattr(creator, "email") and not any(c for c in self.creators if c.email == creator.email):
+            self.creators.append(creator)
+
         return derived
 
     def is_derivation(self) -> bool:

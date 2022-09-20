@@ -40,6 +40,7 @@ class WorflowPlanEntryResponse(Schema):
     keywords = fields.List(fields.String())
     number_of_executions = fields.Integer()
     touches_existing_files = fields.Boolean()
+    children = fields.List(fields.String)
 
 
 class WorkflowPlansListResponse(Schema):

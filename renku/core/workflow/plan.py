@@ -19,7 +19,6 @@
 
 import itertools
 from datetime import datetime
-from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Generator, List, Optional, Set, Tuple, Union, cast, overload
 
@@ -59,7 +58,6 @@ def get_latest_plan(plan: AbstractPlan, plan_gateway: IPlanGateway = ...) -> Abs
     ...
 
 
-@lru_cache
 @inject.autoparams()
 def get_latest_plan(
     plan: Optional[AbstractPlan], plan_gateway: IPlanGateway
@@ -203,7 +201,9 @@ def edit_workflow(
     rename_params: List[str],
     describe_params: List[str],
     creators: Union[List[Person], NoValueType],
+    keywords: Union[List[str], NoValueType],
     plan_gateway: IPlanGateway,
+    client_dispatcher: IClientDispatcher,
     custom_metadata: Optional[Dict] = None,
 ):
     """Edits a workflow details.
@@ -217,7 +217,9 @@ def edit_workflow(
         rename_params(List[str]): New names for parameters.
         describe_params(List[str]): New descriptions for parameters.
         creators(Union[List[Person], NoValueType]): Creators of the workflow.
+        keywords(Union[List[str], NoValueType]): New keywords for the workflow.
         plan_gateway(IPlanGateway): Injected plan gateway.
+        client_dispatcher(IClientDispatcher): Client dispatcher.
         custom_metadata(Dict, optional): Custom JSON-LD metadata (Default value = None).
 
     Returns:
@@ -238,11 +240,13 @@ def edit_workflow(
         and not describe_params
         and not custom_metadata
         and creators == NO_VALUE
+        and keywords == NO_VALUE
     ):
         # NOTE: Nothing to do
         return plan_view(derived_from)
 
-    workflow = derived_from.derive()
+    git_creator = cast(Person, get_git_user(project_context.repository))
+    workflow = derived_from.derive(creator=git_creator)
     if new_name:
         workflow.name = new_name
 
@@ -251,6 +255,12 @@ def edit_workflow(
 
     if creators != NO_VALUE:
         workflow.creators = cast(List[Person], creators)
+
+        if all(c.email != git_creator.email for c in workflow.creators):
+            workflow.creators.append(git_creator)
+
+    if keywords != NO_VALUE:
+        workflow.keywords = cast(List[str], keywords)
 
     if isinstance(workflow, Plan):
         if custom_metadata:
@@ -384,7 +394,7 @@ def compose_workflow(
             plan_activities.append((i, activity.plan_with_values))
 
     if not creators:
-        creators = [cast(Person, get_git_user(client_dispatcher.current_client.repository))]
+        creators = [cast(Person, get_git_user(project_context.repository))]
 
     plan = CompositePlan(
         description=description,
@@ -684,6 +694,11 @@ def get_active_plans(activity_gateway: IActivityGateway, plan_gateway: IPlanGate
     """
     from renku.core.workflow.activity import filter_overridden_activities
 
+    latest_plan_cache: Dict[AbstractPlan, AbstractPlan] = {}
+
+    def _cached_latest_plan(plan: AbstractPlan):
+        return latest_plan_cache.setdefault(plan, get_latest_plan(plan))
+
     all_activities = activity_gateway.get_all_activities()
     relevant_activities = filter_overridden_activities(all_activities)
     latest_plan_chains: Set[Tuple[AbstractPlan]] = set(
@@ -701,6 +716,7 @@ def get_active_plans(activity_gateway: IActivityGateway, plan_gateway: IPlanGate
         latest_plan.number_of_executions = 0
         latest_plan.created = latest_plan.date_created
         latest_plan.last_executed = None
+        latest_plan.children = []
 
         if isinstance(plan_chain[0], Plan):
             for activity in all_activities:
@@ -716,7 +732,7 @@ def get_active_plans(activity_gateway: IActivityGateway, plan_gateway: IPlanGate
                     not latest_plan.touches_existing_files
                     and activity in relevant_activities
                     and any(
-                        Path(entry.entity.path).exists()
+                        (project_context.path / entry.entity.path).exists()
                         for entry in cast(
                             List[Union[Usage, Generation]], itertools.chain(activity.usages, activity.generations)
                         )
@@ -728,6 +744,7 @@ def get_active_plans(activity_gateway: IActivityGateway, plan_gateway: IPlanGate
             latest_plan.number_of_executions = None
             composites.append(latest_plan)
             latest_plan.type = "CompositePlan"
+            latest_plan.children = [p.id for p in latest_plan.plans]
 
         result[latest_plan.id] = latest_plan
 
@@ -738,16 +755,16 @@ def get_active_plans(activity_gateway: IActivityGateway, plan_gateway: IPlanGate
         while len(stack) > 0:
             composite = stack.pop()
             unprocessed_children = [
-                p for p in composite.plans if isinstance(p, CompositePlan) and get_latest_plan(p).id in composites
+                p for p in composite.plans if isinstance(p, CompositePlan) and _cached_latest_plan(p).id in composites
             ]
             if unprocessed_children:
                 # Has child composite plans, process those first
                 stack.append(composite)
                 for child in unprocessed_children:
-                    stack.append(result[get_latest_plan(child).id])
+                    stack.append(result[_cached_latest_plan(child).id])
                 continue
             composite.touches_existing_files = any(
-                result[get_latest_plan(p).id].touches_existing_files for p in composite.plans
+                result[_cached_latest_plan(p).id].touches_existing_files for p in composite.plans
             )
 
             if composite in composites:

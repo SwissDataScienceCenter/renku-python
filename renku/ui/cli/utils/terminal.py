@@ -57,12 +57,12 @@ def show_text_with_pager(text: str) -> None:
         click.echo(text)
 
 
-def print_markdown(text: str):
+def print_markdown(text: str, err: bool = False):
     """Print markdown text to console."""
     from rich.console import Console
     from rich.markdown import Markdown
 
-    Console().print(Markdown(text))
+    Console(stderr=err).print(Markdown(text))
 
 
 def print_key_value(key, value, print_empty: bool = True, err: bool = False):
@@ -94,45 +94,48 @@ def print_plan(plan: "PlanViewModel", err: bool = False):
         plan(PlanViewModel): The plan to print.
         err(bool,optional): Print to ``stderr`` (Default value = False).
     """
-    print_key_value("Id: ", plan.id, err)
-    print_key_value("Name: ", plan.name, err)
+    print_key_value("Id: ", plan.id, err=err)
+    print_key_value("Name: ", plan.name, err=err)
 
     if plan.description:
-        print_markdown(plan.description)
+        print_markdown(plan.description, err=err)
 
     if plan.creators:
-        print_key_value("Creators: ", ",".join(str(c) for c in plan.creators), err)
+        print_key_value("Creators: ", ", ".join(str(c) for c in plan.creators), err=err)
 
-    print_key_value("Command: ", plan.full_command, err)
-    print_key_value("Success Codes: ", plan.success_codes, err)
+    if plan.keywords:
+        print_key_value("Keywords: ", ", ".join(k for k in plan.keywords), err=err)
+
+    print_key_value("Command: ", plan.full_command, err=err)
+    print_key_value("Success Codes: ", plan.success_codes, err=err)
 
     if plan.annotations:
-        print_key_value("Annotations:\n", plan.annotations, err)
+        print_key_value("Annotations:\n", plan.annotations, err=err)
 
     if plan.inputs:
-        print_key("Inputs:", err)
+        print_key("Inputs:", err=err)
         for run_input in plan.inputs:
-            print_value(f"\t- {run_input.name}:", err)
-            print_description(run_input.description, err)
-            print_key_value("\t\tDefault Value: ", run_input.default_value, err)
+            print_value(f"\t- {run_input.name}:", err=err)
+            print_description(run_input.description, err=err)
+            print_key_value("\t\tDefault Value: ", run_input.default_value, err=err)
             print_key_value("\t\tPosition: ", run_input.position, print_empty=False, err=err)
             print_key_value("\t\tPrefix: ", run_input.prefix, print_empty=False, err=err)
 
     if plan.outputs:
         print_key("Outputs:")
         for run_output in plan.outputs:
-            print_value(f"\t- {run_output.name}:", err)
-            print_description(run_output.description, err)
-            print_key_value("\t\tDefault Value: ", run_output.default_value, err)
+            print_value(f"\t- {run_output.name}:", err=err)
+            print_description(run_output.description, err=err)
+            print_key_value("\t\tDefault Value: ", run_output.default_value, err=err)
             print_key_value("\t\tPosition: ", run_output.position, print_empty=False, err=err)
             print_key_value("\t\tPrefix: ", run_output.prefix, print_empty=False, err=err)
 
     if plan.parameters:
-        print_key("Parameters:", err)
+        print_key("Parameters:", err=err)
         for run_parameter in plan.parameters:
-            print_value(f"\t- {run_parameter.name}:", err)
-            print_description(run_parameter.description, err)
-            print_key_value("\t\tDefault Value: ", run_parameter.default_value, err)
+            print_value(f"\t- {run_parameter.name}:", err=err)
+            print_description(run_parameter.description, err=err)
+            print_key_value("\t\tDefault Value: ", run_parameter.default_value, err=err)
             print_key_value("\t\tPosition: ", run_parameter.position, print_empty=False, err=err)
             print_key_value("\t\tPrefix: ", run_parameter.prefix, print_empty=False, err=err)
 
@@ -144,7 +147,10 @@ def print_composite_plan(composite_plan: "CompositePlanViewModel"):
     print_key_value("Name: ", composite_plan.name)
 
     if composite_plan.creators:
-        print_key_value("Creators: ", ",".join(str(c) for c in composite_plan.creators))
+        print_key_value("Creators: ", ", ".join(str(c) for c in composite_plan.creators))
+
+    if composite_plan.keywords:
+        print_key_value("Keywords: ", ", ".join(k for k in composite_plan.keywords))
 
     if composite_plan.description:
         print_markdown(composite_plan.description)
