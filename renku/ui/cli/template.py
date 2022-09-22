@@ -112,6 +112,37 @@ Running this inside a template repository (not in a Renku project) will
 check that the manifest and individual templates are correct and follow
 Renku template conventions, printing warnings or errors if something
 needs to be changed.
+
+.. cheatsheet::
+   :group: Project Templates
+   :command: $ renku template ls
+   :description: List available Renku templates.
+   :target: rp
+
+.. cheatsheet::
+   :group: Project Templates
+   :command: $ renku template show <template>
+   :description: Show detailed information for the given template.
+   :target: rp
+
+.. cheatsheet::
+   :group: Project Templates
+   :command: $ renku template update
+   :description: Update the project's template if a newer version is available.
+   :target: rp
+
+.. cheatsheet::
+   :group: Project Templates
+   :command: $ renku template set <template>
+   :description: Replace the project's template with the given template.
+   :target: rp
+
+.. cheatsheet::
+   :group: Misc
+   :command: $ renku template validate
+   :description: Check a template repository for possible errors (useful when creating Renku templates).
+   :target: rp
+
 """
 
 import functools

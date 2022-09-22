@@ -50,13 +50,15 @@ extensions = [
     "sphinx.ext.napoleon",
     "cheatsheet",
 ]
-cheatsheet_target = os.environ.get("CHEATSHEET_TARGET", "rp")
+cheatsheet_target = os.environ.get("CHEATSHEET_TARGET", None)
 cheatsheet_groups = [
     "Typical Workflow",
     "Getting Started",
+    "Project Templates",
     "Working with Renku Datasets",
     "Running",
     "Workflows",
+    "Managing Interactive Sessions",
     "Config",
     "Misc",
     "Undo Renku Command",
@@ -169,7 +171,7 @@ latex_additional_files = [
 ]
 
 
-# Autodoc configuraton.
+# Autodoc configuration.
 autoclass_content = "both"
 autodoc_mock_imports = ["persistent", "ZODB"]
 autodoc_typehints = "none"

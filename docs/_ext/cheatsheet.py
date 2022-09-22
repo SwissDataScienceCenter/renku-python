@@ -22,7 +22,6 @@ from collections import defaultdict
 
 from docutils import nodes
 from docutils.parsers.rst import Directive, directives
-from sphinx.locale import _
 from sphinx.util import texescape
 from sphinx.util.docutils import SphinxDirective
 
@@ -191,7 +190,7 @@ def process_cheatsheet_nodes(app, doctree, fromdocname):
         entries = defaultdict(list)
 
         for cheatsheet_info in env.cheatsheet_all_entries:
-            if app.config.cheatsheet_target in cheatsheet_info["target"]:
+            if not app.config.cheatsheet_target or app.config.cheatsheet_target in cheatsheet_info["target"]:
                 entries[cheatsheet_info["group"]].append(cheatsheet_info)
 
         if app.builder.name == "latex":
@@ -207,7 +206,7 @@ def process_cheatsheet_nodes(app, doctree, fromdocname):
 def setup(app):
     """Run setup method for directive/plugin."""
 
-    app.add_config_value("cheatsheet_target", "rp", "html")
+    app.add_config_value("cheatsheet_target", None, "html")
     app.add_config_value("cheatsheet_groups", [], "html")
     app.add_node(cheatsheet_list)
 

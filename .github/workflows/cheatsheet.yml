@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python 3.7
+      - name: Set up Python 3.9
         uses: actions/setup-python@v1
         with:
           python-version: 3.9
@@ -57,16 +57,14 @@ jobs:
           cat <(md5sum cheatsheet.tex) <(md5sum sdsc_cheatsheet.cls) > ../cheatsheet_hash_new
           cd ../..
         env:
-          CHEATSHEET_TARGET:  rp
+          CHEATSHEET_TARGET: rp
       - name: Build cheatsheet json
         run: |
           sphinx-build -b json -c docs/cheatsheet/ docs docs/json/ -W
           cd docs/json/
-          python -c "import json;print(json.dumps(json.loads(json.load(open('cheatsheet.fjson', 'r'))['body']), indent=2))" > cheatsheet.json
+          python -c 'import json; print(json.dumps(json.loads(json.load(open("cheatsheet.fjson", "r"))["body"]), indent=2, sort_keys=True))' > cheatsheet.json
           cat <(md5sum cheatsheet.json) > ../cheatsheet_json_hash_new
           cd ../..
-        env:
-          CHEATSHEET_TARGET:  ui
       - name: Publish cheatsheet if changed
         id: publish
         if: ${{ hashFiles('docs/cheatsheet_hash') != hashFiles('docs/cheatsheet_hash_new') }}

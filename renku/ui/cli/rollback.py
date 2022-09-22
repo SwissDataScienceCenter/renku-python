@@ -84,13 +84,8 @@ deleted/lost.
    :group: Undo Renku Command
    :command: $ renku rollback
    :description: Rollback project to a previous point in time.
-   :target: ui
+   :target: rp,ui
 
-.. cheatsheet::
-   :group: Misc
-   :command: $ renku rollback
-   :description: Rollback project to a previous point in time.
-   :target: rp
 """
 
 import click
