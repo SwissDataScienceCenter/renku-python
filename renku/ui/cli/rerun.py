@@ -70,7 +70,7 @@ flag to ``renku rerun``.
    :command: $ renku rerun <path>
    :description: Recreate the file(s) <path> by rerunning the commands that
                  created them.
-   :extended:
+   :target: rp
 """
 
 import click

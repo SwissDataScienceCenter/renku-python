@@ -97,7 +97,7 @@ flag to ``renku update``.
    :description: Update outdated output files created by renku run. With
                  <path>'s: Only recreate these files. With --all: Update
                  all outdated output files.
-   :extended:
+   :target: rp
 
 Pre-update checks
 ~~~~~~~~~~~~~~~~~

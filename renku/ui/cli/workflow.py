@@ -75,7 +75,7 @@ combination of values from ``id``, ``name``, ``keywords`` and ``description``.
    :group: Workflows
    :command: $ renku workflow ls
    :description: List Plans (workflow templates).
-   :extended:
+   :target: rp
 
 Showing Plan Details
 ********************
@@ -111,7 +111,7 @@ inputs, outputs and parameters.
    :group: Workflows
    :command: $ renku workflow show <name>
    :description: Show details for Plan <name>.
-   :extended:
+   :target: rp
 
 Executing Plans
 ***************
@@ -156,7 +156,7 @@ Provider specific settings can be passed as file using the ``--config`` paramete
              <param-name>=<value>...] <name>
    :description: Execute a Plan using <provider> as a backend, overriding
                  parameter <param-name>'s value.
-   :extended:
+   :target: rp
 
 In some cases it may be desirable to avoid updating the renku metadata
 and to avoid committing this and any other change in the repository when a workflow
@@ -195,7 +195,7 @@ should be:
              <name>
    :description: Repeatedly execute a Plan, taking values from the list
                  specified with --map.
-   :extended:
+   :target: rp
 
 By default ``renku workflow iterate`` will execute all the combination of the
 given parameters' list of possible values. Sometimes it is desired that instead
@@ -292,7 +292,7 @@ You can export into a file directly with ``-o <path>``.
    :group: Workflows
    :command: $ renku workflow export --format <format> <plan>
    :description: Export a Plan in a given format (e.g. 'cwl').
-   :extended:
+   :target: rp
 
 
 Composing Plans into larger workflows
@@ -322,7 +322,7 @@ or composed with other workflows.
    :group: Workflows
    :command: $ renku workflow compose <composed-name> <plan> <plan>
    :description: Create a new Plan composed of child Plans.
-   :extended:
+   :target: rp
 
 Workflows can also be composed based on past Runs and their
 inputs/outputs, using the ``--from`` and ``--to`` parameters. This finds
@@ -492,7 +492,7 @@ parameter to ``other-file.txt`` and set its description.
    :group: Workflows
    :command: $ renku workflow edit <plan>
    :description: Create a new Plan composed of child Plans.
-   :extended:
+   :target: rp
 
 Removing Plans
 **************
@@ -508,7 +508,7 @@ them if needed, to ensure reproducibility.
    :group: Workflows
    :command: $ renku workflow delete <plan>
    :description: Remove a Plan.
-   :extended:
+   :target: rp
 
 Working with Runs
 ~~~~~~~~~~~~~~~~~
@@ -649,7 +649,7 @@ Use ``renku workflow visualize -h`` to see all available options.
    :group: Workflows
    :command: $ renku workflow visualize [--interactive]
    :description: Show linked workflows as a graph.
-   :extended:
+   :target: rp
 
 
 Removing Runs
@@ -681,7 +681,13 @@ the run anyway.
    :group: Workflows
    :command: $ renku workflow revert <activity ID>
    :description: Undo a Run.
-   :extended:
+   :target: rp
+
+.. cheatsheet::
+   :group: Undo Renku Command
+   :command: $ renku workflow revert <activity ID>
+   :description: Undo a Renku workflow execution.
+   :target: ui
 
 
 Input and output files
@@ -707,7 +713,7 @@ respectively.
    :group: Workflows
    :command: $ renku workflow inputs|||$ renku workflow outputs
    :description: Show input respectively output files used by workflows.
-   :extended:
+   :target: rp
 
 """
 
