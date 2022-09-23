@@ -227,10 +227,8 @@ def _init(
 
     if branch_name:
         communication.echo(
-            "Project initialized.\n"  # type: ignore
-            f"You can undo this command by running 'git reset --hard {branch_name}'\n"
-            "You can see changes made by running "
-            f"'git diff {branch_name} {project_properties.repository.head.reference.name}'"
+            f"Project initialized.\nYou can undo this command by running 'git reset --hard {branch_name}'\n"
+            f"You can see changes made by running 'git diff {branch_name} HEAD'"
         )
     else:
         communication.echo("Project initialized.")

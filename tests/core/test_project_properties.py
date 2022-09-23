@@ -33,22 +33,22 @@ def test_project_properties(tmpdir):
         _ = project_properties.path
 
     with pytest.raises(IndexError):
-        project_properties.pop_path()
+        project_properties.pop_context()
 
     path = Path(tmpdir.mkdir("push"))
     project_properties.push_path(path)
 
     assert project_properties.path == path
 
-    assert project_properties.pop_path().path == path
+    assert project_properties.pop_context().path == path
 
     project_properties.replace_path(path)
     assert project_properties.path == path
 
-    assert project_properties.pop_path().path == path
+    assert project_properties.pop_context().path == path
 
     with pytest.raises(IndexError):
-        project_properties.pop_path()
+        project_properties.pop_context()
 
     new_path = Path(tmpdir.mkdir("new"))
 
@@ -81,17 +81,17 @@ def test_database(tmpdir):
     assert project_properties.path == Path(other_test_dir).resolve()
     assert project_properties.database._storage.path.parent.parent == Path(other_test_dir).resolve()
 
-    project_properties.pop_path()
+    project_properties.pop_context()
 
     # NOTE: Make sure the database was committed on pop
     assert (Path(other_test_dir) / ".renku" / "metadata" / "root").exists()
 
-    project_properties.pop_path()
+    project_properties.pop_context()
 
     # NOTE: Make sure the database was not committed on pop
     assert not (Path(test_dir) / ".renku" / "metadata" / "root").exists()
 
-    project_properties.pop_path()
+    project_properties.pop_context()
 
     # NOTE: Make sure the database was not committed on pop
     assert not (Path(tmpdir) / ".renku" / "metadata" / "root").exists()
@@ -125,3 +125,12 @@ def test_project_properties_with_path_empty():
 
     with pytest.raises(errors.ConfigurationError):
         _ = project_properties.path
+
+
+def test_get_repository_outside_a_project(tmpdir):
+    """Test accessing project's repository outside a project raises an error."""
+    project_properties = ProjectProperties()
+
+    with project_properties.with_path(tmpdir.mkdir("project")):
+        with pytest.raises(errors.ConfigurationError):
+            _ = project_properties.repository

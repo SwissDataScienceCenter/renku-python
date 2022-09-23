@@ -321,7 +321,7 @@ def finalize_worktree(isolation, path, branch_name, delete, new_branch, merge_ar
 
     isolation.__exit__(*exc_info)
 
-    project_properties.pop_path()
+    project_properties.pop_context()
 
     repository = project_properties.repository
 

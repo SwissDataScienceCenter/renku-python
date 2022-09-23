@@ -108,7 +108,7 @@ class DatabaseCommand(Command):
             # NOTE: update minimum renku version on write as migrations might happen on the fly
             self.project.minimum_renku_version = Project.minimum_renku_version
 
-        project_properties.pop_path()
+        project_properties.pop_context()
 
     @check_finalized
     def build(self) -> Command:

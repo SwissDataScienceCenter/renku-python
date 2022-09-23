@@ -21,14 +21,12 @@ from typing import TYPE_CHECKING
 
 from renku.command.command_builder.command import inject
 from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.interface.storage import IStorageFactory
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials
     from renku.core.interface.storage import IStorage
     from renku.core.management.client import LocalClient
-    from renku.domain_model.project import Project
 
 
 def get_client() -> "LocalClient":
@@ -39,16 +37,6 @@ def get_client() -> "LocalClient":
         return client_dispatcher.current_client
 
     return get_client_helper()
-
-
-def get_project() -> "Project":
-    """Return current project."""
-
-    @inject.autoparams()
-    def get_project_helper(project_gateway: IProjectGateway):
-        return project_gateway.get_project()
-
-    return get_project_helper()
 
 
 def get_storage(provider: "ProviderApi", credentials: "ProviderCredentials") -> "IStorage":

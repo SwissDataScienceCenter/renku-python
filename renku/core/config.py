@@ -26,6 +26,20 @@ from renku.core.project.project_properties import project_properties
 from renku.domain_model.enums import ConfigFilter
 
 
+def global_config_read_lock():
+    """Create a user-level config read lock."""
+    from renku.core.util.contexts import Lock
+
+    return Lock(project_properties.global_config_path)
+
+
+def global_config_write_lock():
+    """Create a user-level config write lock."""
+    from renku.core.util.contexts import Lock
+
+    return Lock(project_properties.global_config_path, mode="exclusive")
+
+
 def get_value(section, key, config_filter=ConfigFilter.ALL):
     """Get value from specified section and key."""
     config = load_config(config_filter=config_filter)
@@ -103,7 +117,7 @@ def load_config(config_filter=ConfigFilter.ALL):
         config_files += [project_properties.global_config_path, project_properties.local_config_path]
 
     if config_filter != ConfigFilter.LOCAL_ONLY:
-        with project_properties.global_config_read_lock:
+        with global_config_read_lock():
             config.read(config_files)
     else:
         config.read(config_files)
@@ -129,7 +143,7 @@ def store_config(config, global_only):
     filepath = project_properties.global_config_path if global_only else project_properties.local_config_path
 
     if global_only:
-        with project_properties.global_config_write_lock:
+        with global_config_write_lock():
             os.umask(0)
             fd = os.open(filepath, os.O_CREAT | os.O_RDWR | os.O_TRUNC, 0o600)
             write_config(fd, config)

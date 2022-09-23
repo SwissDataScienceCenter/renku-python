@@ -221,7 +221,7 @@ class Command:
         if self._client_was_created:
             if self._client:
                 context["client_dispatcher"].pop_client()
-            project_properties.pop_path()
+            project_properties.pop_context()
 
         if result.error:
             raise result.error

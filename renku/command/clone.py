@@ -80,7 +80,7 @@ def _project_clone(
         use_renku_credentials=use_renku_credentials,
     )
 
-    client_dispatcher.push_client_to_stack(path=repository.path, external_storage_requested=install_lfs)
+    client_dispatcher.push_client_to_stack(path=repository.path)
 
     with project_properties.with_path(repository.path):
         try:

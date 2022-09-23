@@ -134,20 +134,6 @@ class ProjectProperties(threading.local):
         return config / CONFIG_NAME
 
     @property
-    def global_config_read_lock(self):
-        """Create a user-level config read lock."""
-        from renku.core.util.contexts import Lock
-
-        return Lock(self.global_config_path)
-
-    @property
-    def global_config_write_lock(self):
-        """Create a user-level config write lock."""
-        from renku.core.util.contexts import Lock
-
-        return Lock(self.global_config_path, mode="exclusive")
-
-    @property
     def latest_agent(self) -> Optional[str]:
         """Returns latest agent version used in the repository."""
         try:
@@ -165,9 +151,9 @@ class ProjectProperties(threading.local):
     @property
     def lock(self):
         """Create a Renku config lock."""
-        import filelock
+        from renku.core.util.contexts import Lock
 
-        return filelock.FileLock(str(self.metadata_path.with_suffix(LOCK_SUFFIX)), timeout=0)
+        return Lock(filename=self.metadata_path.with_suffix(LOCK_SUFFIX), mode="exclusive")
 
     @property
     def metadata_path(self) -> Path:
@@ -263,8 +249,8 @@ class ProjectProperties(threading.local):
 
         self.external_storage_requested = True
 
-    def pop_path(self) -> ProjectContext:
-        """Pop current project path from stack.
+    def pop_context(self) -> ProjectContext:
+        """Pop current project context from stack.
 
         Returns:
             Path: the popped project path.
@@ -322,7 +308,7 @@ class ProjectProperties(threading.local):
     def with_rollback(self) -> Generator[None, None, None]:
         """Rollback to the current state.
 
-        NOTE: This won't correctly if the current context is popped or swapped.
+        NOTE: This won't work correctly if the current context is popped or swapped.
         """
         before_top = self._top if self._context_stack else None
 
@@ -336,7 +322,7 @@ class ProjectProperties(threading.local):
                     could_rollback = True
                     break
 
-                self.pop_path()
+                self.pop_context()
 
             if not could_rollback and before_top is not None:
                 raise errors.ConfigurationError(f"Cannot rollback to {before_top.path}.")

@@ -18,7 +18,7 @@
 """Project class."""
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Dict, List, Optional, cast
+from typing import Dict, List, Optional, cast
 from urllib.parse import quote
 
 import persistent
@@ -32,9 +32,6 @@ from renku.core.util.util import NO_VALUE
 from renku.domain_model.provenance.agent import Person
 from renku.domain_model.provenance.annotation import Annotation
 from renku.version import __minimum_project_version__
-
-if TYPE_CHECKING:
-    pass
 
 
 class Project(persistent.Persistent):

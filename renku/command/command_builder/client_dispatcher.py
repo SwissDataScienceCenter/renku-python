@@ -42,7 +42,7 @@ class ClientDispatcher(IClientDispatcher):
 
         return self.client_stack[-1]
 
-    def push_client_to_stack(self, path: Union[Path, str], external_storage_requested: bool = True) -> LocalClient:
+    def push_client_to_stack(self, path: Union[Path, str]) -> LocalClient:
         """Create and push a new client to the stack."""
         if isinstance(path, str):
             path = Path(path)
