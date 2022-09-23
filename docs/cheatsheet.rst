@@ -15,8 +15,7 @@
     \item
     \textbf{show\_lfs\_message}: Whether to show the LFS warning message
     \item
-    \textbf{lfs\_threshold}: Size threshold below which files aren't added
-    to LFS
+    \textbf{lfs\_threshold}: Size threshold below which files aren't added to LFS
     \end{itemize}
 
 .. raw:: latex

@@ -59,6 +59,24 @@ Windows:
 If in doubt where to look for the configuration file, you can display its path
 by running ``renku --global-config-path``.
 
+.. cheatsheet::
+   :group: Typical Workflow
+   :command: $ git status
+   :description: Take a look at what you have done since the last save.
+   :target: ui,rp
+
+.. cheatsheet::
+   :group: Typical Workflow
+   :command: $ renku save -m <msg>
+   :description: Save your latest work, providing a message explaining what you have done.
+   :target: ui,rp
+
+.. cheatsheet::
+   :group: Typical Workflow
+   :command: $ renku run …
+   :description: Run your code, capturing lineage of the inputs and outputs using Renku.
+   :target: ui,rp
+
 """
 import os
 import sys

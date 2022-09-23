@@ -57,7 +57,7 @@ cutting and pasting to other commands).
    :group: Running
    :command: $ renku status
    :description: The the status of generated output files in the project.
-   :extended:
+   :target: rp
 """
 
 import click

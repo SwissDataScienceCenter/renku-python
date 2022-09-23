@@ -67,7 +67,7 @@ You can select a format using the ``--format <format>`` argument.
    :group: Misc
    :command: $ renku log
    :description: Show a history of renku actions.
-   :extended:
+   :target: rp
 """
 
 import click

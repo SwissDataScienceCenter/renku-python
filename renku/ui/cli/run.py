@@ -74,7 +74,7 @@ Examples
    :description: Execute a <command> with Renku tracking inputs and outputs. Input and output files
                  are automatically detected from the command string. Creates a workflow template
                  named <name>. With --input and/or --output: Manually specify input or output files to track.
-   :extended:
+   :target: rp
 
 Detecting input paths
 ~~~~~~~~~~~~~~~~~~~~~
@@ -177,7 +177,7 @@ those paths. Therefore:
    :group: Running
    :command: $ renku run --name <name> <command> --no-output
    :description: Run a <command> that produces no output.
-   :extended:
+   :target: rp
 
 .. topic:: Specifying outputs explicitly (``--output``)
 
