@@ -66,11 +66,13 @@ class DatabaseCommand(Command):
 
         project_context.push_path(path=self._path or project_context.path, save_changes=self._write)
 
+        project_gateway = ProjectGateway()
+
         context["constructor_bindings"][IPlanGateway] = lambda: PlanGateway()
         context["constructor_bindings"][IActivityGateway] = lambda: ActivityGateway()
         context["constructor_bindings"][IDatabaseGateway] = lambda: DatabaseGateway()
         context["constructor_bindings"][IDatasetGateway] = lambda: DatasetGateway()
-        context["constructor_bindings"][IProjectGateway] = lambda: ProjectGateway()
+        context["constructor_bindings"][IProjectGateway] = lambda: project_gateway
         context["constructor_bindings"][IStorageFactory] = lambda: StorageFactory
 
         if int(os.environ.get("RENKU_SKIP_MIN_VERSION_CHECK", "0")) == 1:
@@ -78,7 +80,7 @@ class DatabaseCommand(Command):
             return
 
         try:
-            self.project = project_context.project
+            self.project = project_gateway.get_project()
             minimum_renku_version = Version(self.project.minimum_renku_version)
         except (KeyError, ImportError, ValueError):
             try:

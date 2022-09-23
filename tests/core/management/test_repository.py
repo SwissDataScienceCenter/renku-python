@@ -25,17 +25,17 @@ from renku.command.init import init_repository
 from renku.domain_model.project_context import project_context
 
 
-def test_latest_version(project):
+def test_latest_version(project, with_injections_manager):
     """Test returning the latest version of `SoftwareAgent`."""
     from renku import __version__
 
     create_dataset_command().build().execute("ds1", title="", description="", creators=[])
 
-    with project_context.with_path(project.path):
+    with project_context.with_path(project.path), with_injections_manager(project):
         assert __version__ == project_context.latest_agent
 
 
-def test_latest_version_user_commits(repository):
+def test_latest_version_user_commits(repository, with_injections_manager):
     """Test retrieval of `SoftwareAgent` with latest non-renku command."""
     from renku import __version__
 
@@ -47,7 +47,7 @@ def test_latest_version_user_commits(repository):
     repository.add(file)
     repository.commit("added my-file")
 
-    with project_context.with_path(repository.path):
+    with project_context.with_path(repository.path), with_injections_manager(repository):
         assert __version__ == project_context.latest_agent
 
 

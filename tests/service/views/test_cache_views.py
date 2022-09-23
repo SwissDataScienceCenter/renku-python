@@ -1085,6 +1085,7 @@ def test_check_migrations_remote_anonymous(svc_client, it_remote_public_repo_url
 
 @pytest.mark.service
 @pytest.mark.integration
+@retry_failed
 def test_check_migrations_local_minimum_version(svc_client_setup, mocker, monkeypatch):
     """Check if migrations are required for a local project."""
     monkeypatch.setenv("RENKU_SKIP_MIN_VERSION_CHECK", "0")
@@ -1100,8 +1101,8 @@ def test_check_migrations_local_minimum_version(svc_client_setup, mocker, monkey
         return mocked_getter
 
     mocker.patch("renku.domain_model.project.Project.minimum_renku_version", "2.0.0")
-    project = Project(creator=Person(name="John Doe", email="jd@example.com"), name="testproject")
-    mocker.patch("renku.infrastructure.database.Database.__getitem__", mock_database_project(project))
+    dummy_project = Project(creator=Person(name="John Doe", email="jd@example.com"), name="testproject")
+    mocker.patch("renku.infrastructure.database.Database.__getitem__", mock_database_project(dummy_project))
     mocker.patch("renku.version.__version__", "1.0.0")
 
     response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)

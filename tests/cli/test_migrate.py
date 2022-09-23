@@ -44,13 +44,13 @@ def test_migrate_datasets_with_old_repository(isolated_runner, old_project):
 
 
 @pytest.mark.migration
-def test_migrate_project(isolated_runner, old_project):
+def test_migrate_project(isolated_runner, old_project, with_injections_manager):
     """Test migrate on old repository."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert not old_project.is_dirty(untracked_files=True)
 
-    with project_context.with_path(old_project.path):
+    with project_context.with_path(old_project.path), with_injections_manager(old_project):
         assert project_context.project
         assert project_context.project.name
 

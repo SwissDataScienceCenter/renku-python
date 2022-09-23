@@ -76,17 +76,17 @@ def test_check_for_template_update(client_with_template, templates_source, clien
     assert "2.0.0" == new_version
 
 
-def test_template_update_files(client_with_template, templates_source, client_database_injection_manager):
+def test_template_update_files(client_with_template, templates_source, with_injections_manager):
     """Test template update."""
     templates_source.update(id="dummy", version="2.0.0")
 
-    files_before = {p: Path(p).read_text() for p in project_context.project.template_files}
+    with with_injections_manager(client_with_template):
+        files_before = {p: Path(p).read_text() for p in project_context.project.template_files}
 
-    with client_database_injection_manager(client_with_template):
         update_template(force=False, interactive=False, dry_run=False)
 
-    for file in project_context.project.template_files:
-        assert Path(file).read_text() != files_before[file]
+        for file in project_context.project.template_files:
+            assert Path(file).read_text() != files_before[file]
 
 
 def test_template_update_source_failure(client_with_template, client_database_injection_manager):
