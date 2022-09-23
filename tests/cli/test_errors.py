@@ -20,8 +20,8 @@ import sys
 import tempfile
 
 import pytest
-from filelock import FileLock
 
+from renku.core.util.contexts import Lock
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
@@ -95,7 +95,7 @@ def test_cli_initialization_no_err_help(cmd, runner):
 
 def test_file_lock_timeout_error(project, runner):
     """Test file lock timeout."""
-    with FileLock(".renku.lock"):
+    with Lock(".renku.lock"):
         result = runner.invoke(cli, ["dataset", "import", "10.5281/zenodo.3715335"])
 
         assert "Unable to acquire lock." in result.output

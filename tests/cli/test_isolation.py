@@ -22,13 +22,12 @@ import sys
 import textwrap
 import time
 
+from renku.core.util.contexts import Lock
 from tests.utils import write_and_commit_file
 
 
 def test_run_in_isolation(runner, repository, run, subdirectory):
     """Test run in isolation."""
-    import filelock
-
     cwd = repository.path
     write_and_commit_file(repository, path=cwd / ".gitignore", content="\nlock")
 
@@ -37,7 +36,7 @@ def test_run_in_isolation(runner, repository, run, subdirectory):
 
     head = repository.head.commit.hexsha
 
-    with filelock.FileLock("lock"):
+    with Lock("lock"):
         assert 1 == run(args=prefix + cmd)
         assert repository.head.commit.hexsha == head
 
