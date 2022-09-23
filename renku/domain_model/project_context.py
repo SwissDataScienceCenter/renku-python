@@ -162,13 +162,14 @@ class ProjectContext(threading.local):
     @property
     def project(self) -> "Project":
         """Return the Project instance."""
-        if not self._top.project:
-            try:
-                self._top.project = self.database["project"]  # type: ignore
-            except KeyError:
-                raise ValueError(f"Project is not set in '{self.path}'")
+        from renku.command.command_builder.command import inject
+        from renku.core.interface.project_gateway import IProjectGateway
 
-        return self._top.project  # type: ignore
+        if not self._top.project:
+            project_gateway = inject.instance(IProjectGateway)
+            self._top.project = project_gateway.get_project()
+
+        return self._top.project
 
     @property
     def remote(self) -> "ProjectRemote":

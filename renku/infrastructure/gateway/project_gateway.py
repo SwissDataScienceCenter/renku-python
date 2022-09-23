@@ -30,7 +30,7 @@ class ProjectGateway(IProjectGateway):
         try:
             return project_context.database["project"]  # type: ignore
         except KeyError as e:
-            raise ValueError() from e
+            raise ValueError("Cannot get project") from e
 
     def update_project(self, project: Project):
         """Update project metadata."""
