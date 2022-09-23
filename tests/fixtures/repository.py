@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku fixtures for repository management."""
+
 import contextlib
 import os
 import secrets
@@ -24,160 +25,80 @@ from pathlib import Path
 from typing import Generator
 
 import pytest
+from click.testing import CliRunner
 
-from renku.core.management.client import LocalClient
-from renku.core.project.project_properties import project_properties
+from renku.core.config import set_value
+from renku.core.util.contexts import chdir
+from renku.domain_model.project_context import ProjectContext, project_context
 from renku.infrastructure.repository import Repository
-from tests.utils import format_result_exception
+from renku.ui.cli.init import init
+from tests.utils import format_result_exception, modified_environ
 
 
 @contextlib.contextmanager
-def _isolated_filesystem(tmpdir, name=None, delete=True):
+def isolated_filesystem(path: Path, name: str = None, delete: bool = True):
     """Click CliRunner ``isolated_filesystem`` but xdist compatible."""
-    from renku.core.util.contexts import chdir
+    name = name or secrets.token_hex(8)
 
-    if not name:
-        name = secrets.token_hex(8)
-    t = tmpdir.mkdir(name)
+    base_path = path / name
+    base_path = base_path.resolve()
+    base_path.mkdir(parents=True, exist_ok=True)
 
-    with chdir(t):
+    with chdir(base_path):
         try:
-            yield t
+            yield base_path
         finally:
             if delete:
                 try:
-                    shutil.rmtree(t)
+                    shutil.rmtree(base_path)
                 except OSError:  # noqa: B014
                     pass
 
 
-@pytest.fixture()
-def renku_path(tmpdir):
-    """Temporary instance path."""
-    path = str(tmpdir.mkdir("renku"))
-    yield path
-    shutil.rmtree(path)
+@pytest.fixture
+def fake_home(tmp_path, monkeypatch) -> Generator[Path, None, None]:
+    """Yield a fake home directory with global config values."""
+    home = tmp_path / "user_home"
+    home.mkdir(parents=True, exist_ok=True)
+    home_str = home.as_posix()
 
+    with modified_environ(HOME=home_str, XDG_CONFIG_HOME=home_str), monkeypatch.context() as context:
+        context.setattr(ProjectContext, "global_config_dir", os.path.join(home, ".renku"))
 
-@pytest.fixture()
-def instance_path(renku_path, monkeypatch):
-    """Temporary instance path."""
-    with monkeypatch.context() as m:
-        m.chdir(renku_path)
-        yield renku_path
+        # NOTE: fake user home directory
+        with Repository.get_global_configuration(writable=True) as global_config:
+            global_config.set_value("user", "name", "Renku Bot")
+            global_config.set_value("user", "email", "renku@datascience.ch")
+            global_config.set_value("pull", "rebase", "false")
+
+        set_value(section="renku", key="show_lfs_message", value="False", global_only=True)
+
+        yield home
 
 
 @pytest.fixture
-def repository(tmpdir):
-    """Yield a Renku repository."""
-    from click.testing import CliRunner
+def project(fake_home) -> Generator[Repository, None, None]:
+    """A Renku test project."""
+    project_context.clear()
 
-    from renku.ui.cli import cli
-
-    runner = CliRunner()
-    with _isolated_filesystem(tmpdir, delete=True) as project_path:
-        home = tmpdir.mkdir("user_home")
-        old_home = os.environ.get("HOME", "")
-        old_xdg_home = os.environ.get("XDG_CONFIG_HOME", "")
-
-        try:
-            # NOTE: fake user home directory
-            os.environ["HOME"] = str(home)
-            os.environ["XDG_CONFIG_HOME"] = str(home)
-            with Repository.get_global_configuration(writable=True) as global_config:
-                global_config.set_value("user", "name", "Renku Bot")
-                global_config.set_value("user", "email", "renku@datascience.ch")
-                global_config.set_value("pull", "rebase", "false")
-
-            result = runner.invoke(cli, ["init", ".", "--template-id", "python-minimal"], "\n", catch_exceptions=False)
+    with isolated_filesystem(fake_home.parent, delete=True) as project_path:
+        with project_context.with_path(project_path):
+            result = CliRunner().invoke(init, [".", "--template-id", "python-minimal"], "\n", catch_exceptions=False)
             assert 0 == result.exit_code, format_result_exception(result)
 
-            yield os.path.realpath(project_path)
-        finally:
-            os.environ["HOME"] = old_home
-            os.environ["XDG_CONFIG_HOME"] = old_xdg_home
-            try:
-                shutil.rmtree(home)
-            except OSError:  # noqa: B014
-                pass
+            repository = Repository(project_path, search_parent_directories=True)
+            project_context.repository = repository
+
+            yield repository
 
 
 @pytest.fixture
-def project(repository):
-    """Create a test project."""
-    from click.testing import CliRunner
-
-    from renku.core.util.contexts import chdir
-    from renku.ui.cli import cli
-
-    runner = CliRunner()
-
-    repo = Repository(repository, search_parent_directories=True)
-    commit = repo.head.commit
-
-    with chdir(repository):
-        yield repository
-
-        os.chdir(repository)
-        repo.reset(commit, hard=True)
-        # INFO: remove any extra non-tracked files (.pyc, etc)
-        repo.clean()
-        assert 0 == runner.invoke(cli, ["githooks", "install", "--force"]).exit_code
-
-
-@pytest.fixture
-def client(project, global_config_dir) -> Generator[LocalClient, None, None]:
+def repository(project) -> Generator[Repository, None, None]:
     """Return a Renku repository."""
-    from renku.domain_model.enums import ConfigFilter
-
-    original_get_value = LocalClient.get_value
-
-    def mocked_get_value(self, section, key, config_filter=ConfigFilter.ALL):
-        """We don't want lfs warnings in tests."""
-        if key == "show_lfs_message":
-            return "False"
-        return original_get_value(self, section, key, config_filter=config_filter)
-
-    LocalClient.get_value = mocked_get_value  # type: ignore
-
-    with project_properties.with_path(Path(project)):
-        yield LocalClient()
-
-    LocalClient.get_value = original_get_value  # type: ignore
+    yield project
 
 
 @pytest.fixture
-def client_injection_bindings():
-    """Return bindings needed for client dependency injection."""
-
-    def _create_client_bindings(client):
-        from renku.command.command_builder.client_dispatcher import ClientDispatcher
-        from renku.core.interface.client_dispatcher import IClientDispatcher
-
-        client_dispatcher = ClientDispatcher()
-        client_dispatcher.push_created_client_to_stack(client)
-        return {"bindings": {"LocalClient": client, IClientDispatcher: client_dispatcher}, "constructor_bindings": {}}
-
-    return _create_client_bindings
-
-
-@pytest.fixture
-def injection_binder(request):
-    """Return a binder that can work with bindings."""
-
-    def _binder(bindings):
-        from renku.command.command_builder.command import inject, remove_injector
-
-        def _bind(binder):
-            for key, value in bindings["bindings"].items():
-                binder.bind(key, value)
-            for key, value in bindings["constructor_bindings"].items():
-                binder.bind_to_constructor(key, value)
-
-            return binder
-
-        inject.configure(_bind, bind_in_runtime=False)
-        request.addfinalizer(lambda: remove_injector())
-        return
-
-    return _binder
+def client(project) -> Generator[Repository, None, None]:
+    """Return a Renku repository."""
+    yield project

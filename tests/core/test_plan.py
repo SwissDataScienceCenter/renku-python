@@ -53,7 +53,7 @@ def create_dummy_plans():
     return grand_parent, parent, plan, child, grand_child, unrelated
 
 
-def test_get_latest_plan(injected_client):
+def test_get_latest_plan(project_with_injection):
     """Test getting latest plan in a derivative chain."""
     grand_parent, parent, plan, child, grand_child, unrelated = create_dummy_plans()
 
@@ -68,7 +68,7 @@ def test_get_latest_plan(injected_client):
     assert get_latest_plan(unrelated) is unrelated
 
 
-def test_plan_get_derivatives_chain(injected_client):
+def test_plan_get_derivatives_chain(project_with_injection):
     """Test getting plans that have parent/child relation."""
     grand_parent, parent, plan, child, grand_child, unrelated = create_dummy_plans()
 
@@ -85,7 +85,7 @@ def test_plan_get_derivatives_chain(injected_client):
     assert [] == list(get_derivative_chain(None))
 
 
-def test_plan_remove(injected_client):
+def test_plan_remove(project_with_injection):
     """Test deleting a plan."""
     grand_parent, parent, plan, child, grand_child, unrelated = create_dummy_plans()
 
@@ -113,7 +113,7 @@ def test_plan_remove(injected_client):
     assert not is_plan_removed(unrelated)
 
 
-def test_plan_delete_errors(injected_client):
+def test_plan_delete_errors(project_with_injection):
     """Test deleting a deleted plan or a non-existing plan."""
     _, _, plan, _, _, _ = create_dummy_plans()
 
@@ -129,7 +129,7 @@ def test_plan_delete_errors(injected_client):
         remove_plan(name_or_id="non-existing", force=True)
 
 
-def test_plan_get_initial_id(injected_client):
+def test_plan_get_initial_id(project_with_injection):
     """Test getting initial id of a plan."""
     grand_parent, parent, plan, child, grand_child, unrelated = create_dummy_plans()
 
@@ -141,7 +141,7 @@ def test_plan_get_initial_id(injected_client):
     assert initial_id == get_initial_id(grand_child)
 
 
-def test_get_activities(injected_client):
+def test_get_activities(project_with_injection):
     """Test getting activities of a plan."""
     grand_parent, parent, plan, child, grand_child, unrelated = create_dummy_plans()
     activities = [

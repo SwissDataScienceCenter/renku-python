@@ -19,23 +19,21 @@
 import urllib
 from typing import Optional
 
-from renku.command.command_builder import inject
-from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.project.project_properties import project_properties
 from renku.core.util.git import get_remote
 from renku.core.util.urls import parse_authentication_endpoint
+from renku.domain_model.project_context import project_context
 
 
-@inject.autoparams()
-def get_renku_project_name(client_dispatcher: IClientDispatcher) -> str:
+def get_renku_project_name() -> str:
     """Get the full name of a renku project."""
-    client = client_dispatcher.current_client
+    repository = project_context.repository
+
     project_name = (
-        f"{client.remote['owner']}/{client.remote['name']}"
-        if client.remote["name"]
-        else f"{project_properties.path.name}"
+        f"{project_context.remote.owner}/{project_context.remote.name}"
+        if project_context.remote.name
+        else f"{project_context.path.name}"
     )
-    if get_remote(client.repository, name="renku-backup-origin") and project_name.startswith("repos/"):
+    if get_remote(repository, name="renku-backup-origin") and project_name.startswith("repos/"):
         project_name = project_name.replace("repos/", "", 1)
     return project_name
 

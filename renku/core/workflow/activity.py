@@ -28,21 +28,16 @@ import networkx
 from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
-from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.workflow.plan import get_activities, is_plan_removed, remove_plan
 from renku.domain_model.entity import Entity
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.activity import Activity
 
 
 def get_activities_until_paths(
-    paths: List[str],
-    sources: List[str],
-    activity_gateway: IActivityGateway,
-    client_dispatcher: IClientDispatcher,
-    revision: Optional[str] = None,
+    paths: List[str], sources: List[str], activity_gateway: IActivityGateway, revision: Optional[str] = None
 ) -> Set[Activity]:
     """Get all current activities leading to `paths`, from `sources`."""
     all_activities: Dict[str, Set[Activity]] = defaultdict(set)
@@ -51,11 +46,11 @@ def get_activities_until_paths(
         existing_activities = all_activities[activity.association.plan.id]
         add_activity_if_recent(activity=activity, activities=existing_activities)
 
+    repository = project_context.repository
     commit = None
 
     if revision:
-        client = client_dispatcher.current_client
-        commit = client.repository.get_commit(revision)
+        commit = repository.get_commit(revision)
 
     for path in paths:
         checksum = None
@@ -417,22 +412,15 @@ def get_latest_activity_before(activities: Iterable[Activity], activity: Activit
     return get_latest_activity(activities_before)
 
 
-@inject.autoparams("activity_gateway", "client_dispatcher")
+@inject.autoparams("activity_gateway")
 def revert_activity(
-    *,
-    activity_gateway: IActivityGateway,
-    activity_id: str,
-    client_dispatcher: IClientDispatcher,
-    delete_plan: bool,
-    force: bool,
-    metadata_only: bool,
+    *, activity_gateway: IActivityGateway, activity_id: str, delete_plan: bool, force: bool, metadata_only: bool
 ) -> Activity:
     """Revert an activity.
 
     Args:
         activity_gateway(IActivityGateway): The injected activity gateway.
         activity_id(str): ID of the activity to be reverted.
-        client_dispatcher(IClientDispatcher): The injected client dispatcher.
         delete_plan(bool): Delete the plan if it's not used by any other activity.
         force(bool): Revert the activity even if it has some downstream activities.
         metadata_only(bool): Only revert the metadata and don't touch generated files.
@@ -440,7 +428,7 @@ def revert_activity(
     Returns:
         The deleted activity.
     """
-    client = client_dispatcher.current_client
+    repository = project_context.repository
 
     delete_time = local_now()
 
@@ -488,13 +476,13 @@ def revert_activity(
 
         for path, previous_checksum in updated_paths.items():
             try:
-                client.repository.copy_content_to_file(path, checksum=previous_checksum, output_path=path)
+                repository.copy_content_to_file(path, checksum=previous_checksum, output_path=path)
             except errors.FileNotFound:
                 communication.warn(f"Cannot revert '{path}' to a previous version, will keep the current version")
 
         for path in deleted_paths:
             try:
-                os.unlink(project_properties.path / path)
+                os.unlink(project_context.path / path)
             except OSError:
                 communication.warn(f"Cannot delete '{path}'")
 
@@ -525,6 +513,5 @@ def is_activity_valid(activity: Activity) -> bool:
 
     Returns:
         bool: True if the activities' Plan is still valid, False otherwise.
-
     """
     return not is_plan_removed(plan=activity.association.plan)

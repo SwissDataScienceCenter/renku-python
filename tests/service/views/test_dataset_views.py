@@ -16,12 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service dataset view tests."""
+
 import io
 import json
 import os
 import shutil
 import uuid
-from pathlib import Path
 
 import pytest
 from werkzeug.utils import secure_filename
@@ -1019,7 +1019,7 @@ def test_cached_import_dataset_job(doi, svc_client_cache, project):
     user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = cache.ensure_user({"user_id": user_id})
 
-    name = Path(project).name
+    name = project.path.name
 
     project_meta = {
         "project_id": uuid.uuid4().hex,
@@ -1037,8 +1037,8 @@ def test_cached_import_dataset_job(doi, svc_client_cache, project):
 
     dest = project_obj.abs_path
     os.makedirs(dest.parent, exist_ok=True)
-    if not (project / dest).exists():
-        shutil.copytree(project, dest)
+    if not (project.path / dest).exists():
+        shutil.copytree(project.path, dest)
 
     response = client.post(
         "/datasets.import",
@@ -1092,8 +1092,8 @@ def test_dataset_add_remote(url, svc_client_cache, project_metadata):
 
     dest = project_obj.abs_path
     os.makedirs(dest.parent, exist_ok=True)
-    if not (project / dest).exists():
-        shutil.copytree(project, dest)
+    if not (project.path / dest).exists():
+        shutil.copytree(project.path, dest)
 
     payload = make_dataset_add_payload(project_meta["project_id"], [url])
     response = client.post("/datasets.add", data=json.dumps(payload), headers=headers)
@@ -1128,8 +1128,8 @@ def test_dataset_add_multiple_remote(svc_client_cache, project_metadata):
 
     dest = project_obj.abs_path
     os.makedirs(dest.parent, exist_ok=True)
-    if not (project / dest).exists():
-        shutil.copytree(project, dest)
+    if not (project.path / dest).exists():
+        shutil.copytree(project.path, dest)
 
     payload = make_dataset_add_payload(project_meta["project_id"], [url_gist, url_dbox])
     response = client.post("/datasets.add", data=json.dumps(payload), headers=headers)

@@ -30,12 +30,12 @@ from renku.core import errors
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.providers.api import ImporterApi, ProviderApi, ProviderPriority
 from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
-from renku.core.project.project_properties import project_properties
+from renku.core.storage import pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.git import clone_renku_repository, get_cache_directory_for_repository, get_file_size
 from renku.core.util.metadata import is_external_file, make_project_temp_dir
 from renku.core.util.urls import remove_credentials
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderDataset, ProviderParameter
@@ -266,7 +266,6 @@ class RenkuImporter(ImporterApi):
     def download_files(self, client: "LocalClient", destination: Path, extract: bool) -> List["DatasetAddMetadata"]:
         """Download dataset files from the remote provider."""
         from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
-        from renku.core.management.client import LocalClient
         from renku.domain_model.dataset import RemoteEntity
 
         url = remove_credentials(self.project_url)
@@ -299,7 +298,7 @@ class RenkuImporter(ImporterApi):
                 relative_path = Path(src_entity_path)
 
             dst = destination / relative_path
-            path_in_dst_repo = dst.relative_to(project_properties.path)
+            path_in_dst_repo = dst.relative_to(project_context.path)
 
             already_copied = path_in_dst_repo in new_files  # A path with the same destination is already copied
             new_files[path_in_dst_repo].append(src_entity_path)
@@ -333,15 +332,15 @@ class RenkuImporter(ImporterApi):
         new_files: Dict[Path, List[str]] = defaultdict(list)
 
         if checksums is None:
-            with project_properties.with_path(remote_repository.path):
-                LocalClient().pull_paths_from_storage(  # type: ignore
-                    *(remote_repository.path / p for p in sources)  # type: ignore
+            with project_context.with_path(remote_repository.path):
+                pull_paths_from_storage(
+                    project_context.repository, *(remote_repository.path / p for p in sources)  # type: ignore
                 )
 
             for file in sources:
                 add_file(file, content_path=remote_repository.path / file, checksum=None)  # type: ignore
         else:  # NOTE: Renku dataset import with a tag
-            content_path_root = make_project_temp_dir(project_properties.path)
+            content_path_root = make_project_temp_dir(project_context.path)
             content_path_root.mkdir(parents=True, exist_ok=True)
             filename = 1
 
@@ -394,7 +393,7 @@ class RenkuImporter(ImporterApi):
                 continue
 
             remote_image_path = self._remote_path / image.content_url
-            local_image_path = project_properties.path / image.content_url
+            local_image_path = project_context.path / image.content_url
             local_image_path.parent.mkdir(exist_ok=True, parents=True)
 
             shutil.copy(remote_image_path, local_image_path)
@@ -442,12 +441,12 @@ class RenkuImporter(ImporterApi):
         return (self._remote_path / self.provider_dataset.get_datadir()).exists()
 
     @inject.autoparams()
-    def _fetch_dataset(self, client_dispatcher: IClientDispatcher, database_dispatcher: IDatabaseDispatcher):
+    def _fetch_dataset(self, client_dispatcher: IClientDispatcher):
         from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile
         from renku.core.management.client import LocalClient
         from renku.domain_model.dataset import Url
 
-        repository = None
+        remote_repository = None
         client = client_dispatcher.current_client
 
         parsed_uri = urllib.parse.urlparse(self.uri)
@@ -457,7 +456,7 @@ class RenkuImporter(ImporterApi):
         communication.echo(msg="Cloning remote repository...")
         for url in urls:
             try:
-                repository = clone_renku_repository(
+                remote_repository = clone_renku_repository(
                     url=url,
                     path=get_cache_directory_for_repository(client=client, url=url),
                     gitlab_token=self._gitlab_token,
@@ -472,46 +471,44 @@ class RenkuImporter(ImporterApi):
                 self._project_url = url
                 break
 
-        if self._project_url is None or repository is None:
+        if self._project_url is None or remote_repository is None:
             raise errors.ParameterError("Cannot clone remote projects:\n\t" + "\n\t".join(urls), param_hint=self.uri)
 
-        with project_properties.with_path(repository.path) as remote_path:
-            self._remote_path = remote_path
+        with project_context.with_path(remote_repository.path):
+            self._remote_path = project_context.path
             self._remote_client = LocalClient()
             client_dispatcher.push_created_client_to_stack(self._remote_client)
-            database_dispatcher.push_database_to_stack(self._remote_client.database_path)
 
-        try:
-            self._migrate_project()
-            self._remote_repository = repository
+            try:
+                self._migrate_project()
+                self._remote_repository = remote_repository
 
-            datasets_provenance = DatasetsProvenance()
+                datasets_provenance = DatasetsProvenance()
 
-            dataset = datasets_provenance.get_by_name(self._name)
-            if not dataset:
-                raise errors.ParameterError(f"Cannot find dataset '{self._name}' in project '{self._project_url}'")
+                dataset = datasets_provenance.get_by_name(self._name)
+                if not dataset:
+                    raise errors.ParameterError(f"Cannot find dataset '{self._name}' in project '{self._project_url}'")
 
-            if self._tag:
-                tags = datasets_provenance.get_all_tags(dataset=dataset)
-                tag = next((t for t in tags if t.name == self._tag), None)
+                if self._tag:
+                    tags = datasets_provenance.get_all_tags(dataset=dataset)
+                    tag = next((t for t in tags if t.name == self._tag), None)
 
-                if tag is None:
-                    raise errors.ParameterError(f"Cannot find tag '{self._tag}' for dataset '{self._name}'")
+                    if tag is None:
+                        raise errors.ParameterError(f"Cannot find tag '{self._tag}' for dataset '{self._name}'")
 
-                dataset = datasets_provenance.get_by_id(tag.dataset_id.value)
-            else:
-                tag = None
+                    dataset = datasets_provenance.get_by_id(tag.dataset_id.value)
+                else:
+                    tag = None
 
-            assert dataset is not None
-            provider_dataset = ProviderDataset.from_dataset(dataset)
+                assert dataset is not None
+                provider_dataset = ProviderDataset.from_dataset(dataset)
 
-            # NOTE: Set the dataset version to the given tag (to reset the version if no tag was provided)
-            provider_dataset.version = self._tag
-            # NOTE: Store the tag so that it can be checked later to see if a tag was specified for import
-            provider_dataset.tag = tag
-        finally:
-            database_dispatcher.pop_database()
-            client_dispatcher.pop_client()
+                # NOTE: Set the dataset version to the given tag (to reset the version if no tag was provided)
+                provider_dataset.version = self._tag
+                # NOTE: Store the tag so that it can be checked later to see if a tag was specified for import
+                provider_dataset.tag = tag
+            finally:
+                client_dispatcher.pop_client()
 
         provider_dataset.derived_from = None
         provider_dataset.same_as = Url(url_id=remove_credentials(self.latest_uri))

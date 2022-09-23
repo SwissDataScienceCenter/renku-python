@@ -19,12 +19,13 @@
 
 import shutil
 import textwrap
-from typing import List, Optional, Tuple
+from typing import Generator, List, Optional, Tuple
 
 import pytest
 from packaging.version import Version
 
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
+from renku.infrastructure.repository import Repository
 from renku.version import __version__ as renku_version
 
 
@@ -230,7 +231,7 @@ def templates_source(tmp_path, monkeypatch):
     with monkeypatch.context() as monkey:
         import renku.core.template.usecase
 
-        def mocked_fetch_templates_source(source: Optional[str], reference: Optional[str]):
+        def mocked_fetch_templates_source(*_, **__):
             return dummy_templates_source
 
         monkey.setattr(renku.core.template.usecase, "fetch_templates_source", mocked_fetch_templates_source)
@@ -249,23 +250,22 @@ def rendered_template(source_template, template_metadata):
 
 
 @pytest.fixture
-def client_with_template(client, rendered_template, client_database_injection_manager):
+def client_with_template(repository, rendered_template, with_injections_manager) -> Generator[Repository, None, None]:
     """A client with a dummy template."""
     from renku.core.template.template import FileAction, copy_template_to_client
 
-    with client_database_injection_manager(client):
+    with with_injections_manager(repository):
         actions = {f: FileAction.OVERWRITE for f in rendered_template.get_files()}
+        project = project_context.project
 
-        copy_template_to_client(
-            rendered_template=rendered_template, client=client, project=client.project, actions=actions
-        )
+        copy_template_to_client(rendered_template=rendered_template, project=project, actions=actions)
 
-        client.template_files = [project_properties.path / f for f in rendered_template.get_files()]
+        project.template_files = [str(project_context.path / f) for f in rendered_template.get_files()]
 
-    client.repository.add(all=True)
-    client.repository.commit("Set a dummy template")
+    repository.add(all=True)
+    repository.commit("Set a dummy template")
 
-    yield client
+    yield repository
 
 
 @pytest.fixture

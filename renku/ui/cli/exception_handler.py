@@ -60,7 +60,6 @@ import traceback
 from urllib.parse import urlencode
 
 import click
-import filelock
 
 import renku.ui.cli.utils.color as color
 from renku.command.echo import ERROR
@@ -91,7 +90,7 @@ class RenkuExceptionsHandler(click.Group):
 
         try:
             return super().main(*args, **kwargs)
-        except (filelock.Timeout, errors.LockError):
+        except errors.LockError:
             click.echo(
                 click.style("Unable to acquire lock.\n", fg=color.RED)
                 + "Hint: Please wait for another renku process to finish and then try again."
@@ -148,10 +147,9 @@ class IssueFromTraceback(RenkuExceptionsHandler):
 
         with configure_scope() as scope:
             with capture_internal_exceptions():
-                from renku.command.git import get_git_home
-                from renku.infrastructure.repository import Repository
+                from renku.core.util.git import get_git_repository
 
-                user = Repository(get_git_home()).get_user()
+                user = get_git_repository().get_user()
 
                 scope.user = {"name": user.name, "email": user.email}
 

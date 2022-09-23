@@ -24,9 +24,9 @@ from pathlib import Path
 import pytest
 from packaging.version import Version
 
-from renku.core.project.project_properties import project_properties
 from renku.core.util.contexts import chdir
 from renku.core.util.yaml import write_yaml
+from renku.domain_model.project_context import project_context
 from renku.domain_model.template import TemplateMetadata, TemplateParameter
 from renku.infrastructure.repository import Actor, Repository
 from renku.ui.cli import cli
@@ -135,7 +135,7 @@ def test_template_set_failure(runner, client, client_database_injection_manager)
     assert 1 == result.exit_code, format_result_exception(result)
     assert "Project already has a template" in result.output
     with client_database_injection_manager(client):
-        assert "python-minimal" == client.project.template_id
+        assert "python-minimal" == project_context.project.template_id
 
 
 def test_template_set(runner, client, client_database_injection_manager):
@@ -146,66 +146,66 @@ def test_template_set(runner, client, client_database_injection_manager):
 
     assert 0 == result.exit_code, format_result_exception(result)
     with client_database_injection_manager(client):
-        assert "R-minimal" == client.project.template_id
-        assert __template_version__ == client.project.template_version
-        assert __template_version__ == client.project.template_ref
+        assert "R-minimal" == project_context.project.template_id
+        assert __template_version__ == project_context.project.template_version
+        assert __template_version__ == project_context.project.template_ref
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_template_set_overwrites_modified(runner, client, client_database_injection_manager):
+def test_template_set_overwrites_modified(runner, repository, client_database_injection_manager):
     """Test setting a new template in a project overwrite modified files."""
-    write_and_commit_file(client.repository, "Dockerfile", "my-modifications")
+    write_and_commit_file(repository, "Dockerfile", "my-modifications")
 
     result = runner.invoke(cli, ["template", "set", "--force", "R-minimal"])
 
     assert 0 == result.exit_code, format_result_exception(result)
-    with client_database_injection_manager(client):
-        assert "R-minimal" == client.project.template_id
-    assert "my-modifications" not in (project_properties.path / "Dockerfile").read_text()
-    assert not client.repository.is_dirty(untracked_files=True)
+    with client_database_injection_manager(repository):
+        assert "R-minimal" == project_context.project.template_id
+    assert "my-modifications" not in (repository.path / "Dockerfile").read_text()
+    assert not repository.is_dirty(untracked_files=True)
 
 
 @pytest.mark.parametrize("overwrite, found", [["y", False], ["n", True]])
-def test_template_set_interactive(runner, client, client_database_injection_manager, overwrite, found):
+def test_template_set_interactive(runner, repository, client_database_injection_manager, overwrite, found):
     """Test setting a template in interactive mode."""
-    write_and_commit_file(client.repository, "Dockerfile", "my-modifications")
+    write_and_commit_file(repository, "Dockerfile", "my-modifications")
 
     result = runner.invoke(cli, ["template", "set", "-f", "R-minimal", "-i"], input=f"{overwrite}\n" * 420)
 
     assert 0 == result.exit_code, format_result_exception(result)
-    with client_database_injection_manager(client):
-        assert "R-minimal" == client.project.template_id
-    assert ("my-modifications" in (project_properties.path / "Dockerfile").read_text()) is found
-    assert not client.repository.is_dirty(untracked_files=True)
+    with client_database_injection_manager(repository):
+        assert "R-minimal" == project_context.project.template_id
+    assert ("my-modifications" in (repository.path / "Dockerfile").read_text()) is found
+    assert not repository.is_dirty(untracked_files=True)
 
 
-def test_template_set_preserve_renku_version(runner, client):
+def test_template_set_preserve_renku_version(runner, repository):
     """Test setting a template and overwriting Dockerfile still preserves Renku version."""
-    content = (project_properties.path / "Dockerfile").read_text()
+    content = (repository.path / "Dockerfile").read_text()
     new_content = re.sub(r"^\s*ARG RENKU_VERSION=(.+)$", "ARG RENKU_VERSION=0.0.42", content, flags=re.MULTILINE)
-    write_and_commit_file(client.repository, "Dockerfile", new_content)
+    write_and_commit_file(repository, "Dockerfile", new_content)
 
     result = runner.invoke(cli, ["template", "set", "-f", "R-minimal", "--interactive"], input="y\n" * 420)
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    content = (project_properties.path / "Dockerfile").read_text()
+    content = (repository.path / "Dockerfile").read_text()
 
     assert new_content != content
     assert "ARG RENKU_VERSION=0.0.42" in content
 
 
-def test_template_set_dry_run(runner, client):
+def test_template_set_dry_run(runner, repository):
     """Test set dry-run doesn't make any changes."""
-    commit_sha_before = client.repository.head.commit.hexsha
+    commit_sha_before = repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["template", "set", "-f", "R-minimal", "--dry-run"])
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not client.repository.is_dirty()
-    assert commit_sha_before == client.repository.head.commit.hexsha
+    assert not repository.is_dirty()
+    assert commit_sha_before == repository.head.commit.hexsha
 
 
 @pytest.mark.integration
@@ -219,18 +219,18 @@ def test_template_update(runner, client, client_database_injection_manager):
 
     assert 0 == result.exit_code, format_result_exception(result)
     with client_database_injection_manager(client):
-        assert "python-minimal" == client.project.template_id
-        assert "0.3.2" == client.project.template_ref
-        assert "b9ab266fba136bdecfa91dc8d7b6d36b9d427012" == client.project.template_version
+        assert "python-minimal" == project_context.project.template_id
+        assert "0.3.2" == project_context.project.template_ref
+        assert "b9ab266fba136bdecfa91dc8d7b6d36b9d427012" == project_context.project.template_version
 
     result = runner.invoke(cli, ["template", "update"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Template is up-to-date" not in result.output
     with client_database_injection_manager(client):
-        assert "python-minimal" == client.project.template_id
-        assert Version(client.project.template_ref) > Version("0.3.2")
-        assert "6c59d8863841baeca8f30062fd16c650cf67da3b" != client.project.template_version
+        assert "python-minimal" == project_context.project.template_id
+        assert Version(project_context.project.template_ref) > Version("0.3.2")
+        assert "6c59d8863841baeca8f30062fd16c650cf67da3b" != project_context.project.template_version
 
     result = runner.invoke(cli, ["template", "update"])
 
@@ -256,11 +256,11 @@ def test_template_update_missing_repo(runner, client_with_template):
 
     assert 1 == result.exit_code
     assert "Template cannot be fetched" in result.output
-    assert not client_with_template.repository.is_dirty()
+    assert not client_with_template.is_dirty()
 
 
 @pytest.mark.integration
-def test_template_update_dry_run(runner, client):
+def test_template_update_dry_run(runner, repository):
     """Test update dry-run doesn't make any changes."""
     result = runner.invoke(
         cli,
@@ -270,20 +270,20 @@ def test_template_update_dry_run(runner, client):
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    commit_sha_before = client.repository.head.commit.hexsha
+    commit_sha_before = repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["template", "update", "--dry-run"])
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not client.repository.is_dirty()
-    assert commit_sha_before == client.repository.head.commit.hexsha
+    assert not repository.is_dirty()
+    assert commit_sha_before == repository.head.commit.hexsha
 
 
 def test_git_hook_for_modified_immutable_template_files(runner, client_with_template):
     """Test check for modified immutable template files."""
-    (project_properties.path / "immutable.file").write_text("Locally modified immutable files")
+    (client_with_template.path / "immutable.file").write_text("Locally modified immutable files")
 
-    with chdir(project_properties.path):
+    with chdir(client_with_template.path):
         result = runner.invoke(cli, ["check-immutable-template-files", "Dockerfile"])
         assert result.exit_code == 0, result.output
 
@@ -304,7 +304,7 @@ def test_template_update_with_parameters(
     assert result.exit_code == 0, result.output
 
     with client_database_injection_manager(client_with_template):
-        template_metadata = TemplateMetadata.from_client(client=client_with_template)
+        template_metadata = TemplateMetadata.from_project(project=project_context.project)
         assert "new-parameter" in template_metadata.metadata
         assert "new-value" == template_metadata.metadata["new-parameter"]
 
@@ -321,7 +321,7 @@ def test_template_update_with_parameters_with_defaults(
     assert result.exit_code == 0, result.output
 
     with client_database_injection_manager(client_with_template):
-        template_metadata = TemplateMetadata.from_client(client=client_with_template)
+        template_metadata = TemplateMetadata.from_project(project=project_context.project)
         assert "new-parameter" in template_metadata.metadata
         assert "def-val" == template_metadata.metadata["new-parameter"]
 
@@ -338,7 +338,7 @@ def test_template_set_with_parameters(
     assert result.exit_code == 0, result.output
 
     with client_database_injection_manager(client_with_template):
-        template_metadata = TemplateMetadata.from_client(client=client_with_template)
+        template_metadata = TemplateMetadata.from_project(project=project_context.project)
         assert "new-parameter" in template_metadata.metadata
         assert "param-value" == template_metadata.metadata["new-parameter"]
 
@@ -433,7 +433,7 @@ def test_template_validate(runner, tmpdir_factory):
         assert '"valid": true' in result.output
 
 
-def test_template_validate_remote(runner, tmpdir_factory):
+def test_template_validate_remote(runner):
     """Test template validate command on remote repository."""
     result = runner.invoke(
         cli, ["template", "validate", "--source", "https://github.com/SwissDataScienceCenter/renku-project-template"]

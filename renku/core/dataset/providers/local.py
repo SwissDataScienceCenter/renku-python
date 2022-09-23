@@ -25,10 +25,12 @@ from typing import TYPE_CHECKING, List, Optional
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
-from renku.core.project.project_properties import project_properties
+from renku.core.storage import check_external_storage, track_paths_in_storage
 from renku.core.util import communication
 from renku.core.util.dataset import check_url
+from renku.core.util.metadata import is_protected_path
 from renku.core.util.os import get_absolute_path, is_path_empty, is_subpath
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderParameter
@@ -119,6 +121,8 @@ class FilesystemProvider(ProviderApi):
         """Add files from a URI to a dataset."""
         from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
 
+        repository = project_context.repository
+
         if sum([move, copy, link]) > 1:
             raise errors.ParameterError("--move, --copy and --link are mutually exclusive.")
 
@@ -141,7 +145,7 @@ class FilesystemProvider(ProviderApi):
         path = u.path
 
         action = DatasetAddAction.SYMLINK if external else default_action
-        absolute_dataset_data_dir = (project_properties.path / dataset.get_datadir()).resolve()
+        absolute_dataset_data_dir = (project_context.path / dataset.get_datadir()).resolve()
         source_root = Path(get_absolute_path(path))
         warnings: List[str] = []
 
@@ -153,7 +157,7 @@ class FilesystemProvider(ProviderApi):
             destination_exists = destination.exists()
             destination_is_dir = destination.is_dir()
 
-            if client.is_protected_path(source_root):
+            if is_protected_path(source_root):
                 raise errors.ProtectedFiles([source_root])
 
             check_recursive_addition(source_root)
@@ -166,24 +170,24 @@ class FilesystemProvider(ProviderApi):
             return destination / source_root.name if destination_exists and destination_is_dir else destination
 
         def get_metadata(src: Path) -> DatasetAddMetadata:
-            is_tracked = client.repository.contains(src)
+            is_tracked = repository.contains(src)
             in_datadir = is_subpath(src, absolute_dataset_data_dir)
 
             relative_path = src.relative_to(source_root)
             dst = destination_root / relative_path
 
             if is_tracked and external:
-                warnings.append(str(src.relative_to(project_properties.path)))
+                warnings.append(str(src.relative_to(project_context.path)))
 
             if not is_tracked and not external and action == DatasetAddAction.SYMLINK:
                 # NOTE: we need to commit src if it is linked to and not external.
-                if client.check_external_storage():
-                    client.track_paths_in_storage(src)
-                client.repository.add(src)
-            source_url = os.path.relpath(src, project_properties.path)
+                if check_external_storage():
+                    track_paths_in_storage(src)
+                repository.add(src)
+            source_url = os.path.relpath(src, project_context.path)
             return DatasetAddMetadata(
-                entity_path=Path(source_url) if in_datadir else dst.relative_to(project_properties.path),
-                url=os.path.relpath(src, project_properties.path),
+                entity_path=Path(source_url) if in_datadir else dst.relative_to(project_context.path),
+                url=os.path.relpath(src, project_context.path),
                 action=DatasetAddAction.NONE if in_datadir else action,
                 source=src,
                 destination=dst,
@@ -194,7 +198,7 @@ class FilesystemProvider(ProviderApi):
         results = []
         if source_root.is_dir():
             for file in source_root.rglob("*"):
-                if client.is_protected_path(file):
+                if is_protected_path(file):
                     raise errors.ProtectedFiles([file])
 
                 if file.is_dir():
@@ -259,10 +263,10 @@ class LocalExporter(ExporterApi):
         from renku.core.util.yaml import write_yaml
 
         if self._path:
-            dst_root = project_properties.path / self._path
+            dst_root = project_context.path / self._path
         else:
             dataset_dir = f"{self._dataset.name}-{self._tag.name}" if self._tag else self._dataset.name
-            dst_root = project_properties.path / client.data_dir / dataset_dir
+            dst_root = project_context.path / project_context.datadir / dataset_dir
 
         if dst_root.exists() and not dst_root.is_dir():
             raise errors.ParameterError(f"Destination is not a directory: '{dst_root}'")
@@ -282,7 +286,9 @@ class LocalExporter(ExporterApi):
 
                 dst = dst_root / relative_path
                 dst.parent.mkdir(exist_ok=True, parents=True)
-                client.repository.copy_content_to_file(file.entity.path, checksum=file.entity.checksum, output_path=dst)
+                project_context.repository.copy_content_to_file(
+                    file.entity.path, checksum=file.entity.checksum, output_path=dst
+                )
                 progressbar.update()
 
         metadata_path = dst_root / "METADATA.yml"

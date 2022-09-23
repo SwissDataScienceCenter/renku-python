@@ -24,11 +24,11 @@ import urllib
 from typing import List, Optional
 from urllib.parse import ParseResult, urlparse
 
-from renku.command.command_builder.command import inject
 from renku.core import errors
-from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.config import get_value
 from renku.core.util.git import get_remote, parse_git_url
 from renku.core.util.os import is_subpath
+from renku.domain_model.project_context import project_context
 
 
 def url_to_string(url):
@@ -53,15 +53,15 @@ def remove_credentials(url):
     return parsed._replace(netloc=parsed.hostname).geturl()
 
 
-def get_host(client):
+def get_host(use_project_context: bool = True):
     """Return the hostname for the resource URIs.
 
     Default is localhost. If RENKU_DOMAIN is set, it overrides the host from remote.
     """
     host = "localhost"
 
-    if client:
-        host = client.remote.get("host") or host
+    if use_project_context:
+        host = project_context.remote.host or host
 
     return os.environ.get("RENKU_DOMAIN") or host
 
@@ -76,22 +76,18 @@ def get_scheme(uri: str) -> str:
     return urllib.parse.urlparse(uri).scheme.lower()
 
 
-@inject.autoparams("client_dispatcher")
-def parse_authentication_endpoint(
-    client_dispatcher: IClientDispatcher, endpoint: Optional[str] = None, use_remote: bool = False
-):
+def parse_authentication_endpoint(endpoint: Optional[str] = None, use_remote: bool = False):
     """Return a parsed url.
 
     If an endpoint is provided then use it, otherwise, look for a configured endpoint. If no configured endpoint exists
     then try to use project's remote url.
     """
-    client = client_dispatcher.current_client
     if not endpoint:
-        endpoint = client.get_value(section="renku", key="endpoint")
+        endpoint = get_value(section="renku", key="endpoint")
         if not endpoint:
             if not use_remote:
                 return
-            remote = get_remote(client.repository)
+            remote = get_remote(project_context.repository)
             if not remote or not remote.url:
                 return
             endpoint = f"https://{parse_git_url(remote.url).hostname}/"

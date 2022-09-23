@@ -32,12 +32,12 @@ from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.interface.project_gateway import IProjectGateway
-from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.os import are_paths_related, get_relative_paths, safe_read_yaml
 from renku.core.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.value_resolution import CompositePlanValueResolver, ValueResolver
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.activity import Activity
 from renku.domain_model.provenance.annotation import Annotation
 from renku.domain_model.workflow.composite_plan import CompositePlan
@@ -333,7 +333,7 @@ def compose_workflow(
             child_workflows.append(child_workflow)
     else:
         sources = sources or []
-        sources = get_relative_paths(base=project_properties.path, paths=sources)
+        sources = get_relative_paths(base=project_context.path, paths=sources)
 
         if not sinks:
             usages = activity_gateway.get_all_usage_paths()
@@ -341,13 +341,9 @@ def compose_workflow(
 
             sinks = [g for g in generations if all(not are_paths_related(g, u) for u in usages)]
 
-        sinks = get_relative_paths(base=project_properties.path, paths=sinks)
+        sinks = get_relative_paths(base=project_context.path, paths=sinks)
 
-        activities = list(
-            get_activities_until_paths(
-                sinks, sources, activity_gateway=activity_gateway, client_dispatcher=client_dispatcher
-            )
-        )
+        activities = list(get_activities_until_paths(sinks, sources, activity_gateway=activity_gateway))
         activities = sort_activities(activities)
 
         # we need to get the actual plans from the DB as plan_with_values returns a copy
@@ -476,7 +472,7 @@ def export_workflow(
     from renku.core.plugin.workflow import workflow_converter
 
     converter = workflow_converter(format)
-    return converter(workflow=workflow, basedir=project_properties.path, output=output_path, output_format=format)
+    return converter(workflow=workflow, basedir=project_context.path, output=output_path, output_format=format)
 
 
 def _lookup_paths_in_paths(lookup_paths: List[str], target_paths: List[str]):
@@ -486,7 +482,7 @@ def _lookup_paths_in_paths(lookup_paths: List[str], target_paths: List[str]):
     files = set()
 
     for p in lookup_paths:
-        path = Path(get_relative_paths(base=project_properties.path, paths=[p])[0])
+        path = Path(get_relative_paths(base=project_context.path, paths=[p])[0])
         if path.is_dir():
             dirs.append(path)
         else:
@@ -541,7 +537,7 @@ def visualize_graph(
     from renku.core.workflow.activity import create_activity_graph, get_activities_until_paths
 
     sources = sources or []
-    sources = get_relative_paths(base=project_properties.path, paths=[Path.cwd() / p for p in sources])
+    sources = get_relative_paths(base=project_context.path, paths=[Path.cwd() / p for p in sources])
 
     if not targets:
         usages = activity_gateway.get_all_usage_paths()
@@ -549,14 +545,10 @@ def visualize_graph(
 
         targets = [g for g in generations if all(not are_paths_related(g, u) for u in usages)]
     else:
-        targets = get_relative_paths(base=project_properties.path, paths=[Path.cwd() / p for p in targets])
+        targets = get_relative_paths(base=project_context.path, paths=[Path.cwd() / p for p in targets])
 
     activities = get_activities_until_paths(
-        paths=targets,
-        sources=sources,
-        revision=revision,
-        activity_gateway=activity_gateway,
-        client_dispatcher=client_dispatcher,
+        paths=targets, sources=sources, revision=revision, activity_gateway=activity_gateway
     )
     graph = create_activity_graph(list(activities), with_inputs_outputs=show_files)
     return ActivityGraphViewModel(graph)

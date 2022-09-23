@@ -29,7 +29,6 @@ from renku.command.schema.project import ProjectSchema
 from renku.command.view_model.graph import GraphViewModel
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.interface.plan_gateway import IPlanGateway
@@ -53,17 +52,10 @@ def export_graph_command():
     return Command().command(export_graph).with_database(write=False).require_migration()
 
 
-@inject.autoparams("client_dispatcher")
-def export_graph(
-    client_dispatcher: IClientDispatcher,
-    format: str = "json-ld",
-    revision_or_range: str = None,
-    strict: bool = False,
-) -> GraphViewModel:
+def export_graph(format: str = "json-ld", revision_or_range: str = None, strict: bool = False) -> GraphViewModel:
     """Output graph in specific format.
 
     Args:
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         format(str, optional): Output format (Default value = "json-ld").
         revision_or_range(str, optional): Revision or range of revisions to export for (Default value = None).
         strict(bool, optional): Whether to check generated JSON-LD against the SHACL schema (Default value = False).
@@ -80,7 +72,7 @@ def export_graph(
         graph = get_graph_for_all_objects()
 
     # NOTE: rewrite ids for current environment
-    host = get_host(client_dispatcher.current_client)
+    host = get_host()
 
     for node in graph:
         update_nested_node_host(node, host)

@@ -27,14 +27,14 @@ from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
 from renku.command.view_model.plan import PlanViewModel
 from renku.core import errors
+from renku.core.git import get_mapped_std_streams
 from renku.core.interface.activity_gateway import IActivityGateway
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.plan_gateway import IPlanGateway
-from renku.core.management.git import get_mapped_std_streams
-from renku.core.project.project_properties import project_properties
+from renku.core.storage import check_external_storage, pull_paths_from_storage
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.urls import get_slug
 from renku.core.workflow.plan_factory import PlanFactory
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.activity import Activity
 
 
@@ -43,7 +43,7 @@ def run_command():
     return Command().command(_run_command).require_migration().require_clean().with_database(write=True).with_commit()
 
 
-@inject.autoparams()
+@inject.autoparams("activity_gateway", "plan_gateway")
 def _run_command(
     name,
     description,
@@ -56,12 +56,10 @@ def _run_command(
     no_output_detection,
     success_codes,
     command_line,
-    client_dispatcher: IClientDispatcher,
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
 ) -> PlanViewModel:
     # NOTE: validate name as early as possible
-    client = client_dispatcher.current_client
 
     if name:
         valid_name = get_slug(name, invalid_chars=["."], lowercase=False)
@@ -72,10 +70,10 @@ def _run_command(
         if name in workflows:
             raise errors.ParameterError(f"Duplicate workflow name: workflow '{name}' already exists.")
 
-    paths = explicit_outputs if no_output_detection else client.candidate_paths
+    paths = explicit_outputs if no_output_detection else project_context.repository.all_files
     mapped_std = get_mapped_std_streams(paths, streams=("stdout", "stderr"))
 
-    paths = explicit_inputs if no_input_detection else client.candidate_paths
+    paths = explicit_inputs if no_input_detection else project_context.repository.all_files
     mapped_std_in = get_mapped_std_streams(paths, streams=("stdin",))
     mapped_std.update(mapped_std_in)
 
@@ -121,7 +119,7 @@ def _run_command(
                 old_stderr = sys.stderr
                 sys.stderr = system_stderr
 
-        working_dir = str(client.repository.path)
+        working_dir = str(project_context.path)
 
         def parse_explicit_definition(entries, type):
             result = [tuple(e.split("=", maxsplit=1)[::-1]) if "=" in e else (e, None) for e in entries]
@@ -159,10 +157,10 @@ def _run_command(
         )
         with factory.watch(no_output=no_output) as tool:
             # Don't compute paths if storage is disabled.
-            if client.check_external_storage():
+            if check_external_storage():
                 # Make sure all inputs are pulled from a storage.
-                paths_ = (path for _, path in tool.iter_input_files(project_properties.path))
-                client.pull_paths_from_storage(*paths_)
+                paths_ = (path for _, path in tool.iter_input_files(project_context.path))
+                pull_paths_from_storage(project_context.repository, *paths_)
 
             if tty_exists:
                 # apply original output redirection

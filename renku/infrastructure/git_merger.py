@@ -30,16 +30,12 @@ from persistent import Persistent
 from persistent.list import PersistentList
 from zc.relation.catalog import Catalog
 
-from renku.command.command_builder.command import inject
 from renku.core import errors
-from renku.core.constant import RENKU_HOME
-from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
-from renku.core.management.client import LocalClient
-from renku.core.project.project_properties import project_properties
+from renku.core.constant import DATABASE_PATH, RENKU_HOME
 from renku.core.util import communication
 from renku.domain_model.dataset import Dataset, Url
 from renku.domain_model.project import Project
+from renku.domain_model.project_context import project_context
 from renku.domain_model.workflow.plan import AbstractPlan
 from renku.infrastructure.database import Database, Index
 from renku.infrastructure.repository import Repository
@@ -53,25 +49,20 @@ RemoteEntry = NamedTuple(
 class GitMerger:
     """Git metadata merger."""
 
-    client_dispatcher = inject.attr(IClientDispatcher)
-    database_dispatcher = inject.attr(IDatabaseDispatcher)
-
     def merge(self, local: Path, remote: Path, base: Path) -> None:
         """Merge two renku metadata entries together."""
-        client = self.client_dispatcher.current_client
+        repository = project_context.repository
         self.remote_entries: List[RemoteEntry] = []
 
-        self._setup_worktrees(client)
+        self._setup_worktrees(repository)
 
         merged = False
-        self.local_database = self.database_dispatcher.current_database
+        self.local_database = project_context.database
 
         try:
-            local_object = self.local_database.get_from_path(str(project_properties.path / local))
+            local_object = self.local_database.get_from_path(str(project_context.path / local))
             try:
-                base_object: Optional[Persistent] = self.local_database.get_from_path(
-                    str(project_properties.path / base)
-                )
+                base_object: Optional[Persistent] = self.local_database.get_from_path(str(project_context.path / base))
             except (errors.ObjectNotFoundError, JSONDecodeError):
                 base_object = None
 
@@ -79,7 +70,7 @@ class GitMerger:
                 # NOTE: Loop through all remote merge branches (Octo merge) and try to merge them
                 try:
                     self.remote_database = entry.database
-                    remote_object = self.remote_database.get_from_path(str(project_properties.path / remote))
+                    remote_object = self.remote_database.get_from_path(str(project_context.path / remote))
 
                     # NOTE: treat merge result as new local for subsequent merges
                     local_object = self.merge_objects(local_object, remote_object, base_object)
@@ -89,7 +80,7 @@ class GitMerger:
         finally:
             # NOTE: cleanup worktrees
             for entry in self.remote_entries:
-                client.repository.remove_worktree(entry.path)
+                repository.remove_worktree(entry.path)
                 shutil.rmtree(entry.path, ignore_errors=True)
 
         if not merged:
@@ -97,18 +88,18 @@ class GitMerger:
 
         self.local_database.persist_to_path(local_object, local)
 
-    def _setup_worktrees(self, client):
+    def _setup_worktrees(self, repository):
         """Setup git worktrees for the remote branches."""
 
         # NOTE: Get remote branches
         remote_branches = [os.environ[k] for k in os.environ.keys() if k.startswith("GITHEAD")]
 
-        database_path = Path(RENKU_HOME) / LocalClient.DATABASE_PATH
+        database_path = Path(RENKU_HOME) / DATABASE_PATH
 
         for remote_branch in remote_branches:
             # NOTE: Create a new shallow worktree for each remote branch, could be several in case of an octo merge
             worktree_path = Path(mkdtemp())
-            client.repository.create_worktree(worktree_path, reference=remote_branch, checkout=False)
+            repository.create_worktree(worktree_path, reference=remote_branch, checkout=False)
             try:
                 remote_repository = Repository(worktree_path)
                 remote_repository.checkout(sparse=[database_path])
@@ -124,7 +115,7 @@ class GitMerger:
             except Exception:
                 # NOTE: cleanup worktree
                 try:
-                    client.repository.remove_worktree(worktree_path)
+                    repository.remove_worktree(worktree_path)
                 except Exception:
                     pass
                 raise

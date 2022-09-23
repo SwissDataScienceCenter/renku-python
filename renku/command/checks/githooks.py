@@ -20,8 +20,9 @@
 from io import StringIO
 
 from renku.command.echo import WARNING
-from renku.core.management.githooks import HOOKS
+from renku.core.githooks import HOOKS
 from renku.core.util.git import get_hook_path
+from renku.domain_model.project_context import project_context
 
 try:
     import importlib_resources
@@ -40,7 +41,7 @@ def check_git_hooks_installed(client, **kwargs):
         Tuple of whether git hooks are valid and string of found problems.
     """
     for hook in HOOKS:
-        hook_path = get_hook_path(name=hook, repository=client.repository)
+        hook_path = get_hook_path(name=hook, path=project_context.path)
         if not hook_path.exists():
             message = WARNING + "Git hooks are not installed. " 'Use "renku githooks install" to install them. \n'
             return False, message

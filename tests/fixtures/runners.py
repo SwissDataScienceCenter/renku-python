@@ -196,11 +196,12 @@ def run(runner, capsys):
         with capsys.disabled(), Isolation(cwd=cwd, **streams):
             try:
                 cli.main(args=args, prog_name=runner.get_default_prog_name(cli))
-                return 0
             except SystemExit as e:
                 return 0 if e.code is None else e.code
             except Exception:
                 raise
+            else:
+                return 0
 
     return generate
 
@@ -208,6 +209,6 @@ def run(runner, capsys):
 @pytest.fixture()
 def isolated_runner():
     """Create a runner on isolated filesystem."""
-    runner_ = RenkuRunner()
-    with runner_.isolated_filesystem():
-        yield runner_
+    runner = RenkuRunner()
+    with runner.isolated_filesystem():
+        yield runner

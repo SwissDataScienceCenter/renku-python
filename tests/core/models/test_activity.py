@@ -28,7 +28,7 @@ from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, C
 from renku.domain_model.workflow.plan import Plan
 
 
-def test_activity_parameter_values(mocker):
+def test_activity_parameter_values(project_with_injection, mocker):
     """Test parameter values are correctly set on an activity."""
 
     def get_entity_from_revision_mock(repository, path, revision=None, bypass_cache=False):
@@ -44,7 +44,6 @@ def test_activity_parameter_values(mocker):
     commit.committer.email.return_value = "john@doe.com"
     commit.committer.name.return_value = "John Doe"
 
-    client_dispatcher = MagicMock()
     project_gateway = MagicMock()
     project_gateway.get_project.return_value.id.return_value = "some_project"
 
@@ -76,7 +75,6 @@ def test_activity_parameter_values(mocker):
 
     activity = Activity.from_plan(
         plan,
-        client_dispatcher=client_dispatcher,
         project_gateway=project_gateway,
         started_at_time=datetime.utcnow(),
         ended_at_time=datetime.utcnow(),

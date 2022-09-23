@@ -17,24 +17,28 @@
 # limitations under the License.
 """Renku storage command."""
 
-from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
-from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.storage import (
+    check_lfs_migrate_info,
+    check_requires_tracking,
+    clean_storage_cache,
+    migrate_files_to_lfs,
+    pull_paths_from_storage,
+)
 from renku.core.util import communication
+from renku.domain_model.project_context import project_context
 
 
-@inject.autoparams()
-def _check_lfs(client_dispatcher: IClientDispatcher, everything=False):
+def _check_lfs(everything=False):
     """Check if large files are not in lfs.
 
     Args:
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         everything: Whether to check whole history (Default value = False).
 
     Returns:
         List of large files.
     """
-    files = client_dispatcher.current_client.check_lfs_migrate_info(everything)
+    files = check_lfs_migrate_info(everything)
 
     if files:
         communication.warn("Git history contains large files\n\t" + "\n\t".join(files))
@@ -47,15 +51,13 @@ def check_lfs_command():
     return Command().command(_check_lfs)
 
 
-@inject.autoparams()
-def _fix_lfs(paths, client_dispatcher: IClientDispatcher):
+def _fix_lfs(paths):
     """Migrate large files into lfs.
 
     Args:
         paths: Paths to migrate to LFS.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
     """
-    client_dispatcher.current_client.migrate_files_to_lfs(paths)
+    migrate_files_to_lfs(paths)
 
 
 def fix_lfs_command():
@@ -70,15 +72,13 @@ def fix_lfs_command():
     )
 
 
-@inject.autoparams()
-def _pull(paths, client_dispatcher: IClientDispatcher):
+def _pull(paths):
     """Pull the specified paths from external storage.
 
     Args:
         paths: Paths to pull from LFS.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
     """
-    client_dispatcher.current_client.pull_paths_from_storage(*paths)
+    pull_paths_from_storage(project_context.repository, *paths)
 
 
 def pull_command():
@@ -86,15 +86,13 @@ def pull_command():
     return Command().command(_pull)
 
 
-@inject.autoparams()
-def _clean(paths, client_dispatcher: IClientDispatcher):
+def _clean(paths):
     """Remove files from lfs cache/turn them back into pointer files.
 
     Args:
         paths: Paths to turn back to pointer files.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
     """
-    untracked_paths, local_only_paths = client_dispatcher.current_client.clean_storage_cache(*paths)
+    untracked_paths, local_only_paths = clean_storage_cache(*paths)
 
     if untracked_paths:
         communication.warn(
@@ -114,18 +112,16 @@ def clean_command():
     return Command().command(_clean)
 
 
-@inject.autoparams()
-def _check_lfs_hook(paths, client_dispatcher: IClientDispatcher):
+def _check_lfs_hook(paths):
     """Check if paths should be in LFS.
 
     Args:
         paths: Paths to check
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
 
     Returns:
         List of files that should be in LFS.
     """
-    return client_dispatcher.current_client.check_requires_tracking(*paths)
+    return check_requires_tracking(*paths)
 
 
 def check_lfs_hook_command():

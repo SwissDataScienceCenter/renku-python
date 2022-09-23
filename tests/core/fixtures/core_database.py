@@ -17,17 +17,20 @@
 # limitations under the License.
 """Renku fixtures for metadata Database."""
 
+import contextlib
 import copy
 import datetime
 from pathlib import Path
-from typing import Iterator, Tuple, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, Tuple
 
 import pytest
 
 from renku.core import errors
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
-from renku.infrastructure.database import Database
-from renku.infrastructure.gateway.database_gateway import initialize_database
+from renku.domain_model.project_context import project_context
+
+if TYPE_CHECKING:
+    from renku.infrastructure.database import Database
+    from renku.infrastructure.repository import Repository
 
 
 class DummyStorage:
@@ -37,14 +40,14 @@ class DummyStorage:
         self._files = {}
         self._modification_dates = {}
 
-    def store(self, filename: str, data, compress=False, absolute=False):
+    def store(self, filename: str, data, compress: bool = False, absolute: bool = False):
         """Store object."""
         assert isinstance(filename, str)
 
         self._files[filename] = data
         self._modification_dates[filename] = datetime.datetime.now()
 
-    def load(self, filename: str, absolute=False):
+    def load(self, filename: str, absolute: bool = False):
         """Load data for object with object id oid."""
         assert isinstance(filename, str)
 
@@ -62,36 +65,12 @@ class DummyStorage:
         return filename in self._files
 
 
-class DummyDatabaseDispatcher:
-    """DatabaseDispatcher with DummyStorage.
-
-    Handles getting current database (Database) and entering/exiting the stack for the database.
-    """
-
-    def __init__(self, database: Database):
-        self.database = database
-
-    @property
-    def current_database(self) -> Database:
-        """Get the currently active database."""
-        return self.database
-
-    def push_database_to_stack(self, path: Union[Path, str], commit: bool = False) -> None:
-        """Create and push a new database to the stack."""
-        pass
-
-    def pop_database(self) -> None:
-        """Remove the current database from the stack."""
-        pass
-
-    def finalize_dispatcher(self) -> None:
-        """Close all database contexts."""
-        pass
-
-
 @pytest.fixture
-def database() -> Iterator[Tuple[Database, DummyStorage]]:
+def database() -> Iterator[Tuple["Database", DummyStorage]]:
     """A Database with in-memory storage."""
+    from renku.infrastructure.database import Database
+    from renku.infrastructure.gateway.database_gateway import initialize_database
+
     storage = DummyStorage()
     database = Database(storage=storage)
 
@@ -100,129 +79,83 @@ def database() -> Iterator[Tuple[Database, DummyStorage]]:
     yield database, storage
 
 
-@pytest.fixture
-def database_injection_bindings():
-    """Create injection bindings for a database."""
+def get_test_bindings() -> Dict[str, Any]:
+    """Return all possible bindings."""
+    from renku.core.interface.activity_gateway import IActivityGateway
+    from renku.core.interface.database_gateway import IDatabaseGateway
+    from renku.core.interface.dataset_gateway import IDatasetGateway
+    from renku.core.interface.plan_gateway import IPlanGateway
+    from renku.core.interface.project_gateway import IProjectGateway
+    from renku.infrastructure.gateway.activity_gateway import ActivityGateway
+    from renku.infrastructure.gateway.database_gateway import DatabaseGateway
+    from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
+    from renku.infrastructure.gateway.plan_gateway import PlanGateway
+    from renku.infrastructure.gateway.project_gateway import ProjectGateway
 
-    def _add_database_injection_bindings(bindings):
-        from renku.command.command_builder.database_dispatcher import DatabaseDispatcher
-        from renku.core.interface.activity_gateway import IActivityGateway
-        from renku.core.interface.client_dispatcher import IClientDispatcher
-        from renku.core.interface.database_dispatcher import IDatabaseDispatcher
-        from renku.core.interface.database_gateway import IDatabaseGateway
-        from renku.core.interface.dataset_gateway import IDatasetGateway
-        from renku.core.interface.plan_gateway import IPlanGateway
-        from renku.core.interface.project_gateway import IProjectGateway
-        from renku.infrastructure.gateway.activity_gateway import ActivityGateway
-        from renku.infrastructure.gateway.database_gateway import DatabaseGateway
-        from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
-        from renku.infrastructure.gateway.plan_gateway import PlanGateway
-        from renku.infrastructure.gateway.project_gateway import ProjectGateway
+    constructor_bindings = {
+        IPlanGateway: lambda: PlanGateway(),
+        IActivityGateway: lambda: ActivityGateway(),
+        IDatabaseGateway: lambda: DatabaseGateway(),
+        IDatasetGateway: lambda: DatasetGateway(),
+        IProjectGateway: lambda: ProjectGateway(),
+    }
 
-        dispatcher = DatabaseDispatcher()
-        dispatcher.push_database_to_stack(
-            bindings["bindings"][IClientDispatcher].current_client.database_path, commit=True
-        )
-
-        bindings["bindings"][IDatabaseDispatcher] = dispatcher
-
-        bindings["constructor_bindings"][IPlanGateway] = lambda: PlanGateway()
-        bindings["constructor_bindings"][IActivityGateway] = lambda: ActivityGateway()
-        bindings["constructor_bindings"][IDatabaseGateway] = lambda: DatabaseGateway()
-        bindings["constructor_bindings"][IDatasetGateway] = lambda: DatasetGateway()
-        bindings["constructor_bindings"][IProjectGateway] = lambda: ProjectGateway()
-
-        return bindings
-
-    return _add_database_injection_bindings
+    return {"bindings": {}, "constructor_bindings": constructor_bindings}
 
 
-@pytest.fixture
-def dummy_database_injection_bindings(database):
-    """Create injection bindings for a database."""
+def add_client_binding(bindings: Dict[str, Any]) -> Dict[str, Any]:
+    """Add required client bindings."""
+    from renku.command.command_builder.client_dispatcher import ClientDispatcher
+    from renku.core.interface.client_dispatcher import IClientDispatcher
+    from renku.core.management.client import LocalClient
 
-    def _add_database_injection_bindings(bindings):
-        from renku.core.interface.activity_gateway import IActivityGateway
-        from renku.core.interface.database_gateway import IDatabaseGateway
-        from renku.core.interface.dataset_gateway import IDatasetGateway
-        from renku.core.interface.plan_gateway import IPlanGateway
-        from renku.core.interface.project_gateway import IProjectGateway
-        from renku.infrastructure.gateway.activity_gateway import ActivityGateway
-        from renku.infrastructure.gateway.database_gateway import DatabaseGateway
-        from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
-        from renku.infrastructure.gateway.plan_gateway import PlanGateway
-        from renku.infrastructure.gateway.project_gateway import ProjectGateway
+    client = LocalClient()
 
-        bindings["bindings"][IDatabaseDispatcher] = DummyDatabaseDispatcher(database[0])
+    client_dispatcher = ClientDispatcher()
+    client_dispatcher.push_created_client_to_stack(client)
+    bindings["bindings"].update({"LocalClient": client, IClientDispatcher: client_dispatcher})
 
-        bindings["constructor_bindings"][IPlanGateway] = lambda: PlanGateway()
-        bindings["constructor_bindings"][IActivityGateway] = lambda: ActivityGateway()
-        bindings["constructor_bindings"][IDatabaseGateway] = lambda: DatabaseGateway()
-        bindings["constructor_bindings"][IDatasetGateway] = lambda: DatasetGateway()
-        bindings["constructor_bindings"][IProjectGateway] = lambda: ProjectGateway()
-
-        return bindings
-
-    return _add_database_injection_bindings
+    return bindings
 
 
 @pytest.fixture
-def injection_manager():
-    """Factory fixture for injection manager."""
+def with_injections_manager() -> Callable[["Repository"], None]:
+    """Factory fixture for test injections manager."""
+    from renku.command.command_builder.command import inject, remove_injector
 
-    def _injection_manager(bindings):
-        from tests.utils import injection_manager
+    @contextlib.contextmanager
+    def with_injection(bindings, path: Path):
+        """Context manager to temporarily do injections."""
 
-        return injection_manager(bindings)
+        def _bind(binder):
+            for key, value in bindings["bindings"].items():
+                binder.bind(key, value)
+            for key, value in bindings["constructor_bindings"].items():
+                binder.bind_to_constructor(key, value)
 
-    return _injection_manager
+            return binder
 
+        inject.configure(_bind, bind_in_runtime=False)
 
-@pytest.fixture
-def client_database_injection_manager(client_injection_bindings, database_injection_bindings, injection_manager):
-    """Fixture for context manager with client and db injection."""
+        with project_context.with_path(path, save_changes=True):
+            try:
+                yield
+            finally:
+                remove_injector()
 
-    def _inner(client):
-        return injection_manager(database_injection_bindings(client_injection_bindings(client)))
+    def test_injection_manager_helper(repository: "Repository"):
+        bindings = get_test_bindings()
+        add_client_binding(bindings=bindings)
+        return with_injection(bindings=bindings, path=repository.path)
 
-    return _inner
-
-
-@pytest.fixture
-def dummy_database_injection_manager(dummy_database_injection_bindings, injection_manager):
-    """Fixture for context manager with client and db injection."""
-
-    def _inner(client):
-        return injection_manager(dummy_database_injection_bindings({"bindings": {}, "constructor_bindings": {}}))
-
-    return _inner
-
-
-@pytest.fixture
-def injected_client(client, client_database_injection_manager):
-    """Fixture for context manager with client and database injection."""
-    with client_database_injection_manager(client):
-        yield client
+    return test_injection_manager_helper
 
 
 @pytest.fixture
-def injected_dummy_database(dummy_database_injection_manager):
-    """Fixture for context manager with dummy database injection."""
-    with dummy_database_injection_manager(None):
-        yield
+def project_with_injection(repository, with_injections_manager):
+    """Fixture for context manager with project and database injection."""
+    with with_injections_manager(repository):
+        yield repository
 
 
-@pytest.fixture
-def path_injection(injection_manager, database_injection_bindings, client_injection_bindings):
-    """Fixture that accepts a path and adds required renku binding."""
-
-    def create_client_and_bindings(path: Union[Path, str]):
-        from renku.core.management.client import LocalClient
-        from renku.core.project.project_properties import project_properties
-        from renku.core.util.contexts import chdir
-
-        with chdir(path), project_properties.with_path(Path(path)):
-            client = LocalClient()
-            return injection_manager(database_injection_bindings(client_injection_bindings(client)))
-
-    return create_client_and_bindings
+client_database_injection_manager = with_injections_manager

@@ -17,7 +17,7 @@
 # limitations under the License.
 """Test ``log`` command."""
 
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
@@ -30,11 +30,11 @@ def test_rollback(client, runner, project):
     result = runner.invoke(cli, ["run", "--name", "run2", "cp", "foo", "bar"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    metadata_path = project_properties.path / "input"
+    metadata_path = project_context.path / "input"
     metadata_path.write_text("input")
 
-    client.repository.add(["input"])
-    client.repository.commit("add input")
+    project_context.repository.add(["input"])
+    project_context.repository.commit("add input")
 
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -50,8 +50,8 @@ def test_rollback(client, runner, project):
 
     metadata_path.write_text("changed input")
 
-    client.repository.add(["input"])
-    client.repository.commit("change input")
+    project_context.repository.add(["input"])
+    project_context.repository.commit("change input")
 
     result = runner.invoke(cli, ["run", "--name", "run3", "cp", "input", "output"])
     assert 0 == result.exit_code, format_result_exception(result)

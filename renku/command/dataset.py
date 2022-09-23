@@ -18,8 +18,7 @@
 """Repository datasets management."""
 
 from renku.command.command_builder.command import Command
-from renku.core.constant import CONFIG_LOCAL_PATH
-from renku.core.dataset.constant import DATASET_METADATA_PATHS
+from renku.core.constant import CONFIG_LOCAL_PATH, DATASET_METADATA_PATHS
 from renku.core.dataset.dataset import (
     create_dataset,
     edit_dataset,

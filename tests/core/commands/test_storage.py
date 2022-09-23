@@ -21,48 +21,48 @@ import os
 import subprocess
 from pathlib import Path
 
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
 def test_lfs_storage_clean_no_remote(runner, project, client):
     """Test ``renku storage clean`` command with no remote set."""
-    with (project_properties.path / "tracked").open("w") as fp:
+    with (project_context.path / "tracked").open("w") as fp:
         fp.write("tracked file")
-    client.repository.add("*")
-    client.repository.commit("tracked file")
+    project_context.repository.add("*")
+    project_context.repository.commit("tracked file")
 
     result = runner.invoke(cli, ["storage", "clean", "tracked"], catch_exceptions=False)
     assert 1 == result.exit_code
     assert "No git remote is configured for" in result.output
 
 
-def test_lfs_storage_clean(runner, project, client_with_remote):
+def test_lfs_storage_clean(runner, project, project_with_remote):
     """Test ``renku storage clean`` command."""
-    client = client_with_remote
+    project_with_remote
 
-    with (project_properties.path / "tracked").open("w") as fp:
+    with (project_context.path / "tracked").open("w") as fp:
         fp.write("tracked file")
-    client.repository.add("*")
-    client.repository.commit("tracked file")
+    project_context.repository.add("*")
+    project_context.repository.commit("tracked file")
 
     result = runner.invoke(cli, ["storage", "clean", "tracked"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
     assert "These paths were ignored as they are not tracked" in result.output
 
     subprocess.call(["git", "lfs", "track", "tracked"])
-    client.repository.add("*")
-    client.repository.commit("Tracked in lfs")
-    client.repository.push("origin", no_verify=True)
+    project_context.repository.add("*")
+    project_context.repository.commit("Tracked in lfs")
+    project_context.repository.push("origin", no_verify=True)
 
-    with (project_properties.path / "tracked").open("r") as fp:
+    with (project_context.path / "tracked").open("r") as fp:
         assert "tracked file" in fp.read()
 
     assert "tracked" in Path(".gitattributes").read_text()
 
     lfs_objects = []
-    for _, _, files in os.walk(str(project_properties.path / ".git" / "lfs" / "objects")):
+    for _, _, files in os.walk(str(project_context.path / ".git" / "lfs" / "objects")):
         lfs_objects.extend(files)
 
     assert 1 == len(lfs_objects)
@@ -70,10 +70,10 @@ def test_lfs_storage_clean(runner, project, client_with_remote):
     result = runner.invoke(cli, ["storage", "clean", "tracked"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    assert "version https://git-lfs.github.com/spec/v1" in (project_properties.path / "tracked").read_text()
+    assert "version https://git-lfs.github.com/spec/v1" in (project_context.path / "tracked").read_text()
 
     lfs_objects = []
-    for _, _, files in os.walk(str(project_properties.path / ".git" / "lfs" / "objects")):
+    for _, _, files in os.walk(str(project_context.path / ".git" / "lfs" / "objects")):
         lfs_objects.extend(files)
 
     assert 0 == len(lfs_objects)
@@ -83,13 +83,13 @@ def test_lfs_storage_clean(runner, project, client_with_remote):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_lfs_storage_unpushed_clean(runner, project, client_with_remote):
+def test_lfs_storage_unpushed_clean(runner, project_with_remote):
     """Test ``renku storage clean`` command for unpushed files."""
-    with (project_properties.path / "tracked").open("w") as fp:
+    with (project_context.path / "tracked").open("w") as fp:
         fp.write("tracked file")
     subprocess.call(["git", "lfs", "track", "tracked"])
-    client_with_remote.repository.add("*")
-    client_with_remote.repository.commit("tracked file")
+    project_with_remote.add("*")
+    project_with_remote.commit("tracked file")
 
     result = runner.invoke(cli, ["storage", "clean", "tracked"], catch_exceptions=False)
 
@@ -101,10 +101,10 @@ def test_lfs_migrate(runner, project, client):
     """Test ``renku storage migrate`` command for large files in git."""
 
     for _file in ["dataset_file", "workflow_file", "regular_file"]:
-        (project_properties.path / _file).write_text(_file)
+        (project_context.path / _file).write_text(_file)
 
-    client.repository.add("*")
-    client.repository.commit("add files")
+    project_context.repository.add("*")
+    project_context.repository.commit("add files")
 
     result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my_dataset", "dataset_file"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -115,7 +115,7 @@ def test_lfs_migrate(runner, project, client):
     result = runner.invoke(cli, ["config", "set", "lfs_threshold", "0b"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    previous_head = client.repository.head.commit.hexsha
+    previous_head = project_context.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["storage", "migrate", "--all"], input="y")
     assert 0 == result.exit_code, format_result_exception(result)
@@ -131,8 +131,8 @@ def test_lfs_migrate(runner, project, client):
     assert ".renku" not in result.output
 
     # TODO: Make sure that this test fails
-    assert previous_head != client.repository.head.commit.hexsha
-    changed_files = [c.a_path for c in client.repository.head.commit.get_changes()]
+    assert previous_head != project_context.repository.head.commit.hexsha
+    changed_files = [c.a_path for c in project_context.repository.head.commit.get_changes()]
     assert ".renku/metadata/activities" not in changed_files
 
 
@@ -140,10 +140,10 @@ def test_lfs_migrate_no_changes(runner, project, client):
     """Test ``renku storage migrate`` command without broken files."""
 
     for _file in ["dataset_file", "workflow_file", "regular_file"]:
-        (project_properties.path / _file).write_text(_file)
+        (project_context.path / _file).write_text(_file)
 
-    client.repository.add("*")
-    client.repository.commit("add files")
+    project_context.repository.add("*")
+    project_context.repository.commit("add files")
 
     result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my_dataset", "dataset_file"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -151,23 +151,23 @@ def test_lfs_migrate_no_changes(runner, project, client):
     result = runner.invoke(cli, ["run", "cp", "workflow_file", "output_file"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    previous_head = client.repository.head.commit.hexsha
+    previous_head = project_context.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["storage", "migrate", "--all"], input="y")
     assert 0 == result.exit_code, format_result_exception(result)
     assert "All files are already in LFS" in result.output
 
-    assert previous_head == client.repository.head.commit.hexsha
+    assert previous_head == project_context.repository.head.commit.hexsha
 
 
 def test_lfs_migrate_explicit_path(runner, project, client):
     """Test ``renku storage migrate`` command explicit path."""
 
     for _file in ["dataset_file", "workflow_file", "regular_file"]:
-        (project_properties.path / _file).write_text(_file)
+        (project_context.path / _file).write_text(_file)
 
-    client.repository.add("*")
-    client.repository.commit("add files")
+    project_context.repository.add("*")
+    project_context.repository.commit("add files")
 
     result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my_dataset", "dataset_file"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -175,11 +175,11 @@ def test_lfs_migrate_explicit_path(runner, project, client):
     result = runner.invoke(cli, ["run", "cp", "workflow_file", "output_file"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    previous_head = client.repository.head.commit.hexsha
+    previous_head = project_context.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["storage", "migrate", "regular_file"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    assert previous_head != client.repository.head.commit.hexsha
+    assert previous_head != project_context.repository.head.commit.hexsha
 
-    assert "oid sha256:" in (project_properties.path / "regular_file").read_text()
+    assert "oid sha256:" in (project_context.path / "regular_file").read_text()

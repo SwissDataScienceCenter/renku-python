@@ -24,10 +24,11 @@ from uuid import uuid4
 import docker
 
 from renku.core import errors
+from renku.core.config import get_value
 from renku.core.management.client import LocalClient
 from renku.core.plugin import hookimpl
-from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
+from renku.domain_model.project_context import project_context
 from renku.domain_model.session import ISessionProvider, Session
 
 
@@ -142,7 +143,7 @@ class DockerSessionProvider(ISessionProvider):
                 )
 
             auth_token = uuid4().hex
-            default_url = client.get_value("interactive", "default_url")
+            default_url = get_value("interactive", "default_url")
 
             # resource requests
             resource_requests: Dict[str, Any] = dict()
@@ -175,9 +176,9 @@ class DockerSessionProvider(ISessionProvider):
 
             work_dir = Path(working_dir) / "work" / project_name.split("/")[-1]
 
-            volumes = [f"{str(project_properties.path.resolve())}:{work_dir}"]
+            volumes = [f"{str(project_context.path.resolve())}:{work_dir}"]
 
-            user = client.repository.get_user()
+            user = project_context.repository.get_user()
             environment = {
                 "GIT_AUTHOR_NAME": user.name,
                 "GIT_AUTHOR_EMAIL": user.email,

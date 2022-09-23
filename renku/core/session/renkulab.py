@@ -22,33 +22,31 @@ from pathlib import Path
 from time import monotonic, sleep
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from lazy_object_proxy import Proxy
-
-from renku.command.command_builder import inject
 from renku.core import errors
-from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.config import get_value, set_value
 from renku.core.management.client import LocalClient
 from renku.core.plugin import hookimpl
 from renku.core.session.utils import get_renku_project_name, get_renku_url
 from renku.core.util import communication, requests
 from renku.core.util.git import get_remote
+from renku.domain_model.project_context import project_context
 from renku.domain_model.session import ISessionProvider, Session
 
 
-def _get_token(client: LocalClient, renku_url: str) -> Tuple[str, bool]:
+def _get_token(renku_url: str) -> Tuple[str, bool]:
     """Get a token for authenticating with renku.
 
     If the user is logged in then the JWT token from renku login will be used.
     Otherwise the anonymous user token will be used. Returns the token and a flag to
     indicate if the user is registered (true) or anonymous(false).
     """
-    registered_token = client.get_value(section="http", key=urllib.parse.urlparse(renku_url).netloc)
+    registered_token = get_value(section="http", key=urllib.parse.urlparse(renku_url).netloc)
     if not registered_token:
-        return _get_anonymous_credentials(client=client, renku_url=renku_url), False
+        return _get_anonymous_credentials(renku_url=renku_url), False
     return registered_token, True
 
 
-def _get_anonymous_credentials(client: LocalClient, renku_url: str) -> str:
+def _get_anonymous_credentials(renku_url: str) -> str:
     def _get_anonymous_token() -> Optional[str]:
         import requests
 
@@ -67,7 +65,7 @@ def _get_anonymous_credentials(client: LocalClient, renku_url: str) -> str:
             return session.cookies.get("anon-id")
 
     renku_host = urllib.parse.urlparse(renku_url).netloc
-    anon_token = client.get_value(section="anonymous_token", key=renku_host)
+    anon_token = get_value(section="anonymous_token", key=renku_host)
     if not anon_token:
         anon_token = _get_anonymous_token()
         if not anon_token:
@@ -76,7 +74,7 @@ def _get_anonymous_credentials(client: LocalClient, renku_url: str) -> str:
                 f"Ensure the Renku deployment at {renku_url} supports anonymous sessions or use "
                 f"'renku login {renku_host}' to log in."
             )
-        client.set_value(section="anonymous_token", key=renku_host, value=anon_token, global_only=True)
+        set_value(section="anonymous_token", key=renku_host, value=anon_token, global_only=True)
     return anon_token
 
 
@@ -88,13 +86,6 @@ class RenkulabSessionProvider(ISessionProvider):
     def __init__(self):
         self.__renku_url = None
         self.__notebooks_url = None
-        self.__client_dispatcher = None
-
-    def _client_dispatcher(self):
-        """Get (and if required set) the client dispatcher class variable."""
-        if not self.__client_dispatcher:
-            self.__client_dispatcher = Proxy(lambda: inject.instance(IClientDispatcher))
-        return self.__client_dispatcher
 
     def _renku_url(self) -> str:
         """Get the URL of the renku instance."""
@@ -114,13 +105,13 @@ class RenkulabSessionProvider(ISessionProvider):
 
     def _token(self) -> str:
         """Get the JWT token used to authenticate against Renku."""
-        token, _ = _get_token(client=self._client_dispatcher().current_client, renku_url=self._renku_url())
+        token, _ = _get_token(renku_url=self._renku_url())
         if token is None:
             raise errors.AuthenticationError("Please run the renku login command to authenticate with Renku.")
         return token
 
     def _is_user_registered(self) -> bool:
-        _, is_user_registered = _get_token(client=self._client_dispatcher().current_client, renku_url=self._renku_url())
+        _, is_user_registered = _get_token(renku_url=self._renku_url())
         return is_user_registered
 
     def _auth_header(self) -> Dict[str, str]:
@@ -129,18 +120,16 @@ class RenkulabSessionProvider(ISessionProvider):
             return {"Authorization": f"Bearer {self._token()}"}
         return {"Cookie": f"anon-id={self._token()}"}
 
-    def _get_renku_project_name_parts(self) -> Dict[str, str]:
-        client = self._client_dispatcher().current_client
-        if client.remote["name"]:
-            if get_remote(client.repository, name="renku-backup-origin") and client.remote["owner"].startswith(
-                "repos/"
-            ):
-                owner = client.remote["owner"].replace("repos/", "", 1)
+    def _get_renku_project_name_parts(self):
+        repository = project_context.repository
+        if project_context.remote.name and project_context.remote.owner:
+            if get_remote(repository, name="renku-backup-origin") and project_context.remote.owner.startswith("repos/"):
+                owner = project_context.remote.owner.replace("repos/", "", 1)
             else:
-                owner = client.remote["owner"]
+                owner = project_context.remote.owner
             return {
                 "namespace": owner,
-                "project": client.remote["name"],
+                "project": project_context.remote.name,
             }
         else:
             # INFO: In this case the owner/name split is not available. The project name is then
@@ -195,18 +184,20 @@ class RenkulabSessionProvider(ISessionProvider):
         """Check if the state of the repository is as expected before starting a session."""
         if not self._is_user_registered():
             return
-        if self._client_dispatcher().current_client.repository.is_dirty(untracked_files=True):
+        repository = project_context.repository
+
+        if repository.is_dirty(untracked_files=True):
             communication.confirm(
                 "You have new uncommitted or untracked changes to your repository. "
                 "Renku can automatically commit these changes so that it builds "
                 "the correct environment for your session. Do you wish to proceed?",
                 abort=True,
             )
-            self._client_dispatcher().current_client.repository.add(all=True)
-            self._client_dispatcher().current_client.repository.commit("Automated commit by Renku CLI.")
+            repository.add(all=True)
+            repository.commit("Automated commit by Renku CLI.")
 
     def _remote_head_hexsha(self):
-        return get_remote(self._client_dispatcher().current_client.repository).head
+        return get_remote(repository=project_context.repository).head
 
     @staticmethod
     def _send_renku_request(req_type: str, *args, **kwargs):
@@ -229,8 +220,9 @@ class RenkulabSessionProvider(ISessionProvider):
             raise errors.NotebookSessionImageNotExistError(
                 f"Renku cannot find the image {image_name} and use it in an anonymous session."
             )
-        if self._client_dispatcher().current_client.repository.head.commit.hexsha != self._remote_head_hexsha():
-            self._client_dispatcher().current_client.repository.push()
+        repository = project_context.repository
+        if repository.head.commit.hexsha != self._remote_head_hexsha():
+            repository.push()
         self._wait_for_image(image_name=image_name, config=config)
 
     def find_image(self, image_name: str, config: Optional[Dict[str, Any]]) -> bool:
@@ -293,7 +285,9 @@ class RenkulabSessionProvider(ISessionProvider):
         Returns:
             str: a unique id for the created interactive session.
         """
-        session_commit = client.repository.head.commit.hexsha
+        repository = project_context.repository
+
+        session_commit = repository.head.commit.hexsha
         if not self._is_user_registered():
             communication.warn(
                 "You are starting a session as an anonymous user. "
@@ -302,7 +296,7 @@ class RenkulabSessionProvider(ISessionProvider):
                 "the session is shut down."
             )
         else:
-            if client.repository.head.commit.hexsha != self._remote_head_hexsha():
+            if repository.head.commit.hexsha != self._remote_head_hexsha():
                 # INFO: The user is registered, the image is pinned or already available
                 # but the local repository is not fully in sync with the remote
                 communication.confirm(
@@ -311,7 +305,7 @@ class RenkulabSessionProvider(ISessionProvider):
                     "in the session you are launching. Do you wish to proceed?",
                     abort=True,
                 )
-                client.repository.push()
+                repository.push()
         server_options: Dict[str, Union[str, float]] = {}
         if cpu_request:
             server_options["cpu_request"] = cpu_request

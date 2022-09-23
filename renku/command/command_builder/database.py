@@ -20,20 +20,19 @@
 
 import json
 import os
-from typing import TYPE_CHECKING, Optional, cast
+from typing import TYPE_CHECKING, Optional
 
 from packaging.version import Version
 
 from renku.command.command_builder.command import Command, CommandResult, check_finalized
-from renku.command.command_builder.database_dispatcher import DatabaseDispatcher
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.interface.storage import IStorageFactory
+from renku.domain_model.project_context import project_context
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.infrastructure.gateway.database_gateway import DatabaseGateway
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
@@ -52,13 +51,11 @@ class DatabaseCommand(Command):
     POST_ORDER = 5
 
     def __init__(self, builder: Command, write: bool = False, path: str = None, create: bool = False) -> None:
-        from renku.domain_model.project import Project
-
         self._builder = builder
         self._write = write
         self._path = path
         self._create = create
-        self.project: Optional[Project] = None
+        self.project: Optional["Project"] = None
 
     def _injection_pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
         """Create a Database singleton."""
@@ -67,18 +64,15 @@ class DatabaseCommand(Command):
         if "client_dispatcher" not in context:
             raise ValueError("Database builder needs a IClientDispatcher to be set.")
 
-        client = context["client_dispatcher"].current_client
+        project_context.push_path(path=self._path or project_context.path, save_changes=self._write)
 
-        self.dispatcher = DatabaseDispatcher()
-        self.dispatcher.push_database_to_stack(path=self._path or client.database_path, commit=self._write)
-
-        context["bindings"][IDatabaseDispatcher] = self.dispatcher
+        project_gateway = ProjectGateway()
 
         context["constructor_bindings"][IPlanGateway] = lambda: PlanGateway()
         context["constructor_bindings"][IActivityGateway] = lambda: ActivityGateway()
         context["constructor_bindings"][IDatabaseGateway] = lambda: DatabaseGateway()
         context["constructor_bindings"][IDatasetGateway] = lambda: DatasetGateway()
-        context["constructor_bindings"][IProjectGateway] = lambda: ProjectGateway()
+        context["constructor_bindings"][IProjectGateway] = lambda: project_gateway
         context["constructor_bindings"][IStorageFactory] = lambda: StorageFactory
 
         if int(os.environ.get("RENKU_SKIP_MIN_VERSION_CHECK", "0")) == 1:
@@ -86,11 +80,11 @@ class DatabaseCommand(Command):
             return
 
         try:
-            self.project = cast("Project", self.dispatcher.current_database["project"])
+            self.project = project_gateway.get_project()
             minimum_renku_version = Version(self.project.minimum_renku_version)
-        except (KeyError, ImportError):
+        except (KeyError, ImportError, ValueError):
             try:
-                with open(client.database_path / "project", "r") as f:
+                with open(project_context.database_path / "project", "r") as f:
                     project = json.load(f)
                     min_version = project.get("minimum_renku_version")
                     if min_version is None:
@@ -116,7 +110,7 @@ class DatabaseCommand(Command):
             # NOTE: update minimum renku version on write as migrations might happen on the fly
             self.project.minimum_renku_version = Project.minimum_renku_version
 
-        self.dispatcher.finalize_dispatcher()
+        project_context.pop_context()
 
     @check_finalized
     def build(self) -> Command:

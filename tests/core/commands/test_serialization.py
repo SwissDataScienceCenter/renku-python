@@ -26,9 +26,9 @@ from renku.core.migration.models import v9 as old_datasets
 from renku.core.util.uuid import is_uuid
 
 
-def test_dataset_deserialization(client_with_datasets, load_dataset_with_injection):
+def test_dataset_deserialization(project_with_datasets, load_dataset_with_injection):
     """Test Dataset deserialization."""
-    dataset = load_dataset_with_injection("dataset-1", client_with_datasets)
+    dataset = load_dataset_with_injection("dataset-1", project_with_datasets)
 
     dataset_types = {
         "date_created": [datetime.datetime],
@@ -44,7 +44,7 @@ def test_dataset_deserialization(client_with_datasets, load_dataset_with_injecti
 
     creator_types = {"email": str, "id": str, "name": str, "affiliation": str}
 
-    creator = load_dataset_with_injection("dataset-1", client_with_datasets).creators[0]
+    creator = load_dataset_with_injection("dataset-1", project_with_datasets).creators[0]
 
     for attribute, type_ in creator_types.items():
         assert type(getattr(creator, attribute)) is type_

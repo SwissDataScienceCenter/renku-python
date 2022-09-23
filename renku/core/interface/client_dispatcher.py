@@ -36,9 +36,7 @@ class IClientDispatcher(ABC):
         """Get the currently active client."""
         raise NotImplementedError
 
-    def push_client_to_stack(
-        self, path: Union[Path, str], renku_home: str = ".renku", external_storage_requested: bool = True
-    ) -> "LocalClient":
+    def push_client_to_stack(self, path: Union[Path, str]) -> "LocalClient":
         """Create and push a new client to the stack."""
         raise NotImplementedError
 

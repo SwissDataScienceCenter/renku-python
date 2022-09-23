@@ -22,6 +22,7 @@ import pytest
 from renku.command.command_builder.command import Command
 from renku.core import errors
 from renku.domain_model.project import Project
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.agent import Person
 
 
@@ -36,7 +37,7 @@ def test_minimum_version(mocker, tmpdir, monkeypatch):
     """Test minimum version required."""
     monkeypatch.setenv("RENKU_SKIP_MIN_VERSION_CHECK", "0")
 
-    def _mock_database_project(project):
+    def mock_database_project(project):
         def mocked_getter(self, key):
             if key == "project":
                 return project
@@ -44,13 +45,11 @@ def test_minimum_version(mocker, tmpdir, monkeypatch):
 
         return mocked_getter
 
-    with tmpdir.as_cwd():
+    with tmpdir.as_cwd(), project_context.with_path(tmpdir):
         # NOTE: Check doesn't raise with identical version
         mocker.patch("renku.domain_model.project.Project.minimum_renku_version", "1.0.0")
         project = Project(creator=Person(name="John Doe", email="jd@example.com"), name="testproject")
-        mocker.patch(
-            "renku.command.command_builder.database_dispatcher.Database.__getitem__", _mock_database_project(project)
-        )
+        mocker.patch("renku.infrastructure.database.Database.__getitem__", mock_database_project(project))
         mocker.patch("renku.version.__version__", "1.0.0")
 
         try:

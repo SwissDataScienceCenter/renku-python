@@ -16,13 +16,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Initial migrations."""
+
 import os
 import shutil
 import urllib
 from pathlib import Path
 
+from renku.core.constant import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.constant import RENKU_HOME
-from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
+from renku.core.git import with_project_metadata
 from renku.core.migration.models.refs import LinkReference
 from renku.core.migration.models.v3 import Collection, Dataset, Project, get_client_datasets
 from renku.core.migration.models.v9 import generate_file_id, generate_label
@@ -33,9 +35,10 @@ from renku.core.migration.utils import (
     get_pre_0_3_4_datasets_metadata,
     is_using_temporary_datasets_path,
 )
-from renku.core.project.project_properties import project_properties
+from renku.core.util.git import get_in_submodules
 from renku.core.util.urls import url_to_string
 from renku.domain_model.dataset import generate_default_name
+from renku.domain_model.project_context import project_context
 
 
 def migrate(migration_context):
@@ -55,7 +58,7 @@ def _ensure_clean_lock():
     if is_using_temporary_datasets_path():
         return
 
-    lock_file = project_properties.path / ".renku.lock"
+    lock_file = project_context.path / ".renku.lock"
     try:
         lock_file.unlink()
     except FileNotFoundError:
@@ -69,7 +72,7 @@ def _do_not_track_lock_file():
         return
 
     lock_file = ".renku.lock"
-    gitignore = project_properties.path / ".gitignore"
+    gitignore = project_context.path / ".gitignore"
     if not gitignore.exists() or lock_file not in gitignore.read_text():
         gitignore.open("a").write("\n{0}\n".format(lock_file))
 
@@ -80,10 +83,11 @@ def _migrate_datasets_pre_v0_3(client):
         return
 
     changed = False
+    repository = project_context.repository
 
-    for old_path in get_pre_0_3_4_datasets_metadata(client):
+    for old_path in get_pre_0_3_4_datasets_metadata():
         changed = True
-        name = str(old_path.parent.relative_to(project_properties.path / DATA_DIR))
+        name = str(old_path.parent.relative_to(project_context.path / DATA_DIR))
 
         dataset = Dataset.from_yaml(old_path, client)
         dataset.title = name
@@ -91,16 +95,16 @@ def _migrate_datasets_pre_v0_3(client):
         new_path = get_datasets_path(client) / dataset.identifier / OLD_METADATA_PATH
         new_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with client.with_metadata(read_only=True) as meta:
-            for submodule in client.repository.submodules:
+        with with_project_metadata(read_only=True) as meta:
+            for submodule in repository.submodules:
                 if Path(submodule.url).name == meta.name:
-                    client.repository.submodules.remove(submodule)
+                    repository.submodules.remove(submodule)
 
         for file_ in dataset.files:
             if not Path(file_.path).exists():
-                expected_path = project_properties.path / DATA_DIR / dataset.name / file_.path
+                expected_path = project_context.path / DATA_DIR / dataset.name / file_.path
                 if expected_path.exists():
-                    file_.path = expected_path.relative_to(project_properties.path)
+                    file_.path = expected_path.relative_to(project_context.path)
 
         dataset.to_yaml(new_path)
 
@@ -109,13 +113,13 @@ def _migrate_datasets_pre_v0_3(client):
         ref.set_reference(new_path)
 
     if changed:
-        project_path = client.renku_path.joinpath(OLD_METADATA_PATH)
-        project = Project.from_yaml(project_path, client)
+        project_path = project_context.metadata_path.joinpath(OLD_METADATA_PATH)
+        project = Project.from_yaml(project_path)
         project.version = "3"
         project.to_yaml(project_path)
 
-        client.repository.add(all=True)
-        client.repository.commit("renku migrate: committing structural changes" + client.transaction_id)
+        repository.add(all=True)
+        repository.commit("renku migrate: committing structural changes" + project_context.transaction_id)
 
 
 def _migrate_broken_dataset_paths(client):
@@ -142,12 +146,12 @@ def _migrate_broken_dataset_paths(client):
                 expected_path.mkdir(parents=True, exist_ok=True)
                 shutil.move(str(Path(old_dataset_path) / OLD_METADATA_PATH), expected_path)
 
-        dataset.path = os.path.relpath(expected_path, project_properties.path)
+        dataset.path = os.path.relpath(expected_path, project_context.path)
 
         if not is_using_temporary_datasets_path():
-            base_path = project_properties.path
+            base_path = project_context.path
         else:
-            base_path = project_properties.path / RENKU_HOME
+            base_path = project_context.path / RENKU_HOME
 
         collections = [f for f in dataset.files if isinstance(f, Collection)]
         files = [f for f in dataset.files if not isinstance(f, Collection)]
@@ -170,7 +174,7 @@ def _migrate_broken_dataset_paths(client):
                     os.path.abspath(get_datasets_path(client) / dataset.identifier / file_.path)
                 ).relative_to(base_path)
             elif not _exists(client=client, path=file_.path):
-                file_.path = (project_properties.path / DATA_DIR / file_.path).relative_to(project_properties.path)
+                file_.path = (project_context.path / DATA_DIR / file_.path).relative_to(project_context.path)
 
             file_.name = os.path.basename(file_.path)
 
@@ -186,8 +190,8 @@ def _fix_labels_and_ids(client):
         for file_ in dataset.files:
             if not _exists(client=client, path=file_.path):
                 continue
-            _, commit, _ = client.get_in_submodules(
-                _get_previous_commit(client, file_.path, revision="HEAD"), file_.path
+            _, _, commit, _ = get_in_submodules(
+                project_context.repository, _get_previous_commit(client, file_.path, revision="HEAD"), file_.path
             )
 
             if not _is_file_id_valid(file_._id, file_.path, commit.hexsha):
@@ -212,8 +216,8 @@ def _fix_dataset_urls(client):
 
 def _migrate_dataset_and_files_project(client):
     """Ensure dataset files have correct project."""
-    project_path = client.renku_path.joinpath(OLD_METADATA_PATH)
-    project = Project.from_yaml(project_path, client)
+    project_path = project_context.metadata_path.joinpath(OLD_METADATA_PATH)
+    project = Project.from_yaml(project_path)
     if not is_using_temporary_datasets_path():
         project.to_yaml(project_path)
 
@@ -255,4 +259,4 @@ def _get_previous_commit(client, path, revision):
     dmc = getattr(client, "dataset_migration_context", None)
     if dmc:
         return dmc.get_previous_commit(path)
-    return client.repository.get_previous_commit(path, revision=revision)
+    return project_context.repository.get_previous_commit(path, revision=revision)

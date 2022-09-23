@@ -16,10 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service fixtures for project management."""
+
 import os
 import tempfile
 import uuid
-from pathlib import Path
+from typing import Any, Dict, Generator, Tuple
 from urllib.parse import urlparse
 
 import pytest
@@ -29,9 +30,9 @@ from renku.infrastructure.repository import Repository
 
 
 @pytest.fixture
-def project_metadata(project):
+def project_metadata(project) -> Generator[Tuple["Repository", Dict[str, Any]], None, None]:
     """Create project with metadata."""
-    name = Path(project).name
+    name = project.path.name
     metadata = {
         "project_id": uuid.uuid4().hex,
         "name": name,

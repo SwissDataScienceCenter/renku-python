@@ -18,16 +18,18 @@
 """Renku CLI fixtures for old project management."""
 
 from pathlib import Path
+from typing import Generator
 
 import pytest
 
-from renku.core.project.project_properties import project_properties
+from renku.core.git import with_project_metadata
+from renku.domain_model.project_context import project_context
 from renku.infrastructure.repository import Repository
 from tests.utils import clone_compressed_repository
 
 
 @pytest.fixture(params=["old-datasets-v0.3.0.git", "old-datasets-v0.5.1.git", "test-renku-v0.3.0.git"])
-def old_project(request, tmp_path):
+def old_project(request, tmp_path) -> Generator[Repository, None, None]:
     """Prepares a testing repo created by old version of renku."""
     from renku.core.util.contexts import chdir
 
@@ -82,19 +84,18 @@ def old_workflow_project(request, tmp_path):
 @pytest.fixture(params=["old-datasets-v0.9.1.git"])
 def old_dataset_project(request, tmp_path):
     """Prepares a testing repo created by old version of renku."""
-    from renku.core.management.client import LocalClient
     from renku.core.util.contexts import chdir
 
     name = request.param
     base_path = tmp_path / name
     repository = clone_compressed_repository(base_path=base_path, name=name)
 
-    with chdir(repository.path), project_properties.with_path(repository.path):
-        yield LocalClient()
+    with chdir(repository.path), project_context.with_path(repository.path):
+        yield repository
 
 
 @pytest.fixture
-def old_repository_with_submodules(request, tmp_path):
+def old_repository_with_submodules(tmp_path):
     """Prepares a testing repo that has datasets using git submodules."""
     import tarfile
 
@@ -115,14 +116,14 @@ def old_repository_with_submodules(request, tmp_path):
 
 
 @pytest.fixture
-def unsupported_project(client, client_database_injection_manager):
+def unsupported_project(project, client_database_injection_manager):
     """A client with a newer project version."""
-    with client_database_injection_manager(client):
-        with client.with_metadata() as project:
+    with client_database_injection_manager(project):
+        with with_project_metadata() as project_metadata:
             impossible_newer_version = 42000
-            project.version = impossible_newer_version
+            project_metadata.version = impossible_newer_version
 
-    client.repository.add(".renku")
-    client.repository.commit("update renku.ini", no_verify=True)
+    project.add(".renku")
+    project.commit("update renku.ini", no_verify=True)
 
-    yield client
+    yield project

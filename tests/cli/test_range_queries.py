@@ -17,15 +17,13 @@
 # limitations under the License.
 """Test Git ranges used by various commands."""
 
-from pathlib import Path
-
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
 def test_limit_log(runner, project, run, subdirectory):
     """Test naming of CWL tools and workflows."""
-    cwd = Path(project)
+    cwd = project.path
     data = cwd / "data.txt"
     output = cwd / "output.txt"
 
