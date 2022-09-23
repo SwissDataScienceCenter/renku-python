@@ -22,7 +22,6 @@ from typing import List, Optional, Tuple, Union
 from urllib.parse import urlparse
 
 from renku.core.migration.models import v9 as old_datasets
-from renku.core.project.project_properties import project_properties
 from renku.core.util.git import get_entity_from_revision
 from renku.core.util.urls import get_slug
 from renku.domain_model.dataset import (
@@ -35,6 +34,7 @@ from renku.domain_model.dataset import (
     Url,
     is_dataset_name_valid,
 )
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance import agent as new_agents
 
 
@@ -79,7 +79,7 @@ def _create_remote_entity(dataset_file: Optional[old_datasets.DatasetFile]) -> O
 
 def _convert_dataset_file(dataset_file: old_datasets.DatasetFile, revision: str) -> Optional[DatasetFile]:
     """Convert old DatasetFile to new DatasetFile if available at revision."""
-    repository = project_properties.repository
+    repository = project_context.repository
 
     entity = get_entity_from_revision(repository=repository, path=dataset_file.path, revision=revision)
     if not entity:
@@ -205,7 +205,7 @@ def convert_dataset(dataset: old_datasets.Dataset, revision: str) -> Tuple[Datas
             keywords=dataset.keywords,
             license=convert_license(dataset.license),
             name=name,
-            project_id=project_properties.project.id,
+            project_id=project_context.project.id,
             initial_identifier=_convert_dataset_identifier(dataset.initial_identifier),
             same_as=_convert_same_as(dataset.same_as),
             title=dataset.title,

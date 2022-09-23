@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Project properties/configuration."""
+"""Project context."""
 
 import contextlib
 import threading
@@ -45,27 +45,14 @@ if TYPE_CHECKING:
     from renku.infrastructure.repository import Remote, Repository
 
 
-@dataclass
-class ProjectContext:
-    """Various properties of the current project."""
-
-    path: Path
-    database: Optional["Database"] = None
-    datadir: Optional[str] = None
-    project: Optional["Project"] = None
-    repository: Optional["Repository"] = None
-    save_changes: bool = False
-    transaction_id: Optional[str] = None
-
-
-class ProjectProperties(threading.local):
+class ProjectContext(threading.local):
     """A configuration class to hold global configuration."""
 
     external_storage_requested = True
     """External storage (e.g. LFS) requested for Renku command."""
 
     def __init__(self) -> None:
-        self._context_stack: List[ProjectContext] = []
+        self._context_stack: List[ProjectProperties] = []
 
     def __del__(self):
         self.clear()
@@ -205,7 +192,7 @@ class ProjectProperties(threading.local):
             from renku.infrastructure.repository import Repository
 
             try:
-                self._top.repository = Repository(project_properties.path)
+                self._top.repository = Repository(project_context.path)
             except errors.GitError as e:
                 raise ValueError from e
 
@@ -230,7 +217,7 @@ class ProjectProperties(threading.local):
         return f"\n\nrenku-transaction: {self._top.transaction_id}"
 
     @property
-    def _top(self) -> ProjectContext:
+    def _top(self) -> "ProjectProperties":
         """Return current context."""
         if self._context_stack:
             return self._context_stack[-1]
@@ -249,7 +236,7 @@ class ProjectProperties(threading.local):
 
         self.external_storage_requested = True
 
-    def pop_context(self) -> ProjectContext:
+    def pop_context(self) -> "ProjectProperties":
         """Pop current project context from stack.
 
         Returns:
@@ -273,7 +260,7 @@ class ProjectProperties(threading.local):
             path(Union[Path, str]): The path to push.
         """
         path = Path(path).resolve()
-        self._context_stack.append(ProjectContext(path=path, save_changes=save_changes))
+        self._context_stack.append(ProjectProperties(path=path, save_changes=save_changes))
 
     def replace_path(self, path: Union[Path, str]):
         """Replace the current project path with a new one if they are different.
@@ -286,7 +273,7 @@ class ProjectProperties(threading.local):
         if not self._context_stack:
             self.push_path(path)
         elif self._top.path != path:
-            self._context_stack[-1] = ProjectContext(path=path)
+            self._context_stack[-1] = ProjectProperties(path=path)
 
     def reset_project(self) -> None:
         """Discard cached project value."""
@@ -294,7 +281,9 @@ class ProjectProperties(threading.local):
             self._top.project = None
 
     @contextlib.contextmanager
-    def with_path(self, path: Union[Path, str], save_changes: bool = False) -> Generator[ProjectContext, None, None]:
+    def with_path(
+        self, path: Union[Path, str], save_changes: bool = False
+    ) -> Generator["ProjectProperties", None, None]:
         """Temporarily push a new project path to the stack.
 
         Arguments:
@@ -328,14 +317,27 @@ class ProjectProperties(threading.local):
                 raise errors.ConfigurationError(f"Cannot rollback to {before_top.path}.")
 
 
-project_properties: ProjectProperties = ProjectProperties()
+project_context: ProjectContext = ProjectContext()
 
 
 def has_graph_files() -> bool:
     """Return true if database exists."""
-    return project_properties.database_path.exists() and any(
-        f for f in project_properties.database_path.iterdir() if f != project_properties.database_path / "root"
+    return project_context.database_path.exists() and any(
+        f for f in project_context.database_path.iterdir() if f != project_context.database_path / "root"
     )
+
+
+@dataclass
+class ProjectProperties:
+    """Various properties of the current project."""
+
+    path: Path
+    database: Optional["Database"] = None
+    datadir: Optional[str] = None
+    project: Optional["Project"] = None
+    repository: Optional["Repository"] = None
+    save_changes: bool = False
+    transaction_id: Optional[str] = None
 
 
 class ProjectRemote(NamedTuple):

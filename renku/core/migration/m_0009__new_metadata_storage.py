@@ -47,11 +47,11 @@ from renku.core.migration.utils import (
     unset_temporary_datasets_path,
 )
 from renku.core.migration.utils.conversion import convert_dataset
-from renku.core.project.project_properties import has_graph_files, project_properties
 from renku.core.util import communication
 from renku.core.util.yaml import load_yaml
 from renku.domain_model.entity import NON_EXISTING_ENTITY_CHECKSUM, Collection, Entity
 from renku.domain_model.project import Project
+from renku.domain_model.project_context import has_graph_files, project_context
 from renku.domain_model.provenance.activity import Activity, Association, Generation, Usage
 from renku.domain_model.provenance.agent import Person, SoftwareAgent
 from renku.domain_model.provenance.parameter import ParameterValue
@@ -71,7 +71,7 @@ PLAN_CACHE = {}
 def migrate(migration_context):
     """Migration function."""
     client = migration_context.client
-    repository = project_properties.repository
+    repository = project_context.repository
     committed = _commit_previous_changes(client)
     # NOTE: Initialize submodules
     _ = repository.submodules
@@ -83,7 +83,7 @@ def migrate(migration_context):
     )
     _remove_dataset_metadata_files(client)
 
-    metadata_path = project_properties.metadata_path.joinpath(OLD_METADATA_PATH)
+    metadata_path = project_context.metadata_path.joinpath(OLD_METADATA_PATH)
     with open(metadata_path, "w") as f:
         f.write(
             "# Dummy file kept for backwards compatibility, does not contain actual version\n"
@@ -92,16 +92,16 @@ def migrate(migration_context):
 
 
 def _commit_previous_changes(client):
-    repository = project_properties.repository
+    repository = project_context.repository
     if repository.is_dirty():
-        project_path = project_properties.metadata_path.joinpath(OLD_METADATA_PATH)
+        project_path = project_context.metadata_path.joinpath(OLD_METADATA_PATH)
         project = old_schema.Project.from_yaml(project_path, client)
         project.version = "8"
-        project.to_yaml(project_properties.metadata_path.joinpath(project_path))
+        project.to_yaml(project_context.metadata_path.joinpath(project_path))
 
-        repository.add(project_properties.metadata_path)
+        repository.add(project_context.metadata_path)
         repository.commit(
-            "renku migrate: committing structural changes" + project_properties.transaction_id, no_verify=True
+            "renku migrate: committing structural changes" + project_context.transaction_id, no_verify=True
         )
         return True
 
@@ -111,7 +111,7 @@ def _commit_previous_changes(client):
 @inject.autoparams()
 def maybe_migrate_project_to_database(client, project_gateway: IProjectGateway):
     """Migrate project to database if necessary."""
-    metadata_path = project_properties.metadata_path.joinpath(OLD_METADATA_PATH)
+    metadata_path = project_context.metadata_path.joinpath(OLD_METADATA_PATH)
 
     if metadata_path.exists():
         old_project = old_schema.Project.from_yaml(metadata_path, client=client)
@@ -145,19 +145,19 @@ def remove_graph_files(client):
     """Remove all graph files."""
     # NOTE: These are required for projects that have new graph files
     try:
-        (project_properties.path / "provenance.json").unlink()
+        (project_context.path / "provenance.json").unlink()
     except FileNotFoundError:
         pass
     try:
-        (project_properties.path / "dependency.json").unlink()
+        (project_context.path / "dependency.json").unlink()
     except FileNotFoundError:
         pass
     try:
-        shutil.rmtree(project_properties.database_path)
+        shutil.rmtree(project_context.database_path)
     except FileNotFoundError:
         pass
     try:
-        (project_properties.path / "dataset.json").unlink()
+        (project_context.path / "dataset.json").unlink()
     except FileNotFoundError:
         pass
 
@@ -176,7 +176,7 @@ def _generate_new_metadata(
 ):
     """Generate graph and dataset provenance metadata."""
     client = client_dispatcher.current_client
-    repository = project_properties.repository
+    repository = project_context.repository
 
     if force:
         remove_graph_files(client)
@@ -191,7 +191,7 @@ def _generate_new_metadata(
 
     commits = list(
         repository.iterate_commits(
-            f"{project_properties.metadata_path}/workflow/*.yaml", ".renku/datasets/*/*.yml", reverse=True
+            f"{project_context.metadata_path}/workflow/*.yaml", ".renku/datasets/*/*.yml", reverse=True
         )
     )
     n_commits = len(commits)
@@ -343,7 +343,7 @@ def _get_process_runs(workflow_run: old_schema.WorkflowRun) -> List[old_schema.P
 
 def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, commit: Commit, remove: bool):
 
-    for file in commit.get_changes(paths=f"{project_properties.metadata_path}/workflow/*.yaml"):
+    for file in commit.get_changes(paths=f"{project_context.metadata_path}/workflow/*.yaml"):
         if file.deleted:
             continue
 
@@ -352,7 +352,7 @@ def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, 
         if not path.startswith(".renku/workflow") or not path.endswith(".yaml"):
             continue
 
-        if not (project_properties.path / path).exists():
+        if not (project_context.path / path).exists():
             communication.warn(f"Workflow file does not exists: '{path}'")
             continue
 
@@ -397,7 +397,7 @@ def _process_run_to_new_activity(process_run: old_schema.ProcessRun) -> List[Act
 
     assert not isinstance(process_run, old_schema.WorkflowRun)
 
-    project_id = project_properties.project.id
+    project_id = project_context.project.id
 
     run = process_run.association.plan
 
@@ -483,7 +483,7 @@ def _convert_used_entity(entity: old_schema.Entity, revision: str, activity_id: 
     """
     assert isinstance(entity, old_schema.Entity)
 
-    repository = project_properties.repository
+    repository = project_context.repository
 
     checksum = repository.get_object_hash(revision=revision, path=entity.path)
     if not checksum:
@@ -514,7 +514,7 @@ def _convert_generated_entity(entity: old_schema.Entity, revision: str, activity
     """
     assert isinstance(entity, old_schema.Entity)
 
-    repository = project_properties.repository
+    repository = project_context.repository
 
     try:
         entity_commit = repository.get_previous_commit(path=entity.path, revision=revision, submodule=True)
@@ -551,7 +551,7 @@ def _convert_invalidated_entity(entity: old_schema.Entity) -> Optional[Entity]:
     assert isinstance(entity, old_schema.Entity)
     assert not isinstance(entity, old_schema.Collection), f"Collection passed as invalidated: {entity._id}"
 
-    repository = project_properties.repository
+    repository = project_context.repository
 
     commit_sha = _extract_commit_sha(entity_id=entity._id)
     commit = repository.get_previous_commit(revision=commit_sha, path=entity.path, submodule=True)
@@ -666,9 +666,9 @@ def _process_datasets(
 def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], deleted_paths: List[str]):
     from renku.core.migration.models.v9 import Dataset
 
-    repository = project_properties.repository
+    repository = project_context.repository
 
-    datasets_path = project_properties.path / ".renku" / "tmp" / OLD_DATASETS_PATH
+    datasets_path = project_context.path / ".renku" / "tmp" / OLD_DATASETS_PATH
     shutil.rmtree(datasets_path, ignore_errors=True)
     datasets_path.mkdir(parents=True, exist_ok=True)
 
@@ -789,11 +789,11 @@ def _remove_dataset_metadata_files(client: LocalClient):
     """Remove old dataset metadata."""
 
     try:
-        shutil.rmtree(os.path.join(project_properties.metadata_path, OLD_DATASETS_PATH))
+        shutil.rmtree(os.path.join(project_context.metadata_path, OLD_DATASETS_PATH))
     except FileNotFoundError:
         pass
     try:
-        shutil.rmtree(os.path.join(project_properties.metadata_path, "refs", OLD_DATASETS_PATH))
+        shutil.rmtree(os.path.join(project_context.metadata_path, "refs", OLD_DATASETS_PATH))
     except FileNotFoundError:
         pass
 

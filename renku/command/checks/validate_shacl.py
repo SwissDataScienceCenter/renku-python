@@ -24,9 +24,9 @@ from renku.command.echo import WARNING
 from renku.command.schema.dataset import dump_dataset_as_jsonld
 from renku.command.schema.project import ProjectSchema
 from renku.core.interface.dataset_gateway import IDatasetGateway
-from renku.core.project.project_properties import project_properties
 from renku.core.util.shacl import validate_graph
 from renku.core.util.yaml import NoDatesSafeLoader
+from renku.domain_model.project_context import project_context
 
 
 def _shacl_graph_to_string(graph):
@@ -75,7 +75,7 @@ def check_project_structure(client, **kwargs):
     Returns:
         Tuple of whether project structure is valid and string of found problems.
     """
-    data = ProjectSchema().dump(project_properties.project)
+    data = ProjectSchema().dump(project_context.project)
 
     conform, graph, t = _check_shacl_structure(data)
 

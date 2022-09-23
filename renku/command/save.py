@@ -21,8 +21,8 @@ from typing import List, Tuple
 
 from renku.command.command_builder.command import Command
 from renku.core import errors
-from renku.core.project.project_properties import project_properties
 from renku.core.storage import track_paths_in_storage
+from renku.domain_model.project_context import project_context
 
 
 def _save_and_push(message=None, remote=None, paths=None) -> Tuple[List[str], str]:
@@ -38,7 +38,7 @@ def _save_and_push(message=None, remote=None, paths=None) -> Tuple[List[str], st
     """
     from renku.core.util.git import commit_changes, get_dirty_paths, get_remote, push_changes
 
-    repository = project_properties.repository
+    repository = project_context.repository
 
     setup_credential_helper()
 
@@ -74,7 +74,7 @@ def _save_and_push(message=None, remote=None, paths=None) -> Tuple[List[str], st
 
 def setup_credential_helper():
     """Setup git credential helper to ``cache`` if not set already."""
-    repository = project_properties.repository
+    repository = project_context.repository
 
     credential_helper = repository.get_configuration().get_value("credential", "helper", "")
 

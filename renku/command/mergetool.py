@@ -20,7 +20,7 @@
 from pathlib import Path
 
 from renku.command.command_builder.command import Command
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 
 
 def mergetool_command():
@@ -50,7 +50,7 @@ def mergetool_install_command():
 
 def setup_mergetool(with_attributes: bool = True):
     """Setup renku custom mergetool."""
-    repository = project_properties.repository
+    repository = project_context.repository
 
     with repository.get_configuration(writable=True) as config_writer:
         config_writer.set_value('merge "renkumerge"', "name", "Renku merge driver")
@@ -61,7 +61,7 @@ def setup_mergetool(with_attributes: bool = True):
     if not with_attributes:
         return
 
-    attributes_path = project_properties.path / ".gitattributes"
+    attributes_path = project_context.path / ".gitattributes"
     pattern_string = ".renku/metadata/**    merge=renkumerge\n"
 
     if attributes_path.exists():

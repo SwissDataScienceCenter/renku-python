@@ -30,11 +30,11 @@ from renku.core import errors
 from renku.core.config import get_value, remove_value, set_value
 from renku.core.constant import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.interface.storage import FileHash
-from renku.core.project.project_properties import project_properties
 from renku.core.util.contexts import chdir
 from renku.core.util.git import get_git_user
 from renku.core.util.os import get_files, unmount_path
 from renku.domain_model.dataset import Url
+from renku.domain_model.project_context import project_context
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
@@ -394,7 +394,7 @@ def test_dataset_import_renkulab_dataset_with_image(runner, project, client, cli
 
     assert img1.content_url == "https://example.com/image1.jpg"
     assert img2.content_url.endswith("/2.png")
-    assert os.path.exists(project_properties.path / img2.content_url)
+    assert os.path.exists(project_context.path / img2.content_url)
 
 
 @pytest.mark.integration
@@ -568,8 +568,8 @@ def test_dataset_export_upload_file(
             dataset.description = "awesome dataset"
             dataset.creators[0].affiliation = "eth"
 
-    project_properties.repository.add(all=True)
-    project_properties.repository.commit("metadata updated")
+    project_context.repository.add(all=True)
+    project_context.repository.commit("metadata updated")
 
     result = runner.invoke(
         cli, ["dataset", "export", "my-dataset", provider] + params, input=input, catch_exceptions=False
@@ -625,8 +625,8 @@ def test_dataset_export_upload_tag(
             dataset.description = "awesome dataset"
             dataset.creators[0].affiliation = "eth"
 
-    project_properties.repository.add(all=True)
-    project_properties.repository.commit("metadata updated")
+    project_context.repository.add(all=True)
+    project_context.repository.commit("metadata updated")
 
     # tag dataset
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "1.0"])
@@ -754,8 +754,8 @@ def test_dataset_export_upload_multiple(
             dataset.description = "awesome dataset"
             dataset.creators[0].affiliation = "eth"
 
-    project_properties.repository.add(all=True)
-    project_properties.repository.commit("metadata updated")
+    project_context.repository.add(all=True)
+    project_context.repository.commit("metadata updated")
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params, input=input)
 
@@ -815,8 +815,8 @@ def test_dataset_export_published_url(runner, tmpdir, client, zenodo_sandbox, da
         dataset.description = "awesome dataset"
         dataset.creators[0].affiliation = "eth"
 
-    project_properties.repository.add(all=True)
-    project_properties.repository.commit("metadata updated")
+    project_context.repository.add(all=True)
+    project_context.repository.commit("metadata updated")
 
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider, "--publish"] + params)
 
@@ -874,8 +874,8 @@ def test_export_dataset_unauthorized(
 ):
     """Test unauthorized exception raised."""
     set_value(provider, "access_token", "not-a-token")
-    project_properties.repository.add(".renku/renku.ini")
-    project_properties.repository.commit("update renku.ini")
+    project_context.repository.add(".renku/renku.ini")
+    project_context.repository.commit("update renku.ini")
 
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
@@ -918,8 +918,8 @@ def test_export_dataverse_no_dataverse_name(runner, project, client, dataverse_d
 def test_export_dataverse_no_dataverse_url(runner, client, dataverse_demo):
     """Test export without providing a dataverse server url."""
     remove_value("dataverse", "server_url")
-    project_properties.repository.add(".renku/renku.ini")
-    project_properties.repository.commit("renku.ini")
+    project_context.repository.add(".renku/renku.ini")
+    project_context.repository.commit("renku.ini")
 
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
@@ -960,8 +960,8 @@ def test_add_from_url_to_destination(runner, project, load_dataset_with_injectio
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     relative_path = os.path.join("data", "remote", "new-name")
-    assert (project_properties.path / relative_path).exists()
-    assert (project_properties.path / relative_path).is_file()
+    assert (project_context.path / relative_path).exists()
+    assert (project_context.path / relative_path).is_file()
 
     dataset = load_dataset_with_injection("remote", project)
     assert dataset.find_file(relative_path) is not None
@@ -1017,7 +1017,7 @@ def test_add_from_git_to_existing_path(
     assert 0 == runner.invoke(cli, ["dataset", "create", "remote"], catch_exceptions=False).exit_code
 
     write_and_commit_file(
-        project_properties.repository, project_properties.path / "data" / "remote" / "existing" / ".gitkeep", ""
+        project_context.repository, project_context.path / "data" / "remote" / "existing" / ".gitkeep", ""
     )
 
     result = runner.invoke(cli, ["dataset", "add", "--copy", "remote", "--ref", "0.3.0", remote] + params)
@@ -1184,7 +1184,7 @@ def test_dataset_update_zenodo(client, runner, doi, load_dataset_with_injection)
         cli, ["dataset", "import", "--short-name", "imported_dataset", doi], input="y", catch_exceptions=False
     )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    commit_sha_after_file1_delete = project_properties.repository.head.commit.hexsha
+    commit_sha_after_file1_delete = project_context.repository.head.commit.hexsha
 
     before_dataset = load_dataset_with_injection("imported_dataset", client)
 
@@ -1193,8 +1193,8 @@ def test_dataset_update_zenodo(client, runner, doi, load_dataset_with_injection)
     assert 0 == result.exit_code, format_result_exception(result)
     assert "The following imported datasets will be updated" in result.output
     assert "imported_dataset" in result.output
-    assert commit_sha_after_file1_delete == project_properties.repository.head.commit.hexsha
-    assert not project_properties.repository.is_dirty(untracked_files=True)
+    assert commit_sha_after_file1_delete == project_context.repository.head.commit.hexsha
+    assert not project_context.repository.is_dirty(untracked_files=True)
 
     result = runner.invoke(cli, ["dataset", "update", "imported_dataset"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
@@ -1229,8 +1229,8 @@ def test_dataset_update_dataverse(client, runner, doi, load_dataset_with_injecti
         with with_dataset(client, name="imported_dataset", commit_database=True) as dataset:
             dataset.version = "0.1"
 
-    project_properties.repository.add(all=True)
-    project_properties.repository.commit("metadata updated")
+    project_context.repository.add(all=True)
+    project_context.repository.commit("metadata updated")
 
     before_dataset = load_dataset_with_injection("imported_dataset", client)
 
@@ -1261,10 +1261,10 @@ def test_dataset_update_renku(client, runner, load_dataset_with_injection, clien
             update_uri = "https://dev.renku.ch/datasets/04b463b01b514833b236186a941f6259"
             dataset.same_as = Url(url_id=update_uri)
 
-    project_properties.repository.add(all=True)
-    project_properties.repository.commit("metadata updated")
+    project_context.repository.add(all=True)
+    project_context.repository.commit("metadata updated")
 
-    commit_sha_after_file1_delete = project_properties.repository.head.commit.hexsha
+    commit_sha_after_file1_delete = project_context.repository.head.commit.hexsha
 
     before_dataset = load_dataset_with_injection("imported_dataset", client)
 
@@ -1273,8 +1273,8 @@ def test_dataset_update_renku(client, runner, load_dataset_with_injection, clien
     assert 0 == result.exit_code, format_result_exception(result)
     assert "The following imported datasets will be updated" in result.output
     assert "remote-dataset" in result.output
-    assert commit_sha_after_file1_delete == project_properties.repository.head.commit.hexsha
-    assert not project_properties.repository.is_dirty(untracked_files=True)
+    assert commit_sha_after_file1_delete == project_context.repository.head.commit.hexsha
+    assert not project_context.repository.is_dirty(untracked_files=True)
 
     result = runner.invoke(cli, ["dataset", "update", "--all"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
@@ -1312,7 +1312,7 @@ def test_dataset_update_remove_file(client, runner):
         catch_exceptions=False,
     )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    file_path = project_properties.path / DATA_DIR / "remote" / "authors.rst"
+    file_path = project_context.path / DATA_DIR / "remote" / "authors.rst"
     assert file_path.exists()
 
     # docs/authors.rst does not exists in v0.5.0
@@ -1361,8 +1361,8 @@ def test_dataset_invalid_update(client, runner, params):
 @pytest.mark.vcr
 def test_dataset_update_multiple_datasets(client, runner, data_repository, params):
     """Test update with multiple datasets."""
-    path1 = project_properties.path / DATA_DIR / "dataset-1" / "CHANGES.rst"
-    path2 = project_properties.path / DATA_DIR / "dataset-2" / "CHANGES.rst"
+    path1 = project_context.path / DATA_DIR / "dataset-1" / "CHANGES.rst"
+    path2 = project_context.path / DATA_DIR / "dataset-2" / "CHANGES.rst"
     # Add dataset to project
     result = runner.invoke(
         cli,
@@ -1429,10 +1429,10 @@ def test_empty_update(client, runner, data_repository):
     )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    commit_sha_before = project_properties.repository.head.commit.hexsha
+    commit_sha_before = project_context.repository.head.commit.hexsha
     result = runner.invoke(cli, ["dataset", "update", "--ref", "0.3.0", "--all"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    commit_sha_after = project_properties.repository.head.commit.hexsha
+    commit_sha_after = project_context.repository.head.commit.hexsha
     assert commit_sha_after == commit_sha_before
 
 
@@ -1446,11 +1446,11 @@ def test_import_from_renku_project(tmpdir, client, runner, load_dataset_with_inj
     os.environ["GIT_LFS_SKIP_SMUDGE"] = "1"
     Repository.clone_from(url=url, path=path, recursive=True)
 
-    with project_properties.with_path(path):
-        with chdir(project_properties.path):
+    with project_context.with_path(path):
+        with chdir(project_context.path):
             runner.invoke(cli, ["migrate", "--strict"])
 
-        file = load_dataset_with_injection("testing-create-04", project_properties.repository).find_file(
+        file = load_dataset_with_injection("testing-create-04", project_context.repository).find_file(
             "data/testing-create-04/ie_data_with_TRCAPE.xls"
         )
 
@@ -1507,7 +1507,7 @@ def test_add_specific_refs(ref, runner, client):
         ],
     )
     assert 0 == result.exit_code, format_result_exception(result)
-    content = (project_properties.path / DATA_DIR / "dataset" / filename).read_text()
+    content = (project_context.path / DATA_DIR / "dataset" / filename).read_text()
     assert "v0.3.0" in content
     assert "v0.3.1" not in content
 
@@ -1539,23 +1539,23 @@ def test_update_specific_refs(ref, runner, client):
     )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     file = Path(DATA_DIR) / "dataset" / filename
-    content = (project_properties.path / file).read_text()
+    content = (project_context.path / file).read_text()
     assert "v0.3.1" not in content
 
-    commit_sha_after_file1_delete = project_properties.repository.head.commit.hexsha
+    commit_sha_after_file1_delete = project_context.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["dataset", "update", "--ref", ref, "--all", "--dry-run"])
 
     assert 1 == result.exit_code, format_result_exception(result)
     assert "The following files will be updated" in result.output
     assert str(file) in result.output
-    assert commit_sha_after_file1_delete == project_properties.repository.head.commit.hexsha
-    assert not project_properties.repository.is_dirty(untracked_files=True)
+    assert commit_sha_after_file1_delete == project_context.repository.head.commit.hexsha
+    assert not project_context.repository.is_dirty(untracked_files=True)
 
     # update data to a later version
     result = runner.invoke(cli, ["dataset", "update", "--ref", ref, "--all"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    content = (project_properties.path / DATA_DIR / "dataset" / filename).read_text()
+    content = (project_context.path / DATA_DIR / "dataset" / filename).read_text()
     assert "v0.3.1" in content
     assert "v0.3.2" not in content
 
@@ -1722,8 +1722,8 @@ def test_migration_submodule_datasets(isolated_runner, old_repository_with_submo
 
     assert [] == list(old_repository_with_submodules.submodules)
 
-    with project_properties.with_path(project_path):
-        dataset = load_dataset_with_injection("remote", project_properties.repository)
+    with project_context.with_path(project_path):
+        dataset = load_dataset_with_injection("remote", project_context.repository)
 
     for file in dataset.files:
         path = Path(file.entity.path)
@@ -1775,7 +1775,7 @@ def test_immutability_after_import(runner, client, load_dataset_with_injection):
     assert 0 == runner.invoke(cli, ["dataset", "edit", "my-dataset", "-k", "new-data"]).exit_code
 
     dataset = load_dataset_with_injection("my-dataset", client)
-    mutator = get_git_user(project_properties.repository)
+    mutator = get_git_user(project_context.repository)
     assert_dataset_is_mutated(old=old_dataset, new=dataset, mutator=mutator)
 
 
@@ -1793,7 +1793,7 @@ def test_immutability_after_update(client, runner, load_dataset_with_injection):
     assert 0 == runner.invoke(cli, ["dataset", "update", "--all"], catch_exceptions=False).exit_code
 
     dataset = load_dataset_with_injection("my-data", client)
-    mutator = get_git_user(project_properties.repository)
+    mutator = get_git_user(project_context.repository)
     assert_dataset_is_mutated(old=old_dataset, new=dataset, mutator=mutator)
 
 
@@ -1876,13 +1876,13 @@ def test_datasets_import_with_tag(client, runner, get_datasets_provenance_with_i
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
         dataset = datasets_provenance.get_by_name("parts")
 
-    dataset_path = project_properties.path / "data" / "parts"
+    dataset_path = project_context.path / "data" / "parts"
     assert "v1" == dataset.version
     assert (dataset_path / "README.md").exists()  # This file was deleted in a later version
     assert doi == dataset.same_as.value
     assert "Updated on 01.06.2022" not in (dataset_path / "parts.csv").read_text()
 
-    git_attributes = (project_properties.repository.path / ".gitattributes").read_text()
+    git_attributes = (project_context.repository.path / ".gitattributes").read_text()
     assert "data/parts/parts.csv" in git_attributes
     assert "data/parts/part_relationships.csv" in git_attributes
 
@@ -1900,11 +1900,11 @@ def test_datasets_imported_with_tag_are_not_updated(client, runner):
     doi = "https://dev.renku.ch/datasets/ddafee6bb38a46f99346cb563afc2c64"
     assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--tag", "v1", doi]).exit_code
 
-    commit_sha_before = project_properties.repository.head.commit.hexsha
+    commit_sha_before = project_context.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["dataset", "update", "--all"])
 
-    commit_sha_after = project_properties.repository.head.commit.hexsha
+    commit_sha_after = project_context.repository.head.commit.hexsha
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Skipped updating imported Renku dataset 'parts' with tag 'v1'" in result.output
@@ -1926,8 +1926,8 @@ def test_dataset_update_removes_deleted_files(
         with with_dataset(client, name="parts", commit_database=True) as dataset:
             dataset.version = None
             dataset.same_as = Url(url_id="https://dev.renku.ch/datasets/abc934939cbf45dca0cfef61d05fa132")
-    project_properties.repository.add(all=True)
-    project_properties.repository.commit("metadata updated")
+    project_context.repository.add(all=True)
+    project_context.repository.commit("metadata updated")
 
     with get_datasets_provenance_with_injection(client) as datasets_provenance:
         dataset = datasets_provenance.get_by_name("parts")
@@ -1981,7 +1981,7 @@ def test_create_with_s3_backend(runner, client, load_dataset_with_injection):
 
     # NOTE: Dataset's data dir is git-ignored
     dataset_datadir = os.path.join(DATA_DIR, "s3-data")
-    assert {dataset_datadir} == set(project_properties.repository.get_ignored_paths(dataset_datadir))
+    assert {dataset_datadir} == set(project_context.repository.get_ignored_paths(dataset_datadir))
 
 
 @pytest.mark.integration
@@ -2035,13 +2035,13 @@ def test_pull_data_from_s3_backend(runner, client, load_dataset_with_injection):
     dataset = load_dataset_with_injection("s3-data", client)
     file = next(f for f in dataset.files if f.entity.path.endswith("Aspera_download_from_ftp.README"))
 
-    assert (project_properties.path / file.entity.path).exists()
-    assert not (project_properties.path / file.entity.path).is_symlink()
+    assert (project_context.path / file.entity.path).exists()
+    assert not (project_context.path / file.entity.path).is_symlink()
 
     file = next(f for f in dataset.files if f.entity.path.endswith("02structural.bed.gz"))
 
-    assert (project_properties.path / file.entity.path).exists()
-    assert not (project_properties.path / file.entity.path).is_symlink()
+    assert (project_context.path / file.entity.path).exists()
+    assert not (project_context.path / file.entity.path).is_symlink()
     assert "0ddc10ab9f9f0dd0fea4d66d9a55ba99" == file.based_on.checksum
 
 
@@ -2076,16 +2076,16 @@ def test_pull_data_from_s3_backend_to_a_location(runner, client, load_dataset_wi
     dataset = load_dataset_with_injection("s3-data", client)
     file = next(f for f in dataset.files if f.entity.path.endswith("Aspera_download_from_ftp.README"))
 
-    assert (project_properties.path / file.entity.path).is_symlink()
-    assert (location / file.entity.path).resolve() == (project_properties.path / file.entity.path).resolve()
+    assert (project_context.path / file.entity.path).is_symlink()
+    assert (location / file.entity.path).resolve() == (project_context.path / file.entity.path).resolve()
 
     file = next(f for f in dataset.files if f.entity.path.endswith("02structural.bed.gz"))
 
-    assert (project_properties.path / file.entity.path).is_symlink()
-    assert (location / file.entity.path).resolve() == (project_properties.path / file.entity.path).resolve()
+    assert (project_context.path / file.entity.path).is_symlink()
+    assert (location / file.entity.path).resolve() == (project_context.path / file.entity.path).resolve()
     assert "0ddc10ab9f9f0dd0fea4d66d9a55ba99" == file.based_on.checksum
 
-    assert str(location) in (project_properties.path / ".renku" / "renku.ini").read_text()
+    assert str(location) in (project_context.path / ".renku" / "renku.ini").read_text()
 
 
 @pytest.mark.integration
@@ -2193,11 +2193,11 @@ def test_mount_unmount_data_from_s3_backend(runner, client):
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    s3_data = project_properties.path / "data" / "s3-data" / "Aspera_download_from_ftp.README"
+    s3_data = project_context.path / "data" / "s3-data" / "Aspera_download_from_ftp.README"
     assert not s3_data.exists()
 
     # NOTE: Create some dummy files
-    dummy = project_properties.path / "data" / "s3-data" / "dummy"
+    dummy = project_context.path / "data" / "s3-data" / "dummy"
     dummy.parent.mkdir(exist_ok=True, parents=True)
     dummy.touch()
 
@@ -2223,11 +2223,11 @@ def test_mount_data_from_an_existing_mount_point(runner, client, tmp_path):
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    s3_data = project_properties.path / "data" / "s3-data" / "Aspera_download_from_ftp.README"
+    s3_data = project_context.path / "data" / "s3-data" / "Aspera_download_from_ftp.README"
     assert not s3_data.exists()
 
     # NOTE: Create some dummy files
-    dummy = project_properties.path / "data" / "s3-data" / "dummy"
+    dummy = project_context.path / "data" / "s3-data" / "dummy"
     dummy.parent.mkdir(exist_ok=True, parents=True)
     dummy.touch()
 

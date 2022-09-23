@@ -29,7 +29,6 @@ from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.plugin.provider import execute
-from renku.core.project.project_properties import project_properties
 from renku.core.storage import check_external_storage, pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
@@ -38,6 +37,7 @@ from renku.core.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.plan import is_plan_removed
 from renku.core.workflow.plan_factory import delete_indirect_files_list
 from renku.core.workflow.value_resolution import ValueResolver
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.activity import Activity, ActivityCollection
 from renku.domain_model.workflow.plan import AbstractPlan
 
@@ -65,7 +65,7 @@ def execute_workflow_graph(
     inputs = {i.actual_value for p in dag.nodes for i in p.inputs}
     # NOTE: Pull inputs from Git LFS or other storage backends
     if check_external_storage():
-        pull_paths_from_storage(project_properties.repository, *inputs)
+        pull_paths_from_storage(project_context.repository, *inputs)
 
     # check whether the none generated inputs of workflows are available
     outputs = {o.actual_value for p in dag.nodes for o in p.outputs}
@@ -73,14 +73,14 @@ def execute_workflow_graph(
         if not Path(i).exists():
             raise errors.ParameterError(f"Input '{i}' for the workflow does not exists!")
 
-    delete_indirect_files_list(project_properties.path)
+    delete_indirect_files_list(project_context.path)
 
     if config:
         config = safe_read_yaml(config)
 
     started_at_time = local_now()
 
-    execute(dag=dag, basedir=project_properties.path, provider=provider, config=config)
+    execute(dag=dag, basedir=project_context.path, provider=provider, config=config)
 
     ended_at_time = local_now()
 

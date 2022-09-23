@@ -24,7 +24,7 @@ from typing import Generator, List, Optional, Tuple
 import pytest
 from packaging.version import Version
 
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 from renku.infrastructure.repository import Repository
 from renku.version import __version__ as renku_version
 
@@ -256,11 +256,11 @@ def client_with_template(repository, rendered_template, with_injections_manager)
 
     with with_injections_manager(repository):
         actions = {f: FileAction.OVERWRITE for f in rendered_template.get_files()}
-        project = project_properties.project
+        project = project_context.project
 
         copy_template_to_client(rendered_template=rendered_template, project=project, actions=actions)
 
-        project.template_files = [str(project_properties.path / f) for f in rendered_template.get_files()]
+        project.template_files = [str(project_context.path / f) for f in rendered_template.get_files()]
 
     repository.add(all=True)
     repository.commit("Set a dummy template")

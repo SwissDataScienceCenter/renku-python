@@ -22,7 +22,7 @@ from pathlib import Path
 
 from renku.command.status import get_status_command
 from renku.core.config import set_value
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 
@@ -179,14 +179,14 @@ def test_status_with_path_all_generation(runner, repository):
 
 def test_status_works_in_dirty_repository(runner, client):
     """Test status doesn't need a clean project and doesn't change anything."""
-    source = project_properties.path / "source"
-    write_and_commit_file(project_properties.repository, source, "source content")
+    source = project_context.path / "source"
+    write_and_commit_file(project_context.repository, source, "source content")
     assert 0 == runner.invoke(cli, ["run", "head", source], stdout="output").exit_code
 
-    commit_sha_before = project_properties.repository.head.commit.hexsha
+    commit_sha_before = project_context.repository.head.commit.hexsha
 
     source.write_text("modified content")
-    (project_properties.path / "untracked").write_text("untracked file")
+    (project_context.path / "untracked").write_text("untracked file")
 
     result = get_status_command().build().execute().output
 
@@ -195,18 +195,18 @@ def test_status_works_in_dirty_repository(runner, client):
     assert {"source"} == result.modified_inputs
     assert 0 == len(result.outdated_activities)
     assert 0 == len(result.deleted_inputs)
-    assert commit_sha_before == project_properties.repository.head.commit.hexsha
-    assert project_properties.repository.untracked_files == ["untracked"]
-    assert {c.a_path for c in project_properties.repository.unstaged_changes} == {"source"}
+    assert commit_sha_before == project_context.repository.head.commit.hexsha
+    assert project_context.repository.untracked_files == ["untracked"]
+    assert {c.a_path for c in project_context.repository.unstaged_changes} == {"source"}
 
 
 def test_status_ignore_deleted_files(runner, project):
     """Test status can ignore deleted files."""
-    write_and_commit_file(project_properties.repository, "source", "source content")
+    write_and_commit_file(project_context.repository, "source", "source content")
     assert 0 == runner.invoke(cli, ["run", "head", "source"], stdout="upstream").exit_code
     assert 0 == runner.invoke(cli, ["run", "tail", "upstream"], stdout="deleted").exit_code
 
-    write_and_commit_file(project_properties.repository, "source", "changes")
+    write_and_commit_file(project_context.repository, "source", "changes")
     Path("deleted").unlink()
 
     result = get_status_command().build().execute(ignore_deleted=True).output
@@ -220,11 +220,11 @@ def test_status_ignore_deleted_files(runner, project):
 
 def test_status_ignore_deleted_files_config(runner, client):
     """Test status can ignore deleted files when proper config is set."""
-    write_and_commit_file(project_properties.repository, "source", "source content")
+    write_and_commit_file(project_context.repository, "source", "source content")
     assert 0 == runner.invoke(cli, ["run", "head", "source"], stdout="upstream").exit_code
     assert 0 == runner.invoke(cli, ["run", "tail", "upstream"], stdout="deleted").exit_code
 
-    write_and_commit_file(project_properties.repository, "source", "changes")
+    write_and_commit_file(project_context.repository, "source", "changes")
     Path("deleted").unlink()
     # Set config to ignore deleted files
     set_value("renku", "update_ignore_delete", "True")
@@ -240,10 +240,10 @@ def test_status_ignore_deleted_files_config(runner, client):
 
 def test_status_deleted_files_reported_with_siblings(runner, client):
     """Test status reports deleted file if they have existing siblings."""
-    write_and_commit_file(project_properties.repository, "source", "source content")
+    write_and_commit_file(project_context.repository, "source", "source content")
     assert 0 == runner.invoke(cli, ["run", "--input", "source", "touch", "deleted", "sibling"]).exit_code
 
-    write_and_commit_file(project_properties.repository, "source", "changes")
+    write_and_commit_file(project_context.repository, "source", "changes")
     Path("deleted").unlink()
 
     result = get_status_command().build().execute(ignore_deleted=True).output
@@ -258,11 +258,11 @@ def test_status_deleted_files_reported_with_siblings(runner, client):
 
 def test_status_deleted_files_reported_with_downstream(runner, client):
     """Test status reports deleted file if they have existing downstreams."""
-    write_and_commit_file(project_properties.repository, "source", "source content")
+    write_and_commit_file(project_context.repository, "source", "source content")
     assert 0 == runner.invoke(cli, ["run", "head", "source"], stdout="deleted").exit_code
     assert 0 == runner.invoke(cli, ["run", "tail", "deleted"], stdout="downstream").exit_code
 
-    write_and_commit_file(project_properties.repository, "source", "changes")
+    write_and_commit_file(project_context.repository, "source", "changes")
     Path("deleted").unlink()
 
     result = get_status_command().build().execute(ignore_deleted=True).output

@@ -23,8 +23,8 @@ from configparser import NoSectionError
 import attr
 
 from renku.core import errors
-from renku.core.project.project_properties import project_properties
 from renku.domain_model.git import GitURL
+from renku.domain_model.project_context import project_context
 
 
 def detect_registry_url(auto_login=True):
@@ -36,7 +36,7 @@ def detect_registry_url(auto_login=True):
     Returns:
         The remote URL.
     """
-    repository = project_properties.repository
+    repository = project_context.repository
     config = repository.get_configuration()
 
     # Find registry URL in .git/config

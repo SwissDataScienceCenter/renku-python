@@ -26,9 +26,9 @@ from typing import Tuple
 from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
 from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.domain_model.dataset import Dataset
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.activity import Activity
 from renku.domain_model.workflow.plan import AbstractPlan
 
@@ -45,7 +45,7 @@ def _rollback_command(client_dispatcher: IClientDispatcher):
     """Perform a rollback of the repo."""
     current_client = client_dispatcher.current_client
 
-    commits = project_properties.repository.iterate_commits(project_properties.metadata_path)
+    commits = project_context.repository.iterate_commits(project_context.metadata_path)
 
     checkpoint = _prompt_for_checkpoint(commits)
 
@@ -62,7 +62,7 @@ def _rollback_command(client_dispatcher: IClientDispatcher):
 
     communication.confirm(confirmation_message, abort=True)
 
-    project_properties.repository.reset(checkpoint[1], hard=True)
+    project_context.repository.reset(checkpoint[1], hard=True)
 
 
 def _get_confirmation_message(diff, client) -> Tuple[str, bool]:
@@ -131,9 +131,9 @@ def _get_modifications_from_diff(client, diff):
 
     for diff_index in diff:
         entry = diff_index.a_path or diff_index.b_path
-        entry_path = project_properties.path / entry
+        entry_path = project_context.path / entry
 
-        if str(project_properties.database_path) == os.path.commonpath([project_properties.database_path, entry_path]):
+        if str(project_context.database_path) == os.path.commonpath([project_context.database_path, entry_path]):
             # metadata file
             entry, change_type, identifier, entry_date = _get_modification_type_from_db(entry)
 
@@ -146,9 +146,7 @@ def _get_modifications_from_diff(client, diff):
 
             continue
 
-        elif str(project_properties.metadata_path) == os.path.commonpath(
-            [project_properties.metadata_path, entry_path]
-        ):
+        elif str(project_context.metadata_path) == os.path.commonpath([project_context.metadata_path, entry_path]):
             # some other renku file
             continue
 
@@ -251,7 +249,7 @@ def _get_modification_type_from_db(path: str):
     Returns:
         Change information for object.
     """
-    database = project_properties.database
+    database = project_context.database
     db_object = database.get(os.path.basename(path))
 
     if isinstance(db_object, Activity):

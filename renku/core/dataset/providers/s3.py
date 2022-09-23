@@ -25,11 +25,11 @@ from typing import TYPE_CHECKING, List, Optional, Tuple
 from renku.core import errors
 from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials, ProviderPriority
 from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata, ProviderParameter
-from renku.core.project.project_properties import project_properties
 from renku.core.util.dispatcher import get_storage
 from renku.core.util.metadata import prompt_for_credentials
 from renku.core.util.urls import get_scheme, is_uri_subfolder
 from renku.domain_model.dataset import RemoteEntity
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.management.client import LocalClient
@@ -101,7 +101,7 @@ class S3Provider(ProviderApi):
         if not storage.exists(uri):
             raise errors.ParameterError(f"S3 bucket '{uri}' doesn't exists.")
 
-        repository = project_properties.repository
+        repository = project_context.repository
         hashes = storage.get_hashes(uri=uri)
         return [
             DatasetAddMetadata(
@@ -132,7 +132,7 @@ class S3Provider(ProviderApi):
         if not storage.exists(self.uri):
             raise errors.ParameterError(f"S3 bucket '{self.bucket}' doesn't exists.")
 
-        project_properties.repository.add_ignored_pattern(pattern=str(dataset.get_datadir()))
+        project_context.repository.add_ignored_pattern(pattern=str(dataset.get_datadir()))
 
 
 class S3Credentials(ProviderCredentials):

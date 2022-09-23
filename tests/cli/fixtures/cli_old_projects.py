@@ -23,7 +23,7 @@ from typing import Generator
 import pytest
 
 from renku.core.git import with_project_metadata
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 from renku.infrastructure.repository import Repository
 from tests.utils import clone_compressed_repository
 
@@ -90,7 +90,7 @@ def old_dataset_project(request, tmp_path):
     base_path = tmp_path / name
     repository = clone_compressed_repository(base_path=base_path, name=name)
 
-    with chdir(repository.path), project_properties.with_path(repository.path):
+    with chdir(repository.path), project_context.with_path(repository.path):
         yield repository
 
 

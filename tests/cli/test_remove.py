@@ -20,7 +20,7 @@
 import pytest
 
 from renku.core.constant import DEFAULT_DATA_DIR as DATA_DIR
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
@@ -41,13 +41,13 @@ def test_remove_dataset_file(isolated_runner, client, tmpdir, subdirectory, data
     result = runner.invoke(cli, ["dataset", "add", "--copy", "testing", source.strpath])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    path = project_properties.path / datadir / "remove_dataset.file"
+    path = project_context.path / datadir / "remove_dataset.file"
     assert path.exists()
 
     result = runner.invoke(cli, ["doctor"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["rm", str(project_properties.path / datadir)])
+    result = runner.invoke(cli, ["rm", str(project_context.path / datadir)])
     assert 0 == result.exit_code, format_result_exception(result)
 
     assert not path.exists()

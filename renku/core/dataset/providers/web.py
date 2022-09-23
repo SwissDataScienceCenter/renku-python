@@ -28,10 +28,10 @@ from renku.core import errors
 from renku.core.constant import CACHE
 from renku.core.dataset.context import wait_for
 from renku.core.dataset.providers.api import ProviderApi, ProviderPriority
-from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.dataset import check_url
 from renku.core.util.urls import remove_credentials
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata
@@ -74,7 +74,7 @@ class WebProvider(ProviderApi):
             )
 
         return download_file(
-            project_path=project_properties.path,
+            project_path=project_context.path,
             uri=uri,
             destination=destination,
             extract=extract,
@@ -127,12 +127,12 @@ def download_file(
     uri = requests.get_redirect_url(uri)  # TODO: Check that this is not duplicate
     uri = _provider_check(uri)
 
-    with project_properties.with_path(project_path):
+    with project_context.with_path(project_path):
         try:
             # NOTE: If execution time was less than the delay, block the request until delay seconds are passed
             with wait_for(delay):
                 tmp_root, paths = requests.download_file(
-                    base_directory=project_properties.metadata_path / CACHE, url=uri, filename=filename, extract=extract
+                    base_directory=project_context.metadata_path / CACHE, url=uri, filename=filename, extract=extract
                 )
         except errors.RequestError as e:  # pragma nocover
             raise errors.OperationError(f"Cannot download from {uri}") from e
@@ -150,7 +150,7 @@ def download_file(
 
         return [
             DatasetAddMetadata(
-                entity_path=dst.relative_to(project_properties.path),
+                entity_path=dst.relative_to(project_context.path),
                 url=remove_credentials(uri),
                 action=DatasetAddAction.MOVE,
                 source=src,
@@ -190,7 +190,7 @@ def download_files(
             executor.submit(
                 subscribe_communication_listeners,
                 download_file,
-                project_path=project_properties.path,
+                project_path=project_context.path,
                 uri=url,
                 destination=destination,
                 extract=extract,

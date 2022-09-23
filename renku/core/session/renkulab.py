@@ -26,10 +26,10 @@ from renku.core import errors
 from renku.core.config import get_value, set_value
 from renku.core.management.client import LocalClient
 from renku.core.plugin import hookimpl
-from renku.core.project.project_properties import project_properties
 from renku.core.session.utils import get_renku_project_name, get_renku_url
 from renku.core.util import communication, requests
 from renku.core.util.git import get_remote
+from renku.domain_model.project_context import project_context
 from renku.domain_model.session import ISessionProvider, Session
 
 
@@ -121,17 +121,15 @@ class RenkulabSessionProvider(ISessionProvider):
         return {"Cookie": f"anon-id={self._token()}"}
 
     def _get_renku_project_name_parts(self):
-        repository = project_properties.repository
-        if project_properties.remote.name and project_properties.remote.owner:
-            if get_remote(repository, name="renku-backup-origin") and project_properties.remote.owner.startswith(
-                "repos/"
-            ):
-                owner = project_properties.remote.owner.replace("repos/", "", 1)
+        repository = project_context.repository
+        if project_context.remote.name and project_context.remote.owner:
+            if get_remote(repository, name="renku-backup-origin") and project_context.remote.owner.startswith("repos/"):
+                owner = project_context.remote.owner.replace("repos/", "", 1)
             else:
-                owner = project_properties.remote.owner
+                owner = project_context.remote.owner
             return {
                 "namespace": owner,
-                "project": project_properties.remote.name,
+                "project": project_context.remote.name,
             }
         else:
             # INFO: In this case the owner/name split is not available. The project name is then
@@ -186,7 +184,7 @@ class RenkulabSessionProvider(ISessionProvider):
         """Check if the state of the repository is as expected before starting a session."""
         if not self._is_user_registered():
             return
-        repository = project_properties.repository
+        repository = project_context.repository
 
         if repository.is_dirty(untracked_files=True):
             communication.confirm(
@@ -199,7 +197,7 @@ class RenkulabSessionProvider(ISessionProvider):
             repository.commit("Automated commit by Renku CLI.")
 
     def _remote_head_hexsha(self):
-        return get_remote(repository=project_properties.repository).head
+        return get_remote(repository=project_context.repository).head
 
     @staticmethod
     def _send_renku_request(req_type: str, *args, **kwargs):
@@ -222,7 +220,7 @@ class RenkulabSessionProvider(ISessionProvider):
             raise errors.NotebookSessionImageNotExistError(
                 f"Renku cannot find the image {image_name} and use it in an anonymous session."
             )
-        repository = project_properties.repository
+        repository = project_context.repository
         if repository.head.commit.hexsha != self._remote_head_hexsha():
             repository.push()
         self._wait_for_image(image_name=image_name, config=config)
@@ -287,7 +285,7 @@ class RenkulabSessionProvider(ISessionProvider):
         Returns:
             str: a unique id for the created interactive session.
         """
-        repository = project_properties.repository
+        repository = project_context.repository
 
         session_commit = repository.head.commit.hexsha
         if not self._is_user_registered():

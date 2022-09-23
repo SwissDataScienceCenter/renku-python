@@ -26,8 +26,8 @@ from typing import List, Optional, Union, cast
 from urllib.request import urlretrieve
 
 from renku.core import errors
-from renku.core.project.project_properties import project_properties
 from renku.domain_model.dataset import Dataset, ImageObject
+from renku.domain_model.project_context import project_context
 
 
 class ImageRequestModel:
@@ -48,9 +48,9 @@ class ImageRequestModel:
     def to_image_object(self, dataset: Dataset) -> ImageObject:
         """Convert request model to ``ImageObject``."""
         image_type = None
-        self.safe_image_paths.append(project_properties.path)
+        self.safe_image_paths.append(project_context.path)
 
-        image_folder = project_properties.dataset_images_path / dataset.initial_identifier
+        image_folder = project_context.dataset_images_path / dataset.initial_identifier
         image_folder.mkdir(exist_ok=True, parents=True)
 
         if urllib.parse.urlparse(self.content_url).netloc:
@@ -77,7 +77,7 @@ class ImageRequestModel:
 
         path = self.content_url
         if not os.path.isabs(path):
-            path = os.path.normpath(os.path.join(project_properties.path, path))
+            path = os.path.normpath(os.path.join(project_context.path, path))
 
         if not os.path.exists(path) or not any(
             os.path.commonprefix([path, p]) == str(p) for p in self.safe_image_paths
@@ -98,7 +98,7 @@ class ImageRequestModel:
             img_path = Path(path)
 
         return ImageObject(
-            content_url=str(img_path.relative_to(project_properties.path)),
+            content_url=str(img_path.relative_to(project_context.path)),
             position=self.position,
             id=ImageObject.generate_id(dataset_id=dataset.id, position=self.position),
         )

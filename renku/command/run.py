@@ -30,11 +30,11 @@ from renku.core import errors
 from renku.core.git import get_mapped_std_streams
 from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.plan_gateway import IPlanGateway
-from renku.core.project.project_properties import project_properties
 from renku.core.storage import check_external_storage, pull_paths_from_storage
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.urls import get_slug
 from renku.core.workflow.plan_factory import PlanFactory
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.activity import Activity
 
 
@@ -70,10 +70,10 @@ def _run_command(
         if name in workflows:
             raise errors.ParameterError(f"Duplicate workflow name: workflow '{name}' already exists.")
 
-    paths = explicit_outputs if no_output_detection else project_properties.repository.all_files
+    paths = explicit_outputs if no_output_detection else project_context.repository.all_files
     mapped_std = get_mapped_std_streams(paths, streams=("stdout", "stderr"))
 
-    paths = explicit_inputs if no_input_detection else project_properties.repository.all_files
+    paths = explicit_inputs if no_input_detection else project_context.repository.all_files
     mapped_std_in = get_mapped_std_streams(paths, streams=("stdin",))
     mapped_std.update(mapped_std_in)
 
@@ -119,7 +119,7 @@ def _run_command(
                 old_stderr = sys.stderr
                 sys.stderr = system_stderr
 
-        working_dir = str(project_properties.path)
+        working_dir = str(project_context.path)
 
         def parse_explicit_definition(entries, type):
             result = [tuple(e.split("=", maxsplit=1)[::-1]) if "=" in e else (e, None) for e in entries]
@@ -159,8 +159,8 @@ def _run_command(
             # Don't compute paths if storage is disabled.
             if check_external_storage():
                 # Make sure all inputs are pulled from a storage.
-                paths_ = (path for _, path in tool.iter_input_files(project_properties.path))
-                pull_paths_from_storage(project_properties.repository, *paths_)
+                paths_ = (path for _, path in tool.iter_input_files(project_context.path))
+                pull_paths_from_storage(project_context.repository, *paths_)
 
             if tty_exists:
                 # apply original output redirection

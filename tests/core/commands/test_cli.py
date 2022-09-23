@@ -29,9 +29,9 @@ import renku.core.storage
 from renku import __version__
 from renku.core.config import get_value, load_config, remove_value, set_value, store_config
 from renku.core.constant import DEFAULT_DATA_DIR as DATA_DIR
-from renku.core.project.project_properties import project_properties
 from renku.core.util.contexts import chdir
 from renku.domain_model.enums import ConfigFilter
+from renku.domain_model.project_context import project_context
 from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
@@ -602,7 +602,7 @@ def test_input_directory(runner, repository, run, no_lfs_warning):
 @pytest.mark.parametrize("global_only, config_path_attr", ((False, "local_config_path"), (True, "global_config_path")))
 def test_config_manager_creation(project, global_only, config_path_attr):
     """Check creation of configuration file."""
-    path = str(getattr(project_properties, config_path_attr))
+    path = str(getattr(project_context, config_path_attr))
     assert path.endswith("renku.ini")
     config = load_config(config_filter=ConfigFilter.ALL)
     store_config(config, global_only=global_only)

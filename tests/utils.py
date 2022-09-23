@@ -33,9 +33,9 @@ from flaky import flaky
 from renku.command.command_builder.command import inject
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.interface.dataset_gateway import IDatasetGateway
-from renku.core.project.project_properties import project_properties
 from renku.domain_model.dataset import Dataset
 from renku.domain_model.entity import Entity
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.activity import Activity, Association, Generation, Usage
 from renku.domain_model.provenance.agent import Person, SoftwareAgent
 from renku.domain_model.provenance.parameter import ParameterValue
@@ -175,7 +175,7 @@ def with_dataset(
 
     if commit_database:
         dataset_gateway.add_or_remove(dataset)
-        project_properties.database.commit()
+        project_context.database.commit()
 
 
 def retry_failed(fn=None, extended: bool = False):

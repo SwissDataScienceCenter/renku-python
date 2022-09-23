@@ -21,8 +21,8 @@ import re
 
 import pytest
 
-from renku.core.project.project_properties import project_properties
 from renku.core.storage import get_lfs_migrate_filters, track_paths_in_storage
+from renku.domain_model.project_context import project_context
 
 
 @pytest.mark.parametrize("path", [".", "datasets"])
@@ -35,7 +35,7 @@ def test_no_renku_metadata_in_lfs(
 
     file1 = project_with_datasets.path / "file1"
     file1.write_text("123")
-    path_in_renku_metadata_directory = project_properties.database_path.parent / path
+    path_in_renku_metadata_directory = project_context.database_path.parent / path
     path_in_renku_metadata_directory.mkdir(parents=True, exist_ok=True)
     file2 = path_in_renku_metadata_directory / "file2"
     file2.write_text("123")

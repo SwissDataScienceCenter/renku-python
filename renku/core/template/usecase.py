@@ -30,7 +30,6 @@ from renku.core import errors
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.management.migrate import is_renku_project
-from renku.core.project.project_properties import project_properties
 from renku.core.template.template import (
     FileAction,
     RepositoryTemplates,
@@ -44,6 +43,7 @@ from renku.core.template.template import (
 from renku.core.util import communication
 from renku.core.util.tabulate import tabulate
 from renku.domain_model.project import Project
+from renku.domain_model.project_context import project_context
 from renku.domain_model.template import RenderedTemplate, Template, TemplateMetadata, TemplatesSource
 from renku.infrastructure.repository import Repository
 
@@ -61,7 +61,7 @@ def show_template(source, reference, id) -> TemplateViewModel:
         templates_source = fetch_templates_source(source=source, reference=reference)
         template = templates_source.get_template(id=id, reference=None)
     elif is_renku_project():
-        metadata = TemplateMetadata.from_project(project=project_properties.project)
+        metadata = TemplateMetadata.from_project(project=project_context.project)
 
         templates_source = fetch_templates_source(source=metadata.source, reference=metadata.reference)
         id = metadata.id
@@ -93,7 +93,7 @@ def set_template(
 ) -> TemplateChangeViewModel:
     """Set template for a project."""
     client = client_dispatcher.current_client
-    project = project_properties.project
+    project = project_context.project
 
     if project.template_source and not force:
         raise errors.TemplateUpdateError("Project already has a template: To set a template use '-f/--force' flag")
@@ -126,7 +126,7 @@ def update_template(
     """Update project's template if possible. Return True if updated."""
     client = client_dispatcher.current_client
 
-    template_metadata = TemplateMetadata.from_project(project=project_properties.project)
+    template_metadata = TemplateMetadata.from_project(project=project_context.project)
 
     if not template_metadata.source:
         raise errors.TemplateUpdateError("Project doesn't have a template: Use 'renku template set'")
@@ -195,7 +195,7 @@ def _set_or_update_project_from_template(
     if template is None:
         raise errors.TemplateNotFoundError(f"The template with id '{id}' is not available")
 
-    template_metadata = TemplateMetadata.from_project(project=project_properties.project)
+    template_metadata = TemplateMetadata.from_project(project=project_context.project)
     template_metadata.update(template=template)
 
     if not dry_run:

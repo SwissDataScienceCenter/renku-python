@@ -23,8 +23,8 @@ import pyld
 import pytest
 
 from renku.command.schema.dataset import dump_dataset_as_jsonld
-from renku.core.project.project_properties import project_properties
 from renku.core.util.shacl import validate_graph
+from renku.domain_model.project_context import project_context
 from renku.ui.cli import cli
 from tests.utils import load_dataset
 
@@ -76,7 +76,7 @@ def test_project_shacl(project, with_injections_manager):
     path = Path(__file__).parent.parent.parent / "data" / "force_project_shacl.json"
 
     with with_injections_manager(project):
-        project = project_properties.project
+        project = project_context.project
         project.creator = Person(email="johndoe@example.com", name="Johnny Doe")
 
         g = ProjectSchema().dump(project)

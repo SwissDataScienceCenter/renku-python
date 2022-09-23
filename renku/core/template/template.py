@@ -29,11 +29,11 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
 from packaging.version import Version
 
 from renku.core import errors
-from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.git import clone_repository
 from renku.core.util.os import hash_file
 from renku.core.util.util import to_semantic_version, to_string
+from renku.domain_model.project_context import project_context
 from renku.domain_model.template import (
     TEMPLATE_MANIFEST,
     RenderedTemplate,
@@ -97,16 +97,16 @@ def is_renku_template(source: Optional[str]) -> bool:
 
 def write_template_checksum(checksums: Dict):
     """Write templates checksum file for a project."""
-    project_properties.template_checksums_path.parent.mkdir(parents=True, exist_ok=True)
+    project_context.template_checksums_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(project_properties.template_checksums_path, "w") as checksum_file:
+    with open(project_context.template_checksums_path, "w") as checksum_file:
         json.dump(checksums, checksum_file)
 
 
 def read_template_checksum() -> Dict[str, str]:
     """Read templates checksum file for a project."""
     if has_template_checksum():
-        with open(project_properties.template_checksums_path, "r") as checksum_file:
+        with open(project_context.template_checksums_path, "r") as checksum_file:
             return json.load(checksum_file)
 
     return {}
@@ -114,7 +114,7 @@ def read_template_checksum() -> Dict[str, str]:
 
 def has_template_checksum() -> bool:
     """Return if project has a templates checksum file."""
-    return os.path.exists(project_properties.template_checksums_path)
+    return os.path.exists(project_context.template_checksums_path)
 
 
 def copy_template_to_client(
@@ -147,7 +147,7 @@ def copy_template_to_client(
 
     for relative_path, action in get_sorted_actions(actions=actions).items():
         source = rendered_template.path / relative_path
-        destination = project_properties.path / relative_path
+        destination = project_context.path / relative_path
 
         operation, message = actions_mapping[action]
         communication.echo(f"{message} {relative_path} ...")
@@ -165,7 +165,7 @@ def copy_template_to_client(
         except OSError as e:
             # TODO: Use a general cleanup strategy: https://github.com/SwissDataScienceCenter/renku-python/issues/736
             if cleanup:
-                repository = project_properties.repository
+                repository = project_context.repository
                 repository.reset(hard=True)
                 repository.clean()
 
@@ -188,7 +188,7 @@ def get_file_actions(
 
     old_checksums = read_template_checksum()
     try:
-        immutable_files = project_properties.project.immutable_template_files or []
+        immutable_files = project_context.project.immutable_template_files or []
     except (AttributeError, ValueError):  # NOTE: Project is not set
         immutable_files = []
 
@@ -263,7 +263,7 @@ def get_file_actions(
     actions: Dict[str, FileAction] = {}
 
     for relative_path in sorted(rendered_template.get_files()):
-        destination = project_properties.path / relative_path
+        destination = project_context.path / relative_path
 
         if destination.is_dir():
             raise errors.TemplateUpdateError(

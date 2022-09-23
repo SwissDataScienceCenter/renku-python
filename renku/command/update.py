@@ -23,7 +23,6 @@ from typing import Optional
 from renku.command.command_builder.command import Command
 from renku.core import errors
 from renku.core.errors import ParameterError
-from renku.core.project.project_properties import project_properties
 from renku.core.util.os import get_relative_paths
 from renku.core.workflow.activity import (
     get_all_modified_and_deleted_activities_and_entities,
@@ -33,6 +32,7 @@ from renku.core.workflow.activity import (
 )
 from renku.core.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.execute import execute_workflow_graph
+from renku.domain_model.project_context import project_context
 
 
 def update_command(skip_metadata_update: bool):
@@ -59,9 +59,9 @@ def _update(
         raise ParameterError("Cannot use PATHS and --all/-a at the same time.")
 
     paths = paths or []
-    paths = get_relative_paths(base=project_properties.path, paths=[Path.cwd() / p for p in paths])
+    paths = get_relative_paths(base=project_context.path, paths=[Path.cwd() / p for p in paths])
 
-    modified, _ = get_all_modified_and_deleted_activities_and_entities(project_properties.repository)
+    modified, _ = get_all_modified_and_deleted_activities_and_entities(project_context.repository)
     modified_activities = {a for a, _ in modified if not a.deleted and is_activity_valid(a)}
     modified_paths = {e.path for _, e in modified}
 
@@ -69,7 +69,7 @@ def _update(
         starting_activities=modified_activities,
         paths=paths,
         ignore_deleted=ignore_deleted,
-        client_path=project_properties.path,
+        client_path=project_context.path,
     )
 
     if len(activities) == 0:

@@ -34,8 +34,8 @@ from cwl_utils.parser import cwl_v1_2 as cwlgen
 
 from renku.core.git import commit
 from renku.core.plugin.provider import available_workflow_providers
-from renku.core.project.project_properties import project_properties
 from renku.core.util.yaml import write_yaml
+from renku.domain_model.project_context import project_context
 from renku.infrastructure.database import Database
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.infrastructure.gateway.plan_gateway import PlanGateway
@@ -145,7 +145,7 @@ def test_workflow_compose(runner, project, run_shell):
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    database = Database.from_path(project_properties.database_path)
+    database = Database.from_path(project_context.database_path)
 
     composite_plan = database["plans-by-name"]["composite_workflow"]
 
@@ -205,7 +205,7 @@ def test_workflow_compose_from_paths(runner, project, run_shell, client):
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    database = Database.from_path(project_properties.database_path)
+    database = Database.from_path(project_context.database_path)
 
     composite_plan = database["plans-by-name"]["composite_workflow1"]
 
@@ -234,7 +234,7 @@ def test_workflow_compose_from_paths(runner, project, run_shell, client):
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    database = Database.from_path(project_properties.database_path)
+    database = Database.from_path(project_context.database_path)
 
     composite_plan = database["plans-by-name"]["composite_workflow2"]
 
@@ -261,7 +261,7 @@ def test_workflow_compose_from_paths(runner, project, run_shell, client):
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    database = Database.from_path(project_properties.database_path)
+    database = Database.from_path(project_context.database_path)
 
     composite_plan = database["plans-by-name"]["composite_workflow3"]
 
@@ -422,7 +422,7 @@ def test_workflow_edit(runner, client):
     result = runner.invoke(cli, ["run", "--name", workflow_name, "touch", "data.txt"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    database = Database.from_path(project_properties.database_path)
+    database = Database.from_path(project_context.database_path)
     test_plan = database["plans-by-name"][workflow_name]
 
     cmd = ["workflow", "edit", workflow_name, "--name", "first"]
@@ -430,7 +430,7 @@ def test_workflow_edit(runner, client):
     assert 0 == result.exit_code, format_result_exception(result)
 
     workflow_name = "first"
-    database = Database.from_path(project_properties.database_path)
+    database = Database.from_path(project_context.database_path)
     first_plan = database["plans-by-name"]["first"]
 
     assert first_plan
@@ -441,7 +441,7 @@ def test_workflow_edit(runner, client):
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    database = Database.from_path(project_properties.database_path)
+    database = Database.from_path(project_context.database_path)
     first_plan = database["plans"][_get_plan_id(result.stdout)]
     assert first_plan.description == "Test workflow"
 
@@ -455,7 +455,7 @@ def test_workflow_edit(runner, client):
     assert 0 == result.exit_code, format_result_exception(result)
     edited_plan_id = _get_plan_id(result.output)
 
-    database = Database.from_path(project_properties.database_path)
+    database = Database.from_path(project_context.database_path)
     renamed_param_plan = database["plans"][_get_plan_id(result.output)]
     assert len(renamed_param_plan.parameters) > 0
 
@@ -463,7 +463,7 @@ def test_workflow_edit(runner, client):
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    database = Database.from_path(project_properties.database_path)
+    database = Database.from_path(project_context.database_path)
     renamed_param_plan = database["plans"][_get_plan_id(result.output)]
     parameter_names = list(map(lambda x: x.name, renamed_param_plan.parameters))
     assert len(parameter_names) > 0
@@ -480,7 +480,7 @@ def test_workflow_edit(runner, client):
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    database = Database.from_path(project_properties.database_path)
+    database = Database.from_path(project_context.database_path)
     renamed_param_plan = database["plans"][_get_plan_id(result.output)]
     assert "Test parameter" == renamed_param_plan.parameters[0].description
 
@@ -523,7 +523,7 @@ def test_workflow_edit(runner, client):
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    database = Database.from_path(project_properties.database_path)
+    database = Database.from_path(project_context.database_path)
     edited_composite_plan = database["plans"][_get_plan_id(result.output)]
     assert len(edited_composite_plan.mappings) == 1
     assert edited_composite_plan.mappings[0].mapped_parameters[0].name == "param1"
@@ -540,12 +540,12 @@ def test_workflow_edit_no_change(runner, client, run_shell):
     result = runner.invoke(cli, ["run", "--name", workflow_name, "touch", "data.txt"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    before = project_properties.repository.head.commit
+    before = project_context.repository.head.commit
 
     result = runner.invoke(cli, ["workflow", "edit", workflow_name])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    assert before == project_properties.repository.head.commit
+    assert before == project_context.repository.head.commit
 
 
 def test_workflow_show_outputs_with_directory(runner, client, run):
@@ -553,8 +553,8 @@ def test_workflow_show_outputs_with_directory(runner, client, run):
     base_sh = ["bash", "-c", 'DIR="$0"; mkdir -p "$DIR"; ' 'for x in "$@"; do touch "$DIR/$x"; done']
 
     assert 0 == run(args=["run"] + base_sh + ["output", "foo", "bar"])
-    assert (project_properties.path / "output" / "foo").exists()
-    assert (project_properties.path / "output" / "bar").exists()
+    assert (project_context.path / "output" / "foo").exists()
+    assert (project_context.path / "output" / "bar").exists()
 
     cmd = ["workflow", "outputs"]
     result = runner.invoke(cli, cmd)
@@ -646,7 +646,7 @@ def test_workflow_execute_command(
             execute_cmd.append("--skip-metadata-update")
         _execute(capsys, runner, execute_cmd)
     else:
-        database = Database.from_path(project_properties.database_path)
+        database = Database.from_path(project_context.database_path)
         plan = database["plans-by-name"][workflow_name]
         execute_cmd = ["workflow", "execute", "-p", provider]
         if skip_metadata_update:
@@ -705,8 +705,8 @@ def test_workflow_execute_command(
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, project, capsys, client, provider):
     """Test executing a workflow with --set for a renku.ui.api.Parameter."""
-    script = project_properties.path / "script.py"
-    output = project_properties.path / "output"
+    script = project_context.path / "script.py"
+    output = project_context.path / "output"
 
     with commit():
         script.write_text("from renku.ui.api import Parameter\n" 'print(Parameter("test", "hello world").value)\n')
@@ -734,11 +734,11 @@ def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, proj
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_workflow_execute_command_with_api_input_set(runner, run_shell, project, capsys, client, provider):
     """Test executing a workflow with --set for a renku.ui.api.Input."""
-    script = project_properties.path / "script.py"
-    output = project_properties.path / "output"
-    input = project_properties.path / "input"
+    script = project_context.path / "script.py"
+    output = project_context.path / "output"
+    input = project_context.path / "input"
     input.write_text("input string")
-    other_input = project_properties.path / "other_input"
+    other_input = project_context.path / "other_input"
     other_input.write_text("my other input string")
 
     with commit():
@@ -769,9 +769,9 @@ def test_workflow_execute_command_with_api_input_set(runner, run_shell, project,
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_workflow_execute_command_with_api_output_set(runner, run_shell, project, capsys, client, provider):
     """Test executing a workflow with --set for a renku.ui.api.Output."""
-    script = project_properties.path / "script.py"
-    output = project_properties.path / "output"
-    other_output = project_properties.path / "other_output"
+    script = project_context.path / "script.py"
+    output = project_context.path / "output"
+    other_output = project_context.path / "other_output"
 
     with commit():
         script.write_text(
@@ -800,9 +800,9 @@ def test_workflow_execute_command_with_api_output_set(runner, run_shell, project
 
 def test_workflow_execute_command_with_api_duplicate_output(runner, run_shell, project, capsys, client):
     """Test executing a workflow with duplicate output with differing path."""
-    script = project_properties.path / "script.py"
-    output = project_properties.path / "output"
-    other_output = project_properties.path / "other_output"
+    script = project_context.path / "script.py"
+    output = project_context.path / "output"
+    other_output = project_context.path / "other_output"
 
     with commit():
         script.write_text(
@@ -818,8 +818,8 @@ def test_workflow_execute_command_with_api_duplicate_output(runner, run_shell, p
 
 def test_workflow_execute_command_with_api_valid_duplicate_output(runner, run_shell, project, capsys, client):
     """Test executing a workflow with duplicate output with same path."""
-    script = project_properties.path / "script.py"
-    output = project_properties.path / "output"
+    script = project_context.path / "script.py"
+    output = project_context.path / "output"
 
     with commit():
         script.write_text(
@@ -838,9 +838,9 @@ def test_workflow_execute_command_with_api_valid_duplicate_output(runner, run_sh
 
 def test_workflow_execute_command_with_api_duplicate_input(runner, run_shell, project, capsys, client):
     """Test executing a workflow with duplicate input with differing path."""
-    script = project_properties.path / "script.py"
-    input = project_properties.path / "input"
-    other_input = project_properties.path / "other_input"
+    script = project_context.path / "script.py"
+    input = project_context.path / "input"
+    other_input = project_context.path / "other_input"
 
     with commit():
         script.write_text(
@@ -856,8 +856,8 @@ def test_workflow_execute_command_with_api_duplicate_input(runner, run_shell, pr
 
 def test_workflow_execute_command_with_api_valid_duplicate_input(runner, run_shell, project, capsys, client):
     """Test executing a workflow with duplicate input with same path."""
-    script = project_properties.path / "script.py"
-    input = project_properties.path / "input"
+    script = project_context.path / "script.py"
+    input = project_context.path / "input"
 
     with commit():
         script.write_text(
@@ -1204,8 +1204,8 @@ def test_workflow_iterate(
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_workflow_iterate_command_with_parameter_set(runner, run_shell, project, capsys, client, provider):
     """Test executing a workflow with --set float value for a renku.ui.api.Parameter."""
-    script = project_properties.path / "script.py"
-    output = project_properties.path / "output"
+    script = project_context.path / "script.py"
+    output = project_context.path / "output"
 
     with commit():
         script.write_text("import sys\nprint(sys.argv[1])\n")
@@ -1244,7 +1244,7 @@ def test_workflow_iterate_command_with_parameter_set(runner, run_shell, project,
 
 def test_workflow_cycle_detection(run_shell, project, capsys, client):
     """Test creating a cycle is not possible with renku run or workflow execute."""
-    input = project_properties.path / "input"
+    input = project_context.path / "input"
 
     with commit():
         input.write_text("test")
@@ -1279,14 +1279,14 @@ def test_workflow_execute_docker_toil(runner, client, run_shell, caplog):
     """Test workflow execute using docker with the toil provider."""
     caplog.set_level(logging.INFO)
 
-    write_and_commit_file(project_properties.repository, "input", "first line\nsecond line")
-    output = project_properties.path / "output"
+    write_and_commit_file(project_context.repository, "input", "first line\nsecond line")
+    output = project_context.path / "output"
 
     run_shell("renku run --name run-1 -- tail -n 1 input > output")
 
     assert "first line" not in output.read_text()
 
-    write_and_commit_file(project_properties.repository, "toil.yaml", "logLevel: INFO\ndocker:\n  image: ubuntu")
+    write_and_commit_file(project_context.repository, "toil.yaml", "logLevel: INFO\ndocker:\n  image: ubuntu")
 
     result = runner.invoke(cli, ["workflow", "execute", "-p", "toil", "-s", "n-1=2", "-c", "toil.yaml", "run-1"])
 
@@ -1297,14 +1297,14 @@ def test_workflow_execute_docker_toil(runner, client, run_shell, caplog):
 
 def test_workflow_execute_docker_toil_stderr(runner, client, run_shell):
     """Test workflow execute using docker with the toil provider and stderr redirection."""
-    write_and_commit_file(project_properties.repository, "input", "first line\nsecond line")
-    output = project_properties.path / "output"
+    write_and_commit_file(project_context.repository, "input", "first line\nsecond line")
+    output = project_context.path / "output"
 
     run_shell("renku run --name run-1 -- tail -n 1 input 2> output")
 
     assert "first line" not in output.read_text()
 
-    write_and_commit_file(project_properties.repository, "toil.yaml", "docker:\n  image: ubuntu")
+    write_and_commit_file(project_context.repository, "toil.yaml", "docker:\n  image: ubuntu")
 
     result = runner.invoke(cli, ["workflow", "execute", "-p", "toil", "-s", "n-1=2", "-c", "toil.yaml", "run-1"])
 
@@ -1344,9 +1344,9 @@ def test_workflow_templated_params(runner, run_shell, client, capsys, workflow, 
 
 def test_revert_activity(client, runner, client_database_injection_manager):
     """Test reverting activities."""
-    input = project_properties.path / "input"
-    intermediate = project_properties.path / "intermediate"
-    output = project_properties.path / "output"
+    input = project_context.path / "input"
+    intermediate = project_context.path / "intermediate"
+    output = project_context.path / "output"
 
     assert 0 == runner.invoke(cli, ["run", "--name", "r1", "--", "echo", "some-data"], stdout=input).exit_code
     assert 0 == runner.invoke(cli, ["run", "--name", "r2", "--", "head", input], stdout=intermediate).exit_code
@@ -1392,12 +1392,12 @@ def test_revert_activity(client, runner, client_database_injection_manager):
 
 def test_reverted_activity_status(client, runner, client_database_injection_manager):
     """Test that reverted activity doesn't affect status/update/log/etc."""
-    input = project_properties.path / "input"
-    write_and_commit_file(project_properties.repository, input, "content")
-    output = project_properties.path / "output"
+    input = project_context.path / "input"
+    write_and_commit_file(project_context.repository, input, "content")
+    output = project_context.path / "output"
 
     assert 0 == runner.invoke(cli, ["run", "cat", input], stdout=output).exit_code
-    write_and_commit_file(project_properties.repository, input, "changes")
+    write_and_commit_file(project_context.repository, input, "changes")
 
     with client_database_injection_manager(client):
         activity_gateway = ActivityGateway()

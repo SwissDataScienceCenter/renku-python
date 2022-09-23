@@ -30,7 +30,6 @@ from renku.core.dataset.pointer_file import create_external_file
 from renku.core.dataset.providers.api import ImporterApi
 from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.models import DatasetAddAction
-from renku.core.project.project_properties import project_properties
 from renku.core.storage import check_external_storage, track_paths_in_storage
 from renku.core.util import communication, requests
 from renku.core.util.dataset import check_url
@@ -38,6 +37,7 @@ from renku.core.util.dispatcher import get_client
 from renku.core.util.git import get_git_user
 from renku.core.util.os import delete_dataset_file, get_files, get_relative_path
 from renku.domain_model.dataset import Dataset, DatasetFile
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata
@@ -64,7 +64,7 @@ def add_to_dataset(
 ) -> Dataset:
     """Import the data into the data directory."""
     client = get_client()
-    repository = project_properties.repository
+    repository = project_context.repository
     sources = sources or []
 
     _check_available_space(urls, total_size=total_size)
@@ -85,7 +85,7 @@ def add_to_dataset(
 
             check_external_storage()  # TODO: This is not required for external storages
 
-            datadir = cast(Path, project_properties.path / dataset.get_datadir())
+            datadir = cast(Path, project_context.path / dataset.get_datadir())
             if create and datadir.exists():
                 # NOTE: Add datadir to paths to add missing files on create
                 for file in get_files(datadir):
@@ -112,7 +112,7 @@ def add_to_dataset(
                     "Ignored adding paths under a .git directory:\n\t" + "\n\t".join(str(p) for p in paths_to_avoid)
                 )
 
-            files_to_commit = {f.get_absolute_commit_path(project_properties.path) for f in files if not f.gitignored}
+            files_to_commit = {f.get_absolute_commit_path(project_context.path) for f in files if not f.gitignored}
 
             if not force:
                 files, files_to_commit = _check_ignored_files(files_to_commit, files)
@@ -130,7 +130,7 @@ def add_to_dataset(
 
             # Force-add to include possible ignored files
             if len(files_to_commit) > 0:
-                repository.add(*files_to_commit, project_properties.pointers_path, force=True)
+                repository.add(*files_to_commit, project_context.pointers_path, force=True)
 
             n_staged_changes = len(repository.staged_changes)
             if n_staged_changes == 0:
@@ -148,7 +148,7 @@ def add_to_dataset(
             datasets_provenance = DatasetsProvenance()
             datasets_provenance.add_or_update(dataset, creator=get_git_user(repository))
 
-        project_properties.database.commit()
+        project_context.database.commit()
     except errors.DatasetNotFound:
         raise errors.DatasetNotFound(
             message='Dataset "{0}" does not exist.\n'
@@ -226,7 +226,7 @@ def _check_available_space(urls: List[str], total_size: Optional[int] = None):
                 total_size += int(response.headers.get("content-length", 0))
             except errors.RequestError:
                 pass
-    usage = shutil.disk_usage(project_properties.path)
+    usage = shutil.disk_usage(project_context.path)
 
     if total_size > usage.free:
         mb = 2**20
@@ -238,7 +238,7 @@ def _check_available_space(urls: List[str], total_size: Optional[int] = None):
 
 def _create_destination_directory(dataset: Dataset, destination: Optional[Union[Path, str]] = None) -> Path:
     """Create directory for dataset add."""
-    dataset_datadir = project_properties.path / dataset.get_datadir()
+    dataset_datadir = project_context.path / dataset.get_datadir()
 
     if dataset_datadir.is_symlink():
         dataset_datadir.unlink()
@@ -254,11 +254,11 @@ def _create_destination_directory(dataset: Dataset, destination: Optional[Union[
 
 def _check_ignored_files(files_to_commit: Set[str], files: List["DatasetAddMetadata"]):
     """Check if any files added were ignored."""
-    ignored_files = set(project_properties.repository.get_ignored_paths(*files_to_commit))
+    ignored_files = set(project_context.repository.get_ignored_paths(*files_to_commit))
     if ignored_files:
         ignored_sources = []
         for file in files:
-            if not file.gitignored and file.get_absolute_commit_path(project_properties.path) in ignored_files:
+            if not file.gitignored and file.get_absolute_commit_path(project_context.path) in ignored_files:
                 ignored_sources.append(file.source)
 
         communication.warn(
@@ -267,7 +267,7 @@ def _check_ignored_files(files_to_commit: Set[str], files: List["DatasetAddMetad
         )
 
         files_to_commit = files_to_commit.difference(ignored_files)
-        files = [f for f in files if f.get_absolute_commit_path(project_properties.path) not in ignored_files]
+        files = [f for f in files if f.get_absolute_commit_path(project_context.path) not in ignored_files]
 
     return files, files_to_commit
 
@@ -276,7 +276,7 @@ def _check_existing_files(dataset: Dataset, files_to_commit: Set[str], files: Li
     """Check if files added already exist."""
     existing_files = set()
     for path in files_to_commit:
-        relative_path = Path(path).relative_to(project_properties.path)
+        relative_path = Path(path).relative_to(project_context.path)
         if dataset.find_file(relative_path):
             existing_files.add(path)
 
@@ -287,7 +287,7 @@ def _check_existing_files(dataset: Dataset, files_to_commit: Set[str], files: Li
         )
 
         files_to_commit = files_to_commit.difference(existing_files)
-        files = [f for f in files if f.get_absolute_commit_path(project_properties.path) not in existing_files]
+        files = [f for f in files if f.get_absolute_commit_path(project_context.path) not in existing_files]
 
     return files, files_to_commit
 

@@ -23,9 +23,9 @@ from typing import Dict, List, Optional, Union, cast
 from renku.command.command_builder import inject
 from renku.command.view_model.project import ProjectViewModel
 from renku.core.interface.project_gateway import IProjectGateway
-from renku.core.project.project_properties import project_properties
 from renku.core.util.metadata import construct_creator
 from renku.core.util.util import NO_VALUE, NoValueType
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.agent import Person
 
 
@@ -80,4 +80,4 @@ def show_project() -> ProjectViewModel:
     Returns:
         Project view model.
     """
-    return ProjectViewModel.from_project(project_properties.project)
+    return ProjectViewModel.from_project(project_context.project)

@@ -39,11 +39,11 @@ from renku.core.dataset.dataset_add import add_to_dataset
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.tag import get_dataset_by_tag
 from renku.core.errors import ParameterError
-from renku.core.project.project_properties import project_properties
 from renku.core.util.contexts import chdir
 from renku.core.util.git import get_git_user
 from renku.core.util.urls import get_slug
 from renku.domain_model.dataset import Dataset, is_dataset_name_valid
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.agent import Person
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository
@@ -161,7 +161,7 @@ def test_list_files_default(project, tmpdir):
 
 def test_unlink_default(directory_tree, client):
     """Test unlink default behaviour."""
-    with chdir(project_properties.path):
+    with chdir(project_context.path):
         create_dataset_command().with_database(write=True).build().execute("dataset")
         add_to_dataset_command().with_database(write=True).build().execute(
             dataset_name="dataset", urls=[str(directory_tree / "dir1")]
@@ -184,14 +184,14 @@ def test_mutate(client):
 
     dataset.mutate()
 
-    mutator = get_git_user(project_properties.repository)
+    mutator = get_git_user(project_context.repository)
     assert_dataset_is_mutated(old=old_dataset, new=dataset, mutator=mutator)
 
 
 @pytest.mark.xfail
 def test_mutator_is_added_once(client):
     """Test mutator of a dataset is added only once to its creators list."""
-    mutator = get_git_user(project_properties.repository)
+    mutator = get_git_user(project_context.repository)
 
     dataset = Dataset(
         name="my-dataset",
@@ -251,7 +251,7 @@ def test_get_dataset_by_tag(with_injections_manager, tmp_path):
     url = "https://dev.renku.ch/gitlab/renku-python-integration-tests/lego-datasets.git"
     repository = Repository.clone_from(url=url, path=tmp_path / "repo")
 
-    with with_injections_manager(repository), project_properties.with_path(repository.path):
+    with with_injections_manager(repository), project_context.with_path(repository.path):
         dataset_gateway = DatasetGateway()
 
         parts_dataset = dataset_gateway.get_by_name("parts")

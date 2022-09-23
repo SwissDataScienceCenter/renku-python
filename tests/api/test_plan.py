@@ -19,7 +19,7 @@
 
 import os
 
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 from renku.ui.api import Activity, CompositePlan, Input, Output, Parameter, Plan
 from renku.ui.api.util import get_plan_gateway
 from renku.ui.cli import cli
@@ -176,7 +176,7 @@ def test_get_latest_version(project_with_runs):
     plan = next(p for p in plan_gateway.get_all_plans() if p.name == "plan-1")
     newer_plan = plan.derive()
     plan_gateway.add(newer_plan)
-    project_properties.database.commit()
+    project_context.database.commit()
 
     latest_version = Plan.from_plan(plan).get_latest_version()
 
@@ -196,7 +196,7 @@ def test_list_returns_latest_versions(project_with_runs):
     plan = next(p for p in plan_gateway.get_all_plans() if p.name == "plan-1")
     newer_plan = plan.derive()
     plan_gateway.add(newer_plan)
-    project_properties.database.commit()
+    project_context.database.commit()
 
     plans = Plan.list()
 

@@ -21,7 +21,7 @@ import os
 
 import pytest
 
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 from renku.ui.api import Project
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
@@ -30,12 +30,12 @@ from tests.utils import format_result_exception, write_and_commit_file
 @pytest.mark.parametrize("sub_path", [".", "src", "src/notebooks"])
 def test_get_project(project, sub_path):
     """Test getting Project context within a repository."""
-    working_dir = project_properties.path / sub_path
+    working_dir = project_context.path / sub_path
     working_dir.mkdir(exist_ok=True, parents=True)
     os.chdir(working_dir)
 
     with Project() as project:
-        assert project_properties.path == project.path
+        assert project_context.path == project.path
 
 
 def test_get_project_multiple(project):
@@ -69,10 +69,10 @@ def test_get_project_outside_a_renku_project(directory_tree):
 
 def test_status(runner, project):
     """Test status check."""
-    source = project_properties.path / "source.txt"
-    output = project_properties.path / "data" / "output.txt"
+    source = project_context.path / "source.txt"
+    output = project_context.path / "data" / "output.txt"
 
-    repository = project_properties.repository
+    repository = project_context.repository
 
     write_and_commit_file(repository, source, "content")
 

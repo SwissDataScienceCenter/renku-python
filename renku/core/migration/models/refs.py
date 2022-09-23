@@ -25,7 +25,7 @@ import attr
 
 from renku.core import errors
 from renku.core.constant import REFS
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 
 
 @attr.s(slots=True)
@@ -76,26 +76,26 @@ class LinkReference:
     def set_reference(self, reference):
         """Set ourselves to the given reference path."""
         reference_path = Path(reference).resolve().absolute()
-        reference_path.relative_to(project_properties.path)
+        reference_path.relative_to(project_context.path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         os.symlink(os.path.relpath(str(reference_path), start=str(self.path.parent)), str(self.path))
 
     @classmethod
     def iter_items(cls, common_path=None):
         """Find all references in the repository."""
-        refs_path = path = project_properties.metadata_path / REFS
+        refs_path = path = project_context.metadata_path / REFS
         if common_path:
             path = path / common_path
 
         for name in path.rglob("*"):
             if name.is_dir():
                 continue
-            yield cls(metadata_path=project_properties.metadata_path, name=str(name.relative_to(refs_path)))
+            yield cls(metadata_path=project_context.metadata_path, name=str(name.relative_to(refs_path)))
 
     @classmethod
     def create(cls, name, force=False):
         """Create symlink to object in reference path."""
-        ref = cls(metadata_path=project_properties.metadata_path, name=name)
+        ref = cls(metadata_path=project_context.metadata_path, name=name)
         path = ref.path
         if os.path.lexists(path):
             if not force:

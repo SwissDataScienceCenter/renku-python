@@ -27,8 +27,8 @@ import pytest
 from renku.core.constant import RENKU_HOME, RENKU_TMP
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
-from renku.core.project.project_properties import project_properties
 from renku.domain_model.dataset import RemoteEntity
+from renku.domain_model.project_context import project_context
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
@@ -50,9 +50,9 @@ def test_migrate_project(isolated_runner, old_project):
     assert 0 == result.exit_code, format_result_exception(result)
     assert not old_project.is_dirty(untracked_files=True)
 
-    with project_properties.with_path(old_project.path):
-        assert project_properties.project
-        assert project_properties.project.name
+    with project_context.with_path(old_project.path):
+        assert project_context.project
+        assert project_context.project.name
 
 
 @pytest.mark.migration
@@ -98,7 +98,7 @@ def test_correct_path_migrated(isolated_runner, old_project, client_database_inj
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    with project_properties.with_path(old_project.path):
+    with project_context.with_path(old_project.path):
         with client_database_injection_manager(old_project):
             datasets = DatasetGateway().get_all_active_datasets()
             assert datasets
@@ -117,7 +117,7 @@ def test_correct_relative_path(isolated_runner, old_project, client_database_inj
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    with project_properties.with_path(path=old_project.path):
+    with project_context.with_path(path=old_project.path):
         with client_database_injection_manager(old_project):
             datasets_provenance = DatasetsProvenance()
 

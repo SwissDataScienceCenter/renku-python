@@ -28,9 +28,9 @@ import click
 import inject
 
 from renku.core import errors
-from renku.core.project.project_properties import project_properties
 from renku.core.util.communication import CommunicationCallback
 from renku.core.util.git import get_git_path
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.management.client import LocalClient
@@ -183,7 +183,7 @@ class Command:
                 dispatcher.push_created_client_to_stack(self._client)
             else:
                 path = get_git_path(self._working_directory or ".")
-                project_properties.push_path(path)
+                project_context.push_path(path)
                 self._client = dispatcher.push_client_to_stack(path=path)
                 self._client_was_created = True
             ctx = click.Context(click.Command(builder._operation))  # type: ignore
@@ -221,7 +221,7 @@ class Command:
         if self._client_was_created:
             if self._client:
                 context["client_dispatcher"].pop_client()
-            project_properties.pop_context()
+            project_context.pop_context()
 
         if result.error:
             raise result.error

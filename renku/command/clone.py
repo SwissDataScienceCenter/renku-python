@@ -20,7 +20,7 @@
 from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
 from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 
 
 @inject.autoparams()
@@ -63,7 +63,7 @@ def _project_clone(
     from renku.core.management.migrate import is_renku_project
     from renku.core.util.git import clone_renku_repository
 
-    install_lfs = project_properties.external_storage_requested
+    install_lfs = project_context.external_storage_requested
 
     repository = clone_renku_repository(
         url=url,
@@ -82,7 +82,7 @@ def _project_clone(
 
     client_dispatcher.push_client_to_stack(path=repository.path)
 
-    with project_properties.with_path(repository.path):
+    with project_context.with_path(repository.path):
         try:
             project_initialized = is_renku_project()
 

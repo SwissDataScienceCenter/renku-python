@@ -30,8 +30,8 @@ from renku.core.migration.utils import (
     get_pre_0_3_4_datasets_metadata,
     is_using_temporary_datasets_path,
 )
-from renku.core.project.project_properties import project_properties
 from renku.core.util.yaml import read_yaml, write_yaml
+from renku.domain_model.project_context import project_context
 
 
 def migrate(migration_context):
@@ -48,9 +48,9 @@ def _migrate_project_metadata(client):
         "http://schema.org/Project": "http://xmlns.com/foaf/0.1/Project",
     }
 
-    if project_properties.metadata_path.joinpath(OLD_METADATA_PATH).exists():
+    if project_context.metadata_path.joinpath(OLD_METADATA_PATH).exists():
         _apply_on_the_fly_jsonld_migrations(
-            path=project_properties.metadata_path.joinpath(OLD_METADATA_PATH),
+            path=project_context.metadata_path.joinpath(OLD_METADATA_PATH),
             jsonld_context=_INITIAL_JSONLD_PROJECT_CONTEXT,
             fields=_PROJECT_FIELDS,
             jsonld_translate=jsonld_translate,
@@ -250,7 +250,7 @@ def _migrate_dataset_file_id(data, client):
     """Ensure dataset files have a fully qualified url as id."""
     host = "localhost"
     if client:
-        host = project_properties.remote.host or host
+        host = project_context.remote.host or host
     host = os.environ.get("RENKU_DOMAIN") or host
 
     files = data.get("files", [])

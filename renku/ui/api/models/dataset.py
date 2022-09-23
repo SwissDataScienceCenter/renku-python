@@ -43,8 +43,8 @@ from operator import attrgetter
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
 
-from renku.core.project.project_properties import has_graph_files
 from renku.domain_model import dataset as core_dataset
+from renku.domain_model.project_context import has_graph_files
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.ui.api.util import ensure_project_context
 

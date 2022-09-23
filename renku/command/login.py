@@ -26,11 +26,11 @@ from typing import TYPE_CHECKING
 from renku.command.command_builder import Command
 from renku.core import errors
 from renku.core.config import get_value, remove_value, set_value
-from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.git import RENKU_BACKUP_PREFIX, create_backup_remote, get_remote, get_renku_repo_url
 from renku.core.util.urls import parse_authentication_endpoint
 from renku.domain_model.enums import ConfigFilter
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.infrastructure.repository import Repository
@@ -50,7 +50,7 @@ def _login(endpoint, git_login, yes):
     from renku.core.util import requests
 
     try:
-        repository = project_properties.repository
+        repository = project_context.repository
     except ValueError:
         repository = None
 
@@ -164,7 +164,7 @@ def _get_url(parsed_endpoint, path, **query_args) -> str:
 
 def _store_token(netloc, access_token):
     set_value(section=CONFIG_SECTION, key=netloc, value=access_token, global_only=True)
-    os.chmod(project_properties.global_config_path, 0o600)
+    os.chmod(project_context.global_config_path, 0o600)
 
 
 def _set_git_credential_helper(repository: "Repository", hostname):
@@ -230,7 +230,7 @@ def _logout(endpoint):
         key = "*"
 
     try:
-        repository = project_properties.repository
+        repository = project_context.repository
     except ValueError:
         repository = None
 

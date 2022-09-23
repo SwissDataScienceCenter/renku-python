@@ -30,12 +30,12 @@ from renku.core import errors
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.providers.api import ImporterApi, ProviderApi, ProviderPriority
 from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.project.project_properties import project_properties
 from renku.core.storage import pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.git import clone_renku_repository, get_cache_directory_for_repository, get_file_size
 from renku.core.util.metadata import is_external_file, make_project_temp_dir
 from renku.core.util.urls import remove_credentials
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderDataset, ProviderParameter
@@ -298,7 +298,7 @@ class RenkuImporter(ImporterApi):
                 relative_path = Path(src_entity_path)
 
             dst = destination / relative_path
-            path_in_dst_repo = dst.relative_to(project_properties.path)
+            path_in_dst_repo = dst.relative_to(project_context.path)
 
             already_copied = path_in_dst_repo in new_files  # A path with the same destination is already copied
             new_files[path_in_dst_repo].append(src_entity_path)
@@ -332,15 +332,15 @@ class RenkuImporter(ImporterApi):
         new_files: Dict[Path, List[str]] = defaultdict(list)
 
         if checksums is None:
-            with project_properties.with_path(remote_repository.path):
+            with project_context.with_path(remote_repository.path):
                 pull_paths_from_storage(
-                    project_properties.repository, *(remote_repository.path / p for p in sources)  # type: ignore
+                    project_context.repository, *(remote_repository.path / p for p in sources)  # type: ignore
                 )
 
             for file in sources:
                 add_file(file, content_path=remote_repository.path / file, checksum=None)  # type: ignore
         else:  # NOTE: Renku dataset import with a tag
-            content_path_root = make_project_temp_dir(project_properties.path)
+            content_path_root = make_project_temp_dir(project_context.path)
             content_path_root.mkdir(parents=True, exist_ok=True)
             filename = 1
 
@@ -393,7 +393,7 @@ class RenkuImporter(ImporterApi):
                 continue
 
             remote_image_path = self._remote_path / image.content_url
-            local_image_path = project_properties.path / image.content_url
+            local_image_path = project_context.path / image.content_url
             local_image_path.parent.mkdir(exist_ok=True, parents=True)
 
             shutil.copy(remote_image_path, local_image_path)
@@ -474,7 +474,7 @@ class RenkuImporter(ImporterApi):
         if self._project_url is None or remote_repository is None:
             raise errors.ParameterError("Cannot clone remote projects:\n\t" + "\n\t".join(urls), param_hint=self.uri)
 
-        with project_properties.with_path(remote_repository.path) as project_context:
+        with project_context.with_path(remote_repository.path):
             self._remote_path = project_context.path
             self._remote_client = LocalClient()
             client_dispatcher.push_created_client_to_stack(self._remote_client)

@@ -19,7 +19,7 @@
 
 import pytest
 
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 
 
 @pytest.mark.parametrize(
@@ -32,4 +32,4 @@ from renku.core.project.project_properties import project_properties
 )
 def test_ignored_paths(paths, ignored, client):
     """Test resolution of ignored paths."""
-    assert project_properties.repository.get_ignored_paths(*paths) == ignored
+    assert project_context.repository.get_ignored_paths(*paths) == ignored

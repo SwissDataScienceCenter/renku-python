@@ -32,7 +32,7 @@ from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.interface.storage import IStorageFactory
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.infrastructure.gateway.database_gateway import DatabaseGateway
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
@@ -64,7 +64,7 @@ class DatabaseCommand(Command):
         if "client_dispatcher" not in context:
             raise ValueError("Database builder needs a IClientDispatcher to be set.")
 
-        project_properties.push_path(path=self._path or project_properties.path, save_changes=self._write)
+        project_context.push_path(path=self._path or project_context.path, save_changes=self._write)
 
         context["constructor_bindings"][IPlanGateway] = lambda: PlanGateway()
         context["constructor_bindings"][IActivityGateway] = lambda: ActivityGateway()
@@ -78,11 +78,11 @@ class DatabaseCommand(Command):
             return
 
         try:
-            self.project = project_properties.project
+            self.project = project_context.project
             minimum_renku_version = Version(self.project.minimum_renku_version)
         except (KeyError, ImportError, ValueError):
             try:
-                with open(project_properties.database_path / "project", "r") as f:
+                with open(project_context.database_path / "project", "r") as f:
                     project = json.load(f)
                     min_version = project.get("minimum_renku_version")
                     if min_version is None:
@@ -108,7 +108,7 @@ class DatabaseCommand(Command):
             # NOTE: update minimum renku version on write as migrations might happen on the fly
             self.project.minimum_renku_version = Project.minimum_renku_version
 
-        project_properties.pop_context()
+        project_context.pop_context()
 
     @check_finalized
     def build(self) -> Command:

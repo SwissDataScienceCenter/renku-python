@@ -142,9 +142,9 @@ def get_cache_directory_for_repository(client, url) -> Path:
 
     """
     from renku.core.constant import CACHE
-    from renku.core.project.project_properties import project_properties
+    from renku.domain_model.project_context import project_context
 
-    return project_properties.metadata_path / CACHE / get_full_repository_path(url)
+    return project_context.metadata_path / CACHE / get_full_repository_path(url)
 
 
 def parse_git_url(url: Optional[str]) -> "GitURL":
@@ -942,7 +942,7 @@ def get_in_submodules(
 ) -> Tuple["LocalClient", "Repository", "Commit", Path]:
     """Resolve filename in submodules."""
     from renku.core.management.client import LocalClient
-    from renku.core.project.project_properties import project_properties
+    from renku.domain_model.project_context import project_context
 
     original_path = repository.path / path
     in_vendor = str(path).startswith(".renku/vendors")
@@ -959,7 +959,7 @@ def get_in_submodules(
             try:
                 path_within_submodule = resolved_path.relative_to(submodule.path)
                 commit = submodule.get_previous_commit(path=path_within_submodule, revision=commit.hexsha)
-                with project_properties.with_path(submodule.path):
+                with project_context.with_path(submodule.path):
                     subclient = LocalClient()
             except (ValueError, errors.GitCommitNotFoundError):
                 pass

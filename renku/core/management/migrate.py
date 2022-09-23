@@ -55,8 +55,8 @@ from renku.core.migration.utils import (
     is_using_temporary_datasets_path,
     read_project_version,
 )
-from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
+from renku.domain_model.project_context import project_context
 
 try:
     import importlib_resources
@@ -154,13 +154,13 @@ def migrate(
             n_migrations_executed += 1
     if not is_using_temporary_datasets_path():
         if n_migrations_executed > 0:
-            project_properties.reset_project()  # NOTE: force reloading of project metadata
-            project_properties.project.version = str(version)
-            project_gateway.update_project(project_properties.project)
+            project_context.reset_project()  # NOTE: force reloading of project metadata
+            project_context.project.version = str(version)
+            project_gateway.update_project(project_context.project)
 
             communication.echo(f"Successfully applied {n_migrations_executed} migrations.")
 
-        _remove_untracked_renku_files(metadata_path=project_properties.metadata_path)
+        _remove_untracked_renku_files(metadata_path=project_context.metadata_path)
 
     return n_migrations_executed != 0, template_updated, docker_updated
 
@@ -195,12 +195,12 @@ def _update_dockerfile(check_only=False):
     """Update the dockerfile to the newest version of renku."""
     from renku import __version__
 
-    if not project_properties.docker_path.exists():
+    if not project_context.docker_path.exists():
         return False, None, None
 
     communication.echo("Updating dockerfile...")
 
-    with open(project_properties.docker_path, "r") as f:
+    with open(project_context.docker_path, "r") as f:
         dockerfile_content = f.read()
 
     current_version = Version(__version__)
@@ -224,7 +224,7 @@ def _update_dockerfile(check_only=False):
         r"^ARG RENKU_VERSION=\d+\.\d+\.\d+$", f"ARG RENKU_VERSION={__version__}", dockerfile_content, flags=re.MULTILINE
     )
 
-    with open(project_properties.docker_path, "w") as f:
+    with open(project_context.docker_path, "w") as f:
         f.write(dockerfile_content)
 
     communication.echo("Updated dockerfile.")
@@ -243,9 +243,9 @@ def get_project_version():
 def is_renku_project() -> bool:
     """Check if repository is a renku project."""
     try:
-        return project_properties.project is not None
+        return project_context.project is not None
     except ValueError:  # NOTE: Error in loading due to an older schema
-        return project_properties.metadata_path.joinpath(OLD_METADATA_PATH).exists()
+        return project_context.metadata_path.joinpath(OLD_METADATA_PATH).exists()
 
 
 def get_migrations():

@@ -36,10 +36,10 @@ from renku.core.dataset.providers.dataverse_metadata_templates import (
 )
 from renku.core.dataset.providers.doi import DOIProvider
 from renku.core.dataset.providers.repository import RepositoryImporter, make_request
-from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.doi import extract_doi, get_doi_url, is_doi
 from renku.core.util.urls import remove_credentials
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderDataset, ProviderParameter
@@ -362,7 +362,7 @@ class DataverseExporter(ExporterApi):
         metadata = self._get_dataset_metadata()
         response = deposition.create_dataset(dataverse_name=self._dataverse_name, metadata=metadata)
         dataset_pid = response.json()["data"]["persistentId"]
-        repository = project_properties.repository
+        repository = project_context.repository
 
         with communication.progress("Uploading files ...", total=len(self.dataset.files)) as progressbar:
             for file in self.dataset.files:

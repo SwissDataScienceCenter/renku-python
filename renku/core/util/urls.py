@@ -26,9 +26,9 @@ from urllib.parse import ParseResult, urlparse
 
 from renku.core import errors
 from renku.core.config import get_value
-from renku.core.project.project_properties import project_properties
 from renku.core.util.git import get_remote, parse_git_url
 from renku.core.util.os import is_subpath
+from renku.domain_model.project_context import project_context
 
 
 def url_to_string(url):
@@ -53,15 +53,15 @@ def remove_credentials(url):
     return parsed._replace(netloc=parsed.hostname).geturl()
 
 
-def get_host(use_project_properties: bool = True):
+def get_host(use_project_context: bool = True):
     """Return the hostname for the resource URIs.
 
     Default is localhost. If RENKU_DOMAIN is set, it overrides the host from remote.
     """
     host = "localhost"
 
-    if use_project_properties:
-        host = project_properties.remote.host or host
+    if use_project_context:
+        host = project_context.remote.host or host
 
     return os.environ.get("RENKU_DOMAIN") or host
 
@@ -87,7 +87,7 @@ def parse_authentication_endpoint(endpoint: Optional[str] = None, use_remote: bo
         if not endpoint:
             if not use_remote:
                 return
-            remote = get_remote(project_properties.repository)
+            remote = get_remote(project_context.repository)
             if not remote or not remote.url:
                 return
             endpoint = f"https://{parse_git_url(remote.url).hostname}/"

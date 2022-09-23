@@ -18,8 +18,8 @@
 """Renku project gateway interface."""
 
 from renku.core.interface.project_gateway import IProjectGateway
-from renku.core.project.project_properties import project_properties
 from renku.domain_model.project import Project
+from renku.domain_model.project_context import project_context
 
 
 class ProjectGateway(IProjectGateway):
@@ -28,7 +28,7 @@ class ProjectGateway(IProjectGateway):
     def get_project(self) -> Project:
         """Get project metadata."""
         try:
-            return project_properties.database["project"]  # type: ignore
+            return project_context.database["project"]  # type: ignore
         except KeyError as e:
             raise ValueError() from e
 
@@ -36,7 +36,7 @@ class ProjectGateway(IProjectGateway):
         """Update project metadata."""
         from renku import __version__
 
-        database = project_properties.database
+        database = project_context.database
 
         try:
             if database["project"]:

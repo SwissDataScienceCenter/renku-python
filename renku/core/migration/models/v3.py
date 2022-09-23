@@ -25,9 +25,9 @@ from renku.command.schema.calamus import DateTimeList, JsonLDSchema, StringList,
 from renku.core.migration.models.v9 import Person as OldPerson
 from renku.core.migration.models.v9 import generate_project_id, wfprov
 from renku.core.migration.utils import OLD_METADATA_PATH, generate_dataset_tag_id, generate_url_id, get_datasets_path
-from renku.core.project.project_properties import project_properties
 from renku.core.util import yaml
 from renku.core.util.urls import get_host
+from renku.domain_model.project_context import project_context
 
 
 class Base:
@@ -91,10 +91,10 @@ class Project(Base):
         self = ProjectSchemaV3().load(data)
 
         if not self.creator:
-            self.creator = Person.from_repository(repository=project_properties.repository)
+            self.creator = Person.from_repository(repository=project_context.repository)
 
         if not self.name:
-            self.name = project_properties.remote.name
+            self.name = project_context.remote.name
 
         if not self._id or "NULL/NULL" in self._id:
             self._id = generate_project_id(name=self.name, creator=self.creator)
@@ -384,7 +384,7 @@ def get_client_datasets(client):
     datasets = []
     for path in paths:
         dataset = Dataset.from_yaml(path=path, client=client)
-        dataset.path = getattr(dataset, "path", None) or os.path.relpath(path.parent, project_properties.path)
+        dataset.path = getattr(dataset, "path", None) or os.path.relpath(path.parent, project_context.path)
         datasets.append(dataset)
 
     return datasets

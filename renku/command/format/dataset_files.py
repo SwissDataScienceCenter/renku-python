@@ -21,7 +21,7 @@ import re
 from subprocess import PIPE, SubprocessError, run
 from typing import Callable, Dict
 
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 
 
 def tabular(records, *, columns=None):
@@ -59,7 +59,7 @@ def get_lfs_tracking_and_file_sizes(records, has_tag: bool):
     """
     from humanize import naturalsize  # Slow import
 
-    repository = project_properties.repository
+    repository = project_context.repository
 
     def get_lfs_tracking():
         paths = (r.path for r in records)
@@ -77,7 +77,7 @@ def get_lfs_tracking_and_file_sizes(records, has_tag: bool):
         lfs_run = run(
             ("git", "lfs", "ls-files", "--name-only", "--size", "--deleted"),
             stdout=PIPE,
-            cwd=project_properties.path,
+            cwd=project_context.path,
             universal_newlines=True,
         )
     except SubprocessError:

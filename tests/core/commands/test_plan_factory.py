@@ -21,8 +21,8 @@ from pathlib import Path
 
 import pytest
 
-from renku.core.project.project_properties import project_properties
 from renku.core.workflow.plan_factory import PlanFactory
+from renku.domain_model.project_context import project_context
 
 
 def test_1st_tool(client, client_database_injection_manager):
@@ -35,11 +35,11 @@ def test_1st_tool(client, client_database_injection_manager):
 
 def test_03_input(client, client_database_injection_manager):
     """Check the essential input parameters."""
-    whale = Path(project_properties.path) / "whale.txt"
+    whale = Path(project_context.path) / "whale.txt"
     whale.touch()
 
-    project_properties.repository.add(whale)
-    project_properties.repository.commit("add whale.txt")
+    project_context.repository.add(whale)
+    project_context.repository.commit("add whale.txt")
 
     argv = [
         "echo",
@@ -50,7 +50,7 @@ def test_03_input(client, client_database_injection_manager):
         "--file=whale.txt",
     ]
     with client_database_injection_manager(client):
-        plan = PlanFactory(argv, directory=project_properties.path, working_dir=project_properties.path).to_plan()
+        plan = PlanFactory(argv, directory=project_context.path, working_dir=project_context.path).to_plan()
 
     assert ["-f"] == plan.parameters[0].to_argv()
 
@@ -68,15 +68,15 @@ def test_03_input(client, client_database_injection_manager):
 
 def test_base_command_detection(client, client_database_injection_manager):
     """Test base command detection."""
-    hello = Path(project_properties.path) / "hello.tar"
+    hello = Path(project_context.path) / "hello.tar"
     hello.touch()
 
-    project_properties.repository.add(hello)
-    project_properties.repository.commit("add hello.tar")
+    project_context.repository.add(hello)
+    project_context.repository.commit("add hello.tar")
 
     argv = ["tar", "xf", "hello.tar"]
     with client_database_injection_manager(client):
-        plan = PlanFactory(argv, directory=project_properties.path, working_dir=project_properties.path).to_plan()
+        plan = PlanFactory(argv, directory=project_context.path, working_dir=project_context.path).to_plan()
 
     assert "tar xf" == plan.command
     assert plan.inputs[0].default_value == "hello.tar"
@@ -87,19 +87,19 @@ def test_base_command_detection(client, client_database_injection_manager):
 
 def test_base_command_as_file_input(client, client_database_injection_manager):
     """Test base command detection when it is a script file."""
-    cwd = Path(project_properties.path)
+    cwd = Path(project_context.path)
     script = cwd / "script.py"
     script.touch()
 
     input_file = cwd / "input.csv"
     input_file.touch()
 
-    project_properties.repository.add(script, input_file)
-    project_properties.repository.commit("add file")
+    project_context.repository.add(script, input_file)
+    project_context.repository.commit("add file")
 
     argv = ["script.py", "input.csv"]
     with client_database_injection_manager(client):
-        plan = PlanFactory(argv, directory=project_properties.path, working_dir=project_properties.path).to_plan()
+        plan = PlanFactory(argv, directory=project_context.path, working_dir=project_context.path).to_plan()
 
     assert not plan.command
     assert 2 == len(plan.inputs)
@@ -116,18 +116,18 @@ def test_short_base_command_detection(client, client_database_injection_manager)
 
 def test_04_output(client, client_database_injection_manager):
     """Test describtion of outputs from a command."""
-    hello = Path(project_properties.path) / "hello.tar"
+    hello = Path(project_context.path) / "hello.tar"
     hello.touch()
 
-    project_properties.repository.add(hello)
-    project_properties.repository.commit("add hello.tar")
+    project_context.repository.add(hello)
+    project_context.repository.commit("add hello.tar")
 
     argv = ["tar", "xf", "hello.tar"]
-    factory = PlanFactory(argv, directory=project_properties.path, working_dir=project_properties.path)
+    factory = PlanFactory(argv, directory=project_context.path, working_dir=project_context.path)
 
     # simulate run
 
-    output = Path(project_properties.path) / "hello.txt"
+    output = Path(project_context.path) / "hello.txt"
     output.touch()
 
     factory.add_outputs([(output, None)])
@@ -143,16 +143,14 @@ def test_04_output(client, client_database_injection_manager):
 
 def test_05_stdout(client, client_database_injection_manager):
     """Test stdout mapping."""
-    output = Path(project_properties.path) / "output.txt"
+    output = Path(project_context.path) / "output.txt"
     output.touch()
 
-    project_properties.repository.add(output)
-    project_properties.repository.commit("add output")
+    project_context.repository.add(output)
+    project_context.repository.commit("add output")
 
     argv = ["echo", "Hello world!"]
-    factory = PlanFactory(
-        argv, directory=project_properties.path, working_dir=project_properties.path, stdout="output.txt"
-    )
+    factory = PlanFactory(argv, directory=project_context.path, working_dir=project_context.path, stdout="output.txt")
 
     assert "output.txt" == factory.stdout
     factory.add_outputs([("output.txt", None)])
@@ -167,14 +165,14 @@ def test_05_stdout(client, client_database_injection_manager):
 
 def test_stdout_with_conflicting_arg(client, client_database_injection_manager):
     """Test stdout with conflicting argument value."""
-    output = Path(project_properties.path) / "lalala"
+    output = Path(project_context.path) / "lalala"
     output.touch()
 
-    project_properties.repository.add(output)
-    project_properties.repository.commit("add lalala")
+    project_context.repository.add(output)
+    project_context.repository.commit("add lalala")
 
     argv = ["echo", "lalala"]
-    factory = PlanFactory(argv, directory=project_properties.path, working_dir=project_properties.path, stdout="lalala")
+    factory = PlanFactory(argv, directory=project_context.path, working_dir=project_context.path, stdout="lalala")
 
     assert "lalala" == factory.parameters[0].default_value
     assert "lalala" == factory.stdout
@@ -187,13 +185,13 @@ def test_stdout_with_conflicting_arg(client, client_database_injection_manager):
 
 def test_06_params(client, client_database_injection_manager):
     """Test referencing input parameters in other fields."""
-    hello = Path(project_properties.path) / "hello.tar"
+    hello = Path(project_context.path) / "hello.tar"
     hello.touch()
-    project_properties.repository.add(hello)
-    project_properties.repository.commit("add hello.tar")
+    project_context.repository.add(hello)
+    project_context.repository.commit("add hello.tar")
 
     argv = ["tar", "xf", "hello.tar", "goodbye.txt"]
-    factory = PlanFactory(argv, directory=project_properties.path, working_dir=project_properties.path)
+    factory = PlanFactory(argv, directory=project_context.path, working_dir=project_context.path)
 
     assert "goodbye.txt" == factory.parameters[0].default_value
 
@@ -217,7 +215,7 @@ def test_09_array_inputs(client, client_database_injection_manager):
         "-C=seven,eight,nine",
     ]
     with client_database_injection_manager(client):
-        plan = PlanFactory(argv, directory=project_properties.path, working_dir=project_properties.path).to_plan()
+        plan = PlanFactory(argv, directory=project_context.path, working_dir=project_context.path).to_plan()
 
     assert "seven,eight,nine" == plan.parameters[-1].default_value
     assert "-C=" == plan.parameters[-1].prefix
@@ -228,20 +226,20 @@ def test_09_array_inputs(client, client_database_injection_manager):
 @pytest.mark.parametrize("argv", [["wc"], ["wc", "-l"]])
 def test_stdin_and_stdout(argv, client, client_database_injection_manager):
     """Test stdout mapping."""
-    input_ = Path(project_properties.path) / "input.txt"
+    input_ = Path(project_context.path) / "input.txt"
     input_.touch()
-    output = Path(project_properties.path) / "output.txt"
+    output = Path(project_context.path) / "output.txt"
     output.touch()
-    error = Path(project_properties.path) / "error.txt"
+    error = Path(project_context.path) / "error.txt"
     error.touch()
 
-    project_properties.repository.add(input_, output, error)
-    project_properties.repository.commit("add files")
+    project_context.repository.add(input_, output, error)
+    project_context.repository.commit("add files")
 
     factory = PlanFactory(
         argv,
-        directory=project_properties.path,
-        working_dir=project_properties.path,
+        directory=project_context.path,
+        working_dir=project_context.path,
         stdin="input.txt",
         stdout="output.txt",
         stderr="error.txt",
@@ -273,7 +271,7 @@ def test_stdin_and_stdout(argv, client, client_database_injection_manager):
 
 def test_input_directory(client, client_database_injection_manager):
     """Test input directory."""
-    cwd = Path(project_properties.path)
+    cwd = Path(project_context.path)
     src = cwd / "src"
     src.mkdir(parents=True)
 
@@ -283,11 +281,11 @@ def test_input_directory(client, client_database_injection_manager):
     src_tar = cwd / "src.tar"
     src_tar.touch()
 
-    project_properties.repository.add(src, src_tar)
-    project_properties.repository.commit("add file and folder")
+    project_context.repository.add(src, src_tar)
+    project_context.repository.commit("add file and folder")
 
     argv = ["tar", "czvf", "src.tar", "src"]
-    factory = PlanFactory(argv, directory=project_properties.path, working_dir=project_properties.path)
+    factory = PlanFactory(argv, directory=project_context.path, working_dir=project_context.path)
 
     with client_database_injection_manager(client):
         plan = factory.to_plan()
@@ -305,11 +303,11 @@ def test_existing_output_directory(client, runner, project, client_database_inje
     """Test creation of InitialWorkDirRequirement for output."""
     from renku.core.workflow.converters.cwl import CWLConverter
 
-    project_properties.path = project_properties.path
-    output = project_properties.path / "output"
+    project_context.path = project_context.path
+    output = project_context.path / "output"
 
     argv = ["script", "output"]
-    factory = PlanFactory(argv, directory=project_properties.path, working_dir=project_properties.path)
+    factory = PlanFactory(argv, directory=project_context.path, working_dir=project_context.path)
 
     with factory.watch(client, no_output=True) as tool:
         # Script creates the directory.
@@ -318,7 +316,7 @@ def test_existing_output_directory(client, runner, project, client_database_inje
     with client_database_injection_manager(client):
         plan = factory.to_plan()
 
-    cwl, _ = CWLConverter.convert(plan, project_properties.path)
+    cwl, _ = CWLConverter.convert(plan, project_context.path)
 
     assert 1 == len([r for r in cwl.requirements if hasattr(r, "listing")])
 
@@ -331,7 +329,7 @@ def test_existing_output_directory(client, runner, project, client_database_inje
 
     with client_database_injection_manager(client):
         plan = tool.to_plan()
-    cwl, _ = CWLConverter.convert(plan, project_properties.path)
+    cwl, _ = CWLConverter.convert(plan, project_context.path)
 
     reqs = [r for r in cwl.requirements if hasattr(r, "listing")]
 

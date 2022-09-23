@@ -34,7 +34,6 @@ from renku.core.git import commit, with_project_metadata, worktree
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.migration.utils import OLD_METADATA_PATH
-from renku.core.project.project_properties import project_properties
 from renku.core.storage import init_external_storage, storage_installed
 from renku.core.template.template import (
     FileAction,
@@ -49,6 +48,7 @@ from renku.core.template.usecase import select_template
 from renku.core.util import communication
 from renku.core.util.os import is_path_empty
 from renku.domain_model.project import Project
+from renku.domain_model.project_context import project_context
 from renku.domain_model.template import Template, TemplateMetadata
 from renku.version import __version__, is_release
 
@@ -65,7 +65,7 @@ def create_backup_branch(path):
     Returns:
         Name of the backup branch.
     """
-    repository = project_properties.repository
+    repository = project_context.repository
 
     branch_name = None
     if not is_path_empty(path):
@@ -140,17 +140,17 @@ def _init(
     """
     client = client_dispatcher.current_client
 
-    if not project_properties.external_storage_requested:
+    if not project_context.external_storage_requested:
         external_storage_requested = False
 
-    project_properties.push_path(path, save_changes=True)
-    project_properties.datadir = data_dir
-    project_properties.external_storage_requested = external_storage_requested
+    project_context.push_path(path, save_changes=True)
+    project_context.datadir = data_dir
+    project_context.external_storage_requested = external_storage_requested
     ctx.obj = client = attr.evolve(client)
     client_dispatcher.push_created_client_to_stack(client)
 
     communication.echo("Initializing Git repository...")
-    project_properties.repository = init_repository(force=force, user=None, initial_branch=initial_branch)
+    project_context.repository = init_repository(force=force, user=None, initial_branch=initial_branch)
 
     # Initialize an empty database
     database_gateway = inject.instance(IDatabaseGateway)
@@ -162,7 +162,7 @@ def _init(
     if template is None:
         raise errors.TemplateNotFoundError(f"Couldn't find template with id {template_id}")
 
-    namespace, name = Project.get_namespace_and_name(use_project_properties=True, name=name)
+    namespace, name = Project.get_namespace_and_name(use_project_context=True, name=name)
     name = name or os.path.basename(path.rstrip(os.path.sep))
 
     metadata = dict()
@@ -210,7 +210,7 @@ def _init(
 
     # NOTE: clone the repo
     communication.echo("Initializing new Renku repository... ")
-    with project_properties.lock:
+    with project_context.lock:
         try:
             create_from_template(
                 rendered_template=rendered_template,
@@ -239,7 +239,7 @@ def init_repository(force=False, user=None, initial_branch=None) -> "Repository"
     from renku.infrastructure.repository import Repository
 
     # initialize repo and set user data
-    path = project_properties.path
+    path = project_context.path
     if force and (path / RENKU_HOME).exists():
         shutil.rmtree(path / RENKU_HOME)
     repository = Repository.initialize(path=path, branch=initial_branch)
@@ -252,7 +252,7 @@ def init_repository(force=False, user=None, initial_branch=None) -> "Repository"
     _ = repository.get_user()
 
     # initialize LFS if it is requested and installed
-    if project_properties.external_storage_requested and storage_installed():
+    if project_context.external_storage_requested and storage_installed():
         init_external_storage(force=force)
 
     return repository
@@ -284,22 +284,20 @@ def create_from_template(
         keywords(Optional[List[str]]): Keywords for project (Default value = None).
         install_mergetool(bool): Whether to setup renku metadata mergetool (Default value = False).
     """
-    commit_only = [f"{RENKU_HOME}/", str(project_properties.template_checksums_path)] + list(
-        rendered_template.get_files()
-    )
+    commit_only = [f"{RENKU_HOME}/", str(project_context.template_checksums_path)] + list(rendered_template.get_files())
 
     if install_mergetool:
         commit_only.append(".gitattributes")
 
     if data_dir:
-        data_path = project_properties.path / data_dir
+        data_path = project_context.path / data_dir
         data_path.mkdir(parents=True, exist_ok=True)
         keep = data_path / ".gitkeep"
         keep.touch(exist_ok=True)
         commit_only.append(str(keep))
 
     # add metadata.yml for backwards compatibility
-    metadata_path = project_properties.metadata_path.joinpath(OLD_METADATA_PATH)
+    metadata_path = project_context.metadata_path.joinpath(OLD_METADATA_PATH)
     with open(metadata_path, "w") as f:
         f.write(
             "# Dummy file kept for backwards compatibility, does not contain actual version\n"
@@ -360,7 +358,7 @@ def _create_from_template_local(
 
     metadata = {**default_metadata, **metadata}
 
-    project_properties.repository = init_repository(force=False, user=user, initial_branch=initial_branch)
+    project_context.repository = init_repository(force=False, user=user, initial_branch=initial_branch)
 
     # Initialize an empty database
     database_gateway = inject.instance(IDatabaseGateway)

@@ -105,9 +105,9 @@ def is_external_file(path: Union[Path, str], client_path: Path):
 
 def get_renku_version() -> Optional[str]:
     """Return project's Renku version from its Dockerfile."""
-    from renku.core.project.project_properties import project_properties
+    from renku.domain_model.project_context import project_context
 
-    return read_renku_version_from_dockerfile(project_properties.docker_path)
+    return read_renku_version_from_dockerfile(project_context.docker_path)
 
 
 def read_renku_version_from_dockerfile(path: Union[Path, str]) -> Optional[str]:
@@ -179,10 +179,10 @@ def prompt_for_credentials(provider_credentials: "ProviderCredentials") -> None:
 
 def is_protected_path(path: Path) -> bool:
     """Checks if a path is a protected path."""
-    from renku.core.project.project_properties import project_properties
+    from renku.domain_model.project_context import project_context
 
     try:
-        path_in_repo = str(path.relative_to(project_properties.path))
+        path_in_repo = str(path.relative_to(project_context.path))
     except ValueError:
         return False
 

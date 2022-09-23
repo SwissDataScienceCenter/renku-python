@@ -24,9 +24,9 @@ from pathlib import Path
 import pytest
 from packaging.version import Version
 
-from renku.core.project.project_properties import project_properties
 from renku.core.util.contexts import chdir
 from renku.core.util.yaml import write_yaml
+from renku.domain_model.project_context import project_context
 from renku.domain_model.template import TemplateMetadata, TemplateParameter
 from renku.infrastructure.repository import Actor, Repository
 from renku.ui.cli import cli
@@ -135,7 +135,7 @@ def test_template_set_failure(runner, client, client_database_injection_manager)
     assert 1 == result.exit_code, format_result_exception(result)
     assert "Project already has a template" in result.output
     with client_database_injection_manager(client):
-        assert "python-minimal" == project_properties.project.template_id
+        assert "python-minimal" == project_context.project.template_id
 
 
 def test_template_set(runner, client, client_database_injection_manager):
@@ -146,9 +146,9 @@ def test_template_set(runner, client, client_database_injection_manager):
 
     assert 0 == result.exit_code, format_result_exception(result)
     with client_database_injection_manager(client):
-        assert "R-minimal" == project_properties.project.template_id
-        assert __template_version__ == project_properties.project.template_version
-        assert __template_version__ == project_properties.project.template_ref
+        assert "R-minimal" == project_context.project.template_id
+        assert __template_version__ == project_context.project.template_version
+        assert __template_version__ == project_context.project.template_ref
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -162,7 +162,7 @@ def test_template_set_overwrites_modified(runner, repository, client_database_in
 
     assert 0 == result.exit_code, format_result_exception(result)
     with client_database_injection_manager(repository):
-        assert "R-minimal" == project_properties.project.template_id
+        assert "R-minimal" == project_context.project.template_id
     assert "my-modifications" not in (repository.path / "Dockerfile").read_text()
     assert not repository.is_dirty(untracked_files=True)
 
@@ -176,7 +176,7 @@ def test_template_set_interactive(runner, repository, client_database_injection_
 
     assert 0 == result.exit_code, format_result_exception(result)
     with client_database_injection_manager(repository):
-        assert "R-minimal" == project_properties.project.template_id
+        assert "R-minimal" == project_context.project.template_id
     assert ("my-modifications" in (repository.path / "Dockerfile").read_text()) is found
     assert not repository.is_dirty(untracked_files=True)
 
@@ -219,18 +219,18 @@ def test_template_update(runner, client, client_database_injection_manager):
 
     assert 0 == result.exit_code, format_result_exception(result)
     with client_database_injection_manager(client):
-        assert "python-minimal" == project_properties.project.template_id
-        assert "0.3.2" == project_properties.project.template_ref
-        assert "b9ab266fba136bdecfa91dc8d7b6d36b9d427012" == project_properties.project.template_version
+        assert "python-minimal" == project_context.project.template_id
+        assert "0.3.2" == project_context.project.template_ref
+        assert "b9ab266fba136bdecfa91dc8d7b6d36b9d427012" == project_context.project.template_version
 
     result = runner.invoke(cli, ["template", "update"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Template is up-to-date" not in result.output
     with client_database_injection_manager(client):
-        assert "python-minimal" == project_properties.project.template_id
-        assert Version(project_properties.project.template_ref) > Version("0.3.2")
-        assert "6c59d8863841baeca8f30062fd16c650cf67da3b" != project_properties.project.template_version
+        assert "python-minimal" == project_context.project.template_id
+        assert Version(project_context.project.template_ref) > Version("0.3.2")
+        assert "6c59d8863841baeca8f30062fd16c650cf67da3b" != project_context.project.template_version
 
     result = runner.invoke(cli, ["template", "update"])
 
@@ -304,7 +304,7 @@ def test_template_update_with_parameters(
     assert result.exit_code == 0, result.output
 
     with client_database_injection_manager(client_with_template):
-        template_metadata = TemplateMetadata.from_project(project=project_properties.project)
+        template_metadata = TemplateMetadata.from_project(project=project_context.project)
         assert "new-parameter" in template_metadata.metadata
         assert "new-value" == template_metadata.metadata["new-parameter"]
 
@@ -321,7 +321,7 @@ def test_template_update_with_parameters_with_defaults(
     assert result.exit_code == 0, result.output
 
     with client_database_injection_manager(client_with_template):
-        template_metadata = TemplateMetadata.from_project(project=project_properties.project)
+        template_metadata = TemplateMetadata.from_project(project=project_context.project)
         assert "new-parameter" in template_metadata.metadata
         assert "def-val" == template_metadata.metadata["new-parameter"]
 
@@ -338,7 +338,7 @@ def test_template_set_with_parameters(
     assert result.exit_code == 0, result.output
 
     with client_database_injection_manager(client_with_template):
-        template_metadata = TemplateMetadata.from_project(project=project_properties.project)
+        template_metadata = TemplateMetadata.from_project(project=project_context.project)
         assert "new-parameter" in template_metadata.metadata
         assert "param-value" == template_metadata.metadata["new-parameter"]
 

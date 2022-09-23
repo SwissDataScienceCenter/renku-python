@@ -22,7 +22,7 @@ from typing import Union
 from renku.core import errors
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.management.client import LocalClient
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 
 
 class ClientDispatcher(IClientDispatcher):
@@ -47,7 +47,7 @@ class ClientDispatcher(IClientDispatcher):
         if isinstance(path, str):
             path = Path(path)
 
-        with project_properties.with_path(path):
+        with project_context.with_path(path):
             new_client = LocalClient()
             self.push_created_client_to_stack(new_client)
 

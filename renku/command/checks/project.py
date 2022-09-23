@@ -39,7 +39,7 @@ def check_project_id_group(client, fix, project_gateway: IProjectGateway, **kwar
     """
     current_project = project_gateway.get_project()
 
-    namespace, name = Project.get_namespace_and_name(use_project_properties=True)
+    namespace, name = Project.get_namespace_and_name(use_project_context=True)
 
     if namespace is None or name is None:
         return True, None

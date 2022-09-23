@@ -27,8 +27,8 @@ from uuid import UUID, uuid4
 from renku.core import errors
 from renku.core.config import get_value, set_value
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
-from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderParameter
@@ -108,7 +108,7 @@ class OLOSExporter(ExporterApi):
         from renku.domain_model.dataset import get_file_path_in_dataset
 
         deposition = _OLOSDeposition(server_url=self._server_url, access_token=self._access_token)
-        repository = project_properties.repository
+        repository = project_context.repository
 
         metadata = self._get_dataset_metadata()
         metadata["organizationalUnitId"] = deposition.get_org_unit()

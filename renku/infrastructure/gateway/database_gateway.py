@@ -28,8 +28,8 @@ from zc.relation.queryfactory import TransposingTransitive
 from zope.interface import Attribute, Interface, implementer
 
 from renku.core.interface.database_gateway import IDatabaseGateway
-from renku.core.project.project_properties import project_properties
 from renku.domain_model.dataset import Dataset
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.activity import Activity, ActivityCollection
 from renku.domain_model.workflow.plan import AbstractPlan
 from renku.infrastructure.database import RenkuOOBTree
@@ -63,13 +63,13 @@ def dump_activity(activity: Activity, catalog, cache) -> str:
 
 def load_activity(token: str, catalog, cache) -> Activity:
     """Load activity from storage token."""
-    database = project_properties.database
+    database = project_context.database
     return database["activities"].get(token)
 
 
 def dump_downstream_relations(relation: ActivityDownstreamRelation, catalog, cache):
     """Dump relation entry to database."""
-    btree = project_properties.database["_downstream_relations"]
+    btree = project_context.database["_downstream_relations"]
 
     btree[relation.id] = relation
 
@@ -78,7 +78,7 @@ def dump_downstream_relations(relation: ActivityDownstreamRelation, catalog, cac
 
 def load_downstream_relations(token, catalog, cache):
     """Load relation entry from database."""
-    btree = project_properties.database["_downstream_relations"]
+    btree = project_context.database["_downstream_relations"]
 
     return btree[token]
 
@@ -119,7 +119,7 @@ class DatabaseGateway(IDatabaseGateway):
 
     def initialize(self) -> None:
         """Initialize the database."""
-        database = project_properties.database
+        database = project_context.database
 
         database.clear()
         initialize_database(database)
@@ -127,13 +127,13 @@ class DatabaseGateway(IDatabaseGateway):
 
     def commit(self) -> None:
         """Commit changes to database."""
-        database = project_properties.database
+        database = project_context.database
 
         database.commit()
 
     def get_modified_objects_from_revision(self, revision_or_range: str) -> Generator[Persistent, None, None]:
         """Get all database objects modified in a revision."""
-        repository = project_properties.repository
+        repository = project_context.repository
 
         if ".." in revision_or_range:
             commits: Union[Generator, List] = repository.iterate_commits(revision=revision_or_range)
@@ -141,10 +141,10 @@ class DatabaseGateway(IDatabaseGateway):
             commits = [repository.get_commit(revision_or_range)]
 
         for commit in commits:
-            for file in commit.get_changes(paths=f"{project_properties.database_path}/**"):
+            for file in commit.get_changes(paths=f"{project_context.database_path}/**"):
                 if file.deleted:
                     continue
 
                 oid = Path(file.a_path).name
 
-                yield project_properties.database.get(oid)
+                yield project_context.database.get(oid)

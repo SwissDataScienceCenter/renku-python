@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, Tuple
 import pytest
 
 from renku.core import errors
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.infrastructure.database import Database
@@ -137,7 +137,7 @@ def with_injections_manager() -> Callable[["Repository"], None]:
 
         inject.configure(_bind, bind_in_runtime=False)
 
-        with project_properties.with_path(path, save_changes=True):
+        with project_context.with_path(path, save_changes=True):
             try:
                 yield
             finally:

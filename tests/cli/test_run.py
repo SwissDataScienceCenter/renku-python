@@ -22,7 +22,7 @@ from typing import cast
 
 import pytest
 
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 from renku.domain_model.workflow.plan import Plan
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.infrastructure.gateway.plan_gateway import PlanGateway
@@ -49,8 +49,8 @@ def test_run_many_args(client, run):
     output = "output.txt"
     for i in range(103):
         os.system("touch files/{}.txt".format(i))
-    project_properties.repository.add("files/")
-    project_properties.repository.commit("add many files")
+    project_context.repository.add("files/")
+    project_context.repository.commit("add many files")
 
     exit_code = run(args=("run", "ls", "files/"), stdout=output)
     assert 0 == exit_code
@@ -169,7 +169,7 @@ def test_run_invalid_name(runner, client):
     result = runner.invoke(cli, ["run", "--name", "invalid name", "touch", "foo"])
 
     assert 2 == result.exit_code
-    assert not (project_properties.path / "foo").exists()
+    assert not (project_context.path / "foo").exists()
     assert "Invalid name: 'invalid name' (Hint: 'invalid_name' is valid)." in result.output
 
 
@@ -256,7 +256,7 @@ def test_run_prints_plan_when_stdout_redirected(runner, client):
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Name: echo-command" in result.stderr
     assert "Name:" not in result.stdout
-    assert "Name:" not in (project_properties.path / "output").read_text()
+    assert "Name:" not in (project_context.path / "output").read_text()
 
 
 def test_run_prints_plan_when_stderr_redirected(runner, client):
@@ -264,7 +264,7 @@ def test_run_prints_plan_when_stderr_redirected(runner, client):
     result = runner.invoke(cli, ["run", "--verbose", "--name", "echo-command", "echo", "data"], stderr="output")
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Name: echo-command" in (project_properties.path / "output").read_text()
+    assert "Name: echo-command" in (project_context.path / "output").read_text()
     assert "Name:" not in result.output
 
 
@@ -272,9 +272,9 @@ def test_run_with_external_files(runner, client, directory_tree):
     """Test run commands that use external files."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-dataset", directory_tree]).exit_code
 
-    path = project_properties.path / "data" / "my-dataset" / "directory_tree" / "file1"
+    path = project_context.path / "data" / "my-dataset" / "directory_tree" / "file1"
 
     result = runner.invoke(cli, ["run", "tail", path], stdout="output")
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "file1" in (project_properties.path / "output").read_text()
+    assert "file1" in (project_context.path / "output").read_text()

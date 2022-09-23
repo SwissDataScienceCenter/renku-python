@@ -20,8 +20,8 @@
 import stat
 from pathlib import Path
 
-from renku.core.project.project_properties import project_properties
 from renku.core.util.git import get_hook_path
+from renku.domain_model.project_context import project_context
 
 try:
     import importlib_resources
@@ -55,6 +55,6 @@ def install(force: bool, path: Path):
 def uninstall():
     """Uninstall Git hooks."""
     for hook in HOOKS:
-        hook_path = get_hook_path(name=hook, path=project_properties.path)
+        hook_path = get_hook_path(name=hook, path=project_context.path)
         if hook_path.exists():
             hook_path.unlink()

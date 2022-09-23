@@ -25,7 +25,6 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ProviderApi, ProviderPriority
-from renku.core.project.project_properties import project_properties
 from renku.core.storage import pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.dataset import check_url
@@ -33,6 +32,7 @@ from renku.core.util.git import clone_repository, get_cache_directory_for_reposi
 from renku.core.util.os import get_files, is_subpath
 from renku.core.util.urls import remove_credentials
 from renku.domain_model.dataset import RemoteEntity
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderParameter
@@ -139,7 +139,7 @@ class GitProvider(ProviderApi):
 
         def get_metadata(src: Path, dst: Path) -> Optional["DatasetAddMetadata"]:
             path_in_src_repo = src.relative_to(remote_repository.path)  # type: ignore
-            path_in_dst_repo = dst.relative_to(project_properties.path)
+            path_in_dst_repo = dst.relative_to(project_context.path)
 
             already_copied = path_in_dst_repo in new_files  # A path with the same destination is already copied
             new_files[path_in_dst_repo].append(path_in_src_repo)
@@ -165,8 +165,8 @@ class GitProvider(ProviderApi):
         new_files: Dict[Path, List[Path]] = defaultdict(list)
 
         paths = get_source_paths()
-        with project_properties.with_path(remote_repository.path):
-            pull_paths_from_storage(project_properties.repository, *paths)
+        with project_context.with_path(remote_repository.path):
+            pull_paths_from_storage(project_context.repository, *paths)
         is_copy = should_copy(list(paths))
 
         for path in paths:

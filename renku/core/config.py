@@ -22,22 +22,22 @@ import os
 from io import StringIO
 
 from renku.core.constant import DATA_DIR_CONFIG_KEY
-from renku.core.project.project_properties import project_properties
 from renku.domain_model.enums import ConfigFilter
+from renku.domain_model.project_context import project_context
 
 
 def global_config_read_lock():
     """Create a user-level config read lock."""
     from renku.core.util.contexts import Lock
 
-    return Lock(project_properties.global_config_path)
+    return Lock(project_context.global_config_path)
 
 
 def global_config_write_lock():
     """Create a user-level config write lock."""
     from renku.core.util.contexts import Lock
 
-    return Lock(project_properties.global_config_path, mode="exclusive")
+    return Lock(project_context.global_config_path, mode="exclusive")
 
 
 def get_value(section, key, config_filter=ConfigFilter.ALL):
@@ -110,11 +110,11 @@ def load_config(config_filter=ConfigFilter.ALL):
         config_files = [default_ini]
 
     if config_filter == ConfigFilter.LOCAL_ONLY:
-        config_files += [project_properties.local_config_path]
+        config_files += [project_context.local_config_path]
     elif config_filter == ConfigFilter.GLOBAL_ONLY:
-        config_files += [project_properties.global_config_path]
+        config_files += [project_context.global_config_path]
     elif config_filter == ConfigFilter.ALL:
-        config_files += [project_properties.global_config_path, project_properties.local_config_path]
+        config_files += [project_context.global_config_path, project_context.local_config_path]
 
     if config_filter != ConfigFilter.LOCAL_ONLY:
         with global_config_read_lock():
@@ -140,7 +140,7 @@ def store_config(config, global_only):
     Global configuration is updated only when :global_only: is True,
     otherwise, updates are written to local project configuration
     """
-    filepath = project_properties.global_config_path if global_only else project_properties.local_config_path
+    filepath = project_context.global_config_path if global_only else project_context.local_config_path
 
     if global_only:
         with global_config_write_lock():

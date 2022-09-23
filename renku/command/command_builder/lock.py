@@ -18,7 +18,7 @@
 """Command builder for locking."""
 
 from renku.command.command_builder.command import Command, check_finalized
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 
 
 class ProjectLock(Command):
@@ -37,7 +37,7 @@ class ProjectLock(Command):
         if "stack" not in context:
             raise ValueError(f"{self.__class__.__name__} builder needs a stack to be set.")
 
-        context["stack"].enter_context(project_properties.lock)
+        context["stack"].enter_context(project_context.lock)
 
     @check_finalized
     def build(self) -> Command:

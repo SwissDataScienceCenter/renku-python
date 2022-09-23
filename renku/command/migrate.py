@@ -20,8 +20,8 @@ from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
 from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
-from renku.core.project.project_properties import project_properties
 from renku.core.template.usecase import check_for_template_update
+from renku.domain_model.project_context import project_context
 
 SUPPORTED_RENKU_PROJECT = 1
 MIGRATION_REQUIRED = 2
@@ -77,7 +77,7 @@ def _migrations_versions():
     from renku import __version__
 
     try:
-        latest_agent = project_properties.latest_agent
+        latest_agent = project_context.latest_agent
     except ValueError:
         # NOTE: maybe old project
         from renku.core.migration.utils import read_latest_agent
@@ -95,7 +95,7 @@ def _template_migration_check():
     """
 
     try:
-        project = project_properties.project
+        project = project_context.project
     except ValueError:
         project = None
         template_source = None
@@ -234,7 +234,7 @@ def _check_project(project_gateway: IProjectGateway):
     # NOTE: ``project.automated_update`` is deprecated and we always allow template update for a project
     status = AUTOMATED_TEMPLATE_UPDATE_SUPPORTED
 
-    if check_for_template_update(project_properties.project)[0]:
+    if check_for_template_update(project_context.project)[0]:
         status |= TEMPLATE_UPDATE_POSSIBLE
     if is_docker_update_possible()[0]:
         status |= DOCKERFILE_UPDATE_POSSIBLE

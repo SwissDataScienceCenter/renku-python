@@ -26,10 +26,10 @@ from werkzeug.utils import cached_property
 
 from renku.command.command_builder import inject
 from renku.core.interface.project_gateway import IProjectGateway
-from renku.core.project.project_properties import project_properties
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.git import get_entity_from_revision, get_git_user
 from renku.domain_model.entity import Collection, Entity
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.agent import Person, SoftwareAgent
 from renku.domain_model.provenance.annotation import Annotation
 from renku.domain_model.provenance.parameter import ParameterValue
@@ -147,7 +147,7 @@ class Activity(Persistent):
         parameter_values = []
 
         activity_id = id or cls.generate_id()
-        repository = project_properties.repository
+        repository = project_context.repository
 
         for input in plan.inputs:
             input_path = input.actual_value

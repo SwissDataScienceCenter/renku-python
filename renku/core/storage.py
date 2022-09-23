@@ -35,11 +35,11 @@ import pathspec
 from renku.core import errors
 from renku.core.config import get_value
 from renku.core.constant import RENKU_LFS_IGNORE_PATH, RENKU_PROTECTED_PATHS
-from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.file_size import parse_file_size
 from renku.core.util.git import get_in_submodules, run_command
 from renku.core.util.os import expand_directories
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.domain_model.entity import Entity  # type: ignore
@@ -109,7 +109,7 @@ def storage_installed():
 
 def storage_installed_locally():
     """Verify that git-lfs is installed for the project."""
-    repo_config = project_properties.repository.get_configuration(scope="local")
+    repo_config = project_context.repository.get_configuration(scope="local")
     return repo_config.has_section('filter "lfs"')
 
 
@@ -123,7 +123,7 @@ def check_external_storage():
     installed_locally = storage_installed_locally()
     is_storage_installed = installed_locally and storage_installed()
 
-    if project_properties.external_storage_requested and not is_storage_installed:
+    if project_context.external_storage_requested and not is_storage_installed:
         raise errors.ExternalStorageDisabled()
 
     if installed_locally and not storage_installed():
@@ -134,7 +134,7 @@ def check_external_storage():
 
 def renku_lfs_ignore():
     """Gets pathspec for files to not add to LFS."""
-    ignore_path = project_properties.path / RENKU_LFS_IGNORE_PATH
+    ignore_path = project_context.path / RENKU_LFS_IGNORE_PATH
 
     if not os.path.exists(ignore_path):
         return pathspec.PathSpec.from_lines("renku_gitwildmatch", RENKU_PROTECTED_PATHS)
@@ -158,7 +158,7 @@ def init_external_storage(force=False):
             _CMD_STORAGE_INSTALL + (["--force"] if force else []),
             stdout=PIPE,
             stderr=STDOUT,
-            cwd=project_properties.path,
+            cwd=project_context.path,
             universal_newlines=True,
         )
 
@@ -171,12 +171,12 @@ def init_external_storage(force=False):
 @check_external_storage_wrapper
 def track_paths_in_storage(*paths):
     """Track paths in the external storage."""
-    if not project_properties.external_storage_requested:
+    if not project_context.external_storage_requested:
         return
 
     # Calculate which paths can be tracked in lfs
     track_paths = []
-    attrs = project_properties.repository.get_attributes(*paths)
+    attrs = project_context.repository.get_attributes(*paths)
 
     for path in paths:
         path = Path(path)
@@ -186,10 +186,10 @@ def track_paths_in_storage(*paths):
             continue
 
         # Do not add files with filter=lfs in .gitattributes
-        if attrs.get(str(path), {}).get("filter") == "lfs" or not (project_properties.path / path).exists():
+        if attrs.get(str(path), {}).get("filter") == "lfs" or not (project_context.path / path).exists():
             continue
 
-        relative_path = Path(path).relative_to(project_properties.path) if path.is_absolute() else path
+        relative_path = Path(path).relative_to(project_context.path) if path.is_absolute() else path
 
         if (
             path.is_dir()
@@ -198,7 +198,7 @@ def track_paths_in_storage(*paths):
         ):
             track_paths.append(str(path / "**"))
         elif not renku_lfs_ignore().match_file(str(relative_path)):
-            file_size = os.path.getsize(str(os.path.relpath(project_properties.path / path, os.getcwd())))
+            file_size = os.path.getsize(str(os.path.relpath(project_context.path / path, os.getcwd())))
             if file_size >= get_minimum_lfs_file_size():
                 track_paths.append(str(relative_path))
 
@@ -209,7 +209,7 @@ def track_paths_in_storage(*paths):
                 *track_paths,
                 stdout=PIPE,
                 stderr=STDOUT,
-                cwd=project_properties.path,
+                cwd=project_context.path,
                 universal_newlines=True,
             )
 
@@ -238,7 +238,7 @@ def untrack_paths_from_storage(*paths):
             *paths,
             stdout=PIPE,
             stderr=STDOUT,
-            cwd=project_properties.path,
+            cwd=project_context.path,
             universal_newlines=True,
         )
 
@@ -252,10 +252,10 @@ def untrack_paths_from_storage(*paths):
 def list_tracked_paths():
     """List paths tracked in lfs."""
     try:
-        files = check_output(_CMD_STORAGE_LIST, cwd=project_properties.path, encoding="UTF-8")
+        files = check_output(_CMD_STORAGE_LIST, cwd=project_context.path, encoding="UTF-8")
     except (KeyboardInterrupt, OSError) as e:
         raise errors.ParameterError(f"Couldn't run 'git lfs ls-files':\n{e}")
-    files = [project_properties.path / f for f in files.splitlines()]
+    files = [project_context.path / f for f in files.splitlines()]
     return files
 
 
@@ -265,7 +265,7 @@ def list_unpushed_lfs_paths(repository: "Repository"):
 
     if len(repository.remotes) < 1 or (repository.active_branch and not repository.active_branch.remote_branch):
         raise errors.GitConfigurationError(
-            f"No git remote is configured for {project_properties.path} branch "
+            f"No git remote is configured for {project_context.path} branch "
             + f"{repository.active_branch.name}."  # type: ignore
             + "Cleaning the storage cache would lead to a loss of data as "
             + "it is not on a server. Please see "
@@ -273,12 +273,12 @@ def list_unpushed_lfs_paths(repository: "Repository"):
             + "information on how to sync with a remote."
         )
     try:
-        status = check_output(_CMD_STORAGE_STATUS, cwd=project_properties.path, encoding="UTF-8")
+        status = check_output(_CMD_STORAGE_STATUS, cwd=project_context.path, encoding="UTF-8")
     except (KeyboardInterrupt, OSError) as e:
         raise errors.ParameterError(f"Couldn't run 'git lfs status':\n{e}")
 
     files = status.split("Objects to be committed:")[0].splitlines()[2:]
-    return [project_properties.path / f.rsplit("(", 1)[0].strip() for f in files if f.strip()]
+    return [project_context.path / f.rsplit("(", 1)[0].strip() for f in files if f.strip()]
 
 
 @check_external_storage_wrapper
@@ -290,11 +290,11 @@ def pull_paths_from_storage(repository: "Repository", *paths):
         _, _, _, path = get_in_submodules(repository, repository.head.commit, path)
         try:
             absolute_path = Path(path).resolve()
-            relative_path = absolute_path.relative_to(project_properties.path)
+            relative_path = absolute_path.relative_to(project_context.path)
         except ValueError:  # An external file
             absolute_path = Path(os.path.abspath(path))
-            relative_path = absolute_path.relative_to(project_properties.path)
-        client_dict[project_properties.path].append(shlex.quote(str(relative_path)))
+            relative_path = absolute_path.relative_to(project_context.path)
+        client_dict[project_context.path].append(shlex.quote(str(relative_path)))
 
     for client_path, file_paths in client_dict.items():
         result = run_command(
@@ -321,7 +321,7 @@ def clean_storage_cache(*paths):
     untracked_paths = []
     local_only_paths = []
 
-    repository = project_properties.repository
+    repository = project_context.repository
 
     for path in expand_directories(paths):
         _, current_repository, _, path = get_in_submodules(
@@ -329,25 +329,25 @@ def clean_storage_cache(*paths):
         )
         try:
             absolute_path = Path(path).resolve()
-            relative_path = absolute_path.relative_to(project_properties.path)
+            relative_path = absolute_path.relative_to(project_context.path)
         except ValueError:  # An external file
             absolute_path = Path(os.path.abspath(path))
-            relative_path = absolute_path.relative_to(project_properties.path)
+            relative_path = absolute_path.relative_to(project_context.path)
 
-        if project_properties.path not in tracked_paths:
-            tracked_paths[project_properties.path] = list_tracked_paths()
+        if project_context.path not in tracked_paths:
+            tracked_paths[project_context.path] = list_tracked_paths()
 
-        if project_properties.path not in unpushed_paths:
+        if project_context.path not in unpushed_paths:
             u_paths = list_unpushed_lfs_paths(current_repository)
-            unpushed_paths[project_properties.path] = u_paths
+            unpushed_paths[project_context.path] = u_paths
 
-        if absolute_path in unpushed_paths[project_properties.path]:
+        if absolute_path in unpushed_paths[project_context.path]:
             local_only_paths.append(str(relative_path))
-        elif absolute_path not in tracked_paths[project_properties.path]:
+        elif absolute_path not in tracked_paths[project_context.path]:
             untracked_paths.append(str(relative_path))
         else:
-            client_dict[project_properties.path].append(str(relative_path))
-            repositories[project_properties.path] = current_repository
+            client_dict[project_context.path].append(str(relative_path))
+            repositories[project_context.path] = current_repository
 
     for client_path, paths in client_dict.items():
         current_repository = repositories[client_path]
@@ -382,7 +382,7 @@ def clean_storage_cache(*paths):
             prefix2 = old_pointer[2:4]
 
             # remove from lfs cache
-            object_path = project_properties.path / ".git" / "lfs" / "objects" / prefix1 / prefix2 / old_pointer
+            object_path = project_context.path / ".git" / "lfs" / "objects" / prefix1 / prefix2 / old_pointer
             object_path.unlink()
 
         # add paths so they don't show as modified
@@ -397,7 +397,7 @@ def checkout_paths_from_storage(*paths):
     result = run_command(
         _CMD_STORAGE_CHECKOUT,
         *paths,
-        cwd=project_properties.path,
+        cwd=project_context.path,
         stdout=PIPE,
         stderr=STDOUT,
         universal_newlines=True,
@@ -410,14 +410,14 @@ def checkout_paths_from_storage(*paths):
 def check_requires_tracking(*paths):
     """Check paths and return a list of those that must be tracked."""
 
-    if not project_properties.external_storage_requested:
+    if not project_context.external_storage_requested:
         return
 
-    attrs = project_properties.repository.get_attributes(*paths)
+    attrs = project_context.repository.get_attributes(*paths)
     track_paths = []
 
     for path in paths:
-        absolute_path = Path(os.path.abspath(project_properties.path / path))
+        absolute_path = Path(os.path.abspath(project_context.path / path))
         path = str(path)
 
         # Do not track symlinks in LFS
@@ -478,7 +478,7 @@ def get_lfs_migrate_filters() -> Tuple[List[str], List[str]]:
 
 def check_lfs_migrate_info(everything=False, use_size_filter=True):
     """Return list of file groups in history should be in LFS."""
-    ref = ["--everything"] if everything else ["--include-ref", project_properties.repository.active_branch.name]
+    ref = ["--everything"] if everything else ["--include-ref", project_context.repository.active_branch.name]
 
     includes, excludes = get_lfs_migrate_filters()
 
@@ -496,7 +496,7 @@ def check_lfs_migrate_info(everything=False, use_size_filter=True):
             command + ignore_pointers,
             stdout=PIPE,
             stderr=STDOUT,
-            cwd=project_properties.path,
+            cwd=project_context.path,
             universal_newlines=True,
         )
     except (KeyboardInterrupt, OSError) as e:
@@ -505,7 +505,7 @@ def check_lfs_migrate_info(everything=False, use_size_filter=True):
     if lfs_output.returncode != 0:
         # NOTE: try running without --pointers (old versions of git lfs)
         try:
-            lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=project_properties.path, universal_newlines=True)
+            lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=project_context.path, universal_newlines=True)
         except (KeyboardInterrupt, OSError) as e:
             raise errors.GitError(f"Couldn't run 'git lfs migrate info':\n{e}")
 
@@ -543,7 +543,7 @@ def migrate_files_to_lfs(paths):
     command = _CMD_STORAGE_MIGRATE_IMPORT + includes + excludes + object_map
 
     try:
-        lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=project_properties.path, universal_newlines=True)
+        lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=project_context.path, universal_newlines=True)
     except (KeyboardInterrupt, OSError) as e:
         raise errors.GitError(f"Couldn't run 'git lfs migrate import':\n{e}")
 
@@ -560,7 +560,7 @@ def migrate_files_to_lfs(paths):
     sha_mapping = dict()
 
     repo_root = Path(".")
-    repository = project_properties.repository
+    repository = project_context.repository
 
     for old_commit_sha, new_commit_sha in commit_sha_mapping:
         old_commit = repository.get_commit(old_commit_sha)

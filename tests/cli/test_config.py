@@ -25,7 +25,7 @@ from time import sleep
 import pytest
 
 import renku.core.config
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, retry_failed
 
@@ -134,17 +134,17 @@ def test_local_config_committed(client, runner, data_repository):
     assert commit_sha_after != commit_sha_before
 
     # Adding the same config should not create a new commit
-    commit_sha_before = project_properties.repository.head.commit.hexsha
+    commit_sha_before = project_context.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["config", "set", "local-key", "value"])
     assert 0 == result.exit_code, format_result_exception(result)
-    commit_sha_after = project_properties.repository.head.commit.hexsha
+    commit_sha_after = project_context.repository.head.commit.hexsha
     assert commit_sha_after == commit_sha_before
 
     # Adding a global config should not create a new commit
     result = runner.invoke(cli, ["config", "set", "global-key", "value", "--global"])
     assert 0 == result.exit_code, format_result_exception(result)
-    commit_sha_after = project_properties.repository.head.commit.hexsha
+    commit_sha_after = project_context.repository.head.commit.hexsha
     assert commit_sha_after == commit_sha_before
 
 
@@ -276,20 +276,20 @@ def test_config_interpolation_is_disabled(client, runner, value):
 
 def test_config_commit(client, runner, data_repository):
     """Test config changes only commits the renku config file."""
-    commit_sha_before = project_properties.repository.head.commit.hexsha
+    commit_sha_before = project_context.repository.head.commit.hexsha
 
-    (project_properties.path / "untracked").write_text("untracked")
-    (project_properties.path / "staged").write_text("staged")
-    project_properties.repository.add("staged")
+    (project_context.path / "untracked").write_text("untracked")
+    (project_context.path / "staged").write_text("staged")
+    project_context.repository.add("staged")
 
     result = runner.invoke(cli, ["config", "set", "key", "value"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert {os.path.join(".renku", "renku.ini")} == {
-        f.a_path for f in project_properties.repository.head.commit.get_changes()
+        f.a_path for f in project_context.repository.head.commit.get_changes()
     }
-    assert {"untracked"} == set(project_properties.repository.untracked_files)
-    assert {"staged"} == {f.a_path for f in project_properties.repository.staged_changes}
+    assert {"untracked"} == set(project_context.repository.untracked_files)
+    assert {"staged"} == {f.a_path for f in project_context.repository.staged_changes}
 
-    commit_sha_after = project_properties.repository.head.commit.hexsha
+    commit_sha_after = project_context.repository.head.commit.hexsha
     assert commit_sha_after != commit_sha_before

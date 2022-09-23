@@ -18,7 +18,6 @@
 """Renku storage command."""
 
 from renku.command.command_builder.command import Command
-from renku.core.project.project_properties import project_properties
 from renku.core.storage import (
     check_lfs_migrate_info,
     check_requires_tracking,
@@ -27,6 +26,7 @@ from renku.core.storage import (
     pull_paths_from_storage,
 )
 from renku.core.util import communication
+from renku.domain_model.project_context import project_context
 
 
 def _check_lfs(everything=False):
@@ -78,7 +78,7 @@ def _pull(paths):
     Args:
         paths: Paths to pull from LFS.
     """
-    pull_paths_from_storage(project_properties.repository, *paths)
+    pull_paths_from_storage(project_context.repository, *paths)
 
 
 def pull_command():

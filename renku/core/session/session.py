@@ -70,7 +70,7 @@ def session_start(
     gpu_request: Optional[str] = None,
 ):
     """Start interactive session."""
-    from renku.core.project.project_properties import project_properties
+    from renku.domain_model.project_context import project_context
 
     client = client_dispatcher.current_client
 
@@ -85,7 +85,7 @@ def session_start(
 
     project_name = get_renku_project_name()
     if image_name is None:
-        tag = project_properties.repository.head.commit.hexsha[:7]
+        tag = project_context.repository.head.commit.hexsha[:7]
         repo_host = get_image_repository_host()
         image_name = f"{project_name}:{tag}"
         if repo_host:
@@ -97,7 +97,7 @@ def session_start(
                 abort=True,
             )
             with communication.busy(msg=f"Building image {image_name}"):
-                _ = provider_api.build_image(project_properties.docker_path.parent, image_name, config)
+                _ = provider_api.build_image(project_context.docker_path.parent, image_name, config)
             communication.echo(f"Image {image_name} built successfully.")
     else:
         if not provider_api.find_image(image_name, config):

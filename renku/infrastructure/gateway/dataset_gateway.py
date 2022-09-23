@@ -22,8 +22,8 @@ from typing import List, Optional
 from persistent.list import PersistentList
 
 from renku.core.interface.dataset_gateway import IDatasetGateway
-from renku.core.project.project_properties import project_properties
 from renku.domain_model.dataset import Dataset, DatasetTag
+from renku.domain_model.project_context import project_context
 
 
 class DatasetGateway(IDatasetGateway):
@@ -31,32 +31,32 @@ class DatasetGateway(IDatasetGateway):
 
     def get_by_id(self, id: str) -> Dataset:
         """Get a dataset by id."""
-        dataset = project_properties.database.get_by_id(id)
+        dataset = project_context.database.get_by_id(id)
         assert isinstance(dataset, Dataset)
         return dataset
 
     def get_by_name(self, name: str) -> Optional[Dataset]:
         """Get a dataset by id."""
-        return project_properties.database["datasets"].get(name)
+        return project_context.database["datasets"].get(name)
 
     def get_all_active_datasets(self) -> List[Dataset]:
         """Return all datasets."""
-        return list(project_properties.database["datasets"].values())
+        return list(project_context.database["datasets"].values())
 
     def get_provenance_tails(self) -> List[Dataset]:
         """Return the provenance for all datasets."""
-        return list(project_properties.database["datasets-provenance-tails"].values())
+        return list(project_context.database["datasets-provenance-tails"].values())
 
     def get_all_tags(self, dataset: Dataset) -> List[DatasetTag]:
         """Return the list of all tags for a dataset."""
-        return list(project_properties.database["datasets-tags"].get(dataset.name, []))
+        return list(project_context.database["datasets-tags"].get(dataset.name, []))
 
     def add_tag(self, dataset: Dataset, tag: DatasetTag):
         """Add a tag from a dataset."""
-        tags: PersistentList = project_properties.database["datasets-tags"].get(dataset.name)
+        tags: PersistentList = project_context.database["datasets-tags"].get(dataset.name)
         if not tags:
             tags = PersistentList()
-            project_properties.database["datasets-tags"].add(tags, key=dataset.name)
+            project_context.database["datasets-tags"].add(tags, key=dataset.name)
 
         assert tag.dataset_id.value == dataset.id, f"Tag has wrong dataset id: {tag.dataset_id.value} != {dataset.id}"
 
@@ -64,7 +64,7 @@ class DatasetGateway(IDatasetGateway):
 
     def remove_tag(self, dataset: Dataset, tag: DatasetTag):
         """Remove a tag from a dataset."""
-        tags: PersistentList = project_properties.database["datasets-tags"].get(dataset.name)
+        tags: PersistentList = project_context.database["datasets-tags"].get(dataset.name)
         for t in tags:
             if t.name == tag.name:
                 tags.remove(t)
@@ -72,7 +72,7 @@ class DatasetGateway(IDatasetGateway):
 
     def add_or_remove(self, dataset: Dataset) -> None:
         """Add or remove a dataset."""
-        database = project_properties.database
+        database = project_context.database
 
         if dataset.date_removed:
             database["datasets"].pop(dataset.name, None)

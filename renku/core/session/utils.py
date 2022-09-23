@@ -19,19 +19,19 @@
 import urllib
 from typing import Optional
 
-from renku.core.project.project_properties import project_properties
 from renku.core.util.git import get_remote
 from renku.core.util.urls import parse_authentication_endpoint
+from renku.domain_model.project_context import project_context
 
 
 def get_renku_project_name() -> str:
     """Get the full name of a renku project."""
-    repository = project_properties.repository
+    repository = project_context.repository
 
     project_name = (
-        f"{project_properties.remote.owner}/{project_properties.remote.name}"
-        if project_properties.remote.name
-        else f"{project_properties.path.name}"
+        f"{project_context.remote.owner}/{project_context.remote.name}"
+        if project_context.remote.name
+        else f"{project_context.path.name}"
     )
     if get_remote(repository, name="renku-backup-origin") and project_name.startswith("repos/"):
         project_name = project_name.replace("repos/", "", 1)

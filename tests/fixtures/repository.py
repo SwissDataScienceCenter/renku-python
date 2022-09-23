@@ -28,8 +28,8 @@ import pytest
 from click.testing import CliRunner
 
 from renku.core.config import set_value
-from renku.core.project.project_properties import ProjectProperties, project_properties
 from renku.core.util.contexts import chdir
+from renku.domain_model.project_context import ProjectContext, project_context
 from renku.infrastructure.repository import Repository
 from renku.ui.cli.init import init
 from tests.utils import format_result_exception, modified_environ
@@ -63,7 +63,7 @@ def fake_home(tmp_path, monkeypatch) -> Generator[Path, None, None]:
     home_str = home.as_posix()
 
     with modified_environ(HOME=home_str, XDG_CONFIG_HOME=home_str), monkeypatch.context() as context:
-        context.setattr(ProjectProperties, "global_config_dir", os.path.join(home, ".renku"))
+        context.setattr(ProjectContext, "global_config_dir", os.path.join(home, ".renku"))
 
         # NOTE: fake user home directory
         with Repository.get_global_configuration(writable=True) as global_config:
@@ -79,15 +79,15 @@ def fake_home(tmp_path, monkeypatch) -> Generator[Path, None, None]:
 @pytest.fixture
 def project(fake_home) -> Generator[Repository, None, None]:
     """A Renku test project."""
-    project_properties.clear()
+    project_context.clear()
 
     with isolated_filesystem(fake_home.parent, delete=True) as project_path:
-        with project_properties.with_path(project_path):
+        with project_context.with_path(project_path):
             result = CliRunner().invoke(init, [".", "--template-id", "python-minimal"], "\n", catch_exceptions=False)
             assert 0 == result.exit_code, format_result_exception(result)
 
             repository = Repository(project_path, search_parent_directories=True)
-            project_properties.repository = repository
+            project_context.repository = repository
 
             yield repository
 

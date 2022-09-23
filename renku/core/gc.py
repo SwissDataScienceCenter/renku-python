@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,4 +15,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku interactive session module."""
+"""Project cleanup management."""
+
+from renku.core.constant import CACHE, RENKU_HOME, RENKU_TMP
+from renku.domain_model.project_context import project_context
+
+
+def remove_caches():
+    """Remove caches and temporary files."""
+    cache_paths = [CACHE, RENKU_TMP]
+    paths = [project_context.path / RENKU_HOME / p for p in cache_paths]
+
+    project_context.repository.clean(paths=paths)

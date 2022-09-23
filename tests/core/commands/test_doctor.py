@@ -18,9 +18,9 @@
 """Renku doctor tests."""
 
 from renku.core.constant import RENKU_LFS_IGNORE_PATH
-from renku.core.project.project_properties import project_properties
 from renku.core.storage import get_minimum_lfs_file_size
 from renku.domain_model.dataset import DatasetFile, Url
+from renku.domain_model.project_context import project_context
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.ui.cli import cli
 from tests.utils import create_dummy_activity, format_result_exception, with_dataset, write_and_commit_file
@@ -91,7 +91,7 @@ def test_lfs_broken_history(runner, client, tmp_path):
     assert "*.bin" in result.output
 
     # Exclude *.ipynb files from LFS in .renkulfsignore
-    (project_properties.path / RENKU_LFS_IGNORE_PATH).write_text("\n".join(["*swp", "*.bin", ".DS_Store"]))
+    (project_context.path / RENKU_LFS_IGNORE_PATH).write_text("\n".join(["*swp", "*.bin", ".DS_Store"]))
 
     result = runner.invoke(cli, ["doctor"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -184,27 +184,27 @@ def test_doctor_fix_activity_catalog(runner, client, client_database_injection_m
         activity_gateway.add(downstream)
 
         # Clear the activity catalog to imitate a project that hasn't persisted it
-        database = project_properties.database
+        database = project_context.database
         database["activity-catalog"].clear()
 
         database.commit()
 
-    project_properties.repository.add(all=True)
-    project_properties.repository.commit("Added dummy activities")
+    project_context.repository.add(all=True)
+    project_context.repository.commit("Added dummy activities")
 
     result = runner.invoke(cli, ["doctor"])
 
     assert 1 == result.exit_code, format_result_exception(result)
     assert "The project's workflow metadata needs to be rebuilt" in result.output
 
-    before_commit_sha = project_properties.repository.head.commit.hexsha
+    before_commit_sha = project_context.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["doctor", "--fix"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Workflow metadata was rebuilt" in result.output
-    assert before_commit_sha != project_properties.repository.head.commit.hexsha
-    assert not project_properties.repository.is_dirty(untracked_files=True)
+    assert before_commit_sha != project_context.repository.head.commit.hexsha
+    assert not project_context.repository.is_dirty(untracked_files=True)
 
     result = runner.invoke(cli, ["doctor", "--fix", "--force"])
 

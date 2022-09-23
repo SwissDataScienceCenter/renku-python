@@ -62,7 +62,6 @@ from renku.core.migration.utils import (
     generate_url_id,
     get_datasets_path,
 )
-from renku.core.project.project_properties import project_properties
 from renku.core.util import yaml as yaml
 from renku.core.util.datetime8601 import fix_datetime, parse_date
 from renku.core.util.dispatcher import get_client
@@ -70,6 +69,7 @@ from renku.core.util.doi import extract_doi, is_doi
 from renku.core.util.git import get_in_submodules
 from renku.core.util.urls import get_host, get_slug
 from renku.domain_model.dataset import generate_default_name
+from renku.domain_model.project_context import project_context
 from renku.infrastructure.repository import Commit
 from renku.version import __version__, version_url
 
@@ -90,7 +90,7 @@ def _set_entity_client_commit(entity, client, commit):
         if revision == "UNCOMMITTED":
             commit = commit
         elif client:
-            repository = project_properties.repository
+            repository = project_context.repository
             commit = repository.get_commit(revision)
         entity.commit = commit
 
@@ -117,7 +117,7 @@ def generate_project_id(name, creator, client_dispatcher: IClientDispatcher):
     client = client_dispatcher.current_client
 
     if client:
-        remote = project_properties.remote
+        remote = project_context.remote
         host = remote.host or host
         owner = remote.owner or owner
         name = remote.name or name
@@ -171,8 +171,8 @@ class Project:
     def __attrs_post_init__(self):
         """Initialize computed attributes."""
         if not self.creator:
-            old_metadata_path = project_properties.metadata_path.joinpath(OLD_METADATA_PATH)
-            repository = project_properties.repository
+            old_metadata_path = project_context.metadata_path.joinpath(OLD_METADATA_PATH)
+            repository = project_context.repository
             if old_metadata_path.exists():
                 self.creator = Person.from_commit(repository.get_previous_commit(old_metadata_path, first=True))
             else:
@@ -187,7 +187,7 @@ class Project:
             if self._id:
                 pass
             elif client and getattr(client, "project", None):
-                self._id = project_properties.project._id
+                self._id = project_context.project._id
             else:
                 raise
 
@@ -253,7 +253,7 @@ class CommitMixin:
         if self.path:
             path = self.path
             if self.client and os.path.isabs(path):
-                path = pathlib.Path(path).relative_to(project_properties.path)
+                path = pathlib.Path(path).relative_to(project_context.path)
             return generate_label(path, hexsha)
         return hexsha
 
@@ -262,14 +262,14 @@ class CommitMixin:
         if self.path and self.client:
             path = pathlib.Path(self.path)
             if path.is_absolute():
-                self.path = str(path.relative_to(project_properties.path))
+                self.path = str(path.relative_to(project_context.path))
 
         # always force "project" to be the current project
         if self.client:
             try:
-                self._project = project_properties.project
+                self._project = project_context.project
             except ValueError:
-                metadata_path = project_properties.metadata_path.joinpath(OLD_METADATA_PATH)
+                metadata_path = project_context.metadata_path.joinpath(OLD_METADATA_PATH)
                 self._project = Project.from_yaml(metadata_path, client=self.client)
 
         if not self._id:
@@ -289,7 +289,7 @@ class Entity(CommitMixin):
     @classmethod
     def from_revision(cls, client, path, revision="HEAD", parent=None, find_previous=True, **kwargs):
         """Return dependency from given path and revision."""
-        repository = project_properties.repository
+        repository = project_context.repository
 
         if find_previous:
             revision = repository.get_previous_commit(path, revision=revision)
@@ -298,9 +298,9 @@ class Entity(CommitMixin):
         else:
             assert isinstance(revision, Commit)
 
-        client, _, commit, path = get_in_submodules(project_properties.repository, revision, path)
+        client, _, commit, path = get_in_submodules(project_context.repository, revision, path)
 
-        path_ = project_properties.path / path
+        path_ = project_context.path / path
         if path != "." and path_.is_dir():
             entity = Collection(client=client, commit=commit, path=path, members=[], parent=parent)
 
@@ -311,7 +311,7 @@ class Entity(CommitMixin):
                 if member.name == ".gitkeep":
                     continue
 
-                member_path = str(member.relative_to(project_properties.path))
+                member_path = str(member.relative_to(project_context.path))
                 find_previous = True
 
                 if member_path in files_in_commit:
@@ -348,7 +348,7 @@ class Entity(CommitMixin):
     def entities(self):
         """Yield itself."""
         if self.client and not self.commit and self._label and "@UNCOMMITTED" not in self._label:
-            repository = project_properties.repository
+            repository = project_context.repository
             self.commit = repository.get_commit(self._label.rsplit("@", maxsplit=1)[-1])
 
         yield self
@@ -374,7 +374,7 @@ class Collection(Entity):
         """Generate default members as entities from current path."""
         if not self.client:
             return []
-        dir_path = project_properties.path / self.path
+        dir_path = project_context.path / self.path
 
         if not dir_path.exists():
             # likely a directory deleted in a previous commit
@@ -391,7 +391,7 @@ class Collection(Entity):
                 cls(
                     commit=self.commit,
                     client=self.client,
-                    path=str(path.relative_to(project_properties.path)),
+                    path=str(path.relative_to(project_context.path)),
                     parent=self,
                 )
             )
@@ -406,7 +406,7 @@ class Collection(Entity):
             yield from member.entities
 
         if self.client and not self.commit and self._label and "@UNCOMMITTED" not in self._label:
-            repository = project_properties.repository
+            repository = project_context.repository
             self.commit = repository.get_commit(self._label.rsplit("@", maxsplit=1)[-1])
 
         yield self
@@ -429,7 +429,7 @@ class MappedIOStream(object):
         """Generate an id for a mapped stream."""
         host = "localhost"
         if self.client:
-            host = project_properties.remote.host or host
+            host = project_context.remote.host or host
         host = os.environ.get("RENKU_DOMAIN") or host
 
         return urljoin("https://{host}".format(host=host), pathlib.posixpath.join("/iostreams", self.stream_type))
@@ -638,7 +638,7 @@ class Run(CommitMixin):
         """Generate an id for an argument."""
         host = "localhost"
         if client:
-            host = project_properties.remote.host or host
+            host = project_context.remote.host or host
         host = os.environ.get("RENKU_DOMAIN") or host
 
         if not identifier:
@@ -907,7 +907,7 @@ class ProcessRun(Activity):
     def __attrs_post_init__(self):
         """Calculate properties."""
         super().__attrs_post_init__()
-        repository = project_properties.repository
+        repository = project_context.repository
         commit_not_set = not self.commit or self.commit.hexsha in self._id
         if commit_not_set and self.client and Path(self.path).exists():
             self.commit = repository.get_previous_commit(self.path)
@@ -953,7 +953,7 @@ class ProcessRun(Activity):
         """Calculate action ID."""
         host = "localhost"
         if hasattr(cls, "client"):
-            host = project_properties.remote.host or host
+            host = project_context.remote.host or host
         host = os.environ.get("RENKU_DOMAIN") or host
 
         return urljoin(
@@ -964,7 +964,7 @@ class ProcessRun(Activity):
     @classmethod
     def from_run(cls, run, client, path, commit=None, subprocess_index=None, update_commits=False):
         """Convert a ``Run`` to a ``ProcessRun``."""
-        repository = project_properties.repository
+        repository = project_context.repository
 
         if not commit:
             commit = repository.head.commit
@@ -1135,7 +1135,7 @@ class Person:
 
         if id == "mailto:None" or not id or id.startswith("_:"):
             full_identity = Person.get_full_identity(email, affiliation, name)
-            id = Person.generate_id(email, full_identity, hostname=get_host(use_project_properties=False))
+            id = Person.generate_id(email, full_identity, hostname=get_host(use_project_context=False))
         label = label or name
 
         self.affiliation: str = affiliation
@@ -1418,7 +1418,7 @@ class DatasetFile(Entity):
     @property
     def full_path(self):
         """Return full path in the current reference frame."""
-        path = project_properties.path / self.path if self.client else self.path
+        path = project_context.path / self.path if self.client else self.path
         return Path(os.path.abspath(path))
 
     @property
@@ -1452,7 +1452,7 @@ class DatasetFile(Entity):
 
     def update_metadata(self, path, commit):
         """Update files metadata."""
-        self.path = str((project_properties.path / path).relative_to(project_properties.path))
+        self.path = str((project_context.path / path).relative_to(project_context.path))
         self.update_commit(commit)
         self.filename = self.default_filename()
         self.url = self.default_url()
@@ -1597,7 +1597,7 @@ class Dataset(Entity, CreatorMixin):
 
     def find_files(self, paths):
         """Return all paths that are in files container."""
-        files_paths = {str(project_properties.path / f.path) for f in self.files}
+        files_paths = {str(project_context.path / f.path) for f in self.files}
         return {p for p in paths if str(p) in files_paths}
 
     def find_file(self, path, return_index=False):
@@ -1675,7 +1675,7 @@ class Dataset(Entity, CreatorMixin):
         self.derived_from = Url(url_id=self._id)
 
         if self.client:
-            repository = project_properties.repository
+            repository = project_context.repository
             mutator = Person.from_repository(repository)
             if not any(c for c in self.creators if c.email == mutator.email):
                 self.creators.append(mutator)
@@ -1718,16 +1718,16 @@ class Dataset(Entity, CreatorMixin):
 
         if not self.path and self.client:
             absolute_path = LinkReference(
-                metadata_path=project_properties.metadata_path, name=f"datasets/{self.name}"
+                metadata_path=project_context.metadata_path, name=f"datasets/{self.name}"
             ).reference.parent
-            self.path = str(absolute_path.relative_to(project_properties.path))
+            self.path = str(absolute_path.relative_to(project_context.path))
 
         self._update_files_metadata()
 
         try:
             if self.client:
                 revision = self.commit.hexsha if self.commit else "HEAD"
-                repository = project_properties.repository
+                repository = project_context.repository
                 self.commit = repository.get_previous_commit(os.path.join(self.path, "metadata.yml"), revision=revision)
         except errors.GitCommitNotFoundError:
             pass
@@ -1742,16 +1742,16 @@ class Dataset(Entity, CreatorMixin):
             return
 
         for file_ in files:
-            path = project_properties.path / file_.path
+            path = project_context.path / file_.path
             file_exists = path.exists() or path.is_symlink()
 
             if not file_exists:
                 continue
 
             if file_.client is None:
-                repository = project_properties.repository
+                repository = project_context.repository
                 client, _, _, _ = get_in_submodules(
-                    project_properties.repository,
+                    project_context.repository,
                     repository.get_previous_commit(file_.path, revision="HEAD"),
                     file_.path,
                 )
@@ -2086,7 +2086,7 @@ def generate_file_id(client, hexsha, path):
     # Default is localhost.
     host = "localhost"
     if client:
-        host = project_properties.remote.host or host
+        host = project_context.remote.host or host
     host = os.environ.get("RENKU_DOMAIN") or host
 
     # TODO: Use plural name for entity id: /blob/ -> /blobs/

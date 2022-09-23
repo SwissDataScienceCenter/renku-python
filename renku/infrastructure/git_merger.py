@@ -32,10 +32,10 @@ from zc.relation.catalog import Catalog
 
 from renku.core import errors
 from renku.core.constant import DATABASE_PATH, RENKU_HOME
-from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.domain_model.dataset import Dataset, Url
 from renku.domain_model.project import Project
+from renku.domain_model.project_context import project_context
 from renku.domain_model.workflow.plan import AbstractPlan
 from renku.infrastructure.database import Database, Index
 from renku.infrastructure.repository import Repository
@@ -51,20 +51,18 @@ class GitMerger:
 
     def merge(self, local: Path, remote: Path, base: Path) -> None:
         """Merge two renku metadata entries together."""
-        repository = project_properties.repository
+        repository = project_context.repository
         self.remote_entries: List[RemoteEntry] = []
 
         self._setup_worktrees(repository)
 
         merged = False
-        self.local_database = project_properties.database
+        self.local_database = project_context.database
 
         try:
-            local_object = self.local_database.get_from_path(str(project_properties.path / local))
+            local_object = self.local_database.get_from_path(str(project_context.path / local))
             try:
-                base_object: Optional[Persistent] = self.local_database.get_from_path(
-                    str(project_properties.path / base)
-                )
+                base_object: Optional[Persistent] = self.local_database.get_from_path(str(project_context.path / base))
             except (errors.ObjectNotFoundError, JSONDecodeError):
                 base_object = None
 
@@ -72,7 +70,7 @@ class GitMerger:
                 # NOTE: Loop through all remote merge branches (Octo merge) and try to merge them
                 try:
                     self.remote_database = entry.database
-                    remote_object = self.remote_database.get_from_path(str(project_properties.path / remote))
+                    remote_object = self.remote_database.get_from_path(str(project_context.path / remote))
 
                     # NOTE: treat merge result as new local for subsequent merges
                     local_object = self.merge_objects(local_object, remote_object, base_object)

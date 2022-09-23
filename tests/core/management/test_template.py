@@ -22,7 +22,6 @@ from pathlib import Path
 import pytest
 
 from renku.core import errors
-from renku.core.project.project_properties import project_properties
 from renku.core.template.template import (
     FileAction,
     TemplateAction,
@@ -31,6 +30,7 @@ from renku.core.template.template import (
     get_file_actions,
 )
 from renku.core.template.usecase import check_for_template_update, update_template
+from renku.domain_model.project_context import project_context
 from renku.domain_model.template import TEMPLATE_MANIFEST
 
 TEMPLATES_URL = "https://github.com/SwissDataScienceCenter/renku-project-template"
@@ -68,7 +68,7 @@ def test_check_for_template_update(client_with_template, templates_source, clien
     templates_source.update(id="dummy", version="2.0.0")
 
     with client_database_injection_manager(client_with_template):
-        project = project_properties.project
+        project = project_context.project
         updates_available, _, current_version, new_version = check_for_template_update(project)
 
     assert updates_available is True
@@ -80,12 +80,12 @@ def test_template_update_files(client_with_template, templates_source, client_da
     """Test template update."""
     templates_source.update(id="dummy", version="2.0.0")
 
-    files_before = {p: Path(p).read_text() for p in project_properties.project.template_files}
+    files_before = {p: Path(p).read_text() for p in project_context.project.template_files}
 
     with client_database_injection_manager(client_with_template):
         update_template(force=False, interactive=False, dry_run=False)
 
-    for file in project_properties.project.template_files:
+    for file in project_context.project.template_files:
         assert Path(file).read_text() != files_before[file]
 
 
@@ -111,16 +111,14 @@ def test_template_update_source_failure(client_with_template, client_database_in
 )
 def test_copy_template_actions(project, rendered_template, action, content_type, client_database_injection_manager):
     """Test FileActions when copying a template."""
-    project_content = (project_properties.path / "Dockerfile").read_text()
+    project_content = (project_context.path / "Dockerfile").read_text()
     template_content = (rendered_template.path / "Dockerfile").read_text()
 
     # NOTE: Ignore all other files expect the Dockerfile
     actions = {f: FileAction.IGNORE_UNCHANGED_REMOTE for f in rendered_template.get_files()}
     actions["Dockerfile"] = action
     with client_database_injection_manager(project):
-        copy_template_to_client(
-            rendered_template=rendered_template, project=project_properties.project, actions=actions
-        )
+        copy_template_to_client(rendered_template=rendered_template, project=project_context.project, actions=actions)
 
     # NOTE: Make sure that files have some content
     assert project_content
@@ -134,7 +132,7 @@ def test_copy_template_actions(project, rendered_template, action, content_type,
     else:
         expected_content = project_content
 
-    assert expected_content == (project_properties.path / "Dockerfile").read_text()
+    assert expected_content == (project_context.path / "Dockerfile").read_text()
 
 
 def test_get_file_actions_for_initialize(client, rendered_template, client_database_injection_manager):
@@ -188,7 +186,7 @@ def test_update_with_locally_modified_file(
     client_with_template, rendered_template_with_update, client_database_injection_manager
 ):
     """Test a locally modified file that is remotely updated won't change."""
-    (project_properties.path / "Dockerfile").write_text("Local modification")
+    (project_context.path / "Dockerfile").write_text("Local modification")
 
     with client_database_injection_manager(client_with_template):
         actions = get_file_actions(
@@ -202,7 +200,7 @@ def test_update_with_locally_deleted_file(
     client_with_template, rendered_template_with_update, client_database_injection_manager
 ):
     """Test a locally deleted file that is remotely updated won't be re-created."""
-    (project_properties.path / "Dockerfile").unlink()
+    (project_context.path / "Dockerfile").unlink()
 
     with client_database_injection_manager(client_with_template):
         actions = get_file_actions(
@@ -218,9 +216,9 @@ def test_update_with_locally_changed_immutable_file(
 ):
     """Test a locally deleted file that is remotely updated won't be re-created."""
     if delete:
-        (project_properties.path / "immutable.file").unlink()
+        (project_context.path / "immutable.file").unlink()
     else:
-        (project_properties.path / "immutable.file").write_text("Locally modified immutable files")
+        (project_context.path / "immutable.file").write_text("Locally modified immutable files")
 
     with pytest.raises(
         errors.TemplateUpdateError, match="Can't update template as immutable template file .* has local changes."

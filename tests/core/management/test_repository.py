@@ -22,7 +22,7 @@ from pathlib import Path
 
 from renku.command.dataset import create_dataset_command
 from renku.command.init import init_repository
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 
 
 def test_latest_version(project):
@@ -31,8 +31,8 @@ def test_latest_version(project):
 
     create_dataset_command().build().execute("ds1", title="", description="", creators=[])
 
-    with project_properties.with_path(project.path):
-        assert __version__ == project_properties.latest_agent
+    with project_context.with_path(project.path):
+        assert __version__ == project_context.latest_agent
 
 
 def test_latest_version_user_commits(repository):
@@ -47,17 +47,17 @@ def test_latest_version_user_commits(repository):
     repository.add(file)
     repository.commit("added my-file")
 
-    with project_properties.with_path(repository.path):
-        assert __version__ == project_properties.latest_agent
+    with project_context.with_path(repository.path):
+        assert __version__ == project_context.latest_agent
 
 
 def test_init_repository():
     """Test initializing an empty repository."""
-    with tempfile.TemporaryDirectory() as tempdir, project_properties.with_path(tempdir):
-        assert not (project_properties.path / ".git").exists()
+    with tempfile.TemporaryDirectory() as tempdir, project_context.with_path(tempdir):
+        assert not (project_context.path / ".git").exists()
 
         init_repository()
 
-        assert (project_properties.path / ".git").exists()
-        assert (project_properties.path / ".git" / "HEAD").exists()
-        assert not (project_properties.path / ".renku").exists()
+        assert (project_context.path / ".git").exists()
+        assert (project_context.path / ".git" / "HEAD").exists()
+        assert not (project_context.path / ".renku").exists()

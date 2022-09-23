@@ -20,8 +20,8 @@
 from typing import Optional, Tuple
 
 from renku.command.echo import WARNING
-from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
+from renku.domain_model.project_context import project_context
 from renku.infrastructure.gateway.activity_gateway import reindex_catalog
 
 
@@ -37,7 +37,7 @@ def check_activity_catalog(client, fix, force, **kwargs) -> Tuple[bool, Optional
     Returns:
         Tuple of whether the activity-catalog needs to be rebuilt and a string of found problems.
     """
-    database = project_properties.database
+    database = project_context.database
     activity_catalog = database["activity-catalog"]
     relations = database["_downstream_relations"]
 

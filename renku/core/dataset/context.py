@@ -25,8 +25,8 @@ from typing import Optional
 from renku.core import errors
 from renku.core.dataset.dataset import create_dataset
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.project.project_properties import project_properties
 from renku.domain_model.dataset import Dataset
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.agent import Person
 
 
@@ -77,7 +77,7 @@ class DatasetContext:
         if self.dataset and self.commit_database:
             self.datasets_provenance = DatasetsProvenance()
             self.datasets_provenance.add_or_update(self.dataset, creator=self.creator)
-            project_properties.database.commit()
+            project_context.database.commit()
 
 
 @contextlib.contextmanager

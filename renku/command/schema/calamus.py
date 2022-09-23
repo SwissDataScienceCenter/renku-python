@@ -27,7 +27,7 @@ from calamus.utils import normalize_type, normalize_value
 from marshmallow.base import SchemaABC
 
 from renku.core import errors
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 
 prov = fields.Namespace("http://www.w3.org/ns/prov#")
 rdfs = fields.Namespace("http://www.w3.org/2000/01/rdf-schema#")
@@ -68,7 +68,7 @@ class JsonLDSchema(CalamusJsonLDSchema):
                     self._add_field_to_data(
                         data,
                         "commit",
-                        project_properties.repository.get_commit(data["_label"].rsplit("@", maxsplit=1)[-1]),
+                        project_context.repository.get_commit(data["_label"].rsplit("@", maxsplit=1)[-1]),
                     )
                 except errors.GitCommitNotFoundError:
                     # NOTE: This means the commit does not exist in the local repository. Could be an external file?

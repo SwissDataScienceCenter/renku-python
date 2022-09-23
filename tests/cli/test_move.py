@@ -24,7 +24,7 @@ from pathlib import Path
 import pytest
 
 from renku.core.constant import DEFAULT_DATA_DIR as DATA_DIR
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
@@ -37,8 +37,8 @@ def test_move(runner, client):
     src2 = Path("src2") / "sub" / "src2.txt"
     src2.parent.mkdir(parents=True, exist_ok=True)
     src2.touch()
-    project_properties.repository.add(all=True)
-    project_properties.repository.commit("Add some files")
+    project_context.repository.add(all=True)
+    project_context.repository.commit("Add some files")
 
     result = runner.invoke(cli, ["mv", "-v", "src1", "src2", "dst/sub"])
 
@@ -93,9 +93,9 @@ def test_move_protected_paths(runner, client, path):
 
 def test_move_existing_destination(runner, client):
     """Test move to existing destination."""
-    (project_properties.path / "source").write_text("123")
-    project_properties.repository.add(all=True)
-    project_properties.repository.commit("source file")
+    (project_context.path / "source").write_text("123")
+    project_context.repository.add(all=True)
+    project_context.repository.commit("source file")
 
     result = runner.invoke(cli, ["mv", "source", "README.md"])
 
@@ -123,7 +123,7 @@ def test_move_to_ignored_file(runner, client):
 
 def test_move_empty_source(runner, client):
     """Test move from empty directory."""
-    (project_properties.path / "empty").mkdir()
+    (project_context.path / "empty").mkdir()
 
     result = runner.invoke(cli, ["mv", "empty", "data"])
 
@@ -174,7 +174,7 @@ def test_move_in_the_same_dataset(runner, project_with_datasets, args, load_data
 
     dataset = load_dataset_with_injection("dataset-2", project_with_datasets)
     assert {dst, dst.replace("file2", "file3")} == {f.entity.path for f in dataset.files}
-    assert not (project_properties.path / src).exists()
+    assert not (project_context.path / src).exists()
     file_after = dataset.find_file(dst)
     assert file_after.entity.checksum != file_before.entity.checksum
     assert dst == file_after.entity.path
@@ -187,7 +187,7 @@ def test_move_in_the_same_dataset(runner, project_with_datasets, args, load_data
 
 def test_move_to_existing_destination_in_a_dataset(runner, project_with_datasets, load_dataset_with_injection):
     """Test move to a file in dataset will update file's metadata."""
-    (project_properties.path / "source").write_text("new-content")
+    (project_context.path / "source").write_text("new-content")
     project_with_datasets.add(all=True)
     project_with_datasets.commit("source file")
 
@@ -253,7 +253,7 @@ def test_move_external_files(
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
 
     assert 0 == result.exit_code, result.output
-    assert not project_properties.repository.is_dirty(untracked_files=True)
+    assert not project_context.repository.is_dirty(untracked_files=True)
 
 
 def test_move_between_datasets(
@@ -294,7 +294,7 @@ def test_move_between_datasets(
     assert 0 == runner.invoke(cli, ["mv", "-f", src1, dst1, "--to-dataset", "dataset-1"]).exit_code
     src2 = os.path.join("data", "dataset-3", directory_tree.name, "file1")
     dst2 = os.path.join("data", "dataset-2")
-    (project_properties.path / dst2).mkdir(parents=True, exist_ok=True)
+    (project_context.path / dst2).mkdir(parents=True, exist_ok=True)
     result = runner.invoke(cli, ["mv", src2, dst2, "--force", "--to-dataset", "dataset-2"])
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -307,4 +307,4 @@ def test_move_between_datasets(
     }
 
     assert 0 == runner.invoke(cli, ["doctor"], catch_exceptions=False).exit_code
-    assert not project_properties.repository.is_dirty(untracked_files=True)
+    assert not project_context.repository.is_dirty(untracked_files=True)

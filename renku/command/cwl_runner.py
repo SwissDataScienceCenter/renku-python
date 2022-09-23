@@ -26,8 +26,8 @@ import click
 
 from renku.command.echo import progressbar
 from renku.core.errors import WorkflowRerunError
-from renku.core.project.project_properties import project_properties
 from renku.core.util.os import expand_directories
+from renku.domain_model.project_context import project_context
 
 
 def execute(output_file, output_paths=None):
@@ -92,7 +92,7 @@ def execute(output_file, output_paths=None):
             for output_dir in output_dirs:
                 if location.startswith(output_dir):
                     output_path = location[len(output_dir) :].lstrip(os.path.sep)
-                    destination = project_properties.path / output_path
+                    destination = project_context.path / output_path
                     if destination.is_dir():
                         shutil.rmtree(str(destination))
                         destination = destination.parent
@@ -113,7 +113,7 @@ def remove_unmodified(paths):
     # Keep only unchanged files in the output paths.
     tracked_paths = {
         d.b_path
-        for d in project_properties.repository.unstaged_changes
+        for d in project_context.repository.unstaged_changes
         if d.change_type in {"A", "R", "M", "T"} and d.b_path in tested_paths
     }
     unchanged_paths = tested_paths - tracked_paths

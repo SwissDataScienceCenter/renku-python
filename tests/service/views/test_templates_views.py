@@ -24,9 +24,9 @@ from time import sleep
 
 import pytest
 
-from renku.core.project.project_properties import project_properties
 from renku.core.template.template import fetch_templates_source
 from renku.core.util.os import normalize_to_ascii
+from renku.domain_model.project_context import project_context
 from renku.domain_model.template import TEMPLATE_MANIFEST, TemplatesManifest
 from renku.infrastructure.repository import Repository
 from renku.ui.service.errors import (
@@ -154,10 +154,10 @@ def test_create_project_from_template(svc_client_templates_creation, client_data
     assert reader.get_value("user", "email") == user_data["email"]
     assert reader.get_value("user", "name") == user_data["name"]
 
-    with project_properties.with_path(project_path):
-        with client_database_injection_manager(project_properties.repository):
-            project = project_properties.project
-        assert project_properties.datadir == "my-folder/"
+    with project_context.with_path(project_path):
+        with client_database_injection_manager(project_context.repository):
+            project = project_context.project
+        assert project_context.datadir == "my-folder/"
 
     expected_id = f"/projects/{payload['project_namespace']}/{stripped_name}"
     assert expected_id == project.id

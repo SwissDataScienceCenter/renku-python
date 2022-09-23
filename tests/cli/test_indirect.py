@@ -21,13 +21,13 @@ from pathlib import Path
 
 import pytest
 
-from renku.core.project.project_properties import project_properties
 from renku.core.util.contexts import chdir
+from renku.domain_model.project_context import project_context
 
 
 def test_indirect_inputs_outputs(renku_cli, client):
     """Test indirect inputs/outputs that are programmatically created."""
-    with chdir(project_properties.path):
+    with chdir(project_context.path):
         Path("foo").mkdir()
         Path(".renku/tmp").mkdir()
         Path("foo/bar").touch()
@@ -42,8 +42,8 @@ def test_indirect_inputs_outputs(renku_cli, client):
             """
         )
 
-        project_properties.repository.add(all=True)
-        project_properties.repository.commit("test setup")
+        project_context.repository.add(all=True)
+        project_context.repository.commit("test setup")
 
     exit_code, activity = renku_cli("run", "sh", "-c", "sh script.sh")
 
@@ -63,7 +63,7 @@ def test_indirect_inputs_outputs(renku_cli, client):
 
 def test_duplicate_indirect_inputs(renku_cli, client):
     """Test duplicate indirect inputs are only included once."""
-    with chdir(project_properties.path):
+    with chdir(project_context.path):
         Path("foo").mkdir()
         Path(".renku/tmp").mkdir()
         Path("foo/bar").touch()
@@ -80,8 +80,8 @@ def test_duplicate_indirect_inputs(renku_cli, client):
             """
         )
 
-        project_properties.repository.add(all=True)
-        project_properties.repository.commit("test setup")
+        project_context.repository.add(all=True)
+        project_context.repository.commit("test setup")
 
     exit_code, activity = renku_cli("run", "--no-output", "sh", "-c", "sh script.sh", "baz")
 
@@ -91,7 +91,7 @@ def test_duplicate_indirect_inputs(renku_cli, client):
 
 def test_duplicate_indirect_outputs(renku_cli, client):
     """Test duplicate indirect outputs are only included once."""
-    with chdir(project_properties.path):
+    with chdir(project_context.path):
         Path("foo").mkdir()
         Path(".renku/tmp").mkdir()
         Path("foo/bar").touch()
@@ -109,8 +109,8 @@ def test_duplicate_indirect_outputs(renku_cli, client):
             """
         )
 
-        project_properties.repository.add(all=True)
-        project_properties.repository.commit("test setup")
+        project_context.repository.add(all=True)
+        project_context.repository.commit("test setup")
 
     exit_code, activity = renku_cli("run", "sh", "-c", "sh script.sh")
 
@@ -120,7 +120,7 @@ def test_duplicate_indirect_outputs(renku_cli, client):
 
 def test_indirect_parameters(renku_cli, client):
     """Test indirect parameters."""
-    with chdir(project_properties.path):
+    with chdir(project_context.path):
         Path(".renku/tmp").mkdir()
 
         Path("script.sh").write_text(
@@ -132,8 +132,8 @@ def test_indirect_parameters(renku_cli, client):
             """
         )
 
-        project_properties.repository.add(all=True)
-        project_properties.repository.commit("test setup")
+        project_context.repository.add(all=True)
+        project_context.repository.commit("test setup")
 
     exit_code, activity = renku_cli("run", "--no-output", "sh", "-c", "sh script.sh")
 
@@ -149,7 +149,7 @@ def test_indirect_parameters(renku_cli, client):
 @pytest.mark.skip("renku update is not implemented with new database, reenable once it is.")
 def test_indirect_parameters_update(renku_cli, client):
     """Test updating of indirect parameters."""
-    with chdir(project_properties.path):
+    with chdir(project_context.path):
         Path(".renku/tmp").mkdir(exist_ok=True)
 
         Path("script.sh").write_text(
@@ -160,12 +160,12 @@ def test_indirect_parameters_update(renku_cli, client):
             """
         )
 
-        project_properties.repository.add(all=True)
-        project_properties.repository.commit("test setup")
+        project_context.repository.add(all=True)
+        project_context.repository.commit("test setup")
 
     renku_cli("run", "sh", "script.sh", stdout="result")
 
-    with chdir(project_properties.path):
+    with chdir(project_context.path):
         Path(".renku/tmp").mkdir(exist_ok=True)
 
         Path("script.sh").write_text(
@@ -175,8 +175,8 @@ def test_indirect_parameters_update(renku_cli, client):
             """
         )
 
-        project_properties.repository.add(all=True)
-        project_properties.repository.commit("test setup")
+        project_context.repository.add(all=True)
+        project_context.repository.commit("test setup")
 
     exit_code, activity = renku_cli("update", "--all")
 

@@ -74,8 +74,8 @@ from renku.command.options import option_external_storage_requested
 from renku.command.version import check_version, print_version
 from renku.core import errors
 from renku.core.constant import DATABASE_PATH
-from renku.core.project.project_properties import project_properties
 from renku.core.util.git import get_git_path
+from renku.domain_model.project_context import project_context
 from renku.ui.cli.clone import clone
 from renku.ui.cli.config import config
 from renku.ui.cli.dataset import dataset
@@ -153,7 +153,7 @@ def print_global_config_path(ctx, param, value):
     if not value or ctx.resilient_parsing:
         return
 
-    click.echo(project_properties.global_config_path)
+    click.echo(project_context.global_config_path)
     ctx.exit()
 
 
@@ -163,14 +163,14 @@ def is_allowed_subcommand(ctx):
     Subcommands where some sub-subcommands are allowed should be added to ``WARNING_UNPROTECTED_COMMANDS`` so they pass
     through the parent check and then added to ``WARNING_UNPROTECTED_SUBCOMMANDS`` so they get checked here.
     """
-    from renku.core.project.project_properties import project_properties
+    from renku.domain_model.project_context import project_context
 
-    if not _is_renku_project(project_properties.path) and (
+    if not _is_renku_project(project_context.path) and (
         not WARNING_UNPROTECTED_SUBCOMMANDS.get(ctx.command.name, False)
         or ctx.invoked_subcommand not in WARNING_UNPROTECTED_SUBCOMMANDS[ctx.command.name]
     ):
         raise errors.UsageError(
-            f"{project_properties.path} is not a renku repository.\n"
+            f"{project_context.path} is not a renku repository.\n"
             "To initialize this as a renku repository use: 'renku init'"
         )
 
@@ -213,7 +213,7 @@ def is_allowed_command(ctx):
 def cli(ctx, path, external_storage_requested):
     """Check common Renku commands used in various situations."""
     from renku.core.management.client import LocalClient
-    from renku.core.project.project_properties import project_properties
+    from renku.domain_model.project_context import project_context
 
     path = Path(path)
 
@@ -225,8 +225,8 @@ def cli(ctx, path, external_storage_requested):
             f"{path} is not a renku repository.\n" "To initialize this as a renku repository use: 'renku init'"
         )
 
-    project_properties.push_path(path)
-    project_properties.external_storage_requested = external_storage_requested
+    project_context.push_path(path)
+    project_context.external_storage_requested = external_storage_requested
     ctx.obj = LocalClient()
 
     if is_renku_project and path != Path(os.getcwd()) and not is_command_allowed:

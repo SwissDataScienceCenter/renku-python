@@ -20,7 +20,7 @@ r"""Renku API utilities."""
 from functools import wraps
 from typing import TYPE_CHECKING, Optional
 
-from renku.core.project.project_properties import project_properties
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.infrastructure.gateway.activity_gateway import ActivityGateway
@@ -63,7 +63,7 @@ def get_activity_gateway(project) -> Optional["ActivityGateway"]:
     from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 
     try:
-        _ = project_properties.repository
+        _ = project_context.repository
     except ValueError:
         return None
 
@@ -76,7 +76,7 @@ def get_plan_gateway(project) -> Optional["PlanGateway"]:
     from renku.infrastructure.gateway.plan_gateway import PlanGateway
 
     try:
-        _ = project_properties.repository
+        _ = project_context.repository
     except ValueError:
         return None
 

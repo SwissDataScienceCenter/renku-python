@@ -28,11 +28,11 @@ import networkx
 from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
-from renku.core.project.project_properties import project_properties
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.workflow.plan import get_activities, is_plan_removed, remove_plan
 from renku.domain_model.entity import Entity
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.activity import Activity
 
 
@@ -46,7 +46,7 @@ def get_activities_until_paths(
         existing_activities = all_activities[activity.association.plan.id]
         add_activity_if_recent(activity=activity, activities=existing_activities)
 
-    repository = project_properties.repository
+    repository = project_context.repository
     commit = None
 
     if revision:
@@ -428,7 +428,7 @@ def revert_activity(
     Returns:
         The deleted activity.
     """
-    repository = project_properties.repository
+    repository = project_context.repository
 
     delete_time = local_now()
 
@@ -482,7 +482,7 @@ def revert_activity(
 
         for path in deleted_paths:
             try:
-                os.unlink(project_properties.path / path)
+                os.unlink(project_context.path / path)
             except OSError:
                 communication.warn(f"Cannot delete '{path}'")
 

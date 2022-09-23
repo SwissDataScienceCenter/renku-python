@@ -50,9 +50,9 @@ from typing import TYPE_CHECKING, List, Optional, Union
 from werkzeug.local import LocalStack
 
 from renku.command.status import get_status_command
-from renku.core.project.project_properties import project_properties
 from renku.core.util.git import get_git_repository
 from renku.core.workflow.run import StatusResult
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.infrastructure.repository import Repository
@@ -72,9 +72,9 @@ class Project:
         else:
             path = repository.path
 
-        project_properties.replace_path(path)
-        project_properties.repository = repository
-        self._path = project_properties.path
+        project_context.replace_path(path)
+        project_context.repository = repository
+        self._path = project_context.path
         self._repository = repository
 
     def __enter__(self):
