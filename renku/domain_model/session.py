@@ -21,10 +21,7 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
-
-if TYPE_CHECKING:
-    from renku.core.management.client import LocalClient
+from typing import Any, Dict, List, Optional
 
 
 class Session:
@@ -96,7 +93,6 @@ class ISessionProvider(metaclass=ABCMeta):
         image_name: str,
         project_name: str,
         config: Optional[Dict[str, Any]],
-        client: "LocalClient",
         cpu_request: Optional[float] = None,
         mem_request: Optional[str] = None,
         disk_request: Optional[str] = None,
@@ -108,7 +104,6 @@ class ISessionProvider(metaclass=ABCMeta):
             image_name(str): Container image name to be used for the interactive session.
             project_name(str): The project identifier.
             config(Optional[Dict[str, Any]]): Path to the session provider specific configuration YAML.
-            client(LocalClient): Renku client.
             cpu_request(Optional[float]): CPU request for the session.
             mem_request(Optional[str]): Memory size request for the session.
             disk_request(Optional[str]): Disk size request for the session.
@@ -124,7 +119,7 @@ class ISessionProvider(metaclass=ABCMeta):
         """Stops all or a given interactive session.
 
         Args:
-            client: Renku client.
+            project_name: Project's name.
             session_name: The unique id of the interactive session.
             stop_all: Specifies whether or not to stop all the running interactive sessions.
 

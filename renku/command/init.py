@@ -23,15 +23,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional
 from uuid import uuid4
 
-import attr
-
 from renku.command.command_builder.command import Command, inject
 from renku.command.mergetool import setup_mergetool
 from renku.core import errors
 from renku.core.config import set_value
 from renku.core.constant import DATA_DIR_CONFIG_KEY, RENKU_HOME
 from renku.core.git import commit, with_project_metadata, worktree
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.migration.utils import OLD_METADATA_PATH
 from renku.core.storage import init_external_storage, storage_installed
@@ -99,9 +96,7 @@ def init_command():
     return Command().command(_init).with_database()
 
 
-@inject.autoparams()
 def _init(
-    ctx,
     external_storage_requested,
     path,
     name,
@@ -116,7 +111,6 @@ def _init(
     data_dir,
     initial_branch,
     install_mergetool,
-    client_dispatcher: IClientDispatcher,
 ):
     """Initialize a renku project.
 
@@ -136,18 +130,13 @@ def _init(
         data_dir: Where to store dataset data.
         initial_branch: Default git branch.
         install_mergetool(bool): Whether to set up the renku metadata mergetool in the created project.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
     """
-    client = client_dispatcher.current_client
-
     if not project_context.external_storage_requested:
         external_storage_requested = False
 
     project_context.push_path(path, save_changes=True)
     project_context.datadir = data_dir
     project_context.external_storage_requested = external_storage_requested
-    ctx.obj = client = attr.evolve(client)
-    client_dispatcher.push_created_client_to_stack(client)
 
     communication.echo("Initializing Git repository...")
     project_context.repository = init_repository(force=force, user=None, initial_branch=initial_branch)

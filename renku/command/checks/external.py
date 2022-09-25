@@ -16,22 +16,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Checks for external files."""
-import click
 
 from renku.command.command_builder import inject
-from renku.command.echo import WARNING
+from renku.command.util import WARNING, red_text, yellow_text
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.domain_model.project_context import project_context
 
 
 @inject.autoparams("dataset_gateway")
-def check_missing_external_files(client, dataset_gateway: IDatasetGateway, **kwargs):
+def check_missing_external_files(dataset_gateway: IDatasetGateway, **_):
     """Find external files that are missing.
 
     Args:
-        client: ``LocalClient``.
         dataset_gateway(IDatasetGateway): The injected dataset gateway.
-        kwargs: keyword arguments.
+        _: keyword arguments.
 
     Returns:
         Tuple of whether no external files are missing and string of found problems.
@@ -48,13 +46,9 @@ def check_missing_external_files(client, dataset_gateway: IDatasetGateway, **kwa
     if not missing:
         return True, None
 
+    missing_str = "\n\t".join(f"{yellow_text(path)} -> {red_text(target)}" for path, target in missing)
     problems = (
-        "\n" + WARNING + "There are missing external files.\n"
-        "  (make sure that external paths are accessible)"
-        + "\n\n\t"
-        + "\n\t".join(
-            click.style(path, fg="yellow") + " -> " + click.style(target, fg="red") for path, target in missing
-        )
-        + "\n"
+        f"\n{WARNING}There are missing external files.\n  (make sure that external paths are accessible)"
+        f"\n\n\t{missing_str}\n"
     )
     return False, problems

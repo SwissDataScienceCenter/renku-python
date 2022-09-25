@@ -308,7 +308,6 @@ def init(
 
     communicator = ClickCallback()
     init_command().with_communicator(communicator).build().execute(
-        ctx=ctx,
         external_storage_requested=external_storage_requested,
         path=path,
         name=name,

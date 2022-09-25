@@ -35,7 +35,6 @@ from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata
-    from renku.core.management.client import LocalClient
 
 
 class WebProvider(ProviderApi):
@@ -57,7 +56,6 @@ class WebProvider(ProviderApi):
 
     @staticmethod
     def add(
-        client: "LocalClient",
         uri: str,
         destination: Path,
         *,

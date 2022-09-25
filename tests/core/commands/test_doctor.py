@@ -153,7 +153,7 @@ def test_file_outside_datadir(runner, project_with_datasets, client_database_inj
 
     with client_database_injection_manager(project_with_datasets):
         with with_dataset(project_with_datasets, name="dataset-1", commit_database=True) as dataset:
-            dataset.add_or_update_files([DatasetFile.from_path(project_with_datasets, "some_file")])
+            dataset.add_or_update_files([DatasetFile.from_path("some_file")])
     project_with_datasets.add(all=True)
     project_with_datasets.commit("modified dataset")
 

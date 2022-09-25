@@ -26,14 +26,13 @@ from renku.core.dataset.providers.api import ImporterApi
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata
-    from renku.core.management.client import LocalClient
     from renku.domain_model.dataset import Dataset
 
 
 class RepositoryImporter(ImporterApi, abc.ABC):
     """Online repository importer."""
 
-    def download_files(self, client: "LocalClient", destination: Path, extract: bool) -> List["DatasetAddMetadata"]:
+    def download_files(self, destination: Path, extract: bool) -> List["DatasetAddMetadata"]:
         """Download dataset files from the remote provider."""
         from renku.core.dataset.providers.web import download_files
 

@@ -16,16 +16,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Warn if migration is required."""
-from renku.command.echo import ERROR, WARNING
-from renku.core.management.migrate import is_migration_required, is_project_unsupported
+
+from renku.command.util import ERROR, WARNING
+from renku.core.migrate import is_migration_required, is_project_unsupported
 
 
-def check_migration(client, **kwargs):
+def check_migration(**_):
     """Check for project version.
 
     Args:
-        client: ``LocalClient``.
-        kwargs: keyword arguments.
+        _: keyword arguments.
 
     Returns:
         Tuple of whether project metadata is up to date and string of found problems.

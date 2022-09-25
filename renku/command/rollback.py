@@ -17,15 +17,12 @@
 # limitations under the License.
 """Renku ``status`` command."""
 
-
 import os.path
 import re
 from itertools import islice
 from typing import Tuple
 
-from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.util import communication
 from renku.domain_model.dataset import Dataset
 from renku.domain_model.project_context import project_context
@@ -40,11 +37,8 @@ def rollback_command():
     return Command().command(_rollback_command).require_clean().require_migration().with_database()
 
 
-@inject.autoparams()
-def _rollback_command(client_dispatcher: IClientDispatcher):
+def _rollback_command():
     """Perform a rollback of the repo."""
-    current_client = client_dispatcher.current_client
-
     commits = project_context.repository.iterate_commits(project_context.metadata_path)
 
     checkpoint = _prompt_for_checkpoint(commits)
@@ -54,7 +48,7 @@ def _rollback_command(client_dispatcher: IClientDispatcher):
 
     diff = checkpoint[1].get_changes(commit="HEAD")
 
-    confirmation_message, has_changes = _get_confirmation_message(diff, current_client)
+    confirmation_message, has_changes = _get_confirmation_message(diff)
 
     if not has_changes:
         communication.echo("There would be no changes rolling back to the selected command, exiting.")
@@ -65,17 +59,16 @@ def _rollback_command(client_dispatcher: IClientDispatcher):
     project_context.repository.reset(checkpoint[1], hard=True)
 
 
-def _get_confirmation_message(diff, client) -> Tuple[str, bool]:
+def _get_confirmation_message(diff) -> Tuple[str, bool]:
     """Create a confirmation message for changes that would be done by a rollback.
 
     Args:
         diff: Diff between two commits.
-        client: Current ``LocalClient``.
 
     Returns:
         Tuple[str, bool]: Tuple of confirmation message and if there would be changes.
     """
-    modifications = _get_modifications_from_diff(client, diff)
+    modifications = _get_modifications_from_diff(diff)
 
     has_changes = False
 
@@ -112,11 +105,10 @@ def _get_confirmation_message(diff, client) -> Tuple[str, bool]:
     return confirmation_message, has_changes
 
 
-def _get_modifications_from_diff(client, diff):
+def _get_modifications_from_diff(diff):
     """Get all modifications from a diff.
 
     Args:
-        client: Current ``LocalClient``.
         diff: Diff between two commits.
 
     Returns:
@@ -225,7 +217,6 @@ def _prompt_for_checkpoint(commits):
             prompt = "Checkpoint ([q] to quit)"
             if more_pages:
                 prompt += ", [m] for more)"
-                default = "m"
             else:
                 prompt += ")"
             selection = communication.prompt("Checkpoint ([q] to quit)", default="q")

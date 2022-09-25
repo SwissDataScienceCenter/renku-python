@@ -33,7 +33,6 @@ from renku.core.dataset.providers.models import DatasetAddAction
 from renku.core.storage import check_external_storage, track_paths_in_storage
 from renku.core.util import communication, requests
 from renku.core.util.dataset import check_url
-from renku.core.util.dispatcher import get_client
 from renku.core.util.git import get_git_user
 from renku.core.util.os import delete_dataset_file, get_files, get_relative_path
 from renku.domain_model.dataset import Dataset, DatasetFile
@@ -41,7 +40,6 @@ from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata
-    from renku.core.management.client import LocalClient
 
 
 def add_to_dataset(
@@ -63,7 +61,6 @@ def add_to_dataset(
     **kwargs,
 ) -> Dataset:
     """Import the data into the data directory."""
-    client = get_client()
     repository = project_context.repository
     sources = sources or []
 
@@ -92,7 +89,6 @@ def add_to_dataset(
                     urls.append(str(file))
 
             files = _download_files(
-                client=client,
                 urls=urls,
                 dataset=dataset,
                 importer=importer,
@@ -122,7 +118,7 @@ def add_to_dataset(
             if not overwrite:
                 files, files_to_commit = _check_existing_files(dataset, files_to_commit, files)
 
-            move_files_to_dataset(client, files)
+            move_files_to_dataset(files)
 
             # Track non-symlinks in LFS
             if check_external_storage():
@@ -142,7 +138,7 @@ def add_to_dataset(
 
                 return dataset
 
-            dataset_files = _generate_dataset_files(client, dataset, files, clear_files_before)
+            dataset_files = _generate_dataset_files(dataset, files, clear_files_before)
 
             dataset.add_or_update_files(dataset_files)
             datasets_provenance = DatasetsProvenance()
@@ -164,7 +160,6 @@ def add_to_dataset(
 
 def _download_files(
     *,
-    client: "LocalClient",
     urls: List[str],
     importer: Optional[ImporterApi] = None,
     dataset: Dataset,
@@ -182,7 +177,7 @@ def _download_files(
         )
 
     if importer:
-        return importer.download_files(client=client, destination=destination, extract=extract)
+        return importer.download_files(destination=destination, extract=extract)
 
     if len(urls) == 0:
         raise errors.ParameterError("No URL is specified")
@@ -200,7 +195,6 @@ def _download_files(
         provider = ProviderFactory.get_add_provider(uri=url)
 
         new_files = provider.add(
-            client=client,
             uri=url,
             destination=destination,
             revision=revision,
@@ -292,7 +286,7 @@ def _check_existing_files(dataset: Dataset, files_to_commit: Set[str], files: Li
     return files, files_to_commit
 
 
-def move_files_to_dataset(client: "LocalClient", files: List["DatasetAddMetadata"]):
+def move_files_to_dataset(files: List["DatasetAddMetadata"]):
     """Copy/Move files into a dataset's directory."""
     for file in files:
         if not file.has_action:
@@ -307,20 +301,16 @@ def move_files_to_dataset(client: "LocalClient", files: List["DatasetAddMetadata
         elif file.action == DatasetAddAction.MOVE:
             shutil.move(file.source, file.destination, copy_function=shutil.copy)  # type: ignore
         elif file.action == DatasetAddAction.SYMLINK:
-            create_external_file(client=client, target=file.source, path=file.destination)
+            create_external_file(target=file.source, path=file.destination)
         else:
             raise errors.OperationError(f"Invalid action {file.action}")
 
 
-def _generate_dataset_files(
-    client: "LocalClient", dataset: Dataset, files: List["DatasetAddMetadata"], clear_files_before: bool = False
-):
+def _generate_dataset_files(dataset: Dataset, files: List["DatasetAddMetadata"], clear_files_before: bool = False):
     """Generate DatasetFile entries from file dict."""
     dataset_files = []
     for file in files:
-        dataset_file = DatasetFile.from_path(
-            client=client, path=file.entity_path, source=file.url, based_on=file.based_on
-        )
+        dataset_file = DatasetFile.from_path(path=file.entity_path, source=file.url, based_on=file.based_on)
         dataset_files.append(dataset_file)
 
     if clear_files_before:

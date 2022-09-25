@@ -26,7 +26,7 @@ import pytest
 
 from renku.core.constant import RENKU_HOME, RENKU_TMP
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
+from renku.core.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
 from renku.domain_model.dataset import RemoteEntity
 from renku.domain_model.project_context import project_context
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway

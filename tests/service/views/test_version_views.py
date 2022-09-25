@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service version view tests."""
-from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
+from renku.core.migrate import SUPPORTED_PROJECT_VERSION
 from renku.ui.service.views.api_versions import MAXIMUM_VERSION, MINIMUM_VERSION
 
 

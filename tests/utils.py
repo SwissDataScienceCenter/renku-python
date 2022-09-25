@@ -408,4 +408,4 @@ def assert_rpc_response(response, with_key="result"):
     """Check rpc result in response."""
     assert response and 200 == response.status_code
 
-    assert with_key in response.json.keys()
+    assert with_key in response.json.keys(), str(response.json)

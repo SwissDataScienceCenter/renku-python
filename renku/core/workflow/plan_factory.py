@@ -161,7 +161,7 @@ class PlanFactory:
             # (e.g. /bin/bash)
             if is_subpath(path, base=self.working_dir):
                 return path
-            elif is_external_file(path=candidate, client_path=self.working_dir):
+            elif is_external_file(path=candidate, project_path=self.working_dir):
                 return Path(os.path.abspath(candidate))
 
         return None

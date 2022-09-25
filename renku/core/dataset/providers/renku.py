@@ -24,12 +24,10 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from renku.command.command_builder.command import inject
 from renku.command.login import read_renku_token
 from renku.core import errors
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.providers.api import ImporterApi, ProviderApi, ProviderPriority
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.storage import pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.git import clone_renku_repository, get_cache_directory_for_repository, get_file_size
@@ -39,7 +37,6 @@ from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderDataset, ProviderParameter
-    from renku.core.management.client import LocalClient
     from renku.domain_model.dataset import Dataset
 
 
@@ -254,7 +251,6 @@ class RenkuImporter(ImporterApi):
 
         self._project_url = None
         self._remote_repository = None
-        self._remote_client = None
         self._remote_path = None
 
     def fetch_provider_dataset(self) -> "ProviderDataset":
@@ -263,7 +259,7 @@ class RenkuImporter(ImporterApi):
         assert self._provider_dataset is not None, "Dataset wasn't fetched."
         return self._provider_dataset
 
-    def download_files(self, client: "LocalClient", destination: Path, extract: bool) -> List["DatasetAddMetadata"]:
+    def download_files(self, destination: Path, extract: bool) -> List["DatasetAddMetadata"]:
         """Download dataset files from the remote provider."""
         from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
         from renku.domain_model.dataset import RemoteEntity
@@ -305,8 +301,8 @@ class RenkuImporter(ImporterApi):
             if already_copied:
                 return
 
-            if is_external_file(path=src_entity_path, client_path=remote_repository.path):  # type: ignore
-                source = (remote_repository.path / src_entity_path).resolve()  # type: ignore
+            if is_external_file(path=src_entity_path, project_path=remote_repository.path):
+                source = (remote_repository.path / src_entity_path).resolve()
                 action = DatasetAddAction.SYMLINK
             else:
                 source = content_path
@@ -440,14 +436,11 @@ class RenkuImporter(ImporterApi):
         """Whether the dataset data directory exists (might be missing in git if empty)."""
         return (self._remote_path / self.provider_dataset.get_datadir()).exists()
 
-    @inject.autoparams()
-    def _fetch_dataset(self, client_dispatcher: IClientDispatcher):
+    def _fetch_dataset(self):
         from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile
-        from renku.core.management.client import LocalClient
         from renku.domain_model.dataset import Url
 
         remote_repository = None
-        client = client_dispatcher.current_client
 
         parsed_uri = urllib.parse.urlparse(self.uri)
 
@@ -458,7 +451,7 @@ class RenkuImporter(ImporterApi):
             try:
                 remote_repository = clone_renku_repository(
                     url=url,
-                    path=get_cache_directory_for_repository(client=client, url=url),
+                    path=get_cache_directory_for_repository(url=url),
                     gitlab_token=self._gitlab_token,
                     deployment_hostname=parsed_uri.netloc,
                     depth=None,
@@ -476,39 +469,34 @@ class RenkuImporter(ImporterApi):
 
         with project_context.with_path(remote_repository.path):
             self._remote_path = project_context.path
-            self._remote_client = LocalClient()
-            client_dispatcher.push_created_client_to_stack(self._remote_client)
 
-            try:
-                self._migrate_project()
-                self._remote_repository = remote_repository
+            self._migrate_project()
+            self._remote_repository = remote_repository
 
-                datasets_provenance = DatasetsProvenance()
+            datasets_provenance = DatasetsProvenance()
 
-                dataset = datasets_provenance.get_by_name(self._name)
-                if not dataset:
-                    raise errors.ParameterError(f"Cannot find dataset '{self._name}' in project '{self._project_url}'")
+            dataset = datasets_provenance.get_by_name(self._name)
+            if not dataset:
+                raise errors.ParameterError(f"Cannot find dataset '{self._name}' in project '{self._project_url}'")
 
-                if self._tag:
-                    tags = datasets_provenance.get_all_tags(dataset=dataset)
-                    tag = next((t for t in tags if t.name == self._tag), None)
+            if self._tag:
+                tags = datasets_provenance.get_all_tags(dataset=dataset)
+                tag = next((t for t in tags if t.name == self._tag), None)
 
-                    if tag is None:
-                        raise errors.ParameterError(f"Cannot find tag '{self._tag}' for dataset '{self._name}'")
+                if tag is None:
+                    raise errors.ParameterError(f"Cannot find tag '{self._tag}' for dataset '{self._name}'")
 
-                    dataset = datasets_provenance.get_by_id(tag.dataset_id.value)
-                else:
-                    tag = None
+                dataset = datasets_provenance.get_by_id(tag.dataset_id.value)
+            else:
+                tag = None
 
-                assert dataset is not None
-                provider_dataset = ProviderDataset.from_dataset(dataset)
+            assert dataset is not None
+            provider_dataset = ProviderDataset.from_dataset(dataset)
 
-                # NOTE: Set the dataset version to the given tag (to reset the version if no tag was provided)
-                provider_dataset.version = self._tag
-                # NOTE: Store the tag so that it can be checked later to see if a tag was specified for import
-                provider_dataset.tag = tag
-            finally:
-                client_dispatcher.pop_client()
+            # NOTE: Set the dataset version to the given tag (to reset the version if no tag was provided)
+            provider_dataset.version = self._tag
+            # NOTE: Store the tag so that it can be checked later to see if a tag was specified for import
+            provider_dataset.tag = tag
 
         provider_dataset.derived_from = None
         provider_dataset.same_as = Url(url_id=remove_credentials(self.latest_uri))
@@ -529,8 +517,8 @@ class RenkuImporter(ImporterApi):
 
     @staticmethod
     def _migrate_project():
-        from renku.core.management.migrate import is_project_unsupported, migrate  # Slow import
-        from renku.core.migration.utils import MigrationType
+        from renku.core.migrate import is_project_unsupported, migrate_project  # Slow import
+        from renku.core.migration.models.migration import MigrationType
 
         if is_project_unsupported():
             return
@@ -538,7 +526,7 @@ class RenkuImporter(ImporterApi):
         try:
             communication.disable()
             # NOTE: We are not interested in migrating workflows when importing datasets
-            migrate(
+            migrate_project(
                 skip_template_update=True, skip_docker_update=True, migration_type=~MigrationType.WORKFLOWS, strict=True
             )
         finally:

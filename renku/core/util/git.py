@@ -31,7 +31,6 @@ from uuid import uuid4
 from renku.core import errors
 
 if TYPE_CHECKING:
-    from renku.core.management.client import LocalClient
     from renku.domain_model.entity import Collection, Entity
     from renku.domain_model.git import GitURL
     from renku.domain_model.provenance.agent import Person, SoftwareAgent
@@ -130,11 +129,10 @@ def get_oauth_url(url, gitlab_token):
     return parsed_url._replace(netloc=netloc).geturl()
 
 
-def get_cache_directory_for_repository(client, url) -> Path:
-    """Return a path to client's cache directory.
+def get_cache_directory_for_repository(url) -> Path:
+    """Return a path to project's cache directory.
 
     Args:
-        client: ``LocalCLient``.
         url: The repository URL.
 
     Returns:
@@ -939,15 +937,10 @@ def shorten_message(message: str, line_length: int = 100, body_length: int = 650
 
 def get_in_submodules(
     repository: "Repository", commit: "Commit", path: Union[Path, str]
-) -> Tuple["LocalClient", "Repository", "Commit", Path]:
+) -> Tuple["Repository", "Commit", Path]:
     """Resolve filename in submodules."""
-    from renku.core.management.client import LocalClient
-    from renku.domain_model.project_context import project_context
-
     original_path = repository.path / path
     in_vendor = str(path).startswith(".renku/vendors")
-
-    client = LocalClient()
 
     if original_path.is_symlink() or in_vendor:
         resolved_path = original_path.resolve()
@@ -959,14 +952,12 @@ def get_in_submodules(
             try:
                 path_within_submodule = resolved_path.relative_to(submodule.path)
                 commit = submodule.get_previous_commit(path=path_within_submodule, revision=commit.hexsha)
-                with project_context.with_path(submodule.path):
-                    subclient = LocalClient()
             except (ValueError, errors.GitCommitNotFoundError):
                 pass
             else:
-                return subclient, submodule, commit, path_within_submodule
+                return submodule, commit, path_within_submodule
 
-    return client, repository, commit, Path(path)
+    return repository, commit, Path(path)
 
 
 def get_dirty_paths(repository: "Repository") -> Set[str]:

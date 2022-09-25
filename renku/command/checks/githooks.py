@@ -19,7 +19,7 @@
 
 from io import StringIO
 
-from renku.command.echo import WARNING
+from renku.command.util import WARNING
 from renku.core.githooks import HOOKS
 from renku.core.util.git import get_hook_path
 from renku.domain_model.project_context import project_context
@@ -30,12 +30,11 @@ except ImportError:
     import importlib.resources as importlib_resources  # type: ignore
 
 
-def check_git_hooks_installed(client, **kwargs):
+def check_git_hooks_installed(**_):
     """Checks if all necessary hooks are installed.
 
     Args:
-        client: ``LocalClient``.
-        kwargs: keyword arguments.
+        _: keyword arguments.
 
     Returns:
         Tuple of whether git hooks are valid and string of found problems.
@@ -65,8 +64,8 @@ def check_git_hooks_installed(client, **kwargs):
     return True, None
 
 
-def _extract_renku_hook(file_):
-    lines = [line.strip() for line in file_ if line.strip()]
+def _extract_renku_hook(file):
+    lines = [line.strip() for line in file if line.strip()]
     start = end = -1
     for index, line in enumerate(lines):
         if line.startswith("# RENKU HOOK."):

@@ -35,7 +35,7 @@ from toil.job import Job, Promise
 from toil.leader import FailedJobsException
 from toil.lib.docker import apiDockerCall
 
-from renku.command.echo import progressbar
+from renku.command.util import progressbar
 from renku.core import errors
 from renku.core.constant import RENKU_HOME, RENKU_TMP
 from renku.core.errors import WorkflowExecuteError

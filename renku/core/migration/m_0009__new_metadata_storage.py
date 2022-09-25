@@ -25,23 +25,20 @@ from collections import defaultdict
 from hashlib import sha1
 from itertools import chain
 from pathlib import Path, PurePosixPath
-from typing import List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 from urllib.parse import urlparse
 
-import renku.core.management.migrate
 from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.interface.activity_gateway import IActivityGateway
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.interface.project_gateway import IProjectGateway
-from renku.core.management.client import LocalClient
 from renku.core.migration.models import v9 as old_schema
+from renku.core.migration.models.migration import DatasetMigrationContext, MigrationContext, MigrationType
 from renku.core.migration.utils import (
     OLD_DATASETS_PATH,
     OLD_METADATA_PATH,
-    MigrationType,
     read_project_version_from_yaml,
     set_temporary_datasets_path,
     unset_temporary_datasets_path,
@@ -63,25 +60,31 @@ from renku.domain_model.workflow.parameter import (
     MappedIOStream,
 )
 from renku.domain_model.workflow.plan import Plan
-from renku.infrastructure.repository import Commit
 
-PLAN_CACHE = {}
+if TYPE_CHECKING:
+    from renku.infrastructure.repository import Commit
 
 
-def migrate(migration_context):
+def migrate(migration_context: MigrationContext):
     """Migration function."""
-    client = migration_context.client
     repository = project_context.repository
-    committed = _commit_previous_changes(client)
+    committed = _commit_previous_changes()
     # NOTE: Initialize submodules
     _ = repository.submodules
-    _generate_new_metadata(
-        committed=committed,
-        strict=migration_context.options.strict,
-        migration_type=migration_context.options.type,
-        preserve_identifiers=migration_context.options.preserve_identifiers,
-    )
-    _remove_dataset_metadata_files(client)
+
+    migration_context.plan_cache = {}
+    try:
+        _generate_new_metadata(
+            migration_context=migration_context,
+            committed=committed,
+            strict=migration_context.options.strict,
+            migration_type=migration_context.options.type,
+            preserve_identifiers=migration_context.options.preserve_identifiers,
+        )
+    finally:
+        migration_context.plan_cache = None
+
+    _remove_dataset_metadata_files()
 
     metadata_path = project_context.metadata_path.joinpath(OLD_METADATA_PATH)
     with open(metadata_path, "w") as f:
@@ -91,11 +94,11 @@ def migrate(migration_context):
         )
 
 
-def _commit_previous_changes(client):
+def _commit_previous_changes():
     repository = project_context.repository
     if repository.is_dirty():
         project_path = project_context.metadata_path.joinpath(OLD_METADATA_PATH)
-        project = old_schema.Project.from_yaml(project_path, client)
+        project = old_schema.Project.from_yaml(project_path)
         project.version = "8"
         project.to_yaml(project_context.metadata_path.joinpath(project_path))
 
@@ -109,12 +112,12 @@ def _commit_previous_changes(client):
 
 
 @inject.autoparams()
-def maybe_migrate_project_to_database(client, project_gateway: IProjectGateway):
+def _maybe_migrate_project_to_database(project_gateway: IProjectGateway):
     """Migrate project to database if necessary."""
     metadata_path = project_context.metadata_path.joinpath(OLD_METADATA_PATH)
 
     if metadata_path.exists():
-        old_project = old_schema.Project.from_yaml(metadata_path, client=client)
+        old_project = old_schema.Project.from_yaml(metadata_path)
 
         id_path = urlparse(old_project._id).path
         id_path = id_path.replace("/projects/", "")
@@ -141,7 +144,7 @@ def maybe_migrate_project_to_database(client, project_gateway: IProjectGateway):
         project_gateway.update_project(new_project)
 
 
-def remove_graph_files(client):
+def _remove_graph_files():
     """Remove all graph files."""
     # NOTE: These are required for projects that have new graph files
     try:
@@ -162,11 +165,11 @@ def remove_graph_files(client):
         pass
 
 
-@inject.autoparams()
+@inject.autoparams("database_gateway", "activity_gateway")
 def _generate_new_metadata(
-    strict,
+    migration_context: MigrationContext,
+    strict: bool,
     migration_type: MigrationType,
-    client_dispatcher: IClientDispatcher,
     database_gateway: IDatabaseGateway,
     activity_gateway: IActivityGateway,
     force=True,
@@ -175,17 +178,16 @@ def _generate_new_metadata(
     preserve_identifiers=False,
 ):
     """Generate graph and dataset provenance metadata."""
-    client = client_dispatcher.current_client
     repository = project_context.repository
 
     if force:
-        remove_graph_files(client)
+        _remove_graph_files()
     elif has_graph_files():
         raise errors.OperationError("Graph metadata exists.")
 
     database_gateway.initialize()
 
-    maybe_migrate_project_to_database(client)
+    _maybe_migrate_project_to_database()
 
     datasets_provenance = DatasetsProvenance()
 
@@ -205,9 +207,11 @@ def _generate_new_metadata(
         try:
             # NOTE: Don't migrate workflows for dataset-only migrations
             if MigrationType.WORKFLOWS in migration_type:
-                _process_workflows(activity_gateway=activity_gateway, commit=commit, remove=remove, client=client)
+                _process_workflows(
+                    migration_context=migration_context, activity_gateway=activity_gateway, commit=commit, remove=remove
+                )
             _process_datasets(
-                client=client,
+                migration_context=migration_context,
                 commit=commit,
                 datasets_provenance=datasets_provenance,
                 is_last_commit=is_last_commit,
@@ -230,7 +234,7 @@ def _generate_new_metadata(
     database_gateway.commit()
 
 
-def _convert_run_to_plan(run: old_schema.Run, project_id) -> Plan:
+def _convert_run_to_plan(run: old_schema.Run, migration_context: MigrationContext, project_id) -> Plan:
     """Create a Plan from a Run."""
     assert not run.subprocesses, f"Cannot create a Plan from a Run with subprocesses: {run._id}"
 
@@ -238,12 +242,12 @@ def _convert_run_to_plan(run: old_schema.Run, project_id) -> Plan:
         # https://localhost/runs/723fd784-9347-4081-84de-a6dbb067545b/
         return run_id.rstrip("/").rsplit("/", maxsplit=1)[-1]
 
-    uuid = extract_run_uuid(run._id)
+    run_uuid = extract_run_uuid(run._id)
 
-    if uuid in PLAN_CACHE:
-        return PLAN_CACHE[uuid]
+    if run_uuid in migration_context.plan_cache:
+        return migration_context.plan_cache[run_uuid]
 
-    plan_id = Plan.generate_id(uuid=uuid)
+    plan_id = Plan.generate_id(uuid=run_uuid)
 
     def get_mime_type(entity: Union[old_schema.Entity, old_schema.Collection]) -> List[str]:
         return [DIRECTORY_MIME_TYPE] if isinstance(entity, old_schema.Collection) else ["application/octet-stream"]
@@ -316,7 +320,7 @@ def _convert_run_to_plan(run: old_schema.Run, project_id) -> Plan:
         success_codes=run.successcodes,
     )
 
-    PLAN_CACHE[uuid] = plan
+    migration_context.plan_cache[run_uuid] = plan
 
     return plan
 
@@ -341,7 +345,9 @@ def _get_process_runs(workflow_run: old_schema.WorkflowRun) -> List[old_schema.P
     return activities
 
 
-def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, commit: Commit, remove: bool):
+def _process_workflows(
+    migration_context: MigrationContext, activity_gateway: IActivityGateway, commit: "Commit", remove: bool
+):
 
     for file in commit.get_changes(paths=f"{project_context.metadata_path}/workflow/*.yaml"):
         if file.deleted:
@@ -356,7 +362,7 @@ def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, 
             communication.warn(f"Workflow file does not exists: '{path}'")
             continue
 
-        workflow = old_schema.Activity.from_yaml(path=path, client=client)
+        workflow = old_schema.Activity.from_yaml(path=path)
 
         if isinstance(workflow, old_schema.WorkflowRun):
             activities = _get_process_runs(workflow)
@@ -364,7 +370,7 @@ def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, 
             activities = [workflow]
 
         for old_activity in activities:
-            new_activities = _process_run_to_new_activity(process_run=old_activity)
+            new_activities = _process_run_to_new_activity(migration_context=migration_context, process_run=old_activity)
             for new_activity in new_activities:
                 activity_gateway.add(new_activity)
 
@@ -375,7 +381,9 @@ def _process_workflows(client: LocalClient, activity_gateway: IActivityGateway, 
                 pass
 
 
-def _process_run_to_new_activity(process_run: old_schema.ProcessRun) -> List[Activity]:
+def _process_run_to_new_activity(
+    migration_context: MigrationContext, process_run: old_schema.ProcessRun
+) -> List[Activity]:
     """Convert a ProcessRun to a new Activity."""
 
     def generate_activity_id(process_run_id: str, suffix: str = None) -> str:
@@ -409,7 +417,7 @@ def _process_run_to_new_activity(process_run: old_schema.ProcessRun) -> List[Act
     activities = []
     for i, run in enumerate(runs):
         activity_id = generate_activity_id(process_run._id, suffix=str(i) if i else None)
-        plan = _convert_run_to_plan(run, project_id=project_id)
+        plan = _convert_run_to_plan(run=run, migration_context=migration_context, project_id=project_id)
 
         agents = [_old_agent_to_new_agent(a) for a in process_run.agents or []]
         association_agent = _old_agent_to_new_agent(process_run.association.agent)
@@ -626,7 +634,11 @@ def _old_agent_to_new_agent(
 
 
 def _process_datasets(
-    client: LocalClient, commit: Commit, datasets_provenance: DatasetsProvenance, is_last_commit, preserve_identifiers
+    migration_context: MigrationContext,
+    commit: "Commit",
+    datasets_provenance: DatasetsProvenance,
+    is_last_commit,
+    preserve_identifiers,
 ):
     changes = commit.get_changes(paths=".renku/datasets/*/*.yml")
     changed_paths = [c.b_path for c in changes if not c.deleted]
@@ -634,8 +646,8 @@ def _process_datasets(
     deleted_paths = [c.a_path for c in changes if c.deleted]
     deleted_paths = [p for p in deleted_paths if len(Path(p).parents) == 4]
 
-    datasets, deleted_datasets = _fetch_datasets(
-        client=client, revision=commit.hexsha, paths=paths, deleted_paths=deleted_paths
+    datasets, deleted_datasets = fetch_datasets(
+        migration_context=migration_context, revision=commit.hexsha, paths=paths, deleted_paths=deleted_paths
     )
 
     revision = commit.hexsha
@@ -663,16 +675,20 @@ def _process_datasets(
         )
 
 
-def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], deleted_paths: List[str]):
+def fetch_datasets(
+    migration_context: MigrationContext,
+    revision: str,
+    paths: List[str],
+    deleted_paths: List[str],
+):
+    """Fetch a dataset from a given revision."""
     from renku.core.migration.models.v9 import Dataset
 
     repository = project_context.repository
 
-    datasets_path = project_context.path / ".renku" / "tmp" / OLD_DATASETS_PATH
+    datasets_path = repository.path / ".renku" / "tmp" / OLD_DATASETS_PATH
     shutil.rmtree(datasets_path, ignore_errors=True)
     datasets_path.mkdir(parents=True, exist_ok=True)
-
-    client.dataset_migration_context = _DatasetMigrationContext(repository=repository, revision=revision)
 
     def read_project_version():
         """Read project version at revision."""
@@ -722,20 +738,27 @@ def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], delete
             else:
                 existing.append(new_path)
 
+        migration_context.dataset_migration_context = DatasetMigrationContext(repository=repository, revision=revision)
+
         try:
+            from renku.core.migrate import migrate_project
+
             project_version = read_project_version()
             set_temporary_datasets_path(datasets_path)
             communication.disable()
-            renku.core.management.migrate.migrate(
-                project_version=project_version,
-                skip_template_update=True,
-                skip_docker_update=True,
-                max_version=8,
-                migration_type=MigrationType.DATASETS,
-            )
+
+            with project_context.with_path(repository.path):
+                migrate_project(
+                    project_version=project_version,
+                    skip_template_update=True,
+                    skip_docker_update=True,
+                    max_version=8,
+                    migration_type=MigrationType.DATASETS,
+                )
         finally:
             communication.enable()
             unset_temporary_datasets_path()
+            migration_context.dataset_migration_context = None
 
         return existing, deleted
 
@@ -743,7 +766,7 @@ def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], delete
 
     datasets = []
     for metadata_path in paths:
-        dataset = Dataset.from_yaml(metadata_path, client)
+        dataset = Dataset.from_yaml(metadata_path)
         # NOTE: Fixing dataset path after migration
         initial_identifier = Path(dataset.path).name
         dataset.path = f".renku/datasets/{initial_identifier}"
@@ -751,7 +774,7 @@ def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], delete
 
     deleted_datasets = []
     for metadata_path in deleted_paths:
-        dataset = Dataset.from_yaml(metadata_path, client)
+        dataset = Dataset.from_yaml(metadata_path)
         # NOTE: Fixing dataset path after migration
         initial_identifier = Path(dataset.path).name
         dataset.path = f".renku/datasets/{initial_identifier}"
@@ -760,34 +783,8 @@ def _fetch_datasets(client: LocalClient, revision: str, paths: List[str], delete
     return datasets, deleted_datasets
 
 
-class _DatasetMigrationContext:
-    def __init__(self, repository, revision):
-        self.repository = repository
-        self.revision = revision
-
-    def exists(self, path) -> bool:
-        try:
-            self.repository.run_git_command("cat-file", "-e", f"{self.revision}:{path}")
-        except errors.GitCommandError:
-            return False
-        else:
-            return True
-
-    def is_dir(self, path) -> bool:
-        try:
-            result = self.repository.run_git_command("cat-file", "-t", f"{self.revision}:{path}")
-        except errors.GitCommandError:
-            return False
-        else:
-            return "tree" in result
-
-    def get_previous_commit(self, path):
-        return self.repository.get_previous_commit(path, revision=self.revision)
-
-
-def _remove_dataset_metadata_files(client: LocalClient):
+def _remove_dataset_metadata_files():
     """Remove old dataset metadata."""
-
     try:
         shutil.rmtree(os.path.join(project_context.metadata_path, OLD_DATASETS_PATH))
     except FileNotFoundError:

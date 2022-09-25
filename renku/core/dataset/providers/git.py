@@ -36,7 +36,6 @@ from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderParameter
-    from renku.core.management.client import LocalClient
 
 
 class GitProvider(ProviderApi):
@@ -80,7 +79,6 @@ class GitProvider(ProviderApi):
 
     @staticmethod
     def add(
-        client: "LocalClient",
         uri: str,
         destination: Path,
         *,
@@ -96,7 +94,7 @@ class GitProvider(ProviderApi):
 
         remote_repository = clone_repository(
             url=uri,
-            path=get_cache_directory_for_repository(client=client, url=uri),
+            path=get_cache_directory_for_repository(url=uri),
             checkout_revision=revision,
             depth=None,
             clean=True,

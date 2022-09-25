@@ -29,7 +29,6 @@ from renku.command.view_model.composite_plan import CompositePlanViewModel
 from renku.command.view_model.plan import plan_view
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.util import communication
@@ -285,7 +284,6 @@ def compose_workflow(
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
     project_gateway: IProjectGateway,
-    client_dispatcher: IClientDispatcher,
 ) -> CompositePlan:
     """Compose workflows into a CompositePlan.
 
@@ -307,7 +305,6 @@ def compose_workflow(
         activity_gateway(IActivityGateway): Injected activity gateway.
         plan_gateway(IPlanGateway): Injected plan gateway.
         project_gateway(IProjectGateway): Injected project gateway.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
 
     Returns:
         The newly created ``CompositePlan``.
@@ -439,7 +436,6 @@ def export_workflow(
 
     Args:
         name_or_id: name or id of the Plan to export
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         plan_gateway(IPlanGateway): The injected Plan gateway.
         format(str): Format to export to.
         output(Optional[str]): Output path to store result at.
@@ -516,7 +512,6 @@ def visualize_graph(
     sources: List[str],
     targets: List[str],
     show_files: bool,
-    client_dispatcher: IClientDispatcher,
     activity_gateway: IActivityGateway,
     revision: Optional[str] = None,
 ):
@@ -526,7 +521,6 @@ def visualize_graph(
         sources(List[str]): Input paths to start the visualized graph at.
         targets(List[str]): Output paths to end the visualized graph at.
         show_files(bool): Whether or not to show file nodes.
-        client_dispatcher(IClientDispatcher): The client dispatcher.
         activity_gateway(IActivityGateway): The injected activity gateway.
         revision(Optional[str], optional): Revision or revision range to show
             the graph for  (Default value = None)

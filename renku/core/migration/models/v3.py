@@ -35,8 +35,6 @@ class Base:
 
     def __init__(self, **kwargs):
         """Initialize an instance."""
-        self.client = None
-
         kwargs.setdefault("_id", None)
 
         for k, v in kwargs.items():
@@ -51,11 +49,11 @@ class Person(Base):
     name = None
 
     @classmethod
-    def from_repository(cls, repository, client=None):
+    def from_repository(cls, repository):
         """Create an instance from a repository."""
         user = repository.get_user()
         instance = cls(name=user.name, email=user.email)
-        instance.fix_id(client)
+        instance.fix_id()
         return instance
 
     def __init__(self, **kwargs):
@@ -70,12 +68,10 @@ class Person(Base):
         affiliation = f" [{self.affiliation}]" if self.affiliation else ""
         return f"{self.name}{email}{affiliation}"
 
-    def fix_id(self, client=None):
+    def fix_id(self):
         """Fixes the id of a Person if it is not set."""
         if not self._id or "mailto:None" in self._id or self._id.startswith("_:"):
-            if not client and self.client:
-                client = self.client
-            hostname = get_host(client)
+            hostname = get_host()
             self._id = OldPerson.generate_id(email=self.email, full_identity=self.full_identity, hostname=hostname)
 
 
@@ -134,7 +130,7 @@ class DatasetTag(Base):
         super().__init__(**kwargs)
 
         if not self._id or self._id.startswith("_:"):
-            self._id = generate_dataset_tag_id(client=self.client, name=self.name, commit=self.commit)
+            self._id = generate_dataset_tag_id(name=self.name, commit=self.commit)
 
 
 class Language(Base):
@@ -158,17 +154,17 @@ class Url(Base):
             self.url_str = self.url
 
         if not self._id or self._id.startswith("_:"):
-            self._id = generate_url_id(client=self.client, url_str=self.url_str, url_id=self.url_id)
+            self._id = generate_url_id(url_str=self.url_str, url_id=self.url_id)
 
 
 class Dataset(Base):
     """Dataset migration model."""
 
     @classmethod
-    def from_yaml(cls, path, client=None, commit=None):
+    def from_yaml(cls, path, commit=None):
         """Read content from YAML file."""
         data = yaml.read_yaml(path)
-        self = DatasetSchemaV3(client=client, commit=commit).load(data)
+        self = DatasetSchemaV3(commit=commit).load(data)
         self._metadata_path = path
         return self
 
@@ -200,7 +196,7 @@ class PersonSchemaV3(JsonLDSchema):
     def make_instance(self, data, **kwargs):
         """Transform loaded dict into corresponding object."""
         instance = JsonLDSchema.make_instance(self, data, **kwargs)
-        instance.fix_id(client=None)
+        instance.fix_id()
         return instance
 
 
@@ -378,12 +374,12 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
         return data
 
 
-def get_client_datasets(client):
-    """Return Dataset migration models for a client."""
-    paths = get_datasets_path(client).rglob(OLD_METADATA_PATH)
+def get_project_datasets():
+    """Return Dataset migration models for a project."""
+    paths = get_datasets_path().rglob(OLD_METADATA_PATH)
     datasets = []
     for path in paths:
-        dataset = Dataset.from_yaml(path=path, client=client)
+        dataset = Dataset.from_yaml(path=path)
         dataset.path = getattr(dataset, "path", None) or os.path.relpath(path.parent, project_context.path)
         datasets.append(dataset)
 

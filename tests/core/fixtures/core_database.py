@@ -103,21 +103,6 @@ def get_test_bindings() -> Dict[str, Any]:
     return {"bindings": {}, "constructor_bindings": constructor_bindings}
 
 
-def add_client_binding(bindings: Dict[str, Any]) -> Dict[str, Any]:
-    """Add required client bindings."""
-    from renku.command.command_builder.client_dispatcher import ClientDispatcher
-    from renku.core.interface.client_dispatcher import IClientDispatcher
-    from renku.core.management.client import LocalClient
-
-    client = LocalClient()
-
-    client_dispatcher = ClientDispatcher()
-    client_dispatcher.push_created_client_to_stack(client)
-    bindings["bindings"].update({"LocalClient": client, IClientDispatcher: client_dispatcher})
-
-    return bindings
-
-
 @pytest.fixture
 def with_injections_manager() -> Callable[["Repository"], None]:
     """Factory fixture for test injections manager."""
@@ -145,7 +130,6 @@ def with_injections_manager() -> Callable[["Repository"], None]:
 
     def test_injection_manager_helper(repository: "Repository"):
         bindings = get_test_bindings()
-        add_client_binding(bindings=bindings)
         return with_injection(bindings=bindings, path=repository.path)
 
     return test_injection_manager_helper

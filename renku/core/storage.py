@@ -287,7 +287,7 @@ def pull_paths_from_storage(repository: "Repository", *paths):
     client_dict = defaultdict(list)
 
     for path in expand_directories(paths):
-        _, _, _, path = get_in_submodules(repository, repository.head.commit, path)
+        _, _, path = get_in_submodules(repository, repository.head.commit, path)
         try:
             absolute_path = Path(path).resolve()
             relative_path = absolute_path.relative_to(project_context.path)
@@ -324,9 +324,7 @@ def clean_storage_cache(*paths):
     repository = project_context.repository
 
     for path in expand_directories(paths):
-        _, current_repository, _, path = get_in_submodules(
-            repository=repository, commit=repository.head.commit, path=path
-        )
+        current_repository, _, path = get_in_submodules(repository=repository, commit=repository.head.commit, path=path)
         try:
             absolute_path = Path(path).resolve()
             relative_path = absolute_path.relative_to(project_context.path)

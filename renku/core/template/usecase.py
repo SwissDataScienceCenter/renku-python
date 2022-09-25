@@ -27,9 +27,8 @@ import click
 from renku.command.command_builder.command import inject
 from renku.command.view_model.template import TemplateChangeViewModel, TemplateViewModel
 from renku.core import errors
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
-from renku.core.management.migrate import is_renku_project
+from renku.core.migrate import is_renku_project
 from renku.core.template.template import (
     FileAction,
     RepositoryTemplates,
@@ -87,12 +86,8 @@ def check_for_template_update(project: Optional[Project]) -> Tuple[bool, bool, O
     return update_available, metadata.allow_update, metadata.reference, latest_reference
 
 
-@inject.autoparams("client_dispatcher")
-def set_template(
-    source, reference, id, force, interactive, input_parameters, dry_run, client_dispatcher: IClientDispatcher
-) -> TemplateChangeViewModel:
+def set_template(source, reference, id, force, interactive, input_parameters, dry_run) -> TemplateChangeViewModel:
     """Set template for a project."""
-    client = client_dispatcher.current_client
     project = project_context.project
 
     if project.template_source and not force:
@@ -113,19 +108,13 @@ def set_template(
         dry_run=dry_run,
         template_action=TemplateAction.SET,
         input_parameters=input_parameters,
-        client=client,
     )
 
     return TemplateChangeViewModel.from_template(template=rendered_template, actions=actions)
 
 
-@inject.autoparams("client_dispatcher")
-def update_template(
-    force, interactive, dry_run, client_dispatcher: IClientDispatcher
-) -> Optional[TemplateChangeViewModel]:
+def update_template(force, interactive, dry_run) -> Optional[TemplateChangeViewModel]:
     """Update project's template if possible. Return True if updated."""
-    client = client_dispatcher.current_client
-
     template_metadata = TemplateMetadata.from_project(project=project_context.project)
 
     if not template_metadata.source:
@@ -164,7 +153,6 @@ def update_template(
         dry_run=dry_run,
         template_action=TemplateAction.UPDATE,
         input_parameters=None,
-        client=client,
     )
 
     return TemplateChangeViewModel.from_template(template=rendered_template, actions=actions)
@@ -179,7 +167,6 @@ def _set_or_update_project_from_template(
     dry_run: bool,
     template_action: TemplateAction,
     input_parameters,
-    client,
     project_gateway: IProjectGateway,
 ) -> Tuple[RenderedTemplate, Dict[str, FileAction]]:
     """Update project files and metadata from a template."""

@@ -66,7 +66,7 @@ class LinkReference:
 
     @property
     def reference(self):
-        """Return the path we point to relative to the client."""
+        """Return the path we point to."""
         return self.path.resolve()
 
     def delete(self):

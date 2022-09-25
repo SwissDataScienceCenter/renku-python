@@ -33,7 +33,6 @@ def fake_start(
     image_name,
     project_name,
     config,
-    client,
     cpu_request,
     mem_request,
     disk_request,

@@ -63,7 +63,7 @@ class Project(persistent.Persistent):
         version: Optional[str] = None,
         keywords: Optional[List[str]] = None,
     ):
-        from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
+        from renku.core.migrate import SUPPORTED_PROJECT_VERSION
 
         version = cast(str, version or SUPPORTED_PROJECT_VERSION)
         date_created = parse_date(date_created) or local_now()

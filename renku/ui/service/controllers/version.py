@@ -17,7 +17,7 @@
 # limitations under the License.
 """Renku service version controller."""
 from renku import __version__
-from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
+from renku.core.migrate import SUPPORTED_PROJECT_VERSION
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.serializers.version import VersionResponseRPC
 from renku.ui.service.views import result_response

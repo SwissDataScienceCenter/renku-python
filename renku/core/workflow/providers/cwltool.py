@@ -51,7 +51,7 @@ import cwltool.factory
 import networkx as nx
 from cwltool.context import LoadingContext, RuntimeContext
 
-from renku.command.echo import progressbar
+from renku.command.util import progressbar
 from renku.core.errors import NodeNotFoundError, WorkflowExecuteError
 from renku.core.plugin import hookimpl
 from renku.core.plugin.workflow import workflow_converter

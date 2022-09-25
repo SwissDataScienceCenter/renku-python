@@ -22,7 +22,7 @@ from pathlib import Path
 
 from renku.command.migrate import migrations_check
 from renku.core.errors import AuthenticationError, MinimumVersionError, ProjectNotFound, RenkuException
-from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
+from renku.core.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.util.contexts import click_context
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin

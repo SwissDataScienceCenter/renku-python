@@ -91,12 +91,12 @@ def construct_creator(creator: Union[dict, str], ignore_email) -> Tuple[Optional
     return person, no_email_warning
 
 
-def is_external_file(path: Union[Path, str], client_path: Path):
+def is_external_file(path: Union[Path, str], project_path: Path):
     """Checks if a path is an external file."""
     from renku.core.constant import POINTERS, RENKU_HOME
 
-    path = client_path / path
-    if not path.is_symlink() or not is_subpath(path=path, base=client_path):
+    path = project_path / path
+    if not path.is_symlink() or not is_subpath(path=path, base=project_path):
         return False
 
     pointer = os.readlink(path)
@@ -127,9 +127,9 @@ def read_renku_version_from_dockerfile(path: Union[Path, str]) -> Optional[str]:
         return None
 
 
-def make_project_temp_dir(client_path: Path) -> Path:
+def make_project_temp_dir(project_path: Path) -> Path:
     """Create a temporary directory inside project's temp path."""
-    base = client_path / RENKU_HOME / RENKU_TMP
+    base = project_path / RENKU_HOME / RENKU_TMP
     base.mkdir(parents=True, exist_ok=True)
 
     return Path(tempfile.mkdtemp(dir=base))

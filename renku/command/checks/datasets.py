@@ -23,7 +23,7 @@ from collections import defaultdict
 import click
 
 from renku.command.command_builder import inject
-from renku.command.echo import WARNING
+from renku.command.util import WARNING
 from renku.core import errors
 from renku.core.dataset.dataset_add import add_to_dataset
 from renku.core.interface.dataset_gateway import IDatasetGateway
@@ -33,12 +33,11 @@ from renku.core.util.os import get_safe_relative_path
 from renku.domain_model.project_context import project_context
 
 
-def check_dataset_old_metadata_location(client, **kwargs):
+def check_dataset_old_metadata_location(**_):
     """Check location of dataset metadata.
 
     Args:
-        client: ``LocalClient``.
-        kwargs: keyword arguments.
+        _: keyword arguments.
 
     Returns:
         Tuple of whether dataset metadata location is valid and string of found problems.
@@ -59,13 +58,12 @@ def check_dataset_old_metadata_location(client, **kwargs):
 
 
 @inject.autoparams("dataset_gateway")
-def check_missing_files(client, dataset_gateway: IDatasetGateway, **kwargs):
+def check_missing_files(dataset_gateway: IDatasetGateway, **_):
     """Find missing files listed in datasets.
 
     Args:
-        client: ``LocalClient``.
         dataset_gateway(IDatasetGateway): the dataset gateway.
-        kwargs: keyword arguments.
+        _: keyword arguments.
 
     Returns:
         Tuple of whether all dataset files are there and string of found problems.
@@ -96,14 +94,13 @@ def check_missing_files(client, dataset_gateway: IDatasetGateway, **kwargs):
 
 
 @inject.autoparams("dataset_gateway")
-def check_invalid_datasets_derivation(client, fix, dataset_gateway: IDatasetGateway, **kwargs):
+def check_invalid_datasets_derivation(fix, dataset_gateway: IDatasetGateway, **_):
     """Remove ``derived_from`` from import datasets.
 
     Args:
-        client: ``LocalClient``.
         fix: Whether to fix found issues.
         dataset_gateway(IDatasetGateway): the dataset gateway.
-        kwargs: keyword arguments.
+        _: keyword arguments.
 
     Returns:
         Tuple of whether dataset derivations are valid and string of found problems.
@@ -146,14 +143,13 @@ def check_invalid_datasets_derivation(client, fix, dataset_gateway: IDatasetGate
 
 
 @inject.autoparams("dataset_gateway")
-def check_dataset_files_outside_datadir(client, fix, dataset_gateway: IDatasetGateway, **kwargs):
+def check_dataset_files_outside_datadir(fix, dataset_gateway: IDatasetGateway, **_):
     """Check for dataset files that are not inside a dataset's datadir.
 
     Args:
-        client: ``LocalClient``.
         fix: Whether to fix found issues.
         dataset_gateway(IDatasetGateway): the dataset gateway.
-        kwargs: keyword arguments.
+        _: keyword arguments.
 
     Returns:
         Tuple of whether there are no dataset files outside of its datadir and string of found problems.

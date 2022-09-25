@@ -108,13 +108,12 @@ def measure(message="TOTAL"):
 @contextlib.contextmanager
 def click_context(path, command):
     """Provide a click context with repo path injected."""
-    from renku.core.management.client import LocalClient
     from renku.core.util.git import get_git_path
     from renku.domain_model.project_context import project_context
 
-    with project_context.with_path(get_git_path(path)) as project_context, click.Context(
-        click.Command(command), obj=LocalClient()
-    ).scope() as ctx:
+    path = get_git_path(path)
+
+    with project_context.with_path(path) as project_context, click.Context(click.Command(command)).scope() as ctx:
         project_context.external_storage_requested = True
         yield project_context.path, ctx
 

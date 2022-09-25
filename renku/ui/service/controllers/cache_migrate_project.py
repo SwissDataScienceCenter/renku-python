@@ -32,7 +32,7 @@ def execute_migration(
     project_path, force_template_update, skip_template_update, skip_docker_update, skip_migrations, commit_message
 ):
     """Execute project migrations."""
-    from renku.command.migrate import migrate_project
+    from renku.command.migrate import migrate_project_command
 
     worker_log.debug(f"migrating {project_path}")
 
@@ -40,7 +40,7 @@ def execute_migration(
 
     with click_context(project_path, "execute_migration"):
         result = (
-            migrate_project()
+            migrate_project_command()
             .with_commit(message=commit_message)
             .with_communicator(communicator)
             .build()

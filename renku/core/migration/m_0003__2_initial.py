@@ -26,7 +26,7 @@ from renku.core.constant import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.constant import RENKU_HOME
 from renku.core.git import with_project_metadata
 from renku.core.migration.models.refs import LinkReference
-from renku.core.migration.models.v3 import Collection, Dataset, Project, get_client_datasets
+from renku.core.migration.models.v3 import Collection, Dataset, Project, get_project_datasets
 from renku.core.migration.models.v9 import generate_file_id, generate_label
 from renku.core.migration.utils import (
     OLD_METADATA_PATH,
@@ -43,14 +43,13 @@ from renku.domain_model.project_context import project_context
 
 def migrate(migration_context):
     """Migration function."""
-    client = migration_context.client
     _ensure_clean_lock()
     _do_not_track_lock_file()
-    _migrate_datasets_pre_v0_3(client)
-    _migrate_broken_dataset_paths(client)
-    _fix_labels_and_ids(client)
-    _fix_dataset_urls(client)
-    _migrate_dataset_and_files_project(client)
+    _migrate_datasets_pre_v0_3()
+    _migrate_broken_dataset_paths(migration_context=migration_context)
+    _fix_labels_and_ids(migration_context)
+    _fix_dataset_urls()
+    _migrate_dataset_and_files_project()
 
 
 def _ensure_clean_lock():
@@ -66,18 +65,17 @@ def _ensure_clean_lock():
 
 
 def _do_not_track_lock_file():
-    """Add lock file to .gitingore if not already exists."""
-    # Add lock file to .gitignore.
+    """Add lock file to .gitignore if not already exists."""
     if is_using_temporary_datasets_path():
         return
 
     lock_file = ".renku.lock"
     gitignore = project_context.path / ".gitignore"
     if not gitignore.exists() or lock_file not in gitignore.read_text():
-        gitignore.open("a").write("\n{0}\n".format(lock_file))
+        gitignore.open("a").write(f"\n{lock_file}\n")
 
 
-def _migrate_datasets_pre_v0_3(client):
+def _migrate_datasets_pre_v0_3():
     """Migrate datasets from Renku 0.3.x."""
     if is_using_temporary_datasets_path():
         return
@@ -89,10 +87,10 @@ def _migrate_datasets_pre_v0_3(client):
         changed = True
         name = str(old_path.parent.relative_to(project_context.path / DATA_DIR))
 
-        dataset = Dataset.from_yaml(old_path, client)
+        dataset = Dataset.from_yaml(old_path)
         dataset.title = name
         dataset.name = generate_default_name(name)
-        new_path = get_datasets_path(client) / dataset.identifier / OLD_METADATA_PATH
+        new_path = get_datasets_path() / dataset.identifier / OLD_METADATA_PATH
         new_path.parent.mkdir(parents=True, exist_ok=True)
 
         with with_project_metadata(read_only=True) as meta:
@@ -122,15 +120,15 @@ def _migrate_datasets_pre_v0_3(client):
         repository.commit("renku migrate: committing structural changes" + project_context.transaction_id)
 
 
-def _migrate_broken_dataset_paths(client):
+def _migrate_broken_dataset_paths(migration_context):
     """Ensure all paths are using correct directory structure."""
-    for dataset in get_client_datasets(client):
+    for dataset in get_project_datasets():
         if not dataset.name:
             dataset.name = generate_default_name(dataset.title, dataset.version)
         else:
             dataset.name = generate_default_name(dataset.name)
 
-        expected_path = get_datasets_path(client) / dataset.identifier
+        expected_path = get_datasets_path() / dataset.identifier
 
         # migrate the refs
         if not is_using_temporary_datasets_path():
@@ -166,46 +164,45 @@ def _migrate_broken_dataset_paths(client):
 
         dataset.files = files
 
-        for file_ in dataset.files:
-            if _is_dir(client=client, path=file_.path):
+        for file in dataset.files:
+            if _is_dir(migration_context=migration_context, path=file.path):
                 continue
-            if file_.path.startswith(".."):
-                file_.path = Path(
-                    os.path.abspath(get_datasets_path(client) / dataset.identifier / file_.path)
-                ).relative_to(base_path)
-            elif not _exists(client=client, path=file_.path):
-                file_.path = (project_context.path / DATA_DIR / file_.path).relative_to(project_context.path)
+            if file.path.startswith(".."):
+                file_absolute_path = os.path.abspath(get_datasets_path() / dataset.identifier / file.path)
+                file.path = Path(file_absolute_path).relative_to(base_path)
+            elif not _exists(migration_context=migration_context, path=file.path):
+                file.path = (project_context.path / DATA_DIR / file.path).relative_to(project_context.path)
 
-            file_.name = os.path.basename(file_.path)
+            file.name = os.path.basename(file.path)
 
         dataset.to_yaml(expected_path / "metadata.yml")
 
 
-def _fix_labels_and_ids(client):
+def _fix_labels_and_ids(migration_context):
     """Ensure files have correct label instantiation."""
-    for dataset in get_client_datasets(client):
-        dataset._id = generate_dataset_id(client, identifier=dataset.identifier)
+    for dataset in get_project_datasets():
+        dataset._id = generate_dataset_id(identifier=dataset.identifier)
         dataset._label = dataset.identifier
 
-        for file_ in dataset.files:
-            if not _exists(client=client, path=file_.path):
+        for file in dataset.files:
+            if not _exists(migration_context=migration_context, path=file.path):
                 continue
-            _, _, commit, _ = get_in_submodules(
-                project_context.repository, _get_previous_commit(client, file_.path, revision="HEAD"), file_.path
-            )
 
-            if not _is_file_id_valid(file_._id, file_.path, commit.hexsha):
-                file_._id = generate_file_id(client, hexsha=commit.hexsha, path=file_.path)
+            commit = _get_previous_commit(migration_context=migration_context, path=file.path)
+            _, commit, _ = get_in_submodules(repository=project_context.repository, commit=commit, path=file.path)
 
-            if not file_._label or commit.hexsha not in file_._label or file_.path not in file_._label:
-                file_._label = generate_label(file_.path, commit.hexsha)
+            if not _is_file_id_valid(file._id, file.path, commit.hexsha):
+                file._id = generate_file_id(hexsha=commit.hexsha, path=file.path)
+
+            if not file._label or commit.hexsha not in file._label or file.path not in file._label:
+                file._label = generate_label(file.path, commit.hexsha)
 
         dataset.to_yaml()
 
 
-def _fix_dataset_urls(client):
+def _fix_dataset_urls():
     """Ensure dataset and its files have correct url format."""
-    for dataset in get_client_datasets(client):
+    for dataset in get_project_datasets():
         dataset.url = dataset._id
         for file_ in dataset.files:
             if file_.url:
@@ -214,14 +211,14 @@ def _fix_dataset_urls(client):
         dataset.to_yaml()
 
 
-def _migrate_dataset_and_files_project(client):
+def _migrate_dataset_and_files_project():
     """Ensure dataset files have correct project."""
     project_path = project_context.metadata_path.joinpath(OLD_METADATA_PATH)
     project = Project.from_yaml(project_path)
     if not is_using_temporary_datasets_path():
         project.to_yaml(project_path)
 
-    for dataset in get_client_datasets(client):
+    for dataset in get_project_datasets():
         dataset._project = project
         if not dataset.creators:
             dataset.creators = [project.creator]
@@ -239,8 +236,8 @@ def _is_file_id_valid(id_, path, hexsha):
     return u.scheme and u.netloc and u.path.startswith("/blob") and hexsha in u.path and path in u.path
 
 
-def _exists(client, path):
-    dmc = getattr(client, "dataset_migration_context", None)
+def _exists(migration_context, path):
+    dmc = migration_context.dataset_migration_context
     if dmc:
         return dmc.exists(path)
 
@@ -248,15 +245,15 @@ def _exists(client, path):
     return path.exists() or (path.is_symlink() and os.path.lexists(path))
 
 
-def _is_dir(client, path):
-    dmc = getattr(client, "dataset_migration_context", None)
+def _is_dir(migration_context, path):
+    dmc = migration_context.dataset_migration_context
     if dmc:
         return dmc.is_dir(path)
     return Path(path).is_dir()
 
 
-def _get_previous_commit(client, path, revision):
-    dmc = getattr(client, "dataset_migration_context", None)
+def _get_previous_commit(migration_context, path):
+    dmc = migration_context.dataset_migration_context
     if dmc:
         return dmc.get_previous_commit(path)
-    return project_context.repository.get_previous_commit(path, revision=revision)
+    return project_context.repository.get_previous_commit(path, revision="HEAD")
