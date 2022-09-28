@@ -137,6 +137,7 @@ def svc_client_setup(integration_lifecycle):
             # NOTE: Some tests delete the repo
             repository.checkout("master")
             repository.branches.remove(current, force=True)
+            repository.push(remote="origin", refspec=new_branch, delete=True)
 
 
 @pytest.fixture
