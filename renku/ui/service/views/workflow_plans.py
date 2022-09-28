@@ -24,8 +24,8 @@ from renku.ui.service.views.api_versions import V1_4, VersionedBlueprint
 from renku.ui.service.views.decorators import optional_identity, requires_cache
 from renku.ui.service.views.error_handlers import handle_common_except
 
-ACTIVITY_BLUEPRINT_TAG = "workflow plans"
-workflow_plans_blueprint = VersionedBlueprint(ACTIVITY_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
+PLAN_BLUEPRINT_TAG = "workflow plans"
+workflow_plans_blueprint = VersionedBlueprint(PLAN_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
 @workflow_plans_blueprint.route(

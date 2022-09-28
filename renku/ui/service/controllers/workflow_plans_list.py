@@ -32,7 +32,7 @@ class WorkflowPlansListCtrl(ServiceCtrl, RenkuOperationMixin):
     RESPONSE_SERIALIZER = WorkflowPlansListResponseRPC()
 
     def __init__(self, cache, user_data, request_data):
-        """Construct a datasets list controller."""
+        """Construct a plans list controller."""
         self.ctx = WorkflowPlansListCtrl.REQUEST_SERIALIZER.load(request_data)
         super(WorkflowPlansListCtrl, self).__init__(cache, user_data, request_data)
 
