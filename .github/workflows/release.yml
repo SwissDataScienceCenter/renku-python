@@ -1,0 +1,61 @@
+name: "Create Release PR"
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: New release version
+        type: string
+        required: true
+
+jobs:
+  create-release-pr:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+          token: "${{ secrets.RENKUBOT_GITHUB_TOKEN }}"
+          ref: 'develop'
+      - uses: actions/setup-node@v3
+      - name: Merge Master
+        run: git merge origin/master
+      - name: Install dependencies
+        run: |
+          sudo add-apt-repository -y ppa:rmescandon/yq
+          sudo apt-get update -y
+          sudo apt-get install -y pandoc yq
+          npm install -g conventional-changelog-cli
+      - name: Update changelog
+        id: changelog
+        run: |
+          echo '{"version": "${{ github.event.inputs.version }}"}' > context.json
+          conventional-changelog -r 1 -p angular -c context.json | pandoc --from markdown --to rst | sed -e '/=======/r /dev/stdin' -e 's/=======/=======\n/' -i CHANGES.rst
+          conventional-changelog -r 1 -p angular -c context.json > release_body.md
+          rm context.json
+      - name: Update version.py
+        run: |
+          sed -ri 's/__version__ = "[0-9.]+"/__version__ = "${{ github.event.inputs.version }}"/g' renku/version.py
+      - name: Update Chart version
+        run: |
+          yq eval -i '.version = "${{ github.event.inputs.version }}"' helm-chart/renku-core/Chart.yaml
+      - name: Update Values file version
+        run: |
+          yq eval -i '.versions.latest.image.tag = "v${{ github.event.inputs.version }}"' helm-chart/renku-core/values.yaml
+      - uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
+          draft: true
+          bodyFile: "release_body.md"
+          tag: "v${{ github.event.inputs.version }}"
+          name: "v${{ github.event.inputs.version }}"
+          commit: "master"
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v4
+        with:
+          token: "${{ secrets.RENKUBOT_GITHUB_TOKEN }}"
+          add-paths: "CHANGES.rst,renku/version.py,helm-chart/renku-core/Chart.yaml,helm-chart/renku-core/values.yaml"
+          commit-message: "chore: release v${{ github.event.inputs.version }}"
+          branch: "release/v${{ github.event.inputs.version }}"
+          base: "master"
+          title: "chore: release v${{ github.event.inputs.version }}"
+          body: "/deploy"
