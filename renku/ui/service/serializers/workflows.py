@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service workflow serializers."""
 from marshmallow import Schema, fields
+from marshmallow_oneofschema import OneOfSchema
 
 from renku.domain_model.dataset import DatasetCreatorsJson
 from renku.ui.service.serializers.common import LocalRepositorySchema, RemoteRepositorySchema
@@ -27,8 +28,8 @@ class WorkflowPlansListRequest(LocalRepositorySchema, RemoteRepositorySchema):
     """Request schema for plan list view."""
 
 
-class WorflowPlanEntryResponse(Schema):
-    """Serialize a plan to a response object."""
+class AbstractPlanResponse(Schema):
+    """Base schema for abstract plan responses."""
 
     id = fields.String(required=True)
     name = fields.String(required=True)
@@ -36,10 +37,15 @@ class WorflowPlanEntryResponse(Schema):
     type = fields.String()
     created = fields.DateTime()
     creators = fields.List(fields.Nested(DatasetCreatorsJson))
-    last_executed = fields.DateTime()
     keywords = fields.List(fields.String())
-    number_of_executions = fields.Integer()
     touches_existing_files = fields.Boolean()
+
+
+class WorflowPlanEntryResponse(AbstractPlanResponse):
+    """Serialize a plan to a response object."""
+
+    last_executed = fields.DateTime()
+    number_of_executions = fields.Integer()
     children = fields.List(fields.String)
 
 
@@ -53,3 +59,134 @@ class WorkflowPlansListResponseRPC(JsonRPCResponse):
     """RPC response schema for plan list view."""
 
     result = fields.Nested(WorkflowPlansListResponse)
+
+
+class WorkflowPlansShowRequest(LocalRepositorySchema, RemoteRepositorySchema):
+    """Request schema for plan show view."""
+
+    plan_id = fields.String(required=True)
+
+
+class AnnotationSchema(Schema):
+    """Custom metadata annotation schema."""
+
+    id = fields.String(required=True)
+    source = fields.String()
+    body = fields.Raw()
+
+
+class ParameterBaseSchema(Schema):
+    """Base schema for parameters."""
+
+    id = fields.String(required=True)
+    plan_id = fields.String(required=True)
+    name = fields.String(required=True)
+    type = fields.String()
+    description = fields.String()
+    default_value = fields.String()
+    prefix = fields.String()
+    position = fields.Integer()
+
+
+class InputSchema(ParameterBaseSchema):
+    """Schema for plan input."""
+
+    mapped_to = fields.String()
+    encoding_format = fields.String()
+    exists = fields.Boolean()
+
+
+class OutputSchema(ParameterBaseSchema):
+    """Schema for plan input."""
+
+    mapped_to = fields.String()
+    encoding_format = fields.String()
+    create_folder = fields.Boolean()
+    exists = fields.Boolean()
+    last_touched_by_this_plan = fields.Boolean()
+
+
+class ParameterSchema(ParameterBaseSchema):
+    """Schema for a plan parameter."""
+
+    pass
+
+
+class PlanDetailsResponse(AbstractPlanResponse):
+    """Schema for Plan details."""
+
+    last_executed = fields.DateTime()
+    number_of_executions = fields.Integer()
+    full_command = fields.String()
+    command = fields.String()
+    inputs = fields.List(fields.Nested(InputSchema))
+    outputs = fields.List(fields.Nested(OutputSchema))
+    parameters = fields.List(fields.Nested(ParameterSchema))
+    success_codes = fields.List(fields.Integer())
+    latest = fields.Boolean(dump_default=False)
+    annotations = fields.List(fields.Nested(AnnotationSchema))
+
+
+class PlanReferenceSchema(Schema):
+    """Schema for a plan reference."""
+
+    id = fields.String(required=True)
+    name = fields.String(required=True)
+    description = fields.String()
+
+
+class ParameterTargetSchema(Schema):
+    """Schema for a mapping target."""
+
+    id = fields.String(required=True)
+    plan_id = fields.String(required=True)
+    name = fields.String(required=True)
+    type = fields.String()
+
+
+class MappingSchema(Schema):
+    """Schema for a plan mapping."""
+
+    id = fields.String(required=True)
+    plan_id = fields.String(required=True)
+    name = fields.String(required=True)
+    type = fields.String()
+    description = fields.String()
+    default_value = fields.String()
+    targets = fields.List(fields.Nested(ParameterTargetSchema))
+
+
+class LinkSchema(Schema):
+    """Schema for a parameter link."""
+
+    id = fields.String(required=True)
+    plan_id = fields.String(required=True)
+    type = fields.String()
+    source = fields.Nested(ParameterTargetSchema)
+    sinks = fields.List(fields.Nested(ParameterTargetSchema))
+
+
+class CompositePlanDetailsResponse(AbstractPlanResponse):
+    """Schema for Plan details."""
+
+    steps = fields.List(fields.Nested(PlanReferenceSchema), data_key="plans")
+    mappings = fields.List(fields.Nested(MappingSchema))
+    links = fields.List(fields.Nested(LinkSchema))
+    latest = fields.Boolean(dump_default=False)  # TODO: Add code to actually calculate this
+    annotations = fields.List(fields.Nested(AnnotationSchema))
+
+
+class PlanSuperSchema(OneOfSchema):
+    """Combined schema for Plan and CompositePlan."""
+
+    type_schemas = {"Plan": PlanDetailsResponse, "CompositePlan": CompositePlanDetailsResponse}
+
+    def get_obj_type(self, obj):
+        """Get type from object."""
+        return str(obj.type)
+
+
+class WorkflowPlansShowResponseRPC(JsonRPCResponse):
+    """Response schema for plan show view."""
+
+    result = fields.Nested(PlanSuperSchema)
