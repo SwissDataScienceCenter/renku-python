@@ -19,7 +19,7 @@
 
 from typing import List, Optional
 
-from renku.command.view_model.plan import PersonViewModel
+from renku.command.view_model.agent import PersonViewModel
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.parameter import ParameterLink, ParameterMapping
 from renku.domain_model.workflow.plan import AbstractPlan

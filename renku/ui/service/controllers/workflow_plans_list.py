@@ -18,7 +18,7 @@
 """Renku service plans list controller."""
 
 from renku.command.command_builder.command import Command
-from renku.core.workflow.plan import get_active_plans
+from renku.core.workflow.plan import get_plans_with_metadata
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
 from renku.ui.service.serializers.workflows import WorkflowPlansListRequest, WorkflowPlansListResponseRPC
@@ -43,7 +43,7 @@ class WorkflowPlansListCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        plan_list_command = Command().command(get_active_plans).with_database().require_migration()
+        plan_list_command = Command().command(get_plans_with_metadata).with_database().require_migration()
         result = plan_list_command.build().execute()
         return result.output
 

@@ -203,7 +203,6 @@ def edit_workflow(
     creators: Union[List[Person], NoValueType],
     keywords: Union[List[str], NoValueType],
     plan_gateway: IPlanGateway,
-    client_dispatcher: IClientDispatcher,
     custom_metadata: Optional[Dict] = None,
 ):
     """Edits a workflow details.
@@ -687,10 +686,11 @@ def get_composite_plans_by_child(plan: AbstractPlan, plan_gateway: IPlanGateway)
 
 
 @inject.autoparams("activity_gateway", "plan_gateway")
-def get_active_plans(activity_gateway: IActivityGateway, plan_gateway: IPlanGateway) -> List[AbstractPlan]:
-    """Get all plans that are active in the project.
+def get_plans_with_metadata(activity_gateway: IActivityGateway, plan_gateway: IPlanGateway) -> List[AbstractPlan]:
+    """Get all plans in the project with additional metadata.
 
-    Active means not deleted and with at least one of the used/created files existing.
+    Adds information about last execution, number of executions and whether the plan was used to create files
+    currently existing in the project.
     """
     from renku.core.workflow.activity import filter_overridden_activities
 
