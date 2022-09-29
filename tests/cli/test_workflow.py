@@ -445,6 +445,16 @@ def test_workflow_edit(runner, client):
     first_plan = database["plans"][_get_plan_id(result.stdout)]
     assert first_plan.description == "Test workflow"
 
+    cmd = ["workflow", "edit", workflow_name, "--keyword", "bio", "--keyword", "informatics"]
+    result = runner.invoke(cli, cmd)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    database = Database.from_path(project_context.database_path)
+    first_plan = database["plans"][_get_plan_id(result.stdout)]
+    assert 2 == len(first_plan.keywords)
+    assert "bio" in first_plan.keywords
+    assert "informatics" in first_plan.keywords
+
     # edit parameter
     cmd = ["workflow", "edit", workflow_name, "--rename-param", "param1=param2"]
     result = runner.invoke(cli, cmd)

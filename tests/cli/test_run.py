@@ -115,6 +115,8 @@ def test_run_metadata(renku_cli, runner, client, client_database_injection_manag
         plan = plan_gateway.get_by_id(plan.id)
         assert "run-1" == plan.name
         assert "first run" == plan.description
+        assert 1 == len(plan.creators)
+        assert "Renku Bot <renku@datascience.ch>" == plan.creators[0].full_identity
         assert {"key1", "key2"} == set(plan.keywords)
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
@@ -162,6 +164,34 @@ def test_generated_run_name(runner, client, command, name, client_database_injec
         plan_gateway = PlanGateway()
         plan = plan_gateway.get_all_plans()[0]
         assert name == plan.name[:-5]
+
+
+def test_run_creator(runner, client, client_database_injection_manager):
+    """Test generated run name."""
+    result = runner.invoke(
+        cli,
+        [
+            "run",
+            "--no-output",
+            "--creator",
+            "John Doe <john.doe@example.com>",
+            "--creator",
+            "Jane Doe <jane.doe@example.com>",
+            "echo",
+            "-n",
+            "value",
+        ],
+    )
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    with client_database_injection_manager(client):
+        plan_gateway = PlanGateway()
+        plan = plan_gateway.get_all_plans()[0]
+        assert plan
+        assert 2 == len(plan.creators)
+        names = [c.full_identity for c in plan.creators]
+        assert "John Doe <john.doe@example.com>" in names
+        assert "Jane Doe <jane.doe@example.com>" in names
 
 
 def test_run_invalid_name(runner, client):

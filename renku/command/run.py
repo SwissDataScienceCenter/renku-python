@@ -20,6 +20,7 @@
 import os
 import sys
 from subprocess import call
+from typing import cast
 
 import click
 
@@ -32,10 +33,12 @@ from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.storage import check_external_storage, pull_paths_from_storage
 from renku.core.util.datetime8601 import local_now
+from renku.core.util.git import get_git_user
 from renku.core.util.urls import get_slug
 from renku.core.workflow.plan_factory import PlanFactory
 from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.activity import Activity
+from renku.domain_model.provenance.agent import Person
 
 
 def run_command():
@@ -56,6 +59,7 @@ def _run_command(
     no_output_detection,
     success_codes,
     command_line,
+    creators,
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
 ) -> PlanViewModel:
@@ -197,7 +201,10 @@ def _run_command(
             if return_code not in (success_codes or {0}):
                 raise errors.InvalidSuccessCode(return_code, success_codes=success_codes)
 
-        plan = tool.to_plan(name=name, description=description, keywords=keyword)
+        if not creators:
+            creators = [cast(Person, get_git_user(project_context.repository))]
+
+        plan = tool.to_plan(name=name, description=description, keywords=keyword, creators=creators)
         activity = Activity.from_plan(
             plan=plan, started_at_time=started_at_time, ended_at_time=ended_at_time, annotations=tool.annotations
         )

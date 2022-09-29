@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 from typing import List, Optional, Union
 
+from renku.command.view_model.agent import PersonViewModel
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter
 from renku.domain_model.workflow.plan import AbstractPlan, Plan
@@ -154,9 +155,11 @@ class PlanViewModel:
         inputs: List[CommandInputViewModel],
         outputs: List[CommandOutputViewModel],
         parameters: List[CommandParameterViewModel],
+        keywords: List[str],
         description: Optional[str] = None,
         success_codes: Optional[str] = None,
         annotations: Optional[str] = None,
+        creators: Optional[List[PersonViewModel]] = None,
     ):
         self.id = id
         self.name = name
@@ -167,6 +170,8 @@ class PlanViewModel:
         self.outputs = outputs
         self.parameters = parameters
         self.annotations = annotations
+        self.creators = creators
+        self.keywords = keywords
 
     @classmethod
     def from_plan(cls, plan: Plan):
@@ -190,6 +195,8 @@ class PlanViewModel:
             annotations=json.dumps([{"id": a.id, "body": a.body, "source": a.source} for a in plan.annotations])
             if plan.annotations
             else None,
+            creators=[PersonViewModel.from_person(p) for p in plan.creators] if plan.creators else None,
+            keywords=plan.keywords,
         )
 
 
@@ -202,6 +209,7 @@ def plan_view(workflow: AbstractPlan) -> Union[CompositePlanViewModel, PlanViewM
     Returns:
         View model for converted Plan.
     """
+
     if isinstance(workflow, CompositePlan):
         return CompositePlanViewModel.from_composite_plan(workflow)
     return PlanViewModel.from_plan(workflow)

@@ -20,7 +20,7 @@
 import itertools
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Generator, List, Optional, Union, cast
+from typing import Dict, Generator, List, Optional, Set, Tuple, Union, cast, overload
 
 from renku.command.command_builder import inject
 from renku.command.format.workflow import WORKFLOW_FORMATS
@@ -34,18 +34,34 @@ from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
+from renku.core.util.git import get_git_user
 from renku.core.util.os import are_paths_related, get_relative_paths, safe_read_yaml
+from renku.core.util.util import NO_VALUE, NoValueType
 from renku.core.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.value_resolution import CompositePlanValueResolver, ValueResolver
 from renku.domain_model.project_context import project_context
-from renku.domain_model.provenance.activity import Activity
+from renku.domain_model.provenance.activity import Activity, Generation, Usage
+from renku.domain_model.provenance.agent import Person
 from renku.domain_model.provenance.annotation import Annotation
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.plan import AbstractPlan, Plan
+from renku.infrastructure.immutable import DynamicProxy
+
+
+@overload
+def get_latest_plan(plan: None = ..., plan_gateway: IPlanGateway = ...) -> None:  # noqa: D103
+    ...
+
+
+@overload
+def get_latest_plan(plan: AbstractPlan, plan_gateway: IPlanGateway = ...) -> AbstractPlan:  # noqa: D103
+    ...
 
 
 @inject.autoparams()
-def get_latest_plan(plan: Optional[AbstractPlan], plan_gateway: IPlanGateway) -> Optional[AbstractPlan]:
+def get_latest_plan(
+    plan: Optional[AbstractPlan], plan_gateway: IPlanGateway
+) -> Union[Optional[AbstractPlan], AbstractPlan]:
     """Return the latest version of a given plan in its derivative chain."""
     if plan is None:
         return None
@@ -184,6 +200,8 @@ def edit_workflow(
     map_params: List[str],
     rename_params: List[str],
     describe_params: List[str],
+    creators: Union[List[Person], NoValueType],
+    keywords: Union[List[str], NoValueType],
     plan_gateway: IPlanGateway,
     custom_metadata: Optional[Dict] = None,
 ):
@@ -197,7 +215,10 @@ def edit_workflow(
         map_params(List[str]): New mappings for Plan.
         rename_params(List[str]): New names for parameters.
         describe_params(List[str]): New descriptions for parameters.
+        creators(Union[List[Person], NoValueType]): Creators of the workflow.
+        keywords(Union[List[str], NoValueType]): New keywords for the workflow.
         plan_gateway(IPlanGateway): Injected plan gateway.
+        client_dispatcher(IClientDispatcher): Client dispatcher.
         custom_metadata(Dict, optional): Custom JSON-LD metadata (Default value = None).
 
     Returns:
@@ -217,16 +238,28 @@ def edit_workflow(
         and not rename_params
         and not describe_params
         and not custom_metadata
+        and creators == NO_VALUE
+        and keywords == NO_VALUE
     ):
         # NOTE: Nothing to do
         return plan_view(derived_from)
 
-    workflow = derived_from.derive()
+    git_creator = cast(Person, get_git_user(project_context.repository))
+    workflow = derived_from.derive(creator=git_creator)
     if new_name:
         workflow.name = new_name
 
     if description:
         workflow.description = description
+
+    if creators != NO_VALUE:
+        workflow.creators = cast(List[Person], creators)
+
+        if all(c.email != git_creator.email for c in workflow.creators):
+            workflow.creators.append(git_creator)
+
+    if keywords != NO_VALUE:
+        workflow.keywords = cast(List[str], keywords)
 
     if isinstance(workflow, Plan):
         if custom_metadata:
@@ -282,6 +315,7 @@ def compose_workflow(
     steps: List[str],
     sources: List[str],
     sinks: List[str],
+    creators: Optional[List[Person]],
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
     project_gateway: IProjectGateway,
@@ -304,6 +338,7 @@ def compose_workflow(
         steps(List[str]): Child steps to include.
         sources(List[str]): Starting files when automatically detecting child Plans.
         sinks(List[str]): Ending files when automatically detecting child Plans.
+        creators(Optional[List[Person]]): Creator(s) of the composite plan.
         activity_gateway(IActivityGateway): Injected activity gateway.
         plan_gateway(IPlanGateway): Injected plan gateway.
         project_gateway(IProjectGateway): Injected project gateway.
@@ -357,12 +392,16 @@ def compose_workflow(
             child_workflows.append(child_workflow)
             plan_activities.append((i, activity.plan_with_values))
 
+    if not creators:
+        creators = [cast(Person, get_git_user(project_context.repository))]
+
     plan = CompositePlan(
         description=description,
         id=CompositePlan.generate_id(),
         keywords=keywords,
         name=name,
         plans=child_workflows,
+        creators=creators,
         project_id=project_gateway.get_project().id,
     )
 
@@ -644,3 +683,91 @@ def get_composite_plans_by_child(plan: AbstractPlan, plan_gateway: IPlanGateway)
     composites_containing_child = [c for c in composites if {p.id for p in c.plans}.intersection(derivatives)]
 
     return composites_containing_child
+
+
+@inject.autoparams("activity_gateway", "plan_gateway")
+def get_plans_with_metadata(activity_gateway: IActivityGateway, plan_gateway: IPlanGateway) -> List[AbstractPlan]:
+    """Get all plans in the project with additional metadata.
+
+    Adds information about last execution, number of executions and whether the plan was used to create files
+    currently existing in the project.
+    """
+    from renku.core.workflow.activity import filter_overridden_activities
+
+    latest_plan_cache: Dict[AbstractPlan, AbstractPlan] = {}
+
+    def _cached_latest_plan(plan: AbstractPlan):
+        return latest_plan_cache.setdefault(plan, get_latest_plan(plan))
+
+    all_activities = activity_gateway.get_all_activities()
+    relevant_activities = filter_overridden_activities(all_activities)
+    latest_plan_chains: Set[Tuple[AbstractPlan]] = set(
+        cast(Tuple[AbstractPlan], tuple(get_derivative_chain(p)))
+        for p in plan_gateway.get_newest_plans_by_names().values()
+    )
+
+    result: Dict[str, DynamicProxy] = {}
+    composites: List[DynamicProxy] = []
+
+    # check which plans where involved in using/creating existing files
+    for plan_chain in latest_plan_chains:
+        latest_plan = DynamicProxy(plan_chain[0])
+        latest_plan.touches_existing_files = False
+        latest_plan.number_of_executions = 0
+        latest_plan.created = latest_plan.date_created
+        latest_plan.last_executed = None
+        latest_plan.children = []
+
+        if isinstance(plan_chain[0], Plan):
+            for activity in all_activities:
+                if activity.association.plan not in plan_chain:
+                    continue
+
+                if not latest_plan.last_executed or latest_plan.last_executed < activity.ended_at_time:
+                    latest_plan.last_executed = activity.ended_at_time
+
+                latest_plan.number_of_executions += 1
+
+                if (
+                    not latest_plan.touches_existing_files
+                    and activity in relevant_activities
+                    and any(
+                        (project_context.path / entry.entity.path).exists()
+                        for entry in cast(
+                            List[Union[Usage, Generation]], itertools.chain(activity.usages, activity.generations)
+                        )
+                    )
+                ):
+                    latest_plan.touches_existing_files = True
+            latest_plan.type = "Plan"
+        else:
+            latest_plan.number_of_executions = None
+            composites.append(latest_plan)
+            latest_plan.type = "CompositePlan"
+            latest_plan.children = [p.id for p in latest_plan.plans]
+
+        result[latest_plan.id] = latest_plan
+
+    # check composites status based on plans status
+    while len(composites) > 0:
+        composite = composites.pop()
+        stack = [composite]
+        while len(stack) > 0:
+            composite = stack.pop()
+            unprocessed_children = [
+                p for p in composite.plans if isinstance(p, CompositePlan) and _cached_latest_plan(p).id in composites
+            ]
+            if unprocessed_children:
+                # Has child composite plans, process those first
+                stack.append(composite)
+                for child in unprocessed_children:
+                    stack.append(result[_cached_latest_plan(child).id])
+                continue
+            composite.touches_existing_files = any(
+                result[_cached_latest_plan(p).id].touches_existing_files for p in composite.plans
+            )
+
+            if composite in composites:
+                composites.remove(composite)
+
+    return list(result.values())  # type: ignore

@@ -651,7 +651,7 @@ def create(name, title, description, creators, metadata, keyword, storage, datad
     default=[NO_VALUE],
     multiple=True,
     type=click.UNPROCESSED,
-    help="Creator's name, email, and affiliation. " "Accepted format is 'Forename Surname <email> [affiliation]'.",
+    help="Creator's name, email, and affiliation. Accepted format is 'Forename Surname <email> [affiliation]'.",
 )
 @click.option(
     "-m",
