@@ -124,3 +124,11 @@ def it_protected_repo_url():
     from tests.fixtures.config import IT_PROTECTED_REMOTE_REPO_URL
 
     return IT_PROTECTED_REMOTE_REPO_URL
+
+
+@pytest.fixture(scope="module")
+def it_workflow_repo_url():
+    """Returns a repository url containing workflows."""
+    from tests.fixtures.config import IT_WORKFLOW_REPO_URL
+
+    return IT_WORKFLOW_REPO_URL

@@ -19,6 +19,7 @@
 
 from typing import List, Optional
 
+from renku.command.view_model.agent import PersonViewModel
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.parameter import ParameterLink, ParameterMapping
 from renku.domain_model.workflow.plan import AbstractPlan
@@ -101,7 +102,9 @@ class CompositePlanViewModel:
         mappings: List[ParameterMappingViewModel],
         links: List[ParameterLinkViewModel],
         steps: List[StepViewModel],
+        keywords: List[str],
         description: Optional[str] = None,
+        creators: Optional[List[PersonViewModel]] = None,
     ):
         self.id = id
         self.name = name
@@ -110,6 +113,8 @@ class CompositePlanViewModel:
         self.links = links
         self.steps = steps
         self.full_command = ""
+        self.creators = creators
+        self.keywords = keywords
 
     @classmethod
     def from_composite_plan(cls, plan: CompositePlan):
@@ -128,4 +133,6 @@ class CompositePlanViewModel:
             mappings=[ParameterMappingViewModel.from_mapping(mapping) for mapping in plan.mappings],
             links=[ParameterLinkViewModel.from_link(link, plan) for link in plan.links],
             steps=[StepViewModel(id=s.id, name=s.name) for s in plan.plans],
+            creators=[PersonViewModel.from_person(p) for p in plan.creators] if plan.creators else None,
+            keywords=plan.keywords,
         )

@@ -23,4 +23,7 @@
     "\\.eggs | \\.git | \\.hg | \\.mypy_cache | \\.tox | \\.venv | _build | buck-out | build | dist | docs/conf.py",
   ],
   "esbonio.sphinx.confDir": "",
+  "python.analysis.include": [
+    "renku/**"
+  ],
 }
