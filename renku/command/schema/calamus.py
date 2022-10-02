@@ -40,7 +40,7 @@ dcterms = fields.Namespace("http://purl.org/dc/terms/")
 class JsonLDSchema(CalamusJsonLDSchema):
     """Base schema class for Renku."""
 
-    def __init__(self, *args, commit=None, client=None, **kwargs):
+    def __init__(self, *args, commit=None, **kwargs):
         """Create an instance."""
         self._commit = commit
         super().__init__(*args, **kwargs)

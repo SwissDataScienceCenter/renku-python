@@ -33,7 +33,7 @@ from renku.core.template.template import (
     FileAction,
     RepositoryTemplates,
     TemplateAction,
-    copy_template_to_client,
+    copy_template_to_project,
     fetch_templates_source,
     get_file_actions,
     has_template_checksum,
@@ -199,7 +199,7 @@ def _set_or_update_project_from_template(
     )
 
     if not dry_run:
-        copy_template_to_client(rendered_template=rendered_template, project=project, actions=actions)
+        copy_template_to_project(rendered_template=rendered_template, project=project, actions=actions)
         project_gateway.update_project(project)
 
     return rendered_template, actions

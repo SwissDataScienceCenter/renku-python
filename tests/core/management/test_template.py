@@ -25,7 +25,7 @@ from renku.core import errors
 from renku.core.template.template import (
     FileAction,
     TemplateAction,
-    copy_template_to_client,
+    copy_template_to_project,
     fetch_templates_source,
     get_file_actions,
 )
@@ -118,7 +118,7 @@ def test_copy_template_actions(project, rendered_template, action, content_type,
     actions = {f: FileAction.IGNORE_UNCHANGED_REMOTE for f in rendered_template.get_files()}
     actions["Dockerfile"] = action
     with client_database_injection_manager(project):
-        copy_template_to_client(rendered_template=rendered_template, project=project_context.project, actions=actions)
+        copy_template_to_project(rendered_template=rendered_template, project=project_context.project, actions=actions)
 
     # NOTE: Make sure that files have some content
     assert project_content

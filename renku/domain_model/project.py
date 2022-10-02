@@ -94,7 +94,7 @@ class Project(persistent.Persistent):
         self.minimum_renku_version = Project.minimum_renku_version
 
     @classmethod
-    def from_client(
+    def from_path(
         cls,
         name: Optional[str] = None,
         namespace: Optional[str] = None,

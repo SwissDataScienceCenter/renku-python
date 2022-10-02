@@ -144,7 +144,7 @@ class Command:
         self._finalized: bool = False
         self._track_std_streams: bool = False
         self._working_directory: Optional[str] = None
-        self._client_was_created: bool = False
+        self._context_was_created: bool = False
 
     def __getattr__(self, name: str) -> Any:
         """Bubble up attributes of wrapped builders."""
@@ -172,7 +172,7 @@ class Command:
             path = get_git_path(self._working_directory or ".")
             project_context.push_path(path)
             ctx = click.Context(click.Command(builder._operation))  # type: ignore
-            self._client_was_created = True
+            self._context_was_created = True
         else:
             # TODO: No path was pushed in the previous code. Is it true? Can this method be called more than once?
             # if not self._client:
@@ -205,7 +205,7 @@ class Command:
         """
         remove_injector()
 
-        if self._client_was_created:
+        if self._context_was_created:
             project_context.pop_context()
 
         if result.error:

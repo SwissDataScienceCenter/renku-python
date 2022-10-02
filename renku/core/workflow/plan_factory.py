@@ -767,28 +767,28 @@ def delete_indirect_files_list(working_dir):
             pass
 
 
-def get_indirect_inputs_path(client_path):
+def get_indirect_inputs_path(project_path):
     """Return path to file that contains indirect inputs list."""
-    parent = _get_indirect_parent_path(client_path)
+    parent = _get_indirect_parent_path(project_path)
     return parent / "inputs.yml"
 
 
-def get_indirect_outputs_path(client_path):
+def get_indirect_outputs_path(project_path):
     """Return path to file that contains indirect outputs list."""
-    parent = _get_indirect_parent_path(client_path)
+    parent = _get_indirect_parent_path(project_path)
     return parent / "outputs.yml"
 
 
-def get_indirect_parameters_path(client_path):
+def get_indirect_parameters_path(project_path):
     """Return path to file that contains indirect parameters list."""
-    parent = _get_indirect_parent_path(client_path)
+    parent = _get_indirect_parent_path(project_path)
     return parent / "parameters.yml"
 
 
-def _get_indirect_parent_path(client_path):
+def _get_indirect_parent_path(project_path):
     renku_indirect_path = os.getenv("RENKU_INDIRECT_PATH") or ""
 
-    base = (Path(client_path) / RENKU_HOME / RENKU_TMP).resolve()
+    base = (Path(project_path) / RENKU_HOME / RENKU_TMP).resolve()
     parent = (base / renku_indirect_path).resolve()
 
     try:

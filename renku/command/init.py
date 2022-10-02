@@ -36,7 +36,7 @@ from renku.core.template.template import (
     FileAction,
     RenderedTemplate,
     TemplateAction,
-    copy_template_to_client,
+    copy_template_to_project,
     fetch_templates_source,
     get_file_actions,
     set_template_parameters,
@@ -297,7 +297,7 @@ def create_from_template(
         with with_project_metadata(
             name=name, namespace=namespace, description=description, custom_metadata=custom_metadata, keywords=keywords
         ) as project:
-            copy_template_to_client(rendered_template=rendered_template, project=project, actions=actions)
+            copy_template_to_project(rendered_template=rendered_template, project=project, actions=actions)
 
         if install_mergetool:
             setup_mergetool()

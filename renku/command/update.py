@@ -69,7 +69,7 @@ def _update(
         starting_activities=modified_activities,
         paths=paths,
         ignore_deleted=ignore_deleted,
-        client_path=project_context.path,
+        project_path=project_context.path,
     )
 
     if len(activities) == 0:

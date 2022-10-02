@@ -71,7 +71,7 @@ def with_project_metadata(
     try:
         project = project_gateway.get_project()
     except ValueError:
-        project = Project.from_client(
+        project = Project.from_path(
             name=name, namespace=namespace, description=description, keywords=keywords, custom_metadata=custom_metadata
         )
 
@@ -114,7 +114,7 @@ def worktree(path=None, branch_name=None, commit=None, merge_args=("--ff-only",)
     delete = branch_name is None
     new_branch = commit is not NULL_TREE
 
-    new_client, isolation, path, branch_name = prepare_worktree(path=path, branch_name=branch_name, commit=commit)
+    _, isolation, path, branch_name = prepare_worktree(path=path, branch_name=branch_name, commit=commit)
     try:
         yield
     except (Exception, BaseException) as e:

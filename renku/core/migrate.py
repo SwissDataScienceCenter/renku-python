@@ -18,13 +18,13 @@
 """Renku migrations management.
 
 Migrations files are put in renku/core/management/migrations directory. Name
-of these files has m_1234__name.py format where 1234 is the migration version
+of these files has ``m_1234__name.py`` format where 1234 is the migration version
 and name can be any alphanumeric and underscore combination. Migration files
 are sorted based on their lowercase name. Each migration file must define a
-public "migrate" function that accepts a client as its argument.
+public ``migrate`` function that accepts a ``MigrationContext`` as its argument.
 
 When executing a migration, the migration file is imported as a module and the
-"migrate" function is executed. Migration version is checked against the Renku
+``migrate`` function is executed. Migration version is checked against the Renku
 project version and any migration which has a higher version is applied to the
 project.
 """

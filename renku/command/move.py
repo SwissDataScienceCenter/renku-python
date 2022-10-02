@@ -248,8 +248,8 @@ def _warn_about_dataset_files(files, dataset_gateway: IDatasetGateway):
     )
 
 
-def _show_moved_files(client_path, files):
+def _show_moved_files(project_path, files):
     for path in sorted(files):
-        src = path.relative_to(client_path)
-        dst = files[path].relative_to(client_path)
+        src = path.relative_to(project_path)
+        dst = files[path].relative_to(project_path)
         communication.echo(f"{src} -> {dst}")
