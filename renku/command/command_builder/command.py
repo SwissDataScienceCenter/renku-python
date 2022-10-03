@@ -24,7 +24,6 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union
 
-import click
 import inject
 
 from renku.core import errors
@@ -144,7 +143,6 @@ class Command:
         self._finalized: bool = False
         self._track_std_streams: bool = False
         self._working_directory: Optional[str] = None
-        self._context_was_created: bool = False
 
     def __getattr__(self, name: str) -> Any:
         """Bubble up attributes of wrapped builders."""
@@ -167,16 +165,11 @@ class Command:
             builder("Command"): Current ``CommandBuilder``.
             context(dict): Current context dictionary.
         """
-        ctx = click.get_current_context(silent=True)
-        if ctx is None:
-            path = get_git_path(self._working_directory or ".")
-            project_context.push_path(path)
-            ctx = click.Context(click.Command(builder._operation))  # type: ignore
-            self._context_was_created = True
+        path = get_git_path(self._working_directory or ".")
+        project_context.push_path(path)
 
         context["bindings"] = {}
         context["constructor_bindings"] = {}
-        context["click_context"] = ctx
 
     def _pre_hook(self, builder: "Command", context: dict, *args, **kwargs) -> None:
         """Setup project.
@@ -199,8 +192,7 @@ class Command:
         """
         remove_injector()
 
-        if self._context_was_created:
-            project_context.pop_context()
+        project_context.pop_context()
 
         if result.error:
             raise result.error
@@ -253,7 +245,7 @@ class Command:
 
         try:
             with context["stack"]:
-                output = context["click_context"].invoke(self._operation, *args, **kwargs)
+                output = self._operation(*args, **kwargs)  # type: ignore
         except errors.RenkuException as e:
             error = e
         except (Exception, BaseException):

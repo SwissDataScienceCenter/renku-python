@@ -23,7 +23,7 @@ from pathlib import Path
 from renku.command.migrate import migrations_check
 from renku.core.errors import AuthenticationError, MinimumVersionError, ProjectNotFound, RenkuException
 from renku.core.migrate import SUPPORTED_PROJECT_VERSION
-from renku.core.util.contexts import click_context
+from renku.core.util.contexts import renku_project_context
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
 from renku.ui.service.interfaces.git_api_provider import IGitAPIProvider
@@ -64,7 +64,7 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
                 ref=self.request_data.get("ref", None),
                 token=self.user_data.get("token", None),
             )
-            with click_context(tempdir, "renku_op"):
+            with renku_project_context(tempdir):
                 return self.renku_op()
 
     def renku_op(self):

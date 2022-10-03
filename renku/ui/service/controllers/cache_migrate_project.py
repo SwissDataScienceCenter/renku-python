@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service migrate project controller."""
-from renku.core.util.contexts import click_context
+from renku.core.util.contexts import renku_project_context
 from renku.ui.service.cache.models.job import Job
 from renku.ui.service.config import MESSAGE_PREFIX, PROJECT_CLONE_NO_DEPTH
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
@@ -38,7 +38,7 @@ def execute_migration(
 
     communicator = ServiceCallback()
 
-    with click_context(project_path, "execute_migration"):
+    with renku_project_context(project_path):
         result = (
             migrate_project_command()
             .with_commit(message=commit_message)
