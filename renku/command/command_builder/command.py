@@ -173,12 +173,6 @@ class Command:
             project_context.push_path(path)
             ctx = click.Context(click.Command(builder._operation))  # type: ignore
             self._context_was_created = True
-        else:
-            # TODO: No path was pushed in the previous code. Is it true? Can this method be called more than once?
-            # if not self._client:
-            #     self._client = ctx.ensure_object(LocalClient)
-            # dispatcher.push_created_client_to_stack(self._client)
-            pass
 
         context["bindings"] = {}
         context["constructor_bindings"] = {}

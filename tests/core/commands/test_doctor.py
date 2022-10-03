@@ -101,7 +101,7 @@ def test_lfs_broken_history(runner, client, tmp_path):
 def test_check_invalid_imported_dataset(runner, project_with_datasets, client_database_injection_manager):
     """Test checking imported datasets that have both derived_from and same_as set."""
     with client_database_injection_manager(project_with_datasets):
-        with with_dataset(project_with_datasets, name="dataset-1", commit_database=True) as dataset:
+        with with_dataset(name="dataset-1", commit_database=True) as dataset:
             # NOTE: Set both same_as and derived_from for a dataset
             dataset.same_as = Url(url_str="http://example.com")
             dataset.derived_from = Url(url_id="datasets/non-existing-id")
@@ -122,7 +122,7 @@ def test_check_invalid_imported_dataset(runner, project_with_datasets, client_da
 def test_fix_invalid_imported_dataset(runner, project_with_datasets, client_database_injection_manager):
     """Test fixing imported datasets that have both derived_from and same_as set."""
     with client_database_injection_manager(project_with_datasets):
-        with with_dataset(project_with_datasets, name="dataset-1", commit_database=True) as dataset:
+        with with_dataset(name="dataset-1", commit_database=True) as dataset:
             # NOTE: Set both same_as and derived_from for a dataset
             dataset.same_as = Url(url_str="http://example.com")
             dataset.derived_from = Url(url_id="datasets/non-existing-id")
@@ -141,7 +141,7 @@ def test_fix_invalid_imported_dataset(runner, project_with_datasets, client_data
     assert not project_with_datasets.is_dirty(untracked_files=True)
 
     with client_database_injection_manager(project_with_datasets):
-        with with_dataset(project_with_datasets, name="dataset-1") as dataset:
+        with with_dataset(name="dataset-1") as dataset:
             # NOTE: Set both same_as and derived_from for a dataset
             assert dataset.same_as.value == "http://example.com"
             assert dataset.derived_from is None
@@ -152,7 +152,7 @@ def test_file_outside_datadir(runner, project_with_datasets, client_database_inj
     write_and_commit_file(project_with_datasets, "some_file", "content_a")
 
     with client_database_injection_manager(project_with_datasets):
-        with with_dataset(project_with_datasets, name="dataset-1", commit_database=True) as dataset:
+        with with_dataset(name="dataset-1", commit_database=True) as dataset:
             dataset.add_or_update_files([DatasetFile.from_path("some_file")])
     project_with_datasets.add(all=True)
     project_with_datasets.commit("modified dataset")
@@ -166,7 +166,7 @@ def test_file_outside_datadir(runner, project_with_datasets, client_database_inj
     assert 0 == result.exit_code, format_result_exception(result)
 
     with client_database_injection_manager(project_with_datasets):
-        with with_dataset(project_with_datasets, name="dataset-1", commit_database=True) as dataset:
+        with with_dataset(name="dataset-1", commit_database=True) as dataset:
             assert 1 == len(dataset.files)
             assert dataset.files[0].entity.path.startswith(str(dataset.get_datadir()))
 

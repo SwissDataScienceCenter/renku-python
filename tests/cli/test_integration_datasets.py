@@ -564,7 +564,7 @@ def test_dataset_export_upload_file(
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     with client_database_injection_manager(client):
-        with with_dataset(client, name="my-dataset", commit_database=True) as dataset:
+        with with_dataset(name="my-dataset", commit_database=True) as dataset:
             dataset.description = "awesome dataset"
             dataset.creators[0].affiliation = "eth"
 
@@ -621,7 +621,7 @@ def test_dataset_export_upload_tag(
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     with client_database_injection_manager(client):
-        with with_dataset(client, name="my-dataset", commit_database=True) as dataset:
+        with with_dataset(name="my-dataset", commit_database=True) as dataset:
             dataset.description = "awesome dataset"
             dataset.creators[0].affiliation = "eth"
 
@@ -750,7 +750,7 @@ def test_dataset_export_upload_multiple(
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     with client_database_injection_manager(client):
-        with with_dataset(client, name="my-dataset", commit_database=True) as dataset:
+        with with_dataset(name="my-dataset", commit_database=True) as dataset:
             dataset.description = "awesome dataset"
             dataset.creators[0].affiliation = "eth"
 
@@ -811,7 +811,7 @@ def test_dataset_export_published_url(runner, tmpdir, client, zenodo_sandbox, da
     result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(new_file)])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    with with_dataset(client, name="my-dataset", commit_database=True) as dataset:
+    with with_dataset(name="my-dataset", commit_database=True) as dataset:
         dataset.description = "awesome dataset"
         dataset.creators[0].affiliation = "eth"
 
@@ -1226,7 +1226,7 @@ def test_dataset_update_dataverse(client, runner, doi, load_dataset_with_injecti
     assert 0 == runner.invoke(cli, ["dataset", "rm-tags", "imported_dataset", "2.2"], catch_exceptions=False).exit_code
 
     with client_database_injection_manager(client):
-        with with_dataset(client, name="imported_dataset", commit_database=True) as dataset:
+        with with_dataset(name="imported_dataset", commit_database=True) as dataset:
             dataset.version = "0.1"
 
     project_context.repository.add(all=True)
@@ -1256,7 +1256,7 @@ def test_dataset_update_renku(client, runner, load_dataset_with_injection, clien
     assert 0 == runner.invoke(cli, ["dataset", "import", "--name", "remote-dataset", uri], input="y").exit_code
 
     with client_database_injection_manager(client):
-        with with_dataset(client, name="remote-dataset", commit_database=True) as dataset:
+        with with_dataset(name="remote-dataset", commit_database=True) as dataset:
             # NOTE: To mock an update we schema:sameAs to a dataset that has an update
             update_uri = "https://dev.renku.ch/datasets/04b463b01b514833b236186a941f6259"
             dataset.same_as = Url(url_id=update_uri)
@@ -1923,7 +1923,7 @@ def test_dataset_update_removes_deleted_files(
 
     # NOTE: Allow dataset to be updatable by removing ``version`` and setting ``same_as`` to another id of the dataset
     with client_database_injection_manager(client):
-        with with_dataset(client, name="parts", commit_database=True) as dataset:
+        with with_dataset(name="parts", commit_database=True) as dataset:
             dataset.version = None
             dataset.same_as = Url(url_id="https://dev.renku.ch/datasets/abc934939cbf45dca0cfef61d05fa132")
     project_context.repository.add(all=True)

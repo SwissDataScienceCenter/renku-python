@@ -208,7 +208,7 @@ class ProjectContext(threading.local):
 
     @property
     def transaction_id(self) -> str:
-        """Get a transaction id for the current client to be used for grouping git commits."""
+        """Get a transaction id for the current context to be used for grouping git commits."""
         if not self._top.transaction_id:
             self._top.transaction_id = uuid.uuid4().hex
 

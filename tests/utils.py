@@ -157,7 +157,6 @@ def load_dataset(name: str) -> Optional[Dataset]:
 @contextmanager
 @inject.autoparams("dataset_gateway")
 def with_dataset(
-    client,
     *,
     name: str,
     dataset_gateway: IDatasetGateway,

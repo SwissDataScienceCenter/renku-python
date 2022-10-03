@@ -1182,8 +1182,6 @@ def filter_dataset_files(
 
             record = DynamicProxy(file)
             record.dataset = dataset
-            # TODO: Check where this is used
-            # record.client = client
             records.append(record)
 
         if not check_data_directory:
@@ -1197,7 +1195,6 @@ def filter_dataset_files(
                     # New file in dataset folder
                     record = DynamicProxy(DatasetFile.from_path(file_path))
                     record.dataset = dataset
-                    # record.client = client  # TODO
                     records.append(record)
 
     if unused_names:

@@ -115,7 +115,7 @@ def test_graph_export_strict_dataset(tmpdir, runner, project, subdirectory):
 def test_graph_export_dataset_mutability(runner, project_with_datasets, client_database_injection_manager):
     """Test export validation fails for datasets that have both same_as and derived_from."""
     with client_database_injection_manager(project_with_datasets):
-        with with_dataset(project_with_datasets, name="dataset-1", commit_database=True) as dataset:
+        with with_dataset(name="dataset-1", commit_database=True) as dataset:
             # NOTE: Set both same_as and derived_from for a dataset
             dataset.same_as = Url(url_str="http://example.com")
             dataset.derived_from = Url(url_id="datasets/abc123")

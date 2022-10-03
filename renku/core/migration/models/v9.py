@@ -77,7 +77,7 @@ RANDOM_ID_LENGTH = 4
 
 
 def _set_entity_commit(entity, commit):
-    """Set the client and commit of an entity."""
+    """Set the commit of an entity."""
     if not entity.commit:
         revision = "UNCOMMITTED"
         if entity._label:
