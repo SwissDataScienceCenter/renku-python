@@ -241,7 +241,7 @@ def _exists(migration_context, path):
     if dmc:
         return dmc.exists(path)
 
-    path = Path(path)
+    path = project_context.path / path
     return path.exists() or (path.is_symlink() and os.path.lexists(path))
 
 
@@ -249,7 +249,8 @@ def _is_dir(migration_context, path):
     dmc = migration_context.dataset_migration_context
     if dmc:
         return dmc.is_dir(path)
-    return Path(path).is_dir()
+
+    return (project_context.path / path).is_dir()
 
 
 def _get_previous_commit(migration_context, path):

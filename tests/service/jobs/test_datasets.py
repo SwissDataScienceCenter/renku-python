@@ -655,7 +655,7 @@ def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
 
     assert updated_job
     assert {"unlinked", "remote_branch"} == updated_job.ctrl_result["result"].keys()
-    assert ["data/data/data1"] == updated_job.ctrl_result["result"]["unlinked"]
+    assert ["data/data1"] == updated_job.ctrl_result["result"]["unlinked"]
 
 
 @pytest.mark.service
@@ -720,4 +720,4 @@ def test_unlink_dataset_sync(svc_client_cache, it_remote_repo_url_temp_branch, v
 
     assert updated_job
     assert {"unlinked", "remote_branch"} == updated_job.ctrl_result["result"].keys()
-    assert ["data/data/data1"] == updated_job.ctrl_result["result"]["unlinked"]
+    assert ["data/data1"] == updated_job.ctrl_result["result"]["unlinked"]
