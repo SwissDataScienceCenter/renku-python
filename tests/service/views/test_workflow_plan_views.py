@@ -22,12 +22,13 @@ import pytest
 from tests.utils import assert_rpc_response, retry_failed
 
 
+@pytest.mark.remote_repo("workflow")
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
-def test_list_workflow_plans_view(svc_workflow_repo):
+def test_list_workflow_plans_view(svc_client_with_repo):
     """Check listing of plans."""
-    svc_client, headers, project_id = svc_workflow_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
 
     params = {
         "project_id": project_id,
@@ -144,12 +145,13 @@ def test_list_workflow_plans_view(svc_workflow_repo):
         ),
     ],
 )
+@pytest.mark.remote_repo("workflow")
 @pytest.mark.service
 @pytest.mark.integration
-# @retry_failed
-def test_show_workflow_plans_view(plan_id, expected_fields, executions, touches_files, latest, svc_workflow_repo):
+@retry_failed
+def test_show_workflow_plans_view(plan_id, expected_fields, executions, touches_files, latest, svc_client_with_repo):
     """Check showing of plans."""
-    svc_client, headers, project_id = svc_workflow_repo
+    svc_client, headers, project_id, _ = svc_client_with_repo
 
     params = {"project_id": project_id, "plan_id": plan_id}
 

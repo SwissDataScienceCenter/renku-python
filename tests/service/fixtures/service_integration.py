@@ -91,13 +91,26 @@ def integration_repo(headers, project_id, url_components) -> Generator[Repositor
 
 
 @pytest.fixture()
-def integration_lifecycle(svc_client, mock_redis, identity_headers, it_remote_repo_url):
+def integration_lifecycle(
+    svc_client, mock_redis, identity_headers, it_remote_repo_url, it_protected_repo_url, it_workflow_repo_url, request
+):
     """Setup and teardown steps for integration tests."""
     from renku.domain_model.git import GitURL
 
-    url_components = GitURL.parse(it_remote_repo_url)
+    marker = request.node.get_closest_marker("remote_repo")
 
-    payload = {"git_url": it_remote_repo_url, "depth": -1}
+    if marker is None or marker.args[0] == "default":
+        remote_repo = it_remote_repo_url
+    elif marker.args[0] == "protected":
+        remote_repo = it_protected_repo_url
+    elif marker.args[0] == "workflow":
+        remote_repo = it_workflow_repo_url
+    else:
+        raise ValueError(f"Couldn't get remote repo for marker {marker.args[0]}")
+
+    url_components = GitURL.parse(remote_repo)
+
+    payload = {"git_url": remote_repo, "depth": -1}
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
 
@@ -152,58 +165,6 @@ def svc_client_with_repo(svc_client_setup):
 
     with _mock_cache_sync(repo):
         yield svc_client, deepcopy(headers), project_id, url_components
-
-
-@pytest.fixture
-def svc_protected_repo(svc_client, identity_headers, it_protected_repo_url):
-    """Service client with migrated remote protected repository."""
-    from renku.domain_model.git import GitURL
-
-    payload = {
-        "git_url": it_protected_repo_url,
-        "depth": 0,
-    }
-
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
-
-    data = {
-        "project_id": response.json["result"]["project_id"],
-        "skip_template_update": True,
-        "skip_docker_update": True,
-    }
-    svc_client.post("/cache.migrate", data=json.dumps(data), headers=identity_headers)
-
-    url_components = GitURL.parse(it_protected_repo_url)
-
-    with integration_repo(identity_headers, response.json["result"]["project_id"], url_components) as repo:
-        with _mock_cache_sync(repo):
-            yield svc_client, identity_headers, payload, response
-
-
-@pytest.fixture
-def svc_workflow_repo(svc_client, identity_headers, it_workflow_repo_url):
-    """Service client with migrated remote workflow repository."""
-    from renku.domain_model.git import GitURL
-
-    payload = {
-        "git_url": it_workflow_repo_url,
-        "depth": 0,
-    }
-
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
-
-    data = {
-        "project_id": response.json["result"]["project_id"],
-        "skip_template_update": True,
-        "skip_docker_update": True,
-    }
-    svc_client.post("/cache.migrate", data=json.dumps(data), headers=identity_headers)
-
-    url_components = GitURL.parse(it_workflow_repo_url)
-
-    with integration_repo(identity_headers, response.json["result"]["project_id"], url_components) as repo:
-        with _mock_cache_sync(repo):
-            yield svc_client, identity_headers, response.json["result"]["project_id"]
 
 
 @pytest.fixture
