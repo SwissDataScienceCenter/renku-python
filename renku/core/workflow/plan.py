@@ -142,7 +142,7 @@ def show_workflow(
     Returns:
         Details of the Plan.
     """
-    workflow = plan_gateway.get_by_name_or_id(name_or_id)
+    workflow = cast(Union[Plan, CompositePlan], plan_gateway.get_by_name_or_id(name_or_id))
 
     if is_plan_removed(workflow):
         raise errors.ParameterError(f"The specified workflow '{name_or_id}' cannot be found.")
@@ -150,9 +150,10 @@ def show_workflow(
     if with_metadata:
         activities = activity_gateway.get_all_activities()
         activity_map = _reverse_activity_plan_map(activities)
-        plan_chain = get_derivative_chain(workflow)
-        relevant_activities = [a for p in plan_chain for a in activity_map[p.id]]
+        plan_chain = list(get_derivative_chain(workflow))
+        relevant_activities = [a for p in plan_chain for a in activity_map.get(p.id, [])]
         cache: Dict[str, bool] = {}
+        touches_existing_files = _check_workflow_touches_existing_files(workflow, cache, activity_map)
 
         if isinstance(workflow, Plan):
 
@@ -168,11 +169,11 @@ def show_workflow(
             workflow = cast(Plan, DynamicProxy(workflow))
             workflow.number_of_executions = num_executions
             workflow.last_execution = last_execution
-            workflow.touches_existing_files = _check_workflow_touches_existing_files(workflow, cache, activity_map)
+            workflow.touches_existing_files = touches_existing_files
             workflow.latest = workflow.id == plan_chain[0].id
         else:
             workflow = cast(CompositePlan, DynamicProxy(workflow))
-            workflow.touches_existing_files = _check_workflow_touches_existing_files(workflow, cache, activity_map)
+            workflow.touches_existing_files = touches_existing_files
             workflow.latest = workflow.id == plan_chain[0].id
 
     return plan_view(cast(AbstractPlan, workflow))
@@ -731,13 +732,12 @@ def get_plans_with_metadata(activity_gateway: IActivityGateway, plan_gateway: IP
         for p in plan_gateway.get_newest_plans_by_names().values()
     )
 
-    result: Dict[str, DynamicProxy] = {}
-    composites: List[DynamicProxy] = []
+    result: Dict[str, Union[Plan, CompositePlan]] = {}
     cache: Dict[str, bool] = {}
 
     # check which plans where involved in using/creating existing files
     for plan_chain in latest_plan_chains:
-        latest_plan = DynamicProxy(plan_chain[0])
+        latest_plan = cast(Union[Plan, CompositePlan], DynamicProxy(plan_chain[0]))
         latest_plan.touches_existing_files = False
         latest_plan.number_of_executions = 0
         latest_plan.created = latest_plan.date_created
@@ -752,16 +752,15 @@ def get_plans_with_metadata(activity_gateway: IActivityGateway, plan_gateway: IP
                 latest_plan.number_of_executions += 1
 
                 latest_plan.touches_existing_files = _check_workflow_touches_existing_files(
-                    plan_chain[0], cache, activity_map
+                    latest_plan, cache, activity_map
                 )
             latest_plan.type = "Plan"
         else:
             latest_plan.number_of_executions = None
-            composites.append(latest_plan)
             latest_plan.type = "CompositePlan"
             latest_plan.children = [p.id for p in latest_plan.plans]
             latest_plan.touches_existing_files = _check_workflow_touches_existing_files(
-                plan_chain[0], cache, activity_map
+                latest_plan, cache, activity_map
             )
 
         result[latest_plan.id] = latest_plan

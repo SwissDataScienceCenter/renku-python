@@ -52,56 +52,116 @@ def test_list_workflow_plans_view(svc_workflow_repo):
         "last_executed",
     } == set(response.json["result"]["plans"][0].keys())
 
+    reexecuted = next(p for p in response.json["result"]["plans"] if p["name"] == "some-step")
+    assert 2 == reexecuted["number_of_executions"]
+    assert reexecuted["touches_existing_files"]
+    assert "2022-10-04T13:05:44+02:00" == reexecuted["last_executed"]
 
+    non_recent = next(p for p in response.json["result"]["plans"] if p["name"] == "deleted-outputs")
+    assert not non_recent["touches_existing_files"]
+    assert 2 == non_recent["number_of_executions"]
+
+    composite = next(p for p in response.json["result"]["plans"] if p["name"] == "composite1")
+
+    assert not composite["number_of_executions"]
+    assert composite["touches_existing_files"]
+    assert not composite["last_executed"]
+
+
+@pytest.mark.parametrize(
+    "plan_id,expected_fields,executions,touches_files,latest",
+    [
+        (
+            "/plans/6943ee7f620c4f2d8f75b657e9d9e765",
+            {
+                "annotations",
+                "creators",
+                "created",
+                "description",
+                "id",
+                "mappings",
+                "keywords",
+                "latest",
+                "name",
+                "links",
+                "plans",
+                "touches_existing_files",
+                "type",
+            },
+            None,
+            True,
+            True,
+        ),
+        (
+            "/plans/56b3149fc21e43bea9b73b887934e084",
+            {
+                "annotations",
+                "creators",
+                "created",
+                "description",
+                "full_command",
+                "id",
+                "inputs",
+                "keywords",
+                "latest",
+                "name",
+                "outputs",
+                "parameters",
+                "success_codes",
+                "touches_existing_files",
+                "number_of_executions",
+                "last_executed",
+                "type",
+            },
+            1,
+            True,
+            True,
+        ),
+        (
+            "/plans/7c4e51b1ac7143c287b5b0001d843310",
+            {
+                "annotations",
+                "creators",
+                "created",
+                "description",
+                "full_command",
+                "id",
+                "inputs",
+                "keywords",
+                "latest",
+                "name",
+                "outputs",
+                "parameters",
+                "success_codes",
+                "touches_existing_files",
+                "number_of_executions",
+                "last_executed",
+                "type",
+            },
+            2,
+            False,
+            False,
+        ),
+    ],
+)
 @pytest.mark.service
 @pytest.mark.integration
-@retry_failed
-def test_show_workflow_plans_view(svc_workflow_repo):
+# @retry_failed
+def test_show_workflow_plans_view(plan_id, expected_fields, executions, touches_files, latest, svc_workflow_repo):
     """Check showing of plans."""
     svc_client, headers, project_id = svc_workflow_repo
 
-    params = {"project_id": project_id, "plan_id": "/plans/3398f0a970774e2d82b1791190de85d0"}
+    params = {"project_id": project_id, "plan_id": plan_id}
 
     response = svc_client.get("/workflow_plans.show", query_string=params, headers=headers)
 
     assert_rpc_response(response)
-    assert {
-        "annotations",
-        "creators",
-        "created",
-        "description",
-        "full_command",
-        "id",
-        "inputs",
-        "keywords",
-        "latest",
-        "name",
-        "outputs",
-        "parameters",
-        "success_codes",
-        "touches_existing_files",
-        "number_of_executions",
-        "last_executed",
-        "type",
-    } == set(response.json["result"].keys())
+    assert expected_fields == set(response.json["result"].keys())
 
-    params = {"project_id": project_id, "plan_id": "/plans/3f05dcdf8d584396af8d12ad711cc59e"}
+    if executions is not None:
+        assert executions == response.json["result"]["number_of_executions"]
+    else:
+        assert "number_of_executions" not in response.json["result"]
 
-    response = svc_client.get("/workflow_plans.show", query_string=params, headers=headers)
-
-    assert_rpc_response(response)
-    assert {
-        "annotations",
-        "creators",
-        "created",
-        "description",
-        "id",
-        "mappings",
-        "keywords",
-        "latest",
-        "name",
-        "links",
-        "plans",
-        "touches_existing_files",
-        "type",
-    } == set(response.json["result"].keys())
+    assert touches_files == response.json["result"]["touches_existing_files"]
+    assert latest == response.json["result"]["latest"]
