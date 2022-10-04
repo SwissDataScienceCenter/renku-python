@@ -102,3 +102,9 @@ def repository(project) -> Generator[Repository, None, None]:
 def client(project) -> Generator[Repository, None, None]:
     """Return a Renku repository."""
     yield project
+
+
+@pytest.fixture
+def transaction_id(project) -> Generator[str, None, None]:
+    """Return current transaction ID."""
+    yield project_context.transaction_id

@@ -28,7 +28,7 @@ from renku.command.mergetool import setup_mergetool
 from renku.core import errors
 from renku.core.config import set_value
 from renku.core.constant import DATA_DIR_CONFIG_KEY, RENKU_HOME
-from renku.core.git import commit, with_project_metadata, worktree
+from renku.core.git import with_worktree
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.migration.utils import OLD_METADATA_PATH
 from renku.core.storage import init_external_storage, storage_installed
@@ -43,6 +43,8 @@ from renku.core.template.template import (
 )
 from renku.core.template.usecase import select_template
 from renku.core.util import communication
+from renku.core.util.contexts import with_project_metadata
+from renku.core.util.git import with_commit
 from renku.core.util.os import is_path_empty
 from renku.domain_model.project import Project
 from renku.domain_model.project_context import project_context
@@ -77,7 +79,7 @@ def create_backup_branch(path):
                         branch_name = f"pre_renku_init_{hexsha}_{uuid4().hex}"
                         break
 
-                with worktree(
+                with with_worktree(
                     branch_name=branch_name,
                     commit=repository.head.commit,
                     merge_args=["--no-ff", "-s", "recursive", "-X", "ours", "--allow-unrelated-histories"],
@@ -293,7 +295,13 @@ def create_from_template(
             "'http://schema.org/schemaVersion': '9'"
         )
 
-    with commit(commit_message=commit_message, commit_only=commit_only, skip_dirty_checks=True):
+    with with_commit(
+        repository=project_context.repository,
+        transaction_id=project_context.transaction_id,
+        commit_message=commit_message,
+        commit_only=commit_only,
+        skip_dirty_checks=True,
+    ):
         with with_project_metadata(
             name=name, namespace=namespace, description=description, custom_metadata=custom_metadata, keywords=keywords
         ) as project:

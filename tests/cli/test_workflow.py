@@ -32,8 +32,8 @@ import pyte
 import pytest
 from cwl_utils.parser import cwl_v1_2 as cwlgen
 
-from renku.core.git import commit
 from renku.core.plugin.provider import available_workflow_providers
+from renku.core.util.git import with_commit
 from renku.core.util.yaml import write_yaml
 from renku.domain_model.project_context import project_context
 from renku.infrastructure.database import Database
@@ -703,12 +703,12 @@ def test_workflow_execute_command(
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
-def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, project, capsys, client, provider):
+def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, project, capsys, transaction_id, provider):
     """Test executing a workflow with --set for a renku.ui.api.Parameter."""
-    script = project_context.path / "script.py"
-    output = project_context.path / "output"
+    script = project.path / "script.py"
+    output = project.path / "output"
 
-    with commit():
+    with with_commit(repository=project, transaction_id=transaction_id):
         script.write_text("from renku.ui.api import Parameter\n" 'print(Parameter("test", "hello world").value)\n')
 
     result = run_shell(f"renku run --name run1 -- python3 {script} > {output}")
@@ -732,16 +732,16 @@ def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, proj
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
-def test_workflow_execute_command_with_api_input_set(runner, run_shell, project, capsys, client, provider):
+def test_workflow_execute_command_with_api_input_set(runner, run_shell, project, capsys, transaction_id, provider):
     """Test executing a workflow with --set for a renku.ui.api.Input."""
-    script = project_context.path / "script.py"
-    output = project_context.path / "output"
-    input = project_context.path / "input"
+    script = project.path / "script.py"
+    output = project.path / "output"
+    input = project.path / "input"
     input.write_text("input string")
-    other_input = project_context.path / "other_input"
+    other_input = project.path / "other_input"
     other_input.write_text("my other input string")
 
-    with commit():
+    with with_commit(repository=project, transaction_id=transaction_id):
         script.write_text(
             f"from renku.ui.api import Input\nwith open(Input('my-input', '{input.name}'), 'r') as f:\n"
             "    print(f.read())"
@@ -767,13 +767,13 @@ def test_workflow_execute_command_with_api_input_set(runner, run_shell, project,
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
-def test_workflow_execute_command_with_api_output_set(runner, run_shell, project, capsys, client, provider):
+def test_workflow_execute_command_with_api_output_set(runner, run_shell, project, capsys, transaction_id, provider):
     """Test executing a workflow with --set for a renku.ui.api.Output."""
-    script = project_context.path / "script.py"
-    output = project_context.path / "output"
-    other_output = project_context.path / "other_output"
+    script = project.path / "script.py"
+    output = project.path / "output"
+    other_output = project.path / "other_output"
 
-    with commit():
+    with with_commit(repository=project, transaction_id=transaction_id):
         script.write_text(
             f"from renku.ui.api import Output\nwith open(Output('my-output', '{output.name}'), 'w') as f:\n"
             "    f.write('test')"
@@ -798,13 +798,13 @@ def test_workflow_execute_command_with_api_output_set(runner, run_shell, project
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_workflow_execute_command_with_api_duplicate_output(runner, run_shell, project, capsys, client):
+def test_workflow_execute_command_with_api_duplicate_output(runner, run_shell, project, capsys, transaction_id):
     """Test executing a workflow with duplicate output with differing path."""
-    script = project_context.path / "script.py"
-    output = project_context.path / "output"
-    other_output = project_context.path / "other_output"
+    script = project.path / "script.py"
+    output = project.path / "output"
+    other_output = project.path / "other_output"
 
-    with commit():
+    with with_commit(repository=project, transaction_id=transaction_id):
         script.write_text(
             f"from renku.ui.api import Output\nopen(Output('my-output', '{output.name}'), 'w')\n"
             f"open(Output('my-output', '{other_output.name}'), 'w')"
@@ -816,12 +816,12 @@ def test_workflow_execute_command_with_api_duplicate_output(runner, run_shell, p
     assert b"Error: Invalid parameter value - Duplicate input/output name found: my-output\n" in result[0]
 
 
-def test_workflow_execute_command_with_api_valid_duplicate_output(runner, run_shell, project, capsys, client):
+def test_workflow_execute_command_with_api_valid_duplicate_output(runner, run_shell, project, capsys, transaction_id):
     """Test executing a workflow with duplicate output with same path."""
-    script = project_context.path / "script.py"
-    output = project_context.path / "output"
+    script = project.path / "script.py"
+    output = project.path / "output"
 
-    with commit():
+    with with_commit(repository=project, transaction_id=transaction_id):
         script.write_text(
             f"from renku.ui.api import Output\nopen(Output('my-output', '{output.name}'), 'w')\n"
             f"open(Output('my-output', '{output.name}'), 'w')"
@@ -836,13 +836,13 @@ def test_workflow_execute_command_with_api_valid_duplicate_output(runner, run_sh
     assert result[1] is None
 
 
-def test_workflow_execute_command_with_api_duplicate_input(runner, run_shell, project, capsys, client):
+def test_workflow_execute_command_with_api_duplicate_input(runner, run_shell, project, capsys, transaction_id):
     """Test executing a workflow with duplicate input with differing path."""
-    script = project_context.path / "script.py"
-    input = project_context.path / "input"
-    other_input = project_context.path / "other_input"
+    script = project.path / "script.py"
+    input = project.path / "input"
+    other_input = project.path / "other_input"
 
-    with commit():
+    with with_commit(repository=project, transaction_id=transaction_id):
         script.write_text(
             f"from renku.ui.api import Input\nopen(Input('my-input', '{input.name}'), 'w')\n"
             f"open(Input('my-input', '{other_input.name}'), 'w')"
@@ -854,12 +854,12 @@ def test_workflow_execute_command_with_api_duplicate_input(runner, run_shell, pr
     assert b"Error: Invalid parameter value - Duplicate input/output name found: my-input\n" in result[0]
 
 
-def test_workflow_execute_command_with_api_valid_duplicate_input(runner, run_shell, project, capsys, client):
+def test_workflow_execute_command_with_api_valid_duplicate_input(runner, run_shell, project, capsys, transaction_id):
     """Test executing a workflow with duplicate input with same path."""
-    script = project_context.path / "script.py"
-    input = project_context.path / "input"
+    script = project.path / "script.py"
+    input = project.path / "input"
 
-    with commit():
+    with with_commit(repository=project, transaction_id=transaction_id):
         script.write_text(
             f"from renku.ui.api import Input\nopen(Input('my-input', '{input.name}'), 'w')\n"
             f"open(Input('my-input', '{input.name}'), 'w')"
@@ -1202,12 +1202,12 @@ def test_workflow_iterate(
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
-def test_workflow_iterate_command_with_parameter_set(runner, run_shell, project, capsys, client, provider):
+def test_workflow_iterate_command_with_parameter_set(runner, run_shell, project, capsys, transaction_id, provider):
     """Test executing a workflow with --set float value for a renku.ui.api.Parameter."""
-    script = project_context.path / "script.py"
-    output = project_context.path / "output"
+    script = project.path / "script.py"
+    output = project.path / "output"
 
-    with commit():
+    with with_commit(repository=project, transaction_id=transaction_id):
         script.write_text("import sys\nprint(sys.argv[1])\n")
 
     result = run_shell(f"renku run --name run1 -- python {script} 3.98 > {output}")
@@ -1242,11 +1242,11 @@ def test_workflow_iterate_command_with_parameter_set(runner, run_shell, project,
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_workflow_cycle_detection(run_shell, project, capsys, client):
+def test_workflow_cycle_detection(run_shell, project, capsys, transaction_id):
     """Test creating a cycle is not possible with renku run or workflow execute."""
-    input = project_context.path / "input"
+    input = project.path / "input"
 
-    with commit():
+    with with_commit(repository=project, transaction_id=transaction_id):
         input.write_text("test")
 
     result = run_shell("renku run --name run1 -- cp input output")
@@ -1275,18 +1275,18 @@ def test_workflow_cycle_detection(run_shell, project, capsys, client):
 
 
 @pytest.mark.skipif(sys.platform == "darwin", reason="GitHub macOS image doesn't include Docker")
-def test_workflow_execute_docker_toil(runner, client, run_shell, caplog):
+def test_workflow_execute_docker_toil(runner, repository, run_shell, caplog):
     """Test workflow execute using docker with the toil provider."""
     caplog.set_level(logging.INFO)
 
-    write_and_commit_file(project_context.repository, "input", "first line\nsecond line")
-    output = project_context.path / "output"
+    write_and_commit_file(repository, "input", "first line\nsecond line")
+    output = repository.path / "output"
 
     run_shell("renku run --name run-1 -- tail -n 1 input > output")
 
     assert "first line" not in output.read_text()
 
-    write_and_commit_file(project_context.repository, "toil.yaml", "logLevel: INFO\ndocker:\n  image: ubuntu")
+    write_and_commit_file(repository, "toil.yaml", "logLevel: INFO\ndocker:\n  image: ubuntu")
 
     result = runner.invoke(cli, ["workflow", "execute", "-p", "toil", "-s", "n-1=2", "-c", "toil.yaml", "run-1"])
 
@@ -1295,16 +1295,16 @@ def test_workflow_execute_docker_toil(runner, client, run_shell, caplog):
     assert "executing with Docker" in caplog.text
 
 
-def test_workflow_execute_docker_toil_stderr(runner, client, run_shell):
+def test_workflow_execute_docker_toil_stderr(runner, repository, run_shell):
     """Test workflow execute using docker with the toil provider and stderr redirection."""
-    write_and_commit_file(project_context.repository, "input", "first line\nsecond line")
-    output = project_context.path / "output"
+    write_and_commit_file(repository, "input", "first line\nsecond line")
+    output = repository.path / "output"
 
     run_shell("renku run --name run-1 -- tail -n 1 input 2> output")
 
     assert "first line" not in output.read_text()
 
-    write_and_commit_file(project_context.repository, "toil.yaml", "docker:\n  image: ubuntu")
+    write_and_commit_file(repository, "toil.yaml", "docker:\n  image: ubuntu")
 
     result = runner.invoke(cli, ["workflow", "execute", "-p", "toil", "-s", "n-1=2", "-c", "toil.yaml", "run-1"])
 

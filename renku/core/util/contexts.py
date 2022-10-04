@@ -21,9 +21,12 @@ import contextlib
 import os
 import sys
 from pathlib import Path
-from typing import Union
+from typing import Dict, List, Optional, Union
 
+from renku.command.command_builder import inject
 from renku.core import errors
+from renku.core.interface.database_gateway import IDatabaseGateway
+from renku.core.interface.project_gateway import IProjectGateway
 
 
 @contextlib.contextmanager
@@ -114,6 +117,47 @@ def renku_project_context(path):
     with project_context.with_path(path=path) as project_context, chdir(path):
         project_context.external_storage_requested = True
         yield project_context.path
+
+
+@contextlib.contextmanager
+@inject.autoparams("project_gateway", "database_gateway")
+def with_project_metadata(
+    project_gateway: IProjectGateway,
+    database_gateway: IDatabaseGateway,
+    read_only: bool = False,
+    name: Optional[str] = None,
+    namespace: Optional[str] = None,
+    description: Optional[str] = None,
+    keywords: Optional[List[str]] = None,
+    custom_metadata: Optional[Dict] = None,
+):
+    """Yield an editable metadata object.
+
+    Args:
+        project_gateway(IProjectGateway): Injected project gateway.
+        database_gateway(IDatabaseGateway): Injected database gateway.
+        read_only(bool): Whether to save changes or not (Default value = False).
+        name(Optional[str]): Name of the project (when creating a new one) (Default value = None).
+        namespace(Optional[str]): Namespace of the project (when creating a new one) (Default value = None).
+        description(Optional[str]): Project description (when creating a new one) (Default value = None).
+        keywords(Optional[List[str]]): Keywords for the project (when creating a new one) (Default value = None).
+        custom_metadata(Optional[Dict]): Custom JSON-LD metadata (when creating a new project)
+            (Default value = None).
+    """
+    from renku.domain_model.project import Project
+
+    try:
+        project = project_gateway.get_project()
+    except ValueError:
+        project = Project.from_path(
+            name=name, namespace=namespace, description=description, keywords=keywords, custom_metadata=custom_metadata
+        )
+
+    yield project
+
+    if not read_only:
+        project_gateway.update_project(project)
+        database_gateway.commit()
 
 
 @contextlib.contextmanager

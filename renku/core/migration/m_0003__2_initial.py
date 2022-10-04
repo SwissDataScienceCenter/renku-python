@@ -24,7 +24,6 @@ from pathlib import Path
 
 from renku.core.constant import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.constant import RENKU_HOME
-from renku.core.git import with_project_metadata
 from renku.core.migration.models.refs import LinkReference
 from renku.core.migration.models.v3 import Collection, Dataset, Project, get_project_datasets
 from renku.core.migration.models.v9 import generate_file_id, generate_label
@@ -35,6 +34,7 @@ from renku.core.migration.utils import (
     get_pre_0_3_4_datasets_metadata,
     is_using_temporary_datasets_path,
 )
+from renku.core.util.contexts import with_project_metadata
 from renku.core.util.git import get_in_submodules
 from renku.core.util.urls import url_to_string
 from renku.domain_model.dataset import generate_default_name

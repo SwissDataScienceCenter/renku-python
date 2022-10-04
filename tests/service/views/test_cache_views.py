@@ -27,7 +27,7 @@ import jwt
 import pytest
 
 from renku.core.dataset.context import DatasetContext
-from renku.core.git import commit
+from renku.core.util.git import with_commit
 from renku.domain_model.git import GitURL
 from renku.domain_model.project import Project
 from renku.domain_model.project_context import project_context
@@ -1033,7 +1033,7 @@ def test_cache_gets_synchronized(
 
     with project_context.with_path(remote_repo_checkout.path):
         with client_database_injection_manager(remote_repo_checkout):
-            with commit(commit_message="Create dataset"):
+            with with_commit(commit_message="Create dataset"):
                 with DatasetContext(name="my_dataset", create=True, commit_database=True) as dataset:
                     dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
 

@@ -62,12 +62,16 @@ class Commit(Command):
             builder(Command): The current ``CommandBuilder``.
             context(dict): The current context object.
         """
-        from renku.core.git import prepare_commit
+        from renku.core.util.git import prepare_commit
 
         if "stack" not in context:
             raise ValueError("Commit builder needs a stack to be set.")
 
-        self.diff_before = prepare_commit(commit_only=self._commit_filter_paths, skip_staging=self._skip_staging)
+        self.diff_before = prepare_commit(
+            repository=project_context.repository,
+            commit_only=self._commit_filter_paths,
+            skip_staging=self._skip_staging,
+        )
 
     def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs):
         """Hook that commits changes.
@@ -77,7 +81,7 @@ class Commit(Command):
             context(dict): The current context object.
             result(CommandResult): The result of the command execution.
         """
-        from renku.core.git import finalize_commit
+        from renku.core.util.git import finalize_commit
 
         if result.error:
             # TODO: Cleanup repo
@@ -86,6 +90,8 @@ class Commit(Command):
         try:
             finalize_commit(
                 diff_before=self.diff_before,
+                repository=project_context.repository,
+                transaction_id=project_context.transaction_id,
                 commit_only=self._commit_filter_paths,
                 commit_empty=self._commit_if_empty,
                 raise_if_empty=self._raise_if_empty,

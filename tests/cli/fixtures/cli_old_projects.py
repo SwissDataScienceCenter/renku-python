@@ -22,7 +22,7 @@ from typing import Generator
 
 import pytest
 
-from renku.core.git import with_project_metadata
+from renku.core.util.contexts import with_project_metadata
 from renku.domain_model.project_context import project_context
 from renku.infrastructure.repository import Repository
 from tests.utils import clone_compressed_repository
