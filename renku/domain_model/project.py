@@ -111,8 +111,7 @@ class Project(persistent.Persistent):
             namespace(Optional[str]): Namespace of the project (when creating a new one) (Default value = None).
             description(Optional[str]): Project description (when creating a new one) (Default value = None).
             keywords(Optional[List[str]]): Keywords for the project (when creating a new one) (Default value = None).
-            custom_metadata(Optional[Dict]): Custom JSON-LD metadata (when creating a new project)
-                (Default value = None).
+            custom_metadata(Optional[Dict]): Custom JSON-LD metadata (when creating a new project) (Default value = None).
             creator(Optional[Person]): The project creator.
         """
         namespace, name = cls.get_namespace_and_name(
