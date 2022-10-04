@@ -91,7 +91,7 @@ def test_list_workflow_plans_view(svc_client_with_repo):
             },
             None,
             True,
-            True,
+            "/plans/6943ee7f620c4f2d8f75b657e9d9e765",
         ),
         (
             "/plans/56b3149fc21e43bea9b73b887934e084",
@@ -116,7 +116,7 @@ def test_list_workflow_plans_view(svc_client_with_repo):
             },
             1,
             True,
-            True,
+            "/plans/56b3149fc21e43bea9b73b887934e084",
         ),
         (
             "/plans/7c4e51b1ac7143c287b5b0001d843310",
@@ -141,7 +141,7 @@ def test_list_workflow_plans_view(svc_client_with_repo):
             },
             2,
             False,
-            False,
+            "/plans/6fee5bb01de449f6bc39d7e7cd23f4c2",
         ),
     ],
 )

@@ -123,7 +123,7 @@ class PlanDetailsResponse(AbstractPlanResponse):
     outputs = fields.List(fields.Nested(OutputSchema))
     parameters = fields.List(fields.Nested(ParameterSchema))
     success_codes = fields.List(fields.Integer())
-    latest = fields.Boolean(dump_default=False)
+    latest = fields.String(dump_default=None)
     annotations = fields.List(fields.Nested(AnnotationSchema))
 
 
@@ -172,7 +172,7 @@ class CompositePlanDetailsResponse(AbstractPlanResponse):
     steps = fields.List(fields.Nested(PlanReferenceSchema), data_key="plans")
     mappings = fields.List(fields.Nested(MappingSchema))
     links = fields.List(fields.Nested(LinkSchema))
-    latest = fields.Boolean(dump_default=False)  # TODO: Add code to actually calculate this
+    latest = fields.String(dump_default=None)
     annotations = fields.List(fields.Nested(AnnotationSchema))
 
 

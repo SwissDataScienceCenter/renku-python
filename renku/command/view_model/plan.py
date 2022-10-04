@@ -183,7 +183,7 @@ class PlanViewModel:
         touches_existing_files: Optional[bool] = None,
         last_executed: Optional[datetime] = None,
         number_of_executions: Optional[int] = None,
-        latest: Optional[bool] = None,
+        latest: Optional[str] = None,
     ):
         self.id = id
         self.name = name
@@ -229,7 +229,7 @@ class PlanViewModel:
             creators=[PersonViewModel.from_person(p) for p in plan.creators] if plan.creators else None,
             keywords=plan.keywords,
             touches_existing_files=getattr(plan, "touches_existing_files", False),
-            latest=getattr(plan, "latest", False),
+            latest=getattr(plan, "latest", None),
             last_executed=getattr(plan, "last_executed", None),
             number_of_executions=getattr(plan, "number_of_executions", None),
         )

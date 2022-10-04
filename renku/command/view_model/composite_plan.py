@@ -186,7 +186,7 @@ class CompositePlanViewModel:
         creators: Optional[List[PersonViewModel]] = None,
         annotations: Optional[str] = None,
         touches_existing_files: Optional[bool] = None,
-        latest: Optional[bool] = None,
+        latest: Optional[str] = None,
     ):
         self.id = id
         self.name = name
@@ -225,6 +225,6 @@ class CompositePlanViewModel:
             annotations=json.dumps([{"id": a.id, "body": a.body, "source": a.source} for a in plan.annotations])
             if plan.annotations
             else None,
-            latest=getattr(plan, "latest", False),
+            latest=getattr(plan, "latest", None),
             touches_existing_files=getattr(plan, "touches_existing_files", False),
         )
