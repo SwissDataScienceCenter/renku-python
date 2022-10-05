@@ -20,6 +20,7 @@
 import contextlib
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
@@ -180,3 +181,15 @@ def Lock(filename: Union[Path, str], timeout: int = 0, mode: str = "shared", blo
             yield
     except (portalocker.LockException, portalocker.AlreadyLocked) as e:
         raise errors.LockError(f"Cannot lock {e.__class__.__name__}")
+
+
+@contextlib.contextmanager
+def wait_for(delay: float):
+    """Make sure that at least ``delay`` seconds are passed during the execution of the wrapped code block."""
+    start = time.time()
+
+    yield
+
+    exec_time = time.time() - start
+    if exec_time < delay:
+        time.sleep(delay - exec_time)

@@ -28,7 +28,7 @@ from renku.command.command_builder.command import inject
 from renku.command.view_model.template import TemplateChangeViewModel, TemplateViewModel
 from renku.core import errors
 from renku.core.interface.project_gateway import IProjectGateway
-from renku.core.migrate import is_renku_project
+from renku.core.migration.migrate import is_renku_project
 from renku.core.template.template import (
     FileAction,
     RepositoryTemplates,

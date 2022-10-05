@@ -37,8 +37,8 @@ def test_dataset_add(tmpdir, runner, project, subdirectory):
 
     assert 1 == result.exit_code
 
-    project.reset(hard=True)
-    project.clean()
+    project.repository.reset(hard=True)
+    project.repository.clean()
 
     # Use the --force ;)
     result = runner.invoke(cli, ["dataset", "add", "--copy", "testing", "--force", ignored_file.strpath])

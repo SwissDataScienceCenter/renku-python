@@ -103,9 +103,9 @@ def test_get_activity_upstreams(project_with_runs):
     assert "plan-1" == upstreams[0].plan.name
 
 
-def test_filter_activities(project_with_runs, with_injections_manager):
+def test_filter_activities(project_with_runs, with_injection):
     """Test Activity.filter method."""
-    with with_injections_manager(project_with_runs):
+    with with_injection(project_with_runs):
         activity_gateway = ActivityGateway()
         activity = next(a for a in activity_gateway.get_all_activities() if a.association.plan.name == "plan-2")
         plan = activity.association.plan

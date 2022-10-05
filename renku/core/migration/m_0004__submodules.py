@@ -37,7 +37,7 @@ def migrate(migration_context):
 
 
 def _migrate_submodule_based_datasets(migration_context):
-    from renku.core.migrate import is_project_unsupported, migrate_project
+    from renku.core.migration.migrate import is_project_unsupported, migrate_project
 
     submodules = project_context.repository.submodules
     if len(submodules) == 0:

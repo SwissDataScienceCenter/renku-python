@@ -18,7 +18,7 @@
 """Warn if migration is required."""
 
 from renku.command.util import ERROR, WARNING
-from renku.core.migrate import is_migration_required, is_project_unsupported
+from renku.core.migration.migrate import is_migration_required, is_project_unsupported
 
 
 def check_migration(**_):

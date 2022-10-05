@@ -155,10 +155,10 @@ def test_streams(runner, project, capsys, no_lfs_warning):
     assert "source.txt" in result.output
 
 
-def test_streams_cleanup(runner, repository, run):
+def test_streams_cleanup(runner, project, run):
     """Test cleanup of standard streams."""
-    source = repository.path / "source.txt"
-    stdout = repository.path / "result.txt"
+    source = project.path / "source.txt"
+    stdout = project.path / "result.txt"
 
     with source.open("w") as fp:
         fp.write("first,second,third")
@@ -179,7 +179,7 @@ def test_streams_cleanup(runner, repository, run):
     with stdout.open("w") as fp:
         fp.write("1")
 
-    repository.add("result.txt")
+    project.repository.add("result.txt")
 
     with stdout.open("r") as fp:
         assert fp.read() == "1"
@@ -410,14 +410,14 @@ def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_status_consistency(repository, runner):
+def test_status_consistency(runner, project):
     """Test status consistency in subdirectories."""
     os.mkdir("somedirectory")
     with open("somedirectory/woop", "w") as fp:
         fp.write("woop")
 
-    repository.add("somedirectory/woop")
-    repository.commit("add woop")
+    project.repository.add("somedirectory/woop")
+    project.repository.commit("add woop")
 
     result = runner.invoke(cli, ["run", "cp", "somedirectory/woop", "somedirectory/meeh"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -425,8 +425,8 @@ def test_status_consistency(repository, runner):
     with open("somedirectory/woop", "w") as fp:
         fp.write("weep")
 
-    repository.add("somedirectory/woop")
-    repository.commit("fix woop")
+    project.repository.add("somedirectory/woop")
+    project.repository.commit("fix woop")
 
     base_result = runner.invoke(cli, ["status"])
     os.chdir("somedirectory")
@@ -478,9 +478,9 @@ def test_unchanged_stdout(runner, project, capsys, no_lfs_warning):
 
 
 @pytest.mark.skip(reason="renku update not implemented with new metadata yet, reenable later")
-def test_modified_output(runner, repository, run):
+def test_modified_output(runner, project, run):
     """Test detection of changed file as output."""
-    cwd = repository.path
+    cwd = project.path
     source = cwd / "source.txt"
     data = cwd / DATA_DIR / "results"
     data.mkdir(parents=True)
@@ -493,8 +493,8 @@ def test_modified_output(runner, repository, run):
         with source.open("w") as fp:
             fp.write(content)
 
-        repository.add(all=True)
-        repository.commit("Updated source.txt")
+        project.repository.add(all=True)
+        project.repository.commit("Updated source.txt")
 
     update_source("1")
 
@@ -540,35 +540,34 @@ def test_outputs(runner, project):
     assert siblings == set(result.output.strip().split("\n"))
 
 
-def test_deleted_input(runner, repository, capsys):
+def test_deleted_input(runner, project, capsys):
     """Test deleted input."""
-    cwd = repository.path
-    input_ = cwd / "input.txt"
-    with input_.open("w") as f:
+    input = project.path / "input.txt"
+    with input.open("w") as f:
         f.write("first")
 
-    repository.add(all=True)
-    repository.commit("Created input.txt")
+    project.repository.add(all=True)
+    project.repository.commit("Created input.txt")
 
-    cmd = ["run", "mv", input_.name, "input.mv"]
+    cmd = ["run", "mv", input.name, "input.mv"]
     result = runner.invoke(cli, cmd, catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not input_.exists()
+    assert not input.exists()
     assert Path("input.mv").exists()
 
 
 @pytest.mark.skip(reason="renku update not implemented with new metadata yet, reenable later")
-def test_input_directory(runner, repository, run, no_lfs_warning):
+def test_input_directory(runner, project, run, no_lfs_warning):
     """Test detection of input directory."""
-    cwd = repository.path
+    cwd = project.path
     output = cwd / "output.txt"
     inputs = cwd / "inputs"
     inputs.mkdir(parents=True)
 
     gitkeep = inputs / ".gitkeep"
     gitkeep.touch()
-    repository.add(all=True)
-    repository.commit("Empty inputs directory")
+    project.repository.add(all=True)
+    project.repository.commit("Empty inputs directory")
 
     assert 0 == run(args=("run", "ls", str(inputs)), stdout=output)
     with output.open("r") as fp:
@@ -576,8 +575,8 @@ def test_input_directory(runner, repository, run, no_lfs_warning):
 
     (inputs / "first").touch()
 
-    repository.add(all=True)
-    repository.commit("Created inputs")
+    project.repository.add(all=True)
+    project.repository.commit("Created inputs")
 
     assert 0 == run(args=("update", output.name))
 
@@ -585,8 +584,8 @@ def test_input_directory(runner, repository, run, no_lfs_warning):
         assert "first\n" == fp.read()
 
     (inputs / "second").touch()
-    repository.add(all=True)
-    repository.commit("Added second input")
+    project.repository.add(all=True)
+    project.repository.commit("Added second input")
 
     assert 0 == run(args=("update", output.name))
     with output.open("r") as fp:
@@ -610,7 +609,7 @@ def test_config_manager_creation(project, global_only, config_path_attr):
 
 
 @pytest.mark.parametrize("global_only", (False, True))
-def test_config_manager_set_value(client, global_only):
+def test_config_manager_set_value(project, global_only):
     """Check writing to configuration."""
     config_filter = ConfigFilter.GLOBAL_ONLY
 
@@ -627,7 +626,7 @@ def test_config_manager_set_value(client, global_only):
     assert "zenodo" not in config.sections()
 
 
-def test_config_get_value(client):
+def test_config_get_value(project):
     """Check reading from configuration."""
     # Value set locally is not visible globally
     set_value("local", "key", "local-value")

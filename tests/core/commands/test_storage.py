@@ -26,7 +26,7 @@ from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
-def test_lfs_storage_clean_no_remote(runner, project, client):
+def test_lfs_storage_clean_no_remote(runner, project):
     """Test ``renku storage clean`` command with no remote set."""
     with (project_context.path / "tracked").open("w") as fp:
         fp.write("tracked file")
@@ -88,8 +88,8 @@ def test_lfs_storage_unpushed_clean(runner, project_with_remote):
     with (project_context.path / "tracked").open("w") as fp:
         fp.write("tracked file")
     subprocess.call(["git", "lfs", "track", "tracked"])
-    project_with_remote.add("*")
-    project_with_remote.commit("tracked file")
+    project_with_remote.repository.add("*")
+    project_with_remote.repository.commit("tracked file")
 
     result = runner.invoke(cli, ["storage", "clean", "tracked"], catch_exceptions=False)
 
@@ -97,7 +97,7 @@ def test_lfs_storage_unpushed_clean(runner, project_with_remote):
     assert "These paths were ignored as they are not pushed" in result.output
 
 
-def test_lfs_migrate(runner, project, client):
+def test_lfs_migrate(runner, project):
     """Test ``renku storage migrate`` command for large files in git."""
 
     for _file in ["dataset_file", "workflow_file", "regular_file"]:
@@ -136,7 +136,7 @@ def test_lfs_migrate(runner, project, client):
     assert ".renku/metadata/activities" not in changed_files
 
 
-def test_lfs_migrate_no_changes(runner, project, client):
+def test_lfs_migrate_no_changes(runner, project):
     """Test ``renku storage migrate`` command without broken files."""
 
     for _file in ["dataset_file", "workflow_file", "regular_file"]:
@@ -160,7 +160,7 @@ def test_lfs_migrate_no_changes(runner, project, client):
     assert previous_head == project_context.repository.head.commit.hexsha
 
 
-def test_lfs_migrate_explicit_path(runner, project, client):
+def test_lfs_migrate_explicit_path(runner, project):
     """Test ``renku storage migrate`` command explicit path."""
 
     for _file in ["dataset_file", "workflow_file", "regular_file"]:

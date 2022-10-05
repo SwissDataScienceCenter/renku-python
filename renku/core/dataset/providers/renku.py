@@ -517,7 +517,7 @@ class RenkuImporter(ImporterApi):
 
     @staticmethod
     def _migrate_project():
-        from renku.core.migrate import is_project_unsupported, migrate_project  # Slow import
+        from renku.core.migration.migrate import is_project_unsupported, migrate_project  # Slow import
         from renku.core.migration.models.migration import MigrationType
 
         if is_project_unsupported():

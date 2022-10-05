@@ -51,7 +51,7 @@ from renku.command.schema.calamus import (
 )
 from renku.command.schema.project import ProjectSchema as NewProjectSchema
 from renku.core import errors
-from renku.core.migrate import SUPPORTED_PROJECT_VERSION
+from renku.core.migration.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.migration.models.refs import LinkReference
 from renku.core.migration.utils import (
     OLD_METADATA_PATH,

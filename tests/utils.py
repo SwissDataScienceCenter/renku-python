@@ -25,12 +25,12 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import wraps
 from pathlib import Path
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Generator, Iterable, Iterator, List, Optional, Tuple, Type, Union
 
 import pytest
 from flaky import flaky
 
-from renku.command.command_builder.command import inject
+from renku.command.command_builder.command import inject, replace_injection
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.domain_model.dataset import Dataset
@@ -152,6 +152,47 @@ def load_dataset(name: str) -> Optional[Dataset]:
     datasets_provenance = DatasetsProvenance()
 
     return datasets_provenance.get_by_name(name)
+
+
+def get_test_bindings() -> Tuple[Dict, Dict[Type, Callable[[], Any]]]:
+    """Return all possible bindings."""
+    from renku.core.interface.activity_gateway import IActivityGateway
+    from renku.core.interface.database_gateway import IDatabaseGateway
+    from renku.core.interface.dataset_gateway import IDatasetGateway
+    from renku.core.interface.plan_gateway import IPlanGateway
+    from renku.core.interface.project_gateway import IProjectGateway
+    from renku.infrastructure.gateway.activity_gateway import ActivityGateway
+    from renku.infrastructure.gateway.database_gateway import DatabaseGateway
+    from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
+    from renku.infrastructure.gateway.plan_gateway import PlanGateway
+    from renku.infrastructure.gateway.project_gateway import ProjectGateway
+
+    constructor_bindings = {
+        IPlanGateway: lambda: PlanGateway(),
+        IActivityGateway: lambda: ActivityGateway(),
+        IDatabaseGateway: lambda: DatabaseGateway(),
+        IDatasetGateway: lambda: DatasetGateway(),
+        IProjectGateway: lambda: ProjectGateway(),
+    }
+
+    return {}, constructor_bindings
+
+
+def get_dataset_with_injection(name: str) -> Optional[Dataset]:
+    """Load dataset method with injection setup."""
+    bindings, constructor_bindings = get_test_bindings()
+
+    with replace_injection(bindings=bindings, constructor_bindings=constructor_bindings):
+        return load_dataset(name)
+
+
+@contextmanager
+def get_datasets_provenance_with_injection() -> Generator[DatasetsProvenance, None, None]:
+    """Yield an instance  of DatasetsProvenance with injection setup."""
+    bindings, constructor_bindings = get_test_bindings()
+
+    with replace_injection(bindings=bindings, constructor_bindings=constructor_bindings):
+        yield DatasetsProvenance()
 
 
 @contextmanager
@@ -318,7 +359,7 @@ def create_dummy_plan(
     inputs: Iterable[Union[str, Tuple[str, str]]] = (),
     keywords: List[str] = None,
     outputs: Iterable[Union[str, Tuple[str, str]]] = (),
-    parameters: Iterable[Tuple[str, Any, str]] = (),
+    parameters: Iterable[Tuple[str, Any, Optional[str]]] = (),
     success_codes: List[int] = None,
 ) -> Plan:
     """Create a dummy plan."""

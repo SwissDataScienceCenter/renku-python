@@ -315,3 +315,18 @@ def test_get_content_from_lfs(tmp_path):
     repository.copy_content_to_file("non-existing", checksum=valid_checksum, output_path=output_path)
 
     assert "Updated on 01.06.2022" in output_path.read_text()
+
+
+@pytest.mark.parametrize(
+    "paths, ignored",
+    (
+        ([".renku.lock"], [".renku.lock"]),
+        (["not ignored", "lib/foo", "build/html"], ["lib/foo", "build/html"]),
+        (["not ignored"], []),
+    ),
+)
+def test_ignored_paths(paths, ignored, project):
+    """Test resolution of ignored paths."""
+    from renku.domain_model.project_context import project_context
+
+    assert project_context.repository.get_ignored_paths(*paths) == ignored

@@ -55,7 +55,7 @@ def _project_clone(
         Tuple of cloned ``Repository`` and whether it's a Renku project or not.
     """
     from renku.command.mergetool import setup_mergetool
-    from renku.core.migrate import is_renku_project
+    from renku.core.migration.migrate import is_renku_project
     from renku.core.util.git import clone_renku_repository
 
     install_lfs = project_context.external_storage_requested

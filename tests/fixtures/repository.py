@@ -21,6 +21,7 @@ import contextlib
 import os
 import secrets
 import shutil
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Generator
 
@@ -28,11 +29,28 @@ import pytest
 from click.testing import CliRunner
 
 from renku.core.config import set_value
+from renku.core.constant import DATABASE_PATH, POINTERS, RENKU_HOME
 from renku.core.util.contexts import chdir
 from renku.domain_model.project_context import ProjectContext, project_context
 from renku.infrastructure.repository import Repository
 from renku.ui.cli.init import init
 from tests.utils import format_result_exception, modified_environ
+
+
+@dataclass
+class RenkuProject:
+    """A Renku project for use in tests to access project properties."""
+
+    path: Path
+    repository: Repository
+    metadata_path: Path = field(init=False)
+    database_path: Path = field(init=False)
+    pointers_path: Path = field(init=False)
+
+    def __post_init__(self):
+        self.metadata_path = self.path / RENKU_HOME
+        self.database_path = self.path / RENKU_HOME / DATABASE_PATH
+        self.pointers_path = self.path / RENKU_HOME / POINTERS
 
 
 @contextlib.contextmanager
@@ -77,7 +95,7 @@ def fake_home(tmp_path, monkeypatch) -> Generator[Path, None, None]:
 
 
 @pytest.fixture
-def project(fake_home) -> Generator[Repository, None, None]:
+def project(fake_home) -> Generator[RenkuProject, None, None]:
     """A Renku test project."""
     project_context.clear()
 
@@ -89,22 +107,4 @@ def project(fake_home) -> Generator[Repository, None, None]:
             repository = Repository(project_path, search_parent_directories=True)
             project_context.repository = repository
 
-            yield repository
-
-
-@pytest.fixture
-def repository(project) -> Generator[Repository, None, None]:
-    """Return a Renku repository."""
-    yield project
-
-
-@pytest.fixture
-def client(project) -> Generator[Repository, None, None]:
-    """Return a Renku repository."""
-    yield project
-
-
-@pytest.fixture
-def transaction_id(project) -> Generator[str, None, None]:
-    """Return current transaction ID."""
-    yield project_context.transaction_id
+            yield RenkuProject(path=repository.path, repository=repository)

@@ -28,12 +28,12 @@ from tests.utils import format_result_exception, modified_environ, with_dataset
 
 
 @pytest.mark.parametrize("revision", ["", "HEAD", "HEAD^", "HEAD^..HEAD"])
-def test_graph_export_validation(runner, repository, directory_tree, run, revision):
+def test_graph_export_validation(runner, project, directory_tree, run, revision):
     """Test graph validation when exporting."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-data", str(directory_tree)]).exit_code
 
-    file1 = repository.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
-    file2 = repository.path / DATA_DIR / "my-data" / directory_tree.name / "dir1" / "file2"
+    file1 = project.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
+    file2 = project.path / DATA_DIR / "my-data" / directory_tree.name / "dir1" / "file2"
     assert 0 == run(["run", "head", str(file1)], stdout="out1")
     assert 0 == run(["run", "tail", str(file2)], stdout="out2")
 
@@ -53,7 +53,7 @@ def test_graph_export_validation(runner, repository, directory_tree, run, revisi
         assert "https://renkulab.io" in result.output
 
     # Make sure that nothing has changed during export which is a read-only operation
-    assert not repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty(untracked_files=True)
 
 
 @pytest.mark.serial
@@ -112,9 +112,9 @@ def test_graph_export_strict_dataset(tmpdir, runner, project, subdirectory):
     assert 2 == result.output.count("http://schema.org/Dataset")
 
 
-def test_graph_export_dataset_mutability(runner, project_with_datasets, client_database_injection_manager):
+def test_graph_export_dataset_mutability(runner, project_with_datasets, with_injection):
     """Test export validation fails for datasets that have both same_as and derived_from."""
-    with client_database_injection_manager(project_with_datasets):
+    with with_injection():
         with with_dataset(name="dataset-1", commit_database=True) as dataset:
             # NOTE: Set both same_as and derived_from for a dataset
             dataset.same_as = Url(url_str="http://example.com")

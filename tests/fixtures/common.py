@@ -19,7 +19,7 @@
 
 import os
 from pathlib import Path
-from typing import List
+from typing import Generator, List
 
 import pytest
 
@@ -78,21 +78,21 @@ def data_repository(directory_tree):
 
 
 @pytest.fixture
-def no_lfs_size_limit(repository):
+def no_lfs_size_limit(project):
     """Configure environment to track all files in LFS independent of size."""
     set_value("renku", "lfs_threshold", "0b")
-    repository.add(".renku/renku.ini")
-    repository.commit("update renku.ini")
+    project.repository.add(".renku/renku.ini")
+    project.repository.commit("update renku.ini")
 
     yield
 
 
 @pytest.fixture
-def no_datadir_commit_warning(repository):
+def no_datadir_commit_warning(project):
     """Configure pre-commit hook to ignore files added to a datasets data directory."""
     set_value("renku", "check_datadir_files", "false")
-    repository.add(".renku/renku.ini")
-    repository.commit("update renku.ini")
+    project.repository.add(".renku/renku.ini")
+    project.repository.commit("update renku.ini")
 
     yield
 
@@ -106,3 +106,11 @@ def large_file(tmp_path):
         file.write("some data")
 
     yield path
+
+
+@pytest.fixture
+def transaction_id(project) -> Generator[str, None, None]:
+    """Return current transaction ID."""
+    from renku.domain_model.project_context import project_context
+
+    yield project_context.transaction_id

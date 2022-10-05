@@ -741,7 +741,7 @@ def fetch_datasets(
         migration_context.dataset_migration_context = DatasetMigrationContext(repository=repository, revision=revision)
 
         try:
-            from renku.core.migrate import migrate_project
+            from renku.core.migration.migrate import migrate_project
 
             project_version = read_project_version()
             set_temporary_datasets_path(datasets_path)

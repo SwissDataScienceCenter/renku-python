@@ -40,7 +40,7 @@ def _migrations_check():
     Returns:
         Dictionary of project migrations, template and dockerfile status.
     """
-    from renku.core.migrate import is_project_unsupported
+    from renku.core.migration.migrate import is_project_unsupported
 
     core_version, latest_version = _migrations_versions()
 
@@ -123,7 +123,7 @@ def _dockerfile_migration_check():
         Dictionary of Dockerfile migration status.
     """
     from renku import __version__
-    from renku.core.migrate import is_docker_update_possible
+    from renku.core.migration.migrate import is_docker_update_possible
 
     automated_dockerfile_update, newer_renku_available, dockerfile_renku_version = is_docker_update_possible()
 
@@ -146,7 +146,7 @@ def _metadata_migration_check():
     Returns:
         Dictionary of metadata migration status.
     """
-    from renku.core.migrate import SUPPORTED_PROJECT_VERSION, get_project_version, is_migration_required
+    from renku.core.migration.migrate import SUPPORTED_PROJECT_VERSION, get_project_version, is_migration_required
 
     return {
         "migration_required": is_migration_required(),
@@ -157,7 +157,7 @@ def _metadata_migration_check():
 
 def migrate_project_command():
     """Return a command to migrate all project's entities."""
-    from renku.core.migrate import migrate_project
+    from renku.core.migration.migrate import migrate_project
 
     return Command().command(migrate_project).lock_project().require_clean().with_database(write=True)
 
@@ -168,7 +168,7 @@ def check_project():
 
 
 def _check_project():
-    from renku.core.migrate import (
+    from renku.core.migration.migrate import (
         is_docker_update_possible,
         is_migration_required,
         is_project_unsupported,

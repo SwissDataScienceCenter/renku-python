@@ -25,8 +25,8 @@ import pytest
 from packaging.version import Version
 
 from renku.domain_model.project_context import project_context
-from renku.infrastructure.repository import Repository
 from renku.version import __version__ as renku_version
+from tests.fixtures.repository import RenkuProject
 
 
 @pytest.fixture
@@ -250,22 +250,22 @@ def rendered_template(source_template, template_metadata):
 
 
 @pytest.fixture
-def client_with_template(repository, rendered_template, with_injections_manager) -> Generator[Repository, None, None]:
-    """A client with a dummy template."""
+def project_with_template(project, rendered_template, with_injection) -> Generator[RenkuProject, None, None]:
+    """A project with a dummy template."""
     from renku.core.template.template import FileAction, copy_template_to_project
 
-    with with_injections_manager(repository):
+    with with_injection():
         actions = {f: FileAction.OVERWRITE for f in rendered_template.get_files()}
-        project = project_context.project
+        project_object = project_context.project
 
-        copy_template_to_project(rendered_template=rendered_template, project=project, actions=actions)
+        copy_template_to_project(rendered_template=rendered_template, project=project_object, actions=actions)
 
-        project.template_files = [str(project_context.path / f) for f in rendered_template.get_files()]
+        project_object.template_files = [str(project_context.path / f) for f in rendered_template.get_files()]
 
-    repository.add(all=True)
-    repository.commit("Set a dummy template")
+    project.repository.add(all=True)
+    project.repository.commit("Set a dummy template")
 
-    yield repository
+    yield project
 
 
 @pytest.fixture

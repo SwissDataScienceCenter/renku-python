@@ -24,7 +24,7 @@ import time
 from contextlib import contextmanager
 from itertools import chain
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
 
 import click
 import yaml
@@ -62,11 +62,11 @@ class PlanFactory:
 
     def __init__(
         self,
-        command_line: str,
+        command_line: Union[str, List[str], Tuple[str, ...]],
         explicit_inputs: Optional[List[Tuple[str, str]]] = None,
         explicit_outputs: Optional[List[Tuple[str, str]]] = None,
         explicit_parameters: Optional[List[Tuple[str, Optional[str]]]] = None,
-        directory: Optional[str] = None,
+        directory: Optional[Union[Path, str]] = None,
         working_dir: Optional[Union[Path, str]] = None,
         no_input_detection: bool = False,
         no_output_detection: bool = False,
@@ -257,7 +257,7 @@ class PlanFactory:
             assert isinstance(default, File)
             self.add_command_input(default_value=str(default), encoding_format=default.mime_type, position=position)
 
-    def add_outputs(self, candidates: Set[Tuple[Union[Path, str], Optional[str]]]):
+    def add_outputs(self, candidates: Iterable[Tuple[Union[Path, str], Optional[str]]]):
         """Yield detected output and changed command input parameter."""
         # TODO what to do with duplicate paths & inputs with same defaults
         candidate_paths = list(map(lambda x: x[0], candidates))

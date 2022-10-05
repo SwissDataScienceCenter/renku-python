@@ -27,10 +27,11 @@ import pytest
 
 from renku.core.util.os import normalize_to_ascii
 from renku.infrastructure.repository import Repository
+from tests.fixtures.repository import RenkuProject
 
 
 @pytest.fixture
-def project_metadata(project) -> Generator[Tuple["Repository", Dict[str, Any]], None, None]:
+def project_metadata(project) -> Generator[Tuple["RenkuProject", Dict[str, Any]], None, None]:
     """Create project with metadata."""
     name = project.path.name
     metadata = {

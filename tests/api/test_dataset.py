@@ -31,6 +31,9 @@ def test_list_datasets(project_with_datasets):
 
         assert {"dataset-1", "dataset-2"} == {d.name for d in datasets}
 
+        dataset = next(d for d in Dataset.list() if d.name == "dataset-2")
+        assert {"P1", "P2"} == {c.name for c in dataset.creators}
+
 
 def test_list_datasets_outside_a_context(project_with_datasets):
     """Test listing datasets outside a project context."""

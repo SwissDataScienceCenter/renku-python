@@ -15,14 +15,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test ``log`` command."""
+"""Test ``rollback`` command."""
 
-from renku.domain_model.project_context import project_context
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
-def test_rollback(client, runner, project):
+def test_rollback(runner, project):
     """Test renku rollback."""
     result = runner.invoke(cli, ["run", "--name", "run1", "touch", "foo"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -30,11 +29,11 @@ def test_rollback(client, runner, project):
     result = runner.invoke(cli, ["run", "--name", "run2", "cp", "foo", "bar"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    metadata_path = project_context.path / "input"
+    metadata_path = project.path / "input"
     metadata_path.write_text("input")
 
-    project_context.repository.add(["input"])
-    project_context.repository.commit("add input")
+    project.repository.add("input")
+    project.repository.commit("add input")
 
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -50,8 +49,8 @@ def test_rollback(client, runner, project):
 
     metadata_path.write_text("changed input")
 
-    project_context.repository.add(["input"])
-    project_context.repository.commit("change input")
+    project.repository.add("input")
+    project.repository.commit("change input")
 
     result = runner.invoke(cli, ["run", "--name", "run3", "cp", "input", "output"])
     assert 0 == result.exit_code, format_result_exception(result)

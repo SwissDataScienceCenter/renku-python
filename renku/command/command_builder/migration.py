@@ -18,7 +18,7 @@
 """Command builder for migrations."""
 
 from renku.command.command_builder.command import Command, check_finalized
-from renku.core.migrate import check_for_migration
+from renku.core.migration.migrate import check_for_migration
 
 
 class RequireMigration(Command):

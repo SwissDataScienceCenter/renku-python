@@ -26,32 +26,31 @@ from renku.core.util.contexts import Lock
 from tests.utils import write_and_commit_file
 
 
-def test_run_in_isolation(runner, repository, run, subdirectory):
+def test_run_in_isolation(runner, project, run, subdirectory):
     """Test run in isolation."""
-    cwd = repository.path
-    write_and_commit_file(repository, path=cwd / ".gitignore", content="\nlock")
+    write_and_commit_file(project.repository, path=project.path / ".gitignore", content="\nlock")
 
     prefix = ["run", "--no-output"]
     cmd = ["python", "-S", "-c", 'import os, sys; sys.exit(1 if os.path.exists("lock") else 0)']
 
-    head = repository.head.commit.hexsha
+    head = project.repository.head.commit.hexsha
 
     with Lock("lock"):
         assert 1 == run(args=prefix + cmd)
-        assert repository.head.commit.hexsha == head
+        assert project.repository.head.commit.hexsha == head
 
         assert 0 == run(prefix + ["--isolation"] + cmd)
-        assert repository.head.commit.hexsha != head
+        assert project.repository.head.commit.hexsha != head
 
 
-def test_file_modification_during_run(tmp_path, runner, repository, subdirectory, no_lfs_size_limit, no_lfs_warning):
+def test_file_modification_during_run(tmp_path, runner, project, subdirectory, no_lfs_size_limit, no_lfs_warning):
     """Test run in isolation."""
-    script = repository.path / "script.py"
-    output = repository.path / "output"
+    script = project.path / "script.py"
+    output = project.path / "output"
     lock_file = tmp_path / "lock"
 
     write_and_commit_file(
-        repository,
+        project.repository,
         script,
         textwrap.dedent(
             f"""
@@ -84,11 +83,11 @@ def test_file_modification_during_run(tmp_path, runner, repository, subdirectory
         assert 0 == process.wait()
 
     # NOTE: ``script.py`` is modified in the current worktree
-    assert {"script.py"} == {c.a_path for c in repository.unstaged_changes}
+    assert {"script.py"} == {c.a_path for c in project.repository.unstaged_changes}
 
     # NOTE: Isolated run finished with the expected result
     assert "test" == output.read_text().strip()
     # NOTE: Isolated run committed its results
-    committed_changed_files_in_run = {c.a_path for c in repository.head.commit.get_changes()}
+    committed_changed_files_in_run = {c.a_path for c in project.repository.head.commit.get_changes()}
     assert "output" in committed_changed_files_in_run
     assert "script.py" not in committed_changed_files_in_run
