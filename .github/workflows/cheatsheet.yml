@@ -66,7 +66,7 @@ jobs:
           cat <(md5sum cheatsheet.json) > ../cheatsheet_json_hash_new
           cd ../..
       - name: Publish cheatsheet if changed
-        id: publish
+        id: publish-pdf
         if: ${{ hashFiles('docs/cheatsheet_hash') != hashFiles('docs/cheatsheet_hash_new') }}
         run: |
           cat docs/cheatsheet_hash
@@ -78,7 +78,7 @@ jobs:
           git add cheatsheet_hash _static/cheatsheet/cheatsheet.pdf
           git commit -m "chore: Update cheatsheet pdf"
       - name: Publish UI cheatsheet if changed
-        id: publish
+        id: publish-json
         if: ${{ hashFiles('docs/cheatsheet_json_hash') != hashFiles('docs/cheatsheet_json_hash_new') }}
         run: |
           cat docs/cheatsheet_json_hash
@@ -91,7 +91,7 @@ jobs:
           git commit -m "chore: Update cheatsheet json"
       - name: Push changes
         uses: ad-m/github-push-action@master
-        if: steps.publish.outcome != 'Skipped' && success()
+        if: (steps.publish-pdf.outcome != 'Skipped' || steps.publish-json.outcome != 'Skipped) && success()
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.ref }}
