@@ -725,6 +725,7 @@ def get_plans_with_metadata(activity_gateway: IActivityGateway, plan_gateway: IP
     Adds information about last execution, number of executions and whether the plan was used to create files
     currently existing in the project.
     """
+
     all_activities = activity_gateway.get_all_activities()
     activity_map = _reverse_activity_plan_map(list(all_activities))
     latest_plan_chains: Set[Tuple[AbstractPlan]] = set(
@@ -758,7 +759,7 @@ def get_plans_with_metadata(activity_gateway: IActivityGateway, plan_gateway: IP
         else:
             latest_plan.number_of_executions = None
             latest_plan.type = "CompositePlan"
-            latest_plan.children = [p.id for p in latest_plan.plans]
+            latest_plan.children = [get_latest_plan(p).id for p in latest_plan.plans]
             latest_plan.touches_existing_files = _check_workflow_touches_existing_files(
                 latest_plan, cache, activity_map
             )
