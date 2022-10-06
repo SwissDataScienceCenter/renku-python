@@ -117,7 +117,6 @@ def _init(
     """Initialize a renku project.
 
     Args:
-        ctx: Current click context.
         external_storage_requested: Whether or not external storage should be used.
         path: Path to initialize repository at.
         name: Name of the project.
@@ -153,7 +152,7 @@ def _init(
     if template is None:
         raise errors.TemplateNotFoundError(f"Couldn't find template with id {template_id}")
 
-    namespace, name = Project.get_namespace_and_name(use_project_context=True, name=name)
+    namespace, name = Project.get_namespace_and_name(remote=project_context.remote, name=name, repository=project_context.repository)
     name = name or os.path.basename(path.rstrip(os.path.sep))
 
     metadata = dict()

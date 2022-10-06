@@ -19,7 +19,7 @@
 
 from datetime import datetime
 from itertools import chain
-from typing import List, Optional, Union, cast
+from typing import List, Optional, Union, cast, TYPE_CHECKING
 from uuid import uuid4
 
 from werkzeug.utils import cached_property
@@ -29,7 +29,6 @@ from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.git import get_entity_from_revision, get_git_user
 from renku.domain_model.entity import Collection, Entity
-from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.agent import Person, SoftwareAgent
 from renku.domain_model.provenance.annotation import Annotation
 from renku.domain_model.provenance.parameter import ParameterValue
@@ -37,6 +36,9 @@ from renku.domain_model.workflow.plan import Plan
 from renku.infrastructure.database import Persistent
 from renku.infrastructure.immutable import Immutable
 from renku.version import __version__, version_url
+
+if TYPE_CHECKING:
+    from renku.infrastructure.repository import Repository
 
 
 class Association:
@@ -132,6 +134,7 @@ class Activity(Persistent):
     def from_plan(
         cls,
         plan: Plan,
+        repository: "Repository",
         project_gateway: IProjectGateway,
         started_at_time: datetime,
         ended_at_time: datetime,
@@ -147,7 +150,6 @@ class Activity(Persistent):
         parameter_values = []
 
         activity_id = id or cls.generate_id()
-        repository = project_context.repository
 
         for input in plan.inputs:
             input_path = input.actual_value

@@ -18,7 +18,7 @@
 """Project class."""
 
 from datetime import datetime
-from typing import Dict, List, Optional, cast
+from typing import Dict, List, Optional, cast, TYPE_CHECKING
 from urllib.parse import quote
 
 import persistent
@@ -28,10 +28,13 @@ from renku.core.util.datetime8601 import fix_datetime, local_now, parse_date
 from renku.core.util.git import get_git_user
 from renku.core.util.os import normalize_to_ascii
 from renku.core.util.util import NO_VALUE
-from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.agent import Person
 from renku.domain_model.provenance.annotation import Annotation
 from renku.version import __minimum_project_version__
+
+if TYPE_CHECKING:
+    from renku.domain_model.project_context import ProjectRemote, ProjectContext
+    from renku.infrastructure.repository import Repository
 
 
 class Project(persistent.Persistent):
@@ -94,8 +97,9 @@ class Project(persistent.Persistent):
         self.minimum_renku_version = Project.minimum_renku_version
 
     @classmethod
-    def from_path(
+    def from_project_context(
         cls,
+        project_context: "ProjectContext",
         name: Optional[str] = None,
         namespace: Optional[str] = None,
         description: Optional[str] = None,
@@ -115,10 +119,11 @@ class Project(persistent.Persistent):
                 (Default value = None).
             creator(Optional[Person]): The project creator.
         """
-        namespace, name = cls.get_namespace_and_name(
-            use_project_context=True, name=name, namespace=namespace, creator=creator
-        )
         creator = creator or get_git_user(repository=project_context.repository)
+
+        namespace, name = cls.get_namespace_and_name(
+            remote=project_context.remote, name=name, namespace=namespace, creator=creator
+        )
         annotations = None
 
         if custom_metadata:
@@ -141,19 +146,19 @@ class Project(persistent.Persistent):
     @staticmethod
     def get_namespace_and_name(
         *,
-        use_project_context: bool = False,
+        remote: Optional["ProjectRemote"] = None,
+        repository: Optional["Repository"] = None,
         name: Optional[str] = None,
         namespace: Optional[str] = None,
         creator: Optional[Person] = None,
     ):
         """Return Project's namespace and name from various objects."""
-        if use_project_context:
-            remote = project_context.remote
+        if remote:
             namespace = namespace or remote.owner
             name = name or remote.name
 
-            if not creator:
-                creator = get_git_user(repository=project_context.repository)
+        if not creator and repository:
+            creator = get_git_user(repository=repository)
 
         if not namespace and creator:
             namespace = creator.email.split("@")[0]

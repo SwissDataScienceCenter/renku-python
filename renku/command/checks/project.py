@@ -22,6 +22,7 @@ from renku.command.util import WARNING
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.util import communication
 from renku.domain_model.project import Project
+from renku.domain_model.project_context import project_context
 
 
 @inject.autoparams("project_gateway")
@@ -38,7 +39,7 @@ def check_project_id_group(fix, project_gateway: IProjectGateway, **_):
     """
     current_project = project_gateway.get_project()
 
-    namespace, name = Project.get_namespace_and_name(use_project_context=True)
+    namespace, name = Project.get_namespace_and_name(remote=project_context.remote, repository=project_context.repository)
 
     if namespace is None or name is None:
         return True, None

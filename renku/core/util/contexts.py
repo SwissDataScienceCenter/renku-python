@@ -58,7 +58,7 @@ class redirect_stdin(contextlib.ContextDecorator):
         setattr(sys, self._stream, self._new_target)
         return self._new_target
 
-    def __exit__(self, exctype, excinst, exctb):
+    def __exit__(self, exception_type, exception_value, traceback):
         """Restore the stream value."""
         setattr(sys, self._stream, self._old_targets.pop())
 
@@ -115,7 +115,7 @@ def renku_project_context(path):
 
     path = get_git_path(path)
 
-    with project_context.with_path(path=path) as project_context, chdir(path):
+    with project_context.with_path(path=path), chdir(path):
         project_context.external_storage_requested = True
         yield project_context.path
 
@@ -146,12 +146,18 @@ def with_project_metadata(
             (Default value = None).
     """
     from renku.domain_model.project import Project
+    from renku.domain_model.project_context import project_context
 
     try:
         project = project_gateway.get_project()
     except ValueError:
-        project = Project.from_path(
-            name=name, namespace=namespace, description=description, keywords=keywords, custom_metadata=custom_metadata
+        project = Project.from_project_context(
+            project_context=project_context,
+            name=name,
+            namespace=namespace,
+            description=description,
+            keywords=keywords,
+            custom_metadata=custom_metadata,
         )
 
     yield project

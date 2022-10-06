@@ -75,6 +75,7 @@ def test_activity_parameter_values(project_with_injection, mocker):
 
     activity = Activity.from_plan(
         plan,
+        repository=project_with_injection.repository,
         project_gateway=project_gateway,
         started_at_time=datetime.utcnow(),
         ended_at_time=datetime.utcnow(),

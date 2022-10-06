@@ -102,6 +102,7 @@ def project_with_runs(project, with_injection) -> Generator[RenkuProject, None, 
         """Create an activity with id /activities/index."""
         return Activity.from_plan(
             plan=plan,
+            repository=project.repository,
             id=Activity.generate_id(str(index)),
             started_at_time=date,
             ended_at_time=date + timedelta(seconds=1),
