@@ -22,11 +22,9 @@ from typing import Generator
 
 import pytest
 
-from renku.domain_model.provenance.activity import Activity
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter
 from renku.domain_model.workflow.plan import Plan
-from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from tests.fixtures.repository import RenkuProject
 from tests.utils import create_dummy_plan
 
@@ -97,6 +95,8 @@ def composite_plan():
 @pytest.fixture
 def project_with_runs(project, with_injection) -> Generator[RenkuProject, None, None]:
     """A project with runs."""
+    from renku.domain_model.provenance.activity import Activity
+    from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 
     def create_activity(plan, date, index) -> Activity:
         """Create an activity with id /activities/index."""

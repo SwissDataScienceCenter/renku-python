@@ -19,7 +19,7 @@
 
 from datetime import datetime
 from itertools import chain
-from typing import List, Optional, Union, cast, TYPE_CHECKING
+from typing import List, Optional, Union, cast
 from uuid import uuid4
 
 from werkzeug.utils import cached_property
@@ -35,10 +35,8 @@ from renku.domain_model.provenance.parameter import ParameterValue
 from renku.domain_model.workflow.plan import Plan
 from renku.infrastructure.database import Persistent
 from renku.infrastructure.immutable import Immutable
+from renku.infrastructure.repository import Repository
 from renku.version import __version__, version_url
-
-if TYPE_CHECKING:
-    from renku.infrastructure.repository import Repository
 
 
 class Association:

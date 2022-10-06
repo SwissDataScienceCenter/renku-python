@@ -39,7 +39,9 @@ def check_project_id_group(fix, project_gateway: IProjectGateway, **_):
     """
     current_project = project_gateway.get_project()
 
-    namespace, name = Project.get_namespace_and_name(remote=project_context.remote, repository=project_context.repository)
+    namespace, name = Project.get_namespace_and_name(
+        remote=project_context.remote, repository=project_context.repository
+    )
 
     if namespace is None or name is None:
         return True, None

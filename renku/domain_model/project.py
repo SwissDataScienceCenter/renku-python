@@ -18,7 +18,7 @@
 """Project class."""
 
 from datetime import datetime
-from typing import Dict, List, Optional, cast, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List, Optional, cast
 from urllib.parse import quote
 
 import persistent
@@ -33,7 +33,7 @@ from renku.domain_model.provenance.annotation import Annotation
 from renku.version import __minimum_project_version__
 
 if TYPE_CHECKING:
-    from renku.domain_model.project_context import ProjectRemote, ProjectContext
+    from renku.domain_model.project_context import ProjectContext, ProjectRemote
     from renku.infrastructure.repository import Repository
 
 

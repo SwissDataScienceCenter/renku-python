@@ -25,23 +25,21 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Dict, Generator, Iterable, Iterator, List, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, Iterator, List, Optional, Tuple, Type, Union
 
 import pytest
 from flaky import flaky
 
 from renku.command.command_builder.command import inject, replace_injection
-from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.domain_model.dataset import Dataset
-from renku.domain_model.entity import Entity
 from renku.domain_model.project_context import project_context
-from renku.domain_model.provenance.activity import Activity, Association, Generation, Usage
-from renku.domain_model.provenance.agent import Person, SoftwareAgent
-from renku.domain_model.provenance.parameter import ParameterValue
-from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter, MappedIOStream
-from renku.domain_model.workflow.plan import Plan
-from renku.infrastructure.repository import Repository
+
+if TYPE_CHECKING:
+    from renku.core.dataset.datasets_provenance import DatasetsProvenance
+    from renku.domain_model.provenance.activity import Activity, Generation, Usage
+    from renku.domain_model.workflow.plan import Plan
+    from renku.infrastructure.repository import Repository
 
 
 def raises(error):
@@ -79,7 +77,7 @@ def make_dataset_add_payload(project_id, urls, name=None):
     }
 
 
-def assert_dataset_is_mutated(old: Dataset, new: Dataset, mutator=None):
+def assert_dataset_is_mutated(old: "Dataset", new: "Dataset", mutator=None):
     """Check metadata is updated correctly after dataset mutation."""
     assert old.name == new.name
     assert old.initial_identifier == new.initial_identifier
@@ -147,8 +145,10 @@ def format_result_exception(result):
     return f"Stack Trace:\n{stacktrace}\n\nOutput:\n{result.output + stderr}"
 
 
-def load_dataset(name: str) -> Optional[Dataset]:
+def load_dataset(name: str) -> Optional["Dataset"]:
     """Load dataset from disk."""
+    from renku.core.dataset.datasets_provenance import DatasetsProvenance
+
     datasets_provenance = DatasetsProvenance()
 
     return datasets_provenance.get_by_name(name)
@@ -178,7 +178,7 @@ def get_test_bindings() -> Tuple[Dict, Dict[Type, Callable[[], Any]]]:
     return {}, constructor_bindings
 
 
-def get_dataset_with_injection(name: str) -> Optional[Dataset]:
+def get_dataset_with_injection(name: str) -> Optional["Dataset"]:
     """Load dataset method with injection setup."""
     bindings, constructor_bindings = get_test_bindings()
 
@@ -187,8 +187,10 @@ def get_dataset_with_injection(name: str) -> Optional[Dataset]:
 
 
 @contextmanager
-def get_datasets_provenance_with_injection() -> Generator[DatasetsProvenance, None, None]:
+def get_datasets_provenance_with_injection() -> Generator["DatasetsProvenance", None, None]:
     """Yield an instance  of DatasetsProvenance with injection setup."""
+    from renku.core.dataset.datasets_provenance import DatasetsProvenance
+
     bindings, constructor_bindings = get_test_bindings()
 
     with replace_injection(bindings=bindings, constructor_bindings=constructor_bindings):
@@ -202,8 +204,10 @@ def with_dataset(
     name: str,
     dataset_gateway: IDatasetGateway,
     commit_database: bool = False,
-) -> Iterator[Optional[Dataset]]:
+) -> Iterator[Optional["Dataset"]]:
     """Yield an editable metadata object for a dataset."""
+    from renku.core.dataset.datasets_provenance import DatasetsProvenance
+
     dataset = DatasetsProvenance().get_by_name(name=name, strict=True, immutable=True)
 
     if not dataset:
@@ -240,7 +244,7 @@ def retry_failed(fn=None, extended: bool = False):
     return decorate() if fn else decorate
 
 
-def write_and_commit_file(repository: Repository, path: Union[Path, str], content: str, commit: bool = True):
+def write_and_commit_file(repository: "Repository", path: Union[Path, str], content: str, commit: bool = True):
     """Write content to a given file and make a commit."""
     path = repository.path / path
 
@@ -252,7 +256,7 @@ def write_and_commit_file(repository: Repository, path: Union[Path, str], conten
         repository.commit(f"Updated '{path.relative_to(repository.path)}'")
 
 
-def delete_and_commit_file(repository: Repository, path: Union[Path, str]):
+def delete_and_commit_file(repository: "Repository", path: Union[Path, str]):
     """Delete a file and make a commit."""
     path = repository.path / path
 
@@ -262,7 +266,7 @@ def delete_and_commit_file(repository: Repository, path: Union[Path, str]):
     repository.commit(f"Deleted '{path.relative_to(repository.path)}'")
 
 
-def create_and_commit_files(repository: Repository, *path_and_content: Union[Path, str, Tuple[str, str]]):
+def create_and_commit_files(repository: "Repository", *path_and_content: Union[Path, str, Tuple[str, str]]):
     """Write content to a given file and make a commit."""
     for file in path_and_content:
         if isinstance(file, (Path, str)):
@@ -276,16 +280,23 @@ def create_and_commit_files(repository: Repository, *path_and_content: Union[Pat
 
 
 def create_dummy_activity(
-    plan: Union[Plan, str],
+    plan: Union["Plan", str],
     *,
     ended_at_time=None,
-    generations: Iterable[Union[Path, str, Generation, Tuple[str, str]]] = (),
+    generations: Iterable[Union[Path, str, "Generation", Tuple[str, str]]] = (),
     id: Optional[str] = None,
     index: Optional[int] = None,
     parameters: Dict[str, Any] = None,
-    usages: Iterable[Union[Path, str, Usage, Tuple[str, str]]] = (),
-) -> Activity:
+    usages: Iterable[Union[Path, str, "Usage", Tuple[str, str]]] = (),
+) -> "Activity":
     """Create a dummy activity."""
+    from renku.domain_model.entity import Entity
+    from renku.domain_model.provenance.activity import Activity, Association, Generation, Usage
+    from renku.domain_model.provenance.agent import Person, SoftwareAgent
+    from renku.domain_model.provenance.parameter import ParameterValue
+    from renku.domain_model.workflow.plan import Plan
+    from renku.infrastructure.repository import Repository
+
     assert id is None or index is None, "Cannot set both 'id' and 'index'"
 
     if not isinstance(plan, Plan):
@@ -361,8 +372,11 @@ def create_dummy_plan(
     outputs: Iterable[Union[str, Tuple[str, str]]] = (),
     parameters: Iterable[Tuple[str, Any, Optional[str]]] = (),
     success_codes: List[int] = None,
-) -> Plan:
+) -> "Plan":
     """Create a dummy plan."""
+    from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter, MappedIOStream
+    from renku.domain_model.workflow.plan import Plan
+
     command = command or name
 
     id = Plan.generate_id(uuid=None if index is None else str(index))
@@ -425,9 +439,11 @@ def create_dummy_plan(
     return plan
 
 
-def clone_compressed_repository(base_path, name) -> Repository:
+def clone_compressed_repository(base_path, name) -> "Repository":
     """Decompress and clone a repository."""
     import tarfile
+
+    from renku.infrastructure.repository import Repository
 
     compressed_repo_path = Path(__file__).parent / "data" / f"{name}.tar.gz"
     working_dir = base_path / name
