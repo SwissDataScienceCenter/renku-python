@@ -24,7 +24,7 @@ from urllib.parse import unquote
 
 import click
 
-from renku.command.echo import progressbar
+from renku.command.util import progressbar
 from renku.core.errors import WorkflowRerunError
 from renku.core.util.os import expand_directories
 from renku.domain_model.project_context import project_context

@@ -30,7 +30,7 @@ from tests.utils import load_dataset
 
 
 @pytest.mark.skip(reason="FIXME correct this when implementing renku graph export")
-def test_dataset_shacl(tmpdir, runner, project, client):
+def test_dataset_shacl(tmpdir, runner, project):
     """Test dataset metadata structure."""
     force_dataset_path = Path(__file__).parent.parent.parent / "data" / "force_dataset_shacl.json"
 
@@ -68,14 +68,14 @@ def test_dataset_shacl(tmpdir, runner, project, client):
     assert r is True, t
 
 
-def test_project_shacl(project, with_injections_manager):
+def test_project_shacl(project, with_injection):
     """Test project metadata structure."""
     from renku.command.schema.project import ProjectSchema
     from renku.domain_model.provenance.agent import Person
 
     path = Path(__file__).parent.parent.parent / "data" / "force_project_shacl.json"
 
-    with with_injections_manager(project):
+    with with_injection():
         project = project_context.project
         project.creator = Person(email="johndoe@example.com", name="Johnny Doe")
 

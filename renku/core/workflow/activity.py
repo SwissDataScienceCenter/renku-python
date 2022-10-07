@@ -253,7 +253,7 @@ def get_downstream_generating_activities(
     starting_activities: Set[Activity],
     paths: List[str],
     ignore_deleted: bool,
-    client_path: Path,
+    project_path: Path,
     activity_gateway: IActivityGateway,
 ) -> List[Activity]:
     """Return activities downstream of passed activities that generate at least a path in ``paths``.
@@ -262,7 +262,7 @@ def get_downstream_generating_activities(
         starting_activities(Set[Activity]): Activities to use as starting/upstream nodes.
         paths(List[str]): Optional generated paths to end downstream chains at.
         ignore_deleted(bool): Whether to ignore deleted generations.
-        client_path(Path): Path to project's root directory.
+        project_path(Path): Path to project's root directory.
         activity_gateway(IActivityGateway): The injected Activity gateway.
 
     Returns:
@@ -283,7 +283,7 @@ def get_downstream_generating_activities(
 
     def has_an_existing_generation(activity) -> bool:
         for generation in activity.generations:
-            if (client_path / generation.entity.path).exists():
+            if (project_path / generation.entity.path).exists():
                 return True
 
         return False

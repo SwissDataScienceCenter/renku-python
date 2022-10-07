@@ -259,9 +259,7 @@ class DatasetFile(Slots):
         self.source: Optional[str] = str(source)
 
     @classmethod
-    def from_path(
-        cls, client, path: Union[str, Path], source=None, based_on: Optional[RemoteEntity] = None
-    ) -> "DatasetFile":
+    def from_path(cls, path: Union[str, Path], source=None, based_on: Optional[RemoteEntity] = None) -> "DatasetFile":
         """Return an instance from a path."""
         from renku.domain_model.entity import NON_EXISTING_ENTITY_CHECKSUM, Entity
 
@@ -273,7 +271,7 @@ class DatasetFile(Slots):
         else:
             entity = get_entity_from_revision(repository=project_context.repository, path=path, bypass_cache=True)
 
-        is_external = is_external_file(path=path, client_path=project_context.path)
+        is_external = is_external_file(path=path, project_path=project_context.path)
         return cls(entity=entity, is_external=is_external, source=source, based_on=based_on)
 
     @staticmethod

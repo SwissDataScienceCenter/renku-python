@@ -62,7 +62,7 @@ from urllib.parse import urlencode
 import click
 
 import renku.ui.cli.utils.color as color
-from renku.command.echo import ERROR
+from renku.command.util import ERROR
 from renku.core import errors
 from renku.ui.service.config import SENTRY_ENABLED, SENTRY_SAMPLERATE
 

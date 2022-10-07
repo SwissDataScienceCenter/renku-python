@@ -32,7 +32,6 @@ from renku.domain_model.dataset import RemoteEntity
 from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
-    from renku.core.management.client import LocalClient
     from renku.domain_model.dataset import Dataset
 
 
@@ -79,7 +78,7 @@ class S3Provider(ProviderApi):
         ]
 
     @staticmethod
-    def add(client: "LocalClient", uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
+    def add(uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
         """Add files from a URI to a dataset."""
         dataset = kwargs.get("dataset")
         if dataset and dataset.storage and not dataset.storage.lower().startswith("s3://"):

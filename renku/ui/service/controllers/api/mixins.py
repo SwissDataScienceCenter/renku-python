@@ -26,7 +26,7 @@ import portalocker
 
 from renku.core.constant import RENKU_HOME
 from renku.core.errors import GitCommandError, GitConfigurationError, LockError, RenkuException, UninitializedProject
-from renku.core.util.contexts import click_context
+from renku.core.util.contexts import renku_project_context
 from renku.infrastructure.repository import Repository
 from renku.ui.service.cache.config import REDIS_NAMESPACE
 from renku.ui.service.cache.models.job import Job
@@ -311,7 +311,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
                     self.project_path = project.abs_path
 
-                    with click_context(self.project_path, "renku_op"):
+                    with renku_project_context(self.project_path):
                         return self.renku_op()
         except (portalocker.LockException, portalocker.AlreadyLocked, LockError) as e:
             raise IntermittentLockError() from e
@@ -328,7 +328,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
             if not (self.project_path / RENKU_HOME).exists():
                 raise UninitializedProject(self.project_path)
-            with click_context(self.project_path, "renku_op"):
+            with renku_project_context(self.project_path):
                 return self.renku_op()
 
 

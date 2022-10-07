@@ -30,24 +30,24 @@ from renku.core.config import set_value
 
 
 @pytest.fixture
-def zenodo_sandbox(repository):
+def zenodo_sandbox(project):
     """Configure environment to use Zenodo sandbox environment."""
     os.environ["ZENODO_USE_SANDBOX"] = "true"
 
     access_token = os.getenv("ZENODO_ACCESS_TOKEN", "")
     set_value("zenodo", "access_token", access_token)
 
-    repository.add(".renku/renku.ini")
-    repository.commit("update renku.ini")
+    project.repository.add(".renku/renku.ini")
+    project.repository.commit("update renku.ini")
 
 
 @pytest.fixture
-def olos_sandbox(repository):
+def olos_sandbox(project):
     """Configure environment to use Zenodo sandbox environment."""
     access_token = os.getenv("OLOS_ACCESS_TOKEN", "")
     set_value("olos", "access_token", access_token)
-    repository.add(".renku/renku.ini")
-    repository.commit("update renku.ini")
+    project.repository.add(".renku/renku.ini")
+    project.repository.commit("update renku.ini")
 
 
 @pytest.fixture(scope="module")
@@ -86,14 +86,14 @@ def dataverse_demo_cleanup(request):
 
 
 @pytest.fixture
-def dataverse_demo(repository, dataverse_demo_cleanup):
+def dataverse_demo(project, dataverse_demo_cleanup):
     """Configure environment to use Dataverse demo environment."""
     access_token = os.getenv("DATAVERSE_ACCESS_TOKEN", "")
     set_value("dataverse", "access_token", access_token)
     set_value("dataverse", "server_url", "https://demo.dataverse.org")
 
-    repository.add(".renku/renku.ini")
-    repository.commit("renku.ini")
+    project.repository.add(".renku/renku.ini")
+    project.repository.commit("renku.ini")
 
 
 @pytest.fixture

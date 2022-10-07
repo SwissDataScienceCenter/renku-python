@@ -26,16 +26,15 @@ from urllib.parse import urlparse
 
 from renku.core import errors
 from renku.core.constant import CACHE
-from renku.core.dataset.context import wait_for
 from renku.core.dataset.providers.api import ProviderApi, ProviderPriority
 from renku.core.util import communication
+from renku.core.util.contexts import wait_for
 from renku.core.util.dataset import check_url
 from renku.core.util.urls import remove_credentials
 from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata
-    from renku.core.management.client import LocalClient
 
 
 class WebProvider(ProviderApi):
@@ -57,7 +56,6 @@ class WebProvider(ProviderApi):
 
     @staticmethod
     def add(
-        client: "LocalClient",
         uri: str,
         destination: Path,
         *,

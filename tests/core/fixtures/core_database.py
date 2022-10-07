@@ -21,16 +21,14 @@ import contextlib
 import copy
 import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterator, Tuple
+from typing import Generator, Iterator, Optional, Tuple
 
 import pytest
 
 from renku.core import errors
-from renku.domain_model.project_context import project_context
-
-if TYPE_CHECKING:
-    from renku.infrastructure.database import Database
-    from renku.infrastructure.repository import Repository
+from renku.infrastructure.database import Database
+from tests.fixtures.repository import RenkuProject
+from tests.utils import get_test_bindings
 
 
 class DummyStorage:
@@ -79,63 +77,25 @@ def database() -> Iterator[Tuple["Database", DummyStorage]]:
     yield database, storage
 
 
-def get_test_bindings() -> Dict[str, Any]:
-    """Return all possible bindings."""
-    from renku.core.interface.activity_gateway import IActivityGateway
-    from renku.core.interface.database_gateway import IDatabaseGateway
-    from renku.core.interface.dataset_gateway import IDatasetGateway
-    from renku.core.interface.plan_gateway import IPlanGateway
-    from renku.core.interface.project_gateway import IProjectGateway
-    from renku.infrastructure.gateway.activity_gateway import ActivityGateway
-    from renku.infrastructure.gateway.database_gateway import DatabaseGateway
-    from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
-    from renku.infrastructure.gateway.plan_gateway import PlanGateway
-    from renku.infrastructure.gateway.project_gateway import ProjectGateway
-
-    constructor_bindings = {
-        IPlanGateway: lambda: PlanGateway(),
-        IActivityGateway: lambda: ActivityGateway(),
-        IDatabaseGateway: lambda: DatabaseGateway(),
-        IDatasetGateway: lambda: DatasetGateway(),
-        IProjectGateway: lambda: ProjectGateway(),
-    }
-
-    return {"bindings": {}, "constructor_bindings": constructor_bindings}
-
-
-def add_client_binding(bindings: Dict[str, Any]) -> Dict[str, Any]:
-    """Add required client bindings."""
-    from renku.command.command_builder.client_dispatcher import ClientDispatcher
-    from renku.core.interface.client_dispatcher import IClientDispatcher
-    from renku.core.management.client import LocalClient
-
-    client = LocalClient()
-
-    client_dispatcher = ClientDispatcher()
-    client_dispatcher.push_created_client_to_stack(client)
-    bindings["bindings"].update({"LocalClient": client, IClientDispatcher: client_dispatcher})
-
-    return bindings
-
-
 @pytest.fixture
-def with_injections_manager() -> Callable[["Repository"], None]:
+def with_injection():
     """Factory fixture for test injections manager."""
     from renku.command.command_builder.command import inject, remove_injector
+    from renku.domain_model.project_context import project_context
 
     @contextlib.contextmanager
-    def with_injection(bindings, path: Path):
+    def with_injection_helper(bindings, constructor_bindings, path: Path):
         """Context manager to temporarily do injections."""
 
-        def _bind(binder):
-            for key, value in bindings["bindings"].items():
+        def bind(binder):
+            for key, value in bindings.items():
                 binder.bind(key, value)
-            for key, value in bindings["constructor_bindings"].items():
+            for key, value in constructor_bindings.items():
                 binder.bind_to_constructor(key, value)
 
             return binder
 
-        inject.configure(_bind, bind_in_runtime=False)
+        inject.configure(bind, bind_in_runtime=False)
 
         with project_context.with_path(path, save_changes=True):
             try:
@@ -143,19 +103,16 @@ def with_injections_manager() -> Callable[["Repository"], None]:
             finally:
                 remove_injector()
 
-    def test_injection_manager_helper(repository: "Repository"):
-        bindings = get_test_bindings()
-        add_client_binding(bindings=bindings)
-        return with_injection(bindings=bindings, path=repository.path)
+    def test_injection_manager_helper(project: Optional["RenkuProject"] = None):
+        path = project.path if project else project_context.path
+        bindings, constructor_bindings = get_test_bindings()
+        return with_injection_helper(bindings=bindings, constructor_bindings=constructor_bindings, path=path)
 
     return test_injection_manager_helper
 
 
 @pytest.fixture
-def project_with_injection(repository, with_injections_manager):
+def project_with_injection(project, with_injection) -> Generator[RenkuProject, None, None]:
     """Fixture for context manager with project and database injection."""
-    with with_injections_manager(repository):
-        yield repository
-
-
-client_database_injection_manager = with_injections_manager
+    with with_injection():
+        yield project

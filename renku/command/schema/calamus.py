@@ -40,10 +40,9 @@ dcterms = fields.Namespace("http://purl.org/dc/terms/")
 class JsonLDSchema(CalamusJsonLDSchema):
     """Base schema class for Renku."""
 
-    def __init__(self, *args, commit=None, client=None, **kwargs):
+    def __init__(self, *args, commit=None, **kwargs):
         """Create an instance."""
         self._commit = commit
-        self._client = client
         super().__init__(*args, **kwargs)
 
     def _deserialize(self, *args, **kwargs):
@@ -51,14 +50,11 @@ class JsonLDSchema(CalamusJsonLDSchema):
         const_args = inspect.signature(self.opts.model)
         parameters = const_args.parameters.values()
 
-        if any(p.name == "client" for p in parameters):
-            self._add_field_to_data(data, "client", self._client)
-
         if any(p.name == "commit" for p in parameters):
             if self._commit:
                 self._add_field_to_data(data, "commit", self._commit)
             elif (
-                self._client
+                project_context.has_context()
                 and "_label" in data
                 and data["_label"]
                 and "@UNCOMMITTED" not in data["_label"]
@@ -148,13 +144,11 @@ class DateTimeList(fields.DateTime):
 
 
 class Nested(fields.Nested):
-    """Nested field that passes along client and commit info."""
+    """Nested field that passes along commit info."""
 
-    def __init__(self, *args, propagate_client=True, **kwargs):
+    def __init__(self, *args, **kwargs):
         """Init method."""
         super().__init__(*args, **kwargs)
-
-        self.propagate_client = propagate_client
 
     @property
     def schema(self):
@@ -210,9 +204,6 @@ class Nested(fields.Nested):
                         raise ValueError("Both rdf_type and model need to be set on the " "schema for nested to work")
 
                     kwargs = {}
-
-                    if self.propagate_client and hasattr(self.root, "_client") and JsonLDSchema in schema_class.mro():
-                        kwargs = {"client": self.root._client}
 
                     self._schema["from"][rdf_type] = schema_class(
                         many=False,

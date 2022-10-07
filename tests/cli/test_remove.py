@@ -20,37 +20,34 @@
 import pytest
 
 from renku.core.constant import DEFAULT_DATA_DIR as DATA_DIR
-from renku.domain_model.project_context import project_context
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
-@pytest.mark.parametrize("datadir_option,datadir", [([], f"{DATA_DIR}/testing"), (["--datadir", "mydir"], "mydir")])
-def test_remove_dataset_file(isolated_runner, client, tmpdir, subdirectory, datadir_option, datadir):
+@pytest.mark.parametrize("datadir_option,datadir", [([], f"{DATA_DIR}/testing"), (["--datadir", "my-dir"], "my-dir")])
+def test_remove_dataset_file(isolated_runner, project, tmpdir, subdirectory, datadir_option, datadir):
     """Test remove of a file that belongs to a dataset."""
-    runner = isolated_runner
-
     # create a dataset
-    result = runner.invoke(cli, ["dataset", "create", "testing"] + datadir_option)
+    result = isolated_runner.invoke(cli, ["dataset", "create", "testing"] + datadir_option)
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
     source = tmpdir.join("remove_dataset.file")
     source.write(DATA_DIR)
 
-    result = runner.invoke(cli, ["dataset", "add", "--copy", "testing", source.strpath])
+    result = isolated_runner.invoke(cli, ["dataset", "add", "--copy", "testing", source.strpath])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    path = project_context.path / datadir / "remove_dataset.file"
+    path = project.path / datadir / "remove_dataset.file"
     assert path.exists()
 
-    result = runner.invoke(cli, ["doctor"])
+    result = isolated_runner.invoke(cli, ["doctor"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["rm", str(project_context.path / datadir)])
+    result = isolated_runner.invoke(cli, ["rm", str(project.path / datadir)])
     assert 0 == result.exit_code, format_result_exception(result)
 
     assert not path.exists()
 
-    result = runner.invoke(cli, ["doctor"])
+    result = isolated_runner.invoke(cli, ["doctor"])
     assert 0 == result.exit_code, format_result_exception(result)

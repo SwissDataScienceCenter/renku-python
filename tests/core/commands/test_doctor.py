@@ -70,7 +70,7 @@ def test_git_hooks_modified(runner, project):
     assert "Git hooks are outdated or not installed." in result.output
 
 
-def test_lfs_broken_history(runner, client, tmp_path):
+def test_lfs_broken_history(runner, project, tmp_path):
     """Test lfs migrate info check on a broken history."""
     big_file = tmp_path / "big-file.bin"
     with open(big_file, "w") as file_:
@@ -98,10 +98,10 @@ def test_lfs_broken_history(runner, client, tmp_path):
     assert "Git history contains large files" not in result.output
 
 
-def test_check_invalid_imported_dataset(runner, project_with_datasets, client_database_injection_manager):
+def test_check_invalid_imported_dataset(runner, project_with_datasets, with_injection):
     """Test checking imported datasets that have both derived_from and same_as set."""
-    with client_database_injection_manager(project_with_datasets):
-        with with_dataset(project_with_datasets, name="dataset-1", commit_database=True) as dataset:
+    with with_injection():
+        with with_dataset(name="dataset-1", commit_database=True) as dataset:
             # NOTE: Set both same_as and derived_from for a dataset
             dataset.same_as = Url(url_str="http://example.com")
             dataset.derived_from = Url(url_id="datasets/non-existing-id")
@@ -119,43 +119,43 @@ def test_check_invalid_imported_dataset(runner, project_with_datasets, client_da
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_fix_invalid_imported_dataset(runner, project_with_datasets, client_database_injection_manager):
+def test_fix_invalid_imported_dataset(runner, project_with_datasets, with_injection):
     """Test fixing imported datasets that have both derived_from and same_as set."""
-    with client_database_injection_manager(project_with_datasets):
-        with with_dataset(project_with_datasets, name="dataset-1", commit_database=True) as dataset:
+    with with_injection():
+        with with_dataset(name="dataset-1", commit_database=True) as dataset:
             # NOTE: Set both same_as and derived_from for a dataset
             dataset.same_as = Url(url_str="http://example.com")
             dataset.derived_from = Url(url_id="datasets/non-existing-id")
 
-    project_with_datasets.add(all=True)
-    project_with_datasets.commit("modified dataset")
+    project_with_datasets.repository.add(all=True)
+    project_with_datasets.repository.commit("modified dataset")
 
-    before_commit_sha = project_with_datasets.head.commit.hexsha
+    before_commit_sha = project_with_datasets.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["doctor", "--fix"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Fixing dataset 'dataset-1'" in result.output
 
-    assert before_commit_sha != project_with_datasets.head.commit.hexsha
-    assert not project_with_datasets.is_dirty(untracked_files=True)
+    assert before_commit_sha != project_with_datasets.repository.head.commit.hexsha
+    assert not project_with_datasets.repository.is_dirty(untracked_files=True)
 
-    with client_database_injection_manager(project_with_datasets):
-        with with_dataset(project_with_datasets, name="dataset-1") as dataset:
+    with with_injection():
+        with with_dataset(name="dataset-1") as dataset:
             # NOTE: Set both same_as and derived_from for a dataset
             assert dataset.same_as.value == "http://example.com"
             assert dataset.derived_from is None
 
 
-def test_file_outside_datadir(runner, project_with_datasets, client_database_injection_manager):
+def test_file_outside_datadir(runner, project_with_datasets, with_injection):
     """Test doctor check deal with files outside a datasets datadir."""
-    write_and_commit_file(project_with_datasets, "some_file", "content_a")
+    write_and_commit_file(project_with_datasets.repository, "some_file", "content_a")
 
-    with client_database_injection_manager(project_with_datasets):
-        with with_dataset(project_with_datasets, name="dataset-1", commit_database=True) as dataset:
-            dataset.add_or_update_files([DatasetFile.from_path(project_with_datasets, "some_file")])
-    project_with_datasets.add(all=True)
-    project_with_datasets.commit("modified dataset")
+    with with_injection():
+        with with_dataset(name="dataset-1", commit_database=True) as dataset:
+            dataset.add_or_update_files([DatasetFile.from_path("some_file")])
+    project_with_datasets.repository.add(all=True)
+    project_with_datasets.repository.commit("modified dataset")
 
     result = runner.invoke(cli, ["doctor"])
     assert 1 == result.exit_code, format_result_exception(result)
@@ -165,15 +165,15 @@ def test_file_outside_datadir(runner, project_with_datasets, client_database_inj
     result = runner.invoke(cli, ["doctor", "--fix"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    with client_database_injection_manager(project_with_datasets):
-        with with_dataset(project_with_datasets, name="dataset-1", commit_database=True) as dataset:
+    with with_injection():
+        with with_dataset(name="dataset-1", commit_database=True) as dataset:
             assert 1 == len(dataset.files)
             assert dataset.files[0].entity.path.startswith(str(dataset.get_datadir()))
 
 
-def test_doctor_fix_activity_catalog(runner, client, client_database_injection_manager):
+def test_doctor_fix_activity_catalog(runner, project, with_injection):
     """Test detecting and fixing activity catalogs that were not persisted."""
-    with client_database_injection_manager(client):
+    with with_injection():
         upstream = create_dummy_activity(plan="p1", generations=["input"])
         activity = create_dummy_activity(plan="p2", usages=["input"], generations=["intermediate"])
         downstream = create_dummy_activity(plan="p3", usages=["intermediate"], generations=["output"])

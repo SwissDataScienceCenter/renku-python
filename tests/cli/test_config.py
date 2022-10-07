@@ -25,12 +25,11 @@ from time import sleep
 import pytest
 
 import renku.core.config
-from renku.domain_model.project_context import project_context
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, retry_failed
 
 
-def test_config_value_locally(client, runner, project):
+def test_config_value_locally(runner, project):
     """Check setting/getting from local configuration."""
     result = runner.invoke(cli, ["config", "set", "key", "local-value"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -47,7 +46,7 @@ def test_config_value_locally(client, runner, project):
     assert 2 == result.exit_code
 
 
-def test_config_value_globally(client, runner, project):
+def test_config_value_globally(runner, project):
     """Check setting/getting from global configuration."""
     result = runner.invoke(cli, ["config", "set", "key", "global-value", "--global"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -63,7 +62,7 @@ def test_config_value_globally(client, runner, project):
     assert 2 == result.exit_code
 
 
-def test_config_default(client, runner, project):
+def test_config_default(runner, project):
     """Check setting/getting from local configuration."""
     result = runner.invoke(cli, ["config", "set", "lfs_threshold", "0b"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -84,13 +83,13 @@ def test_config_default(client, runner, project):
     assert result.output == "100kb\n"
 
 
-def test_config_get_non_existing_value(client, runner, project):
+def test_config_get_non_existing_value(runner, project):
     """Check getting non-existing value is an error."""
     result = runner.invoke(cli, ["config", "show", "non-existing"])
     assert 2 == result.exit_code
 
 
-def test_local_overrides_global_config(client, runner, project):
+def test_local_overrides_global_config(runner, project):
     """Test setting config both global and locally."""
     result = runner.invoke(cli, ["config", "set", "key", "global-value", "--global"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -108,7 +107,7 @@ def test_local_overrides_global_config(client, runner, project):
 
 
 @pytest.mark.parametrize("global_only", (False, True))
-def test_config_remove_value_locally(client, runner, project, global_only):
+def test_config_remove_value_locally(runner, project, global_only):
     """Check removing value from local configuration."""
     param = ["--global"] if global_only else []
     result = runner.invoke(cli, ["config", "set", "key", "some-value"] + param)
@@ -124,27 +123,27 @@ def test_config_remove_value_locally(client, runner, project, global_only):
     assert "some-value" not in result.output
 
 
-def test_local_config_committed(client, runner, data_repository):
+def test_local_config_committed(project, runner, data_repository):
     """Test local configuration update is committed only when it is changed."""
-    commit_sha_before = client.head.commit.hexsha
+    commit_sha_before = project.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["config", "set", "local-key", "value"])
     assert 0 == result.exit_code, format_result_exception(result)
-    commit_sha_after = client.head.commit.hexsha
+    commit_sha_after = project.repository.head.commit.hexsha
     assert commit_sha_after != commit_sha_before
 
     # Adding the same config should not create a new commit
-    commit_sha_before = project_context.repository.head.commit.hexsha
+    commit_sha_before = project.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["config", "set", "local-key", "value"])
     assert 0 == result.exit_code, format_result_exception(result)
-    commit_sha_after = project_context.repository.head.commit.hexsha
+    commit_sha_after = project.repository.head.commit.hexsha
     assert commit_sha_after == commit_sha_before
 
     # Adding a global config should not create a new commit
     result = runner.invoke(cli, ["config", "set", "global-key", "value", "--global"])
     assert 0 == result.exit_code, format_result_exception(result)
-    commit_sha_after = project_context.repository.head.commit.hexsha
+    commit_sha_after = project.repository.head.commit.hexsha
     assert commit_sha_after == commit_sha_before
 
 
@@ -157,7 +156,7 @@ def test_local_config_committed(client, runner, data_repository):
         ),
     ],
 )
-def test_invalid_command_args(client, runner, project, args, message):
+def test_invalid_command_args(runner, project, args, message):
     """Test invalid combination of command-line arguments."""
     result = runner.invoke(cli, ["config"] + args)
     assert 2 == result.exit_code
@@ -165,7 +164,7 @@ def test_invalid_command_args(client, runner, project, args, message):
 
 
 @pytest.mark.parametrize("config_key", ["data_directory"])
-def test_readonly_config(client, runner, project, config_key):
+def test_readonly_config(runner, project, config_key):
     """Test readonly config can only be set once."""
     result = runner.invoke(cli, ["config", "set", config_key, "value"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -179,7 +178,7 @@ def test_readonly_config(client, runner, project, config_key):
     assert f"Configuration {config_key} cannot be modified." in result.output
 
 
-def test_config_read_concurrency(runner, project, client, run):
+def test_config_read_concurrency(runner, project, run):
     """Test config can be read concurrently."""
     result = runner.invoke(cli, ["config", "set", "test", "value"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -206,7 +205,7 @@ def test_config_read_concurrency(runner, project, client, run):
 
 
 @retry_failed
-def test_config_write_concurrency(monkeypatch, runner, project, client, run):
+def test_config_write_concurrency(monkeypatch, runner, project, run):
     """Test config cannot be written concurrently. Only one execution succeeds in that case."""
     REPETITIONS = 4
     CONFIG_KEY = "write_key"
@@ -262,7 +261,7 @@ def test_config_write_concurrency(monkeypatch, runner, project, client, run):
 
 
 @pytest.mark.parametrize("value", ["%value", "${value}"])
-def test_config_interpolation_is_disabled(client, runner, value):
+def test_config_interpolation_is_disabled(project, runner, value):
     """Test ConfigParser interpolation is disabled."""
     result = runner.invoke(cli, ["config", "set", "key", value])
 
@@ -274,22 +273,20 @@ def test_config_interpolation_is_disabled(client, runner, value):
     assert f"{value}\n" == result.output
 
 
-def test_config_commit(client, runner, data_repository):
+def test_config_commit(project, runner, data_repository):
     """Test config changes only commits the renku config file."""
-    commit_sha_before = project_context.repository.head.commit.hexsha
+    commit_sha_before = project.repository.head.commit.hexsha
 
-    (project_context.path / "untracked").write_text("untracked")
-    (project_context.path / "staged").write_text("staged")
-    project_context.repository.add("staged")
+    (project.path / "untracked").write_text("untracked")
+    (project.path / "staged").write_text("staged")
+    project.repository.add("staged")
 
     result = runner.invoke(cli, ["config", "set", "key", "value"])
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert {os.path.join(".renku", "renku.ini")} == {
-        f.a_path for f in project_context.repository.head.commit.get_changes()
-    }
-    assert {"untracked"} == set(project_context.repository.untracked_files)
-    assert {"staged"} == {f.a_path for f in project_context.repository.staged_changes}
+    assert {os.path.join(".renku", "renku.ini")} == {f.a_path for f in project.repository.head.commit.get_changes()}
+    assert {"untracked"} == set(project.repository.untracked_files)
+    assert {"staged"} == {f.a_path for f in project.repository.staged_changes}
 
-    commit_sha_after = project_context.repository.head.commit.hexsha
+    commit_sha_after = project.repository.head.commit.hexsha
     assert commit_sha_after != commit_sha_before

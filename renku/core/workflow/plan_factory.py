@@ -24,7 +24,7 @@ import time
 from contextlib import contextmanager
 from itertools import chain
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
 
 import click
 import yaml
@@ -62,11 +62,11 @@ class PlanFactory:
 
     def __init__(
         self,
-        command_line: str,
+        command_line: Union[str, List[str], Tuple[str, ...]],
         explicit_inputs: Optional[List[Tuple[str, str]]] = None,
         explicit_outputs: Optional[List[Tuple[str, str]]] = None,
         explicit_parameters: Optional[List[Tuple[str, Optional[str]]]] = None,
-        directory: Optional[str] = None,
+        directory: Optional[Union[Path, str]] = None,
         working_dir: Optional[Union[Path, str]] = None,
         no_input_detection: bool = False,
         no_output_detection: bool = False,
@@ -161,7 +161,7 @@ class PlanFactory:
             # (e.g. /bin/bash)
             if is_subpath(path, base=self.working_dir):
                 return path
-            elif is_external_file(path=candidate, client_path=self.working_dir):
+            elif is_external_file(path=candidate, project_path=self.working_dir):
                 return Path(os.path.abspath(candidate))
 
         return None
@@ -257,7 +257,7 @@ class PlanFactory:
             assert isinstance(default, File)
             self.add_command_input(default_value=str(default), encoding_format=default.mime_type, position=position)
 
-    def add_outputs(self, candidates: Set[Tuple[Union[Path, str], Optional[str]]]):
+    def add_outputs(self, candidates: Iterable[Tuple[Union[Path, str], Optional[str]]]):
         """Yield detected output and changed command input parameter."""
         # TODO what to do with duplicate paths & inputs with same defaults
         candidate_paths = list(map(lambda x: x[0], candidates))
@@ -767,28 +767,28 @@ def delete_indirect_files_list(working_dir):
             pass
 
 
-def get_indirect_inputs_path(client_path):
+def get_indirect_inputs_path(project_path):
     """Return path to file that contains indirect inputs list."""
-    parent = _get_indirect_parent_path(client_path)
+    parent = _get_indirect_parent_path(project_path)
     return parent / "inputs.yml"
 
 
-def get_indirect_outputs_path(client_path):
+def get_indirect_outputs_path(project_path):
     """Return path to file that contains indirect outputs list."""
-    parent = _get_indirect_parent_path(client_path)
+    parent = _get_indirect_parent_path(project_path)
     return parent / "outputs.yml"
 
 
-def get_indirect_parameters_path(client_path):
+def get_indirect_parameters_path(project_path):
     """Return path to file that contains indirect parameters list."""
-    parent = _get_indirect_parent_path(client_path)
+    parent = _get_indirect_parent_path(project_path)
     return parent / "parameters.yml"
 
 
-def _get_indirect_parent_path(client_path):
+def _get_indirect_parent_path(project_path):
     renku_indirect_path = os.getenv("RENKU_INDIRECT_PATH") or ""
 
-    base = (Path(client_path) / RENKU_HOME / RENKU_TMP).resolve()
+    base = (Path(project_path) / RENKU_HOME / RENKU_TMP).resolve()
     parent = (base / renku_indirect_path).resolve()
 
     try:

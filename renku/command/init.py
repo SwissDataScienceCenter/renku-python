@@ -23,15 +23,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional
 from uuid import uuid4
 
-import attr
-
 from renku.command.command_builder.command import Command, inject
 from renku.command.mergetool import setup_mergetool
 from renku.core import errors
 from renku.core.config import set_value
 from renku.core.constant import DATA_DIR_CONFIG_KEY, RENKU_HOME
-from renku.core.git import commit, with_project_metadata, worktree
-from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.git import with_worktree
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.migration.utils import OLD_METADATA_PATH
 from renku.core.storage import init_external_storage, storage_installed
@@ -39,13 +36,15 @@ from renku.core.template.template import (
     FileAction,
     RenderedTemplate,
     TemplateAction,
-    copy_template_to_client,
+    copy_template_to_project,
     fetch_templates_source,
     get_file_actions,
     set_template_parameters,
 )
 from renku.core.template.usecase import select_template
 from renku.core.util import communication
+from renku.core.util.contexts import with_project_metadata
+from renku.core.util.git import with_commit
 from renku.core.util.os import is_path_empty
 from renku.domain_model.project import Project
 from renku.domain_model.project_context import project_context
@@ -80,7 +79,7 @@ def create_backup_branch(path):
                         branch_name = f"pre_renku_init_{hexsha}_{uuid4().hex}"
                         break
 
-                with worktree(
+                with with_worktree(
                     branch_name=branch_name,
                     commit=repository.head.commit,
                     merge_args=["--no-ff", "-s", "recursive", "-X", "ours", "--allow-unrelated-histories"],
@@ -99,9 +98,7 @@ def init_command():
     return Command().command(_init).with_database()
 
 
-@inject.autoparams()
 def _init(
-    ctx,
     external_storage_requested,
     path,
     name,
@@ -116,12 +113,10 @@ def _init(
     data_dir,
     initial_branch,
     install_mergetool,
-    client_dispatcher: IClientDispatcher,
 ):
     """Initialize a renku project.
 
     Args:
-        ctx: Current click context.
         external_storage_requested: Whether or not external storage should be used.
         path: Path to initialize repository at.
         name: Name of the project.
@@ -136,18 +131,13 @@ def _init(
         data_dir: Where to store dataset data.
         initial_branch: Default git branch.
         install_mergetool(bool): Whether to set up the renku metadata mergetool in the created project.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
     """
-    client = client_dispatcher.current_client
-
     if not project_context.external_storage_requested:
         external_storage_requested = False
 
     project_context.push_path(path, save_changes=True)
     project_context.datadir = data_dir
     project_context.external_storage_requested = external_storage_requested
-    ctx.obj = client = attr.evolve(client)
-    client_dispatcher.push_created_client_to_stack(client)
 
     communication.echo("Initializing Git repository...")
     project_context.repository = init_repository(force=force, user=None, initial_branch=initial_branch)
@@ -162,7 +152,9 @@ def _init(
     if template is None:
         raise errors.TemplateNotFoundError(f"Couldn't find template with id {template_id}")
 
-    namespace, name = Project.get_namespace_and_name(use_project_context=True, name=name)
+    namespace, name = Project.get_namespace_and_name(
+        remote=project_context.remote, name=name, repository=project_context.repository
+    )
     name = name or os.path.basename(path.rstrip(os.path.sep))
 
     metadata = dict()
@@ -304,11 +296,17 @@ def create_from_template(
             "'http://schema.org/schemaVersion': '9'"
         )
 
-    with commit(commit_message=commit_message, commit_only=commit_only, skip_dirty_checks=True):
+    with with_commit(
+        repository=project_context.repository,
+        transaction_id=project_context.transaction_id,
+        commit_message=commit_message,
+        commit_only=commit_only,
+        skip_dirty_checks=True,
+    ):
         with with_project_metadata(
             name=name, namespace=namespace, description=description, custom_metadata=custom_metadata, keywords=keywords
         ) as project:
-            copy_template_to_client(rendered_template=rendered_template, project=project, actions=actions)
+            copy_template_to_project(rendered_template=rendered_template, project=project, actions=actions)
 
         if install_mergetool:
             setup_mergetool()

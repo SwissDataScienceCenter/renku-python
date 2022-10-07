@@ -96,7 +96,7 @@ import os
 import click
 
 import renku.ui.cli.utils.color as color
-from renku.command.echo import WARNING
+from renku.command.util import WARNING
 from renku.ui.cli.utils.callback import ClickCallback
 
 

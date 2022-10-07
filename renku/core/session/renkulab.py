@@ -24,7 +24,6 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from renku.core import errors
 from renku.core.config import get_value, set_value
-from renku.core.management.client import LocalClient
 from renku.core.plugin import hookimpl
 from renku.core.session.utils import get_renku_project_name, get_renku_url
 from renku.core.util import communication, requests
@@ -274,7 +273,6 @@ class RenkulabSessionProvider(ISessionProvider):
         image_name: str,
         project_name: str,
         config: Optional[Dict[str, Any]],
-        client: LocalClient,
         cpu_request: Optional[float] = None,
         mem_request: Optional[str] = None,
         disk_request: Optional[str] = None,

@@ -18,13 +18,13 @@
 """Command builder for migrations."""
 
 from renku.command.command_builder.command import Command, check_finalized
-from renku.core.management.migrate import check_for_migration
+from renku.core.migration.migrate import check_for_migration
 
 
 class RequireMigration(Command):
     """Builder to check for migrations."""
 
-    DEFAULT_ORDER = 3
+    HOOK_ORDER = 3
 
     def __init__(self, builder: Command) -> None:
         """__init__ of RequireMigration."""
@@ -37,6 +37,6 @@ class RequireMigration(Command):
     @check_finalized
     def build(self) -> Command:
         """Build the command."""
-        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
+        self._builder.add_pre_hook(self.HOOK_ORDER, self._pre_hook)
 
         return self._builder.build()

@@ -103,7 +103,7 @@ class OLOSExporter(ExporterApi):
         """Endpoint for creation of access token."""
         return urllib.parse.urljoin(self._server_url, "portal")
 
-    def export(self, client=None, **kwargs):
+    def export(self, **kwargs):
         """Execute export process."""
         from renku.domain_model.dataset import get_file_path_in_dataset
 

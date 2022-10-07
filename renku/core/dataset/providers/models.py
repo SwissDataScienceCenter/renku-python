@@ -52,9 +52,9 @@ class DatasetAddMetadata(NamedTuple):
         """Returns if file action is not NONE."""
         return self.action != DatasetAddAction.NONE
 
-    def get_absolute_commit_path(self, client_path: Path) -> str:
+    def get_absolute_commit_path(self, project_path: Path) -> str:
         """Return path of the file in the repository."""
-        return os.path.join(client_path, self.entity_path)
+        return os.path.join(project_path, self.entity_path)
 
 
 class ProviderParameter(NamedTuple):

@@ -36,7 +36,6 @@ from renku.core.dataset.providers.models import ProviderDataset
 from renku.core.dataset.providers.s3 import S3Credentials
 from renku.core.dataset.request_model import ImageRequestModel
 from renku.core.dataset.tag import get_dataset_by_tag, prompt_access_token, prompt_tag_selection
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.interface.storage import IStorageFactory
 from renku.core.storage import check_external_storage, pull_paths_from_storage, track_paths_in_storage
@@ -67,7 +66,6 @@ from renku.domain_model.provenance.annotation import Annotation
 from renku.infrastructure.immutable import DynamicProxy
 
 if TYPE_CHECKING:
-    from renku.core.management.client import LocalClient
     from renku.infrastructure.repository import Repository
 
 
@@ -376,17 +374,14 @@ def remove_dataset(name):
     datasets_provenance.remove(dataset=dataset)
 
 
-@inject.autoparams()
-def export_dataset(name, provider_name, tag, client_dispatcher: IClientDispatcher, **kwargs):
+def export_dataset(name, provider_name, tag, **kwargs):
     """Export data to 3rd party provider.
 
     Args:
         name: Name of dataset to export.
         provider_name: Provider to use for export.
         tag: Dataset tag from which to export.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
     """
-    client = client_dispatcher.current_client
     datasets_provenance = DatasetsProvenance()
 
     provider_name = provider_name.lower()
@@ -433,7 +428,7 @@ def export_dataset(name, provider_name, tag, client_dispatcher: IClientDispatche
         exporter.set_access_token(access_token)
 
     try:
-        destination = exporter.export(client=client)
+        destination = exporter.export()
     except errors.AuthenticationError:
         remove_value(provider_name, config_key_secret, global_only=True)
         raise
@@ -474,8 +469,8 @@ def import_dataset(
         communication.echo(tabulate(files, headers=headers, floatfmt=".2f"))
         communication.confirm("Do you wish to download this version?", abort=True, warning=True)
 
-    def calculate_total_size(files):
-        total_size = 0.0
+    def calculate_total_size(files) -> int:
+        total_size = 0
         for file in files:
             if file.filesize is not None:
                 total_size += file.filesize
@@ -568,7 +563,6 @@ def update_datasets(
     check_data_directory: bool,
     update_all: bool,
     dry_run: bool,
-    client_dispatcher: IClientDispatcher,
     dataset_gateway: IDatasetGateway,
 ) -> Tuple[List[DatasetViewModel], List[DatasetFileViewModel]]:
     """Update dataset files.
@@ -586,15 +580,12 @@ def update_datasets(
         check_data_directory(bool): Whether to check the dataset's data directory for new files.
         update_all(bool): Whether to update all datasets.
         dry_run(bool): Whether to return a preview of what would be updated.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         dataset_gateway(IDatasetGateway): Injected dataset gateway.
     """
     from renku.core.dataset.providers.renku import RenkuProvider
 
     if not update_all and not names and not include and not exclude and not dry_run:
         raise errors.ParameterError("No update criteria is specified")
-
-    client = client_dispatcher.current_client
 
     imported_dataset_updates: List[Dataset] = []
 
@@ -710,7 +701,7 @@ def update_datasets(
     deleted_files: List[DynamicProxy] = []
 
     if external_files and not no_external:
-        updated = update_external_files(client, external_files, dry_run=dry_run)
+        updated = update_external_files(external_files, dry_run=dry_run)
         updated_files.extend(updated)
 
     if git_files and not no_remote:
@@ -736,7 +727,7 @@ def update_datasets(
             repository.add(*file_paths, force=True)
             repository.add(project_context.pointers_path, force=True)
 
-            _update_datasets_files_metadata(client, updated_files, deleted_files, delete)
+            _update_datasets_files_metadata(updated_files, deleted_files, delete)
 
         message = f"Updated {len(updated_files)} files"
         if delete:
@@ -780,16 +771,12 @@ def show_dataset(name: str, tag: Optional[str] = None):
     return DatasetDetailsJson().dump(dataset)
 
 
-@inject.autoparams("client_dispatcher")
-def add_datadir_files_to_dataset(dataset: Dataset, client_dispatcher: IClientDispatcher) -> None:
+def add_datadir_files_to_dataset(dataset: Dataset) -> None:
     """Add all files in a datasets data directory to the dataset.
 
     Args:
-        client_dispatcher(IClientDispatcher): The client dispatcher.
         dataset(Dataset): The dataset to add data dir files to.
     """
-    client = client_dispatcher.current_client
-
     datadir = get_safe_relative_path(dataset.get_datadir(), project_context.path)
 
     if datadir.exists():
@@ -798,7 +785,7 @@ def add_datadir_files_to_dataset(dataset: Dataset, client_dispatcher: IClientDis
         files: List[Path] = []
         for file in get_files(datadir):
             files.append(file)
-            dataset_files.append(DatasetFile.from_path(client=client, path=file, source=file))
+            dataset_files.append(DatasetFile.from_path(path=file, source=file))
 
         if not dataset_files:
             return
@@ -873,9 +860,8 @@ def update_dataset_custom_metadata(dataset: Dataset, custom_metadata: Optional[D
     dataset.annotations = existing_metadata
 
 
-@inject.autoparams("client_dispatcher", "dataset_gateway")
+@inject.autoparams("dataset_gateway")
 def move_files(
-    client_dispatcher: IClientDispatcher,
     dataset_gateway: IDatasetGateway,
     files: Dict[Path, Path],
     to_dataset_name: Optional[str] = None,
@@ -883,13 +869,10 @@ def move_files(
     """Move files and their metadata from one or more datasets to a target dataset.
 
     Args:
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         dataset_gateway(IDatasetGateway):Injected dataset gateway.
         files(Dict[Path, Path]): Files to move
         to_dataset_name(Optional[str], optional): Target dataset (Default value = None)
     """
-    client = client_dispatcher.current_client
-
     datasets = [d.copy() for d in dataset_gateway.get_all_active_datasets()]
 
     to_dataset: Optional[Dataset] = None
@@ -905,7 +888,7 @@ def move_files(
             src = src.relative_to(project_context.path)
             dst = dst.relative_to(project_context.path)
             # NOTE: Files are moved at this point, so, we can use dst
-            new_dataset_file = DatasetFile.from_path(client, dst)
+            new_dataset_file = DatasetFile.from_path(dst)
 
             for dataset in datasets:
                 removed = dataset.unlink_file(src, missing_ok=True)
@@ -999,18 +982,11 @@ def update_dataset_local_files(
     return updated_files, deleted_files, new_files
 
 
-def _update_datasets_files_metadata(
-    client: "LocalClient",
-    updated_files: List[DynamicProxy],
-    deleted_files: List[DynamicProxy],
-    delete: bool,
-):
+def _update_datasets_files_metadata(updated_files: List[DynamicProxy], deleted_files: List[DynamicProxy], delete: bool):
     modified_datasets = {}
 
     for file in updated_files:
-        new_file = DatasetFile.from_path(
-            client=client, path=file.entity.path, based_on=file.based_on, source=file.source
-        )
+        new_file = DatasetFile.from_path(path=file.entity.path, based_on=file.based_on, source=file.source)
         modified_datasets[file.dataset.name] = file.dataset
         file.dataset.add_or_update_files(new_file)
 
@@ -1024,27 +1000,21 @@ def _update_datasets_files_metadata(
         datasets_provenance.add_or_update(dataset, creator=get_git_user(repository=project_context.repository))
 
 
-@inject.autoparams("client_dispatcher")
 def update_dataset_git_files(
-    client_dispatcher: IClientDispatcher, files: List[DynamicProxy], ref: str, delete: bool, dry_run: bool
+    files: List[DynamicProxy], ref: Optional[str], delete: bool, dry_run: bool
 ) -> Tuple[List[DynamicProxy], List[DynamicProxy]]:
     """Update files and dataset metadata according to their remotes.
 
     Args:
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         files(List[DynamicProxy]): List of files to be updated.
-        ref(str): Reference to use for update.
+        ref(Optional[str]): Reference to use for update.
         delete(bool, optional): Indicates whether to delete files or not (Default value = False).
         dry_run(bool): Whether to perform update or only print changes.
 
     Returns:
         Tuple[List[DynamicProxy], List[DynamicProxy]]: Tuple of updated and deleted file records.
     """
-    from renku.core.management.client import LocalClient
-
-    client = client_dispatcher.current_client
-
-    visited_repos: Dict[str, Tuple["Repository", LocalClient]] = {}
+    visited_repos: Dict[str, "Repository"] = {}
     updated_files: List[DynamicProxy] = []
     deleted_files: List[DynamicProxy] = []
 
@@ -1060,15 +1030,12 @@ def update_dataset_git_files(
             based_on = file.based_on
             url = based_on.url
             if url in visited_repos:
-                remote_repository, remote_client = visited_repos[url]
+                remote_repository = visited_repos[url]
             else:
                 communication.echo(msg="Cloning remote repository...")
-                remote_repository = clone_repository(
-                    url=url, path=get_cache_directory_for_repository(client=client, url=url), checkout_revision=ref
-                )
-                with project_context.with_path(remote_repository.path):
-                    remote_client = LocalClient()
-                visited_repos[url] = remote_repository, remote_client
+                path = get_cache_directory_for_repository(url=url)
+                remote_repository = clone_repository(url=url, path=path, checkout_revision=ref)
+                visited_repos[url] = remote_repository
 
             checksum = remote_repository.get_object_hash(path=based_on.path, revision="HEAD")
             found = checksum is not None
@@ -1086,9 +1053,9 @@ def update_dataset_git_files(
                 if not dry_run:
                     # Fetch file if it is tracked by Git LFS
                     pull_paths_from_storage(remote_repository, remote_repository.path / based_on.path)
-                    if is_external_file(path=src, client_path=remote_repository.path):
+                    if is_external_file(path=src, project_path=remote_repository.path):
                         delete_dataset_file(dst, follow_symlinks=True)
-                        create_external_file(client=client, target=src.resolve(), path=dst)
+                        create_external_file(target=src.resolve(), path=dst)
                     else:
                         shutil.copy(src, dst)
                     file.based_on = RemoteEntity(
@@ -1105,11 +1072,10 @@ def update_dataset_git_files(
     return updated_files, deleted_files
 
 
-def update_external_files(client: "LocalClient", records: List[DynamicProxy], dry_run: bool) -> List[DynamicProxy]:
+def update_external_files(records: List[DynamicProxy], dry_run: bool) -> List[DynamicProxy]:
     """Update files linked to external storage.
 
     Args:
-        client("LocalClient"): The ``LocalClient``.
         records(List[DynamicProxy]): File records to update.
         dry_run(bool): Whether to return a preview of what would be updated.
     """
@@ -1118,7 +1084,7 @@ def update_external_files(client: "LocalClient", records: List[DynamicProxy], dr
     for file in records:
         if file.is_external:
             try:
-                updated, checksum = is_external_file_updated(client_path=project_context.path, path=file.entity.path)
+                updated, checksum = is_external_file_updated(project_path=project_context.path, path=file.entity.path)
             except errors.ExternalFileNotFound as e:
                 if not dry_run:
                     raise
@@ -1127,15 +1093,14 @@ def update_external_files(client: "LocalClient", records: List[DynamicProxy], dr
 
             if updated:
                 if not dry_run:
-                    update_external_file(client=client, path=file.entity.path, checksum=checksum)
+                    update_external_file(path=file.entity.path, checksum=checksum)
                 updated_files.append(file)
 
     return updated_files
 
 
-@inject.autoparams("client_dispatcher", "dataset_gateway")
+@inject.autoparams("dataset_gateway")
 def filter_dataset_files(
-    client_dispatcher: IClientDispatcher,
     dataset_gateway: IDatasetGateway,
     names: Optional[List[str]] = None,
     tag: Optional[str] = None,
@@ -1149,7 +1114,6 @@ def filter_dataset_files(
     """Filter dataset files by specified filters.
 
     Args:
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         dataset_gateway(IDatasetGateway):Injected dataset gateway.
         names(Optional[List[str]]): Filter by specified dataset names (Default value = None).
         tag(Optional[str]): Filter by specified tag (Default value = None).
@@ -1178,8 +1142,6 @@ def filter_dataset_files(
             return False
 
         return True
-
-    client = client_dispatcher.current_client
 
     if isinstance(creators, str):
         creators_set = set(creators.split(","))
@@ -1220,7 +1182,6 @@ def filter_dataset_files(
 
             record = DynamicProxy(file)
             record.dataset = dataset
-            record.client = client
             records.append(record)
 
         if not check_data_directory:
@@ -1232,9 +1193,8 @@ def filter_dataset_files(
                 file_path = get_safe_relative_path(current_folder / current_file, project_context.path)
                 if should_include(file_path) and not dataset.find_file(file_path):
                     # New file in dataset folder
-                    record = DynamicProxy(DatasetFile.from_path(client, file_path))
+                    record = DynamicProxy(DatasetFile.from_path(file_path))
                     record.dataset = dataset
-                    record.client = client
                     records.append(record)
 
     if unused_names:
@@ -1244,19 +1204,15 @@ def filter_dataset_files(
     return sorted(records, key=lambda r: r.date_added)
 
 
-@inject.autoparams("client_dispatcher", "storage_factory")
-def pull_external_data(
-    name: str, client_dispatcher: IClientDispatcher, storage_factory: IStorageFactory, location: Optional[Path] = None
-) -> None:
+@inject.autoparams("storage_factory")
+def pull_external_data(name: str, storage_factory: IStorageFactory, location: Optional[Path] = None) -> None:
     """Pull/copy data for an external storage to a dataset's data directory or a specified location.
 
     Args:
         name(str): Name of the dataset
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         storage_factory(IStorageFactory):Injected storage factory.
         location(Optional[Path]): A directory to copy data to (Default value = None).
     """
-    client = client_dispatcher.current_client
     datasets_provenance = DatasetsProvenance()
 
     dataset = datasets_provenance.get_by_name(name=name, strict=True)
@@ -1320,7 +1276,7 @@ def pull_external_data(
     store_dataset_data_location(dataset=dataset, location=location)
 
     if updated_files:
-        _update_datasets_files_metadata(client, updated_files=updated_files, deleted_files=[], delete=False)
+        _update_datasets_files_metadata(updated_files=updated_files, deleted_files=[], delete=False)
 
 
 def store_dataset_data_location(dataset: Dataset, location: Optional[Path]) -> None:
@@ -1339,7 +1295,7 @@ def read_dataset_data_location(dataset: Dataset) -> Optional[str]:
     return get_value(section="dataset-locations", key=dataset.name, config_filter=ConfigFilter.LOCAL_ONLY)
 
 
-@inject.autoparams("client_dispatcher", "storage_factory")
+@inject.autoparams("storage_factory")
 def mount_external_storage(
     name: str,
     existing: Optional[Path],

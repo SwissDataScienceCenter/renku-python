@@ -83,8 +83,8 @@ class Project:
         return self
 
     def __exit__(self, type, value, traceback):
-        project_context = self._project_contexts.pop()
-        if project_context is not self:
+        context = self._project_contexts.pop()
+        if context is not self:
             raise RuntimeError("Project context was changed.")
 
     @property
@@ -108,9 +108,4 @@ class Project:
             StatusResult: Status of the project.
 
         """
-        return (
-            get_status_command()
-            .with_client_path(self._path)
-            .build()
-            .execute(paths=paths, ignore_deleted=ignore_deleted)
-        ).output
+        return get_status_command().build().execute(paths=paths, ignore_deleted=ignore_deleted).output

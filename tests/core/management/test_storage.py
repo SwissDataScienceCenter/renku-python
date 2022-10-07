@@ -26,9 +26,7 @@ from renku.domain_model.project_context import project_context
 
 
 @pytest.mark.parametrize("path", [".", "datasets"])
-def test_no_renku_metadata_in_lfs(
-    project_with_datasets, no_lfs_size_limit, path, subdirectory, with_injections_manager
-):
+def test_no_renku_metadata_in_lfs(project_with_datasets, no_lfs_size_limit, path, subdirectory, with_injection):
     """Test .renku directory and its content are not included in the LFS."""
     # Explicitly set .renku to not being ignored
     (project_with_datasets.path / ".renkulfsignore").write_text("!.renku")
@@ -40,7 +38,7 @@ def test_no_renku_metadata_in_lfs(
     file2 = path_in_renku_metadata_directory / "file2"
     file2.write_text("123")
 
-    with with_injections_manager(project_with_datasets):
+    with with_injection():
         track_paths_in_storage(file1, file2, path_in_renku_metadata_directory)
 
     attributes = (project_with_datasets.path / ".gitattributes").read_text()

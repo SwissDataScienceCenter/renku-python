@@ -17,8 +17,6 @@
 # limitations under the License.
 """Dataset context managers."""
 
-import contextlib
-import time
 from pathlib import Path
 from typing import Optional
 
@@ -78,15 +76,3 @@ class DatasetContext:
             self.datasets_provenance = DatasetsProvenance()
             self.datasets_provenance.add_or_update(self.dataset, creator=self.creator)
             project_context.database.commit()
-
-
-@contextlib.contextmanager
-def wait_for(delay: float):
-    """Make sure that at least ``delay`` seconds are passed during the execution of the wrapped code block."""
-    start = time.time()
-
-    yield
-
-    exec_time = time.time() - start
-    if exec_time < delay:
-        time.sleep(delay - exec_time)

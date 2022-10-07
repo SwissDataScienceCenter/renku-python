@@ -19,9 +19,8 @@
 
 import traceback
 
-from renku.command.command_builder.command import Command, inject
-from renku.command.echo import ERROR
-from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.command.command_builder.command import Command
+from renku.command.util import ERROR
 
 DOCTOR_INFO = """\
 Please note that the diagnosis report is used to help Renku maintainers with
@@ -30,28 +29,24 @@ and if in doubt ask an expert around or file an issue. Thanks!
 """
 
 
-@inject.autoparams()
-def _doctor_check(fix, force, client_dispatcher: IClientDispatcher):
+def _doctor_check(fix, force):
     """Check your system and repository for potential problems.
 
     Args:
         fix: Whether to apply fixes or just check.
         force: Whether to force-fix some actions.
-        client_dispatcher(IClientDispatcher):  Injected client dispatcher.
 
     Returns:
         Tuple of whether the project is ok or not and list of problems found.
     """
     from renku.command import checks
 
-    client = client_dispatcher.current_client
-
     is_ok = True
     problems = []
 
     for check in checks.__all__:
         try:
-            ok, problems_ = getattr(checks, check)(client=client, fix=fix, force=force)
+            ok, problems_ = getattr(checks, check)(fix=fix, force=force)
         except Exception:
             ok = False
             tb = "\n\t".join(traceback.format_exc().split("\n"))

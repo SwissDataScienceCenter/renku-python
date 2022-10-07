@@ -25,7 +25,6 @@ from pathlib import Path
 import pytest
 
 from renku.core.plugin.provider import available_workflow_providers
-from renku.domain_model.project_context import project_context
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.infrastructure.gateway.plan_gateway import PlanGateway
 from renku.ui.cli import cli
@@ -34,7 +33,7 @@ from tests.utils import format_result_exception, write_and_commit_file
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
 @pytest.mark.parametrize("skip_metadata_update", [True, False])
-def test_rerun(project, client, client_database_injection_manager, renku_cli, provider, skip_metadata_update):
+def test_rerun(project, with_injection, renku_cli, provider, skip_metadata_update):
     """Test rerun."""
     output = project.path / "output.txt"
 
@@ -48,7 +47,7 @@ def test_rerun(project, client, client_database_injection_manager, renku_cli, pr
             cmd.append("--skip-metadata-update")
         cmd.append(output)
         assert 0 == renku_cli(*cmd).exit_code
-        with client_database_injection_manager(client):
+        with with_injection():
             plans = PlanGateway().get_all_plans()
             activities = ActivityGateway().get_all_activities()
             assert len(plans) == 1
@@ -112,9 +111,9 @@ def test_rerun_with_special_paths(project, renku_cli, runner, provider, source, 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
 @pytest.mark.parametrize("source, content", [("input1", "input1 new-input2 old"), ("input2", "input1 old-input2 new")])
-def test_rerun_with_from(repository, renku_cli, provider, source, content):
+def test_rerun_with_from(project, renku_cli, provider, source, content):
     """Test file recreation with specified inputs."""
-    cwd = repository.path
+    cwd = project.path
     input1 = cwd / "input1"
     input2 = cwd / "input2"
     intermediate1 = cwd / "intermediate1"
@@ -123,8 +122,8 @@ def test_rerun_with_from(repository, renku_cli, provider, source, content):
     final2 = cwd / "final2"
     output = cwd / "output"
 
-    write_and_commit_file(repository, input1, "input1 old-")
-    write_and_commit_file(repository, input2, "input2 old")
+    write_and_commit_file(project.repository, input1, "input1 old-")
+    write_and_commit_file(project.repository, input2, "input2 old")
 
     assert 0 == renku_cli("run", "cp", input1, intermediate1).exit_code
     assert 0 == renku_cli("run", "cp", input2, intermediate2).exit_code
@@ -134,16 +133,16 @@ def test_rerun_with_from(repository, renku_cli, provider, source, content):
     assert 0 == renku_cli("run", "cat", final1, final2, stdout=output).exit_code
 
     # Update both inputs
-    write_and_commit_file(repository, input1, "input1 new-")
-    write_and_commit_file(repository, input2, "input2 new")
+    write_and_commit_file(project.repository, input1, "input1 new-")
+    write_and_commit_file(project.repository, input2, "input2 new")
 
-    commit_sha_before = repository.head.commit.hexsha
+    commit_sha_before = project.repository.head.commit.hexsha
 
     assert 0 == renku_cli("rerun", "-p", provider, "--from", source, output).exit_code
 
     assert content == output.read_text()
 
-    commit_sha_after = repository.head.commit.hexsha
+    commit_sha_after = project.repository.head.commit.hexsha
     assert commit_sha_before != commit_sha_after
 
 
@@ -197,10 +196,10 @@ def test_rerun_with_edited_inputs(project, run, no_lfs_warning, runner):
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
-def test_rerun_with_no_execution(repository, runner, provider):
+def test_rerun_with_no_execution(project, runner, provider):
     """Test rerun when no workflow is executed."""
-    input = os.path.join(repository.path, "data", "input.txt")
-    write_and_commit_file(repository, input, "content")
+    input = os.path.join(project.path, "data", "input.txt")
+    write_and_commit_file(project.repository, input, "content")
 
     result = runner.invoke(cli, ["rerun", "-p", provider, input], catch_exceptions=False)
 
@@ -209,9 +208,9 @@ def test_rerun_with_no_execution(repository, runner, provider):
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
-def test_output_directory(runner, repository, run, no_lfs_size_limit, provider):
+def test_output_directory(runner, project, run, no_lfs_size_limit, provider):
     """Test detection of output directory."""
-    cwd = repository.path
+    cwd = project.path
     data = cwd / "source" / "data.txt"
     source = data.parent
     source.mkdir(parents=True)
@@ -225,8 +224,8 @@ def test_output_directory(runner, repository, run, no_lfs_size_limit, provider):
     invalid_destination.mkdir(parents=True)
     (invalid_destination / "non_empty").touch()
 
-    repository.add(all=True)
-    repository.commit("Created source directory", no_verify=True)
+    project.repository.add(all=True)
+    project.repository.commit("Created source directory", no_verify=True)
 
     cmd = ["run", "cp", "-LRf", str(source), str(destination)]
     result = runner.invoke(cli, cmd, catch_exceptions=False)
@@ -259,13 +258,13 @@ def test_output_directory(runner, repository, run, no_lfs_size_limit, provider):
     assert not (invalid_destination / data.name).exists()
 
 
-def test_rerun_overridden_output(repository, renku_cli, runner):
+def test_rerun_overridden_output(project, renku_cli, runner):
     """Test a path where final output is overridden won't be rerun."""
-    a = os.path.join(repository.path, "a")
-    b = os.path.join(repository.path, "b")
-    c = os.path.join(repository.path, "c")
+    a = os.path.join(project.path, "a")
+    b = os.path.join(project.path, "b")
+    c = os.path.join(project.path, "c")
 
-    write_and_commit_file(repository, a, "content")
+    write_and_commit_file(project.repository, a, "content")
 
     assert 0 == runner.invoke(cli, ["run", "--name", "r1", "cp", a, b]).exit_code
     time.sleep(1)
@@ -281,14 +280,14 @@ def test_rerun_overridden_output(repository, renku_cli, runner):
     assert "r3" in result.output
 
 
-def test_rerun_overridden_outputs_partially(repository, renku_cli, runner):
+def test_rerun_overridden_outputs_partially(project, renku_cli, runner):
     """Test a path where one of the final output is overridden won't be rerun."""
-    a = os.path.join(repository.path, "a")
-    b = os.path.join(repository.path, "b")
-    c = os.path.join(repository.path, "c")
-    d = os.path.join(repository.path, "d")
+    a = os.path.join(project.path, "a")
+    b = os.path.join(project.path, "b")
+    c = os.path.join(project.path, "c")
+    d = os.path.join(project.path, "d")
 
-    write_and_commit_file(repository, a, "content")
+    write_and_commit_file(project.repository, a, "content")
 
     assert 0 == runner.invoke(cli, ["run", "--name", "r1", "cp", a, b]).exit_code
     time.sleep(1)
@@ -315,14 +314,14 @@ def test_rerun_overridden_outputs_partially(repository, renku_cli, runner):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_rerun_multiple_paths_common_output(repository, renku_cli, runner):
+def test_rerun_multiple_paths_common_output(project, renku_cli, runner):
     """Test when multiple paths generate the same output only the most recent path will be rerun."""
-    a = os.path.join(repository.path, "a")
-    b = os.path.join(repository.path, "b")
-    c = os.path.join(repository.path, "c")
-    d = os.path.join(repository.path, "d")
+    a = os.path.join(project.path, "a")
+    b = os.path.join(project.path, "b")
+    c = os.path.join(project.path, "c")
+    d = os.path.join(project.path, "d")
 
-    write_and_commit_file(repository, a, "content")
+    write_and_commit_file(project.repository, a, "content")
 
     assert 0 == runner.invoke(cli, ["run", "--name", "r1", "cp", a, b]).exit_code
     time.sleep(1)
@@ -341,16 +340,16 @@ def test_rerun_multiple_paths_common_output(repository, renku_cli, runner):
     assert "r4" in result.output
 
 
-def test_rerun_output_in_subdirectory(runner, client):
+def test_rerun_output_in_subdirectory(runner, project):
     """Test re-run when an output is in a sub-directory."""
-    output = project_context.path / "sub-dir" / "output"
-    write_and_commit_file(project_context.repository, output, "")
+    output = project.path / "sub-dir" / "output"
+    write_and_commit_file(project.repository, output, "")
 
     result = runner.invoke(cli, ["run", "bash", "-c", 'touch "$0" ; echo data > "$0"', output])
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    write_and_commit_file(project_context.repository, output, "")
+    write_and_commit_file(project.repository, output, "")
 
     result = runner.invoke(cli, ["rerun", output])
 
