@@ -39,7 +39,7 @@ from renku.core.util.util import NO_VALUE, NoValueType
 from renku.core.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.value_resolution import CompositePlanValueResolver, ValueResolver
 from renku.domain_model.project_context import project_context
-from renku.domain_model.provenance.activity import Activity, Generation, Usage
+from renku.domain_model.provenance.activity import Activity
 from renku.domain_model.provenance.agent import Person
 from renku.domain_model.provenance.annotation import Annotation
 from renku.domain_model.workflow.composite_plan import CompositePlan
@@ -127,22 +127,55 @@ def list_workflows(plan_gateway: IPlanGateway, format: str, columns: List[str]):
     return WORKFLOW_FORMATS[format](list(map(lambda x: plan_view(x), workflows.values())), columns=columns)
 
 
-@inject.autoparams()
-def show_workflow(name_or_id: str, plan_gateway: IPlanGateway):
+@inject.autoparams("plan_gateway", "activity_gateway")
+def show_workflow(
+    name_or_id: str, plan_gateway: IPlanGateway, activity_gateway: IActivityGateway, with_metadata: bool = False
+):
     """Show the details of a workflow.
 
     Args:
         name_or_id(str): Name or id of the Plan to show.
         plan_gateway(IPlanGateway): The injected Plan gateway.
+        activity_gateway(IActivityGateway): The injected Activity gateway.
+        with_metadata(bool): Whether to get additional calculated metadata for the plan.
     Returns:
         Details of the Plan.
     """
-    workflow = plan_gateway.get_by_name_or_id(name_or_id)
+    workflow = cast(Union[Plan, CompositePlan], plan_gateway.get_by_name_or_id(name_or_id))
 
     if is_plan_removed(workflow):
         raise errors.ParameterError(f"The specified workflow '{name_or_id}' cannot be found.")
 
-    return plan_view(workflow)
+    if with_metadata:
+        activities = activity_gateway.get_all_activities()
+        activity_map = _reverse_activity_plan_map(activities)
+        plan_chain = list(get_derivative_chain(workflow))
+        relevant_activities = [a for p in plan_chain for a in activity_map.get(p.id, [])]
+        cache: Dict[str, bool] = {}
+        touches_existing_files = _check_workflow_touches_existing_files(workflow, cache, activity_map)
+
+        if isinstance(workflow, Plan):
+
+            num_executions = 0
+            last_execution = None
+
+            for activity in relevant_activities:
+                num_executions += 1
+
+                if not last_execution or last_execution < activity.ended_at_time:
+                    last_execution = activity.ended_at_time
+
+            workflow = cast(Plan, DynamicProxy(workflow))
+            workflow.number_of_executions = num_executions
+            workflow.last_executed = last_execution
+            workflow.touches_existing_files = touches_existing_files
+            workflow.latest = plan_chain[0].id
+        else:
+            workflow = cast(CompositePlan, DynamicProxy(workflow))
+            workflow.touches_existing_files = touches_existing_files
+            workflow.latest = plan_chain[0].id
+
+    return plan_view(cast(AbstractPlan, workflow))
 
 
 @inject.autoparams("plan_gateway")
@@ -217,7 +250,6 @@ def edit_workflow(
         creators(Union[List[Person], NoValueType]): Creators of the workflow.
         keywords(Union[List[str], NoValueType]): New keywords for the workflow.
         plan_gateway(IPlanGateway): Injected plan gateway.
-        client_dispatcher(IClientDispatcher): Client dispatcher.
         custom_metadata(Dict, optional): Custom JSON-LD metadata (Default value = None).
 
     Returns:
@@ -686,26 +718,20 @@ def get_plans_with_metadata(activity_gateway: IActivityGateway, plan_gateway: IP
     Adds information about last execution, number of executions and whether the plan was used to create files
     currently existing in the project.
     """
-    from renku.core.workflow.activity import filter_overridden_activities
-
-    latest_plan_cache: Dict[AbstractPlan, AbstractPlan] = {}
-
-    def _cached_latest_plan(plan: AbstractPlan):
-        return latest_plan_cache.setdefault(plan, get_latest_plan(plan))
 
     all_activities = activity_gateway.get_all_activities()
-    relevant_activities = filter_overridden_activities(all_activities)
+    activity_map = _reverse_activity_plan_map(list(all_activities))
     latest_plan_chains: Set[Tuple[AbstractPlan]] = set(
         cast(Tuple[AbstractPlan], tuple(get_derivative_chain(p)))
         for p in plan_gateway.get_newest_plans_by_names().values()
     )
 
-    result: Dict[str, DynamicProxy] = {}
-    composites: List[DynamicProxy] = []
+    result: Dict[str, Union[Plan, CompositePlan]] = {}
+    cache: Dict[str, bool] = {}
 
     # check which plans where involved in using/creating existing files
     for plan_chain in latest_plan_chains:
-        latest_plan = DynamicProxy(plan_chain[0])
+        latest_plan = cast(Union[Plan, CompositePlan], DynamicProxy(plan_chain[0]))
         latest_plan.touches_existing_files = False
         latest_plan.number_of_executions = 0
         latest_plan.created = latest_plan.date_created
@@ -713,55 +739,68 @@ def get_plans_with_metadata(activity_gateway: IActivityGateway, plan_gateway: IP
         latest_plan.children = []
 
         if isinstance(plan_chain[0], Plan):
-            for activity in all_activities:
-                if activity.association.plan not in plan_chain:
-                    continue
-
+            for activity in activity_map.get(latest_plan.id, []):
                 if not latest_plan.last_executed or latest_plan.last_executed < activity.ended_at_time:
                     latest_plan.last_executed = activity.ended_at_time
 
                 latest_plan.number_of_executions += 1
 
-                if (
-                    not latest_plan.touches_existing_files
-                    and activity in relevant_activities
-                    and any(
-                        (project_context.path / entry.entity.path).exists()
-                        for entry in cast(
-                            List[Union[Usage, Generation]], itertools.chain(activity.usages, activity.generations)
-                        )
-                    )
-                ):
-                    latest_plan.touches_existing_files = True
+                latest_plan.touches_existing_files = _check_workflow_touches_existing_files(
+                    latest_plan, cache, activity_map
+                )
             latest_plan.type = "Plan"
         else:
             latest_plan.number_of_executions = None
-            composites.append(latest_plan)
             latest_plan.type = "CompositePlan"
-            latest_plan.children = [p.id for p in latest_plan.plans]
+            latest_plan.children = [get_latest_plan(p).id for p in latest_plan.plans]
+            latest_plan.touches_existing_files = _check_workflow_touches_existing_files(
+                latest_plan, cache, activity_map
+            )
 
         result[latest_plan.id] = latest_plan
 
-    # check composites status based on plans status
-    while len(composites) > 0:
-        composite = composites.pop()
-        stack = [composite]
-        while len(stack) > 0:
-            composite = stack.pop()
-            unprocessed_children = [
-                p for p in composite.plans if isinstance(p, CompositePlan) and _cached_latest_plan(p).id in composites
-            ]
-            if unprocessed_children:
-                # Has child composite plans, process those first
-                stack.append(composite)
-                for child in unprocessed_children:
-                    stack.append(result[_cached_latest_plan(child).id])
-                continue
-            composite.touches_existing_files = any(
-                result[_cached_latest_plan(p).id].touches_existing_files for p in composite.plans
-            )
-
-            if composite in composites:
-                composites.remove(composite)
-
     return list(result.values())  # type: ignore
+
+
+def _reverse_activity_plan_map(activities: List[Activity], latest: bool = True) -> Dict[str, Set[Activity]]:
+    """Create a map from plan id to relevant activities."""
+    result: Dict[str, Set[Activity]] = {}
+
+    for activity in activities:
+        plan = activity.association.plan
+
+        if latest:
+            plan = get_latest_plan(plan)
+
+        if plan.id not in result:
+            result[plan.id] = {activity}
+        else:
+            result[plan.id].add(activity)
+
+    return result
+
+
+def _check_workflow_touches_existing_files(
+    workflow: Union[Plan, CompositePlan],
+    cache: Dict[str, bool],
+    activity_map: Dict[str, Set[Activity]],
+    latest: bool = True,
+) -> bool:
+    """Check if a workflow or one of its children touches existing files."""
+    if latest:
+        workflow = get_latest_plan(workflow)
+
+    if workflow.id in cache:
+        return cache[workflow.id]
+
+    if isinstance(workflow, Plan):
+        for activity in activity_map.get(workflow.id, []):
+            for output in activity.generations:
+                if (project_context.path / output.entity.path).exists():
+                    return cache.setdefault(workflow.id, True)
+    else:
+        for child in workflow.plans:
+            if _check_workflow_touches_existing_files(child, cache, activity_map):
+                return cache.setdefault(workflow.id, True)
+
+    return cache.setdefault(workflow.id, False)

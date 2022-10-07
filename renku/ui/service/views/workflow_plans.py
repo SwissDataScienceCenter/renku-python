@@ -20,6 +20,7 @@ from flask import request
 
 from renku.ui.service.config import SERVICE_PREFIX
 from renku.ui.service.controllers.workflow_plans_list import WorkflowPlansListCtrl
+from renku.ui.service.controllers.workflow_plans_show import WorkflowPlansShowCtrl
 from renku.ui.service.views.api_versions import V1_4, VersionedBlueprint
 from renku.ui.service.views.decorators import optional_identity, requires_cache
 from renku.ui.service.views.error_handlers import handle_common_except
@@ -54,3 +55,32 @@ def list_plans_view(user_data, cache):
         - workflow plans
     """
     return WorkflowPlansListCtrl(cache, user_data, dict(request.args)).to_response()
+
+
+@workflow_plans_blueprint.route(
+    "/workflow_plans.show", methods=["GET"], provide_automatic_options=False, versions=[V1_4]
+)
+@handle_common_except
+@requires_cache
+@optional_identity
+def show_plan_view(user_data, cache):
+    """
+    Show details of a plan.
+
+    ---
+    get:
+      description: Show details of a plan.
+      parameters:
+        - in: query
+          schema: WorkflowPlansShowRequest
+      responses:
+        200:
+          description: The details of the plan.
+          content:
+            application/json:
+              schema:
+                WorkflowPlansShowResponseRPC
+      tags:
+        - workflow plans
+    """
+    return WorkflowPlansShowCtrl(cache, user_data, dict(request.args)).to_response()

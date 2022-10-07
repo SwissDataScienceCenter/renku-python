@@ -40,7 +40,6 @@ IT_REMOTE_NO_COMMITS_REPO_URL = os.getenv(
 IT_WORKFLOW_REPO_URL = os.getenv(
     "IT_WORKFLOW_REPO_URL", "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-it-workflows"
 )
-IT_GIT_ACCESS_TOKEN = os.getenv("IT_OAUTH_GIT_TOKEN")
 
 
 @pytest.fixture(scope="session")

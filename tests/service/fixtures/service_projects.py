@@ -50,14 +50,6 @@ def project_metadata(project) -> Generator[Tuple["RenkuProject", Dict[str, Any]]
 
 
 @pytest.fixture(scope="module")
-def it_git_access_token():
-    """Returns a git access token for a testing run."""
-    from tests.fixtures.config import IT_GIT_ACCESS_TOKEN
-
-    return IT_GIT_ACCESS_TOKEN
-
-
-@pytest.fixture(scope="module")
 def it_remote_repo_url():
     """Returns a remote path to integration test repository."""
     from tests.fixtures.config import IT_REMOTE_REPO_URL

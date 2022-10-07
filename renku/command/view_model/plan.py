@@ -20,9 +20,11 @@
 from __future__ import annotations
 
 import json
-from typing import List, Optional, Union
+from datetime import datetime
+from typing import List, Optional, Union, cast
 
 from renku.command.view_model.agent import PersonViewModel
+from renku.domain_model.project_context import project_context
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter
 from renku.domain_model.workflow.plan import AbstractPlan, Plan
@@ -41,6 +43,7 @@ class CommandInputViewModel:
         position: Optional[str] = None,
         prefix: Optional[str] = None,
         mapped_to: Optional[str] = None,
+        plan_id: Optional[str] = None,
     ):
         self.name = name
         self.description = description
@@ -48,9 +51,12 @@ class CommandInputViewModel:
         self.position = position
         self.prefix = prefix
         self.mapped_to = mapped_to
+        self.plan_id = plan_id
+        self.type = "Input"
+        self.exists = (project_context.path / self.default_value).exists()
 
     @classmethod
-    def from_input(cls, input: CommandInput):
+    def from_input(cls, input: CommandInput, plan_id: Optional[str] = None):
         """Create view model from ``CommandInput``.
 
         Args:
@@ -66,6 +72,7 @@ class CommandInputViewModel:
             position=str(input.position),
             prefix=input.prefix,
             mapped_to=input.mapped_to.stream_type if input.mapped_to else None,
+            plan_id=plan_id,
         )
 
 
@@ -76,20 +83,26 @@ class CommandOutputViewModel:
         self,
         name: str,
         default_value: str,
+        create_folder: bool,
         description: Optional[str] = None,
         position: Optional[str] = None,
         prefix: Optional[str] = None,
         mapped_to: Optional[str] = None,
+        plan_id: Optional[str] = None,
     ):
         self.name = name
         self.description = description
+        self.create_folder = create_folder
         self.default_value = default_value
         self.position = position
         self.prefix = prefix
         self.mapped_to = mapped_to
+        self.plan_id = plan_id
+        self.type = "Output"
+        self.exists = (project_context.path / self.default_value).exists()
 
     @classmethod
-    def from_output(cls, output: CommandOutput):
+    def from_output(cls, output: CommandOutput, plan_id: Optional[str] = None):
         """Create view model from ``CommandOutput``.
 
         Args:
@@ -101,10 +114,12 @@ class CommandOutputViewModel:
         return cls(
             name=output.name,
             description=output.description,
+            create_folder=output.create_folder,
             default_value=str(output.default_value),
             position=str(output.position),
             prefix=output.prefix,
             mapped_to=output.mapped_to.stream_type if output.mapped_to else None,
+            plan_id=plan_id,
         )
 
 
@@ -118,15 +133,18 @@ class CommandParameterViewModel:
         description: Optional[str] = None,
         position: Optional[str] = None,
         prefix: Optional[str] = None,
+        plan_id: Optional[str] = None,
     ):
         self.name = name
         self.description = description
         self.default_value = default_value
         self.position = position
         self.prefix = prefix
+        self.plan_id = plan_id
+        self.type = "Parameter"
 
     @classmethod
-    def from_parameter(cls, parameter: CommandParameter):
+    def from_parameter(cls, parameter: CommandParameter, plan_id: Optional[str] = None):
         """Create view model from ``CommandParameter``.
 
         Args:
@@ -141,6 +159,7 @@ class CommandParameterViewModel:
             default_value=str(parameter.default_value),
             position=str(parameter.position),
             prefix=parameter.prefix,
+            plan_id=plan_id,
         )
 
 
@@ -151,6 +170,7 @@ class PlanViewModel:
         self,
         id: str,
         name: str,
+        created: datetime,
         full_command: str,
         inputs: List[CommandInputViewModel],
         outputs: List[CommandOutputViewModel],
@@ -160,10 +180,15 @@ class PlanViewModel:
         success_codes: Optional[str] = None,
         annotations: Optional[str] = None,
         creators: Optional[List[PersonViewModel]] = None,
+        touches_existing_files: Optional[bool] = None,
+        last_executed: Optional[datetime] = None,
+        number_of_executions: Optional[int] = None,
+        latest: Optional[str] = None,
     ):
         self.id = id
         self.name = name
         self.description = description
+        self.created = created
         self.full_command = full_command
         self.success_codes = success_codes
         self.inputs = inputs
@@ -172,6 +197,11 @@ class PlanViewModel:
         self.annotations = annotations
         self.creators = creators
         self.keywords = keywords
+        self.touches_existing_files = touches_existing_files
+        self.last_executed = last_executed
+        self.number_of_executions = number_of_executions
+        self.latest = latest
+        self.type = "Plan"
 
     @classmethod
     def from_plan(cls, plan: Plan):
@@ -187,16 +217,21 @@ class PlanViewModel:
             id=plan.id,
             name=plan.name,
             description=plan.description,
+            created=plan.date_created,
             full_command=" ".join(plan.to_argv(with_streams=True)),
             success_codes=", ".join(str(c) for c in plan.success_codes),
-            inputs=[CommandInputViewModel.from_input(input) for input in plan.inputs],
-            outputs=[CommandOutputViewModel.from_output(output) for output in plan.outputs],
-            parameters=[CommandParameterViewModel.from_parameter(param) for param in plan.parameters],
+            inputs=[CommandInputViewModel.from_input(input, plan.id) for input in plan.inputs],
+            outputs=[CommandOutputViewModel.from_output(output, plan.id) for output in plan.outputs],
+            parameters=[CommandParameterViewModel.from_parameter(param, plan.id) for param in plan.parameters],
             annotations=json.dumps([{"id": a.id, "body": a.body, "source": a.source} for a in plan.annotations])
             if plan.annotations
             else None,
             creators=[PersonViewModel.from_person(p) for p in plan.creators] if plan.creators else None,
             keywords=plan.keywords,
+            touches_existing_files=getattr(plan, "touches_existing_files", False),
+            latest=getattr(plan, "latest", None),
+            last_executed=getattr(plan, "last_executed", None),
+            number_of_executions=getattr(plan, "number_of_executions", None),
         )
 
 
@@ -212,4 +247,4 @@ def plan_view(workflow: AbstractPlan) -> Union[CompositePlanViewModel, PlanViewM
 
     if isinstance(workflow, CompositePlan):
         return CompositePlanViewModel.from_composite_plan(workflow)
-    return PlanViewModel.from_plan(workflow)
+    return PlanViewModel.from_plan(cast(Plan, workflow))
