@@ -168,7 +168,7 @@ def show_workflow(
 
             workflow = cast(Plan, DynamicProxy(workflow))
             workflow.number_of_executions = num_executions
-            workflow.last_execution = last_execution
+            workflow.last_executed = last_execution
             workflow.touches_existing_files = touches_existing_files
             workflow.latest = plan_chain[0].id
         else:

@@ -162,6 +162,7 @@ def test_show_workflow_plans_view(plan_id, expected_fields, executions, touches_
 
     if executions is not None:
         assert executions == response.json["result"]["number_of_executions"]
+        assert response.json["result"]["last_executed"]
     else:
         assert "number_of_executions" not in response.json["result"]
 
