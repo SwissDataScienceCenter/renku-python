@@ -52,7 +52,7 @@ def cache_files_cleanup():
 
         for chunk in chunks:
             if chunk.exists() and chunk.ttl_expired():
-                worker_log.debug(f"purging chunk {chunk.file_id}:{chunk.file_name}")
+                worker_log.debug(f"purging chunk {chunk.chunk_file_id}:{chunk.file_name}")
                 chunk.purge()
                 chunk_folders.add(chunk.abs_path.parent)
             elif not chunk.exists():
