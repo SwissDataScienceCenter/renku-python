@@ -1447,10 +1447,10 @@ def test_import_from_renku_project(tmpdir, project, runner):
         os.environ["GIT_LFS_SKIP_SMUDGE"] = "1"
         Repository.clone_from(url=url, path=repo_path, recursive=True)
 
-        with chdir(repo_path):
-            runner.invoke(cli, ["migrate", "--strict"])
-
         with project_context.with_path(repo_path):
+            with chdir(repo_path):
+                runner.invoke(cli, ["migrate", "--strict"])
+
             dataset = get_dataset_with_injection("testing-create-04")
             return dataset.find_file("data/testing-create-04/ie_data_with_TRCAPE.xls")
 

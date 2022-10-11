@@ -197,6 +197,26 @@ def test_template_set_preserve_renku_version(runner, project):
     assert "ARG RENKU_VERSION=0.0.42" in content
 
 
+@pytest.mark.integration
+def test_template_set_uses_renku_version_when_non_existing(tmpdir, runner):
+    """Test setting a template on a project with no RENKU_VERSION in its Dockerfile, uses Renku CLI version instead."""
+    from renku.domain_model.project_context import project_context
+    from renku.version import __version__
+
+    url = "https://dev.renku.ch/gitlab/renku-testing/project-9.git"
+    repo_path = tmpdir.mkdir("repo")
+    Repository.clone_from(url=url, path=repo_path, env={"GIT_LFS_SKIP_SMUDGE": "1"})
+
+    with project_context.with_path(path=repo_path), chdir(repo_path):
+        assert 0 == runner.invoke(cli, ["migrate", "--strict"]).exit_code
+
+        assert "RENKU_VERSION" not in project_context.docker_path.read_text()
+
+        assert 0 == runner.invoke(cli, ["template", "set", "python-minimal"]).exit_code
+
+        assert f"RENKU_VERSION={__version__}" in project_context.docker_path.read_text()
+
+
 def test_template_set_dry_run(runner, project):
     """Test set dry-run doesn't make any changes."""
     commit_sha_before = project.repository.head.commit.hexsha
