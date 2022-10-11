@@ -61,8 +61,8 @@ class DatabaseCommand(Command):
         """Create a Database singleton."""
         from renku.version import __version__
 
-        if "client_dispatcher" not in context:
-            raise ValueError("Database builder needs a IClientDispatcher to be set.")
+        if not project_context.has_context():
+            raise ValueError("Database builder needs a ProjectContext to be set.")
 
         project_context.push_path(path=self._path or project_context.path, save_changes=self._write)
 

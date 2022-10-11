@@ -22,18 +22,14 @@ import functools
 import threading
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union
 
-import click
 import inject
 
 from renku.core import errors
 from renku.core.util.communication import CommunicationCallback
 from renku.core.util.git import get_git_path
 from renku.domain_model.project_context import project_context
-
-if TYPE_CHECKING:
-    from renku.core.management.client import LocalClient
 
 _LOCAL = threading.local()
 
@@ -82,7 +78,7 @@ def _patched_configure(config: Optional[inject.BinderCallable] = None, bind_in_r
         bind_in_runtime(bool, optional): Whether to allow binding at runtime (Default value = True).
 
     Returns:
-        Injector: Threadsafe injector with bindings applied.
+        Injector: Thread-safe injector with bindings applied.
     """
 
     if getattr(_LOCAL, "injector", None):
@@ -136,7 +132,7 @@ def replace_injection(bindings: Dict, constructor_bindings=None):
 class Command:
     """Base renku command builder."""
 
-    CLIENT_HOOK_ORDER = 1
+    HOOK_ORDER = 1
 
     def __init__(self) -> None:
         """__init__ of Command."""
@@ -147,8 +143,6 @@ class Command:
         self._finalized: bool = False
         self._track_std_streams: bool = False
         self._working_directory: Optional[str] = None
-        self._client: Optional["LocalClient"] = None
-        self._client_was_created: bool = False
 
     def __getattr__(self, name: str) -> Any:
         """Bubble up attributes of wrapped builders."""
@@ -171,34 +165,14 @@ class Command:
             builder("Command"): Current ``CommandBuilder``.
             context(dict): Current context dictionary.
         """
-        from renku.command.command_builder.client_dispatcher import ClientDispatcher
-        from renku.core.interface.client_dispatcher import IClientDispatcher
-        from renku.core.management.client import LocalClient
+        path = get_git_path(self._working_directory or ".")
+        project_context.push_path(path)
 
-        dispatcher = ClientDispatcher()
-
-        ctx = click.get_current_context(silent=True)
-        if ctx is None:
-            if self._client:
-                dispatcher.push_created_client_to_stack(self._client)
-            else:
-                path = get_git_path(self._working_directory or ".")
-                project_context.push_path(path)
-                self._client = dispatcher.push_client_to_stack(path=path)
-                self._client_was_created = True
-            ctx = click.Context(click.Command(builder._operation))  # type: ignore
-        else:
-            if not self._client:
-                self._client = ctx.ensure_object(LocalClient)
-            dispatcher.push_created_client_to_stack(self._client)
-
-        context["bindings"] = {IClientDispatcher: dispatcher, "IClientDispatcher": dispatcher}
+        context["bindings"] = {}
         context["constructor_bindings"] = {}
-        context["client_dispatcher"] = dispatcher
-        context["click_context"] = ctx
 
     def _pre_hook(self, builder: "Command", context: dict, *args, **kwargs) -> None:
-        """Setup local client.
+        """Setup project.
 
         Args:
             builder("Command"): Current ``CommandBuilder``.
@@ -218,10 +192,7 @@ class Command:
         """
         remove_injector()
 
-        if self._client_was_created:
-            if self._client:
-                context["client_dispatcher"].pop_client()
-            project_context.pop_context()
+        project_context.pop_context()
 
         if result.error:
             raise result.error
@@ -274,7 +245,7 @@ class Command:
 
         try:
             with context["stack"]:
-                output = context["click_context"].invoke(self._operation, *args, **kwargs)
+                output = self._operation(*args, **kwargs)  # type: ignore
         except errors.RenkuException as e:
             error = e
         except (Exception, BaseException):
@@ -347,9 +318,9 @@ class Command:
         """
         if not self._operation:
             raise errors.ConfigurationError("`Command` needs to have a wrapped `command` set")
-        self.add_injection_pre_hook(self.CLIENT_HOOK_ORDER, self._injection_pre_hook)
-        self.add_pre_hook(self.CLIENT_HOOK_ORDER, self._pre_hook)
-        self.add_post_hook(self.CLIENT_HOOK_ORDER, self._post_hook)
+        self.add_injection_pre_hook(self.HOOK_ORDER, self._injection_pre_hook)
+        self.add_pre_hook(self.HOOK_ORDER, self._pre_hook)
+        self.add_post_hook(self.HOOK_ORDER, self._post_hook)
 
         self._finalized = True
 
@@ -391,17 +362,6 @@ class Command:
             Command: This command.
         """
         self._track_std_streams = True
-
-        return self
-
-    @check_finalized
-    def with_client_path(self, path: Path) -> "Command":
-        """Set a client from the given path."""
-        from renku.core.management.client import LocalClient
-        from renku.core.util.contexts import chdir
-
-        with chdir(path=path):
-            self._client = LocalClient()
 
         return self
 

@@ -45,7 +45,7 @@ def _remove(sources, edit_command, dataset_gateway: IDatasetGateway):
     repository = project_context.repository
 
     def get_relative_path(path):
-        """Format path as relative to the client path."""
+        """Format path as relative to the project path."""
         abs_path = os.path.abspath(project_context.path / path)
         try:
             return str(Path(abs_path).relative_to(project_context.path))

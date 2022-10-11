@@ -24,11 +24,12 @@ import pytest
 
 from renku.core.migration.models import v9 as old_datasets
 from renku.core.util.uuid import is_uuid
+from tests.utils import get_dataset_with_injection
 
 
-def test_dataset_deserialization(project_with_datasets, load_dataset_with_injection):
+def test_dataset_deserialization(project_with_datasets):
     """Test Dataset deserialization."""
-    dataset = load_dataset_with_injection("dataset-1", project_with_datasets)
+    dataset = get_dataset_with_injection("dataset-1")
 
     dataset_types = {
         "date_created": [datetime.datetime],
@@ -44,14 +45,14 @@ def test_dataset_deserialization(project_with_datasets, load_dataset_with_inject
 
     creator_types = {"email": str, "id": str, "name": str, "affiliation": str}
 
-    creator = load_dataset_with_injection("dataset-1", project_with_datasets).creators[0]
+    creator = get_dataset_with_injection("dataset-1").creators[0]
 
     for attribute, type_ in creator_types.items():
         assert type(getattr(creator, attribute)) is type_
 
 
 @pytest.mark.xfail
-def test_uuid_migration(dataset_metadata, client):
+def test_uuid_migration(dataset_metadata, project):
     """Test migration of id with UUID."""
     dataset = old_datasets.Dataset.from_jsonld(dataset_metadata)
 

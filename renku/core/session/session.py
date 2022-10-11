@@ -21,10 +21,8 @@ import webbrowser
 from itertools import chain
 from typing import List, Optional
 
-from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.config import get_value
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.plugin.session import get_supported_session_providers
 from renku.core.session.utils import get_image_repository_host, get_renku_project_name
 from renku.core.util import communication
@@ -58,11 +56,9 @@ def session_list(config_path: str, provider: Optional[str] = None):
     return list(chain(*map(list_sessions, providers)))
 
 
-@inject.autoparams("client_dispatcher")
 def session_start(
     provider: str,
-    config_path: str,
-    client_dispatcher: IClientDispatcher,
+    config_path: Optional[str],
     image_name: str = None,
     cpu_request: Optional[float] = None,
     mem_request: Optional[str] = None,
@@ -71,8 +67,6 @@ def session_start(
 ):
     """Start interactive session."""
     from renku.domain_model.project_context import project_context
-
-    client = client_dispatcher.current_client
 
     pinned_image = get_value("interactive", "image")
     if pinned_image and image_name is None:
@@ -114,7 +108,6 @@ def session_start(
             config=config,
             project_name=project_name,
             image_name=image_name,
-            client=client,
             cpu_request=cpu_limit,
             mem_request=mem_limit,
             disk_request=disk_limit,

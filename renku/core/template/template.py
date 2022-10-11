@@ -117,12 +117,12 @@ def has_template_checksum() -> bool:
     return os.path.exists(project_context.template_checksums_path)
 
 
-def copy_template_to_client(
+def copy_template_to_project(
     rendered_template: RenderedTemplate, project: "Project", actions: Dict[str, FileAction], cleanup=True
 ):
     """Update project files and metadata from a template."""
 
-    def copy_template_metadata_to_client():
+    def copy_template_metadata_to_project():
         """Update template-related metadata in a project."""
         write_template_checksum(rendered_template.checksums)
 
@@ -171,7 +171,7 @@ def copy_template_to_client(
 
             raise errors.TemplateUpdateError(f"Cannot write to '{destination}'") from e
 
-    copy_template_metadata_to_client()
+    copy_template_metadata_to_project()
 
 
 def get_sorted_actions(actions: Dict[str, FileAction]) -> Dict[str, FileAction]:

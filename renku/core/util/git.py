@@ -17,10 +17,13 @@
 # limitations under the License.
 """Git utility functions."""
 
+import contextlib
 import os
 import pathlib
 import re
 import shutil
+import sys
+import time
 import urllib
 from functools import reduce
 from pathlib import Path
@@ -31,12 +34,14 @@ from uuid import uuid4
 from renku.core import errors
 
 if TYPE_CHECKING:
-    from renku.core.management.client import LocalClient
     from renku.domain_model.entity import Collection, Entity
     from renku.domain_model.git import GitURL
     from renku.domain_model.provenance.agent import Person, SoftwareAgent
     from renku.infrastructure.repository import Commit, Remote, Repository
 
+
+COMMIT_DIFF_STRATEGY = "DIFF"
+STARTED_AT = int(time.time() * 1e3)
 
 BRANCH_NAME_LIMIT = 250
 CLI_GITLAB_ENDPOINT = "repos"
@@ -130,11 +135,10 @@ def get_oauth_url(url, gitlab_token):
     return parsed_url._replace(netloc=netloc).geturl()
 
 
-def get_cache_directory_for_repository(client, url) -> Path:
-    """Return a path to client's cache directory.
+def get_cache_directory_for_repository(url) -> Path:
+    """Return a path to project's cache directory.
 
     Args:
-        client: ``LocalCLient``.
         url: The repository URL.
 
     Returns:
@@ -736,7 +740,7 @@ def clone_repository(
         except PermissionError as e:
             raise errors.InvalidFileOperation(f"Cannot delete files in {path}: Permission denied") from e
 
-    def check_and_reuse_existing_repository() -> Optional[Repository]:
+    def check_and_reuse_existing_repository() -> Optional["Repository"]:
         if path is None or not cast(Path, path).exists():
             return None
 
@@ -939,15 +943,10 @@ def shorten_message(message: str, line_length: int = 100, body_length: int = 650
 
 def get_in_submodules(
     repository: "Repository", commit: "Commit", path: Union[Path, str]
-) -> Tuple["LocalClient", "Repository", "Commit", Path]:
+) -> Tuple["Repository", "Commit", Path]:
     """Resolve filename in submodules."""
-    from renku.core.management.client import LocalClient
-    from renku.domain_model.project_context import project_context
-
     original_path = repository.path / path
     in_vendor = str(path).startswith(".renku/vendors")
-
-    client = LocalClient()
 
     if original_path.is_symlink() or in_vendor:
         resolved_path = original_path.resolve()
@@ -959,14 +958,12 @@ def get_in_submodules(
             try:
                 path_within_submodule = resolved_path.relative_to(submodule.path)
                 commit = submodule.get_previous_commit(path=path_within_submodule, revision=commit.hexsha)
-                with project_context.with_path(submodule.path):
-                    subclient = LocalClient()
             except (ValueError, errors.GitCommitNotFoundError):
                 pass
             else:
-                return subclient, submodule, commit, path_within_submodule
+                return submodule, commit, path_within_submodule
 
-    return client, repository, commit, Path(path)
+    return repository, commit, Path(path)
 
 
 def get_dirty_paths(repository: "Repository") -> Set[str]:
@@ -975,3 +972,149 @@ def get_dirty_paths(repository: "Repository") -> Set[str]:
     staged_files = [d.a_path for d in repository.staged_changes] if repository.head.is_valid() else []
 
     return {os.path.join(repository.path, p) for p in repository.untracked_files + modified_files + staged_files}
+
+
+@contextlib.contextmanager
+def with_commit(
+    *,
+    repository: "Repository",
+    transaction_id: str,
+    commit_only=None,
+    commit_empty=True,
+    raise_if_empty=False,
+    commit_message=None,
+    abbreviate_message=True,
+    skip_dirty_checks=False,
+):
+    """Automatic commit."""
+    diff_before = prepare_commit(repository=repository, commit_only=commit_only, skip_dirty_checks=skip_dirty_checks)
+
+    yield
+
+    finalize_commit(
+        diff_before=diff_before,
+        repository=repository,
+        transaction_id=transaction_id,
+        commit_only=commit_only,
+        commit_empty=commit_empty,
+        raise_if_empty=raise_if_empty,
+        commit_message=commit_message,
+        abbreviate_message=abbreviate_message,
+    )
+
+
+def prepare_commit(*, repository: "Repository", commit_only=None, skip_dirty_checks=False, skip_staging: bool = False):
+    """Gather information about repo needed for committing later on."""
+
+    def ensure_not_untracked(path):
+        """Ensure that path is not part of git untracked files."""
+        for file_path in repository.untracked_files:
+            is_parent = (repository.path / file_path).parent == (repository.path / path)
+            is_equal = str(path) == file_path
+
+            if is_parent or is_equal:
+                raise errors.DirtyRenkuDirectory(repository)
+
+    def ensure_not_staged(path):
+        """Ensure that path is not part of git staged files."""
+        path = str(path)
+        for file_path in repository.staged_changes:
+            is_parent = str(file_path.a_path).startswith(path)
+            is_equal = path == file_path.a_path
+
+            if is_parent or is_equal:
+                raise errors.DirtyRenkuDirectory(repository)
+
+    if skip_staging:
+        if not isinstance(commit_only, list) or len(commit_only) == 0:
+            raise errors.OperationError("Cannot use ``skip_staging`` without specifying files to commit.")
+
+    diff_before = set()
+
+    if commit_only == COMMIT_DIFF_STRATEGY:
+        if len(repository.staged_changes) > 0 or len(repository.unstaged_changes) > 0:
+            repository.reset()
+
+        # Exclude files created by pipes.
+        diff_before = {
+            file for file in repository.untracked_files if STARTED_AT - int(Path(file).stat().st_ctime * 1e3) >= 1e3
+        }
+
+    if isinstance(commit_only, list) and not skip_dirty_checks:
+        for path in commit_only:
+            ensure_not_untracked(path)
+            ensure_not_staged(path)
+
+    return diff_before
+
+
+def finalize_commit(
+    *,
+    diff_before,
+    repository: "Repository",
+    transaction_id: str,
+    commit_only=None,
+    commit_empty=True,
+    raise_if_empty=False,
+    commit_message=None,
+    abbreviate_message=True,
+    skip_staging: bool = False,
+):
+    """Commit modified/added paths."""
+    from renku.core.util.urls import remove_credentials
+    from renku.infrastructure.repository import Actor
+    from renku.version import __version__, version_url
+
+    committer = Actor(name=f"renku {__version__}", email=version_url)
+
+    change_types = {item.a_path: item.change_type for item in repository.unstaged_changes}
+
+    if commit_only == COMMIT_DIFF_STRATEGY:
+        # Get diff generated in command.
+        staged_after = set(change_types.keys())
+
+        modified_after_change_types = {item.a_path: item.change_type for item in repository.staged_changes}
+
+        modified_after = set(modified_after_change_types.keys())
+
+        change_types.update(modified_after_change_types)
+
+        diff_after = set(repository.untracked_files).union(staged_after).union(modified_after)
+
+        # Remove files not touched in command.
+        commit_only = list(diff_after - diff_before)
+
+    if isinstance(commit_only, list):
+        for path_ in commit_only:
+            p = repository.path / path_
+            if p.exists() or change_types.get(str(path_)) == "D":
+                repository.add(path_)
+
+    if not commit_only:
+        repository.add(all=True)
+
+    try:
+        diffs = [d.a_path for d in repository.staged_changes]
+    except errors.GitError:
+        diffs = []
+
+    if not commit_empty and not diffs:
+        if raise_if_empty:
+            raise errors.NothingToCommit()
+        return
+
+    if commit_message and not isinstance(commit_message, str):
+        raise errors.CommitMessageEmpty()
+
+    elif not commit_message:
+        argv = [os.path.basename(sys.argv[0])] + [remove_credentials(arg) for arg in sys.argv[1:]]
+
+        commit_message = " ".join(argv)
+
+    if abbreviate_message:
+        commit_message = shorten_message(commit_message)
+
+    # NOTE: Only commit specified paths when skipping staging area
+    paths = commit_only if skip_staging else []
+    # Ignore pre-commit hooks since we have already done everything.
+    repository.commit(commit_message + transaction_id, committer=committer, no_verify=True, paths=paths)

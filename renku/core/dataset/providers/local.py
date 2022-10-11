@@ -34,7 +34,6 @@ from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderParameter
-    from renku.core.management.client import LocalClient
     from renku.domain_model.dataset import Dataset, DatasetTag
 
 
@@ -106,7 +105,6 @@ class FilesystemProvider(ProviderApi):
 
     @staticmethod
     def add(
-        client: "LocalClient",
         uri: str,
         destination: Path,
         *,
@@ -257,7 +255,7 @@ class LocalExporter(ExporterApi):
         """Endpoint for creation of access token."""
         return ""
 
-    def export(self, client=None, **kwargs) -> str:
+    def export(self, **kwargs) -> str:
         """Execute entire export process."""
         from renku.command.schema.dataset import dump_dataset_as_jsonld
         from renku.core.util.yaml import write_yaml

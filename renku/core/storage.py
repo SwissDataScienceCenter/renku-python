@@ -284,24 +284,24 @@ def list_unpushed_lfs_paths(repository: "Repository"):
 @check_external_storage_wrapper
 def pull_paths_from_storage(repository: "Repository", *paths):
     """Pull paths from LFS."""
-    client_dict = defaultdict(list)
+    project_dict = defaultdict(list)
 
     for path in expand_directories(paths):
-        _, _, _, path = get_in_submodules(repository, repository.head.commit, path)
+        sub_repository, _, path = get_in_submodules(repository, repository.head.commit, path)
         try:
             absolute_path = Path(path).resolve()
             relative_path = absolute_path.relative_to(project_context.path)
         except ValueError:  # An external file
             absolute_path = Path(os.path.abspath(path))
             relative_path = absolute_path.relative_to(project_context.path)
-        client_dict[project_context.path].append(shlex.quote(str(relative_path)))
+        project_dict[sub_repository.path].append(shlex.quote(str(relative_path)))
 
-    for client_path, file_paths in client_dict.items():
+    for project_path, file_paths in project_dict.items():
         result = run_command(
             _CMD_STORAGE_PULL,
             *file_paths,
             separator=",",
-            cwd=client_path,
+            cwd=project_path,
             stdout=PIPE,
             stderr=STDOUT,
             universal_newlines=True,
@@ -314,7 +314,7 @@ def pull_paths_from_storage(repository: "Repository", *paths):
 @check_external_storage_wrapper
 def clean_storage_cache(*paths):
     """Remove paths from lfs cache."""
-    client_dict = defaultdict(list)
+    project_dict = defaultdict(list)
     repositories = {}
     tracked_paths = {}
     unpushed_paths = {}
@@ -324,9 +324,7 @@ def clean_storage_cache(*paths):
     repository = project_context.repository
 
     for path in expand_directories(paths):
-        _, current_repository, _, path = get_in_submodules(
-            repository=repository, commit=repository.head.commit, path=path
-        )
+        current_repository, _, path = get_in_submodules(repository=repository, commit=repository.head.commit, path=path)
         try:
             absolute_path = Path(path).resolve()
             relative_path = absolute_path.relative_to(project_context.path)
@@ -346,11 +344,11 @@ def clean_storage_cache(*paths):
         elif absolute_path not in tracked_paths[project_context.path]:
             untracked_paths.append(str(relative_path))
         else:
-            client_dict[project_context.path].append(str(relative_path))
+            project_dict[project_context.path].append(str(relative_path))
             repositories[project_context.path] = current_repository
 
-    for client_path, paths in client_dict.items():
-        current_repository = repositories[client_path]
+    for project_path, paths in project_dict.items():
+        current_repository = repositories[project_path]
 
         for path in paths:
             with open(path, "r") as tracked_file:
@@ -365,7 +363,9 @@ def clean_storage_cache(*paths):
             with tempfile.NamedTemporaryFile(mode="w+t", encoding="utf-8", delete=False) as tmp, open(
                 path, "r+t"
             ) as input_file:
-                result = run(_CMD_STORAGE_CLEAN, cwd=client_path, stdin=input_file, stdout=tmp, universal_newlines=True)
+                result = run(
+                    _CMD_STORAGE_CLEAN, cwd=project_path, stdin=input_file, stdout=tmp, universal_newlines=True
+                )
 
                 if result.returncode != 0:
                     raise errors.GitLFSError(f"Error executing 'git lfs clean: \n {result.stdout}")

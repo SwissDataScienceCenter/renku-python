@@ -89,7 +89,12 @@ def execute_workflow_graph(
     for plan in dag.nodes:
         # NOTE: Update plans are copies of Plan objects. We need to use the original Plan objects to avoid duplicates.
         original_plan = plan_gateway.get_by_id(plan.id)
-        activity = Activity.from_plan(plan=plan, started_at_time=started_at_time, ended_at_time=ended_at_time)
+        activity = Activity.from_plan(
+            plan=plan,
+            repository=project_context.repository,
+            started_at_time=started_at_time,
+            ended_at_time=ended_at_time,
+        )
         activity.association.plan = original_plan
         activity_gateway.add(activity)
         activities.append(activity)

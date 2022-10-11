@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test ``service`` command."""
+
 from pathlib import Path
 from time import sleep
 

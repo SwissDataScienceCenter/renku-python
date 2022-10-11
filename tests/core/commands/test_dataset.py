@@ -110,7 +110,7 @@ def test_creator_parse():
         Dataset(name="dataset", creators=["name"])
 
 
-def test_creators_with_same_email(project_with_injection, load_dataset_with_injection):
+def test_creators_with_same_email(project_with_injection):
     """Test creators with different names and same email address."""
     with DatasetContext(name="dataset", create=True) as dataset:
         dataset.creators = [Person(name="me", email="me@example.com"), Person(name="me2", email="me@example.com")]
@@ -159,9 +159,9 @@ def test_list_files_default(project, tmpdir):
     assert "some-file" in [Path(f.entity.path).name for f in files]
 
 
-def test_unlink_default(directory_tree, client):
+def test_unlink_default(directory_tree, project):
     """Test unlink default behaviour."""
-    with chdir(project_context.path):
+    with chdir(project.path):
         create_dataset_command().with_database(write=True).build().execute("dataset")
         add_to_dataset_command().with_database(write=True).build().execute(
             dataset_name="dataset", urls=[str(directory_tree / "dir1")]
@@ -172,7 +172,7 @@ def test_unlink_default(directory_tree, client):
 
 
 @pytest.mark.xfail
-def test_mutate(client):
+def test_mutate(project):
     """Test metadata change after dataset mutation."""
     dataset = Dataset(
         name="my-dataset",
@@ -184,14 +184,14 @@ def test_mutate(client):
 
     dataset.mutate()
 
-    mutator = get_git_user(project_context.repository)
+    mutator = get_git_user(project.repository)
     assert_dataset_is_mutated(old=old_dataset, new=dataset, mutator=mutator)
 
 
 @pytest.mark.xfail
-def test_mutator_is_added_once(client):
+def test_mutator_is_added_once(project):
     """Test mutator of a dataset is added only once to its creators list."""
-    mutator = get_git_user(project_context.repository)
+    mutator = get_git_user(project.repository)
 
     dataset = Dataset(
         name="my-dataset",
@@ -246,12 +246,12 @@ def test_uppercase_dataset_name_is_valid():
 
 
 @pytest.mark.integration
-def test_get_dataset_by_tag(with_injections_manager, tmp_path):
+def test_get_dataset_by_tag(with_injection, tmp_path):
     """Test getting datasets by a given tag."""
     url = "https://dev.renku.ch/gitlab/renku-python-integration-tests/lego-datasets.git"
     repository = Repository.clone_from(url=url, path=tmp_path / "repo")
 
-    with with_injections_manager(repository), project_context.with_path(repository.path):
+    with project_context.with_path(repository.path), with_injection():
         dataset_gateway = DatasetGateway()
 
         parts_dataset = dataset_gateway.get_by_name("parts")

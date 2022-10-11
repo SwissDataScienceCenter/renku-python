@@ -87,8 +87,8 @@ import click
 import yaml
 from click_plugins import with_plugins
 
-from renku.command.echo import WARNING
 from renku.command.options import option_external_storage_requested
+from renku.command.util import WARNING
 from renku.command.version import check_version, print_version
 from renku.core import errors
 from renku.core.constant import DATABASE_PATH
@@ -166,7 +166,7 @@ def _is_renku_project(path: Path) -> bool:
 yaml.add_representer(uuid.UUID, _uuid_representer)
 
 
-def print_global_config_path(ctx, param, value):
+def print_global_config_path(ctx, _, value):
     """Print global application's config path."""
     if not value or ctx.resilient_parsing:
         return
@@ -230,7 +230,6 @@ def is_allowed_command(ctx):
 @click.pass_context
 def cli(ctx, path, external_storage_requested):
     """Check common Renku commands used in various situations."""
-    from renku.core.management.client import LocalClient
     from renku.domain_model.project_context import project_context
 
     path = Path(path)
@@ -245,7 +244,6 @@ def cli(ctx, path, external_storage_requested):
 
     project_context.push_path(path)
     project_context.external_storage_requested = external_storage_requested
-    ctx.obj = LocalClient()
 
     if is_renku_project and path != Path(os.getcwd()) and not is_command_allowed:
         click.secho(WARNING + "Run CLI commands only from project's root directory.\n", err=True)

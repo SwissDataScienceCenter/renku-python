@@ -18,14 +18,14 @@
 """Renku core fixtures for workflow testing."""
 
 from datetime import datetime, timedelta
+from typing import Generator
 
 import pytest
 
-from renku.domain_model.provenance.activity import Activity
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter
 from renku.domain_model.workflow.plan import Plan
-from renku.infrastructure.gateway.activity_gateway import ActivityGateway
+from tests.fixtures.repository import RenkuProject
 from tests.utils import create_dummy_plan
 
 
@@ -93,13 +93,16 @@ def composite_plan():
 
 
 @pytest.fixture
-def project_with_runs(repository, with_injections_manager):
-    """A client with runs."""
+def project_with_runs(project, with_injection) -> Generator[RenkuProject, None, None]:
+    """A project with runs."""
+    from renku.domain_model.provenance.activity import Activity
+    from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 
     def create_activity(plan, date, index) -> Activity:
         """Create an activity with id /activities/index."""
         return Activity.from_plan(
             plan=plan,
+            repository=project.repository,
             id=Activity.generate_id(str(index)),
             started_at_time=date,
             ended_at_time=date + timedelta(seconds=1),
@@ -133,7 +136,7 @@ def project_with_runs(repository, with_injections_manager):
         parameters=[("int-parameter", 43, "-n "), ("str-parameter", "some value", None)],
     )
 
-    with with_injections_manager(repository):
+    with with_injection():
         activity_1 = create_activity(plan_1, date_1, index=1)
         activity_2 = create_activity(plan_2, date_2, index=2)
 
@@ -142,7 +145,7 @@ def project_with_runs(repository, with_injections_manager):
         activity_gateway.add(activity_1)
         activity_gateway.add(activity_2)
 
-    repository.add(all=True)
-    repository.commit("Add runs")
+    project.repository.add(all=True)
+    project.repository.commit("Add runs")
 
-    yield repository
+    yield project

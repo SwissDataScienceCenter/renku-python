@@ -91,7 +91,7 @@ def get_status(paths: Optional[List[Union[Path, str]]] = None, ignore_deleted: b
             starting_activities={start_activity},
             paths=generation_paths,
             ignore_deleted=ignore_deleted,
-            client_path=project_context.path,
+            project_path=project_context.path,
         )
         if activities:
             modified_inputs.add(usage_path)

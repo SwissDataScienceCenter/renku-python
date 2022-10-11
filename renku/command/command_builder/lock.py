@@ -24,7 +24,7 @@ from renku.domain_model.project_context import project_context
 class ProjectLock(Command):
     """Builder to get a project wide lock."""
 
-    DEFAULT_ORDER = 5
+    HOOK_ORDER = 5
 
     def __init__(self, builder: Command) -> None:
         """__init__ of ProjectLock."""
@@ -32,8 +32,6 @@ class ProjectLock(Command):
 
     def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
         """Lock the project."""
-        if "client_dispatcher" not in context:
-            raise ValueError(f"{self.__class__.__name__} builder needs an IClientDispatcher to be set.")
         if "stack" not in context:
             raise ValueError(f"{self.__class__.__name__} builder needs a stack to be set.")
 
@@ -42,7 +40,7 @@ class ProjectLock(Command):
     @check_finalized
     def build(self) -> Command:
         """Build the command."""
-        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
+        self._builder.add_pre_hook(self.HOOK_ORDER, self._pre_hook)
 
         return self._builder.build()
 

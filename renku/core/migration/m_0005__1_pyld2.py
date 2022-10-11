@@ -22,14 +22,14 @@ import re
 from renku.core.migration.utils import OLD_METADATA_PATH, get_datasets_path
 
 
-def migrate(migration_context):
+def migrate(_):
     """Migration function."""
-    migrate_datasets_for_pyld2(migration_context.client)
+    migrate_datasets_for_pyld2()
 
 
-def migrate_datasets_for_pyld2(client):
+def migrate_datasets_for_pyld2():
     """Migrate type scoped contexts of datasets."""
-    paths = get_datasets_path(client).rglob(OLD_METADATA_PATH)
+    paths = get_datasets_path().rglob(OLD_METADATA_PATH)
 
     for path in paths:
         with path.open("r") as dataset:

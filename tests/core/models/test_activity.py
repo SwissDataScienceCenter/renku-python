@@ -34,7 +34,7 @@ def test_activity_parameter_values(project_with_injection, mocker):
     def get_entity_from_revision_mock(repository, path, revision=None, bypass_cache=False):
         return Entity(checksum="abcdefg", id=uuid4().hex, path=path)
 
-    def get_git_user_mock(client):
+    def get_git_user_mock(repository):
         return Person(id=uuid4().hex, name="John Doe", email="john@doe.com")
 
     mocker.patch("renku.domain_model.provenance.activity.get_entity_from_revision", get_entity_from_revision_mock)
@@ -75,6 +75,7 @@ def test_activity_parameter_values(project_with_injection, mocker):
 
     activity = Activity.from_plan(
         plan,
+        repository=project_with_injection.repository,
         project_gateway=project_gateway,
         started_at_time=datetime.utcnow(),
         ended_at_time=datetime.utcnow(),

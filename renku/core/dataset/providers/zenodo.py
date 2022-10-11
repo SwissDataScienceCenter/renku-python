@@ -367,7 +367,7 @@ class ZenodoExporter(ExporterApi):
         jsonld["upload_type"] = "dataset"
         return jsonld
 
-    def export(self, client=None, **kwargs):
+    def export(self, **kwargs):
         """Execute entire export process."""
         # Step 1. Create new deposition
         deposition = ZenodoDeposition(exporter=self)

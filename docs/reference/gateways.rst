@@ -31,10 +31,6 @@ Interfaces that the Gateways implement.
    :members:
    :show-inheritance:
 
-.. automodule:: renku.core.interface.client_dispatcher
-   :members:
-   :show-inheritance:
-
 .. automodule:: renku.core.interface.database_gateway
    :members:
    :show-inheritance:

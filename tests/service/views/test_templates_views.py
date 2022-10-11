@@ -123,7 +123,7 @@ def test_read_manifest_from_wrong_template(svc_client_with_templates, template_u
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
-def test_create_project_from_template(svc_client_templates_creation, client_database_injection_manager):
+def test_create_project_from_template(svc_client_templates_creation, with_injection):
     """Check creating project from a valid template."""
     from renku.ui.service.serializers.headers import RenkuHeaders
     from renku.ui.service.utils import CACHE_PROJECTS_PATH
@@ -155,7 +155,7 @@ def test_create_project_from_template(svc_client_templates_creation, client_data
     assert reader.get_value("user", "name") == user_data["name"]
 
     with project_context.with_path(project_path):
-        with client_database_injection_manager(project_context.repository):
+        with with_injection():
             project = project_context.project
         assert project_context.datadir == "my-folder/"
 

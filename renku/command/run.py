@@ -199,7 +199,11 @@ def _run_command(
 
         plan = tool.to_plan(name=name, description=description, keywords=keyword)
         activity = Activity.from_plan(
-            plan=plan, started_at_time=started_at_time, ended_at_time=ended_at_time, annotations=tool.annotations
+            plan=plan,
+            repository=project_context.repository,
+            started_at_time=started_at_time,
+            ended_at_time=ended_at_time,
+            annotations=tool.annotations,
         )
         activity_gateway.add(activity)
 

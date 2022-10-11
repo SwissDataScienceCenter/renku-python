@@ -165,23 +165,20 @@ class ProjectContext(threading.local):
         from renku.command.command_builder.command import inject
         from renku.core.interface.project_gateway import IProjectGateway
 
-        if not self._top.project:
-            project_gateway = inject.instance(IProjectGateway)
-            self._top.project = project_gateway.get_project()
-
-        return self._top.project
+        project_gateway = inject.instance(IProjectGateway)
+        # NOTE: Don't cache the project since it can be updated in the ``ProjectGateway``
+        return project_gateway.get_project()
 
     @property
     def remote(self) -> "ProjectRemote":
         """Return host, owner and name of the remote if it exists."""
+        from renku.core.util.git import get_remote
+
         repository = self.repository
 
-        remote: Optional["Remote"]
-        if repository.active_branch and repository.active_branch.remote_branch:
-            remote = repository.active_branch.remote_branch.remote
-        elif len(repository.remotes) == 1:
-            remote = repository.remotes[0]
-        else:
+        remote = get_remote(repository=repository)
+
+        if not remote and len(repository.remotes) > 1:
             remote = repository.remotes.get("origin")
 
         return ProjectRemote.from_remote(remote=remote)
@@ -211,7 +208,7 @@ class ProjectContext(threading.local):
 
     @property
     def transaction_id(self) -> str:
-        """Get a transaction id for the current client to be used for grouping git commits."""
+        """Get a transaction id for the current context to be used for grouping git commits."""
         if not self._top.transaction_id:
             self._top.transaction_id = uuid.uuid4().hex
 
@@ -224,6 +221,10 @@ class ProjectContext(threading.local):
             return self._context_stack[-1]
 
         raise errors.ConfigurationError("No project context was pushed")
+
+    def has_context(self) -> bool:
+        """Return if at least one context is pushed."""
+        return bool(self._context_stack)
 
     def clear(self) -> None:
         """Remove all contexts and reset the state without committing intermediate changes.
@@ -275,11 +276,6 @@ class ProjectContext(threading.local):
             self.push_path(path)
         elif self._top.path != path:
             self._context_stack[-1] = ProjectProperties(path=path)
-
-    def reset_project(self) -> None:
-        """Discard cached project value."""
-        if self._context_stack:
-            self._top.project = None
 
     @contextlib.contextmanager
     def with_path(
@@ -335,7 +331,6 @@ class ProjectProperties:
     path: Path
     database: Optional["Database"] = None
     datadir: Optional[str] = None
-    project: Optional["Project"] = None
     repository: Optional["Repository"] = None
     save_changes: bool = False
     transaction_id: Optional[str] = None

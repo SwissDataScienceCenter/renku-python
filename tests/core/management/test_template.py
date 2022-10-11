@@ -25,7 +25,7 @@ from renku.core import errors
 from renku.core.template.template import (
     FileAction,
     TemplateAction,
-    copy_template_to_client,
+    copy_template_to_project,
     fetch_templates_source,
     get_file_actions,
 )
@@ -63,11 +63,11 @@ def test_template_fetch_invalid_git_reference():
         fetch_templates_source(source=TEMPLATES_URL, reference="invalid-ref")
 
 
-def test_check_for_template_update(client_with_template, templates_source, client_database_injection_manager):
+def test_check_for_template_update(project_with_template, templates_source, with_injection):
     """Test checking for a template update."""
     templates_source.update(id="dummy", version="2.0.0")
 
-    with client_database_injection_manager(client_with_template):
+    with with_injection():
         project = project_context.project
         updates_available, _, current_version, new_version = check_for_template_update(project)
 
@@ -76,11 +76,11 @@ def test_check_for_template_update(client_with_template, templates_source, clien
     assert "2.0.0" == new_version
 
 
-def test_template_update_files(client_with_template, templates_source, with_injections_manager):
+def test_template_update_files(project_with_template, templates_source, with_injection):
     """Test template update."""
     templates_source.update(id="dummy", version="2.0.0")
 
-    with with_injections_manager(client_with_template):
+    with with_injection():
         files_before = {p: Path(p).read_text() for p in project_context.project.template_files}
 
         update_template(force=False, interactive=False, dry_run=False)
@@ -89,9 +89,9 @@ def test_template_update_files(client_with_template, templates_source, with_inje
             assert Path(file).read_text() != files_before[file]
 
 
-def test_template_update_source_failure(client_with_template, client_database_injection_manager):
+def test_template_update_source_failure(project_with_template, with_injection):
     """Test template update with broken template source."""
-    with client_database_injection_manager(client_with_template):
+    with with_injection():
         with pytest.raises(errors.TemplateUpdateError):
             update_template(force=False, interactive=False, dry_run=False)
 
@@ -109,7 +109,7 @@ def test_template_update_source_failure(client_with_template, client_database_in
         (FileAction.KEEP, "project"),
     ],
 )
-def test_copy_template_actions(project, rendered_template, action, content_type, client_database_injection_manager):
+def test_copy_template_actions(project, rendered_template, action, content_type, with_injection):
     """Test FileActions when copying a template."""
     project_content = (project_context.path / "Dockerfile").read_text()
     template_content = (rendered_template.path / "Dockerfile").read_text()
@@ -117,8 +117,8 @@ def test_copy_template_actions(project, rendered_template, action, content_type,
     # NOTE: Ignore all other files expect the Dockerfile
     actions = {f: FileAction.IGNORE_UNCHANGED_REMOTE for f in rendered_template.get_files()}
     actions["Dockerfile"] = action
-    with client_database_injection_manager(project):
-        copy_template_to_client(rendered_template=rendered_template, project=project_context.project, actions=actions)
+    with with_injection():
+        copy_template_to_project(rendered_template=rendered_template, project=project_context.project, actions=actions)
 
     # NOTE: Make sure that files have some content
     assert project_content
@@ -135,9 +135,9 @@ def test_copy_template_actions(project, rendered_template, action, content_type,
     assert expected_content == (project_context.path / "Dockerfile").read_text()
 
 
-def test_get_file_actions_for_initialize(client, rendered_template, client_database_injection_manager):
+def test_get_file_actions_for_initialize(project, rendered_template, with_injection):
     """Test getting file action when initializing."""
-    with client_database_injection_manager(client):
+    with with_injection():
         actions = get_file_actions(
             rendered_template=rendered_template, template_action=TemplateAction.INITIALIZE, interactive=False
         )
@@ -152,9 +152,9 @@ def test_get_file_actions_for_initialize(client, rendered_template, client_datab
     assert FileAction.KEEP == actions[kept_file]
 
 
-def test_get_file_actions_for_set(client, rendered_template, client_database_injection_manager):
+def test_get_file_actions_for_set(project, rendered_template, with_injection):
     """Test getting file action when setting a template."""
-    with client_database_injection_manager(client):
+    with with_injection():
         actions = get_file_actions(
             rendered_template=rendered_template, template_action=TemplateAction.SET, interactive=False
         )
@@ -167,11 +167,9 @@ def test_get_file_actions_for_set(client, rendered_template, client_database_inj
     assert FileAction.KEEP == actions[kept_file]
 
 
-def test_get_file_actions_for_update(
-    client_with_template, rendered_template_with_update, client_database_injection_manager
-):
+def test_get_file_actions_for_update(project_with_template, rendered_template_with_update, with_injection):
     """Test getting file action when updating a template."""
-    with client_database_injection_manager(client_with_template):
+    with with_injection():
         actions = get_file_actions(
             rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
         )
@@ -182,13 +180,11 @@ def test_get_file_actions_for_update(
     assert FileAction.OVERWRITE == actions[remotely_modified]
 
 
-def test_update_with_locally_modified_file(
-    client_with_template, rendered_template_with_update, client_database_injection_manager
-):
+def test_update_with_locally_modified_file(project_with_template, rendered_template_with_update, with_injection):
     """Test a locally modified file that is remotely updated won't change."""
     (project_context.path / "Dockerfile").write_text("Local modification")
 
-    with client_database_injection_manager(client_with_template):
+    with with_injection():
         actions = get_file_actions(
             rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
         )
@@ -196,13 +192,11 @@ def test_update_with_locally_modified_file(
     assert FileAction.KEEP == actions["Dockerfile"]
 
 
-def test_update_with_locally_deleted_file(
-    client_with_template, rendered_template_with_update, client_database_injection_manager
-):
+def test_update_with_locally_deleted_file(project_with_template, rendered_template_with_update, with_injection):
     """Test a locally deleted file that is remotely updated won't be re-created."""
     (project_context.path / "Dockerfile").unlink()
 
-    with client_database_injection_manager(client_with_template):
+    with with_injection():
         actions = get_file_actions(
             rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
         )
@@ -212,7 +206,7 @@ def test_update_with_locally_deleted_file(
 
 @pytest.mark.parametrize("delete", [False, True])
 def test_update_with_locally_changed_immutable_file(
-    client_with_template, rendered_template_with_update, client_database_injection_manager, delete
+    project_with_template, rendered_template_with_update, with_injection, delete
 ):
     """Test a locally deleted file that is remotely updated won't be re-created."""
     if delete:
@@ -222,7 +216,7 @@ def test_update_with_locally_changed_immutable_file(
 
     with pytest.raises(
         errors.TemplateUpdateError, match="Can't update template as immutable template file .* has local changes."
-    ), client_database_injection_manager(client_with_template):
+    ), with_injection():
         get_file_actions(
             rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
         )

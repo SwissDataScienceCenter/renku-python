@@ -17,25 +17,25 @@
 # limitations under the License.
 """DatasetFile source and url migrations."""
 
-from renku.core.migration.models.v7 import get_client_datasets
+from renku.core.migration.models.v7 import get_project_datasets
 from renku.core.migration.utils import generate_dataset_file_url
 
 
-def migrate(migration_context):
+def migrate(_):
     """Migration function."""
-    _fix_dataset_file_source_and_url(migration_context.client)
+    _fix_dataset_file_source_and_url()
 
 
-def _fix_dataset_file_source_and_url(client):
-    for dataset in get_client_datasets(client):
-        for file_ in dataset.files:
-            file_.source = file_.url
-            file_.url = generate_dataset_file_url(client, filepath=file_.path)
+def _fix_dataset_file_source_and_url():
+    for dataset in get_project_datasets():
+        for file in dataset.files:
+            file.source = file.url
+            file.url = generate_dataset_file_url(filepath=file.path)
 
-            if file_.source:
-                file_.source = file_.source.replace("file://", "")
+            if file.source:
+                file.source = file.source.replace("file://", "")
 
-            if file_.based_on:
-                file_.based_on.source = file_.based_on.url
+            if file.based_on:
+                file.based_on.source = file.based_on.url
 
         dataset.to_yaml()

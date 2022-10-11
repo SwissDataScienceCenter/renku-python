@@ -32,10 +32,10 @@ class Dataset(Base):
     """Dataset migration model."""
 
     @classmethod
-    def from_yaml(cls, path, client=None, commit=None):
+    def from_yaml(cls, path, commit=None):
         """Read content from YAML file."""
         data = yaml.read_yaml(path)
-        self = DatasetSchemaV7(client=client, commit=commit).load(data)
+        self = DatasetSchemaV7(commit=commit).load(data)
         self._metadata_path = path
         return self
 
@@ -67,7 +67,7 @@ class DatasetSchemaV7(DatasetSchemaV3):
     files = fields.Nested(schema.hasPart, DatasetFileSchemaV7, many=True)
 
 
-def get_client_datasets(client):
-    """Return Dataset migration models for a client."""
-    paths = get_datasets_path(client).rglob(OLD_METADATA_PATH)
-    return [Dataset.from_yaml(path=path, client=client) for path in paths]
+def get_project_datasets():
+    """Return Dataset migration models for a project."""
+    paths = get_datasets_path().rglob(OLD_METADATA_PATH)
+    return [Dataset.from_yaml(path=path) for path in paths]

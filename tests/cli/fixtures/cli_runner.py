@@ -28,7 +28,7 @@ Result = NamedTuple("Result", [("exit_code", int), ("activities", Union[None, "A
 
 
 @pytest.fixture
-def renku_cli(client, run, client_database_injection_manager):
+def renku_cli(project, run, with_injection):
     """Return a callable Renku CLI.
 
     It returns the exit code and the resulting activity or list of activities.
@@ -42,14 +42,14 @@ def renku_cli(client, run, client_database_injection_manager):
         def _get_activities(activity_gateway: IActivityGateway):
             return {a.id: a for a in activity_gateway.get_all_activities()}
 
-        with client_database_injection_manager(client):
+        with with_injection(project):
             activities_before = _get_activities()
 
         str_args = [str(a) for a in args]
 
         exit_code = run(str_args, **kwargs)
 
-        with client_database_injection_manager(client):
+        with with_injection(project):
             activities_after = _get_activities()
 
         new_activities = [a for id, a in activities_after.items() if id not in activities_before]

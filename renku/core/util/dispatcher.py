@@ -20,23 +20,11 @@
 from typing import TYPE_CHECKING
 
 from renku.command.command_builder.command import inject
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.storage import IStorageFactory
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials
     from renku.core.interface.storage import IStorage
-    from renku.core.management.client import LocalClient
-
-
-def get_client() -> "LocalClient":
-    """Return current client."""
-
-    @inject.autoparams()
-    def get_client_helper(client_dispatcher: IClientDispatcher):
-        return client_dispatcher.current_client
-
-    return get_client_helper()
 
 
 def get_storage(provider: "ProviderApi", credentials: "ProviderCredentials") -> "IStorage":

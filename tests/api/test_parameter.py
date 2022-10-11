@@ -26,7 +26,6 @@ from renku.core.workflow.plan_factory import (
     get_indirect_outputs_path,
     read_indirect_parameters,
 )
-from renku.domain_model.project_context import project_context
 from renku.ui.api import Input, Output, Parameter, Project
 
 
@@ -87,8 +86,8 @@ def test_indirect_inputs_outputs(project):
     assert Path(path_1) == input_1.path
     assert Path(path_2) == output_2.path
 
-    input_content = get_indirect_inputs_path(project_context.path).read_text()
-    output_content = get_indirect_outputs_path(project_context.path).read_text()
+    input_content = get_indirect_inputs_path(project.path).read_text()
+    output_content = get_indirect_outputs_path(project.path).read_text()
 
     assert path_1 == list(yaml.safe_load(input_content).values())[0]
     assert input_1.name == list(yaml.safe_load(input_content).keys())[0]
@@ -101,7 +100,7 @@ def test_open_inputs(project):
     with open(Input("input-1", "input.txt"), "w") as f:
         f.write("some data")
 
-    assert "some data" == (project_context.path / "input.txt").read_text()
+    assert "some data" == (project.path / "input.txt").read_text()
 
 
 def test_open_outputs(project):
@@ -109,7 +108,7 @@ def test_open_outputs(project):
     with open(Output("output-1", "output.txt"), "w") as f:
         f.write("some data")
 
-    assert "some data" == (project_context.path / "output.txt").read_text()
+    assert "some data" == (project.path / "output.txt").read_text()
 
 
 def test_parameters(project):
@@ -123,7 +122,7 @@ def test_parameters(project):
 
     assert (42, "42", 42.42) == (p1.value, p2.value, p3.value)
 
-    data = read_indirect_parameters(project_context.path)
+    data = read_indirect_parameters(project.path)
 
     assert {"parameter 1", "param-2", "parameter_3 "} == set(data.keys())
     assert {42, "42", 42.42} == set(data.values())

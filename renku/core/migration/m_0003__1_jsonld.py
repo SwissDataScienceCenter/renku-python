@@ -16,11 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """JSON-LD dataset migrations."""
+
 import itertools
 import json
 import os
 import uuid
 from pathlib import Path
+from typing import Dict
 
 import pyld
 
@@ -34,14 +36,14 @@ from renku.core.util.yaml import read_yaml, write_yaml
 from renku.domain_model.project_context import project_context
 
 
-def migrate(migration_context):
+def migrate(_):
     """Migration function."""
 
-    _migrate_project_metadata(migration_context.client)
-    _migrate_datasets_metadata(migration_context.client)
+    _migrate_project_metadata()
+    _migrate_datasets_metadata()
 
 
-def _migrate_project_metadata(client):
+def _migrate_project_metadata():
     """Apply all initial JSON-LD migrations to project."""
     jsonld_translate = {
         "http://schema.org/name": "http://xmlns.com/foaf/0.1/name",
@@ -58,7 +60,7 @@ def _migrate_project_metadata(client):
         )
 
 
-def _migrate_datasets_metadata(client):
+def _migrate_datasets_metadata():
     """Apply all initial JSON-LD migrations to datasets."""
     jsonld_migrations = {
         "dctypes:Dataset": [_migrate_dataset_schema, _migrate_absolute_paths],
@@ -71,22 +73,21 @@ def _migrate_datasets_metadata(client):
     }
 
     old_metadata_paths = get_pre_0_3_4_datasets_metadata()
-    new_metadata_paths = get_datasets_path(client).rglob(OLD_METADATA_PATH)
+    new_metadata_paths = get_datasets_path().rglob(OLD_METADATA_PATH)
 
     for path in itertools.chain(old_metadata_paths, new_metadata_paths):
         _apply_on_the_fly_jsonld_migrations(
             path=path,
             jsonld_context=_INITIAL_JSONLD_DATASET_CONTEXT,
             fields=_DATASET_FIELDS,
-            client=client,
             jsonld_migrations=jsonld_migrations,
         )
 
 
 def _apply_on_the_fly_jsonld_migrations(
-    path, jsonld_context, fields, client=None, jsonld_migrations=None, jsonld_translate=None, persist_changes=True
+    path, jsonld_context, fields, jsonld_migrations=None, jsonld_translate=None, persist_changes=True
 ):
-    data = read_yaml(path)
+    data: Dict = read_yaml(path)
 
     if not isinstance(data, dict) and not isinstance(data, list):
         # NOTE: metadata file is probably not an actual renku file
@@ -116,7 +117,7 @@ def _apply_on_the_fly_jsonld_migrations(
             migrations += jsonld_migrations.get(schema_type, [])
 
         for migration in set(migrations):
-            data = migration(data, client)
+            data = migration(data)
 
     if data["@context"] != jsonld_context:
         # merge new context into old context to prevent properties
@@ -151,7 +152,7 @@ def _apply_on_the_fly_jsonld_migrations(
         write_yaml(path, data)
 
 
-def _migrate_dataset_schema(data, client):
+def _migrate_dataset_schema(data):
     """Migrate from old dataset formats."""
     if "authors" not in data:
         return
@@ -170,7 +171,7 @@ def _migrate_dataset_schema(data, client):
     return data
 
 
-def _migrate_absolute_paths(data, client):
+def _migrate_absolute_paths(data):
     """Migrate dataset paths to use relative path."""
     raw_path = data.get("path", ".")
     path = Path(raw_path)
@@ -196,7 +197,7 @@ def _migrate_absolute_paths(data, client):
     return data
 
 
-def _migrate_doi_identifier(data, client):
+def _migrate_doi_identifier(data):
     """If the dataset _id is doi, make it a UUID."""
     from renku.core.util.doi import is_doi
     from renku.core.util.uuid import is_uuid
@@ -226,7 +227,7 @@ def _migrate_doi_identifier(data, client):
     return data
 
 
-def _migrate_same_as_structure(data, client):
+def _migrate_same_as_structure(data):
     """Changes sameAs string to schema:URL object."""
     same_as = data.get("same_as")
 
@@ -246,11 +247,10 @@ def _migrate_same_as_structure(data, client):
     return data
 
 
-def _migrate_dataset_file_id(data, client):
+def _migrate_dataset_file_id(data):
     """Ensure dataset files have a fully qualified url as id."""
     host = "localhost"
-    if client:
-        host = project_context.remote.host or host
+    host = project_context.remote.host or host
     host = os.environ.get("RENKU_DOMAIN") or host
 
     files = data.get("files", [])

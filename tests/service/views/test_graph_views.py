@@ -50,7 +50,8 @@ def test_graph_export_view(svc_client_cache, it_remote_repo_url):
         in response.json["result"]["graph"]
     )
     assert "mailto:contact@justsam.io" in response.json["result"]["graph"]
-    assert len(response.json["result"]["graph"]) > 5000
+    assert "invalidatedAtTime" not in response.json["result"]["graph"]
+    assert len(response.json["result"]["graph"]) > 4500
 
 
 @pytest.mark.service
@@ -93,7 +94,7 @@ def test_graph_export_no_callback(svc_client_cache, it_remote_repo_url):
         in response.json["result"]["graph"]
     )
     assert "mailto:contact@justsam.io" in response.json["result"]["graph"]
-    assert len(response.json["result"]["graph"]) > 5000
+    assert len(response.json["result"]["graph"]) > 4500
 
 
 @pytest.mark.service
@@ -115,4 +116,4 @@ def test_graph_export_no_revision(svc_client_cache, it_remote_repo_url):
         in response.json["result"]["graph"]
     )
     assert "mailto:contact@justsam.io" in response.json["result"]["graph"]
-    assert len(response.json["result"]["graph"]) > 5000
+    assert len(response.json["result"]["graph"]) > 4500

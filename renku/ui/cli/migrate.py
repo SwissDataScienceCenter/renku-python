@@ -64,7 +64,7 @@ import os
 import click
 
 import renku.ui.cli.utils.color as color
-from renku.command.echo import ERROR, INFO
+from renku.command.util import ERROR, INFO
 from renku.core.errors import MigrationRequired, ProjectNotSupported
 from renku.ui.cli.utils.callback import ClickCallback
 
@@ -92,7 +92,7 @@ def migrate(check, skip_template_update, skip_docker_update, strict, preserve_id
         TEMPLATE_UPDATE_POSSIBLE,
         UNSUPPORTED_PROJECT,
         check_project,
-        migrate_project,
+        migrate_project_command,
     )
 
     status = check_project().build().execute().output
@@ -131,7 +131,7 @@ def migrate(check, skip_template_update, skip_docker_update, strict, preserve_id
 
     communicator = ClickCallback()
 
-    command = migrate_project().with_communicator(communicator).with_commit()
+    command = migrate_project_command().with_communicator(communicator).with_commit()
     result = command.build().execute(
         skip_template_update=skip_template_update,
         skip_docker_update=skip_docker_update,
