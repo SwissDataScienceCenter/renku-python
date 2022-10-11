@@ -17,18 +17,8 @@
 # limitations under the License.
 """Renku core fixtures for project management."""
 import os
-import tempfile
 
 import pytest
-
-
-@pytest.fixture
-def local_client():
-    """Add a Renku local client."""
-    from renku.core.management.client import LocalClient
-
-    with tempfile.TemporaryDirectory() as tempdir:
-        yield LocalClient(path=tempdir)
 
 
 @pytest.fixture

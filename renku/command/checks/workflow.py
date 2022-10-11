@@ -19,29 +19,24 @@
 
 from typing import Optional, Tuple
 
-from renku.command.command_builder import inject
-from renku.command.echo import WARNING
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
+from renku.command.util import WARNING
 from renku.core.util import communication
+from renku.domain_model.project_context import project_context
 from renku.infrastructure.gateway.activity_gateway import reindex_catalog
 
 
-@inject.autoparams("database_dispatcher")
-def check_activity_catalog(
-    client, fix, force, database_dispatcher: IDatabaseDispatcher, **kwargs
-) -> Tuple[bool, Optional[str]]:
+def check_activity_catalog(fix, force, **_) -> Tuple[bool, Optional[str]]:
     """Check if the activity-catalog needs to be rebuilt.
 
     Args:
-        client: ``LocalClient``.
         fix: Whether to fix found issues.
         force: Whether to force rebuild the activity catalog.
-        kwargs: keyword arguments.
+        _: keyword arguments.
 
     Returns:
         Tuple of whether the activity-catalog needs to be rebuilt and a string of found problems.
     """
-    database = database_dispatcher.current_database
+    database = project_context.database
     activity_catalog = database["activity-catalog"]
     relations = database["_downstream_relations"]
 

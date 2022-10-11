@@ -16,12 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service dataset view tests."""
+
 import io
 import json
 import os
 import shutil
 import uuid
-from pathlib import Path
 
 import pytest
 from werkzeug.utils import secure_filename
@@ -84,6 +84,31 @@ def test_create_dataset_view(svc_client_with_repo):
 
     assert {"name", "remote_branch"} == set(response.json["result"].keys())
     assert payload["name"] == response.json["result"]["name"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+def test_create_dataset_view_with_datadir(svc_client_with_repo):
+    """Create a new dataset successfully."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    payload = {"project_id": project_id, "name": uuid.uuid4().hex, "data_directory": "my-folder/"}
+
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
+    assert_rpc_response(response)
+
+    assert {"name", "remote_branch"} == set(response.json["result"].keys())
+    assert payload["name"] == response.json["result"]["name"]
+
+    params = {
+        "project_id": project_id,
+    }
+    response = svc_client.get("/datasets.list", query_string=params, headers=headers)
+
+    assert_rpc_response(response)
+    ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
+    assert ds["data_directory"] == "my-folder"
 
 
 @pytest.mark.service
@@ -606,7 +631,7 @@ def test_list_datasets_view(svc_client_with_repo):
         "keywords",
         "annotations",
         "storage",
-        "datadir",
+        "data_directory",
     } == set(response.json["result"]["datasets"][0].keys())
 
 
@@ -669,7 +694,7 @@ def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo_url):
         "keywords",
         "annotations",
         "storage",
-        "datadir",
+        "data_directory",
     } == set(response.json["result"]["datasets"][0].keys())
 
 
@@ -787,7 +812,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
         "keywords",
         "annotations",
         "storage",
-        "datadir",
+        "data_directory",
     } == set(response.json["result"]["datasets"][0].keys())
 
     assert payload["name"] in [ds["name"] for ds in response.json["result"]["datasets"]]
@@ -994,7 +1019,7 @@ def test_cached_import_dataset_job(doi, svc_client_cache, project):
     user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = cache.ensure_user({"user_id": user_id})
 
-    name = Path(project).name
+    name = project.path.name
 
     project_meta = {
         "project_id": uuid.uuid4().hex,
@@ -1012,8 +1037,8 @@ def test_cached_import_dataset_job(doi, svc_client_cache, project):
 
     dest = project_obj.abs_path
     os.makedirs(dest.parent, exist_ok=True)
-    if not (project / dest).exists():
-        shutil.copytree(project, dest)
+    if not (project.path / dest).exists():
+        shutil.copytree(project.path, dest)
 
     response = client.post(
         "/datasets.import",
@@ -1067,8 +1092,8 @@ def test_dataset_add_remote(url, svc_client_cache, project_metadata):
 
     dest = project_obj.abs_path
     os.makedirs(dest.parent, exist_ok=True)
-    if not (project / dest).exists():
-        shutil.copytree(project, dest)
+    if not (project.path / dest).exists():
+        shutil.copytree(project.path, dest)
 
     payload = make_dataset_add_payload(project_meta["project_id"], [url])
     response = client.post("/datasets.add", data=json.dumps(payload), headers=headers)
@@ -1103,8 +1128,8 @@ def test_dataset_add_multiple_remote(svc_client_cache, project_metadata):
 
     dest = project_obj.abs_path
     os.makedirs(dest.parent, exist_ok=True)
-    if not (project / dest).exists():
-        shutil.copytree(project, dest)
+    if not (project.path / dest).exists():
+        shutil.copytree(project.path, dest)
 
     payload = make_dataset_add_payload(project_meta["project_id"], [url_gist, url_dbox])
     response = client.post("/datasets.add", data=json.dumps(payload), headers=headers)

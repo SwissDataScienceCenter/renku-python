@@ -19,6 +19,7 @@
 
 import configparser
 import hashlib
+import itertools
 import math
 import os
 import subprocess
@@ -33,7 +34,7 @@ from typing import Any, Callable, Dict, Generator, List, NamedTuple, Optional, S
 import git
 
 from renku.core import errors
-from renku.core.util.os import delete_file, get_absolute_path
+from renku.core.util.os import delete_dataset_file, get_absolute_path
 
 NULL_TREE = git.NULL_TREE
 _MARKER = object()
@@ -181,6 +182,11 @@ class BaseRepository:
         if self._repository is None:
             raise errors.ParameterError("Repository not set.")
         return [str(e[0]) for e in self._repository.index.entries]
+
+    @property
+    def all_files(self) -> List[str]:
+        """Return absolute paths of all files in the index and untracked files."""
+        return [os.path.join(self.path, path) for path in itertools.chain(self.files, self.untracked_files)]
 
     @property
     def lfs(self) -> "LFS":
@@ -535,7 +541,7 @@ class BaseRepository:
         output_path = Path(output)
 
         content: Union[bytes, str] = output_path.read_bytes() if binary else output_path.read_text()
-        delete_file(output)
+        delete_dataset_file(output)
 
         return content
 
@@ -1596,6 +1602,13 @@ class RemoteManager:
                 stderr=e.stderr,
                 status=e.status,
             ) from e
+
+    def get(self, remote: str) -> Optional[Remote]:
+        """Return the given remote if it exists."""
+        try:
+            return self[remote]
+        except errors.GitRemoteNotFoundError:
+            return None
 
 
 class Tag(Reference):

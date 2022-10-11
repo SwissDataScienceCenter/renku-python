@@ -27,8 +27,10 @@ import jwt
 import pytest
 
 from renku.core.dataset.context import DatasetContext
+from renku.core.util.git import with_commit
 from renku.domain_model.git import GitURL
 from renku.domain_model.project import Project
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.agent import Person
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository
@@ -1021,21 +1023,21 @@ def test_migrating_protected_branch(svc_protected_old_repo):
 @pytest.mark.integration
 @pytest.mark.serial
 @retry_failed
-def test_cache_gets_synchronized(
-    local_remote_repository, directory_tree, quick_cache_synchronization, client_database_injection_manager
-):
+def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_cache_synchronization, with_injection):
     """Test that the cache stays synchronized with the remote repository."""
-    from renku.core.management.client import LocalClient
     from renku.domain_model.provenance.agent import Person
 
     svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout = local_remote_repository
 
-    client = LocalClient(remote_repo_checkout.path)
-
-    with client_database_injection_manager(client):
-        with client.commit(commit_message="Create dataset"):
-            with DatasetContext(name="my_dataset", create=True, commit_database=True) as dataset:
-                dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
+    with project_context.with_path(remote_repo_checkout.path):
+        with with_injection(remote_repo_checkout):
+            with with_commit(
+                repository=project_context.repository,
+                transaction_id=project_context.transaction_id,
+                commit_message="Create dataset",
+            ):
+                with DatasetContext(name="my_dataset", create=True, commit_database=True) as dataset:
+                    dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
 
     remote_repo_checkout.push()
     params = {
@@ -1062,7 +1064,7 @@ def test_cache_gets_synchronized(
 
     remote_repo_checkout.pull()
 
-    with client_database_injection_manager(client):
+    with with_injection(remote_repo_checkout):
         datasets = DatasetGateway().get_all_active_datasets()
         assert 2 == len(datasets)
 
@@ -1085,13 +1087,14 @@ def test_check_migrations_remote_anonymous(svc_client, it_remote_public_repo_url
 
 @pytest.mark.service
 @pytest.mark.integration
+@retry_failed
 def test_check_migrations_local_minimum_version(svc_client_setup, mocker, monkeypatch):
     """Check if migrations are required for a local project."""
     monkeypatch.setenv("RENKU_SKIP_MIN_VERSION_CHECK", "0")
 
     svc_client, headers, project_id, _, _ = svc_client_setup
 
-    def _mock_database_project(project):
+    def mock_database_project(project):
         def mocked_getter(self, key):
             if key == "project":
                 return project
@@ -1100,10 +1103,8 @@ def test_check_migrations_local_minimum_version(svc_client_setup, mocker, monkey
         return mocked_getter
 
     mocker.patch("renku.domain_model.project.Project.minimum_renku_version", "2.0.0")
-    project = Project(creator=Person(name="John Doe", email="jd@example.com"), name="testproject")
-    mocker.patch(
-        "renku.command.command_builder.database_dispatcher.Database.__getitem__", _mock_database_project(project)
-    )
+    dummy_project = Project(creator=Person(name="John Doe", email="jd@example.com"), name="testproject")
+    mocker.patch("renku.infrastructure.database.Database.__getitem__", mock_database_project(dummy_project))
     mocker.patch("renku.version.__version__", "1.0.0")
 
     response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)

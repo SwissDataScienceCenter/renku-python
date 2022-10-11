@@ -16,16 +16,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Check KG structure using SHACL."""
+
 import pyld
 import yaml
 
 from renku.command.command_builder import inject
-from renku.command.echo import WARNING
 from renku.command.schema.dataset import dump_dataset_as_jsonld
 from renku.command.schema.project import ProjectSchema
+from renku.command.util import WARNING
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.util.shacl import validate_graph
 from renku.core.util.yaml import NoDatesSafeLoader
+from renku.domain_model.project_context import project_context
 
 
 def _shacl_graph_to_string(graph):
@@ -52,29 +54,28 @@ def _shacl_graph_to_string(graph):
             message = "{0}: {1}".format(path, res)
         else:
             kind = graph.value(result, sh.sourceConstraintComponent)
-            focusNode = graph.value(result, sh.focusNode)
+            focus_node = graph.value(result, sh.focusNode)
 
-            if isinstance(focusNode, BNode):
-                focusNode = "<Anonymous>"
+            if isinstance(focus_node, BNode):
+                focus_node = "<Anonymous>"
 
-            message = "{0}: Type: {1}, Node ID: {2}".format(path, kind, focusNode)
+            message = "{0}: Type: {1}, Node ID: {2}".format(path, kind, focus_node)
 
         problems.append(message)
 
     return "\n\t".join(problems)
 
 
-def check_project_structure(client, **kwargs):
+def check_project_structure(**_):
     """Validate project metadata against SHACL.
 
     Args:
-        client: ``LocalClient``.
-        kwargs: keyword arguments.
+        _: keyword arguments.
 
     Returns:
         Tuple of whether project structure is valid and string of found problems.
     """
-    data = ProjectSchema().dump(client.project)
+    data = ProjectSchema().dump(project_context.project)
 
     conform, graph, t = _check_shacl_structure(data)
 
@@ -87,13 +88,12 @@ def check_project_structure(client, **kwargs):
 
 
 @inject.autoparams("dataset_gateway")
-def check_datasets_structure(client, dataset_gateway: IDatasetGateway, **kwargs):
+def check_datasets_structure(dataset_gateway: IDatasetGateway, **_):
     """Validate dataset metadata against SHACL.
 
     Args:
-        client: The ``LocalClient``.
         dataset_gateway(IDatasetGateway): The injected dataset gateway.
-        kwargs: keyword arguments.
+        _: keyword arguments.
 
     Returns:
         Tuple[bool, str]: Tuple of whether structure is valid and of problems that might have been found.

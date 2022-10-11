@@ -26,20 +26,19 @@ from renku.core.dataset.providers.api import ImporterApi
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata
-    from renku.core.management.client import LocalClient
     from renku.domain_model.dataset import Dataset
 
 
 class RepositoryImporter(ImporterApi, abc.ABC):
     """Online repository importer."""
 
-    def download_files(self, client: "LocalClient", destination: Path, extract: bool) -> List["DatasetAddMetadata"]:
+    def download_files(self, destination: Path, extract: bool) -> List["DatasetAddMetadata"]:
         """Download dataset files from the remote provider."""
         from renku.core.dataset.providers.web import download_files
 
         urls, names = zip(*[(f.source, f.filename) for f in self.provider_dataset_files])
 
-        return download_files(client=client, urls=urls, destination=destination, names=names, extract=extract)
+        return download_files(urls=urls, destination=destination, names=names, extract=extract)
 
     def tag_dataset(self, name: str) -> None:
         """Create a tag for the dataset ``name`` if the remote dataset has a tag/version."""

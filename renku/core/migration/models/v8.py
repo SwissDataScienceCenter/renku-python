@@ -26,6 +26,7 @@ from renku.command.schema.calamus import Uri, fields, prov, schema
 from renku.core.migration.models.v9 import generate_file_id
 from renku.core.migration.utils import OLD_METADATA_PATH, get_datasets_path
 from renku.core.util import yaml
+from renku.domain_model.project_context import project_context
 
 from .v3 import CreatorMixinSchemaV3, DatasetTagSchemaV3, EntitySchemaV3, LanguageSchemaV3, PersonSchemaV3, UrlSchemaV3
 from .v7 import Base, DatasetFileSchemaV7
@@ -40,29 +41,29 @@ class DatasetFile(Base):
 
         if hasattr(self, "path") and (not self._id or self._id.startswith("_:")):
             hexsha = "UNCOMMITTED"
-            if self.client and Path(self.path).exists():
-                commit = self.client.repository.get_previous_commit(self.path)
+            if project_context.has_context() and Path(self.path).exists():
+                commit = project_context.repository.get_previous_commit(self.path)
                 if commit:
                     hexsha = commit.hexsha
 
-            self._id = generate_file_id(client=self.client, hexsha=hexsha, path=self.path)
+            self._id = generate_file_id(hexsha=hexsha, path=self.path)
 
 
 class Dataset(Base):
     """Dataset migration model."""
 
     @classmethod
-    def from_yaml(cls, path, client=None, commit=None):
+    def from_yaml(cls, path, commit=None):
         """Read content from YAML file."""
         data = yaml.read_yaml(path)
-        self = DatasetSchemaV8(client=client, commit=commit, flattened=True).load(data)
+        self = DatasetSchemaV8(commit=commit, flattened=True).load(data)
         self._metadata_path = path
         return self
 
     def to_yaml(self, path=None):
         """Write content to a YAML file."""
-        for file_ in self.files:
-            file_._project = self._project
+        for file in self.files:
+            file._project = self._project
 
         data = DatasetSchemaV8(flattened=True).dump(self)
         path = path or self._metadata_path or os.path.join(self.path, OLD_METADATA_PATH)
@@ -91,21 +92,21 @@ class DatasetSchemaV8(CreatorMixinSchemaV3, EntitySchemaV3):
         unknown = EXCLUDE
 
     creators = fields.Nested(schema.creator, PersonSchemaV3, many=True)
-    date_created = fields.DateTime(schema.dateCreated, missing=None)
-    date_published = fields.DateTime(schema.datePublished, missing=None)
-    derived_from = fields.Nested(prov.wasDerivedFrom, UrlSchemaV3, missing=None)
-    description = fields.String(schema.description, missing=None)
+    date_created = fields.DateTime(schema.dateCreated, load_default=None)
+    date_published = fields.DateTime(schema.datePublished, load_default=None)
+    derived_from = fields.Nested(prov.wasDerivedFrom, UrlSchemaV3, load_default=None)
+    description = fields.String(schema.description, load_default=None)
     files = fields.Nested(schema.hasPart, DatasetFileSchemaV8, many=True)
     identifier = fields.String(schema.identifier)
-    in_language = fields.Nested(schema.inLanguage, LanguageSchemaV3, missing=None)
-    keywords = fields.List(schema.keywords, fields.String(), missing=None)
-    license = Uri(schema.license, allow_none=True, missing=None)
-    name = fields.String(schema.alternateName, missing=None)
-    same_as = fields.Nested(schema.sameAs, UrlSchemaV3, missing=None)
-    tags = fields.Nested(schema.subjectOf, DatasetTagSchemaV3, many=True, missing=None)
+    in_language = fields.Nested(schema.inLanguage, LanguageSchemaV3, load_default=None)
+    keywords = fields.List(schema.keywords, fields.String(), load_default=None)
+    license = Uri(schema.license, allow_none=True, load_default=None)
+    name = fields.String(schema.alternateName, load_default=None)
+    same_as = fields.Nested(schema.sameAs, UrlSchemaV3, load_default=None)
+    tags = fields.Nested(schema.subjectOf, DatasetTagSchemaV3, many=True, load_default=None)
     title = fields.String(schema.name)
-    url = fields.String(schema.url, missing=None)
-    version = fields.String(schema.version, missing=None)
+    url = fields.String(schema.url, load_default=None)
+    version = fields.String(schema.version, load_default=None)
 
     @pre_dump
     def fix_license(self, data, **kwargs):
@@ -116,7 +117,7 @@ class DatasetSchemaV8(CreatorMixinSchemaV3, EntitySchemaV3):
         return data
 
 
-def get_client_datasets(client):
-    """Return Dataset migration models for a client."""
-    paths = get_datasets_path(client).rglob(OLD_METADATA_PATH)
-    return [Dataset.from_yaml(path=path, client=client) for path in paths]
+def get_project_datasets():
+    """Return Dataset migration models for a project."""
+    paths = get_datasets_path().rglob(OLD_METADATA_PATH)
+    return [Dataset.from_yaml(path=path) for path in paths]

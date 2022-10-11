@@ -23,7 +23,7 @@ from typing import Dict
 from marshmallow import EXCLUDE
 
 from renku.command.init import create_from_template_local_command
-from renku.core.util.contexts import click_context
+from renku.core.util.contexts import renku_project_context
 from renku.domain_model.template import TEMPLATE_MANIFEST, TemplatesManifest
 from renku.infrastructure.repository import Repository
 from renku.ui.service.config import MESSAGE_PREFIX
@@ -147,7 +147,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
 
         source_path = template_project.abs_path / self.ctx["identifier"]
 
-        with click_context(new_project_path, "create_from_template"):
+        with renku_project_context(new_project_path):
             create_from_template_local_command().build().execute(
                 source_path,
                 name=self.ctx["project_name"],
@@ -162,6 +162,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
                 initial_branch=self.ctx["initial_branch"],
                 commit_message=self.ctx["commit_message"],
                 description=self.ctx["project_description"],
+                data_dir=self.ctx.get("data_directory"),
             )
 
         self.new_project_push(new_project_path)

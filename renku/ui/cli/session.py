@@ -120,6 +120,31 @@ active sessions.
     $ renku session stop renku-test-e4fe76cc
 
 The command ``renku session stop --all`` will stop all active sessions regardless of the provider.
+
+.. cheatsheet::
+   :group: Managing Interactive Sessions
+   :command: $ renku session start --provider renkulab
+   :description: Start an interactive session on the remote Renku deployment.
+   :target: rp
+
+.. cheatsheet::
+   :group: Managing Interactive Sessions
+   :command: $ renku session ls
+   :description: List all active sessions.
+   :target: rp
+
+.. cheatsheet::
+   :group: Managing Interactive Sessions
+   :command: $ renku session open <name>
+   :description: Open a browser tab and connect to a running session.
+   :target: rp
+
+.. cheatsheet::
+   :group: Managing Interactive Sessions
+   :command: $ renku session stop <name>
+   :description: Stop the specified session.
+   :target: rp
+
 """
 
 import click

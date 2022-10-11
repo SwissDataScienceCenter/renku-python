@@ -74,6 +74,19 @@ Logging out from Renku removes the secure token from your system:
 
 If you don't specify an endpoint when logging out, credentials for all
 endpoints are removed.
+
+.. cheatsheet::
+   :group: Misc
+   :command: $ renku login --endpoint <URL>
+   :description: Login to a Renku deployment for accessing private projects and dataset.
+   :target: rp
+
+.. cheatsheet::
+   :group: Misc
+   :command: $ renku logout --endpoint <URL>
+   :description: Logout from a Renku deployment and clear locally-stored credentials.
+   :target: rp
+
 """
 
 import click

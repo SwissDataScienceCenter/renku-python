@@ -21,7 +21,7 @@ r"""Free up disk space by removing temporary files and caches in a Renku project
    :group: Misc
    :command: $ renku gc
    :description: Free up disk space used for caches and temporary files.
-   :extended:
+   :target: rp
 """
 
 import click

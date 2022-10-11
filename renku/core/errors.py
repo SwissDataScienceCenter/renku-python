@@ -314,7 +314,7 @@ class DatasetExistsError(DatasetException):
 class ExternalStorageNotInstalled(RenkuException):
     """Raise when LFS is required but not found or installed in the repository."""
 
-    def __init__(self, repository):
+    def __init__(self):
         """Build a custom message."""
         msg = (
             "External storage is not installed, "
@@ -333,7 +333,7 @@ class ExternalStorageNotInstalled(RenkuException):
 class ExternalStorageDisabled(RenkuException):
     """Raise when disabled repository storage API is trying to be used."""
 
-    def __init__(self, repository):
+    def __init__(self):
         """Build a custom message."""
         msg = (
             "External storage is not configured, "
@@ -504,8 +504,8 @@ class MigrationError(RenkuException):
     """Raised when something went wrong during migrations."""
 
 
-class ImportError(RenkuException):
-    """Raised when a dataset cannot be imported."""
+class DatasetImportError(DatasetException):
+    """Raised when a dataset cannot be imported/pulled from a remote source."""
 
 
 class CommandNotFinalizedError(RenkuException):

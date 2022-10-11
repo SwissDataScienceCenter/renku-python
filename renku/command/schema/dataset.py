@@ -49,8 +49,8 @@ class UrlSchema(JsonLDSchema):
         model = Url
         unknown = EXCLUDE
 
-    id = fields.Id(missing=None)
-    url = Uri(schema.url, missing=None)
+    id = fields.Id(load_default=None)
+    url = Uri(schema.url, load_default=None)
 
 
 class DatasetTagSchema(JsonLDSchema):
@@ -63,9 +63,9 @@ class DatasetTagSchema(JsonLDSchema):
         model = DatasetTag
         unknown = EXCLUDE
 
-    dataset_id = Nested(schema.about, UrlSchema, missing=None)
-    date_created = fields.DateTime(schema.startDate, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
-    description = fields.String(schema.description, missing=None)
+    dataset_id = Nested(schema.about, UrlSchema, load_default=None)
+    date_created = fields.DateTime(schema.startDate, load_default=None, format="iso", extra_formats=("%Y-%m-%d",))
+    description = fields.String(schema.description, load_default=None)
     id = fields.Id()
     name = fields.String(schema.name)
 
@@ -81,7 +81,7 @@ class LanguageSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     alternate_name = fields.String(schema.alternateName)
-    id = fields.Id(missing=None)
+    id = fields.Id(load_default=None)
     name = fields.String(schema.name)
 
 
@@ -96,7 +96,7 @@ class ImageObjectSchema(JsonLDSchema):
         unknown = EXCLUDE
 
     content_url = fields.String(schema.contentUrl)
-    id = fields.Id(missing=None)
+    id = fields.Id(load_default=None)
     position = fields.Integer(schema.position)
 
 
@@ -126,13 +126,13 @@ class DatasetFileSchema(JsonLDSchema):
         model = DatasetFile
         unknown = EXCLUDE
 
-    based_on = Nested(schema.isBasedOn, RemoteEntitySchema, missing=None)
+    based_on = Nested(schema.isBasedOn, RemoteEntitySchema, load_default=None)
     date_added = DateTimeList(schema.dateCreated, format="iso", extra_formats=("%Y-%m-%d",))
-    date_removed = fields.DateTime(prov.invalidatedAtTime, missing=None, format="iso")
+    date_removed = fields.DateTime(prov.invalidatedAtTime, load_default=None, format="iso")
     entity = Nested(prov.entity, [EntitySchema, CollectionSchema])
     id = fields.Id()
-    is_external = fields.Boolean(renku.external, missing=False)
-    source = fields.String(renku.source, missing=None)
+    is_external = fields.Boolean(renku.external, load_default=False)
+    source = fields.String(renku.source, load_default=None)
 
 
 class DatasetSchema(JsonLDSchema):
@@ -147,23 +147,23 @@ class DatasetSchema(JsonLDSchema):
 
     annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
     creators = Nested(schema.creator, PersonSchema, many=True)
-    date_created = fields.DateTime(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
-    date_removed = fields.DateTime(prov.invalidatedAtTime, missing=None, format="iso")
+    date_created = fields.DateTime(schema.dateCreated, load_default=None, format="iso", extra_formats=("%Y-%m-%d",))
+    date_removed = fields.DateTime(prov.invalidatedAtTime, load_default=None, format="iso")
     date_published = fields.DateTime(
-        schema.datePublished, missing=None, format="%Y-%m-%d", extra_formats=("iso", "%Y-%m-%dT%H:%M:%S")
+        schema.datePublished, load_default=None, format="%Y-%m-%d", extra_formats=("iso", "%Y-%m-%dT%H:%M:%S")
     )
-    derived_from = Nested(prov.wasDerivedFrom, UrlSchema, missing=None)
-    description = fields.String(schema.description, missing=None)
+    derived_from = Nested(prov.wasDerivedFrom, UrlSchema, load_default=None)
+    description = fields.String(schema.description, load_default=None)
     dataset_files = Nested(schema.hasPart, DatasetFileSchema, many=True)
-    id = fields.Id(missing=None)
+    id = fields.Id(load_default=None)
     identifier = fields.String(schema.identifier)
-    images = fields.Nested(schema.image, ImageObjectSchema, missing=None, many=True)
-    in_language = Nested(schema.inLanguage, LanguageSchema, missing=None)
-    keywords = fields.List(schema.keywords, fields.String(), missing=None)
-    license = Uri(schema.license, missing=None)
+    images = fields.Nested(schema.image, ImageObjectSchema, load_default=None, many=True)
+    in_language = Nested(schema.inLanguage, LanguageSchema, load_default=None)
+    keywords = fields.List(schema.keywords, fields.String(), load_default=None)
+    license = Uri(schema.license, load_default=None)
     name = fields.String(renku.slug)
     initial_identifier = fields.String(renku.originalIdentifier)
     project_id = fields.IRI(renku.hasDataset, reverse=True)
-    same_as = Nested(schema.sameAs, UrlSchema, missing=None)
+    same_as = Nested(schema.sameAs, UrlSchema, load_default=None)
     title = fields.String(schema.name)
-    version = fields.String(schema.version, missing=None)
+    version = fields.String(schema.version, load_default=None)

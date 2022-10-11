@@ -44,3 +44,13 @@ def echo_via_pager(*args, **kwargs):
 progressbar = functools.partial(
     click.progressbar, fill_char=click.style(" ", bg="green"), show_pos=True, item_show_func=lambda x: x
 )
+
+
+def yellow_text(text: str) -> str:
+    """Return text in yellow."""
+    return click.style(text, fg="yellow")
+
+
+def red_text(text: str) -> str:
+    """Return text in red."""
+    return click.style(text, fg="red")

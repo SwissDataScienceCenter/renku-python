@@ -23,11 +23,11 @@ import re
 import urllib
 from pathlib import Path
 from string import Template
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from urllib import parse as urlparse
 
-from renku.command.command_builder import inject
 from renku.core import errors
+from renku.core.config import get_value, set_value
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
 from renku.core.dataset.providers.dataverse_metadata_templates import (
     AUTHOR_METADATA_TEMPLATE,
@@ -36,13 +36,10 @@ from renku.core.dataset.providers.dataverse_metadata_templates import (
 )
 from renku.core.dataset.providers.doi import DOIProvider
 from renku.core.dataset.providers.repository import RepositoryImporter, make_request
-from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.plugin import hookimpl
 from renku.core.util import communication
 from renku.core.util.doi import extract_doi, get_doi_url, is_doi
-from renku.core.util.file_size import bytes_to_unit
 from renku.core.util.urls import remove_credentials
-from renku.domain_model.dataset_provider import IDatasetProviderPlugin
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderDataset, ProviderParameter
@@ -74,7 +71,7 @@ DATAVERSE_SUBJECTS = [
 ]
 
 
-class DataverseProvider(ProviderApi, IDatasetProviderPlugin):
+class DataverseProvider(ProviderApi):
     """Dataverse API provider."""
 
     priority = ProviderPriority.HIGH
@@ -159,17 +156,15 @@ class DataverseProvider(ProviderApi, IDatasetProviderPlugin):
     ) -> "ExporterApi":
         """Create export manager for given dataset."""
 
-        @inject.autoparams()
-        def set_export_parameters(client_dispatcher: IClientDispatcher):
+        def set_export_parameters():
             """Set and validate required parameters for exporting for a provider."""
-            client = client_dispatcher.current_client
 
             server = dataverse_server
             config_base_url = "server_url"
             if not server:
-                server = client.get_value("dataverse", config_base_url)
+                server = get_value("dataverse", config_base_url)
             else:
-                client.set_value("dataverse", config_base_url, server, global_only=True)
+                set_value("dataverse", config_base_url, server, global_only=True)
 
             if not server:
                 raise errors.ParameterError("Dataverse server URL is required.")
@@ -183,12 +178,6 @@ class DataverseProvider(ProviderApi, IDatasetProviderPlugin):
 
         set_export_parameters()
         return DataverseExporter(dataset=dataset, server_url=self._server_url, dataverse_name=self._dataverse_name)
-
-    @classmethod
-    @hookimpl
-    def dataset_provider(cls) -> "Type[DataverseProvider]":
-        """The definition of the provider."""
-        return cls
 
 
 class DataverseImporter(RepositoryImporter):
@@ -291,7 +280,7 @@ class DataverseImporter(RepositoryImporter):
                 source=file.remote_url.geturl(),
                 filename=Path(file.name).name,
                 checksum="",
-                size_in_mb=bytes_to_unit(file.content_size, "mi"),
+                filesize=file.content_size,
                 filetype=file.file_format,
                 path="",
             )
@@ -365,7 +354,7 @@ class DataverseExporter(ExporterApi):
         """Endpoint for creation of access token."""
         return urllib.parse.urljoin(self._server_url, "/dataverseuser.xhtml?selectTab=apiTokenTab")
 
-    def export(self, client=None, **kwargs):
+    def export(self, **kwargs):
         """Execute export process."""
         from renku.domain_model.dataset import get_file_path_in_dataset
 
@@ -373,11 +362,12 @@ class DataverseExporter(ExporterApi):
         metadata = self._get_dataset_metadata()
         response = deposition.create_dataset(dataverse_name=self._dataverse_name, metadata=metadata)
         dataset_pid = response.json()["data"]["persistentId"]
+        repository = project_context.repository
 
         with communication.progress("Uploading files ...", total=len(self.dataset.files)) as progressbar:
             for file in self.dataset.files:
-                filepath = client.repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
-                path_in_dataset = get_file_path_in_dataset(client=client, dataset=self.dataset, dataset_file=file)
+                filepath = repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
+                path_in_dataset = get_file_path_in_dataset(dataset=self.dataset, dataset_file=file)
                 deposition.upload_file(full_path=filepath, path_in_dataset=path_in_dataset)
                 progressbar.update()
 

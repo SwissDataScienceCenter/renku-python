@@ -52,35 +52,35 @@ def test_activity_log(runner, project):
     assert "output-2: bar" in result.output
 
 
-def test_dataset_log(runner, project, client):
+def test_dataset_log(runner, project):
     """Test renku log for dataset."""
-    result = runner.invoke(cli, ["dataset", "create", "testset"])
+    result = runner.invoke(cli, ["dataset", "create", "test-set"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    with (client.path / "my_file").open("w") as fp:
+    with (project.path / "my_file").open("w") as fp:
         fp.write("dataset file")
 
-    result = runner.invoke(cli, ["dataset", "add", "--copy", "testset", "my_file"])
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "test-set", "my_file"])
     assert 0 == result.exit_code, format_result_exception(result)
     result = runner.invoke(
-        cli, ["dataset", "edit", "testset", "-t", "new title", "-d", "new description", "-k", "a", "-k", "b"]
+        cli, ["dataset", "edit", "test-set", "-t", "new title", "-d", "new description", "-k", "a", "-k", "b"]
     )
     assert 0 == result.exit_code, format_result_exception(result)
-    result = runner.invoke(cli, ["dataset", "unlink", "testset", "--include", "my_file"], input="y")
+    result = runner.invoke(cli, ["dataset", "unlink", "test-set", "--include", "my_file"], input="y")
     assert 0 == result.exit_code, format_result_exception(result)
-    result = runner.invoke(cli, ["dataset", "rm", "testset"], input="y")
+    result = runner.invoke(cli, ["dataset", "rm", "test-set"], input="y")
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["log"])
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Dataset testset" in result.output
+    assert "Dataset test-set" in result.output
     assert "Changes: created" in result.output
     assert "Changes: modified" in result.output
     assert "Changes: deleted" in result.output
     assert "Files modified" in result.output
-    assert "- data/testset/my_file" in result.output
-    assert "+ data/testset/my_file" in result.output
+    assert "- data/test-set/my_file" in result.output
+    assert "+ data/test-set/my_file" in result.output
     assert "Title set to: new title" in result.output
     assert "Description set to: new description" in result.output
     assert "Keywords modified" in result.output

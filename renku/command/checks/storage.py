@@ -17,23 +17,23 @@
 # limitations under the License.
 """Check for large files in Git history."""
 
-from renku.command.echo import WARNING
+from renku.command.util import WARNING
+from renku.core.storage import check_external_storage, check_lfs_migrate_info
 
 
-def check_lfs_info(client, **kwargs):
+def check_lfs_info(**_):
     """Checks if files in history should be in LFS.
 
     Args:
-        client: ``LocalClient``
-        kwargs: keyword arguments.
+        _: keyword arguments.
 
     Returns:
         Tuple of whether project structure is valid and string of found problems.
     """
-    if not client.check_external_storage():
+    if not check_external_storage():
         return True, None
 
-    files = client.check_lfs_migrate_info()
+    files = check_lfs_migrate_info()
 
     if not files:
         return True, None

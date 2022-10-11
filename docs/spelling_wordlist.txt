@@ -127,11 +127,13 @@ Keycloak
 ku
 kubernetes
 kus
+kwargs
 ld
 lefthand
 lfs
 localhost
 Matlab
+md5
 mergetool
 metadata
 microservices
@@ -176,6 +178,7 @@ programmatically
 py
 pyshacl
 rclone
+RClone
 rdf
 rdflib
 readme
@@ -256,6 +259,7 @@ tutorialLink
 txt
 typesystem
 Ubuntu
+Unmount
 ui
 unhandled
 unicode

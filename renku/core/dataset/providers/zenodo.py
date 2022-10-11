@@ -22,18 +22,16 @@ import os
 import pathlib
 import urllib
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Type
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
 from renku.core.dataset.providers.repository import RepositoryImporter, make_request
-from renku.core.plugin import hookimpl
 from renku.core.util import communication
 from renku.core.util.doi import is_doi
-from renku.core.util.file_size import bytes_to_unit
 from renku.core.util.urls import remove_credentials
-from renku.domain_model.dataset_provider import IDatasetProviderPlugin
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderDataset, ProviderParameter
@@ -54,7 +52,7 @@ ZENODO_FILES_URL = "depositions/{0}/files"
 ZENODO_NEW_DEPOSIT_URL = "depositions"
 
 
-class ZenodoProvider(ProviderApi, IDatasetProviderPlugin):
+class ZenodoProvider(ProviderApi):
     """Zenodo registry API provider."""
 
     priority = ProviderPriority.HIGH
@@ -115,12 +113,6 @@ class ZenodoProvider(ProviderApi, IDatasetProviderPlugin):
         """Create export manager for given dataset."""
         self._publish = publish
         return ZenodoExporter(dataset=dataset, publish=self._publish, tag=tag)
-
-    @classmethod
-    @hookimpl
-    def dataset_provider(cls) -> "Type[ZenodoProvider]":
-        """The definition of the provider."""
-        return cls
 
 
 class ZenodoImporter(RepositoryImporter):
@@ -227,7 +219,7 @@ class ZenodoImporter(RepositoryImporter):
                 source=file.remote_url.geturl(),
                 filename=Path(file.filename).name,
                 checksum=file.checksum,
-                size_in_mb=bytes_to_unit(file.filesize, "mi"),
+                filesize=file.filesize,
                 filetype=file.type,
                 path="",
             )
@@ -375,7 +367,7 @@ class ZenodoExporter(ExporterApi):
         jsonld["upload_type"] = "dataset"
         return jsonld
 
-    def export(self, client=None, **kwargs):
+    def export(self, **kwargs):
         """Execute entire export process."""
         # Step 1. Create new deposition
         deposition = ZenodoDeposition(exporter=self)
@@ -386,7 +378,9 @@ class ZenodoExporter(ExporterApi):
         # Step 3. Upload all files to created deposition
         with communication.progress("Uploading files ...", total=len(self.dataset.files)) as progressbar:
             for file in self.dataset.files:
-                filepath = client.repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
+                filepath = project_context.repository.copy_content_to_file(
+                    path=file.entity.path, checksum=file.entity.checksum
+                )
                 deposition.upload_file(filepath, path_in_repo=file.entity.path)
                 progressbar.update()
 

@@ -20,24 +20,22 @@
 import re
 import urllib
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Tuple, Type
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials, ProviderPriority
 from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata, ProviderParameter
-from renku.core.plugin import hookimpl
-from renku.core.util.dispatcher import get_repository, get_storage
+from renku.core.util.dispatcher import get_storage
 from renku.core.util.metadata import prompt_for_credentials
 from renku.core.util.urls import get_scheme, is_uri_subfolder
 from renku.domain_model.dataset import RemoteEntity
-from renku.domain_model.dataset_provider import IDatasetProviderPlugin
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
-    from renku.core.management.client import LocalClient
     from renku.domain_model.dataset import Dataset
 
 
-class S3Provider(ProviderApi, IDatasetProviderPlugin):
+class S3Provider(ProviderApi):
     """S3 provider."""
 
     priority = ProviderPriority.HIGHEST
@@ -47,12 +45,6 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
         super().__init__(uri=uri)
         bucket, _ = extract_bucket_and_path(uri=self.uri)
         self._bucket: str = bucket
-
-    @classmethod
-    @hookimpl
-    def dataset_provider(cls) -> "Type[S3Provider]":
-        """The definition of the provider."""
-        return cls
 
     @staticmethod
     def supports(uri: str) -> bool:
@@ -86,7 +78,7 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
         ]
 
     @staticmethod
-    def add(client: "LocalClient", uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
+    def add(uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
         """Add files from a URI to a dataset."""
         dataset = kwargs.get("dataset")
         if dataset and dataset.storage and not dataset.storage.lower().startswith("s3://"):
@@ -94,7 +86,7 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
                 "Files from S3 buckets can only be added to datasets with S3 storage, "
                 f"the dataset {dataset.name} has non-S3 storage {dataset.storage}."
             )
-        if re.search(r"[\*\?]", uri):
+        if re.search(r"[*?]", uri):
             raise errors.ParameterError("Wildcards like '*' or '?' are not supported in the uri for S3 datasets.")
         provider = S3Provider(uri=uri)
         credentials = S3Credentials(provider=provider)
@@ -108,15 +100,16 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
         if not storage.exists(uri):
             raise errors.ParameterError(f"S3 bucket '{uri}' doesn't exists.")
 
+        repository = project_context.repository
         hashes = storage.get_hashes(uri=uri)
         return [
             DatasetAddMetadata(
-                entity_path=Path(destination).relative_to(client.repository.path) / hash.path,
+                entity_path=Path(destination).relative_to(repository.path) / hash.path,
                 url=hash.base_uri,
                 action=DatasetAddAction.NONE,
                 based_on=RemoteEntity(checksum=hash.hash if hash.hash else "", url=hash.base_uri, path=hash.path),
                 source=Path(hash.full_uri),
-                destination=Path(destination).relative_to(client.repository.path),
+                destination=Path(destination).relative_to(repository.path),
                 gitignored=True,
             )
             for hash in hashes
@@ -138,14 +131,13 @@ class S3Provider(ProviderApi, IDatasetProviderPlugin):
         if not storage.exists(self.uri):
             raise errors.ParameterError(f"S3 bucket '{self.bucket}' doesn't exists.")
 
-        repository = get_repository()
-        repository.add_ignored_pattern(pattern=str(dataset.get_datadir()))
+        project_context.repository.add_ignored_pattern(pattern=str(dataset.get_datadir()))
 
 
 class S3Credentials(ProviderCredentials):
     """S3-specific credentials."""
 
-    def __init__(self, provider: S3Provider):
+    def __init__(self, provider: ProviderApi):
         super().__init__(provider=provider)
 
     @staticmethod

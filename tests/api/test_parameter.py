@@ -29,7 +29,7 @@ from renku.core.workflow.plan_factory import (
 from renku.ui.api import Input, Output, Parameter, Project
 
 
-def test_indirect_inputs(client):
+def test_indirect_inputs(project):
     """Test defining indirect inputs."""
     path_1 = "/some/absolute/path"
     path_2 = "relative/path"
@@ -52,7 +52,7 @@ def test_indirect_inputs(client):
     assert {input_1.name, input_2.name, input_3.name} == set(yaml.safe_load(content).keys())
 
 
-def test_indirect_outputs(client):
+def test_indirect_outputs(project):
     """Test defining indirect outputs."""
     path_1 = "/some/absolute/path"
     path_2 = "relative/path"
@@ -75,7 +75,7 @@ def test_indirect_outputs(client):
     assert {output_1.name, output_2.name, output_3.name} == set(yaml.safe_load(content).keys())
 
 
-def test_indirect_inputs_outputs(client):
+def test_indirect_inputs_outputs(project):
     """Test defining indirect inputs and outputs together."""
     path_1 = "/some/absolute/path"
     path_2 = "relative/path"
@@ -86,8 +86,8 @@ def test_indirect_inputs_outputs(client):
     assert Path(path_1) == input_1.path
     assert Path(path_2) == output_2.path
 
-    input_content = get_indirect_inputs_path(client.path).read_text()
-    output_content = get_indirect_outputs_path(client.path).read_text()
+    input_content = get_indirect_inputs_path(project.path).read_text()
+    output_content = get_indirect_outputs_path(project.path).read_text()
 
     assert path_1 == list(yaml.safe_load(input_content).values())[0]
     assert input_1.name == list(yaml.safe_load(input_content).keys())[0]
@@ -95,23 +95,23 @@ def test_indirect_inputs_outputs(client):
     assert output_2.name == list(yaml.safe_load(output_content).keys())[0]
 
 
-def test_open_inputs(client):
+def test_open_inputs(project):
     """Test inputs can be passed to open function."""
     with open(Input("input-1", "input.txt"), "w") as f:
         f.write("some data")
 
-    assert "some data" == (client.path / "input.txt").read_text()
+    assert "some data" == (project.path / "input.txt").read_text()
 
 
-def test_open_outputs(client):
+def test_open_outputs(project):
     """Test outputs can be passed to open function."""
     with open(Output("output-1", "output.txt"), "w") as f:
         f.write("some data")
 
-    assert "some data" == (client.path / "output.txt").read_text()
+    assert "some data" == (project.path / "output.txt").read_text()
 
 
-def test_parameters(client):
+def test_parameters(project):
     """Test defining parameters."""
     p1 = Parameter("parameter 1", 42)
 
@@ -122,7 +122,7 @@ def test_parameters(client):
 
     assert (42, "42", 42.42) == (p1.value, p2.value, p3.value)
 
-    data = read_indirect_parameters(client.path)
+    data = read_indirect_parameters(project.path)
 
     assert {"parameter 1", "param-2", "parameter_3 "} == set(data.keys())
     assert {42, "42", 42.42} == set(data.values())

@@ -26,10 +26,10 @@ from persistent.list import PersistentList
 from renku.command.command_builder.command import inject
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.util.os import are_paths_related
 from renku.core.workflow.activity import create_activity_graph
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.activity import Activity, ActivityCollection
 from renku.domain_model.workflow.plan import Plan
 from renku.infrastructure.database import Database
@@ -39,27 +39,25 @@ from renku.infrastructure.gateway.database_gateway import ActivityDownstreamRela
 class ActivityGateway(IActivityGateway):
     """Gateway for activity database operations."""
 
-    database_dispatcher = inject.attr(IDatabaseDispatcher)
-
     def get_by_id(self, id: str) -> Optional[Activity]:
         """Get an activity by id."""
-        return self.database_dispatcher.current_database["activities"].get(id)
+        return project_context.database["activities"].get(id)
 
     def get_all_usage_paths(self) -> List[str]:
         """Return all usage paths."""
-        database = self.database_dispatcher.current_database
+        database = project_context.database
 
         return list(a for a in database["activities-by-usage"].keys())
 
     def get_all_generation_paths(self) -> List[str]:
         """Return all generation paths."""
-        database = self.database_dispatcher.current_database
+        database = project_context.database
 
         return list(database["activities-by-generation"].keys())
 
     def get_activities_by_usage(self, path: Union[Path, str], checksum: Optional[str] = None) -> List[Activity]:
         """Return the list of all activities that use a path."""
-        by_usage = self.database_dispatcher.current_database["activities-by-usage"]
+        by_usage = project_context.database["activities-by-usage"]
         activities = by_usage.get(str(path), [])
 
         if not checksum:
@@ -77,7 +75,7 @@ class ActivityGateway(IActivityGateway):
 
     def get_activities_by_generation(self, path: Union[Path, str], checksum: Optional[str] = None) -> List[Activity]:
         """Return the list of all activities that generate a path."""
-        by_generation = self.database_dispatcher.current_database["activities-by-generation"]
+        by_generation = project_context.database["activities-by-generation"]
         activities = by_generation.get(str(path), [])
 
         activities = (a for a in activities if not a.deleted)
@@ -98,7 +96,7 @@ class ActivityGateway(IActivityGateway):
     def get_downstream_activities(self, activity: Activity, max_depth=None) -> Set[Activity]:
         """Get downstream activities that depend on this activity."""
         # NOTE: since indices are populated one way when adding an activity, we need to query two indices
-        database = self.database_dispatcher.current_database
+        database = project_context.database
 
         activity_catalog = database["activity-catalog"]
         tok = activity_catalog.tokenizeQuery
@@ -108,7 +106,7 @@ class ActivityGateway(IActivityGateway):
 
     def get_upstream_activities(self, activity: Activity, max_depth=None) -> Set[Activity]:
         """Get upstream activities that this activity depends on them."""
-        database = self.database_dispatcher.current_database
+        database = project_context.database
 
         activity_catalog = database["activity-catalog"]
         tok = activity_catalog.tokenizeQuery
@@ -118,7 +116,7 @@ class ActivityGateway(IActivityGateway):
 
     def get_downstream_activity_chains(self, activity: Activity) -> List[Tuple[Activity, ...]]:
         """Get a list of tuples of all downstream paths of this activity."""
-        database = self.database_dispatcher.current_database
+        database = project_context.database
 
         activity_catalog = database["activity-catalog"]
         tok = activity_catalog.tokenizeQuery
@@ -129,7 +127,7 @@ class ActivityGateway(IActivityGateway):
 
     def get_upstream_activity_chains(self, activity: Activity) -> List[Tuple[Activity, ...]]:
         """Get a list of tuples of all upstream paths of this activity."""
-        database = self.database_dispatcher.current_database
+        database = project_context.database
 
         activity_catalog = database["activity-catalog"]
         tok = activity_catalog.tokenizeQuery
@@ -140,13 +138,13 @@ class ActivityGateway(IActivityGateway):
 
     def get_all_activities(self, include_deleted: bool = False) -> List[Activity]:
         """Get all activities in the project."""
-        database = self.database_dispatcher.current_database
+        database = project_context.database
         return [a for a in database["activities"].values() if not a.deleted or include_deleted]
 
     def add(self, activity: Activity):
         """Add an ``Activity`` to storage."""
 
-        database = self.database_dispatcher.current_database
+        database = project_context.database
 
         database["activities"].add(activity)
 
@@ -172,13 +170,13 @@ class ActivityGateway(IActivityGateway):
 
     def add_activity_collection(self, activity_collection: ActivityCollection):
         """Add an ``ActivityCollection`` to storage."""
-        database = self.database_dispatcher.current_database
+        database = project_context.database
 
         database["activity-collections"].add(activity_collection)
 
     def get_all_activity_collections(self) -> List[ActivityCollection]:
         """Get all activity collections in the project."""
-        return list(self.database_dispatcher.current_database["activity-collections"].values())
+        return list(project_context.database["activity-collections"].values())
 
     def remove(self, activity: Activity, keep_reference: bool = True, force: bool = False):
         """Remove an activity from the storage.
@@ -188,7 +186,7 @@ class ActivityGateway(IActivityGateway):
             keep_reference(bool): Whether to keep the activity in the ``activities`` index or not.
             force(bool): Force-delete the activity even if it has downstream activities.
         """
-        database = self.database_dispatcher.current_database
+        database = project_context.database
 
         if not force and self.get_downstream_activities(activity):
             raise errors.ActivityDownstreamNotEmptyError(activity)

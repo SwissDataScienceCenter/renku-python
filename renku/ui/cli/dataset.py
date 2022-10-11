@@ -44,22 +44,16 @@ Create an empty dataset inside a Renku project:
    :alt: Create a Dataset
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset create <dataset>
-   :description: Create a new dataset.
-   :extended:
-
-Edit a dataset's metadata:
-
-By passing a storage URI with the ``--storage`` option, you can tell Renku that
-the data for the dataset is stored in a remote storage. At the moment, Renku
-supports only S3 backends. For example:
+   :description: Create a new dataset called <dataset>.
+   :target: rp,ui
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset ls
    :description: List all datasets in the project.
-   :extended:
+   :target: rp,ui
 
 You can select which columns to display by using ``--columns`` to pass a
 comma-separated list of column names:
@@ -105,10 +99,10 @@ Deleting a dataset:
 
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset rm <dataset>
    :description: Remove a dataset.
-   :extended:
+   :target: rp
 
 Creating a dataset with a storage backend:
 
@@ -135,11 +129,11 @@ Adding data to the dataset:
    :alt: Add data to a Dataset
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset add <dataset> <url>
    :description: Add data from <url> to a dataset. <url> can be a local
                  file path, an http(s) address or a Git git+http or git+ssh repository.
-   :extended:
+   :target: rp,ui
 
 This will copy the contents of ``data-url`` to the dataset and add it
 to the dataset metadata.
@@ -205,12 +199,12 @@ will yield:
             datafile
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset add <dataset> --source <path>
              [--destination <rel-path>] <git-url>
    :description: Add only data in <path> from Git. With --destination:
                  location the data is copied to.
-   :extended:
+   :target: rp
 
 To add a specific version of files, use ``--ref`` option for selecting a
 branch, commit, or tag. The value passed to this option must be a valid
@@ -246,10 +240,10 @@ without requiring the ``--delete`` argument. Modifying those datasets locally
 will prevent them from being updated.
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset update <dataset>
    :description: Update files in a dataset based on their source.
-   :extended:
+   :target: rp
 
 The update command also checks for file changes in the project and updates
 datasets' metadata accordingly. You can automatically add new files from
@@ -288,11 +282,11 @@ point in time. A tag can be added like this:
     $ renku dataset tag my-dataset 1.0 -d "Version 1.0 tag"
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset tag <dataset> <tag> [-d <desc>]
    :description: Add a tag to the current version of the dataset, with
                  description <desc>.
-   :extended:
+   :target: rp
 
 A list of all tags can be seen by running:
 
@@ -304,10 +298,10 @@ A list of all tags can be seen by running:
     2020-09-19 17:29:13  1.0     Version 1.0 tag  my-dataset  6c19a8d31545b...
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset ls-tags <dataset>
    :description: List all tags for a dataset.
-   :extended:
+   :target: rp
 
 
 A tag can be removed with:
@@ -317,10 +311,10 @@ A tag can be removed with:
     $ renku dataset rm-tags my-dataset 1.0
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset rm-tags <dataset> <tags...>
    :description: Remove tags from a dataset.
-   :extended:
+   :target: rp
 
 
 Importing data from other Renku projects:
@@ -380,11 +374,11 @@ You can change the directory a dataset is imported to by using the
 ``--datadir`` option.
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset import <uri>
    :description: Import a dataset. <uri> can be a Renku, Zenodo or Dataverse
                  URL or DOI.
-   :extended:
+   :target: rp
 
 Exporting data to an external provider:
 
@@ -399,11 +393,11 @@ exported. The remote version will be set to the local tag that is being
 exported.
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset export <dataset> <provider>
    :description: Export the dataset <dataset> to <provider>. Providers:
                  Zenodo, Dataverse.
-   :extended:
+   :target: rp
 
 To export to a Dataverse provider you must pass Dataverse server's URL and
 the name of the parent dataverse where the dataset will be exported to.
@@ -452,10 +446,10 @@ Listing all files in the project associated with a dataset.
     my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file3  *
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset ls-files
    :description: List all dataset files in project.
-   :extended:
+   :target: rp
 
 You can select which columns to display by using ``--columns`` to pass a
 comma-separated list of column names:
@@ -499,10 +493,10 @@ Unlink a file from a dataset:
     OK
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset unlink <dataset> [--include <path|pattern>]
    :description: Remove files from a dataset.
-   :extended:
+   :target: rp
 
 Unlink all files within a directory from a dataset:
 
@@ -764,7 +758,7 @@ def show(tag, name):
 
     click.echo(click.style("Name: ", bold=True, fg=color.MAGENTA) + click.style(ds["name"], bold=True))
     click.echo(click.style("Created: ", bold=True, fg=color.MAGENTA) + (ds.get("created_at", "") or ""))
-    click.echo(click.style("Data Directory: ", bold=True, fg=color.MAGENTA) + str(ds.get("datadir", "") or ""))
+    click.echo(click.style("Data Directory: ", bold=True, fg=color.MAGENTA) + str(ds.get("data_directory", "") or ""))
 
     creators = []
     for creator in ds.get("creators", []):
@@ -819,16 +813,26 @@ def add(name, urls, force, overwrite, create, destination, datadir, **kwargs):
     from renku.ui.cli.utils.callback import ClickCallback
 
     communicator = ClickCallback()
-    add_to_dataset_command().with_communicator(communicator).build().execute(
-        urls=urls,
-        dataset_name=name,
-        force=force,
-        overwrite=overwrite,
-        create=create,
-        destination=destination,
-        datadir=datadir,
-        **kwargs,
+    result = (
+        add_to_dataset_command()
+        .with_communicator(communicator)
+        .build()
+        .execute(
+            urls=list(urls),
+            dataset_name=name,
+            force=force,
+            overwrite=overwrite,
+            create=create,
+            destination=destination,
+            datadir=datadir,
+            **kwargs,
+        )
     )
+
+    dataset = result.output
+    if dataset.storage:
+        communicator.info(f"To download files from the remote storage use 'renku dataset pull {dataset.name}'")
+
     click.secho("OK", fg=color.GREEN)
 
 
@@ -1160,3 +1164,45 @@ def update(
                 click.echo(f"The following files will be deleted{message}:\n\n{files}\n")
 
         ctx.exit(1)
+
+
+@dataset.command(hidden=True)
+@click.argument("name", shell_complete=_complete_datasets)
+@click.option(
+    "-l",
+    "--location",
+    default=None,
+    type=click.Path(exists=False, file_okay=False, writable=True),
+    help="A directory to copy data to, instead of the dataset's data directory.",
+)
+def pull(name, location):
+    """Pull data from an external storage."""
+    from renku.command.dataset import pull_external_data_command
+    from renku.ui.cli.utils.callback import ClickCallback
+
+    communicator = ClickCallback()
+    pull_external_data_command().with_communicator(communicator).build().execute(name=name, location=location)
+
+
+@dataset.command(hidden=True)
+@click.argument("name", shell_complete=_complete_datasets)
+@click.option(
+    "-e",
+    "--existing",
+    default=None,
+    type=click.Path(exists=True, file_okay=False),
+    help="Use an existing mount point instead of mounting the remote storage.",
+)
+@click.option("-u", "--unmount", is_flag=True, help="Unmount dataset's external storage.")
+@click.option("-y", "--yes", is_flag=True, help="No prompt when removing non-empty dataset's data directory.")
+def mount(name, existing, unmount, yes):
+    """Mount an external storage in the dataset's data directory."""
+    from renku.command.dataset import mount_external_storage_command
+    from renku.ui.cli.utils.callback import ClickCallback
+
+    command = mount_external_storage_command(unmount=unmount).with_communicator(ClickCallback()).build()
+
+    if unmount:
+        command.execute(name=name)
+    else:
+        command.execute(name=name, existing=existing, yes=yes)

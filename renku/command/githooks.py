@@ -17,32 +17,13 @@
 # limitations under the License.
 """Install and uninstall Git hooks."""
 
-from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
-from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.management.githooks import install, uninstall
-from renku.core.util import communication
-
-
-@inject.autoparams()
-def _install_githooks(force, client_dispatcher: IClientDispatcher):
-    """Install Git hooks.
-
-    Args:
-        force: Don't prompt user.
-        client_dispatcher(IClientDispatcher):  Injected client dispatcher.
-    """
-    client = client_dispatcher.current_client
-
-    warning_messages = install(force=force, repository=client.repository)
-    if warning_messages:
-        for message in warning_messages:
-            communication.warn(message)
+from renku.core.githooks import install, uninstall
 
 
 def install_githooks_command():
     """Command to install Git hooks."""
-    return Command().command(_install_githooks)
+    return Command().command(install)
 
 
 def uninstall_githooks_command():

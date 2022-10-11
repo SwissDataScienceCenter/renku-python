@@ -26,6 +26,7 @@ import pytest
 
 from renku.core.template.template import fetch_templates_source
 from renku.core.util.os import normalize_to_ascii
+from renku.domain_model.project_context import project_context
 from renku.domain_model.template import TEMPLATE_MANIFEST, TemplatesManifest
 from renku.infrastructure.repository import Repository
 from renku.ui.service.errors import (
@@ -122,13 +123,14 @@ def test_read_manifest_from_wrong_template(svc_client_with_templates, template_u
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
-def test_create_project_from_template(svc_client_templates_creation, client_database_injection_manager):
+def test_create_project_from_template(svc_client_templates_creation, with_injection):
     """Check creating project from a valid template."""
-    from renku.core.management.client import LocalClient
     from renku.ui.service.serializers.headers import RenkuHeaders
     from renku.ui.service.utils import CACHE_PROJECTS_PATH
 
     svc_client, headers, payload, rm_remote = svc_client_templates_creation
+
+    payload["data_directory"] = "my-folder/"
 
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=headers)
 
@@ -152,9 +154,10 @@ def test_create_project_from_template(svc_client_templates_creation, client_data
     assert reader.get_value("user", "email") == user_data["email"]
     assert reader.get_value("user", "name") == user_data["name"]
 
-    client = LocalClient(project_path)
-    with client_database_injection_manager(client):
-        project = client.project
+    with project_context.with_path(project_path):
+        with with_injection():
+            project = project_context.project
+        assert project_context.datadir == "my-folder/"
 
     expected_id = f"/projects/{payload['project_namespace']}/{stripped_name}"
     assert expected_id == project.id

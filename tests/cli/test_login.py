@@ -27,27 +27,27 @@ from tests.cli.fixtures.cli_gateway import ACCESS_TOKEN, ENDPOINT
 from tests.utils import format_result_exception
 
 
-def test_login(runner, client_with_remote, mock_login, client_database_injection_manager):
+def test_login(runner, project_with_remote, mock_login, with_injection):
     """Test login command."""
     remote_url = f"https://{ENDPOINT}/gitlab/namespace/project"
-    client_with_remote.repository.remotes[0].set_url(remote_url)
+    project_with_remote.repository.remotes[0].set_url(remote_url)
 
     result = runner.invoke(cli, ["login", "--git", ENDPOINT], input="y")
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    with client_database_injection_manager(client_with_remote):
+    with with_injection():
         assert ACCESS_TOKEN == read_renku_token(ENDPOINT)
         assert ACCESS_TOKEN == read_renku_token("", get_endpoint_from_remote=True)
-        credential = client_with_remote.repository.get_configuration().get_value("credential", "helper")
+        credential = project_with_remote.repository.get_configuration().get_value("credential", "helper")
         assert f"!renku credentials --hostname {ENDPOINT}" == credential
-        assert {"origin", "renku-backup-origin"} == {r.name for r in client_with_remote.repository.remotes}
-        assert remote_url == client_with_remote.repository.remotes["renku-backup-origin"].url
-        assert client_with_remote.repository.remotes["origin"].url.startswith(f"https://{ENDPOINT}/repo")
+        assert {"origin", "renku-backup-origin"} == {r.name for r in project_with_remote.repository.remotes}
+        assert remote_url == project_with_remote.repository.remotes["renku-backup-origin"].url
+        assert project_with_remote.repository.remotes["origin"].url.startswith(f"https://{ENDPOINT}/repo")
 
 
 @pytest.mark.parametrize("args", [[], ["--git"]])
-def test_login_no_endpoint(runner, client, mock_login, args):
+def test_login_no_endpoint(runner, project, mock_login, args):
     """Test login command with no endpoint."""
     result = runner.invoke(cli, ["login"] + args)
 
@@ -56,7 +56,7 @@ def test_login_no_endpoint(runner, client, mock_login, args):
 
 
 @pytest.mark.parametrize("args", [[], ["--git"]])
-def test_login_no_endpoint_and_remote(runner, client_with_remote, mock_login, args):
+def test_login_no_endpoint_and_remote(runner, project_with_remote, mock_login, args):
     """Test login command with no endpoint and with project remote."""
     result = runner.invoke(cli, ["login"] + args)
 
@@ -65,7 +65,7 @@ def test_login_no_endpoint_and_remote(runner, client_with_remote, mock_login, ar
 
 
 @pytest.mark.parametrize("args", [[], ["--git"]])
-def test_login_invalid_endpoint(runner, client, mock_login, args):
+def test_login_invalid_endpoint(runner, project, mock_login, args):
     """Test login with and invalid endpoint."""
     result = runner.invoke(cli, ["login", "http: //example.com"] + args)
 
@@ -73,7 +73,7 @@ def test_login_invalid_endpoint(runner, client, mock_login, args):
     assert "Invalid endpoint: `http: //example.com`." in result.output
 
 
-def test_login_with_config_endpoint(runner, client, mock_login):
+def test_login_with_config_endpoint(runner, project, mock_login):
     """Test login command with endpoint in config file."""
     assert 0 == runner.invoke(cli, ["config", "set", "endpoint", ENDPOINT]).exit_code
 
@@ -83,7 +83,7 @@ def test_login_with_config_endpoint(runner, client, mock_login):
     assert "Successfully logged in." in result.output
 
 
-def test_logout(runner, client, mock_login, client_database_injection_manager):
+def test_logout(runner, project, mock_login, with_injection):
     """Test logout removes all credentials."""
     assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
 
@@ -91,22 +91,22 @@ def test_logout(runner, client, mock_login, client_database_injection_manager):
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    with client_database_injection_manager(client):
+    with with_injection():
         assert read_renku_token(ENDPOINT) is None
     assert "Successfully logged out." in result.output
 
 
-def test_repeated_login(runner, client, mock_login, client_database_injection_manager):
+def test_repeated_login(runner, project, mock_login, with_injection):
     """Test multiple logins."""
     assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
 
     assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
 
-    with client_database_injection_manager(client):
+    with with_injection():
         assert ACCESS_TOKEN == read_renku_token(ENDPOINT)
 
 
-def test_repeated_logout(runner, client, mock_login, client_database_injection_manager):
+def test_repeated_logout(runner, project, mock_login, with_injection):
     """Test multiple logouts."""
     assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
 
@@ -114,11 +114,11 @@ def test_repeated_logout(runner, client, mock_login, client_database_injection_m
 
     assert 0 == runner.invoke(cli, ["logout"]).exit_code
 
-    with client_database_injection_manager(client):
+    with with_injection():
         assert read_renku_token(ENDPOINT) is None
 
 
-def test_login_to_multiple_endpoints(runner, client, mock_login, client_database_injection_manager):
+def test_login_to_multiple_endpoints(runner, project, mock_login, with_injection):
     """Test login to multiple endpoints."""
     second_endpoint, second_token = "second.endpoint", "second-token"
     mock_login.add_device_auth(second_endpoint, second_token)
@@ -126,12 +126,12 @@ def test_login_to_multiple_endpoints(runner, client, mock_login, client_database
 
     assert 0 == runner.invoke(cli, ["login", second_endpoint]).exit_code
 
-    with client_database_injection_manager(client):
+    with with_injection():
         assert ACCESS_TOKEN == read_renku_token(ENDPOINT)
         assert second_token == read_renku_token(second_endpoint)
 
 
-def test_logout_all(runner, client, mock_login, client_database_injection_manager):
+def test_logout_all(runner, project, mock_login, with_injection):
     """Test logout with no endpoint removes multiple credentials."""
     second_endpoint, second_token = "second.endpoint", "second-token"
     mock_login.add_device_auth(second_endpoint, second_token)
@@ -140,12 +140,12 @@ def test_logout_all(runner, client, mock_login, client_database_injection_manage
 
     assert 0 == runner.invoke(cli, ["logout"]).exit_code
 
-    with client_database_injection_manager(client):
+    with with_injection():
         assert read_renku_token(ENDPOINT) is None
         assert read_renku_token(second_endpoint) is None
 
 
-def test_logout_one_endpoint(runner, client, mock_login, client_database_injection_manager):
+def test_logout_one_endpoint(runner, project, mock_login, with_injection):
     """Test logout from an endpoint removes credentials for that endpoint only."""
     second_endpoint, second_token = "second.endpoint", "second-token"
     mock_login.add_device_auth(second_endpoint, second_token)
@@ -154,22 +154,22 @@ def test_logout_one_endpoint(runner, client, mock_login, client_database_injecti
 
     assert 0 == runner.invoke(cli, ["logout", ENDPOINT]).exit_code
 
-    with client_database_injection_manager(client):
+    with with_injection():
         assert read_renku_token(ENDPOINT) is None
         assert second_token == read_renku_token(second_endpoint)
 
 
-def test_logout_non_existing_endpoint(runner, client, mock_login, client_database_injection_manager):
+def test_logout_non_existing_endpoint(runner, project, mock_login, with_injection):
     """Test logout from a non-existing endpoint does nothing."""
     assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
 
     assert 0 == runner.invoke(cli, ["logout", "non.existing"]).exit_code
 
-    with client_database_injection_manager(client):
+    with with_injection():
         assert read_renku_token(ENDPOINT) is not None
 
 
-def test_login_git_abort(runner, client_with_remote):
+def test_login_git_abort(runner, project_with_remote):
     """Test login command."""
     result = runner.invoke(cli, ["login", "--git", ENDPOINT], input="n")
 
@@ -178,7 +178,7 @@ def test_login_git_abort(runner, client_with_remote):
     assert "Aborted!" in result.output
 
 
-def test_login_non_git(runner, client, directory_tree):
+def test_login_non_git(runner, project, directory_tree):
     """Test login inside a non-git directory."""
     with chdir(directory_tree):
         result = runner.invoke(cli, ["login", "--git", ENDPOINT])
@@ -187,7 +187,7 @@ def test_login_non_git(runner, client, directory_tree):
     assert "Cannot use '--git' flag outside a project" in result.output
 
 
-def test_logout_non_git(runner, client, directory_tree):
+def test_logout_non_git(runner, project, directory_tree):
     """Test logout inside a non-git directory."""
     with chdir(directory_tree):
         result = runner.invoke(cli, ["logout"])
@@ -196,11 +196,11 @@ def test_logout_non_git(runner, client, directory_tree):
     assert "Successfully logged out." in result.output
 
 
-def test_login_git_no_unique_remote(runner, client_with_remote):
+def test_login_git_no_unique_remote(runner, project_with_remote):
     """Test login from a git directory with no clear remote."""
-    client_with_remote.repository.remotes.add("second-remote", "second-remote.net")
-    client_with_remote.repository.branches.add("branch-with-no-remote")
-    client_with_remote.repository.checkout("branch-with-no-remote")
+    project_with_remote.repository.remotes.add("second-remote", "second-remote.net")
+    project_with_remote.repository.branches.add("branch-with-no-remote")
+    project_with_remote.repository.checkout("branch-with-no-remote")
 
     result = runner.invoke(cli, ["login", "--git", ENDPOINT])
 
@@ -208,9 +208,9 @@ def test_login_git_no_unique_remote(runner, client_with_remote):
     assert "Cannot find a unique remote URL for project." in result.output
 
 
-def test_repeated_git_login(runner, client_with_remote, mock_login):
+def test_repeated_git_login(runner, project_with_remote, mock_login):
     """Test multiple logins to git repo fails to change remote URL after first time."""
-    remote_url = client_with_remote.repository.remotes[0].url
+    remote_url = project_with_remote.repository.remotes[0].url
 
     assert 0 == runner.invoke(cli, ["login", "--git", "--yes", ENDPOINT]).exit_code
 
@@ -219,31 +219,33 @@ def test_repeated_git_login(runner, client_with_remote, mock_login):
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Backup remote 'renku-backup-origin' already exists. Ignoring '--git' flag." in result.output
     assert "Error: Cannot create backup remote 'renku-backup-origin' for" not in result.output
-    assert {"origin", "renku-backup-origin"} == {r.name for r in client_with_remote.repository.remotes}
-    assert remote_url == client_with_remote.repository.remotes["renku-backup-origin"].url
-    assert client_with_remote.repository.remotes["origin"].url.startswith(f"https://{ENDPOINT}/repo")
-    assert not client_with_remote.repository.remotes["origin"].url.startswith(f"https://{ENDPOINT}/repo/repo")
+    assert {"origin", "renku-backup-origin"} == {r.name for r in project_with_remote.repository.remotes}
+    assert remote_url == project_with_remote.repository.remotes["renku-backup-origin"].url
+    assert project_with_remote.repository.remotes["origin"].url.startswith(f"https://{ENDPOINT}/repo")
+    assert not project_with_remote.repository.remotes["origin"].url.startswith(f"https://{ENDPOINT}/repo/repo")
 
 
-def test_logout_git(runner, client_with_remote, mock_login):
+def test_logout_git(runner, project_with_remote, mock_login):
     """Test logout removes backup remotes and restores original remote url."""
-    remote_url = client_with_remote.repository.remotes[0].url
+    remote_url = project_with_remote.repository.remotes[0].url
 
     assert 0 == runner.invoke(cli, ["login", "--git", "--yes", ENDPOINT]).exit_code
 
     result = runner.invoke(cli, ["logout"])
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert {"origin"} == {r.name for r in client_with_remote.repository.remotes}
-    assert remote_url == client_with_remote.repository.remotes["origin"].url
+    assert {"origin"} == {r.name for r in project_with_remote.repository.remotes}
+    assert remote_url == project_with_remote.repository.remotes["origin"].url
     try:
-        credential = client_with_remote.repository.get_configuration(scope="local").remove_value("credential", "helper")
+        credential = project_with_remote.repository.get_configuration(scope="local").remove_value(
+            "credential", "helper"
+        )
     except errors.GitConfigurationError:  # NOTE: If already logged out, ``git config --unset`` raises an exception
         credential = None
     assert credential is None
 
 
-def test_token(runner, client_with_remote, mock_login):
+def test_token(runner, project_with_remote, mock_login):
     """Test get credential when valid credential exist."""
     assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
 
@@ -254,7 +256,7 @@ def test_token(runner, client_with_remote, mock_login):
     assert f"password={ACCESS_TOKEN}\n" in result.output
 
 
-def test_token_non_existing_hostname(runner, client_with_remote, mock_login):
+def test_token_non_existing_hostname(runner, project_with_remote, mock_login):
     """Test get credential for a different hostname."""
     assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
 
@@ -265,7 +267,7 @@ def test_token_non_existing_hostname(runner, client_with_remote, mock_login):
     assert "password=\n" in result.output
 
 
-def test_token_no_credential(runner, client_with_remote, mock_login):
+def test_token_no_credential(runner, project_with_remote, mock_login):
     """Test get credential when valid credential doesn't exist."""
     assert 0 == runner.invoke(cli, ["logout"]).exit_code
 
@@ -276,7 +278,7 @@ def test_token_no_credential(runner, client_with_remote, mock_login):
     assert "password=\n" in result.output
 
 
-def test_token_invalid_command(runner, client_with_remote, mock_login, client_database_injection_manager):
+def test_token_invalid_command(runner, project_with_remote, mock_login, with_injection):
     """Test call credential helper with a command other than 'get'."""
     assert 0 == runner.invoke(cli, ["login", ENDPOINT]).exit_code
 
@@ -285,5 +287,5 @@ def test_token_invalid_command(runner, client_with_remote, mock_login, client_da
     assert 0 == result.exit_code, format_result_exception(result)
     assert "" == result.output
 
-    with client_database_injection_manager(client_with_remote):
+    with with_injection():
         assert read_renku_token(ENDPOINT) is not None

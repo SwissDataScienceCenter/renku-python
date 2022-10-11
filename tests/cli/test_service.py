@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test ``service`` command."""
+
 from pathlib import Path
 from time import sleep
 
@@ -122,6 +123,7 @@ def test_service_ps(runner, svc_client_cache, tmpdir):
 
 
 @pytest.mark.serial
+@pytest.mark.service
 @pytest.mark.redis
 @pytest.mark.integration
 @retry_failed

@@ -89,10 +89,6 @@ Datasets
    :members:
    :show-inheritance:
 
-.. automodule:: renku.core.dataset.constant
-   :members:
-   :show-inheritance:
-
 .. automodule:: renku.core.dataset.context
    :members:
    :show-inheritance:
@@ -288,16 +284,10 @@ Utilities
    :members:
    :show-inheritance:
 
-Repository
-----------
-
-.. automodule:: renku.core.management.repository
-   :members:
-
 Git Internals
 -------------
 
-.. automodule:: renku.core.management.git
+.. automodule:: renku.core.git
    :members:
 
 .. automodule:: renku.domain_model.git

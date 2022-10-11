@@ -38,18 +38,23 @@ class ProjectShowRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySch
 class ProjectShowResponse(Schema):
     """Response schema for project show."""
 
-    id = fields.String(description="The ID of this project")
-    name = fields.String(description="The name of the project")
-    description = fields.String(default=None, description="The optional description of the project")
-    created = fields.DateTime(description="The date this project was created at.")
-    creator = fields.Nested(DatasetCreators, description="The creator of this project")
-    agent = fields.String(description="The renku version last used on this project")
+    id = fields.String(metadata={"description": "The ID of this project"})
+    name = fields.String(metadata={"description": "The name of the project"})
+    description = fields.String(dump_default=None, metadata={"description": "The optional description of the project"})
+    created = fields.DateTime(metadata={"description": "The date this project was created at."})
+    creator = fields.Nested(DatasetCreators, metadata={"description": "The creator of this project"})
+    agent = fields.String(metadata={"description": "The renku version last used on this project"})
     custom_metadata = fields.Dict(
-        default=None, attribute="annotations", description="Custom JSON-LD metadata of the project"
+        dump_default=None, attribute="annotations", metadata={"description": "Custom JSON-LD metadata of the project"}
     )
-    template_info = fields.String(description="The template that was used in the creation of this project")
+    template_info = fields.String(
+        metadata={"description": "The template that was used in the creation of this project"}
+    )
     keywords = fields.List(
-        fields.String(), default=None, Missing=None, description="They keywords associated with this project"
+        fields.String(),
+        dump_default=None,
+        load_default=None,
+        metadata={"description": "They keywords associated with this project"},
     )
 
 
@@ -62,17 +67,17 @@ class ProjectShowResponseRPC(RenkuSyncSchema):
 class ProjectEditRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema):
     """Project edit metadata request."""
 
-    description = fields.String(description="New description for the project")
-    creator = fields.Nested(DatasetCreators, description="New creator for the project")
-    custom_metadata = fields.Dict(allow_none=True, description="New custom JSON-LD metadata")
-    keywords = fields.List(fields.String(), allow_none=True, description="New keyword(s) for the project")
+    description = fields.String(metadata={"description": "New description for the project"})
+    creator = fields.Nested(DatasetCreators, metadata={"description": "New creator for the project"})
+    custom_metadata = fields.Dict(allow_none=True, metadata={"description": "New custom JSON-LD metadata"})
+    keywords = fields.List(fields.String(), allow_none=True, metadata={"description": "New keyword(s) for the project"})
 
 
 class ProjectEditResponse(RenkuSyncSchema):
     """Project edit metadata response."""
 
-    edited = fields.Dict(required=True, description="Key:value paris of edited metadata")
-    warning = fields.String(description="Warnings raised when editing metadata")
+    edited = fields.Dict(required=True, metadata={"description": "Key:value paris of edited metadata"})
+    warning = fields.String(metadata={"description": "Warnings raised when editing metadata"})
 
 
 class ProjectEditResponseRPC(JsonRPCResponse):
@@ -84,11 +89,17 @@ class ProjectEditResponseRPC(JsonRPCResponse):
 class ProjectLockStatusRequest(LocalRepositorySchema, RemoteRepositoryBaseSchema):
     """Project lock status request."""
 
+    timeout = fields.Float(
+        dump_default=0.0,
+        load_default=0.0,
+        metadata={"description": "Maximum amount of time to wait trying to acquire a lock when checking status."},
+    )
+
 
 class ProjectLockStatusResponse(Schema):
     """Project lock status response."""
 
-    locked = fields.Boolean(required=True, description="Whether or not a project is locked for writing")
+    locked = fields.Boolean(required=True, metadata={"description": "Whether or not a project is locked for writing"})
 
 
 class ProjectLockStatusResponseRPC(JsonRPCResponse):

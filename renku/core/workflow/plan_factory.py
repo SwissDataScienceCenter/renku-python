@@ -24,7 +24,7 @@ import time
 from contextlib import contextmanager
 from itertools import chain
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
 
 import click
 import yaml
@@ -32,14 +32,15 @@ import yaml
 from renku.command.command_builder.command import inject
 from renku.core import errors
 from renku.core.constant import RENKU_HOME, RENKU_TMP
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.plugin.pluginmanager import get_plugin_manager
+from renku.core.storage import check_external_storage, track_paths_in_storage
 from renku.core.util.git import is_path_safe
 from renku.core.util.metadata import is_external_file
 from renku.core.util.os import get_absolute_path, get_relative_path, is_subpath
 from renku.core.workflow.types import PATH_OBJECTS, Directory, File
 from renku.domain_model.datastructures import DirectoryTree
+from renku.domain_model.project_context import project_context
 from renku.domain_model.workflow.parameter import (
     DIRECTORY_MIME_TYPE,
     CommandInput,
@@ -61,12 +62,12 @@ class PlanFactory:
 
     def __init__(
         self,
-        command_line: str,
+        command_line: Union[str, List[str], Tuple[str, ...]],
         explicit_inputs: Optional[List[Tuple[str, str]]] = None,
         explicit_outputs: Optional[List[Tuple[str, str]]] = None,
         explicit_parameters: Optional[List[Tuple[str, Optional[str]]]] = None,
-        directory: Optional[str] = None,
-        working_dir: Optional[str] = None,
+        directory: Optional[Union[Path, str]] = None,
+        working_dir: Optional[Union[Path, str]] = None,
         no_input_detection: bool = False,
         no_output_detection: bool = False,
         success_codes: Optional[List[int]] = None,
@@ -160,7 +161,7 @@ class PlanFactory:
             # (e.g. /bin/bash)
             if is_subpath(path, base=self.working_dir):
                 return path
-            elif is_external_file(path=candidate, client_path=self.working_dir):
+            elif is_external_file(path=candidate, project_path=self.working_dir):
                 return Path(os.path.abspath(candidate))
 
         return None
@@ -256,7 +257,7 @@ class PlanFactory:
             assert isinstance(default, File)
             self.add_command_input(default_value=str(default), encoding_format=default.mime_type, position=position)
 
-    def add_outputs(self, candidates: Set[Tuple[Union[Path, str], Optional[str]]]):
+    def add_outputs(self, candidates: Iterable[Tuple[Union[Path, str], Optional[str]]]):
         """Yield detected output and changed command input parameter."""
         # TODO what to do with duplicate paths & inputs with same defaults
         candidate_paths = list(map(lambda x: x[0], candidates))
@@ -563,13 +564,11 @@ class PlanFactory:
                 self.add_command_parameter(explicit_parameter, name=name)
 
     @contextmanager
-    @inject.autoparams()
-    def watch(self, client_dispatcher: IClientDispatcher, no_output=False):
+    def watch(self, no_output=False):
         """Watch a Renku repository for changes to detect outputs."""
-        client = client_dispatcher.current_client
-        client.check_external_storage()
+        check_external_storage()
 
-        repository = client.repository
+        repository = project_context.repository
 
         # Remove indirect files list if any
         delete_indirect_files_list(self.working_dir)
@@ -578,7 +577,7 @@ class PlanFactory:
 
         pm = get_plugin_manager()
         pm.hook.pre_run(tool=self)
-        self.existing_directories = {str(p.relative_to(client.path)) for p in client.path.glob("**/")}
+        self.existing_directories = {str(p.relative_to(project_context.path)) for p in project_context.path.glob("**/")}
 
         yield self
 
@@ -644,10 +643,10 @@ class PlanFactory:
             if not no_output and not output_paths:
                 raise errors.OutputsNotFound()
 
-            if client.check_external_storage():
-                client.track_paths_in_storage(*output_paths)
+            if check_external_storage():
+                track_paths_in_storage(*output_paths)
 
-            client.repository.add(*output_paths)
+            repository.add(*output_paths)
 
     def _path_relative_to_root(self, path) -> str:
         """Make a potentially relative path in a subdirectory relative to the root of the repository."""
@@ -768,28 +767,28 @@ def delete_indirect_files_list(working_dir):
             pass
 
 
-def get_indirect_inputs_path(client_path):
+def get_indirect_inputs_path(project_path):
     """Return path to file that contains indirect inputs list."""
-    parent = _get_indirect_parent_path(client_path)
+    parent = _get_indirect_parent_path(project_path)
     return parent / "inputs.yml"
 
 
-def get_indirect_outputs_path(client_path):
+def get_indirect_outputs_path(project_path):
     """Return path to file that contains indirect outputs list."""
-    parent = _get_indirect_parent_path(client_path)
+    parent = _get_indirect_parent_path(project_path)
     return parent / "outputs.yml"
 
 
-def get_indirect_parameters_path(client_path):
+def get_indirect_parameters_path(project_path):
     """Return path to file that contains indirect parameters list."""
-    parent = _get_indirect_parent_path(client_path)
+    parent = _get_indirect_parent_path(project_path)
     return parent / "parameters.yml"
 
 
-def _get_indirect_parent_path(client_path):
+def _get_indirect_parent_path(project_path):
     renku_indirect_path = os.getenv("RENKU_INDIRECT_PATH") or ""
 
-    base = (Path(client_path) / RENKU_HOME / RENKU_TMP).resolve()
+    base = (Path(project_path) / RENKU_HOME / RENKU_TMP).resolve()
     parent = (base / renku_indirect_path).resolve()
 
     try:

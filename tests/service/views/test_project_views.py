@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service project view tests."""
 import json
+import time
 
 import portalocker
 import pytest
@@ -174,7 +175,10 @@ def test_get_lock_status_unlocked(svc_client_setup):
     svc_client, headers, project_id, _, _ = svc_client_setup
 
     response = svc_client.get(
-        "/1.1/project.lock_status", query_string={"project_id": project_id}, headers=headers, content_type="text/xml"
+        "/1.1/project.lock_status",
+        query_string={"project_id": project_id, "timeout": 1.0},
+        headers=headers,
+        content_type="text/xml",
     )
 
     assert_rpc_response(response)
@@ -192,7 +196,11 @@ def test_get_lock_status_locked(svc_client_setup):
         return portalocker.Lock(f"{repository.path}.lock", flags=portalocker.LOCK_EX, timeout=0)
 
     with mock_lock():
-        response = svc_client.get("/1.1/project.lock_status", query_string={"project_id": project_id}, headers=headers)
+        start = time.monotonic()
+        response = svc_client.get(
+            "/1.1/project.lock_status", query_string={"project_id": project_id, "timeout": 1.0}, headers=headers
+        )
+        assert time.monotonic() - start >= 1.0
 
     assert_rpc_response(response)
     assert {"locked"} == set(response.json["result"].keys())

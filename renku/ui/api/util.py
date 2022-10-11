@@ -20,6 +20,8 @@ r"""Renku API utilities."""
 from functools import wraps
 from typing import TYPE_CHECKING, Optional
 
+from renku.domain_model.project_context import project_context
+
 if TYPE_CHECKING:
     from renku.infrastructure.gateway.activity_gateway import ActivityGateway
     from renku.infrastructure.gateway.plan_gateway import PlanGateway
@@ -58,34 +60,24 @@ def ensure_project_context(fn):
 @ensure_project_context
 def get_activity_gateway(project) -> Optional["ActivityGateway"]:
     """Return an instance of ActivityGateway when inside a Renku project."""
-    from renku.command.command_builder.database_dispatcher import DatabaseDispatcher
     from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 
-    client = project.client
-    if not client:
+    try:
+        _ = project_context.repository
+    except ValueError:
         return None
 
-    database_dispatcher = DatabaseDispatcher()
-    database_dispatcher.push_database_to_stack(client.database_path)
-    activity_gateway = ActivityGateway()
-    activity_gateway.database_dispatcher = database_dispatcher
-
-    return activity_gateway
+    return ActivityGateway()
 
 
 @ensure_project_context
 def get_plan_gateway(project) -> Optional["PlanGateway"]:
     """Return an instance of PlanGateway when inside a Renku project."""
-    from renku.command.command_builder.database_dispatcher import DatabaseDispatcher
     from renku.infrastructure.gateway.plan_gateway import PlanGateway
 
-    client = project.client
-    if not client:
+    try:
+        _ = project_context.repository
+    except ValueError:
         return None
 
-    database_dispatcher = DatabaseDispatcher()
-    database_dispatcher.push_database_to_stack(client.database_path)
-    plan_gateway = PlanGateway()
-    plan_gateway.database_dispatcher = database_dispatcher
-
-    return plan_gateway
+    return PlanGateway()

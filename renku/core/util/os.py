@@ -18,11 +18,15 @@
 """OS utility functions."""
 
 import fnmatch
+import glob
 import hashlib
+import io
 import os
 import re
+import shutil
+import subprocess
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Sequence, Union
+from typing import Any, BinaryIO, Dict, Generator, List, Optional, Sequence, Union
 
 from renku.core import errors
 
@@ -35,14 +39,17 @@ def get_relative_path_to_cwd(path: Union[Path, str]) -> str:
     return os.path.relpath(absolute_path, os.getcwd())
 
 
-def get_absolute_path(path: Union[Path, str], base: Union[Path, str] = None) -> str:
-    """Return absolute normalized path without resolving symlinks."""
+def get_absolute_path(path: Union[Path, str], base: Union[Path, str] = None, resolve_symlinks: bool = False) -> str:
+    """Return absolute normalized path."""
     if base is not None:
         base = Path(base).resolve()
         path = os.path.join(base, path)
 
-    # NOTE: Do not use os.path.realpath or Path.resolve() because they resolve symlinks
-    return os.path.abspath(path)
+    if resolve_symlinks:
+        return os.path.realpath(path)
+    else:
+        # NOTE: Do not use os.path.realpath or Path.resolve() because they resolve symlinks
+        return os.path.abspath(path)
 
 
 def get_safe_relative_path(path: Union[Path, str], base: Union[Path, str]) -> Path:
@@ -75,7 +82,7 @@ def is_subpath(path: Union[Path, str], base: Union[Path, str]) -> bool:
     return get_relative_path(path, base) is not None
 
 
-def get_relative_paths(base: Union[Path, str], paths: Sequence[Union[Path, str]]) -> List[str]:
+def get_relative_paths(paths: Sequence[Union[Path, str]], base: Union[Path, str]) -> List[str]:
     """Return a list of paths relative to a base path."""
     relative_paths = []
 
@@ -115,6 +122,59 @@ def is_path_empty(path: Union[Path, str]) -> bool:
     return not any(subpaths)
 
 
+def create_symlink(path: Union[Path, str], symlink_path: Union[Path, str], overwrite: bool = True) -> None:
+    """Create a symlink that points from symlink_path to path."""
+    # NOTE: Don't resolve symlink path
+    absolute_symlink_path = get_absolute_path(symlink_path)
+    absolute_path = get_absolute_path(path, resolve_symlinks=True)
+
+    Path(absolute_symlink_path).parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        if overwrite:
+            delete_path(absolute_symlink_path)
+        os.symlink(absolute_path, absolute_symlink_path)
+    except OSError:
+        raise errors.InvalidFileOperation(f"Cannot create symlink from '{symlink_path}' to '{path}'")
+
+
+def delete_path(path: Union[Path, str]) -> None:
+    """Delete a file/directory/symlink."""
+    try:
+        os.remove(path)
+    except FileNotFoundError:
+        pass
+    except (PermissionError, IsADirectoryError, OSError):
+        shutil.rmtree(path, ignore_errors=True)
+
+
+def unmount_path(path: Union[Path, str]) -> None:
+    """Unmount the given path and ignore all errors."""
+
+    def execute_command(*command: str) -> bool:
+        try:
+            subprocess.run(command, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return False
+        else:
+            return True
+
+    path = str(path)
+
+    # NOTE: A symlink means that the path is not mounted itself but it's a link to a mount-point; just delete the link.
+    if os.path.islink(path):
+        os.remove(path)
+        return
+
+    # NOTE: ``fusermount`` is available on linux and ``umount`` is for macOS
+    result = False
+    if shutil.which("fusermount"):
+        result = execute_command("fusermount", "-u", "-z", path)
+
+    if not result:
+        execute_command("umount", path)
+
+
 def is_ascii(data):
     """Check if provided string contains only ascii characters."""
     return len(data) == len(data.encode())
@@ -139,7 +199,7 @@ def normalize_to_ascii(input_string, sep="-"):
     )
 
 
-def delete_file(filepath: Union[Path, str], ignore_errors: bool = True, follow_symlinks: bool = False):
+def delete_dataset_file(filepath: Union[Path, str], ignore_errors: bool = True, follow_symlinks: bool = False):
     """Remove a file/symlink and its pointer file (for external files)."""
     path = Path(filepath)
     link = None
@@ -165,32 +225,34 @@ def delete_file(filepath: Union[Path, str], ignore_errors: bool = True, follow_s
             pass
 
 
-def hash_file(path: Union[Path, str]) -> Optional[str]:
+def hash_file(path: Union[Path, str], hash_type: str = "sha256") -> Optional[str]:
     """Calculate the sha256 hash of a file."""
     if not os.path.exists(path):
         return None
 
-    sha256_hash = hashlib.sha256()
-
     with open(path, "rb") as f:
-        for byte_block in iter(lambda: f.read(BLOCK_SIZE), b""):
-            sha256_hash.update(byte_block)
-
-    return sha256_hash.hexdigest()
+        return hash_file_descriptor(f, hash_type)
 
 
-def hash_str(content: str):
+def hash_str(content: str, hash_type: str = "sha256") -> str:
     """Calculate the sha256 hash of a string."""
-    sha256_hash = hashlib.sha256()
-
     content_bytes = content.encode("utf-8")
 
-    blocks = (len(content_bytes) - 1) // BLOCK_SIZE + 1
-    for i in range(blocks):
-        byte_block = content_bytes[i * BLOCK_SIZE : (i + 1) * BLOCK_SIZE]
-        sha256_hash.update(byte_block)
+    with io.BytesIO(content_bytes) as f:
+        return hash_file_descriptor(f, hash_type)
 
-    return sha256_hash.hexdigest()
+
+def hash_file_descriptor(file: BinaryIO, hash_type: str = "sha256") -> str:
+    """Hash content of a file descriptor."""
+    hash_type = hash_type.lower()
+    assert hash_type in ("sha256", "md5")
+
+    hash_value = hashlib.sha256() if hash_type == "sha256" else hashlib.md5()
+
+    for byte_block in iter(lambda: file.read(BLOCK_SIZE), b""):
+        hash_value.update(byte_block)
+
+    return hash_value.hexdigest()
 
 
 def safe_read_yaml(file: str) -> Dict[str, Any]:
@@ -220,3 +282,20 @@ def matches(path: Union[Path, str], pattern: str) -> bool:
             return True
 
     return False
+
+
+def expand_directories(paths):
+    """Expand directory with all files it contains."""
+    processed_paths = set()
+    for path in paths:
+        for matched_path in glob.iglob(str(path), recursive=True):
+            if matched_path in processed_paths:
+                continue
+            path_ = Path(matched_path)
+            if path_.is_dir():
+                for expanded in path_.rglob("*"):
+                    processed_paths.add(str(expanded))
+                    yield str(expanded)
+            else:
+                processed_paths.add(matched_path)
+                yield matched_path

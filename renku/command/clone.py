@@ -16,17 +16,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Clone a Renku repo along with all Renku-specific initializations."""
-from renku.command.command_builder import inject
+
 from renku.command.command_builder.command import Command
-from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
+from renku.domain_model.project_context import project_context
 
 
-@inject.autoparams()
 def _project_clone(
     url,
-    client_dispatcher: IClientDispatcher,
-    database_dispatcher: IDatabaseDispatcher,
     path=None,
     install_githooks=True,
     install_mergetool=True,
@@ -43,8 +39,6 @@ def _project_clone(
 
     Args:
         url: Git URL to clone.
-        client_dispatcher(IClientDispatcher):  Injected client dispatcher.
-        database_dispatcher(IDatabaseDispatcher): Injected database dispatcher.
         path: Path to clone to (Default value = None).
         install_githooks: Whether to install the pre-commit hook or not (Default value = True).
         install_mergetool: Whether to install the renku metadata git mergetool or not (Default value = True).
@@ -61,10 +55,10 @@ def _project_clone(
         Tuple of cloned ``Repository`` and whether it's a Renku project or not.
     """
     from renku.command.mergetool import setup_mergetool
-    from renku.core.management.migrate import is_renku_project
+    from renku.core.migration.migrate import is_renku_project
     from renku.core.util.git import clone_renku_repository
 
-    install_lfs = client_dispatcher.current_client.external_storage_requested
+    install_lfs = project_context.external_storage_requested
 
     repository = clone_renku_repository(
         url=url,
@@ -81,17 +75,11 @@ def _project_clone(
         use_renku_credentials=use_renku_credentials,
     )
 
-    client_dispatcher.push_client_to_stack(path=repository.path, external_storage_requested=install_lfs)
-    database_dispatcher.push_database_to_stack(client_dispatcher.current_client.database_path)
-
-    try:
+    with project_context.with_path(repository.path):
         project_initialized = is_renku_project()
 
         if project_initialized and install_mergetool:
             setup_mergetool(with_attributes=False)
-    finally:
-        database_dispatcher.pop_database()
-        client_dispatcher.pop_client()
 
     return repository, project_initialized
 

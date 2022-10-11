@@ -24,12 +24,13 @@ import pytest
 
 from renku.command.schema.dataset import dump_dataset_as_jsonld
 from renku.core.util.shacl import validate_graph
+from renku.domain_model.project_context import project_context
 from renku.ui.cli import cli
 from tests.utils import load_dataset
 
 
 @pytest.mark.skip(reason="FIXME correct this when implementing renku graph export")
-def test_dataset_shacl(tmpdir, runner, project, client):
+def test_dataset_shacl(tmpdir, runner, project):
     """Test dataset metadata structure."""
     force_dataset_path = Path(__file__).parent.parent.parent / "data" / "force_dataset_shacl.json"
 
@@ -50,7 +51,7 @@ def test_dataset_shacl(tmpdir, runner, project, client):
 
     runner.invoke(cli, ["dataset", "tag", "dataset", "1.0"], catch_exceptions=False)
 
-    dataset = load_dataset(client, "dataset")
+    dataset = load_dataset("dataset")
     g = dump_dataset_as_jsonld(dataset)
     rdf = pyld.jsonld.to_rdf(g, options={"format": "application/n-quads", "produceGeneralizedRdf": True})
 
@@ -67,15 +68,15 @@ def test_dataset_shacl(tmpdir, runner, project, client):
     assert r is True, t
 
 
-def test_project_shacl(project, client, client_database_injection_manager):
+def test_project_shacl(project, with_injection):
     """Test project metadata structure."""
     from renku.command.schema.project import ProjectSchema
     from renku.domain_model.provenance.agent import Person
 
     path = Path(__file__).parent.parent.parent / "data" / "force_project_shacl.json"
 
-    with client_database_injection_manager(client):
-        project = client.project
+    with with_injection():
+        project = project_context.project
         project.creator = Person(email="johndoe@example.com", name="Johnny Doe")
 
         g = ProjectSchema().dump(project)

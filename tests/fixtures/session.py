@@ -28,9 +28,8 @@ def dummy_session_provider():
     from pathlib import Path
     from uuid import uuid4
 
-    from renku.core.management.client import LocalClient
     from renku.core.plugin import hookimpl
-    from renku.core.plugin import pluginmanager as pluginmanager
+    from renku.core.plugin import pluginmanager as plugin_manager
     from renku.domain_model.session import ISessionProvider, Session
 
     class _DummySessionProvider(ISessionProvider):
@@ -57,7 +56,6 @@ def dummy_session_provider():
             image_name: str,
             project_name: str,
             config: Optional[Dict[str, Any]],
-            client: LocalClient,
             cpu_request: Optional[float] = None,
             mem_request: Optional[str] = None,
             disk_request: Optional[str] = None,
@@ -82,7 +80,7 @@ def dummy_session_provider():
             pass
 
     plugin = _DummySessionProvider()
-    pm = pluginmanager.get_plugin_manager()
+    pm = plugin_manager.get_plugin_manager()
     pm.register(plugin)
 
     yield

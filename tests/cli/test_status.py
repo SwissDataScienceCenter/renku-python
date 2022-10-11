@@ -19,19 +19,16 @@
 
 import os
 
-from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 
 
 def test_status_exit_codes(runner, project, subdirectory):
     """Test status check returns 0 when up-to-date and 1 otherwise."""
-    source = os.path.join(project, "source.txt")
-    output = os.path.join(project, "data", "output.txt")
+    source = os.path.join(project.path, "source.txt")
+    output = os.path.join(project.path, "data", "output.txt")
 
-    repo = Repository(project)
-
-    write_and_commit_file(repo, source, "content")
+    write_and_commit_file(project.repository, source, "content")
 
     result = runner.invoke(cli, ["run", "cp", source, output])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -43,7 +40,7 @@ def test_status_exit_codes(runner, project, subdirectory):
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    write_and_commit_file(repo, source, "new content")
+    write_and_commit_file(project.repository, source, "new content")
 
     result = runner.invoke(cli, ["status"])
 

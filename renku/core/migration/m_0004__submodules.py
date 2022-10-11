@@ -16,35 +16,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Migrate datasets based on Git submodules."""
+
 import glob
 import os
 import shutil
 from pathlib import Path
 
-from renku.command.command_builder.command import inject
 from renku.core import errors
-from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
-from renku.core.management.client import LocalClient
-from renku.core.migration.m_0009__new_metadata_storage import _fetch_datasets
-from renku.core.migration.models.v3 import DatasetFileSchemaV3, get_client_datasets
+from renku.core.migration.m_0009__new_metadata_storage import fetch_datasets
+from renku.core.migration.models.v3 import DatasetFileSchemaV3, get_project_datasets
 from renku.core.migration.models.v9 import DatasetFile, OldDatasetFileSchema, generate_file_id, generate_label
 from renku.core.util.urls import remove_credentials
+from renku.domain_model.project_context import project_context
 from renku.infrastructure.repository import Repository
 
 
 def migrate(migration_context):
     """Migration function."""
-    _migrate_submodule_based_datasets(migration_context.client)
+    _migrate_submodule_based_datasets(migration_context)
 
 
-@inject.autoparams()
-def _migrate_submodule_based_datasets(
-    client, client_dispatcher: IClientDispatcher, database_dispatcher: IDatabaseDispatcher
-):
-    from renku.core.management.migrate import is_project_unsupported, migrate
+def _migrate_submodule_based_datasets(migration_context):
+    from renku.core.migration.migrate import is_project_unsupported, migrate_project
 
-    submodules = client.repository.submodules
+    submodules = project_context.repository.submodules
     if len(submodules) == 0:
         return
 
@@ -53,9 +48,9 @@ def _migrate_submodule_based_datasets(
 
     submodules.update()
 
-    for dataset in get_client_datasets(client):
+    for dataset in get_project_datasets():
         for file_ in dataset.files:
-            path = client.path / file_.path
+            path = project_context.path / file_.path
             if not path.is_symlink():
                 continue
 
@@ -75,49 +70,41 @@ def _migrate_submodule_based_datasets(
 
     submodules_urls = {s.relative_path: s.url for s in submodules}
 
-    remote_clients = {p: LocalClient(p) for p in repo_paths}
-
-    for remote_client in remote_clients.values():
-        client_dispatcher.push_created_client_to_stack(remote_client)
-        database_dispatcher.push_database_to_stack(remote_client.database_path, commit=True)
-
-        try:
+    for repo_path in repo_paths:
+        with project_context.with_path(repo_path, save_changes=True):
             if not is_project_unsupported():
-                migrate(skip_template_update=True, skip_docker_update=True)
-        finally:
-            database_dispatcher.pop_database()
-            client_dispatcher.pop_client()
+                migrate_project(skip_template_update=True, skip_docker_update=True)
 
     metadata = {}
 
     for path, target, repo_path in symlinks:
-        remote_client = remote_clients[repo_path]
         path_within_repo = target.relative_to(repo_path)
 
         repo_is_remote = ".renku/vendors/local" not in str(repo_path)
         based_on = None
-        submodule_path = repo_path.relative_to(client.path)
+        submodule_path = repo_path.relative_to(project_context.path)
 
         url = submodules_urls.get(submodule_path, "")
 
         if repo_is_remote:
-            based_on = _fetch_file_metadata(remote_client, path_within_repo)
-            if based_on:
-                based_on.url = url
-                based_on.based_on = None
-            else:
-                based_on = DatasetFile.from_revision(remote_client, path=path_within_repo, url=url)
-            data = OldDatasetFileSchema(client=remote_client).dump(based_on)
-            based_on = DatasetFileSchemaV3(client=remote_client).load(data)
+            with project_context.with_path(repo_path):
+                based_on = _fetch_file_metadata(migration_context=migration_context, path=path_within_repo)
+                if based_on:
+                    based_on.url = url
+                    based_on.based_on = None
+                else:
+                    based_on = DatasetFile.from_revision(path=path_within_repo, url=url)
+                data = OldDatasetFileSchema().dump(based_on)
+                based_on = DatasetFileSchemaV3().load(data)
         else:
             if url:
                 full_path = Path(url) / path_within_repo
-                rel_path = os.path.relpath(full_path, client.path)
+                rel_path = os.path.relpath(full_path, project_context.path)
                 url = f"file://{rel_path}"
 
         metadata[path] = (based_on, url)
 
-        path = client.path / path
+        path = project_context.path / path
         path.unlink()
 
         try:
@@ -125,30 +112,38 @@ def _migrate_submodule_based_datasets(
         except FileNotFoundError:
             raise errors.InvalidFileOperation(f"File was not found: {target}")
 
+    repository = project_context.repository
+
     for submodule in submodules:
         if str(submodule.relative_path).startswith(".renku/vendors/"):
             try:
-                client.repository.submodules.remove(submodule, force=True)
+                repository.submodules.remove(submodule, force=True)
             except errors.GitError:
                 pass
 
-    for dataset in get_client_datasets(client):
+    for dataset in get_project_datasets():
         for file_ in dataset.files:
             if file_.path in metadata:
                 based_on, url = metadata[file_.path]
                 file_.based_on = based_on
                 file_.url = remove_credentials(url)
-                file_.commit = client.repository.get_previous_commit(file_.path)
-                file_._id = generate_file_id(client, hexsha=file_.commit.hexsha, path=file_.path)
+                file_.commit = repository.get_previous_commit(file_.path)
+                file_._id = generate_file_id(hexsha=file_.commit.hexsha, path=file_.path)
                 file_._label = generate_label(file_.path, file_.commit.hexsha)
 
         dataset.to_yaml()
 
 
-def _fetch_file_metadata(client, path):
+def _fetch_file_metadata(migration_context, path):
     """Return metadata for a single file."""
-    paths = glob.glob(f"{client.path}/.renku/datasets/*/*.yml" "")
-    for dataset in _fetch_datasets(client, client.repository.head.commit.hexsha, paths, [])[0]:
+    datasets, _ = fetch_datasets(
+        migration_context=migration_context,
+        revision=project_context.repository.head.commit.hexsha,
+        paths=glob.glob(f"{project_context.path}/.renku/datasets/*/*.yml" ""),
+        deleted_paths=[],
+    )
+
+    for dataset in datasets:
         for file in dataset.files:
             if file.entity.path == path:
                 return file

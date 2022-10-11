@@ -136,6 +136,6 @@ def prompt_tag_selection(tags) -> Optional[DatasetTag]:
 
         if selection == 1:
             return None
-        elif selection > 1 and selection <= len(tags) + 1:
+        elif 1 < selection <= len(tags) + 1:
             return tags[selection - 2]
         communication.warn(f"{selection} is not a valid choice. Selected value has to be between 1 and {len(tags) + 1}")

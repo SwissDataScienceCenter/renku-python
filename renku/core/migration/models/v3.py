@@ -27,6 +27,7 @@ from renku.core.migration.models.v9 import generate_project_id, wfprov
 from renku.core.migration.utils import OLD_METADATA_PATH, generate_dataset_tag_id, generate_url_id, get_datasets_path
 from renku.core.util import yaml
 from renku.core.util.urls import get_host
+from renku.domain_model.project_context import project_context
 
 
 class Base:
@@ -34,8 +35,6 @@ class Base:
 
     def __init__(self, **kwargs):
         """Initialize an instance."""
-        self.client = None
-
         kwargs.setdefault("_id", None)
 
         for k, v in kwargs.items():
@@ -50,11 +49,11 @@ class Person(Base):
     name = None
 
     @classmethod
-    def from_repository(cls, repository, client=None):
+    def from_repository(cls, repository):
         """Create an instance from a repository."""
         user = repository.get_user()
         instance = cls(name=user.name, email=user.email)
-        instance.fix_id(client)
+        instance.fix_id()
         return instance
 
     def __init__(self, **kwargs):
@@ -69,12 +68,10 @@ class Person(Base):
         affiliation = f" [{self.affiliation}]" if self.affiliation else ""
         return f"{self.name}{email}{affiliation}"
 
-    def fix_id(self, client=None):
+    def fix_id(self):
         """Fixes the id of a Person if it is not set."""
         if not self._id or "mailto:None" in self._id or self._id.startswith("_:"):
-            if not client and self.client:
-                client = self.client
-            hostname = get_host(client)
+            hostname = get_host()
             self._id = OldPerson.generate_id(email=self.email, full_identity=self.full_identity, hostname=hostname)
 
 
@@ -84,19 +81,19 @@ class Project(Base):
     agent_version = None
 
     @classmethod
-    def from_yaml(cls, path, client):
+    def from_yaml(cls, path):
         """Read content from YAML file."""
         data = yaml.read_yaml(path)
         self = ProjectSchemaV3().load(data)
 
         if not self.creator:
-            self.creator = Person.from_repository(client.repository)
+            self.creator = Person.from_repository(repository=project_context.repository)
 
         if not self.name:
-            self.name = client.remote.get("name")
+            self.name = project_context.remote.name
 
         if not self._id or "NULL/NULL" in self._id:
-            self._id = generate_project_id(client=client, name=self.name, creator=self.creator)
+            self._id = generate_project_id(name=self.name, creator=self.creator)
 
         return self
 
@@ -133,7 +130,7 @@ class DatasetTag(Base):
         super().__init__(**kwargs)
 
         if not self._id or self._id.startswith("_:"):
-            self._id = generate_dataset_tag_id(client=self.client, name=self.name, commit=self.commit)
+            self._id = generate_dataset_tag_id(name=self.name, commit=self.commit)
 
 
 class Language(Base):
@@ -157,17 +154,17 @@ class Url(Base):
             self.url_str = self.url
 
         if not self._id or self._id.startswith("_:"):
-            self._id = generate_url_id(client=self.client, url_str=self.url_str, url_id=self.url_id)
+            self._id = generate_url_id(url_str=self.url_str, url_id=self.url_id)
 
 
 class Dataset(Base):
     """Dataset migration model."""
 
     @classmethod
-    def from_yaml(cls, path, client=None, commit=None):
+    def from_yaml(cls, path, commit=None):
         """Read content from YAML file."""
         data = yaml.read_yaml(path)
-        self = DatasetSchemaV3(client=client, commit=commit).load(data)
+        self = DatasetSchemaV3(commit=commit).load(data)
         self._metadata_path = path
         return self
 
@@ -190,16 +187,16 @@ class PersonSchemaV3(JsonLDSchema):
 
     _id = fields.Id()
     name = StringList(schema.name)
-    email = fields.String(schema.email, missing=None)
-    label = StringList(rdfs.label, missing=None)
-    affiliation = StringList(schema.affiliation, missing=None)
-    alternate_name = StringList(schema.alternateName, missing=None)
+    email = fields.String(schema.email, load_default=None)
+    label = StringList(rdfs.label, load_default=None)
+    affiliation = StringList(schema.affiliation, load_default=None)
+    alternate_name = StringList(schema.alternateName, load_default=None)
 
     @post_load
     def make_instance(self, data, **kwargs):
         """Transform loaded dict into corresponding object."""
         instance = JsonLDSchema.make_instance(self, data, **kwargs)
-        instance.fix_id(client=None)
+        instance.fix_id()
         return instance
 
 
@@ -213,12 +210,12 @@ class ProjectSchemaV3(JsonLDSchema):
         model = Project
         unknown = EXCLUDE
 
-    _id = fields.Id(missing=None)
-    agent_version = fields.String(schema.agent, missing="pre-0.11.0")
-    name = fields.String(schema.name, missing=None)
-    created = DateTimeList(schema.dateCreated, missing=None)
-    version = StringList(schema.schemaVersion, missing="1")
-    creator = fields.Nested(schema.creator, PersonSchemaV3, missing=None)
+    _id = fields.Id(load_default=None)
+    agent_version = fields.String(schema.agent, load_default="pre-0.11.0")
+    name = fields.String(schema.name, load_default=None)
+    created = DateTimeList(schema.dateCreated, load_default=None)
+    version = StringList(schema.schemaVersion, load_default="1")
+    creator = fields.Nested(schema.creator, PersonSchemaV3, load_default=None)
 
 
 class CreatorMixinSchemaV3(JsonLDSchema):
@@ -230,10 +227,10 @@ class CreatorMixinSchemaV3(JsonLDSchema):
 class CommitMixinSchemaV3(JsonLDSchema):
     """CommitMixin schema."""
 
-    _id = fields.Id(missing=None)
-    _label = fields.String(rdfs.label, missing=None)
-    _project = fields.Nested(schema.isPartOf, ProjectSchemaV3, missing=None)
-    path = fields.String(prov.atLocation, missing=None)
+    _id = fields.Id(load_default=None)
+    _label = fields.String(rdfs.label, load_default=None)
+    _project = fields.Nested(schema.isPartOf, ProjectSchemaV3, load_default=None)
+    path = fields.String(prov.atLocation, load_default=None)
 
 
 class EntitySchemaV3(CommitMixinSchemaV3):
@@ -269,10 +266,10 @@ class DatasetFileSchemaV3(EntitySchemaV3):
         unknown = EXCLUDE
 
     added = fields.DateTime(schema.dateCreated)
-    based_on = fields.Nested(schema.isBasedOn, "DatasetFileSchemaV3", missing=None)
-    name = fields.String(schema.name, missing=None)
-    url = fields.String(schema.url, missing=None)
-    external = fields.Boolean(renku.external, missing=False)
+    based_on = fields.Nested(schema.isBasedOn, "DatasetFileSchemaV3", load_default=None)
+    name = fields.String(schema.name, load_default=None)
+    url = fields.String(schema.url, load_default=None)
+    external = fields.Boolean(renku.external, load_default=False)
 
 
 class LanguageSchemaV3(JsonLDSchema):
@@ -301,7 +298,7 @@ class DatasetTagSchemaV3(JsonLDSchema):
 
     _id = fields.Id()
     commit = fields.String(schema.location)
-    created = fields.DateTime(schema.startDate, missing=None)
+    created = fields.DateTime(schema.startDate, load_default=None)
     dataset = fields.String(schema.about)
     description = fields.String(schema.description)
     name = fields.String(schema.name)
@@ -317,8 +314,8 @@ class UrlSchemaV3(JsonLDSchema):
         model = Url
         unknown = EXCLUDE
 
-    _id = fields.Id(missing=None)
-    url = Uri(schema.url, missing=None)
+    _id = fields.Id(load_default=None)
+    url = Uri(schema.url, load_default=None)
 
 
 class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
@@ -331,21 +328,21 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
         model = Dataset
         unknown = EXCLUDE
 
-    creators = fields.Nested(schema.creator, PersonSchemaV3, many=True, missing=None)
-    date_created = fields.DateTime(schema.dateCreated, missing=None)
-    date_published = fields.DateTime(schema.datePublished, missing=None)
-    description = fields.String(schema.description, missing=None)
+    creators = fields.Nested(schema.creator, PersonSchemaV3, many=True, load_default=None)
+    date_created = fields.DateTime(schema.dateCreated, load_default=None)
+    date_published = fields.DateTime(schema.datePublished, load_default=None)
+    description = fields.String(schema.description, load_default=None)
     files = fields.Nested(schema.hasPart, [DatasetFileSchemaV3, CollectionSchemaV3], many=True)
     identifier = fields.String(schema.identifier)
-    in_language = fields.Nested(schema.inLanguage, LanguageSchemaV3, missing=None)
-    keywords = fields.List(schema.keywords, fields.String(), missing=None)
-    license = Uri(schema.license, missing=None, allow_none=True)
-    name = fields.String(schema.alternateName, missing=None)
-    same_as = fields.Nested(schema.sameAs, UrlSchemaV3, missing=None)
-    tags = fields.Nested(schema.subjectOf, DatasetTagSchemaV3, many=True, missing=None)
+    in_language = fields.Nested(schema.inLanguage, LanguageSchemaV3, load_default=None)
+    keywords = fields.List(schema.keywords, fields.String(), load_default=None)
+    license = Uri(schema.license, load_default=None, allow_none=True)
+    name = fields.String(schema.alternateName, load_default=None)
+    same_as = fields.Nested(schema.sameAs, UrlSchemaV3, load_default=None)
+    tags = fields.Nested(schema.subjectOf, DatasetTagSchemaV3, many=True, load_default=None)
     title = fields.String(schema.name)
-    url = fields.String(schema.url, missing=None)
-    version = fields.String(schema.version, missing=None)
+    url = fields.String(schema.url, load_default=None)
+    version = fields.String(schema.version, load_default=None)
 
     @pre_load
     def fix_files_context(self, data, **kwargs):
@@ -377,13 +374,13 @@ class DatasetSchemaV3(CreatorMixinSchemaV3, EntitySchemaV3):
         return data
 
 
-def get_client_datasets(client):
-    """Return Dataset migration models for a client."""
-    paths = get_datasets_path(client).rglob(OLD_METADATA_PATH)
+def get_project_datasets():
+    """Return Dataset migration models for a project."""
+    paths = get_datasets_path().rglob(OLD_METADATA_PATH)
     datasets = []
     for path in paths:
-        dataset = Dataset.from_yaml(path=path, client=client)
-        dataset.path = getattr(dataset, "path", None) or os.path.relpath(path.parent, client.path)
+        dataset = Dataset.from_yaml(path=path)
+        dataset.path = getattr(dataset, "path", None) or os.path.relpath(path.parent, project_context.path)
         datasets.append(dataset)
 
     return datasets

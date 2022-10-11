@@ -49,7 +49,7 @@ If you have local modification to files, you can save them using
    :command: $ renku save [-m <message>]
    :description: Save (commit) and push all local changes. with optional
                  message.
-   :extended:
+   :target: rp
 
 You can additionally supply a message that describes the changes that you
 made by using the ``-m`` or ``--message`` parameter followed by your

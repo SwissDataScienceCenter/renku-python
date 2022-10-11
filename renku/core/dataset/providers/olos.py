@@ -20,24 +20,22 @@
 import datetime
 import urllib
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Type
+from typing import TYPE_CHECKING, List, Optional
 from urllib import parse as urlparse
 from uuid import UUID, uuid4
 
-from renku.command.command_builder import inject
 from renku.core import errors
+from renku.core.config import get_value, set_value
 from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
-from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.plugin import hookimpl
 from renku.core.util import communication
-from renku.domain_model.dataset_provider import IDatasetProviderPlugin
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderParameter
     from renku.domain_model.dataset import Dataset, DatasetTag
 
 
-class OLOSProvider(ProviderApi, IDatasetProviderPlugin):
+class OLOSProvider(ProviderApi):
     """Provider for OLOS integration."""
 
     priority = ProviderPriority.HIGH
@@ -71,17 +69,14 @@ class OLOSProvider(ProviderApi, IDatasetProviderPlugin):
     ) -> "OLOSExporter":
         """Create export manager for given dataset."""
 
-        @inject.autoparams()
-        def set_export_parameters(client_dispatcher: IClientDispatcher):
+        def set_export_parameters():
             """Set and validate required parameters for exporting for a provider."""
-            client = client_dispatcher.current_client
-
             server = dlcm_server
             config_base_url = "server_url"
             if not server:
-                server = client.get_value("olos", config_base_url)
+                server = get_value("olos", config_base_url)
             else:
-                client.set_value("olos", config_base_url, server, global_only=True)
+                set_value("olos", config_base_url, server, global_only=True)
 
             if not server:
                 raise errors.ParameterError("OLOS server URL is required.")
@@ -90,12 +85,6 @@ class OLOSProvider(ProviderApi, IDatasetProviderPlugin):
 
         set_export_parameters()
         return OLOSExporter(dataset=dataset, server_url=self._server_url)
-
-    @classmethod
-    @hookimpl
-    def dataset_provider(cls) -> "Type[OLOSProvider]":
-        """The definition of the provider."""
-        return cls
 
 
 class OLOSExporter(ExporterApi):
@@ -114,11 +103,12 @@ class OLOSExporter(ExporterApi):
         """Endpoint for creation of access token."""
         return urllib.parse.urljoin(self._server_url, "portal")
 
-    def export(self, client=None, **kwargs):
+    def export(self, **kwargs):
         """Execute export process."""
         from renku.domain_model.dataset import get_file_path_in_dataset
 
         deposition = _OLOSDeposition(server_url=self._server_url, access_token=self._access_token)
+        repository = project_context.repository
 
         metadata = self._get_dataset_metadata()
         metadata["organizationalUnitId"] = deposition.get_org_unit()
@@ -126,8 +116,8 @@ class OLOSExporter(ExporterApi):
 
         with communication.progress("Uploading files ...", total=len(self.dataset.files)) as progressbar:
             for file in self.dataset.files:
-                filepath = client.repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
-                path_in_dataset = get_file_path_in_dataset(client=client, dataset=self.dataset, dataset_file=file)
+                filepath = repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
+                path_in_dataset = get_file_path_in_dataset(dataset=self.dataset, dataset_file=file)
                 deposition.upload_file(full_path=filepath, path_in_dataset=path_in_dataset)
                 progressbar.update()
 
