@@ -18,6 +18,7 @@
 """Utilities for renku service controllers."""
 from renku.command.clone import project_clone_command
 from renku.core.errors import GitCommandError
+from renku.core.util.contexts import renku_project_context
 from renku.ui.service.logger import service_log
 from renku.ui.service.views.decorators import requires_cache
 
@@ -33,7 +34,7 @@ def user_project_clone(cache, user_data, project_data):
     project.abs_path.mkdir(parents=True, exist_ok=True)
 
     try:
-        with project.write_lock():
+        with project.write_lock(), renku_project_context(project.abs_path):
             repo, project.initialized = (
                 project_clone_command()
                 .build()
