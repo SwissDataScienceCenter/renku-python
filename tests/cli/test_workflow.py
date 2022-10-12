@@ -448,7 +448,7 @@ def test_workflow_edit(runner, project):
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    database = Database.from_path(project_context.database_path)
+    database = Database.from_path(project.database_path)
     first_plan = database["plans"][_get_plan_id(result.stdout)]
     assert 2 == len(first_plan.keywords)
     assert "bio" in first_plan.keywords

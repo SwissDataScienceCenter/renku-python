@@ -18,7 +18,7 @@
 """CompositePlan view model."""
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, NamedTuple, Optional
 
 from renku.command.view_model.agent import PersonViewModel
@@ -187,6 +187,7 @@ class CompositePlanViewModel:
         annotations: Optional[str] = None,
         touches_existing_files: Optional[bool] = None,
         latest: Optional[str] = None,
+        duration: Optional[timedelta] = None,
     ):
         self.id = id
         self.name = name
@@ -201,6 +202,9 @@ class CompositePlanViewModel:
         self.touches_existing_files = touches_existing_files
         self.latest = latest
         self.type = "CompositePlan"
+
+        if duration is not None:
+            self.duration = duration.seconds
 
     @classmethod
     def from_composite_plan(cls, plan: CompositePlan):
@@ -227,4 +231,5 @@ class CompositePlanViewModel:
             else None,
             latest=getattr(plan, "latest", None),
             touches_existing_files=getattr(plan, "touches_existing_files", False),
+            duration=getattr(plan, "duration", None),
         )

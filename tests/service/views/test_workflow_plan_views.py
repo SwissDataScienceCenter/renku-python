@@ -51,6 +51,7 @@ def test_list_workflow_plans_view(svc_client_with_repo):
         "touches_existing_files",
         "type",
         "last_executed",
+        "duration",
     } == set(response.json["result"]["plans"][0].keys())
 
     reexecuted = next(p for p in response.json["result"]["plans"] if p["name"] == "some-step")
@@ -88,6 +89,7 @@ def test_list_workflow_plans_view(svc_client_with_repo):
                 "plans",
                 "touches_existing_files",
                 "type",
+                "duration",
             },
             None,
             True,
@@ -113,6 +115,7 @@ def test_list_workflow_plans_view(svc_client_with_repo):
                 "number_of_executions",
                 "last_executed",
                 "type",
+                "duration",
             },
             1,
             True,
@@ -138,6 +141,7 @@ def test_list_workflow_plans_view(svc_client_with_repo):
                 "number_of_executions",
                 "last_executed",
                 "type",
+                "duration",
             },
             2,
             False,

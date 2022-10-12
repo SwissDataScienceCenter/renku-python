@@ -113,7 +113,6 @@ def integration_lifecycle(
     payload = {"git_url": remote_repo, "depth": -1}
 
     response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
-
     assert response
     assert {"result"} == set(response.json.keys())
 

@@ -18,7 +18,7 @@
 """Plan management."""
 
 import itertools
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Generator, List, Optional, Set, Tuple, Union, cast, overload
 
@@ -151,8 +151,9 @@ def show_workflow(
         activity_map = _reverse_activity_plan_map(activities)
         plan_chain = list(get_derivative_chain(workflow))
         relevant_activities = [a for p in plan_chain for a in activity_map.get(p.id, [])]
-        cache: Dict[str, bool] = {}
-        touches_existing_files = _check_workflow_touches_existing_files(workflow, cache, activity_map)
+        touches_files_cache: Dict[str, bool] = {}
+        duration_cache: Dict[str, Optional[timedelta]] = {}
+        touches_existing_files = _check_workflow_touches_existing_files(workflow, touches_files_cache, activity_map)
 
         if isinstance(workflow, Plan):
 
@@ -170,10 +171,12 @@ def show_workflow(
             workflow.last_executed = last_execution
             workflow.touches_existing_files = touches_existing_files
             workflow.latest = plan_chain[0].id
+            workflow.duration = _get_plan_duration(workflow, duration_cache, activity_map)
         else:
             workflow = cast(CompositePlan, DynamicProxy(workflow))
             workflow.touches_existing_files = touches_existing_files
             workflow.latest = plan_chain[0].id
+            workflow.duration = _get_plan_duration(workflow, duration_cache, activity_map)
 
     return plan_view(cast(AbstractPlan, workflow))
 
@@ -727,7 +730,8 @@ def get_plans_with_metadata(activity_gateway: IActivityGateway, plan_gateway: IP
     )
 
     result: Dict[str, Union[Plan, CompositePlan]] = {}
-    cache: Dict[str, bool] = {}
+    touches_file_cache: Dict[str, bool] = {}
+    duration_cache: Dict[str, Optional[timedelta]] = {}
 
     # check which plans where involved in using/creating existing files
     for plan_chain in latest_plan_chains:
@@ -737,6 +741,10 @@ def get_plans_with_metadata(activity_gateway: IActivityGateway, plan_gateway: IP
         latest_plan.created = latest_plan.date_created
         latest_plan.last_executed = None
         latest_plan.children = []
+        duration = _get_plan_duration(latest_plan, duration_cache, activity_map)
+
+        if duration is not None:
+            latest_plan.duration = duration.seconds
 
         if isinstance(plan_chain[0], Plan):
             for activity in activity_map.get(latest_plan.id, []):
@@ -746,7 +754,7 @@ def get_plans_with_metadata(activity_gateway: IActivityGateway, plan_gateway: IP
                 latest_plan.number_of_executions += 1
 
                 latest_plan.touches_existing_files = _check_workflow_touches_existing_files(
-                    latest_plan, cache, activity_map
+                    latest_plan, touches_file_cache, activity_map
                 )
             latest_plan.type = "Plan"
         else:
@@ -754,7 +762,7 @@ def get_plans_with_metadata(activity_gateway: IActivityGateway, plan_gateway: IP
             latest_plan.type = "CompositePlan"
             latest_plan.children = [get_latest_plan(p).id for p in latest_plan.plans]
             latest_plan.touches_existing_files = _check_workflow_touches_existing_files(
-                latest_plan, cache, activity_map
+                latest_plan, touches_file_cache, activity_map
             )
 
         result[latest_plan.id] = latest_plan
@@ -804,3 +812,41 @@ def _check_workflow_touches_existing_files(
                 return cache.setdefault(workflow.id, True)
 
     return cache.setdefault(workflow.id, False)
+
+
+def _get_plan_duration(
+    workflow: Union[Plan, CompositePlan],
+    cache: Dict[str, Optional[timedelta]],
+    activity_map: Dict[str, Set[Activity]],
+    latest: bool = True,
+) -> Optional[timedelta]:
+    if latest:
+        workflow = get_latest_plan(workflow)
+
+    if workflow.id in cache:
+        return cache[workflow.id]
+
+    if isinstance(workflow, Plan):
+        times = []
+        for activity in activity_map.get(workflow.id, []):
+            times.append(activity.ended_at_time - activity.started_at_time)
+
+        if not times:
+            return cache.setdefault(workflow.id, None)
+
+        return cache.setdefault(workflow.id, sum(times, timedelta(0)) / len(times))
+
+    else:
+        total = timedelta(0)
+        found = False
+        for child in workflow.plans:
+            child_time = _get_plan_duration(child, cache, activity_map)
+
+            if child_time is not None:
+                total += child_time
+                found = True
+
+        if found:
+            return cache.setdefault(workflow.id, total)
+
+    return cache.setdefault(workflow.id, None)

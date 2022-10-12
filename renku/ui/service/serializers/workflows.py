@@ -39,6 +39,7 @@ class AbstractPlanResponse(Schema):
     creators = fields.List(fields.Nested(DatasetCreatorsJson))
     keywords = fields.List(fields.String())
     touches_existing_files = fields.Boolean()
+    duration = fields.Integer(dump_default=None)
 
 
 class WorflowPlanEntryResponse(AbstractPlanResponse):
