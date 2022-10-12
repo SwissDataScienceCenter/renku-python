@@ -103,16 +103,11 @@ def is_external_file(path: Union[Path, str], project_path: Path):
     return str(os.path.join(RENKU_HOME, POINTERS)) in pointer
 
 
-def get_renku_version() -> Optional[str]:
-    """Return project's Renku version from its Dockerfile."""
+def read_renku_version_from_dockerfile(path: Optional[Union[Path, str]] = None) -> Optional[str]:
+    """Read RENKU_VERSION from the content of path if a valid version is available."""
     from renku.domain_model.project_context import project_context
 
-    return read_renku_version_from_dockerfile(project_context.docker_path)
-
-
-def read_renku_version_from_dockerfile(path: Union[Path, str]) -> Optional[str]:
-    """Read RENKU_VERSION from the content of path if a valid version is available."""
-    path = Path(path)
+    path = Path(path) if path else project_context.docker_path
     if not path.exists():
         return None
 
