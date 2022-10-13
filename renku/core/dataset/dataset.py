@@ -195,7 +195,7 @@ def edit_dataset(
     keywords: Optional[Union[List[str], NoValueType]] = NO_VALUE,
     images: Optional[Union[List[ImageRequestModel], NoValueType]] = NO_VALUE,
     custom_metadata: Optional[Union[Dict, List[Dict], NoValueType]] = NO_VALUE,
-    custom_metadata_source: Optional[str] = NO_VALUE,
+    custom_metadata_source: Optional[Union[str, NoValueType]] = NO_VALUE,
 ):
     """Edit dataset metadata.
 
@@ -207,8 +207,10 @@ def edit_dataset(
         keywords(Optional[Union[List[str], NoValueType]]): New keywords for dataset (Default value = ``NO_VALUE``).
         images(Optional[Union[List[ImageRequestModel], NoValueType]]): New images for dataset
             (Default value = ``NO_VALUE``).
-        custom_metadata(Optional[Union[Dict, List[Dict], NoValueType]]): Custom JSON-LD metadata (Default value = ``NO_VALUE``).
-        custom_metadata_source(Optional[Union[str, NoValueType]]): The custom metadata source (Default value = ``NO_VALUE``).
+        custom_metadata(Optional[Union[Dict, List[Dict], NoValueType]]): Custom JSON-LD metadata
+            (Default value = ``NO_VALUE``).
+        custom_metadata_source(Optional[Union[str, NoValueType]]): The custom metadata source
+            (Default value = ``NO_VALUE``).
 
     Returns:
         bool: True if updates were performed.
@@ -248,7 +250,11 @@ def edit_dataset(
         )
 
     if custom_metadata is not NO_VALUE:
-        update_dataset_custom_metadata(dataset, cast(Optional[Dict], custom_metadata), custom_metadata_source)
+        update_dataset_custom_metadata(
+            dataset,
+            cast(Optional[Union[Dict, List[Dict]]], custom_metadata),
+            cast(Optional[str], custom_metadata_source),
+        )
         updated["custom_metadata"] = custom_metadata
 
     if not updated:
@@ -866,11 +872,7 @@ def update_dataset_custom_metadata(
             custom_metadata = [custom_metadata]
         for icustom_metadata in custom_metadata:
             existing_metadata.append(
-                Annotation(
-                    id=Annotation.generate_id(),
-                    body=icustom_metadata,
-                    source=custom_metadata_source
-                )
+                Annotation(id=Annotation.generate_id(), body=icustom_metadata, source=custom_metadata_source)
             )
 
     dataset.annotations = existing_metadata

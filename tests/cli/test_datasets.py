@@ -1319,6 +1319,70 @@ def test_dataset_edit(runner, project, dirty, subdirectory):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        [
+            {
+                "@id": "https://example.com/annotation1",
+                "@type": "https://schema.org/specialType",
+                "https://schema.org/specialProperty": "some_unique_value",
+            },
+            {
+                "@id": "https://example.com/annotation2",
+                "@type": "https://schema.org/specialType2",
+                "https://schema.org/specialProperty2": "some_unique_value2",
+            },
+        ],
+        {
+            "@id": "https://example.com/annotation1",
+            "@type": "https://schema.org/specialType",
+            "https://schema.org/specialProperty": "some_unique_value",
+        },
+    ],
+)
+@pytest.mark.parametrize("source", [None, "test1"])
+def test_dataset_edit_metadata(runner, project, source, metadata):
+    """Check dataset metadata editing."""
+    metadata_path = project.path / "metadata.json"
+    metadata_path.write_text(json.dumps(metadata))
+    create_args = [
+        "dataset",
+        "create",
+        "dataset",
+        "-t",
+        "original title",
+        "-k",
+        "keyword-1",
+    ]
+    edit_args = [
+        "dataset",
+        "edit",
+        "dataset",
+        "--metadata",
+        str(metadata_path),
+    ]
+    if source is None:
+        expected_source = "renku"
+    else:
+        expected_source = source
+        edit_args.append("--metadata-source")
+        edit_args.append(source)
+    result = runner.invoke(cli, create_args)
+    assert 0 == result.exit_code, format_result_exception(result)
+    result = runner.invoke(cli, edit_args)
+    assert 0 == result.exit_code, format_result_exception(result)
+    dataset = get_dataset_with_injection("dataset")
+    annotation_bodies = [annotation.body for annotation in dataset.annotations]
+    annotation_sources = [annotation.source for annotation in dataset.annotations]
+    if isinstance(metadata, dict):
+        metadata = [metadata]
+    assert all([imetadata in annotation_bodies for imetadata in metadata])
+    assert all([imetadata in metadata for imetadata in annotation_bodies])
+    assert len(annotation_bodies) == len(metadata)
+    assert all([isource == expected_source for isource in annotation_sources])
+
+
 @pytest.mark.parametrize("dirty", [False, True])
 def test_dataset_edit_unset(runner, project, dirty, subdirectory):
     """Check dataset metadata editing unsetting values."""

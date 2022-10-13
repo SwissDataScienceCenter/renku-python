@@ -79,10 +79,7 @@ def project():
     "--metadata-source",
     type=click.UNPROCESSED,
     default=NO_VALUE,
-    help=(
-        "Set the source field in the metadata when editing it"
-        "if not provided, then the default is 'renku'."
-    ),
+    help="Set the source field in the metadata when editing it if not provided, then the default is 'renku'.",
 )
 def edit(description, keywords, creators, metadata, unset, metadata_source):
     """Edit project metadata."""
@@ -105,9 +102,7 @@ def edit(description, keywords, creators, metadata, unset, metadata_source):
         metadata = None
 
     if metadata_source is not NO_VALUE and metadata is NO_VALUE:
-        raise click.UsageError(
-            "The '--metadata-source' option can only be used with the '--metadata' flag"
-        )
+        raise click.UsageError("The '--metadata-source' option can only be used with the '--metadata' flag")
 
     if metadata_source is NO_VALUE and metadata is not NO_VALUE:
         metadata_source = "renku"

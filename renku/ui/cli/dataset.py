@@ -664,10 +664,7 @@ def create(name, title, description, creators, metadata, keyword, storage, datad
     "--metadata-source",
     default=NO_VALUE,
     type=click.UNPROCESSED,
-    help=(
-        "Set the source field in the metadata when editing it"
-        "if not provided, then the default is 'renku'."
-    ),
+    help="Set the source field in the metadata when editing it if not provided, then the default is 'renku'.",
 )
 @click.option(
     "-k",
@@ -714,9 +711,7 @@ def edit(name, title, description, creators, metadata, metadata_source, keywords
         images = None
 
     if metadata_source is not NO_VALUE and metadata is NO_VALUE:
-        raise click.UsageError(
-            "The '--metadata-source' option can only be used with the '--metadata' flag"
-        )
+        raise click.UsageError("The '--metadata-source' option can only be used with the '--metadata' flag")
 
     if metadata_source is NO_VALUE and metadata is not NO_VALUE:
         metadata_source = "renku"

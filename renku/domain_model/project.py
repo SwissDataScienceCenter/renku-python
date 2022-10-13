@@ -188,7 +188,7 @@ class Project(persistent.Persistent):
         if custom_metadata is not NO_VALUE and custom_metadata_source is not NO_VALUE:
             existing_metadata = [a for a in self.annotations if a.source != custom_metadata_source]
             if isinstance(custom_metadata, dict):
-                existing_metadata = [existing_metadata]
+                custom_metadata = [custom_metadata]
             for icustom_metadata in custom_metadata:
                 existing_metadata.append(
                     Annotation(
