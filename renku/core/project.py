@@ -34,7 +34,8 @@ def edit_project(
     description: Optional[Union[str, NoValueType]],
     creator: Union[Dict, str, NoValueType],
     keywords: Optional[Union[List[str], NoValueType]],
-    custom_metadata: Optional[Union[Dict, NoValueType]],
+    custom_metadata: Optional[Union[Dict, List[Dict], NoValueType]],
+    custom_metadata_source: str,
     project_gateway: IProjectGateway,
 ):
     """Edit dataset metadata.
@@ -43,7 +44,8 @@ def edit_project(
         description(Union[Optional[str], NoValueType]): New description.
         creator(Union[Dict, str, NoValueType]): New creators.
         keywords(Union[Optional[List[str]]): New keywords.
-        custom_metadata(Union[Optional[Dict]): Custom JSON-LD metadata.
+        custom_metadata(Union[Optional[Dict, List[Dict]]): Custom JSON-LD metadata.
+        custom_meatadata_source(Optional[str]): Custom metadata source.
         project_gateway(IProjectGateway): Injected project gateway.
 
     Returns:
@@ -54,6 +56,7 @@ def edit_project(
         "description": description,
         "keywords": keywords,
         "custom_metadata": custom_metadata,
+        "custom_metadata_source": custom_metadata_source,
     }
 
     no_email_warnings: Optional[Union[Dict, str]] = None
@@ -67,7 +70,11 @@ def edit_project(
     if updated:
         project = project_gateway.get_project()
         project.update_metadata(
-            creator=parsed_creator, description=description, keywords=keywords, custom_metadata=custom_metadata
+            creator=parsed_creator,
+            description=description,
+            keywords=keywords,
+            custom_metadata=custom_metadata,
+            custom_metadata_source=custom_metadata_source,
         )
         project_gateway.update_project(project)
 
