@@ -70,7 +70,7 @@ def test_service_user_project_clone(svc_client_cache):
         assert project_two.exists()
 
         new_path = project_two.abs_path
-        assert old_path != new_path
+        assert old_path == new_path
         user = cache.get_user(user_data["user_id"])
         projects = [project.project_id for project in cache.get_projects(user)]
         assert project_one.project_id in projects

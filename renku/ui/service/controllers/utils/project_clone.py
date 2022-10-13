@@ -17,8 +17,8 @@
 # limitations under the License.
 """Utilities for renku service controllers."""
 from renku.command.clone import project_clone_command
-from renku.core.errors import GitCommandError
 from renku.core.util.contexts import renku_project_context
+from renku.ui.service.cache.models.project import Project
 from renku.ui.service.logger import service_log
 from renku.ui.service.views.decorators import requires_cache
 
@@ -30,31 +30,42 @@ def user_project_clone(cache, user_data, project_data):
         project_data.pop("project_id")
 
     user = cache.ensure_user(user_data)
-    project = cache.make_project(user, project_data)
+    project = cache.make_project(user, project_data, persist=False)
     project.abs_path.mkdir(parents=True, exist_ok=True)
 
-    try:
-        with project.write_lock(), renku_project_context(project.abs_path):
-            repo, project.initialized = (
-                project_clone_command()
-                .build()
-                .execute(
-                    project_data["url_with_auth"],
-                    path=project.abs_path,
-                    depth=project_data["depth"],
-                    raise_git_except=True,
-                    config={
-                        "user.name": project_data["fullname"],
-                        "user.email": project_data["email"],
-                        "pull.rebase": False,
-                    },
-                    checkout_revision=project_data["ref"],
+    with project.write_lock(), renku_project_context(project.abs_path):
+        # NOTE: If two requests ran at the same time, by the time we acquire the lock a project might already
+        # be cloned by an earlier request.
+        if "git_url" in project_data and project_data["git_url"] is not None:
+            try:
+                found_project = Project.get(
+                    (Project.user_id == user_data["user_id"])
+                    & (Project.git_url == project_data["git_url"])
+                    & (Project.project_id != project.project_id)
                 )
-            ).output
-            project.save()
-    except GitCommandError as e:
-        cache.invalidate_project(user, project.project_id)
-        raise e
+
+                service_log.debug(f"project already cloned, skipping clone: {project_data['git_url']}")
+                service_log.debug(f"project folder exists: {found_project.exists()}")
+                return found_project
+            except ValueError:
+                pass
+        repo, project.initialized = (
+            project_clone_command()
+            .build()
+            .execute(
+                project_data["url_with_auth"],
+                path=project.abs_path,
+                depth=project_data["depth"],
+                raise_git_except=True,
+                config={
+                    "user.name": project_data["fullname"],
+                    "user.email": project_data["email"],
+                    "pull.rebase": False,
+                },
+                checkout_revision=project_data["ref"],
+            )
+        ).output
+        project.save()
 
     service_log.debug(f"project successfully cloned: {repo}")
     service_log.debug(f"project folder exists: {project.exists()}")
