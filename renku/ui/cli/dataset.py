@@ -661,6 +661,15 @@ def create(name, title, description, creators, metadata, keyword, storage, datad
     help="Custom metadata to be associated with the dataset.",
 )
 @click.option(
+    "--metadata-source",
+    default=NO_VALUE,
+    type=click.UNPROCESSED,
+    help=(
+        "Set the source field in the metadata when editing it"
+        "if not provided, then the default is 'renku'."
+    ),
+)
+@click.option(
     "-k",
     "--keyword",
     "keywords",
@@ -677,7 +686,7 @@ def create(name, title, description, creators, metadata, keyword, storage, datad
     type=click.Choice(["keywords", "k", "images", "i", "metadata", "m"]),
     help="Remove keywords from dataset.",
 )
-def edit(name, title, description, creators, metadata, keywords, unset):
+def edit(name, title, description, creators, metadata, metadata_source, keywords, unset):
     """Edit dataset metadata."""
     from renku.command.dataset import edit_dataset_command
     from renku.core.util.metadata import construct_creators
@@ -704,6 +713,14 @@ def edit(name, title, description, creators, metadata, keywords, unset):
     if "i" in unset or "images" in unset:
         images = None
 
+    if metadata_source is not NO_VALUE and metadata is NO_VALUE:
+        raise click.UsageError(
+            "The '--metadata-source' option can only be used with the '--metadata' flag"
+        )
+
+    if metadata_source is NO_VALUE and metadata is not NO_VALUE:
+        metadata_source = "renku"
+
     custom_metadata = metadata
     no_email_warnings = False
 
@@ -728,6 +745,7 @@ def edit(name, title, description, creators, metadata, keywords, unset):
             keywords=keywords,
             images=images,
             custom_metadata=custom_metadata,
+            custom_metadata_source=metadata_source,
         )
     ).output
 

@@ -194,7 +194,8 @@ def edit_dataset(
     creators: Optional[Union[List[Person], NoValueType]],
     keywords: Optional[Union[List[str], NoValueType]] = NO_VALUE,
     images: Optional[Union[List[ImageRequestModel], NoValueType]] = NO_VALUE,
-    custom_metadata: Optional[Union[Dict, NoValueType]] = NO_VALUE,
+    custom_metadata: Optional[Union[Dict, List[Dict], NoValueType]] = NO_VALUE,
+    custom_metadata_source: Optional[str] = NO_VALUE,
 ):
     """Edit dataset metadata.
 
@@ -206,7 +207,8 @@ def edit_dataset(
         keywords(Optional[Union[List[str], NoValueType]]): New keywords for dataset (Default value = ``NO_VALUE``).
         images(Optional[Union[List[ImageRequestModel], NoValueType]]): New images for dataset
             (Default value = ``NO_VALUE``).
-        custom_metadata(Optional[Union[Dict, NoValueType]]): Custom JSON-LD metadata (Default value = ``NO_VALUE``).
+        custom_metadata(Optional[Union[Dict, List[Dict], NoValueType]]): Custom JSON-LD metadata (Default value = ``NO_VALUE``).
+        custom_metadata_source(Optional[Union[str, NoValueType]]): The custom metadata source (Default value = ``NO_VALUE``).
 
     Returns:
         bool: True if updates were performed.
@@ -246,7 +248,7 @@ def edit_dataset(
         )
 
     if custom_metadata is not NO_VALUE:
-        update_dataset_custom_metadata(dataset, cast(Optional[Dict], custom_metadata))
+        update_dataset_custom_metadata(dataset, cast(Optional[Dict], custom_metadata), custom_metadata_source)
         updated["custom_metadata"] = custom_metadata
 
     if not updated:
@@ -844,18 +846,32 @@ def set_dataset_images(dataset: Dataset, images: Optional[List[ImageRequestModel
     return images_updated or dataset.images != previous_images
 
 
-def update_dataset_custom_metadata(dataset: Dataset, custom_metadata: Optional[Dict]):
+def update_dataset_custom_metadata(
+    dataset: Dataset,
+    custom_metadata: Optional[Union[Dict, List[Dict]]],
+    custom_metadata_source: Optional[str],
+):
     """Update custom metadata on a dataset.
 
     Args:
         dataset(Dataset): The dataset to update.
         custom_metadata(Dict): Custom JSON-LD metadata to set.
+        custom_metadata_source(str): The source field for the custom metadata.
     """
 
-    existing_metadata = [a for a in dataset.annotations if a.source != "renku"]
+    existing_metadata = [a for a in dataset.annotations if a.source != custom_metadata_source]
 
-    if custom_metadata is not None:
-        existing_metadata.append(Annotation(id=Annotation.generate_id(), body=custom_metadata, source="renku"))
+    if custom_metadata is not None and custom_metadata_source is not None:
+        if isinstance(custom_metadata, dict):
+            custom_metadata = [custom_metadata]
+        for icustom_metadata in custom_metadata:
+            existing_metadata.append(
+                Annotation(
+                    id=Annotation.generate_id(),
+                    body=icustom_metadata,
+                    source=custom_metadata_source
+                )
+            )
 
     dataset.annotations = existing_metadata
 
