@@ -33,22 +33,24 @@ def user_project_clone(cache, user_data, project_data):
     project = cache.make_project(user, project_data, persist=False)
     project.abs_path.mkdir(parents=True, exist_ok=True)
 
-    with project.write_lock(), renku_project_context(project.abs_path):
-        # NOTE: If two requests ran at the same time, by the time we acquire the lock a project might already
-        # be cloned by an earlier request.
-        if "git_url" in project_data and project_data["git_url"] is not None:
+    with project.write_lock(), renku_project_context(project.abs_path, check_git_path=False):
+        git_url = project_data.get("git_url")
+
+        if git_url is not None:
             try:
+                # NOTE: If two requests ran at the same time, by the time we acquire the lock a project might already
+                # be cloned by an earlier request.
                 found_project = Project.get(
                     (Project.user_id == user_data["user_id"])
-                    & (Project.git_url == project_data["git_url"])
+                    & (Project.git_url == git_url)
                     & (Project.project_id != project.project_id)
                 )
-
-                service_log.debug(f"project already cloned, skipping clone: {project_data['git_url']}")
-                service_log.debug(f"project folder exists: {found_project.exists()}")
-                return found_project
             except ValueError:
                 pass
+            else:
+                service_log.debug(f"project already cloned, skipping clone: {git_url}")
+                return found_project
+
         repo, project.initialized = (
             project_clone_command()
             .build()
@@ -68,6 +70,5 @@ def user_project_clone(cache, user_data, project_data):
         project.save()
 
     service_log.debug(f"project successfully cloned: {repo}")
-    service_log.debug(f"project folder exists: {project.exists()}")
 
     return project
