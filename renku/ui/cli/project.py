@@ -75,7 +75,13 @@ def project():
     type=click.Choice(["keywords", "k", "metadata", "m"]),
     help="Remove keywords from dataset.",
 )
-def edit(description, keywords, creators, metadata, unset):
+@click.option(
+    "--metadata-source",
+    type=click.UNPROCESSED,
+    default=NO_VALUE,
+    help="Set the source field in the metadata when editing it if not provided, then the default is 'renku'.",
+)
+def edit(description, keywords, creators, metadata, unset, metadata_source):
     """Edit project metadata."""
     from renku.command.project import edit_project_command
 
@@ -95,6 +101,12 @@ def edit(description, keywords, creators, metadata, unset):
             raise click.UsageError("Cant use '--metadata' together with unsetting metadata")
         metadata = None
 
+    if metadata_source is not NO_VALUE and metadata is NO_VALUE:
+        raise click.UsageError("The '--metadata-source' option can only be used with the '--metadata' flag")
+
+    if metadata_source is NO_VALUE and metadata is not NO_VALUE:
+        metadata_source = "renku"
+
     custom_metadata = metadata
 
     if metadata and metadata is not NO_VALUE:
@@ -107,7 +119,13 @@ def edit(description, keywords, creators, metadata, unset):
     result = (
         edit_project_command()
         .build()
-        .execute(description=description, creator=creators, keywords=keywords, custom_metadata=custom_metadata)
+        .execute(
+            description=description,
+            creator=creators,
+            keywords=keywords,
+            custom_metadata=custom_metadata,
+            custom_metadata_source=metadata_source,
+        )
     )
 
     updated, no_email_warning = result.output

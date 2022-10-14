@@ -1172,8 +1172,36 @@ def test_add_remote_and_local_file(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@pytest.mark.parametrize(
+    "custom_metadata",
+    [
+        [
+            {
+                "@id": "http://example.com/metadata12",
+                "@type": "https://schema.org/myType",
+                "https://schema.org/property1": 1,
+                "https://schema.org/property2": "test",
+            },
+        ],
+        [
+            {
+                "@id": "http://example.com/metadata12",
+                "@type": "https://schema.org/myType",
+                "https://schema.org/property1": 1,
+                "https://schema.org/property2": "test",
+            },
+            {
+                "@id": "http://example.com/metadata1",
+                "@type": "https://schema.org/myType1",
+                "https://schema.org/property4": 3,
+                "https://schema.org/property5": "test1",
+            },
+        ],
+    ],
+)
+@pytest.mark.parametrize("custom_metadata_source", [None, "testSource"])
 @retry_failed
-def test_edit_datasets_view(svc_client_with_repo):
+def test_edit_datasets_view(svc_client_with_repo, custom_metadata, custom_metadata_source):
     """Test editing dataset metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
     name = uuid.uuid4().hex
@@ -1202,27 +1230,18 @@ def test_edit_datasets_view(svc_client_with_repo):
         "title": "my new title",
         "keywords": ["keyword1"],
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
-        "custom_metadata": {
-            "@id": "http://example.com/metadata12",
-            "@type": "https://schema.org/myType",
-            "https://schema.org/property1": 1,
-            "https://schema.org/property2": "test",
-        },
+        "custom_metadata": custom_metadata,
     }
+    if custom_metadata_source is not None:
+        edit_payload["custom_metadata_source"] = custom_metadata_source
     response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
-
     assert_rpc_response(response)
     assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
     assert {
         "title": "my new title",
         "keywords": ["keyword1"],
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
-        "custom_metadata": {
-            "@id": "http://example.com/metadata12",
-            "@type": "https://schema.org/myType",
-            "https://schema.org/property1": 1,
-            "https://schema.org/property2": "test",
-        },
+        "custom_metadata": custom_metadata,
     } == response.json["result"]["edited"]
 
 

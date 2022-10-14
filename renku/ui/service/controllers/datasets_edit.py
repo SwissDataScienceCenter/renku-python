@@ -97,6 +97,14 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
         else:
             custom_metadata = NO_VALUE
 
+        if "custom_metadata_source" in self.ctx:
+            custom_metadata_source = self.ctx.get("custom_metadata")
+        else:
+            custom_metadata_source = NO_VALUE
+
+        if custom_metadata_source is NO_VALUE and custom_metadata is not NO_VALUE:
+            custom_metadata_source = "renku"
+
         result = (
             edit_dataset_command()
             .with_commit_message(self.ctx["commit_message"])
@@ -109,6 +117,7 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
                 keywords=keywords,
                 images=images,
                 custom_metadata=custom_metadata,
+                custom_metadata_source=custom_metadata_source,
             )
         )
 
