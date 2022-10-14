@@ -1,9 +1,7 @@
 # Default values for renku-core.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
-
 replicaCount: 1
-
 global:
   ## Specify a secret that containes the certificate
   ## if you would like to use a custom CA. The key for the secret
@@ -15,8 +13,7 @@ global:
       repository: renku/certificates
       tag: '0.0.2'
     customCAs: []
-      # - secret:
-
+    # - secret:
   ## Redis configuration. This is where renku-core expects to find
   ## a functioning redis instance and credentials to connect to it.
   redis:
@@ -31,63 +28,52 @@ global:
       renku-redis-host: "true"
     existingSecret: redis-secret
     existingSecretPasswordKey: redis-password
-
 # base path - this is the reverse proxy base path
 apiBasePath: /api
-
 cacheDirectory: /svc/cache
-cleanupInterval: 60  # NOTE: This needs to be a divisor of, and less than cleanupFilesTTL|cleanupProjectsTTL.
+cleanupInterval: 60 # NOTE: This needs to be a divisor of, and less than cleanupFilesTTL|cleanupProjectsTTL.
 projectCloneDepth: 1
 templateCloneDepth: 1
 maximumUploadSizeBytes: "1073741824" # 1 Gigabyte, store as string to keep Helm from converting it to scientific notation
 requestTimeout: 600
-
 datasetsWorkerQueues: datasets.jobs,delayed.ctrl.DatasetsCreateCtrl,delayed.ctrl.DatasetsAddFileCtrl,delayed.ctrl.DatasetsRemoveCtrl,delayed.ctrl.DatasetsImportCtrl,delayed.ctrl.DatasetsEditCtrl,delayed.ctrl.DatasetsUnlinkCtrl
 managementWorkerQueues: cache.cleanup.files,cache.cleanup.projects,delayed.ctrl.MigrateProjectCtrl,delayed.ctrl.SetConfigCtrl
 cleanupFilesTTL: 1800
 cleanupProjectsTTL: 1800
 logLevel: INFO
-
 # override to automatically pull LFS data on clone
 gitLFSSkipSmudge: 1
-
 # Concurrency settings for the main service:
 # the default it 4 workers with 8 threads set in the Dockerfile
 nWorkers: 4
 nThreads: 8
-
 # NOTE: Make sure token secret is greater or equal to 32 bytes.
 jwtTokenSecret: bW9menZ3cnh6cWpkcHVuZ3F5aWJycmJn
-
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
-
 service:
   type: ClusterIP
   port: 80
-
 ingress:
   enabled: false
-
 metrics:
   enabled: false
   image:
     repository: renku/rqmetrics
     tag: 0.0.2
     pullPolicy: IfNotPresent
-
 resources: {}
-  # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with little
-  # resources, such as Minikube. If you do want to specify resources, uncomment the following
-  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
-  # limits:
-  #   cpu: 100m
-  #   memory: 128Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 128Mi
+# We usually recommend not to specify default resources and to leave this as a conscious
+# choice for the user. This also increases chances charts run on environments with little
+# resources, such as Minikube. If you do want to specify resources, uncomment the following
+# lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+# limits:
+#   cpu: 100m
+#   memory: 128Mi
+# requests:
+#   cpu: 100m
+#   memory: 128Mi
 
 # nodeSelector: {}
 
@@ -101,7 +87,6 @@ sentry:
   dsn:
   environment:
   sampleRate: 0.2
-
 # versions is the list of different deployment that support different metadata versions.
 versions:
   latest:
@@ -111,7 +96,7 @@ versions:
     fullnameOverride: ""
     image:
       repository: renku/renku-core
-      tag: "v1.7.1"
+      tag: "v1.8.0"
       pullPolicy: IfNotPresent
   v8:
     name: v8
@@ -122,11 +107,9 @@ versions:
       repository: renku/renku-core
       tag: "v0.16.7"
       pullPolicy: IfNotPresent
-
 podSecurityContext:
   runAsUser: 1000
   runAsGroup: 1000
   fsGroup: 100
-
 securityContext:
   allowPrivilegeEscalation: false

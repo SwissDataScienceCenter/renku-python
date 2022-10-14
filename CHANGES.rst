@@ -18,6 +18,84 @@
 Changes
 =======
 
+`1.8.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.7.1...v1.8.0>`__ (2022-10-14)
+=======================================================================================================
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** allow display of ssh password prompt in clone operations
+   (`#3075 <https://github.com/SwissDataScienceCenter/renku-python/issues/3075>`__)
+   (`aa8772d <https://github.com/SwissDataScienceCenter/renku-python/commit/aa8772d28dc4153cc520f71c53226482c821c0ff>`__)
+-  **cli:** make file size display consistent
+   (`#3111 <https://github.com/SwissDataScienceCenter/renku-python/issues/3111>`__)
+   (`21b70c1 <https://github.com/SwissDataScienceCenter/renku-python/commit/21b70c1c98aaaa8942cd206842aa9d1ddd4f8cce>`__)
+-  **core:** logging wrong chunk attribute
+   (`#3140 <https://github.com/SwissDataScienceCenter/renku-python/issues/3140>`__)
+   (`a187aec <https://github.com/SwissDataScienceCenter/renku-python/commit/a187aec612350ed78d626e0e54279d38d0f19655>`__)
+-  **service:** fix working dir when cloning outside of project_clone
+   view
+   (`#3164 <https://github.com/SwissDataScienceCenter/renku-python/issues/3164>`__)
+   (`9dd6a2d <https://github.com/SwissDataScienceCenter/renku-python/commit/9dd6a2dfe81908ed747d18890d233b23cec9af4f>`__)
+
+Features
+~~~~~~~~
+
+-  add meaningful data to auto branch names
+   (`#3077 <https://github.com/SwissDataScienceCenter/renku-python/issues/3077>`__)
+   (`efc735b <https://github.com/SwissDataScienceCenter/renku-python/commit/efc735b110d286905afed59a49d9b4385dbc5462>`__),
+   closes
+   `#2374 <https://github.com/SwissDataScienceCenter/renku-python/issues/2374>`__
+-  **api:** query command builder
+   (`#3085 <https://github.com/SwissDataScienceCenter/renku-python/issues/3085>`__)
+   (`cc7f90b <https://github.com/SwissDataScienceCenter/renku-python/commit/cc7f90b87722ae14fa7954edca4c3ecc950bf37e>`__)
+-  **cli:** change renku mv to respect datasets’ datadir
+   (`#3071 <https://github.com/SwissDataScienceCenter/renku-python/issues/3071>`__)
+   (`525aca9 <https://github.com/SwissDataScienceCenter/renku-python/commit/525aca960d71915b908fb5918cdafc6d118e7dca>`__)
+-  **cli:** enable renku dataset update to pick up files in datasets
+   data directory
+   (`#3062 <https://github.com/SwissDataScienceCenter/renku-python/issues/3062>`__)
+   (`791fa09 <https://github.com/SwissDataScienceCenter/renku-python/commit/791fa09cf20a69d204ce6a0b19c663ed4d75ef55>`__)
+-  **cli:** set list of custom metadata for project and dataset
+   (`#3165 <https://github.com/SwissDataScienceCenter/renku-python/issues/3165>`__)
+   (`739ec47 <https://github.com/SwissDataScienceCenter/renku-python/commit/739ec47739f46d60a217ff264bbe4c8418675df7>`__)
+-  **core:** allow per dataset data directory
+   (`#3027 <https://github.com/SwissDataScienceCenter/renku-python/issues/3027>`__)
+   (`aecc180 <https://github.com/SwissDataScienceCenter/renku-python/commit/aecc1809e9205bfe3502d21119b29bb137c2493b>`__)
+-  **core:** copy/move/symlink files to datadir on add
+   (`#3049 <https://github.com/SwissDataScienceCenter/renku-python/issues/3049>`__)
+   (`d7be929 <https://github.com/SwissDataScienceCenter/renku-python/commit/d7be929300fb4f74277114c9f53e8354b355ad55>`__)
+-  **core:** use current renku version when setting template for old
+   projects
+   (`#3162 <https://github.com/SwissDataScienceCenter/renku-python/issues/3162>`__)
+   (`945e27a <https://github.com/SwissDataScienceCenter/renku-python/commit/945e27af7730b23136b537758af0c2399ef629ad>`__)
+-  **dataset:** add data from s3
+   (`#3063 <https://github.com/SwissDataScienceCenter/renku-python/issues/3063>`__)
+   (`b3735e6 <https://github.com/SwissDataScienceCenter/renku-python/commit/b3735e6ff632cf9349c7fc087f2564df9509e9e1>`__)
+-  **dataset:** allow mounting s3 data
+   (`#3106 <https://github.com/SwissDataScienceCenter/renku-python/issues/3106>`__)
+   (`d16e1fc <https://github.com/SwissDataScienceCenter/renku-python/commit/d16e1fc03d542d3ddaad175b1716316608e89c10>`__)
+-  **dataset:** dataset creation with s3 storage backend
+   (`#3047 <https://github.com/SwissDataScienceCenter/renku-python/issues/3047>`__)
+   (`316f7a6 <https://github.com/SwissDataScienceCenter/renku-python/commit/316f7a6831337a63a5783f7fff59e74771f18b9b>`__)
+-  **dataset:** make dataset providers plugins
+   (`#3055 <https://github.com/SwissDataScienceCenter/renku-python/issues/3055>`__)
+   (`b68a8bb <https://github.com/SwissDataScienceCenter/renku-python/commit/b68a8bbbfbed34ff17e2202f59db39bfecbe0682>`__)
+-  **dataset:** pull data from s3 storage
+   (`#3066 <https://github.com/SwissDataScienceCenter/renku-python/issues/3066>`__)
+   (`289b1af <https://github.com/SwissDataScienceCenter/renku-python/commit/289b1af3566b720a34b21412e8dbae537e7c0c2b>`__)
+-  **service:** add support for dataset data directory in endpoints
+   (`#3089 <https://github.com/SwissDataScienceCenter/renku-python/issues/3089>`__)
+   (`c2ae2bf <https://github.com/SwissDataScienceCenter/renku-python/commit/c2ae2bf30806b0de23eac700225e8a8cdcfcd368>`__)
+-  **svc:** make timeout configurable on project.lock_status endpoint
+   (`#3097 <https://github.com/SwissDataScienceCenter/renku-python/issues/3097>`__)
+   (`6939653 <https://github.com/SwissDataScienceCenter/renku-python/commit/693965306cfd7cd947a2bf15b0b5ae1ed3b41869>`__)
+-  **workflow:** add dot output on workflow visualize
+   (`#3032 <https://github.com/SwissDataScienceCenter/renku-python/issues/3032>`__)
+   (`c85790b <https://github.com/SwissDataScienceCenter/renku-python/commit/c85790b3d8bef6e60508629bbc60637c33a86365>`__),
+   closes
+   `#2376 <https://github.com/SwissDataScienceCenter/renku-python/issues/2376>`__
+
 `1.7.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.7.0...v1.7.1>`__ (2022-09-06)
 -------------------------------------------------------------------------------------------------------
 
