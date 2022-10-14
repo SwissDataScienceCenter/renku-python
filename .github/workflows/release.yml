@@ -17,6 +17,8 @@ jobs:
           token: "${{ secrets.RENKUBOT_GITHUB_TOKEN }}"
           ref: 'develop'
       - uses: actions/setup-node@v3
+      - name: Create Branch
+        run: git checkout -b "release/v${{ github.event.inputs.version }}"
       - name: Merge Master
         run: git merge origin/master
       - name: Install dependencies
@@ -50,12 +52,7 @@ jobs:
           name: "v${{ github.event.inputs.version }}"
           commit: "master"
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v4
+        uses: repo-sync/pull-request@v2
         with:
-          token: "${{ secrets.RENKUBOT_GITHUB_TOKEN }}"
-          add-paths: "CHANGES.rst,renku/version.py,helm-chart/renku-core/Chart.yaml,helm-chart/renku-core/values.yaml"
-          commit-message: "chore: release v${{ github.event.inputs.version }}"
-          branch: "release/v${{ github.event.inputs.version }}"
-          base: "master"
-          title: "chore: release v${{ github.event.inputs.version }}"
-          body: "/deploy"
+          destination_branch: "master"
+          github_token: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
