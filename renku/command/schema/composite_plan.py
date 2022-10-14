@@ -42,7 +42,7 @@ class CompositePlanSchema(JsonLDSchema):
     invalidated_at = fields.DateTime(prov.invalidatedAtTime, format="iso")
     keywords = fields.List(schema.keywords, fields.String(), load_default=None)
     name = fields.String(schema.name, load_default=None)
-    derived_from = fields.String(prov.wasDerivedFrom, load_default=None)
+    derived_from = fields.IRI(prov.wasDerivedFrom, load_default=None)
     project_id = fields.IRI(renku.hasPlan, reverse=True)
     plans = Nested(renku.hasSubprocess, [PlanSchema, "CompositePlanSchema"], many=True)
     links = Nested(renku.workflowLinks, [ParameterLinkSchema], many=True, load_default=None)
