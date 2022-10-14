@@ -73,10 +73,7 @@ def test_project_edit(runner, project, subdirectory, with_injection):
     )
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert (
-        "Successfully updated: creator, description, keywords, custom_metadata, custom_metadata_source."
-        in result.output
-    )
+    assert "Successfully updated: creator, description, keywords, custom_metadata." in result.output
     assert "Warning: No email or wrong format for: Forename Surname" in result.output
 
     assert project.repository.is_dirty(untracked_files=True)
@@ -156,10 +153,7 @@ def test_project_edit_unset(runner, project, subdirectory, with_injection):
     )
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert (
-        "Successfully updated: creator, description, keywords, custom_metadata, custom_metadata_source."
-        in result.output
-    )
+    assert "Successfully updated: creator, description, keywords, custom_metadata." in result.output
     assert "Warning: No email or wrong format for: Forename Surname" in result.output
 
     commit_sha_before = project.repository.head.commit.hexsha

@@ -45,7 +45,7 @@ def edit_project(
         creator(Union[Dict, str, NoValueType]): New creators.
         keywords(Union[Optional[List[str]]): New keywords.
         custom_metadata(Union[Optional[Dict, List[Dict]]): Custom JSON-LD metadata.
-        custom_meatadata_source(Optional[str]): Custom metadata source.
+        custom_metadata_source(Optional[str]): Custom metadata source.
         project_gateway(IProjectGateway): Injected project gateway.
 
     Returns:
@@ -56,7 +56,6 @@ def edit_project(
         "description": description,
         "keywords": keywords,
         "custom_metadata": custom_metadata,
-        "custom_metadata_source": custom_metadata_source,
     }
 
     no_email_warnings: Optional[Union[Dict, str]] = None

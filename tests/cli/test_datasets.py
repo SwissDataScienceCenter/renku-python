@@ -1421,7 +1421,7 @@ def test_dataset_edit_unset(runner, project, dirty, subdirectory):
         catch_exceptions=False,
     )
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Successfully updated: keywords, custom_metadata, custom_metadata_source." in result.output
+    assert "Successfully updated: keywords, custom_metadata." in result.output
 
     dataset = get_dataset_with_injection("dataset")
     assert 0 == len(dataset.keywords)
