@@ -143,13 +143,7 @@ def test_create_project_from_template(svc_client_templates_creation, with_inject
 
     # NOTE: assert correct git user is set on new project
     user_data = RenkuHeaders.decode_user(headers["Renku-User"])
-    project_path = (
-        CACHE_PROJECTS_PATH
-        / user_data["user_id"]
-        / response.json["result"]["project_id"]
-        / payload["project_namespace"]
-        / stripped_name
-    )
+    project_path = CACHE_PROJECTS_PATH / user_data["user_id"] / payload["project_namespace"] / stripped_name
     reader = Repository(project_path).get_configuration()
     assert reader.get_value("user", "email") == user_data["email"]
     assert reader.get_value("user", "name") == user_data["name"]

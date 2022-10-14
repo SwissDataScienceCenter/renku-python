@@ -160,7 +160,7 @@ def test_create_dataset_wrong_ref_view(svc_client_with_repo):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response, "error")
-    assert IntermittentProjectIdError.code == response.json["error"]["code"]
+    assert IntermittentProjectIdError.code == response.json["error"]["code"], response.json
 
 
 @pytest.mark.service
