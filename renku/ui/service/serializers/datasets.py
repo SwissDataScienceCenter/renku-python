@@ -50,7 +50,7 @@ class DatasetDetailsRequest(DatasetDetails):
 
     images = fields.List(fields.Nested(ImageObjectRequest))
 
-    custom_metadata = fields.Dict()
+    custom_metadata: fields.Field = fields.Dict()
 
 
 class DatasetCreateRequest(
@@ -218,7 +218,13 @@ class DatasetEditRequest(
     images = fields.List(
         fields.Nested(ImageObjectRequest), allow_none=True, metadata={"description": "New dataset images"}
     )
-    custom_metadata = fields.Dict(allow_none=True, metadata={"description": "New custom metadata for the dataset"})
+    custom_metadata = fields.List(
+        fields.Dict(), metadata={"description": "New custom metadata for the dataset"}, allow_none=True
+    )
+    custom_metadata_source = fields.String(
+        allow_none=True,
+        metadata={"description": "Source for the custom metadata for the dataset"},
+    )
 
 
 class DatasetEditResponse(RenkuSyncSchema):
