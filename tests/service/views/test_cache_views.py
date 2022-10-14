@@ -514,9 +514,10 @@ def test_clone_projects_multiple(svc_client, identity_headers, it_remote_repo_ur
 
     pids = [p["project_id"] for p in response.json["result"]["projects"]]
     assert last_pid in pids
+    assert 1 == len(pids)
 
     for inserted in project_ids:
-        assert inserted["project_id"] not in pids
+        assert inserted["project_id"] == last_pid
 
 
 @pytest.mark.service

@@ -197,7 +197,7 @@ def handle_base_except(f):
         except GitError as e:
             return error_response(ProgramGitError(e, e.message if e.message else None))
         except (Exception, BaseException, OSError, IOError) as e:
-            if hasattr(e, "stderr"):
+            if hasattr(e, "stderr") and e.stderr:
                 error_message = " ".join(e.stderr.strip().split("\n"))
             else:
                 error_message = str(e)
