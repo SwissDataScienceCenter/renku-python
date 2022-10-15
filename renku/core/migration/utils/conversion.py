@@ -34,6 +34,7 @@ from renku.domain_model.dataset import (
     Url,
     is_dataset_name_valid,
 )
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance import agent as new_agents
 
 
@@ -76,9 +77,11 @@ def _create_remote_entity(dataset_file: Optional[old_datasets.DatasetFile]) -> O
     return RemoteEntity(checksum=commit_sha, path=dataset_file.path, url=dataset_file.url)
 
 
-def _convert_dataset_file(dataset_file: old_datasets.DatasetFile, client, revision: str) -> Optional[DatasetFile]:
+def _convert_dataset_file(dataset_file: old_datasets.DatasetFile, revision: str) -> Optional[DatasetFile]:
     """Convert old DatasetFile to new DatasetFile if available at revision."""
-    entity = get_entity_from_revision(repository=client.repository, path=dataset_file.path, revision=revision)
+    repository = project_context.repository
+
+    entity = get_entity_from_revision(repository=repository, path=dataset_file.path, revision=revision)
     if not entity:
         return
 
@@ -137,7 +140,7 @@ def _convert_same_as(url: Optional[old_datasets.Url]) -> Optional[Url]:
     return Url(url_str=url_str) if url.url_str else Url(url_id=url_str)
 
 
-def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tuple[Dataset, List[DatasetTag]]:
+def convert_dataset(dataset: old_datasets.Dataset, revision: str) -> Tuple[Dataset, List[DatasetTag]]:
     """Convert old Dataset to new Dataset."""
 
     def convert_dataset_files(files: List[old_datasets.DatasetFile]) -> List[DatasetFile]:
@@ -146,7 +149,7 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
         files = {f.path: f for f in files}  # NOTE: To make sure there are no duplicate paths
 
         for file in files.values():
-            new_file = _convert_dataset_file(dataset_file=file, client=client, revision=revision)
+            new_file = _convert_dataset_file(dataset_file=file, revision=revision)
             if not new_file:
                 continue
 
@@ -202,7 +205,7 @@ def convert_dataset(dataset: old_datasets.Dataset, client, revision: str) -> Tup
             keywords=dataset.keywords,
             license=convert_license(dataset.license),
             name=name,
-            project_id=client.project.id,
+            project_id=project_context.project.id,
             initial_identifier=_convert_dataset_identifier(dataset.initial_identifier),
             same_as=_convert_same_as(dataset.same_as),
             title=dataset.title,

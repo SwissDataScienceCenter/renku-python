@@ -21,9 +21,8 @@ import webbrowser
 from itertools import chain
 from typing import List, Optional
 
-from renku.command.command_builder import inject
 from renku.core import errors
-from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.config import get_value
 from renku.core.plugin.session import get_supported_session_providers
 from renku.core.session.utils import get_image_repository_host, get_renku_project_name
 from renku.core.util import communication
@@ -57,11 +56,9 @@ def session_list(config_path: str, provider: Optional[str] = None):
     return list(chain(*map(list_sessions, providers)))
 
 
-@inject.autoparams("client_dispatcher")
 def session_start(
     provider: str,
-    config_path: str,
-    client_dispatcher: IClientDispatcher,
+    config_path: Optional[str],
     image_name: str = None,
     cpu_request: Optional[float] = None,
     mem_request: Optional[str] = None,
@@ -69,9 +66,9 @@ def session_start(
     gpu_request: Optional[str] = None,
 ):
     """Start interactive session."""
-    client = client_dispatcher.current_client
+    from renku.domain_model.project_context import project_context
 
-    pinned_image = client.get_value("interactive", "image")
+    pinned_image = get_value("interactive", "image")
     if pinned_image and image_name is None:
         image_name = pinned_image
 
@@ -82,7 +79,7 @@ def session_start(
 
     project_name = get_renku_project_name()
     if image_name is None:
-        tag = client.repository.head.commit.hexsha[:7]
+        tag = project_context.repository.head.commit.hexsha[:7]
         repo_host = get_image_repository_host()
         image_name = f"{project_name}:{tag}"
         if repo_host:
@@ -94,24 +91,23 @@ def session_start(
                 abort=True,
             )
             with communication.busy(msg=f"Building image {image_name}"):
-                _ = provider_api.build_image(client.docker_path.parent, image_name, config)
+                _ = provider_api.build_image(project_context.docker_path.parent, image_name, config)
             communication.echo(f"Image {image_name} built successfully.")
     else:
         if not provider_api.find_image(image_name, config):
             raise errors.ParameterError(f"Cannot find the provided container image '{image_name}'!")
 
     # set resource settings
-    cpu_limit = cpu_request or client.get_value("interactive", "cpu_request")
-    disk_limit = disk_request or client.get_value("interactive", "disk_request")
-    mem_limit = mem_request or client.get_value("interactive", "mem_request")
-    gpu = gpu_request or client.get_value("interactive", "gpu_request")
+    cpu_limit = cpu_request or get_value("interactive", "cpu_request")
+    disk_limit = disk_request or get_value("interactive", "disk_request")
+    mem_limit = mem_request or get_value("interactive", "mem_request")
+    gpu = gpu_request or get_value("interactive", "gpu_request")
 
     with communication.busy(msg="Waiting for session to start..."):
         session_name = provider_api.session_start(
             config=config,
             project_name=project_name,
             image_name=image_name,
-            client=client,
             cpu_request=cpu_limit,
             mem_request=mem_limit,
             disk_request=disk_limit,

@@ -24,23 +24,22 @@ from typing import TYPE_CHECKING, List, Optional, Set, Union, cast
 from urllib.parse import urlparse
 
 from renku.core import errors
-from renku.core.dataset.constant import renku_pointers_path
 from renku.core.dataset.context import DatasetContext
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.pointer_file import create_external_file
 from renku.core.dataset.providers.api import ImporterApi
 from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.models import DatasetAddAction
+from renku.core.storage import check_external_storage, track_paths_in_storage
 from renku.core.util import communication, requests
 from renku.core.util.dataset import check_url
-from renku.core.util.dispatcher import get_client, get_database
 from renku.core.util.git import get_git_user
 from renku.core.util.os import delete_dataset_file, get_files, get_relative_path
 from renku.domain_model.dataset import Dataset, DatasetFile
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata
-    from renku.core.management.client import LocalClient
 
 
 def add_to_dataset(
@@ -62,10 +61,10 @@ def add_to_dataset(
     **kwargs,
 ) -> Dataset:
     """Import the data into the data directory."""
-    client = get_client()
+    repository = project_context.repository
     sources = sources or []
 
-    _check_available_space(client, urls, total_size=total_size)
+    _check_available_space(urls, total_size=total_size)
 
     if not create and storage:
         raise errors.ParameterError(
@@ -79,18 +78,17 @@ def add_to_dataset(
 
     try:
         with DatasetContext(name=dataset_name, create=create, datadir=datadir, storage=storage) as dataset:
-            destination_path = _create_destination_directory(client, dataset, destination)
+            destination_path = _create_destination_directory(dataset, destination)
 
-            client.check_external_storage()  # TODO: This is not required for external storages
+            check_external_storage()  # TODO: This is not required for external storages
 
-            datadir = cast(Path, client.path / dataset.get_datadir())
+            datadir = cast(Path, project_context.path / dataset.get_datadir())
             if create and datadir.exists():
                 # NOTE: Add datadir to paths to add missing files on create
                 for file in get_files(datadir):
                     urls.append(str(file))
 
             files = _download_files(
-                client=client,
                 urls=urls,
                 dataset=dataset,
                 importer=importer,
@@ -110,27 +108,27 @@ def add_to_dataset(
                     "Ignored adding paths under a .git directory:\n\t" + "\n\t".join(str(p) for p in paths_to_avoid)
                 )
 
-            files_to_commit = {f.get_absolute_commit_path(client.path) for f in files if not f.gitignored}
+            files_to_commit = {f.get_absolute_commit_path(project_context.path) for f in files if not f.gitignored}
 
             if not force:
-                files, files_to_commit = _check_ignored_files(client, files_to_commit, files)
+                files, files_to_commit = _check_ignored_files(files_to_commit, files)
 
             # all files at this point can be force-added
 
             if not overwrite:
-                files, files_to_commit = _check_existing_files(client, dataset, files_to_commit, files)
+                files, files_to_commit = _check_existing_files(dataset, files_to_commit, files)
 
-            move_files_to_dataset(client, files)
+            move_files_to_dataset(files)
 
             # Track non-symlinks in LFS
-            if client.check_external_storage():
-                client.track_paths_in_storage(*files_to_commit)
+            if check_external_storage():
+                track_paths_in_storage(*files_to_commit)
 
             # Force-add to include possible ignored files
             if len(files_to_commit) > 0:
-                client.repository.add(*files_to_commit, renku_pointers_path(client), force=True)
+                repository.add(*files_to_commit, project_context.pointers_path, force=True)
 
-            n_staged_changes = len(client.repository.staged_changes)
+            n_staged_changes = len(repository.staged_changes)
             if n_staged_changes == 0:
                 communication.warn("No new file was added to project")
 
@@ -140,13 +138,13 @@ def add_to_dataset(
 
                 return dataset
 
-            dataset_files = _generate_dataset_files(client, dataset, files, clear_files_before)
+            dataset_files = _generate_dataset_files(dataset, files, clear_files_before)
 
             dataset.add_or_update_files(dataset_files)
             datasets_provenance = DatasetsProvenance()
-            datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
+            datasets_provenance.add_or_update(dataset, creator=get_git_user(repository))
 
-        get_database().commit()
+        project_context.database.commit()
     except errors.DatasetNotFound:
         raise errors.DatasetNotFound(
             message='Dataset "{0}" does not exist.\n'
@@ -162,7 +160,6 @@ def add_to_dataset(
 
 def _download_files(
     *,
-    client: "LocalClient",
     urls: List[str],
     importer: Optional[ImporterApi] = None,
     dataset: Dataset,
@@ -180,7 +177,7 @@ def _download_files(
         )
 
     if importer:
-        return importer.download_files(client=client, destination=destination, extract=extract)
+        return importer.download_files(destination=destination, extract=extract)
 
     if len(urls) == 0:
         raise errors.ParameterError("No URL is specified")
@@ -198,7 +195,6 @@ def _download_files(
         provider = ProviderFactory.get_add_provider(uri=url)
 
         new_files = provider.add(
-            client=client,
             uri=url,
             destination=destination,
             revision=revision,
@@ -214,7 +210,7 @@ def _download_files(
     return files
 
 
-def _check_available_space(client: "LocalClient", urls: List[str], total_size: Optional[int] = None):
+def _check_available_space(urls: List[str], total_size: Optional[int] = None):
     """Check that there is enough space available on the device for download."""
     if total_size is None:
         total_size = 0
@@ -224,7 +220,7 @@ def _check_available_space(client: "LocalClient", urls: List[str], total_size: O
                 total_size += int(response.headers.get("content-length", 0))
             except errors.RequestError:
                 pass
-    usage = shutil.disk_usage(client.path)
+    usage = shutil.disk_usage(project_context.path)
 
     if total_size > usage.free:
         mb = 2**20
@@ -234,11 +230,9 @@ def _check_available_space(client: "LocalClient", urls: List[str], total_size: O
         raise errors.OperationError(message)
 
 
-def _create_destination_directory(
-    client: "LocalClient", dataset: Dataset, destination: Optional[Union[Path, str]] = None
-) -> Path:
+def _create_destination_directory(dataset: Dataset, destination: Optional[Union[Path, str]] = None) -> Path:
     """Create directory for dataset add."""
-    dataset_datadir = client.path / dataset.get_datadir()
+    dataset_datadir = project_context.path / dataset.get_datadir()
 
     if dataset_datadir.is_symlink():
         dataset_datadir.unlink()
@@ -252,13 +246,13 @@ def _create_destination_directory(
     return dataset_datadir / relative_path
 
 
-def _check_ignored_files(client: "LocalClient", files_to_commit: Set[str], files: List["DatasetAddMetadata"]):
+def _check_ignored_files(files_to_commit: Set[str], files: List["DatasetAddMetadata"]):
     """Check if any files added were ignored."""
-    ignored_files = set(client.find_ignored_paths(*files_to_commit))
+    ignored_files = set(project_context.repository.get_ignored_paths(*files_to_commit))
     if ignored_files:
         ignored_sources = []
         for file in files:
-            if not file.gitignored and file.get_absolute_commit_path(client.path) in ignored_files:
+            if not file.gitignored and file.get_absolute_commit_path(project_context.path) in ignored_files:
                 ignored_sources.append(file.source)
 
         communication.warn(
@@ -267,18 +261,16 @@ def _check_ignored_files(client: "LocalClient", files_to_commit: Set[str], files
         )
 
         files_to_commit = files_to_commit.difference(ignored_files)
-        files = [f for f in files if f.get_absolute_commit_path(client.path) not in ignored_files]
+        files = [f for f in files if f.get_absolute_commit_path(project_context.path) not in ignored_files]
 
     return files, files_to_commit
 
 
-def _check_existing_files(
-    client: "LocalClient", dataset: Dataset, files_to_commit: Set[str], files: List["DatasetAddMetadata"]
-):
+def _check_existing_files(dataset: Dataset, files_to_commit: Set[str], files: List["DatasetAddMetadata"]):
     """Check if files added already exist."""
     existing_files = set()
     for path in files_to_commit:
-        relative_path = Path(path).relative_to(client.path)
+        relative_path = Path(path).relative_to(project_context.path)
         if dataset.find_file(relative_path):
             existing_files.add(path)
 
@@ -289,12 +281,12 @@ def _check_existing_files(
         )
 
         files_to_commit = files_to_commit.difference(existing_files)
-        files = [f for f in files if f.get_absolute_commit_path(client.path) not in existing_files]
+        files = [f for f in files if f.get_absolute_commit_path(project_context.path) not in existing_files]
 
     return files, files_to_commit
 
 
-def move_files_to_dataset(client: "LocalClient", files: List["DatasetAddMetadata"]):
+def move_files_to_dataset(files: List["DatasetAddMetadata"]):
     """Copy/Move files into a dataset's directory."""
     for file in files:
         if not file.has_action:
@@ -309,20 +301,16 @@ def move_files_to_dataset(client: "LocalClient", files: List["DatasetAddMetadata
         elif file.action == DatasetAddAction.MOVE:
             shutil.move(file.source, file.destination, copy_function=shutil.copy)  # type: ignore
         elif file.action == DatasetAddAction.SYMLINK:
-            create_external_file(client=client, target=file.source, path=file.destination)
+            create_external_file(target=file.source, path=file.destination)
         else:
             raise errors.OperationError(f"Invalid action {file.action}")
 
 
-def _generate_dataset_files(
-    client: "LocalClient", dataset: Dataset, files: List["DatasetAddMetadata"], clear_files_before: bool = False
-):
+def _generate_dataset_files(dataset: Dataset, files: List["DatasetAddMetadata"], clear_files_before: bool = False):
     """Generate DatasetFile entries from file dict."""
     dataset_files = []
     for file in files:
-        dataset_file = DatasetFile.from_path(
-            client=client, path=file.entity_path, source=file.url, based_on=file.based_on
-        )
+        dataset_file = DatasetFile.from_path(path=file.entity_path, source=file.url, based_on=file.based_on)
         dataset_files.append(dataset_file)
 
     if clear_files_before:

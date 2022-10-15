@@ -22,10 +22,11 @@ from pathlib import Path
 from renku.core.workflow.activity import revert_activity
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.infrastructure.gateway.plan_gateway import PlanGateway
+from renku.infrastructure.repository import Repository
 from tests.utils import create_and_commit_files, create_dummy_activity, create_dummy_plan
 
 
-def create_dummy_activities(repository):
+def create_dummy_activities(repository: Repository):
     """Create activities for tests in this file."""
     # Create files so that they can be found by git
     create_and_commit_files(
@@ -62,9 +63,9 @@ def create_dummy_activities(repository):
     return upstream, activity, downstream, other
 
 
-def test_revert(injected_client):
+def test_revert(project_with_injection):
     """Test reverting an activity."""
-    _, activity, _, _ = create_dummy_activities(injected_client.repository)
+    _, activity, _, _ = create_dummy_activities(project_with_injection.repository)
 
     revert_activity(activity_id=activity.id, delete_plan=False, force=True, metadata_only=False)
 
@@ -80,9 +81,9 @@ def test_revert(injected_client):
     assert Path("used").exists()
 
 
-def test_revert_metadata_only(injected_client):
+def test_revert_metadata_only(project_with_injection):
     """Test reverting an activity without reverting its generations."""
-    _, activity, _, _ = create_dummy_activities(injected_client.repository)
+    _, activity, _, _ = create_dummy_activities(project_with_injection.repository)
 
     revert_activity(activity_id=activity.id, delete_plan=False, force=True, metadata_only=True)
 
@@ -93,9 +94,9 @@ def test_revert_metadata_only(injected_client):
     assert Path("used").exists()
 
 
-def test_revert_and_delete_plan(injected_client):
+def test_revert_and_delete_plan(project_with_injection):
     """Test reverting an activity and deleting its plan."""
-    _, activity, _, other = create_dummy_activities(injected_client.repository)
+    _, activity, _, other = create_dummy_activities(project_with_injection.repository)
     plan_gateway = PlanGateway()
 
     revert_activity(activity_id=activity.id, delete_plan=True, force=True, metadata_only=True)

@@ -17,24 +17,19 @@
 # limitations under the License.
 """Dataset context managers."""
 
-import contextlib
-import time
 from pathlib import Path
 from typing import Optional
 
-from renku.command.command_builder.command import inject
 from renku.core import errors
 from renku.core.dataset.dataset import create_dataset
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.domain_model.dataset import Dataset
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.agent import Person
 
 
 class DatasetContext:
     """Dataset context manager for metadata changes."""
-
-    database_dispatcher = inject.attr(IDatabaseDispatcher)
 
     def __init__(
         self,
@@ -74,22 +69,10 @@ class DatasetContext:
         """Exit context."""
         if exc_type:
             # TODO use a general clean-up strategy: https://github.com/SwissDataScienceCenter/renku-python/issues/736
-            # NOTE: Reraise exception
+            # NOTE: Re-raise exception
             return False
 
         if self.dataset and self.commit_database:
             self.datasets_provenance = DatasetsProvenance()
             self.datasets_provenance.add_or_update(self.dataset, creator=self.creator)
-            self.database_dispatcher.current_database.commit()
-
-
-@contextlib.contextmanager
-def wait_for(delay: float):
-    """Make sure that at least ``delay`` seconds are passed during the execution of the wrapped code block."""
-    start = time.time()
-
-    yield
-
-    exec_time = time.time() - start
-    if exec_time < delay:
-        time.sleep(delay - exec_time)
+            project_context.database.commit()

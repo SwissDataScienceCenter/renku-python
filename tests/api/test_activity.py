@@ -24,7 +24,7 @@ from renku.ui.api import Activity, Input, Output, Parameter
 from tests.utils import create_dummy_activity
 
 
-def test_list_activities(client_with_runs):
+def test_list_activities(project_with_runs):
     """Test listing activities."""
     activities = Activity.list()
 
@@ -40,7 +40,7 @@ def test_list_datasets_outside_a_renku_project(directory_tree):
     assert [] == Activity.list()
 
 
-def test_get_activity_attributes(client_with_runs):
+def test_get_activity_attributes(project_with_runs):
     """Test getting attributes of an activity."""
     activity = next(p for p in Activity.list() if p.plan.name == "plan-1")
 
@@ -53,7 +53,7 @@ def test_get_activity_attributes(client_with_runs):
     assert "Renku Bot <renku@datascience.ch>" == activity.user
 
 
-def test_get_activity_values(client_with_runs):
+def test_get_activity_values(project_with_runs):
     """Test getting values used in an activity."""
     activity = next(p for p in Activity.list() if p.plan.name == "plan-1")
 
@@ -75,7 +75,7 @@ def test_get_activity_values(client_with_runs):
     assert "42" == value.value
 
 
-def test_get_activity_downstreams(client_with_runs):
+def test_get_activity_downstreams(project_with_runs):
     """Test getting downstream of an activity."""
     activity = next(p for p in Activity.list() if p.plan.name == "plan-1")
 
@@ -89,7 +89,7 @@ def test_get_activity_downstreams(client_with_runs):
     assert [] == activity.following_activities
 
 
-def test_get_activity_upstreams(client_with_runs):
+def test_get_activity_upstreams(project_with_runs):
     """Test getting upstream of an activity."""
     activity = next(p for p in Activity.list() if p.plan.name == "plan-1")
 
@@ -103,9 +103,9 @@ def test_get_activity_upstreams(client_with_runs):
     assert "plan-1" == upstreams[0].plan.name
 
 
-def test_filter_activities(client_with_runs, client_database_injection_manager):
+def test_filter_activities(project_with_runs, with_injection):
     """Test Activity.filter method."""
-    with client_database_injection_manager(client_with_runs):
+    with with_injection(project_with_runs):
         activity_gateway = ActivityGateway()
         activity = next(a for a in activity_gateway.get_all_activities() if a.association.plan.name == "plan-2")
         plan = activity.association.plan

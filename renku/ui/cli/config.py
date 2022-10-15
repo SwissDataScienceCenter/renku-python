@@ -43,7 +43,7 @@ Examples
    :group: Config
    :command: $ renku config show [<key>]
    :description: Show current configuration.
-   :extended:
+   :target: rp
 
 You can set various Renku configuration options, for example the image registry
 URL, with a command like:
@@ -60,7 +60,7 @@ directory.
    :group: Config
    :command: $ renku config set <key> <value>
    :description: Set entry <key> to <value> in renku config.
-   :extended:
+   :target: rp
 
 To remove a specific key from configuration use:
 
@@ -75,7 +75,7 @@ option to remove a global configuration value.
    :group: Config
    :command: $ renku config remove <key>
    :description: Unset entry <key> renku config.
-   :extended:
+   :target: rp
 
 Available configuration values
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

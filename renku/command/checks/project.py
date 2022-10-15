@@ -18,28 +18,30 @@
 """Checks needed to determine integrity of the project."""
 
 from renku.command.command_builder import inject
-from renku.command.echo import WARNING
+from renku.command.util import WARNING
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.util import communication
 from renku.domain_model.project import Project
+from renku.domain_model.project_context import project_context
 
 
 @inject.autoparams("project_gateway")
-def check_project_id_group(client, fix, project_gateway: IProjectGateway, **kwargs):
+def check_project_id_group(fix, project_gateway: IProjectGateway, **_):
     """Check that projects in groups have the correct id set.
 
     Args:
-        client: ``LocalClient``.
         fix: Whether to fix found issues.
         project_gateway: Injected project gateway.
-        kwargs: keyword arguments.
+        _: keyword arguments.
 
     Returns:
         Tuple of whether project id is valid.
     """
-    current_project = client.project
+    current_project = project_gateway.get_project()
 
-    namespace, name = Project.get_namespace_and_name(client=client)
+    namespace, name = Project.get_namespace_and_name(
+        remote=project_context.remote, repository=project_context.repository
+    )
 
     if namespace is None or name is None:
         return True, None

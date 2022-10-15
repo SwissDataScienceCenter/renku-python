@@ -1,8 +1,27 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Eidgenössische Technische Hochschule Zürich (ETHZ).
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+"""Sphinx extension to handle cheatsheet entries."""
+
+import json
 from collections import defaultdict
 
 from docutils import nodes
 from docutils.parsers.rst import Directive, directives
-from sphinx.locale import _
 from sphinx.util import texescape
 from sphinx.util.docutils import SphinxDirective
 
@@ -15,6 +34,17 @@ def latex_escape(text):
 def add_linebreaks(text, breakstring=" \\linebreak "):
     """Replace ||| with linebreaks."""
     return text.replace("\n", " ").replace("|||", breakstring)
+
+
+def list_directive(argument):
+    """A docutils directive to take a list of values."""
+    if argument is not None:
+        argument = argument.strip()
+
+    if not argument:
+        raise ValueError("argument required but none supplied")
+
+    return [a.strip() for a in argument.split(",")]
 
 
 class cheatsheet_list(nodes.General, nodes.Element):
@@ -40,7 +70,7 @@ class CheatsheetDirective(SphinxDirective):
         "command": directives.unchanged_required,
         "description": directives.unchanged_required,
         "group": directives.unchanged_required,
-        "extended": directives.flag,
+        "target": list_directive,
     }
 
     def run(self):
@@ -52,6 +82,7 @@ class CheatsheetDirective(SphinxDirective):
         command = self.options.get("command")
         description = self.options.get("description")
         group = self.options.get("group")
+        target = self.options.get("target")
 
         if any(
             command == e["command"] and description == e["description"] and group == e["group"]
@@ -64,7 +95,7 @@ class CheatsheetDirective(SphinxDirective):
                 "command": command,
                 "description": description,
                 "group": group,
-                "extended": True if "extended" in self.options else False,
+                "target": target,
                 "docname": self.env.docname,
             }
         )
@@ -101,6 +132,23 @@ def process_latex_entries(content, entries, groups):
             command = latex_escape(entry["command"])
             command = add_linebreaks(command)
             content.append(nodes.raw("", f"\commandsubsection{{{command}}}{{{description}}}", format="latex"))
+
+
+def process_json_entries(content, entries, groups):
+    """Create output when building json cheatsheet."""
+    data = {"groups": []}
+    for group in groups:
+        entry_list = entries[group]
+        group_entry = {"name": group, "commands": []}
+
+        for entry in entry_list:
+            group_entry["commands"].append(
+                {"command": entry["command"], "description": entry["description"], "target": entry["target"]}
+            )
+
+        data["groups"].append(group_entry)
+
+    content.append(nodes.raw("", json.dumps(data), format="html"))
 
 
 def process_regular_entries(content, entries, groups):
@@ -142,11 +190,13 @@ def process_cheatsheet_nodes(app, doctree, fromdocname):
         entries = defaultdict(list)
 
         for cheatsheet_info in env.cheatsheet_all_entries:
-            if not cheatsheet_info["extended"] or app.config.cheatsheet_extended:
+            if not app.config.cheatsheet_target or app.config.cheatsheet_target in cheatsheet_info["target"]:
                 entries[cheatsheet_info["group"]].append(cheatsheet_info)
 
         if app.builder.name == "latex":
             process_latex_entries(content, entries, app.config.cheatsheet_groups)
+        elif app.builder.name == "json":
+            process_json_entries(content, entries, app.config.cheatsheet_groups)
         else:
             process_regular_entries(content, entries, app.config.cheatsheet_groups)
 
@@ -156,7 +206,7 @@ def process_cheatsheet_nodes(app, doctree, fromdocname):
 def setup(app):
     """Run setup method for directive/plugin."""
 
-    app.add_config_value("cheatsheet_extended", False, "html")
+    app.add_config_value("cheatsheet_target", None, "html")
     app.add_config_value("cheatsheet_groups", [], "html")
     app.add_node(cheatsheet_list)
 

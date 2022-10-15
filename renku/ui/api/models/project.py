@@ -50,20 +50,32 @@ from typing import TYPE_CHECKING, List, Optional, Union
 from werkzeug.local import LocalStack
 
 from renku.command.status import get_status_command
-from renku.core import errors
+from renku.core.util.git import get_git_repository
 from renku.core.workflow.run import StatusResult
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
-    from renku.core.management.client import LocalClient
+    from renku.infrastructure.repository import Repository
 
 
 class Project:
     """API Project context class."""
 
-    _project_contexts = LocalStack()
+    _project_contexts: LocalStack = LocalStack()
 
     def __init__(self):
-        self._client: "LocalClient" = _get_local_client()
+        try:
+            repository = get_git_repository()
+        except ValueError:
+            repository = None
+            path = Path(".")
+        else:
+            path = repository.path
+
+        project_context.replace_path(path)
+        project_context.repository = repository
+        self._path = project_context.path
+        self._repository = repository
 
     def __enter__(self):
         self._project_contexts.push(self)
@@ -71,19 +83,19 @@ class Project:
         return self
 
     def __exit__(self, type, value, traceback):
-        project_context = self._project_contexts.pop()
-        if project_context is not self:
+        context = self._project_contexts.pop()
+        if context is not self:
             raise RuntimeError("Project context was changed.")
 
     @property
-    def client(self) -> Optional["LocalClient"]:
-        """Return the LocalClient instance."""
-        return None if self._client.repository is None else self._client
+    def repository(self) -> Optional["Repository"]:
+        """Return the Repository instance."""
+        return self._repository
 
     @property
-    def path(self):
+    def path(self) -> Path:
         """Absolute path to project's root directory."""
-        return self._client.path.resolve()
+        return self._path
 
     def status(self, paths: Optional[List[Union[Path, str]]] = None, ignore_deleted: bool = False) -> StatusResult:
         """Return status of a project.
@@ -96,20 +108,4 @@ class Project:
             StatusResult: Status of the project.
 
         """
-        return (
-            get_status_command().with_client(self._client).build().execute(paths=paths, ignore_deleted=ignore_deleted)
-        ).output
-
-
-def _get_local_client() -> "LocalClient":
-    from renku.core.management.client import LocalClient
-    from renku.infrastructure.repository import Repository
-
-    try:
-        repository = Repository(".", search_parent_directories=True)
-    except errors.GitError:
-        path = Path(".")
-    else:
-        path = repository.path
-
-    return LocalClient(path)
+        return get_status_command().build().execute(paths=paths, ignore_deleted=ignore_deleted).output

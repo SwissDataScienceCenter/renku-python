@@ -33,8 +33,8 @@ class ManifestTemplatesRequest(RepositoryCloneRequest):
     """Request schema for listing manifest templates."""
 
     url = fields.String(required=True)
-    ref = fields.String(missing=None)
-    depth = fields.Integer(missing=TEMPLATE_CLONE_DEPTH_DEFAULT)
+    ref = fields.String(load_default=None)
+    depth = fields.Integer(load_default=TEMPLATE_CLONE_DEPTH_DEFAULT)
 
     @pre_load()
     def set_git_url(self, data, **kwargs):
@@ -47,23 +47,29 @@ class TemplateParameterSchema(Schema):
     """Manifest template schema."""
 
     key = fields.String(required=True)
-    value = fields.String(missing="")
+    value = fields.String(load_default="")
 
 
 class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
     """Request schema for listing manifest templates."""
 
-    identifier = fields.String(required=True, description="Indentifier of the template")
-    initial_branch = fields.String(missing=None, description="Name for the initial branch in the new project.")
-    parameters = fields.List(fields.Nested(TemplateParameterSchema), missing=[], description="Template parameters")
-    project_name = fields.String(required=True, description="Project name")
-    project_namespace = fields.String(required=True, description="Project namespace")
-    project_repository = fields.String(required=True, description="Project remote repository")
-    project_description = fields.String(missing=None, description="Project description")
-    project_keywords = fields.List(fields.String(), missing=None, description="Project keywords")
-    project_custom_metadata = fields.Dict(missing=None, description="Project custom JSON-LD metadata")
+    identifier = fields.String(required=True, metadata={"description": "Indentifier of the template"})
+    initial_branch = fields.String(
+        load_default=None, metadata={"description": "Name for the initial branch in the new project."}
+    )
+    parameters = fields.List(
+        fields.Nested(TemplateParameterSchema), load_default=[], metadata={"description": "Template parameters"}
+    )
+    project_name = fields.String(required=True, metadata={"description": "Project name"})
+    project_namespace = fields.String(required=True, metadata={"description": "Project namespace"})
+    project_repository = fields.String(required=True, metadata={"description": "Project remote repository"})
+    project_description = fields.String(load_default=None, metadata={"description": "Project description"})
+    project_keywords = fields.List(fields.String(), load_default=None, metadata={"description": "Project keywords"})
+    project_custom_metadata = fields.Dict(
+        load_default=None, metadata={"description": "Project custom JSON-LD metadata"}
+    )
     data_directory = fields.String(
-        missing=None, description="Base dataset data directory in project. Defaults to 'data/'"
+        load_default=None, metadata={"description": "Base dataset data directory in project. Defaults to 'data/'"}
     )
 
     @post_load()
@@ -93,11 +99,15 @@ class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
 class ManifestTemplateSchema(Schema):
     """Manifest template schema."""
 
-    description = fields.String(required=True, description="Description of the template")
-    folder = fields.String(required=True, description="Folder the template resides in")
-    name = fields.String(required=True, description="Name of the template")
-    variables = fields.Dict(missing={}, description="Dictionary of values that can be set on this template")
-    icon = fields.String(missing=None, description="base64 encoded icon for the template in PNG format")
+    description = fields.String(required=True, metadata={"description": "Description of the template"})
+    folder = fields.String(required=True, metadata={"description": "Folder the template resides in"})
+    name = fields.String(required=True, metadata={"description": "Name of the template"})
+    variables = fields.Dict(
+        load_default={}, metadata={"description": "Dictionary of values that can be set on this template"}
+    )
+    icon = fields.String(
+        load_default=None, metadata={"description": "base64 encoded icon for the template in PNG format"}
+    )
 
 
 class ManifestTemplatesResponse(Schema):
@@ -119,7 +129,7 @@ class ProjectTemplateResponse(Schema):
     namespace = fields.String(required=True)
     name = fields.String(required=True)
     slug = fields.String(required=True)
-    project_id = fields.String(required=False, default=None)
+    project_id = fields.String(required=False, dump_default=None)
 
 
 class ProjectTemplateResponseRPC(JsonRPCResponse):

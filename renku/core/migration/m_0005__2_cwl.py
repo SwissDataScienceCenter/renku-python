@@ -21,7 +21,6 @@ import glob
 import os
 import traceback
 import uuid
-from collections import defaultdict
 from functools import cmp_to_key
 from hashlib import sha1
 from pathlib import Path
@@ -31,7 +30,8 @@ from cwl_utils.parser import load_document_by_uri
 from cwl_utils.parser.cwl_v1_0 import CommandLineTool, InitialWorkDirRequirement
 from werkzeug.utils import secure_filename
 
-from renku.core import errors
+from renku.core.constant import RENKU_HOME
+from renku.core.migration.models.migration import MigrationType, RepositoryCache
 from renku.core.migration.models.v3 import Dataset
 from renku.core.migration.models.v9 import (
     Collection,
@@ -46,9 +46,11 @@ from renku.core.migration.models.v9 import (
     SoftwareAgent,
     WorkflowRun,
 )
-from renku.core.migration.utils import OLD_DATASETS_PATH, OLD_WORKFLOW_PATH, MigrationType
+from renku.core.migration.utils import OLD_DATASETS_PATH, OLD_WORKFLOW_PATH
 from renku.core.util import communication
-from renku.infrastructure.repository import Actor, Commit, git_unicode_unescape
+from renku.core.util.git import get_in_submodules
+from renku.domain_model.project_context import project_context
+from renku.infrastructure.repository import Actor, Commit
 from renku.version import __version__, version_url
 
 default_missing_software_agent = SoftwareAgent(
@@ -60,10 +62,15 @@ def migrate(migration_context):
     """Migration function."""
     if MigrationType.WORKFLOWS not in migration_context.options.type:
         return
-    _migrate_old_workflows(client=migration_context.client, strict=migration_context.options.strict)
+
+    migration_context.cwl_cache = {}
+    try:
+        _migrate_old_workflows(migration_context=migration_context, strict=migration_context.options.strict)
+    finally:
+        migration_context.cwl_cache = None
 
 
-def _migrate_old_workflows(client, strict):
+def _migrate_old_workflows(migration_context, strict):
     """Migrates old cwl workflows to new jsonld format."""
 
     def sort_cwl_commits(e1, e2):
@@ -73,60 +80,68 @@ def _migrate_old_workflows(client, strict):
 
         return commit1.compare_to(commit2)
 
-    cache = RepositoryCache.from_client(client)
-    client.cache = cache
+    cache = RepositoryCache.from_repository(project_context.repository)
+    migration_context.cache = cache
 
-    wf_path = f"{client.renku_path}/workflow/*.cwl"
-    for path in glob.glob(wf_path):
-        if path not in cache.cwl_files_commits:
-            raise ValueError(f"Couldn't find a previous commit for path `{path}`")
+    try:
+        wf_path = f"{project_context.metadata_path}/workflow/*.cwl"
+        for path in glob.glob(wf_path):
+            if path not in cache.cwl_files_commits:
+                raise ValueError(f"Couldn't find a previous commit for path `{path}`")
 
-    cwl_paths = list(cache.cwl_files_commits.items())
-    cwl_paths = sorted(cwl_paths, key=cmp_to_key(sort_cwl_commits))
+        cwl_paths = list(cache.cwl_files_commits.items())
+        cwl_paths = sorted(cwl_paths, key=cmp_to_key(sort_cwl_commits))
 
-    for n, element in enumerate(cwl_paths, start=1):
-        communication.echo(f"Processing commit {n}/{len(cwl_paths)}", end="\r")
+        for n, element in enumerate(cwl_paths, start=1):
+            communication.echo(f"Processing commit {n}/{len(cwl_paths)}", end="\r")
 
-        cwl_file, commit = element
+            cwl_file, commit = element
+            repository = project_context.repository
 
-        try:
-            if not Path(cwl_file).exists():
-                continue
+            try:
+                if not Path(cwl_file).exists():
+                    continue
 
-            path = _migrate_cwl(client, cwl_file, commit)
-            os.remove(cwl_file)
+                path = _migrate_cwl(migration_context=migration_context, path=cwl_file, commit=commit)
+                os.remove(cwl_file)
 
-            client.repository.add(cwl_file, path)
+                repository.add(cwl_file, path)
 
-            if client.repository.is_dirty():
-                commit_msg = "renku migrate: committing migrated workflow"
-                committer = Actor(name=f"renku {__version__}", email=version_url)
-                client.repository.commit(commit_msg + client.transaction_id, committer=committer, no_verify=True)
-        except Exception:
-            if strict:
-                raise
-            communication.echo("")
-            communication.warn(f"Cannot process commit '{commit.hexsha}' - Exception: {traceback.format_exc()}")
+                if repository.is_dirty():
+                    commit_msg = "renku migrate: committing migrated workflow"
+                    committer = Actor(name=f"renku {__version__}", email=version_url)
+                    repository.commit(commit_msg + project_context.transaction_id, committer=committer, no_verify=True)
+            except Exception:
+                if strict:
+                    raise
+                communication.echo("")
+                communication.warn(f"Cannot process commit '{commit.hexsha}' - Exception: {traceback.format_exc()}")
+    finally:
+        migration_context.cache = None
 
 
-def _migrate_cwl(client, path, commit):
+def _migrate_cwl(migration_context, path, commit):
     """Migrate a cwl file."""
-    workflow = parse_cwl_cached(str(path))
+    workflow = parse_cwl_cached(migration_context=migration_context, path=str(path))
 
     if isinstance(workflow, CommandLineTool):
-        _, path = _migrate_single_step(client, workflow, path, commit=commit, persist=True)
+        _, path = _migrate_single_step(
+            migration_context=migration_context, cmd_line_tool=workflow, path=path, commit=commit, persist=True
+        )
     else:
-        _, path = _migrate_composite_step(client, workflow, path, commit=commit)
+        _, path = _migrate_composite_step(
+            migration_context=migration_context, workflow=workflow, path=path, commit=commit
+        )
 
     return path
 
 
-def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit=None, persist=False):
+def _migrate_single_step(migration_context, cmd_line_tool, path, commit=None, parent_commit=None, persist=False):
     """Migrate a single step workflow."""
     if not commit:
-        commit = client.cache.find_previous_commit(path, revision=parent_commit if parent_commit else "HEAD")
+        commit = migration_context.cache.find_previous_commit(path, revision=parent_commit if parent_commit else "HEAD")
 
-    run = Run(client=client, path=path, commit=commit)
+    run = Run(path=path, commit=commit)
     run.command = " ".join(cmd_line_tool.baseCommand)
     run.successcodes = cmd_line_tool.successCodes
 
@@ -134,14 +149,14 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
     outputs = list(cmd_line_tool.outputs)
 
     # NOTE: Make run ids deterministic to prevent duplication.
-    rel_path = Path(path).relative_to(client.path)
+    rel_path = Path(path).relative_to(project_context.path)
     if parent_commit:
         label = f"{rel_path}@{parent_commit.hexsha}"
     else:
         label = f"{rel_path}@{commit.hexsha}"
     identifier = sha1(label.encode("utf-8")).hexdigest()
 
-    base_id = Run.generate_id(client, identifier=identifier)
+    base_id = Run.generate_id(identifier=identifier)
     run._id = base_id
 
     if cmd_line_tool.stdin:
@@ -153,15 +168,15 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
         matched_input = next(i for i in inputs if i.id.endswith(name))
         inputs.remove(matched_input)
 
-        path = client.renku_path / OLD_WORKFLOW_PATH / Path(matched_input.default["path"])
-        stdin = path.resolve().relative_to(client.path)
+        path = project_context.metadata_path / OLD_WORKFLOW_PATH / Path(matched_input.default["path"])
+        stdin = path.resolve().relative_to(project_context.path)
         id_ = CommandInput.generate_id(base_id, "stdin")
 
         run.inputs.append(
             CommandInput(
                 id=id_,
-                consumes=_entity_from_path(client, stdin, commit),
-                mapped_to=MappedIOStream(client=client, stream_type="stdin"),
+                consumes=_entity_from_path(migration_context, stdin, commit),
+                mapped_to=MappedIOStream(stream_type="stdin"),
             )
         )
 
@@ -169,8 +184,8 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
         run.outputs.append(
             CommandOutput(
                 id=CommandOutput.generate_id(base_id, "stdout"),
-                produces=_entity_from_path(client, cmd_line_tool.stdout, commit),
-                mapped_to=MappedIOStream(client=client, stream_type="stdout"),
+                produces=_entity_from_path(migration_context, cmd_line_tool.stdout, commit),
+                mapped_to=MappedIOStream(stream_type="stdout"),
                 create_folder=False,
             )
         )
@@ -184,8 +199,8 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
         run.outputs.append(
             CommandOutput(
                 id=CommandOutput.generate_id(base_id, "stderr"),
-                produces=_entity_from_path(client, cmd_line_tool.stderr, commit),
-                mapped_to=MappedIOStream(client=client, stream_type="stderr"),
+                produces=_entity_from_path(migration_context, cmd_line_tool.stderr, commit),
+                mapped_to=MappedIOStream(stream_type="stderr"),
                 create_folder=False,
             )
         )
@@ -223,11 +238,11 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
                 pass
 
             if isinstance(matched_input.default, dict):
-                path = client.renku_path / OLD_WORKFLOW_PATH / Path(matched_input.default["path"])
+                path = project_context.metadata_path / OLD_WORKFLOW_PATH / Path(matched_input.default["path"])
             else:
                 path = Path(matched_input.default)
 
-            path = Path(os.path.realpath(client.path / path)).relative_to(client.path)
+            path = Path(os.path.realpath(project_context.path / path)).relative_to(project_context.path)
 
             if matched_input.inputBinding:
                 prefix = matched_input.inputBinding.prefix
@@ -241,7 +256,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
         create_folder = False
 
         check_path = path
-        if not (client.path / path).is_dir():
+        if not (project_context.path / path).is_dir():
             check_path = path.parent
 
         if check_path != "." and str(check_path) in generated_outputs:
@@ -252,7 +267,7 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
                 id=CommandOutput.generate_id(base_id, position),
                 position=position,
                 prefix=prefix,
-                produces=_entity_from_path(client, path, commit),
+                produces=_entity_from_path(migration_context, path, commit),
                 create_folder=create_folder,
             )
         )
@@ -269,15 +284,15 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
                 prefix += " "
 
         if isinstance(i.default, dict) and "class" in i.default and i.default["class"] in ["File", "Directory"]:
-            path = client.renku_path / OLD_WORKFLOW_PATH / Path(i.default["path"])
-            path = Path(os.path.realpath(path)).relative_to(client.path)
+            path = project_context.metadata_path / OLD_WORKFLOW_PATH / Path(i.default["path"])
+            path = Path(os.path.realpath(path)).relative_to(project_context.path)
 
             run.inputs.append(
                 CommandInput(
                     id=CommandInput.generate_id(base_id, position),
                     position=position,
                     prefix=prefix,
-                    consumes=_entity_from_path(client, path, commit),
+                    consumes=_entity_from_path(migration_context, path, commit),
                 )
             )
         else:
@@ -299,14 +314,14 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
 
     step_name = "{0}_{1}.yaml".format(uuid.uuid4().hex, secure_filename("_".join(cmd_line_tool.baseCommand)))
 
-    absolute_path = client.renku_path / OLD_WORKFLOW_PATH / step_name
-    path = absolute_path.relative_to(client.path)
+    absolute_path = project_context.metadata_path / OLD_WORKFLOW_PATH / step_name
+    path = absolute_path.relative_to(project_context.path)
 
     run.path = path
-    process_run = ProcessRun.from_run(run, client, path, commit=commit)
-    process_run.invalidated = _invalidations_from_commit(client, commit)
+    process_run = ProcessRun.from_run(run, path, commit=commit)
+    process_run.invalidated = _invalidations_from_commit(commit)
 
-    # HACK: This fixes broken SoftwareAgent due to rebases done by users
+    # HACK: This fixes broken SoftwareAgent due to re-bases done by users
     if isinstance(process_run.association.agent, Person) or not process_run.association.agent.label.startswith(
         "renku "
     ):
@@ -315,20 +330,20 @@ def _migrate_single_step(client, cmd_line_tool, path, commit=None, parent_commit
     return process_run, absolute_path
 
 
-def _migrate_composite_step(client, workflow, path, commit=None):
+def _migrate_composite_step(migration_context, workflow, path, commit=None):
     """Migrate a composite workflow."""
     if not commit:
-        commit = client.cache.find_previous_commit(path)
-    run = Run(client=client, path=path, commit=commit)
-    rel_path = Path(path).relative_to(client.path)
+        commit = migration_context.cache.find_previous_commit(path)
+    run = Run(path=path, commit=commit)
+    rel_path = Path(path).relative_to(project_context.path)
     label = f"{rel_path}@{commit.hexsha}"
     identifier = sha1(label.encode("utf-8")).hexdigest()
-    run._id = Run.generate_id(client, identifier=identifier)
+    run._id = Run.generate_id(identifier=identifier)
 
     name = "{0}_migrated.yaml".format(uuid.uuid4().hex)
 
-    wf_path = client.renku_path / OLD_WORKFLOW_PATH
-    run.path = (wf_path / name).relative_to(client.path)
+    wf_path = project_context.metadata_path / OLD_WORKFLOW_PATH
+    run.path = (wf_path / name).relative_to(project_context.path)
 
     for step in workflow.steps:
         if isinstance(step.run, dict):
@@ -336,14 +351,16 @@ def _migrate_composite_step(client, workflow, path, commit=None):
         else:
             uri = urlparse(step.run)
             path = uri.path
-            subrun = parse_cwl_cached(path)
+            sub_run = parse_cwl_cached(migration_context=migration_context, path=path)
 
-        subprocess, _ = _migrate_single_step(client, subrun, path, parent_commit=commit)
+        subprocess, _ = _migrate_single_step(
+            migration_context=migration_context, cmd_line_tool=sub_run, path=path, parent_commit=commit
+        )
         run.add_subprocess(subprocess)
 
-    wf = WorkflowRun.from_run(run, client, run.path, commit=commit)
+    wf = WorkflowRun.from_run(run, run.path, commit=commit)
 
-    # HACK: This fixes broken SoftwareAgent due to rebases done by users
+    # HACK: This fixes broken SoftwareAgent due to re-bases done by users
     if isinstance(wf.association.agent, Person) or not wf.association.agent.label.startswith("renku "):
         wf.association.agent = default_missing_software_agent
     for p in wf._processes:
@@ -354,21 +371,23 @@ def _migrate_composite_step(client, workflow, path, commit=None):
     return wf, run.path
 
 
-def _entity_from_path(client, path, commit):
+def _entity_from_path(migration_context, path, commit):
     """Gets the entity associated with a path."""
-    client, commit, path = client.get_in_submodules(client.cache.find_previous_commit(path, revision=commit), path)
+    _, commit, path = get_in_submodules(
+        project_context.repository, migration_context.cache.find_previous_commit(path, revision=commit), path
+    )
 
     entity_cls = Entity
-    if (client.path / path).is_dir():
+    if (project_context.path / path).is_dir():
         entity_cls = Collection
 
-    if str(path).startswith(os.path.join(client.renku_home, OLD_DATASETS_PATH)):
-        return Dataset.from_yaml(path=client.path / path, client=client, commit=commit)
+    if str(path).startswith(os.path.join(RENKU_HOME, OLD_DATASETS_PATH)):
+        return Dataset.from_yaml(path=project_context.path / path, commit=commit)
     else:
-        return entity_cls(commit=commit, client=client, path=str(path))
+        return entity_cls(commit=commit, path=str(path))
 
 
-def _invalidations_from_commit(client, commit: Commit):
+def _invalidations_from_commit(commit: Commit):
     """Gets invalidated files from a commit."""
     results = []
     collections = dict()
@@ -377,18 +396,18 @@ def _invalidations_from_commit(client, commit: Commit):
         if not file.deleted:
             continue
         path = Path(file.a_path)
-        entity = _get_activity_entity(client, commit, path, collections, deleted=True)
+        entity = _get_activity_entity(commit, path, collections, deleted=True)
 
         results.append(entity)
 
     return results
 
 
-def _get_activity_entity(client, commit, path, collections, deleted=False):
+def _get_activity_entity(commit, path, collections, deleted=False):
     """Gets the entity associated with this Activity and path."""
-    client, commit, path = client.get_in_submodules(commit, path)
-    output_path = client.path / path
-    parents = list(output_path.relative_to(client.path).parents)
+    _, commit, path = get_in_submodules(repository=project_context.repository, commit=commit, path=path)
+    output_path = project_context.path / path
+    parents = list(output_path.relative_to(project_context.path).parents)
 
     collection = None
     members = []
@@ -396,20 +415,20 @@ def _get_activity_entity(client, commit, path, collections, deleted=False):
         if str(parent) in collections:
             collection = collections[str(parent)]
         else:
-            collection = Collection(client=client, commit=commit, path=str(parent), members=[], parent=collection)
+            collection = Collection(commit=commit, path=str(parent), members=[], parent=collection)
             members.append(collection)
             collections[str(parent)] = collection
 
         members = collection.members
 
     entity_cls = Entity
-    if (client.path / path).is_dir():
+    if (project_context.path / path).is_dir():
         entity_cls = Collection
 
-    if str(path).startswith(os.path.join(client.renku_home, OLD_DATASETS_PATH)) and not deleted:
-        entity = Dataset.from_yaml(path=client.path / path, client=client, commit=commit)
+    if str(path).startswith(os.path.join(RENKU_HOME, OLD_DATASETS_PATH)) and not deleted:
+        entity = Dataset.from_yaml(path=project_context.path / path, commit=commit)
     else:
-        entity = entity_cls(commit=commit, client=client, path=str(path), parent=collection)
+        entity = entity_cls(commit=commit, path=str(path), parent=collection)
 
     if collection:
         collection.members.append(entity)
@@ -417,98 +436,13 @@ def _get_activity_entity(client, commit, path, collections, deleted=False):
     return entity
 
 
-_cwl_cache = {}
-
-
-def parse_cwl_cached(path):
+def parse_cwl_cached(migration_context, path: str):
     """Parse cwl and remember the result for future execution."""
-    if path in _cwl_cache:
-        return _cwl_cache[path]
+    if path in migration_context.cwl_cache:
+        return migration_context.cwl_cache[path]
 
     cwl = load_document_by_uri(path)
 
-    _cwl_cache[path] = cwl
+    migration_context.cwl_cache[path] = cwl
 
     return cwl
-
-
-class RepositoryCache:
-    """Cache for a git repository."""
-
-    def __init__(self, client, cache, cwl_files_commits):
-        self.client = client
-        self.cache = cache
-        self.cwl_files_commits = cwl_files_commits
-
-    @classmethod
-    def from_client(cls, client):
-        """Return a cached repository."""
-        cache = defaultdict(list)
-        cwl_files_commits_map = {}
-
-        for n, commit in enumerate(client.repository.iterate_commits(full_history=True), start=1):
-            communication.echo(f"Caching commit {n}", end="\r")
-
-            cwl_files = []
-            for file in commit.get_changes():
-                # Ignore deleted files
-                if file.deleted:
-                    continue
-
-                path = file.b_path
-                cache[path].append(commit)
-
-                if path.startswith(f"{client.renku_home}/workflow/") and path.endswith(".cwl"):
-                    cwl_files.append(os.path.realpath(client.path / path))
-
-            cls._update_cwl_files_and_commits(commit, cwl_files_commits_map, cwl_files)
-
-        communication.echo(40 * " ", end="\r")
-
-        return RepositoryCache(client, cache, cwl_files_commits_map)
-
-    @staticmethod
-    def _update_cwl_files_and_commits(commit, cwl_files_commits_map, cwl_files):
-        if len(cwl_files) != 1:
-            return
-
-        path = cwl_files[0]
-        existing_commit = cwl_files_commits_map.get(path)
-
-        if existing_commit is None:
-            cwl_files_commits_map[path] = commit
-        elif existing_commit.compare_to(commit) < 0:  # existing commit is older
-            cwl_files_commits_map[path] = commit
-
-    def find_previous_commit(self, path, revision="HEAD"):
-        """Return a previous commit for a given path starting from 'revision'."""
-
-        def find_from_client(path, revision):
-            try:
-                return self.client.repository.get_previous_commit(path=path, revision=revision, full_history=True)
-            except errors.GitCommitNotFoundError:
-                communication.warn(f"Cannot find previous commit for {path} from {str(revision)}")
-                return revision
-
-        try:
-            path = (self.client.path / path).relative_to(self.client.path)
-        except ValueError:
-            pass
-        path = str(path)
-
-        if revision == "HEAD":
-            revision = self.client.repository.head.commit
-
-        commits = self.cache.get(git_unicode_unescape(path))
-        if not commits:
-            return find_from_client(path, revision)
-
-        if revision in commits:
-            return revision
-
-        for commit in commits:
-            if commit.compare_to(revision) <= 0:
-                return commit
-
-        # No commit was found
-        return find_from_client(path, revision)

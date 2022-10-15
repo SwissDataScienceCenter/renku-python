@@ -25,7 +25,6 @@ from uuid import uuid4
 from werkzeug.utils import cached_property
 
 from renku.command.command_builder import inject
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.git import get_entity_from_revision, get_git_user
@@ -36,6 +35,7 @@ from renku.domain_model.provenance.parameter import ParameterValue
 from renku.domain_model.workflow.plan import Plan
 from renku.infrastructure.database import Persistent
 from renku.infrastructure.immutable import Immutable
+from renku.infrastructure.repository import Repository
 from renku.version import __version__, version_url
 
 
@@ -128,11 +128,11 @@ class Activity(Persistent):
         # TODO: influenced = attr.ib(kw_only=True)
 
     @classmethod
-    @inject.autoparams("client_dispatcher", "project_gateway")
+    @inject.autoparams("project_gateway")
     def from_plan(
         cls,
         plan: Plan,
-        client_dispatcher: IClientDispatcher,
+        repository: "Repository",
         project_gateway: IProjectGateway,
         started_at_time: datetime,
         ended_at_time: datetime,
@@ -142,8 +142,6 @@ class Activity(Persistent):
     ):
         """Convert a ``Plan`` to a ``Activity``."""
         from renku.core.plugin.pluginmanager import get_plugin_manager
-
-        client = client_dispatcher.current_client
 
         usages = {}
         generations = {}
@@ -161,7 +159,7 @@ class Activity(Persistent):
             if input_path in usages:
                 continue
 
-            entity = get_entity_from_revision(repository=client.repository, path=input_path, bypass_cache=True)
+            entity = get_entity_from_revision(repository=repository, path=input_path, bypass_cache=True)
 
             dependency = Usage(entity=entity, id=Usage.generate_id(activity_id))
 
@@ -177,7 +175,7 @@ class Activity(Persistent):
             if output_path in generations:
                 continue
 
-            entity = get_entity_from_revision(repository=client.repository, path=output_path, bypass_cache=True)
+            entity = get_entity_from_revision(repository=repository, path=output_path, bypass_cache=True)
 
             generation = Generation(entity=entity, id=Generation.generate_id(activity_id))
 
@@ -191,7 +189,7 @@ class Activity(Persistent):
             )
 
         agent = SoftwareAgent(id=version_url, name=f"renku {__version__}")
-        person = cast(Person, get_git_user(client.repository))
+        person = cast(Person, get_git_user(repository))
         association = Association(agent=agent, id=Association.generate_id(activity_id), plan=plan)
 
         activity = cls(

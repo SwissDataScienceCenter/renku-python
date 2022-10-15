@@ -24,7 +24,7 @@ from urllib.parse import urlparse
 from marshmallow import EXCLUDE
 
 from renku.core import errors
-from renku.core.util.contexts import click_context
+from renku.core.util.contexts import renku_project_context
 from renku.infrastructure.repository import Repository
 from renku.ui.service.serializers.cache import ProjectCloneContext
 
@@ -74,5 +74,5 @@ class RemoteProject:
 
                 raise
 
-            with click_context(td, "remote_project"):
+            with renku_project_context(td):
                 yield td

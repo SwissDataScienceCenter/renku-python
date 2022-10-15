@@ -23,7 +23,7 @@ import os
 import tempfile
 from abc import abstractmethod
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Set, Tuple, Union, cast
 
 import jinja2
 import yaml
@@ -31,6 +31,9 @@ import yaml
 from renku.core import errors
 from renku.core.constant import RENKU_HOME
 from renku.core.util.os import get_safe_relative_path, hash_file
+
+if TYPE_CHECKING:
+    from renku.domain_model.project import Project
 
 TEMPLATE_MANIFEST = "manifest.yaml"
 
@@ -430,8 +433,8 @@ class TemplateParameter:
             issues.append(issue)
 
         if self.possible_values and not isinstance(self.possible_values, list):
+            issue = f"Invalid type for possible values of template variable '{self.name}': '{self.possible_values}'"
             if raise_errors:
-                issue = f"Invalid type for possible values of template variable '{self.name}': '{self.possible_values}'"
                 raise errors.InvalidTemplateError(issue)
             issues.append(issue)
 
@@ -503,15 +506,14 @@ class TemplateMetadata:
         return cls(metadata=metadata, immutable_files=[])
 
     @classmethod
-    def from_client(cls, client) -> "TemplateMetadata":
+    def from_project(cls, project: Optional["Project"]) -> "TemplateMetadata":
         """Return an instance from reading template-related metadata from a project."""
-        from renku.core.util.metadata import get_renku_version
+        from renku.core.util.metadata import read_renku_version_from_dockerfile
+        from renku.version import __version__
 
-        try:
-            project = client.project
-        except ValueError:
+        if not project:
             metadata = {}
-            immutable_files = []
+            immutable_files: List[str] = []
         else:
             metadata = json.loads(project.template_metadata) if project.template_metadata else {}
 
@@ -522,12 +524,12 @@ class TemplateMetadata:
             metadata["__template_id__"] = project.template_id
             # NOTE: Ignore Project.automated_update since it's default is False and won't allow any update at all
 
-            immutable_files = project.immutable_template_files
+            immutable_files = project.immutable_template_files or []
 
         # NOTE: Always set __renku_version__ to the value read from the Dockerfile (if available) since setting/updating
         # the template doesn't change project's metadata version and shouldn't update the Renku version either
         renku_version = metadata.get("__renku_version__")
-        metadata["__renku_version__"] = get_renku_version(client) or renku_version or ""
+        metadata["__renku_version__"] = read_renku_version_from_dockerfile() or renku_version or __version__
 
         return cls(metadata=metadata, immutable_files=immutable_files)
 

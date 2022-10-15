@@ -50,7 +50,7 @@ You can manually pull contents of file(s) you want with:
    :group: Misc
    :command: $ renku storage pull <path>...
    :description: Pull <path>'s from external storage (LFS).
-   :extended:
+   :target: rp
 
 Removing local content of files stored in git LFS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -96,7 +96,7 @@ import os
 import click
 
 import renku.ui.cli.utils.color as color
-from renku.command.echo import WARNING
+from renku.command.util import WARNING
 from renku.ui.cli.utils.callback import ClickCallback
 
 

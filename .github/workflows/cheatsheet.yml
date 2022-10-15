@@ -1,0 +1,97 @@
+name: Create cheatsheet
+
+on:
+  push:
+    branches:
+      - "**"
+    tags:
+      - "v*.*.*"
+env:
+  DEPENDENCY_CACHE_PREFIX: "v2"
+  NETWORK_CACHE_PREFIX: "v1"
+jobs:
+  cheatsheet:
+    runs-on: ubuntu-latest
+    if: "'refs/heads/master' != github.ref && 'refs/heads/develop' != github.ref && !startsWith(github.ref, 'refs/tags/')"
+    steps:
+      - uses: actions/checkout@v3.1.0
+      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.9
+      - name: Install xetex
+        run: |
+          sudo add-apt-repository "deb http://archive.ubuntu.com/ubuntu jammy main restricted multiverse universe"
+          sudo apt-get update -y
+          sudo apt-get install -y -t jammy texlive-xetex
+
+      - uses: actions/cache@master
+        id: cache
+        with:
+          path: |
+            ${{ env.pythonLocation }}
+            renku/templates
+          key: ${{env.CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('build.py')}}
+      - name: Install dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning==0.17.1
+          poetry-dynamic-versioning
+          python -m pip install .[all]
+      - name: Install renku into cache
+        if: steps.cache.outputs.cache-hit == 'true'
+        run: |
+          poetry-dynamic-versioning
+          python -m pip install --no-deps .
+      - name: Set Git config
+        run: |
+          git config --global --add user.name "Renku Bot"
+          git config --global --add user.email "renku@datascience.ch"
+      - name: Build cheatsheet
+        run: |
+          sphinx-build -b latex -c docs/cheatsheet/ docs docs/latex/ -W
+          cd docs/latex/
+          xelatex cheatsheet
+          cat <(md5sum cheatsheet.tex) <(md5sum sdsc_cheatsheet.cls) > ../cheatsheet_hash_new
+          cd ../..
+        env:
+          CHEATSHEET_TARGET: rp
+      - name: Build cheatsheet json
+        run: |
+          sphinx-build -b json -c docs/cheatsheet/ docs docs/json/ -W
+          cd docs/json/
+          python -c 'import json; print(json.dumps(json.loads(json.load(open("cheatsheet.fjson", "r"))["body"]), indent=2, sort_keys=True))' > cheatsheet.json
+          cat <(md5sum cheatsheet.json) > ../cheatsheet_json_hash_new
+          cd ../..
+      - name: Publish cheatsheet if changed
+        id: publish-pdf
+        if: ${{ hashFiles('docs/cheatsheet_hash') != hashFiles('docs/cheatsheet_hash_new') }}
+        run: |
+          cat docs/cheatsheet_hash
+          cat docs/cheatsheet_hash_new
+          cd docs
+          rm cheatsheet_hash
+          mv cheatsheet_hash_new cheatsheet_hash
+          cp latex/cheatsheet.pdf _static/cheatsheet/
+          git add cheatsheet_hash _static/cheatsheet/cheatsheet.pdf
+          git commit -m "chore: Update cheatsheet pdf"
+      - name: Publish UI cheatsheet if changed
+        id: publish-json
+        if: ${{ hashFiles('docs/cheatsheet_json_hash') != hashFiles('docs/cheatsheet_json_hash_new') }}
+        run: |
+          cat docs/cheatsheet_json_hash
+          cat docs/cheatsheet_json_hash_new
+          cd docs
+          rm cheatsheet_json_hash
+          mv cheatsheet_json_hash_new cheatsheet_json_hash
+          cp json/cheatsheet.json _static/cheatsheet/
+          git add cheatsheet_json_hash _static/cheatsheet/cheatsheet.json
+          git commit -m "chore: Update cheatsheet json"
+      - name: Push changes
+        uses: ad-m/github-push-action@master
+        if: (steps.publish-pdf.outcome != 'Skipped' || steps.publish-json.outcome != 'Skipped) && success()
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref }}

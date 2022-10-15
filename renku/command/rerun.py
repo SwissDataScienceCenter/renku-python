@@ -22,11 +22,11 @@ from typing import List, Optional
 from renku.command.command_builder.command import Command, inject
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.util.os import get_relative_paths
 from renku.core.workflow.activity import get_activities_until_paths, sort_activities
 from renku.core.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.execute import execute_workflow_graph
+from renku.domain_model.project_context import project_context
 
 
 def rerun_command(skip_metadata_update: bool):
@@ -46,7 +46,6 @@ def _rerun(
     paths: List[str],
     provider: str,
     config: Optional[str],
-    client_dispatcher: IClientDispatcher,
     activity_gateway: IActivityGateway,
 ):
     """Rerun a previously run workflow.
@@ -58,21 +57,15 @@ def _rerun(
         paths (List[str]): Output paths to recreate.
         provider (str): Name of the workflow provider to use for execution.
         config (str): Path to configuration for the workflow provider.
-        client_dispatcher (IClientDispatcher): Injected client dispatcher.
         activity_gateway (IActivityGateway): Injected activity gateway.
     """
-    client = client_dispatcher.current_client
 
     sources = sources or []
-    sources = get_relative_paths(base=client.path, paths=sources)
+    sources = get_relative_paths(base=project_context.path, paths=sources)
     paths = paths or []
-    paths = get_relative_paths(base=client.path, paths=paths)
+    paths = get_relative_paths(base=project_context.path, paths=paths)
 
-    activities = list(
-        get_activities_until_paths(
-            paths, sources, activity_gateway=activity_gateway, client_dispatcher=client_dispatcher
-        )
-    )
+    activities = list(get_activities_until_paths(paths, sources, activity_gateway=activity_gateway))
 
     if len(activities) == 0:
         raise errors.NothingToExecuteError()

@@ -23,13 +23,14 @@ import urllib
 import webbrowser
 from typing import TYPE_CHECKING
 
-from renku.command.command_builder import Command, inject
+from renku.command.command_builder import Command
 from renku.core import errors
-from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.config import get_value, remove_value, set_value
 from renku.core.util import communication
 from renku.core.util.git import RENKU_BACKUP_PREFIX, create_backup_remote, get_remote, get_renku_repo_url
 from renku.core.util.urls import parse_authentication_endpoint
 from renku.domain_model.enums import ConfigFilter
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.infrastructure.repository import Repository
@@ -45,20 +46,22 @@ def login_command():
     return Command().command(_login)
 
 
-@inject.autoparams()
-def _login(endpoint, git_login, yes, client_dispatcher: IClientDispatcher):
+def _login(endpoint, git_login, yes):
     from renku.core.util import requests
 
-    client = client_dispatcher.current_client
+    try:
+        repository = project_context.repository
+    except ValueError:
+        repository = None
 
     parsed_endpoint = _parse_endpoint(endpoint)
 
     remote_name, remote_url = None, None
     if git_login:
-        if not client.repository:
+        if not repository:
             raise errors.ParameterError("Cannot use '--git' flag outside a project.")
 
-        remote = get_remote(client.repository)
+        remote = get_remote(repository)
         if remote:
             remote_name, remote_url = remote.name, remote.url
 
@@ -129,9 +132,9 @@ def _login(endpoint, git_login, yes, client_dispatcher: IClientDispatcher):
     _store_token(parsed_endpoint.netloc, access_token)
 
     if git_login:
-        _set_git_credential_helper(repository=client.repository, hostname=parsed_endpoint.netloc)
+        _set_git_credential_helper(repository=repository, hostname=parsed_endpoint.netloc)
         backup_remote_name, backup_exists, remote = create_backup_remote(
-            repository=client.repository, remote_name=remote_name, url=remote_url  # type:ignore
+            repository=repository, remote_name=remote_name, url=remote_url  # type:ignore
         )
         if backup_exists:
             communication.echo(f"Backup remote '{backup_remote_name}' already exists. Ignoring '--git' flag.")
@@ -139,7 +142,7 @@ def _login(endpoint, git_login, yes, client_dispatcher: IClientDispatcher):
             communication.error(f"Cannot create backup remote '{backup_remote_name}' for '{remote_url}'")
         else:
             _set_renku_url_for_remote(
-                repository=client.repository,
+                repository=repository,
                 remote_name=remote_name,  # type:ignore
                 remote_url=remote_url,  # type:ignore
                 hostname=parsed_endpoint.netloc,
@@ -159,12 +162,9 @@ def _get_url(parsed_endpoint, path, **query_args) -> str:
     return parsed_endpoint._replace(path=path, query=query).geturl()
 
 
-@inject.autoparams()
-def _store_token(netloc, access_token, client_dispatcher: IClientDispatcher):
-    client = client_dispatcher.current_client
-
-    client.set_value(section=CONFIG_SECTION, key=netloc, value=access_token, global_only=True)
-    os.chmod(client.global_config_path, 0o600)
+def _store_token(netloc, access_token):
+    set_value(section=CONFIG_SECTION, key=netloc, value=access_token, global_only=True)
+    os.chmod(project_context.global_config_path, 0o600)
 
 
 def _set_git_credential_helper(repository: "Repository", hostname):
@@ -192,13 +192,11 @@ def _set_renku_url_for_remote(repository: "Repository", remote_name: str, remote
         raise errors.GitError(f"Cannot change remote url for '{remote_name}' to '{new_remote_url}'") from e
 
 
-@inject.autoparams()
-def read_renku_token(endpoint: str, client_dispatcher: IClientDispatcher, get_endpoint_from_remote=False) -> str:
+def read_renku_token(endpoint: str, get_endpoint_from_remote=False) -> str:
     """Read renku token from renku config file.
 
     Args:
         endpoint(str):  Endpoint to get token for.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
     Keywords:
         get_endpoint_from_remote: if no endpoint is specified, use the repository remote to infer one
 
@@ -212,11 +210,11 @@ def read_renku_token(endpoint: str, client_dispatcher: IClientDispatcher, get_en
     if not parsed_endpoint:
         return ""
 
-    return _read_renku_token_for_hostname(client_dispatcher.current_client, parsed_endpoint.netloc)
+    return _read_renku_token_for_hostname(hostname=parsed_endpoint.netloc)
 
 
-def _read_renku_token_for_hostname(client, hostname):
-    return client.get_value(section=CONFIG_SECTION, key=hostname, config_filter=ConfigFilter.GLOBAL_ONLY)
+def _read_renku_token_for_hostname(hostname):
+    return get_value(section=CONFIG_SECTION, key=hostname, config_filter=ConfigFilter.GLOBAL_ONLY)
 
 
 def logout_command():
@@ -224,47 +222,50 @@ def logout_command():
     return Command().command(_logout)
 
 
-@inject.autoparams()
-def _logout(endpoint, client_dispatcher: IClientDispatcher):
+def _logout(endpoint):
     if endpoint:
         parsed_endpoint = parse_authentication_endpoint(endpoint=endpoint)
         key = parsed_endpoint.netloc
     else:
         key = "*"
 
-    client = client_dispatcher.current_client
-    client.remove_value(section=CONFIG_SECTION, key=key, global_only=True)
-    _remove_git_credential_helper(client=client)
-    _restore_git_remote(client=client)
+    try:
+        repository = project_context.repository
+    except ValueError:
+        repository = None
+
+    remove_value(section=CONFIG_SECTION, key=key, global_only=True)
+    _remove_git_credential_helper(repository=repository)
+    _restore_git_remote(repository=repository)
 
 
-def _remove_git_credential_helper(client):
-    if not client.repository:  # Outside a renku project
+def _remove_git_credential_helper(repository):
+    if not repository:  # Outside a renku project
         return
 
-    with client.repository.get_configuration(writable=True) as config:
+    with repository.get_configuration(writable=True) as config:
         try:
             config.remove_value("credential", "helper")
         except errors.GitError:  # NOTE: If already logged out, an exception is raised
             pass
 
 
-def _restore_git_remote(client):
-    if not client.repository:  # Outside a renku project
+def _restore_git_remote(repository):
+    if not repository:  # Outside a renku project
         return
 
-    backup_remotes = [r.name for r in client.repository.remotes if r.name.startswith(RENKU_BACKUP_PREFIX)]
+    backup_remotes = [r.name for r in repository.remotes if r.name.startswith(RENKU_BACKUP_PREFIX)]
     for backup_remote in backup_remotes:
         remote_name = backup_remote.replace(f"{RENKU_BACKUP_PREFIX}-", "")
-        remote_url = client.repository.remotes[backup_remote].url
+        remote_url = repository.remotes[backup_remote].url
 
         try:
-            client.repository.remotes[remote_name].set_url(remote_url)
+            repository.remotes[remote_name].set_url(remote_url)
         except errors.GitCommandError:
             raise errors.GitError(f"Cannot restore remote url for '{remote_name}' to {remote_url}")
 
         try:
-            client.repository.remotes.remove(backup_remote)
+            repository.remotes.remove(backup_remote)
         except errors.GitCommandError:
             communication.error(f"Cannot delete backup remote '{backup_remote}'")
 
@@ -274,14 +275,13 @@ def credentials_command():
     return Command().command(_credentials)
 
 
-@inject.autoparams()
-def _credentials(command, hostname, client_dispatcher: IClientDispatcher):
+def _credentials(command, hostname):
     if command != "get":
         return
 
     # NOTE: hostname comes from the credential helper we set up and has proper format
     hostname = hostname or ""
-    token = _read_renku_token_for_hostname(client_dispatcher.current_client, hostname) or ""
+    token = _read_renku_token_for_hostname(hostname=hostname) or ""
 
     communication.echo("username=renku")
     communication.echo(f"password={token}")

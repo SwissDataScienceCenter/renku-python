@@ -159,7 +159,7 @@ class VersionCache:
 
 def _check_version():
     """Check renku version."""
-    from renku.core.management.config import APP_NAME
+    from renku.core.constant import APP_NAME
 
     if VersionCache.load(APP_NAME).is_fresh:
         return

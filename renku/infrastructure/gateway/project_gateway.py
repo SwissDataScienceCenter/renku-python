@@ -17,29 +17,26 @@
 # limitations under the License.
 """Renku project gateway interface."""
 
-from renku.command.command_builder.command import inject
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.domain_model.project import Project
+from renku.domain_model.project_context import project_context
 
 
 class ProjectGateway(IProjectGateway):
     """Gateway for project database operations."""
 
-    database_dispatcher = inject.attr(IDatabaseDispatcher)
-
     def get_project(self) -> Project:
         """Get project metadata."""
         try:
-            return self.database_dispatcher.current_database["project"]
+            return project_context.database["project"]  # type: ignore
         except KeyError as e:
-            raise ValueError() from e
+            raise ValueError("Cannot get project") from e
 
     def update_project(self, project: Project):
         """Update project metadata."""
         from renku import __version__
 
-        database = self.database_dispatcher.current_database
+        database = project_context.database
 
         try:
             if database["project"]:

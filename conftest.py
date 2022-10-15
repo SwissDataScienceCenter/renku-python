@@ -77,3 +77,4 @@ def pytest_configure(config):
         )
 
     os.environ["RENKU_SKIP_MIN_VERSION_CHECK"] = "1"
+    os.environ["RENKU_DISABLE_VERSION_CHECK"] = "1"

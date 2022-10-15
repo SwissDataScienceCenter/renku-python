@@ -1,0 +1,101 @@
+{
+  "groups": [
+    {
+      "name": "Typical Workflow",
+      "commands": [
+        {
+          "command": "$ git status",
+          "description": "Take a look at what you have done since the last save.",
+          "target": [
+            "ui",
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku save -m <msg>",
+          "description": "Save your latest work, providing a message explaining what you have done.",
+          "target": [
+            "ui",
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku run \u2026",
+          "description": "Run your code, capturing lineage of the inputs and outputs using Renku.",
+          "target": [
+            "ui",
+            "rp"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Getting Started",
+      "commands": []
+    },
+    {
+      "name": "Working with Renku Datasets",
+      "commands": [
+        {
+          "command": "$ renku dataset create <dataset>",
+          "description": "Create a new dataset called <dataset>.",
+          "target": [
+            "rp",
+            "ui"
+          ]
+        },
+        {
+          "command": "$ renku dataset ls",
+          "description": "List all datasets in the project.",
+          "target": [
+            "rp",
+            "ui"
+          ]
+        },
+        {
+          "command": "$ renku dataset add <dataset> <url>",
+          "description": "Add data from <url> to a dataset. <url> can be a local\nfile path, an http(s) address or a Git git+http or git+ssh repository.",
+          "target": [
+            "rp",
+            "ui"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Running",
+      "commands": []
+    },
+    {
+      "name": "Workflows",
+      "commands": []
+    },
+    {
+      "name": "Config",
+      "commands": []
+    },
+    {
+      "name": "Misc",
+      "commands": []
+    },
+    {
+      "name": "Undo Renku Command",
+      "commands": [
+        {
+          "command": "$ renku rollback",
+          "description": "Rollback project to a previous point in time.",
+          "target": [
+            "ui"
+          ]
+        },
+        {
+          "command": "$ renku workflow revert <activity ID>",
+          "description": "Undo a Renku workflow execution.",
+          "target": [
+            "ui"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -54,6 +54,9 @@ Examples
 
 """
 
+import os
+from pathlib import Path
+
 import click
 
 import renku.ui.cli.utils.color as color
@@ -72,7 +75,13 @@ def install(force):
     from renku.ui.cli.utils.callback import ClickCallback
 
     communicator = ClickCallback()
-    install_githooks_command().with_communicator(communicator).build().execute(force)
+    result = install_githooks_command().with_communicator(communicator).build().execute(force, path=Path(os.getcwd()))
+
+    warning_messages = result.output
+    if warning_messages:
+        for message in warning_messages:
+            communicator.warn(message)
+
     click.secho("OK", fg=color.GREEN)
 
 

@@ -28,8 +28,8 @@ class FileSchema(FileDetailsSchema, MandatoryUserSchema):
     """Schema for file model."""
 
     override_existing = fields.Boolean(
-        missing=False,
-        description="Overried files. Useful when extracting from archives.",
+        load_default=False,
+        metadata={"description": "Overried files. Useful when extracting from archives."},
     )
 
     @post_load
@@ -41,7 +41,7 @@ class FileSchema(FileDetailsSchema, MandatoryUserSchema):
 class FileChunkSchema(CreationSchema, MandatoryUserSchema):
     """Schema for file model."""
 
-    chunk_file_id = fields.String(missing=lambda: uuid.uuid4().hex)
+    chunk_file_id = fields.String(load_default=lambda: uuid.uuid4().hex)
     file_name = fields.String(required=True)
 
     chunked_id = fields.String(required=True)

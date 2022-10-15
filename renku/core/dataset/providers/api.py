@@ -34,7 +34,6 @@ if TYPE_CHECKING:
         ProviderDatasetFile,
         ProviderParameter,
     )
-    from renku.core.management.client import LocalClient
     from renku.domain_model.dataset import Dataset, DatasetTag
 
 
@@ -103,7 +102,7 @@ class ProviderApi(IDatasetProviderPlugin):
         return False
 
     @staticmethod
-    def add(client: "LocalClient", uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
+    def add(uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
         """Add files from a URI to a dataset."""
         raise NotImplementedError
 
@@ -200,7 +199,7 @@ class ImporterApi(abc.ABC):
         return self.version == getattr(dataset, "version", object())
 
     @abc.abstractmethod
-    def download_files(self, client: "LocalClient", destination: Path, extract: bool) -> List["DatasetAddMetadata"]:
+    def download_files(self, destination: Path, extract: bool) -> List["DatasetAddMetadata"]:
         """Download dataset files from the remote provider."""
         raise NotImplementedError
 

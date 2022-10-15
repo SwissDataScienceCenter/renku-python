@@ -23,26 +23,26 @@ from collections import defaultdict
 import click
 
 from renku.command.command_builder import inject
-from renku.command.echo import WARNING
+from renku.command.util import WARNING
 from renku.core import errors
 from renku.core.dataset.dataset_add import add_to_dataset
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.migration.utils import get_pre_0_3_4_datasets_metadata
 from renku.core.util import communication
 from renku.core.util.os import get_safe_relative_path
+from renku.domain_model.project_context import project_context
 
 
-def check_dataset_old_metadata_location(client, **kwargs):
+def check_dataset_old_metadata_location(**_):
     """Check location of dataset metadata.
 
     Args:
-        client: ``LocalClient``.
-        kwargs: keyword arguments.
+        _: keyword arguments.
 
     Returns:
         Tuple of whether dataset metadata location is valid and string of found problems.
     """
-    old_metadata = get_pre_0_3_4_datasets_metadata(client)
+    old_metadata = get_pre_0_3_4_datasets_metadata()
 
     if not old_metadata:
         return True, None
@@ -50,7 +50,7 @@ def check_dataset_old_metadata_location(client, **kwargs):
     problems = (
         WARNING + "There are metadata files in the old location."
         '\n  (use "renku migrate" to move them)\n\n\t'
-        + "\n\t".join(click.style(str(path.relative_to(client.path)), fg="yellow") for path in old_metadata)
+        + "\n\t".join(click.style(str(path.relative_to(project_context.path)), fg="yellow") for path in old_metadata)
         + "\n"
     )
 
@@ -58,13 +58,12 @@ def check_dataset_old_metadata_location(client, **kwargs):
 
 
 @inject.autoparams("dataset_gateway")
-def check_missing_files(client, dataset_gateway: IDatasetGateway, **kwargs):
+def check_missing_files(dataset_gateway: IDatasetGateway, **_):
     """Find missing files listed in datasets.
 
     Args:
-        client: ``LocalClient``.
         dataset_gateway(IDatasetGateway): the dataset gateway.
-        kwargs: keyword arguments.
+        _: keyword arguments.
 
     Returns:
         Tuple of whether all dataset files are there and string of found problems.
@@ -73,7 +72,7 @@ def check_missing_files(client, dataset_gateway: IDatasetGateway, **kwargs):
 
     for dataset in dataset_gateway.get_all_active_datasets():
         for file_ in dataset.files:
-            path = client.path / file_.entity.path
+            path = project_context.path / file_.entity.path
             file_exists = path.exists() or (file_.is_external and os.path.lexists(path))
             if not file_exists:
                 missing[dataset.name].append(file_.entity.path)
@@ -95,14 +94,13 @@ def check_missing_files(client, dataset_gateway: IDatasetGateway, **kwargs):
 
 
 @inject.autoparams("dataset_gateway")
-def check_invalid_datasets_derivation(client, fix, dataset_gateway: IDatasetGateway, **kwargs):
+def check_invalid_datasets_derivation(fix, dataset_gateway: IDatasetGateway, **_):
     """Remove ``derived_from`` from import datasets.
 
     Args:
-        client: ``LocalClient``.
         fix: Whether to fix found issues.
         dataset_gateway(IDatasetGateway): the dataset gateway.
-        kwargs: keyword arguments.
+        _: keyword arguments.
 
     Returns:
         Tuple of whether dataset derivations are valid and string of found problems.
@@ -145,14 +143,13 @@ def check_invalid_datasets_derivation(client, fix, dataset_gateway: IDatasetGate
 
 
 @inject.autoparams("dataset_gateway")
-def check_dataset_files_outside_datadir(client, fix, dataset_gateway: IDatasetGateway, **kwargs):
+def check_dataset_files_outside_datadir(fix, dataset_gateway: IDatasetGateway, **_):
     """Check for dataset files that are not inside a dataset's datadir.
 
     Args:
-        client: ``LocalClient``.
         fix: Whether to fix found issues.
         dataset_gateway(IDatasetGateway): the dataset gateway.
-        kwargs: keyword arguments.
+        _: keyword arguments.
 
     Returns:
         Tuple of whether there are no dataset files outside of its datadir and string of found problems.
@@ -162,7 +159,7 @@ def check_dataset_files_outside_datadir(client, fix, dataset_gateway: IDatasetGa
         if dataset.date_removed:
             continue
 
-        data_dir = dataset.get_datadir(client=client)
+        data_dir = dataset.get_datadir()
 
         detected_files = []
 
@@ -170,7 +167,7 @@ def check_dataset_files_outside_datadir(client, fix, dataset_gateway: IDatasetGa
             if file.is_external:
                 continue
             try:
-                get_safe_relative_path(client.path / file.entity.path, client.path / data_dir)
+                get_safe_relative_path(project_context.path / file.entity.path, project_context.path / data_dir)
             except ValueError:
                 detected_files.append(file)
 

@@ -52,14 +52,20 @@ class RCloneBaseStorage(IStorage):
 
         Returns a tuple containing a list of parsed hashes.
 
-        Example raw_hashes json:
-        [
-            {
-                "Path":"resources/hg19.windowmaskerSdust.bed.gz.tbi","Name":"hg19.windowmaskerSdust.bed.gz.tbi",
-                "Size":578288,"MimeType":"application/x-gzip","ModTime":"2022-02-07T18:45:52.000000000Z",
-                "IsDir":false,"Hashes":{"md5":"e93ac5364e7799bbd866628d66c7b773"},"Tier":"STANDARD"
-            }
-        ]
+        Arguments:
+            uri(str): Provider uri.
+            hash_type(str): Type of hash to get from rclone (Default value = `md5`).
+
+        Example:
+            hashes_raw json::
+
+                [
+                    {
+                        "Path":"resources/hg19.windowmaskerSdust.bed.gz.tbi","Name":"hg19.windowmaskerSdust.bed.gz.tbi",
+                        "Size":578288,"MimeType":"application/x-gzip","ModTime":"2022-02-07T18:45:52.000000000Z",
+                        "IsDir":false,"Hashes":{"md5":"e93ac5364e7799bbd866628d66c7b773"},"Tier":"STANDARD"
+                    }
+                ]
         """
         self.set_configurations()
 

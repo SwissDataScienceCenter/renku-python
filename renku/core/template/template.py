@@ -18,12 +18,13 @@
 """Template management."""
 
 import json
+import os
 import re
 import shutil
 import tempfile
 from enum import Enum, IntEnum, auto
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
 
 from packaging.version import Version
 
@@ -32,6 +33,7 @@ from renku.core.util import communication
 from renku.core.util.git import clone_repository
 from renku.core.util.os import hash_file
 from renku.core.util.util import to_semantic_version, to_string
+from renku.domain_model.project_context import project_context
 from renku.domain_model.template import (
     TEMPLATE_MANIFEST,
     RenderedTemplate,
@@ -47,6 +49,9 @@ try:
     import importlib_resources
 except ImportError:
     import importlib.resources as importlib_resources  # type:ignore
+
+if TYPE_CHECKING:
+    from renku.domain_model.project import Project
 
 TEMPLATE_KEEP_FILES = ["readme.md", "readme.rst", "readme.txt", "readme"]
 TEMPLATE_INIT_APPEND_FILES = [".gitignore"]
@@ -90,31 +95,36 @@ def is_renku_template(source: Optional[str]) -> bool:
     return not source or source.lower() == "renku"
 
 
-def write_template_checksum(client, checksums: Dict):
+def write_template_checksum(checksums: Dict):
     """Write templates checksum file for a project."""
-    client.template_checksums.parent.mkdir(parents=True, exist_ok=True)
+    project_context.template_checksums_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(client.template_checksums, "w") as checksum_file:
+    with open(project_context.template_checksums_path, "w") as checksum_file:
         json.dump(checksums, checksum_file)
 
 
-def read_template_checksum(client) -> Dict[str, str]:
+def read_template_checksum() -> Dict[str, str]:
     """Read templates checksum file for a project."""
-    if client.has_template_checksum():
-        with open(client.template_checksums, "r") as checksum_file:
+    if has_template_checksum():
+        with open(project_context.template_checksums_path, "r") as checksum_file:
             return json.load(checksum_file)
 
     return {}
 
 
-def copy_template_to_client(
-    rendered_template: RenderedTemplate, client, project, actions: Dict[str, FileAction], cleanup=True
+def has_template_checksum() -> bool:
+    """Return if project has a templates checksum file."""
+    return os.path.exists(project_context.template_checksums_path)
+
+
+def copy_template_to_project(
+    rendered_template: RenderedTemplate, project: "Project", actions: Dict[str, FileAction], cleanup=True
 ):
     """Update project files and metadata from a template."""
 
-    def copy_template_metadata_to_client():
+    def copy_template_metadata_to_project():
         """Update template-related metadata in a project."""
-        write_template_checksum(client, rendered_template.checksums)
+        write_template_checksum(rendered_template.checksums)
 
         project.template_source = rendered_template.template.source
         project.template_ref = rendered_template.template.reference
@@ -137,7 +147,7 @@ def copy_template_to_client(
 
     for relative_path, action in get_sorted_actions(actions=actions).items():
         source = rendered_template.path / relative_path
-        destination = client.path / relative_path
+        destination = project_context.path / relative_path
 
         operation, message = actions_mapping[action]
         communication.echo(f"{message} {relative_path} ...")
@@ -155,12 +165,13 @@ def copy_template_to_client(
         except OSError as e:
             # TODO: Use a general cleanup strategy: https://github.com/SwissDataScienceCenter/renku-python/issues/736
             if cleanup:
-                client.repository.reset(hard=True)
-                client.repository.clean()
+                repository = project_context.repository
+                repository.reset(hard=True)
+                repository.clean()
 
             raise errors.TemplateUpdateError(f"Cannot write to '{destination}'") from e
 
-    copy_template_metadata_to_client()
+    copy_template_metadata_to_project()
 
 
 def get_sorted_actions(actions: Dict[str, FileAction]) -> Dict[str, FileAction]:
@@ -169,16 +180,16 @@ def get_sorted_actions(actions: Dict[str, FileAction]) -> Dict[str, FileAction]:
 
 
 def get_file_actions(
-    rendered_template: RenderedTemplate, template_action: TemplateAction, client, interactive
+    rendered_template: RenderedTemplate, template_action: TemplateAction, interactive
 ) -> Dict[str, FileAction]:
     """Render a template regarding files in a project."""
     if interactive and not communication.has_prompt():
         raise errors.ParameterError("Cannot use interactive mode with no prompt")
 
-    old_checksums = read_template_checksum(client)
+    old_checksums = read_template_checksum()
     try:
-        immutable_files = client.project.immutable_template_files or []
-    except ValueError:  # NOTE: Project is not set
+        immutable_files = project_context.project.immutable_template_files or []
+    except (AttributeError, ValueError):  # NOTE: Project is not set
         immutable_files = []
 
     def should_append(path: str):
@@ -252,7 +263,7 @@ def get_file_actions(
     actions: Dict[str, FileAction] = {}
 
     for relative_path in sorted(rendered_template.get_files()):
-        destination = client.path / relative_path
+        destination = project_context.path / relative_path
 
         if destination.is_dir():
             raise errors.TemplateUpdateError(

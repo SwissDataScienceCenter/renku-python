@@ -44,16 +44,16 @@ Create an empty dataset inside a Renku project:
    :alt: Create a Dataset
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset create <dataset>
-   :description: Create a new dataset.
-   :extended:
+   :description: Create a new dataset called <dataset>.
+   :target: rp,ui
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset ls
    :description: List all datasets in the project.
-   :extended:
+   :target: rp,ui
 
 You can select which columns to display by using ``--columns`` to pass a
 comma-separated list of column names:
@@ -99,10 +99,10 @@ Deleting a dataset:
 
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset rm <dataset>
    :description: Remove a dataset.
-   :extended:
+   :target: rp
 
 Creating a dataset with a storage backend:
 
@@ -129,11 +129,11 @@ Adding data to the dataset:
    :alt: Add data to a Dataset
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset add <dataset> <url>
    :description: Add data from <url> to a dataset. <url> can be a local
                  file path, an http(s) address or a Git git+http or git+ssh repository.
-   :extended:
+   :target: rp,ui
 
 This will copy the contents of ``data-url`` to the dataset and add it
 to the dataset metadata.
@@ -199,12 +199,12 @@ will yield:
             datafile
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset add <dataset> --source <path>
              [--destination <rel-path>] <git-url>
    :description: Add only data in <path> from Git. With --destination:
                  location the data is copied to.
-   :extended:
+   :target: rp
 
 To add a specific version of files, use ``--ref`` option for selecting a
 branch, commit, or tag. The value passed to this option must be a valid
@@ -240,10 +240,10 @@ without requiring the ``--delete`` argument. Modifying those datasets locally
 will prevent them from being updated.
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset update <dataset>
    :description: Update files in a dataset based on their source.
-   :extended:
+   :target: rp
 
 The update command also checks for file changes in the project and updates
 datasets' metadata accordingly. You can automatically add new files from
@@ -282,11 +282,11 @@ point in time. A tag can be added like this:
     $ renku dataset tag my-dataset 1.0 -d "Version 1.0 tag"
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset tag <dataset> <tag> [-d <desc>]
    :description: Add a tag to the current version of the dataset, with
                  description <desc>.
-   :extended:
+   :target: rp
 
 A list of all tags can be seen by running:
 
@@ -298,10 +298,10 @@ A list of all tags can be seen by running:
     2020-09-19 17:29:13  1.0     Version 1.0 tag  my-dataset  6c19a8d31545b...
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset ls-tags <dataset>
    :description: List all tags for a dataset.
-   :extended:
+   :target: rp
 
 
 A tag can be removed with:
@@ -311,10 +311,10 @@ A tag can be removed with:
     $ renku dataset rm-tags my-dataset 1.0
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset rm-tags <dataset> <tags...>
    :description: Remove tags from a dataset.
-   :extended:
+   :target: rp
 
 
 Importing data from other Renku projects:
@@ -374,11 +374,11 @@ You can change the directory a dataset is imported to by using the
 ``--datadir`` option.
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset import <uri>
    :description: Import a dataset. <uri> can be a Renku, Zenodo or Dataverse
                  URL or DOI.
-   :extended:
+   :target: rp
 
 Exporting data to an external provider:
 
@@ -393,11 +393,11 @@ exported. The remote version will be set to the local tag that is being
 exported.
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset export <dataset> <provider>
    :description: Export the dataset <dataset> to <provider>. Providers:
                  Zenodo, Dataverse.
-   :extended:
+   :target: rp
 
 To export to a Dataverse provider you must pass Dataverse server's URL and
 the name of the parent dataverse where the dataset will be exported to.
@@ -446,10 +446,10 @@ Listing all files in the project associated with a dataset.
     my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file3  *
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset ls-files
    :description: List all dataset files in project.
-   :extended:
+   :target: rp
 
 You can select which columns to display by using ``--columns`` to pass a
 comma-separated list of column names:
@@ -493,10 +493,10 @@ Unlink a file from a dataset:
     OK
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset unlink <dataset> [--include <path|pattern>]
    :description: Remove files from a dataset.
-   :extended:
+   :target: rp
 
 Unlink all files within a directory from a dataset:
 
@@ -661,6 +661,12 @@ def create(name, title, description, creators, metadata, keyword, storage, datad
     help="Custom metadata to be associated with the dataset.",
 )
 @click.option(
+    "--metadata-source",
+    default=NO_VALUE,
+    type=click.UNPROCESSED,
+    help="Set the source field in the metadata when editing it if not provided, then the default is 'renku'.",
+)
+@click.option(
     "-k",
     "--keyword",
     "keywords",
@@ -677,7 +683,7 @@ def create(name, title, description, creators, metadata, keyword, storage, datad
     type=click.Choice(["keywords", "k", "images", "i", "metadata", "m"]),
     help="Remove keywords from dataset.",
 )
-def edit(name, title, description, creators, metadata, keywords, unset):
+def edit(name, title, description, creators, metadata, metadata_source, keywords, unset):
     """Edit dataset metadata."""
     from renku.command.dataset import edit_dataset_command
     from renku.core.util.metadata import construct_creators
@@ -704,6 +710,12 @@ def edit(name, title, description, creators, metadata, keywords, unset):
     if "i" in unset or "images" in unset:
         images = None
 
+    if metadata_source is not NO_VALUE and metadata is NO_VALUE:
+        raise click.UsageError("The '--metadata-source' option can only be used with the '--metadata' flag")
+
+    if metadata_source is NO_VALUE and metadata is not NO_VALUE:
+        metadata_source = "renku"
+
     custom_metadata = metadata
     no_email_warnings = False
 
@@ -728,6 +740,7 @@ def edit(name, title, description, creators, metadata, keywords, unset):
             keywords=keywords,
             images=images,
             custom_metadata=custom_metadata,
+            custom_metadata_source=metadata_source,
         )
     ).output
 

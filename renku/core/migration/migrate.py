@@ -18,13 +18,13 @@
 """Renku migrations management.
 
 Migrations files are put in renku/core/management/migrations directory. Name
-of these files has m_1234__name.py format where 1234 is the migration version
+of these files has ``m_1234__name.py`` format where 1234 is the migration version
 and name can be any alphanumeric and underscore combination. Migration files
 are sorted based on their lowercase name. Each migration file must define a
-public "migrate" function that accepts a client as its argument.
+public ``migrate`` function that accepts a ``MigrationContext`` as its argument.
 
 When executing a migration, the migration file is imported as a module and the
-"migrate" function is executed. Migration version is checked against the Renku
+``migrate`` function is executed. Migration version is checked against the Renku
 project version and any migration which has a higher version is applied to the
 project.
 """
@@ -45,17 +45,11 @@ from renku.core.errors import (
     ProjectNotSupported,
     TemplateUpdateError,
 )
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
-from renku.core.migration.utils import (
-    OLD_METADATA_PATH,
-    MigrationContext,
-    MigrationOptions,
-    MigrationType,
-    is_using_temporary_datasets_path,
-    read_project_version,
-)
+from renku.core.migration.models.migration import MigrationContext, MigrationType
+from renku.core.migration.utils import OLD_METADATA_PATH, is_using_temporary_datasets_path, read_project_version
 from renku.core.util import communication
+from renku.domain_model.project_context import project_context
 
 try:
     import importlib_resources
@@ -88,9 +82,8 @@ def is_docker_update_possible():
     return _update_dockerfile(check_only=True)
 
 
-@inject.autoparams()
-def migrate(
-    client_dispatcher: IClientDispatcher,
+@inject.autoparams("project_gateway")
+def migrate_project(
     project_gateway: IProjectGateway,
     force_template_update=False,
     skip_template_update=False,
@@ -99,23 +92,39 @@ def migrate(
     project_version=None,
     max_version=None,
     strict=False,
-    migration_type=MigrationType.ALL,
+    migration_type: MigrationType = MigrationType.ALL,
     preserve_identifiers=False,
 ):
-    """Apply all migration files to the project."""
-    client = client_dispatcher.current_client
+    """Migrate all project's entities.
+
+    NOTE: The project path must be pushed to the project_context before calling this function.
+
+    Args:
+        force_template_update: Whether to force update the template  (Default value = False).
+        skip_template_update: Whether to skip updating the template (Default value = False).
+        skip_docker_update: Whether to skip updating the Dockerfile (Default value = False).
+        skip_migrations: Whether to skip migrating project metadata (Default value = False).
+        project_version: Starting migration version (Default value = False).
+        max_version: Apply migration up to the given version (Default value = False).
+        strict: Whether to fail on errors (Default value = False).
+        migration_type(MigrationType): Type of migration to perform (Default value = MigrationType.ALL).
+        preserve_identifiers: Whether to preserve ids when migrating metadata (Default value = False).
+
+    Returns:
+        Dictionary of project migration status.
+    """
     template_updated = docker_updated = False
     if not is_renku_project():
         return False, template_updated, docker_updated
 
     try:
-        project = client.project
+        project = project_context.project
     except ValueError:
         project = None
 
     if not skip_template_update and project and project.template_source:
         try:
-            template_updated = _update_template(client=client)
+            template_updated = _update_template()
         except TemplateUpdateError:
             raise
         except (Exception, BaseException) as e:
@@ -135,8 +144,7 @@ def migrate(
     project_version = project_version or get_project_version()
     n_migrations_executed = 0
 
-    migration_options = MigrationOptions(strict=strict, type=migration_type, preserve_identifiers=preserve_identifiers)
-    migration_context = MigrationContext(client=client, options=migration_options)
+    migration_context = MigrationContext(strict=strict, type=migration_type, preserve_identifiers=preserve_identifiers)
 
     version = 1
     for version, path in get_migrations():
@@ -153,32 +161,32 @@ def migrate(
             n_migrations_executed += 1
     if not is_using_temporary_datasets_path():
         if n_migrations_executed > 0:
-            client._project = None  # NOTE: force reloading of project metadata
-            client.project.version = str(version)
-            project_gateway.update_project(client.project)
+            project_context.project.version = str(version)
+            project_gateway.update_project(project_context.project)
 
             communication.echo(f"Successfully applied {n_migrations_executed} migrations.")
 
-        _remove_untracked_renku_files(renku_path=client.renku_path)
+        _remove_untracked_renku_files(metadata_path=project_context.metadata_path)
 
     return n_migrations_executed != 0, template_updated, docker_updated
 
 
-def _remove_untracked_renku_files(renku_path):
+def _remove_untracked_renku_files(metadata_path):
     from renku.core.constant import CACHE
 
     untracked_paths = [RENKU_TMP, CACHE, "vendors"]
     for path in untracked_paths:
-        path = renku_path / path
+        path = metadata_path / path
         shutil.rmtree(path, ignore_errors=True)
 
 
-def _update_template(client) -> bool:
+@inject.autoparams()
+def _update_template(project_gateway: IProjectGateway) -> bool:
     """Update local files from the remote template."""
     from renku.core.template.usecase import update_template
 
     try:
-        project = client.project
+        project = project_gateway.get_project()
     except ValueError:
         # NOTE: Old project, we don't know the status until it is migrated
         return False
@@ -189,23 +197,20 @@ def _update_template(client) -> bool:
     return bool(update_template(interactive=False, force=False, dry_run=False))
 
 
-@inject.autoparams()
-def _update_dockerfile(client_dispatcher: IClientDispatcher, check_only=False):
+def _update_dockerfile(check_only=False):
     """Update the dockerfile to the newest version of renku."""
     from renku import __version__
 
-    client = client_dispatcher.current_client
-
-    if not client.docker_path.exists():
+    if not project_context.docker_path.exists():
         return False, None, None
 
     communication.echo("Updating dockerfile...")
 
-    with open(client.docker_path, "r") as f:
-        dockercontent = f.read()
+    with open(project_context.docker_path, "r") as f:
+        dockerfile_content = f.read()
 
     current_version = Version(__version__)
-    m = re.search(r"^ARG RENKU_VERSION=(\d+\.\d+\.\d+)$", dockercontent, flags=re.MULTILINE)
+    m = re.search(r"^ARG RENKU_VERSION=(\d+\.\d+\.\d+)$", dockerfile_content, flags=re.MULTILINE)
     if not m:
         if check_only:
             return False, None, None
@@ -221,36 +226,32 @@ def _update_dockerfile(client_dispatcher: IClientDispatcher, check_only=False):
     if check_only:
         return True, True, str(docker_version)
 
-    dockercontent = re.sub(
-        r"^ARG RENKU_VERSION=\d+\.\d+\.\d+$", f"ARG RENKU_VERSION={__version__}", dockercontent, flags=re.MULTILINE
+    dockerfile_content = re.sub(
+        r"^ARG RENKU_VERSION=\d+\.\d+\.\d+$", f"ARG RENKU_VERSION={__version__}", dockerfile_content, flags=re.MULTILINE
     )
 
-    with open(client.docker_path, "w") as f:
-        f.write(dockercontent)
+    with open(project_context.docker_path, "w") as f:
+        f.write(dockerfile_content)
 
     communication.echo("Updated dockerfile.")
 
     return True, False, str(current_version)
 
 
-@inject.autoparams()
-def get_project_version(client_dispatcher: IClientDispatcher):
+def get_project_version():
     """Get the metadata version the renku project is on."""
     try:
-        return int(read_project_version(client_dispatcher.current_client))
+        return int(read_project_version())
     except ValueError:
         return 1
 
 
-@inject.autoparams()
-def is_renku_project(client_dispatcher: IClientDispatcher) -> bool:
+def is_renku_project() -> bool:
     """Check if repository is a renku project."""
-    client = client_dispatcher.current_client
-
     try:
-        return client.project is not None
+        return project_context.project is not None
     except ValueError:  # NOTE: Error in loading due to an older schema
-        return client.renku_path.joinpath(OLD_METADATA_PATH).exists()
+        return project_context.metadata_path.joinpath(OLD_METADATA_PATH).exists()
 
 
 def get_migrations():

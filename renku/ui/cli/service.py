@@ -29,7 +29,7 @@ import click
 import psutil
 
 import renku.ui.cli.utils.color as color
-from renku.command.echo import ERROR
+from renku.command.util import ERROR
 
 RENKU_DAEMON_LOG_FILE = "renku.log"
 RENKU_DAEMON_ERR_FILE = "renku.err"

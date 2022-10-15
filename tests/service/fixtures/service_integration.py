@@ -137,6 +137,11 @@ def svc_client_setup(integration_lifecycle):
             # NOTE: Some tests delete the repo
             repository.checkout("master")
             repository.branches.remove(current, force=True)
+            try:
+                # NOTE: try to delete remote branch in case there was a push
+                repository.push(remote="origin", refspec=new_branch, delete=True)
+            except:  # noqa: E722
+                pass
 
 
 @pytest.fixture

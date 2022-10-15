@@ -27,20 +27,22 @@ import click
 from renku.command.command_builder.command import inject
 from renku.command.view_model.template import TemplateChangeViewModel, TemplateViewModel
 from renku.core import errors
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
-from renku.core.management.migrate import is_renku_project
+from renku.core.migration.migrate import is_renku_project
 from renku.core.template.template import (
     FileAction,
     RepositoryTemplates,
     TemplateAction,
-    copy_template_to_client,
+    copy_template_to_project,
     fetch_templates_source,
     get_file_actions,
+    has_template_checksum,
     set_template_parameters,
 )
 from renku.core.util import communication
 from renku.core.util.tabulate import tabulate
+from renku.domain_model.project import Project
+from renku.domain_model.project_context import project_context
 from renku.domain_model.template import RenderedTemplate, Template, TemplateMetadata, TemplatesSource
 from renku.infrastructure.repository import Repository
 
@@ -52,14 +54,13 @@ def list_templates(source, reference) -> List[TemplateViewModel]:
     return [TemplateViewModel.from_template(t) for t in templates_source.templates]
 
 
-@inject.autoparams("client_dispatcher")
-def show_template(source, reference, id, client_dispatcher: IClientDispatcher) -> TemplateViewModel:
+def show_template(source, reference, id) -> TemplateViewModel:
     """Show template details."""
     if source or id:
         templates_source = fetch_templates_source(source=source, reference=reference)
         template = templates_source.get_template(id=id, reference=None)
     elif is_renku_project():
-        metadata = TemplateMetadata.from_client(client=client_dispatcher.current_client)
+        metadata = TemplateMetadata.from_project(project=project_context.project)
 
         templates_source = fetch_templates_source(source=metadata.source, reference=metadata.reference)
         id = metadata.id
@@ -73,9 +74,9 @@ def show_template(source, reference, id, client_dispatcher: IClientDispatcher) -
     return TemplateViewModel.from_template(template)
 
 
-def check_for_template_update(client) -> Tuple[bool, bool, Optional[str], Optional[str]]:
+def check_for_template_update(project: Optional[Project]) -> Tuple[bool, bool, Optional[str], Optional[str]]:
     """Check if the project can be updated to a newer version of the project template."""
-    metadata = TemplateMetadata.from_client(client=client)
+    metadata = TemplateMetadata.from_project(project=project)
 
     templates_source = fetch_templates_source(source=metadata.source, reference=metadata.reference)
     update_available, latest_reference = templates_source.is_update_available(
@@ -85,13 +86,9 @@ def check_for_template_update(client) -> Tuple[bool, bool, Optional[str], Option
     return update_available, metadata.allow_update, metadata.reference, latest_reference
 
 
-@inject.autoparams("client_dispatcher")
-def set_template(
-    source, reference, id, force, interactive, input_parameters, dry_run, client_dispatcher: IClientDispatcher
-) -> TemplateChangeViewModel:
+def set_template(source, reference, id, force, interactive, input_parameters, dry_run) -> TemplateChangeViewModel:
     """Set template for a project."""
-    client = client_dispatcher.current_client
-    project = client.project
+    project = project_context.project
 
     if project.template_source and not force:
         raise errors.TemplateUpdateError("Project already has a template: To set a template use '-f/--force' flag")
@@ -111,24 +108,18 @@ def set_template(
         dry_run=dry_run,
         template_action=TemplateAction.SET,
         input_parameters=input_parameters,
-        client=client,
     )
 
     return TemplateChangeViewModel.from_template(template=rendered_template, actions=actions)
 
 
-@inject.autoparams("client_dispatcher")
-def update_template(
-    force, interactive, dry_run, client_dispatcher: IClientDispatcher
-) -> Optional[TemplateChangeViewModel]:
+def update_template(force, interactive, dry_run) -> Optional[TemplateChangeViewModel]:
     """Update project's template if possible. Return True if updated."""
-    client = client_dispatcher.current_client
-
-    template_metadata = TemplateMetadata.from_client(client=client)
+    template_metadata = TemplateMetadata.from_project(project=project_context.project)
 
     if not template_metadata.source:
         raise errors.TemplateUpdateError("Project doesn't have a template: Use 'renku template set'")
-    if not client.has_template_checksum() and not interactive:
+    if not has_template_checksum() and not interactive:
         raise errors.TemplateUpdateError("Required template metadata doesn't exist: Use '-i/--interactive' flag")
 
     if not template_metadata.allow_update and not force:
@@ -162,7 +153,6 @@ def update_template(
         dry_run=dry_run,
         template_action=TemplateAction.UPDATE,
         input_parameters=None,
-        client=client,
     )
 
     return TemplateChangeViewModel.from_template(template=rendered_template, actions=actions)
@@ -177,7 +167,6 @@ def _set_or_update_project_from_template(
     dry_run: bool,
     template_action: TemplateAction,
     input_parameters,
-    client,
     project_gateway: IProjectGateway,
 ) -> Tuple[RenderedTemplate, Dict[str, FileAction]]:
     """Update project files and metadata from a template."""
@@ -193,7 +182,7 @@ def _set_or_update_project_from_template(
     if template is None:
         raise errors.TemplateNotFoundError(f"The template with id '{id}' is not available")
 
-    template_metadata = TemplateMetadata.from_client(client=client)
+    template_metadata = TemplateMetadata.from_project(project=project_context.project)
     template_metadata.update(template=template)
 
     if not dry_run:
@@ -206,14 +195,11 @@ def _set_or_update_project_from_template(
 
     rendered_template = template.render(metadata=template_metadata)
     actions = get_file_actions(
-        rendered_template=rendered_template,
-        template_action=template_action,
-        client=client,
-        interactive=interactive and not dry_run,
+        rendered_template=rendered_template, template_action=template_action, interactive=interactive and not dry_run
     )
 
     if not dry_run:
-        copy_template_to_client(rendered_template=rendered_template, client=client, project=project, actions=actions)
+        copy_template_to_project(rendered_template=rendered_template, project=project, actions=actions)
         project_gateway.update_project(project)
 
     return rendered_template, actions

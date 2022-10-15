@@ -26,6 +26,7 @@ import pytest
 
 from renku.core.template.template import fetch_templates_source
 from renku.core.util.os import normalize_to_ascii
+from renku.domain_model.project_context import project_context
 from renku.domain_model.template import TEMPLATE_MANIFEST, TemplatesManifest
 from renku.infrastructure.repository import Repository
 from renku.ui.service.errors import (
@@ -122,9 +123,8 @@ def test_read_manifest_from_wrong_template(svc_client_with_templates, template_u
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
-def test_create_project_from_template(svc_client_templates_creation, client_database_injection_manager):
+def test_create_project_from_template(svc_client_templates_creation, with_injection):
     """Check creating project from a valid template."""
-    from renku.core.management.client import LocalClient
     from renku.ui.service.serializers.headers import RenkuHeaders
     from renku.ui.service.utils import CACHE_PROJECTS_PATH
 
@@ -143,24 +143,18 @@ def test_create_project_from_template(svc_client_templates_creation, client_data
 
     # NOTE: assert correct git user is set on new project
     user_data = RenkuHeaders.decode_user(headers["Renku-User"])
-    project_path = (
-        CACHE_PROJECTS_PATH
-        / user_data["user_id"]
-        / response.json["result"]["project_id"]
-        / payload["project_namespace"]
-        / stripped_name
-    )
+    project_path = CACHE_PROJECTS_PATH / user_data["user_id"] / payload["project_namespace"] / stripped_name
     reader = Repository(project_path).get_configuration()
     assert reader.get_value("user", "email") == user_data["email"]
     assert reader.get_value("user", "name") == user_data["name"]
 
-    client = LocalClient(project_path)
-    with client_database_injection_manager(client):
-        project = client.project
+    with project_context.with_path(project_path):
+        with with_injection():
+            project = project_context.project
+        assert project_context.datadir == "my-folder/"
 
     expected_id = f"/projects/{payload['project_namespace']}/{stripped_name}"
     assert expected_id == project.id
-    assert client.data_dir == "my-folder/"
 
     # NOTE: Assert backwards compatibility metadata.yml was created
     old_metadata_path = project_path / ".renku/metadata.yml"

@@ -33,7 +33,8 @@ from renku.domain_model.provenance.annotation import Annotation
 from renku.version import __minimum_project_version__
 
 if TYPE_CHECKING:
-    from renku.core.management.client import LocalClient
+    from renku.domain_model.project_context import ProjectContext, ProjectRemote
+    from renku.infrastructure.repository import Repository
 
 
 class Project(persistent.Persistent):
@@ -65,7 +66,7 @@ class Project(persistent.Persistent):
         version: Optional[str] = None,
         keywords: Optional[List[str]] = None,
     ):
-        from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION
+        from renku.core.migration.migrate import SUPPORTED_PROJECT_VERSION
 
         version = cast(str, version or SUPPORTED_PROJECT_VERSION)
         date_created = parse_date(date_created) or local_now()
@@ -96,9 +97,9 @@ class Project(persistent.Persistent):
         self.minimum_renku_version = Project.minimum_renku_version
 
     @classmethod
-    def from_client(
+    def from_project_context(
         cls,
-        client: "LocalClient",
+        project_context: "ProjectContext",
         name: Optional[str] = None,
         namespace: Optional[str] = None,
         description: Optional[str] = None,
@@ -106,11 +107,10 @@ class Project(persistent.Persistent):
         custom_metadata: Optional[Dict] = None,
         creator: Optional[Person] = None,
     ) -> "Project":
-        """Create an instance from a LocalClient.
+        """Create an instance from a path.
 
         Args:
             cls: The class.
-            client(LocalClient): Local client instance.
             name(Optional[str]): Name of the project (when creating a new one) (Default value = None).
             namespace(Optional[str]): Namespace of the project (when creating a new one) (Default value = None).
             description(Optional[str]): Project description (when creating a new one) (Default value = None).
@@ -119,8 +119,11 @@ class Project(persistent.Persistent):
                 (Default value = None).
             creator(Optional[Person]): The project creator.
         """
-        namespace, name = cls.get_namespace_and_name(client=client, name=name, namespace=namespace, creator=creator)
-        creator = creator or get_git_user(client.repository)
+        creator = creator or get_git_user(repository=project_context.repository)
+
+        namespace, name = cls.get_namespace_and_name(
+            remote=project_context.remote, name=name, namespace=namespace, creator=creator
+        )
         annotations = None
 
         if custom_metadata:
@@ -142,17 +145,20 @@ class Project(persistent.Persistent):
 
     @staticmethod
     def get_namespace_and_name(
-        *, client=None, name: Optional[str] = None, namespace: Optional[str] = None, creator: Optional[Person] = None
+        *,
+        remote: Optional["ProjectRemote"] = None,
+        repository: Optional["Repository"] = None,
+        name: Optional[str] = None,
+        namespace: Optional[str] = None,
+        creator: Optional[Person] = None,
     ):
         """Return Project's namespace and name from various objects."""
+        if remote:
+            namespace = namespace or remote.owner
+            name = name or remote.name
 
-        if client:
-            remote = client.remote
-            namespace = namespace or remote.get("owner")
-            name = name or remote.get("name")
-
-            if not creator:
-                creator = get_git_user(client.repository)
+        if not creator and repository:
+            creator = get_git_user(repository=repository)
 
         if not namespace and creator:
             namespace = creator.email.split("@")[0]
@@ -170,7 +176,7 @@ class Project(persistent.Persistent):
 
         return f"/projects/{namespace}/{slug}"
 
-    def update_metadata(self, custom_metadata=None, **kwargs):
+    def update_metadata(self, custom_metadata=None, custom_metadata_source=None, **kwargs):
         """Updates metadata."""
         editable_attributes = ["creator", "description", "keywords"]
         for name, value in kwargs.items():
@@ -179,10 +185,18 @@ class Project(persistent.Persistent):
             if value is not NO_VALUE and value != getattr(self, name):
                 setattr(self, name, value)
 
-        if custom_metadata is not NO_VALUE:
-            existing_metadata = [a for a in self.annotations if a.source != "renku"]
-
+        if custom_metadata is not NO_VALUE and custom_metadata_source is not NO_VALUE:
+            existing_metadata = [a for a in self.annotations if a.source != custom_metadata_source]
             if custom_metadata is not None:
-                existing_metadata.append(Annotation(id=Annotation.generate_id(), body=custom_metadata, source="renku"))
+                if not isinstance(custom_metadata, list):
+                    custom_metadata = [custom_metadata]
+                for icustom_metadata in custom_metadata:
+                    existing_metadata.append(
+                        Annotation(
+                            id=Annotation.generate_id(),
+                            body=icustom_metadata,
+                            source=custom_metadata_source,
+                        )
+                    )
 
             self.annotations = existing_metadata

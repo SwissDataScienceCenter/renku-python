@@ -22,12 +22,14 @@ from typing import List, Optional, Union
 
 from renku.command.command_builder.command import Command, CommandResult, check_finalized
 from renku.core import errors
+from renku.core.git import ensure_clean
+from renku.domain_model.project_context import project_context
 
 
 class Commit(Command):
     """Builder for commands that create a commit."""
 
-    DEFAULT_ORDER = 4
+    HOOK_ORDER = 4
 
     def __init__(
         self,
@@ -60,15 +62,13 @@ class Commit(Command):
             builder(Command): The current ``CommandBuilder``.
             context(dict): The current context object.
         """
-        if "client_dispatcher" not in context:
-            raise ValueError("Commit builder needs a IClientDispatcher to be set.")
+        from renku.core.util.git import prepare_commit
+
         if "stack" not in context:
             raise ValueError("Commit builder needs a stack to be set.")
 
-        from renku.core.management.git import prepare_commit
-
         self.diff_before = prepare_commit(
-            context["client_dispatcher"].current_client,
+            repository=project_context.repository,
             commit_only=self._commit_filter_paths,
             skip_staging=self._skip_staging,
         )
@@ -81,7 +81,7 @@ class Commit(Command):
             context(dict): The current context object.
             result(CommandResult): The result of the command execution.
         """
-        from renku.core.management.git import finalize_commit
+        from renku.core.util.git import finalize_commit
 
         if result.error:
             # TODO: Cleanup repo
@@ -89,8 +89,9 @@ class Commit(Command):
 
         try:
             finalize_commit(
-                context["client_dispatcher"].current_client,
-                self.diff_before,
+                diff_before=self.diff_before,
+                repository=project_context.repository,
+                transaction_id=project_context.transaction_id,
                 commit_only=self._commit_filter_paths,
                 commit_empty=self._commit_if_empty,
                 raise_if_empty=self._raise_if_empty,
@@ -107,8 +108,8 @@ class Commit(Command):
         Returns:
             Command: Finalized version of this command.
         """
-        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
-        self._builder.add_post_hook(self.DEFAULT_ORDER, self._post_hook)
+        self._builder.add_pre_hook(self.HOOK_ORDER, self._pre_hook)
+        self._builder.add_post_hook(self.HOOK_ORDER, self._post_hook)
 
         return self._builder.build()
 
@@ -130,7 +131,7 @@ class Commit(Command):
 class RequireClean(Command):
     """Builder to check if repo is clean."""
 
-    DEFAULT_ORDER = 4
+    HOOK_ORDER = 4
 
     def __init__(self, builder: Command) -> None:
         """__init__ of RequireClean."""
@@ -143,10 +144,10 @@ class RequireClean(Command):
             builder(Command): Current ``CommandBuilder``.
             context(dict): Current context.
         """
-        if "client_dispatcher" not in context:
-            raise ValueError("Commit builder needs a IClientDispatcher to be set.")
+        if not project_context.has_context():
+            raise ValueError("Commit builder needs a ProjectContext to be set.")
 
-        context["client_dispatcher"].current_client.ensure_clean(ignore_std_streams=not builder._track_std_streams)
+        ensure_clean(ignore_std_streams=not builder._track_std_streams)
 
     @check_finalized
     def build(self) -> Command:
@@ -155,7 +156,7 @@ class RequireClean(Command):
         Returns:
             Command: Finalized version of this command.
         """
-        self._builder.add_pre_hook(self.DEFAULT_ORDER, self._pre_hook)
+        self._builder.add_pre_hook(self.HOOK_ORDER, self._pre_hook)
 
         return self._builder.build()
 
@@ -163,7 +164,7 @@ class RequireClean(Command):
 class Isolation(Command):
     """Builder to run a command in git isolation."""
 
-    DEFAULT_ORDER = 3
+    HOOK_ORDER = 3
 
     def __init__(
         self,
@@ -179,17 +180,12 @@ class Isolation(Command):
             builder(Command): Current ``CommandBuilder``.
             context(dict): Current context.
         """
-        if "client_dispatcher" not in context:
-            raise ValueError("Commit builder needs a IClientDispatcher to be set.")
-        from renku.core.management.git import prepare_worktree
+        from renku.core.git import prepare_worktree
 
-        self.original_client = context["client_dispatcher"].current_client
+        if not project_context.has_context():
+            raise ValueError("Commit builder needs a ProjectContext to be set.")
 
-        self.new_client, self.isolation, self.path, self.branch_name = prepare_worktree(
-            context["client_dispatcher"].current_client, path=None, branch_name=None, commit=None
-        )
-
-        context["client_dispatcher"].push_created_client_to_stack(self.new_client)
+        _, self.isolation, self.path, self.branch_name = prepare_worktree(path=None, branch_name=None, commit=None)
 
     def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs):
         """Hook that commits changes.
@@ -198,16 +194,13 @@ class Isolation(Command):
             builder(Command): Current ``CommandBuilder``.
             context(dict): Current context.
         """
-        from renku.core.management.git import finalize_worktree
-
-        context["client_dispatcher"].pop_client()
+        from renku.core.git import finalize_worktree
 
         try:
             finalize_worktree(
-                self.original_client,
-                self.isolation,
-                self.path,
-                self.branch_name,
+                isolation=self.isolation,
+                path=self.path,
+                branch_name=self.branch_name,
                 delete=True,
                 new_branch=True,
                 exception=result.error,
@@ -223,7 +216,7 @@ class Isolation(Command):
         Returns:
             Command: Finalized version of this command.
         """
-        self._builder.add_injection_pre_hook(self.DEFAULT_ORDER, self._injection_pre_hook)
-        self._builder.add_post_hook(self.DEFAULT_ORDER, self._post_hook)
+        self._builder.add_injection_pre_hook(self.HOOK_ORDER, self._injection_pre_hook)
+        self._builder.add_post_hook(self.HOOK_ORDER, self._post_hook)
 
         return self._builder.build()

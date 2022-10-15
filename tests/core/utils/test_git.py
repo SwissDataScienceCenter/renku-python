@@ -23,7 +23,7 @@ import pytest
 
 from renku.core.util.git import get_remote, push_changes
 from tests.fixtures.config import IT_PROTECTED_REMOTE_REPO_URL, IT_REMOTE_NON_RENKU_REPO_URL
-from tests.utils import write_and_commit_file
+from tests.utils import retry_failed, write_and_commit_file
 
 
 @pytest.mark.parametrize(
@@ -52,6 +52,7 @@ def test_get_non_existing_remote(git_repository_with_multiple_remotes):
 
 
 @pytest.mark.integration
+@retry_failed
 def test_push_to_protected_branch(protected_git_repository):
     """Test pushing to a protected branch creates a new branch and resets the protected branch."""
     protected_git_repository.checkout("master")  # master branch is protected

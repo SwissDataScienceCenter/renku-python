@@ -131,7 +131,7 @@ class DOIImporter(ImporterApi):
         """Check if record is at last possible version."""
         return True
 
-    def download_files(self, client, destination: Path, extract: bool):
+    def download_files(self, destination: Path, extract: bool):
         """Download dataset files from the remote provider."""
         raise NotImplementedError
 

@@ -19,10 +19,13 @@
 
 import shutil
 from pathlib import Path
+from typing import Generator
 
 import pytest
 
+from renku.core.config import set_value
 from renku.infrastructure.repository import Repository
+from tests.fixtures.repository import RenkuProject
 
 
 @pytest.fixture()
@@ -38,51 +41,55 @@ def sleep_after():
 
 
 @pytest.fixture
-def client_with_remote(client, tmpdir):
-    """Return a client with a (local) remote set."""
-    # create remote
+def project_with_remote(project, tmpdir) -> Generator[RenkuProject, None, None]:
+    """Return a project with a (local) remote set."""
+    # NOTE: Create a remote repository
     path = tmpdir.mkdir("remote")
     Repository.initialize(path, bare=True)
 
-    client.repository.remotes.add(name="origin", url=path)
-    client.repository.push("origin", "master", set_upstream=True)
+    project.repository.remotes.add(name="origin", url=path)
+    project.repository.push("origin", "master", set_upstream=True)
 
-    yield client
-
-    client.repository.checkout("master")
-    client.repository.run_git_command("branch", "--unset-upstream")
-    client.repository.remotes.remove("origin")
-    shutil.rmtree(path)
+    try:
+        yield project
+    finally:
+        project.repository.checkout("master")
+        project.repository.run_git_command("branch", "--unset-upstream")
+        project.repository.remotes.remove("origin")
+        shutil.rmtree(path)
 
 
 @pytest.fixture
-def no_lfs_warning(client):
+def no_lfs_warning(project):
     """Sets show_lfs_message to False.
 
     For those times in life when mocking just isn't enough.
     """
-    with client.commit():
-        client.set_value("renku", "show_lfs_message", "False")
+    set_value("renku", "show_lfs_message", "False")
 
-    yield client
+    project.repository.add(all=True)
+    project.repository.commit(message="Unset show_lfs_message")
+
+    yield
 
 
 @pytest.fixture
-def client_with_lfs_warning(project):
+def project_with_lfs_warning(project):
     """Return a Renku repository with lfs warnings active."""
-    from renku.core.management.client import LocalClient
+    from renku.domain_model.project_context import project_context
 
-    client = LocalClient(path=project)
-    client.set_value("renku", "lfs_threshold", "0b")
+    with project_context.with_path(project.path):
+        set_value("renku", "lfs_threshold", "0b")
+        set_value("renku", "show_lfs_message", "True")
 
-    client.repository.add(".renku/renku.ini")
-    client.repository.commit("update renku.ini")
+        project.repository.add(".renku/renku.ini")
+        project.repository.commit("update renku.ini")
 
-    yield client
+    yield
 
 
 @pytest.fixture(params=[".", "some/sub/directory"])
-def subdirectory(project, request):
+def subdirectory(request) -> Generator[Path, None, None]:
     """Runs tests in root directory and a subdirectory."""
     from renku.core.util.contexts import chdir
 

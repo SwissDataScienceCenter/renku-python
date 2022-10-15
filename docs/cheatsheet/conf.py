@@ -19,6 +19,7 @@
 
 from __future__ import print_function
 
+import os
 import sys
 from os.path import abspath, dirname, join
 
@@ -49,8 +50,19 @@ extensions = [
     "sphinx.ext.napoleon",
     "cheatsheet",
 ]
-cheatsheet_extended = True
-cheatsheet_groups = ["Getting Started", "Datasets", "Running", "Workflows", "Config", "Misc"]
+cheatsheet_target = os.environ.get("CHEATSHEET_TARGET", None)
+cheatsheet_groups = [
+    "Typical Workflow",
+    "Getting Started",
+    "Project Templates",
+    "Working with Renku Datasets",
+    "Running",
+    "Workflows",
+    "Managing Interactive Sessions",
+    "Config",
+    "Misc",
+    "Undo Renku Command",
+]
 
 
 html_theme_options = {
@@ -159,7 +171,7 @@ latex_additional_files = [
 ]
 
 
-# Autodoc configuraton.
+# Autodoc configuration.
 autoclass_content = "both"
 autodoc_mock_imports = ["persistent", "ZODB"]
 autodoc_typehints = "none"
@@ -178,17 +190,13 @@ nitpick_ignore = [
     ("py:class", "DiGraph"),
     ("py:class", "DynamicProxy"),
     ("py:class", "IActivityGateway"),
-    ("py:class", "IClientDispatcher"),
-    ("py:class", "IDatabaseDispatcher"),
     ("py:class", "IDatasetGateway"),
     ("py:class", "IPlanGateway"),
-    ("py:class", "LocalClient"),
     ("py:class", "NoValueType"),
     ("py:class", "OID_TYPE"),
     ("py:class", "Path"),
     ("py:class", "Persistent"),
     ("py:class", "optional"),
-    ("py:class", '"LocalClient"'),
     ("py:class", '"ValueResolver"'),
     ("py:exc", "errors.ParameterError"),
 ]

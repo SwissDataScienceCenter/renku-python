@@ -33,7 +33,6 @@ def fake_start(
     image_name,
     project_name,
     config,
-    client,
     cpu_request,
     mem_request,
     disk_request,
@@ -83,13 +82,13 @@ def fake_pre_start_checks(self):
 )
 def test_session_start(
     run_shell,
-    client,
+    project,
     provider_name,
     session_provider,
     provider_patches,
     parameters,
     result,
-    client_database_injection_manager,
+    with_injection,
 ):
     with patch.multiple(
         session_provider,
@@ -104,7 +103,7 @@ def test_session_start(
         )
         assert provider_implementation is not None
 
-        with client_database_injection_manager(client):
+        with with_injection():
             if not isinstance(result, str) and issubclass(result, Exception):
                 with pytest.raises(result):
                     session_start(provider=provider_name, config_path=None, **parameters)
@@ -129,13 +128,13 @@ def test_session_start(
 )
 def test_session_stop(
     run_shell,
-    client,
+    project,
     session_provider,
     provider_name,
     parameters,
     provider_patches,
     result,
-    client_database_injection_manager,
+    with_injection,
 ):
     with patch.multiple(session_provider, session_stop=fake_stop, **provider_patches):
         provider_implementation = next(
@@ -143,7 +142,7 @@ def test_session_stop(
         )
         assert provider_implementation is not None
 
-        with client_database_injection_manager(client):
+        with with_injection():
             if result is not None and issubclass(result, Exception):
                 with pytest.raises(result):
                     session_stop(provider=provider_name, **parameters)
@@ -161,16 +160,16 @@ def test_session_stop(
 @pytest.mark.parametrize("provider_exists,result", [(True, ["0xdeadbeef"]), (False, ParameterError)])
 def test_session_list(
     run_shell,
-    client,
+    project,
     provider_name,
     session_provider,
     provider_patches,
     provider_exists,
     result,
-    client_database_injection_manager,
+    with_injection,
 ):
     with patch.multiple(session_provider, session_list=fake_session_list, **provider_patches):
-        with client_database_injection_manager(client):
+        with with_injection():
             if not isinstance(result, list) and issubclass(result, Exception):
                 with pytest.raises(result):
                     session_list(provider=provider_name if provider_exists else "no_provider", config_path=None)
