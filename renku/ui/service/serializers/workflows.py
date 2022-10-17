@@ -83,25 +83,25 @@ class ParameterBaseSchema(Schema):
     plan_id = fields.String(required=True)
     name = fields.String(required=True)
     type = fields.String()
-    description = fields.String()
+    description = fields.String(allow_none=True)
     default_value = fields.String()
-    prefix = fields.String()
-    position = fields.Integer()
+    prefix = fields.String(allow_none=True)
+    position = fields.Integer(allow_none=True)
 
 
 class InputSchema(ParameterBaseSchema):
     """Schema for plan input."""
 
-    mapped_to = fields.String()
-    encoding_format = fields.String()
+    mapped_to = fields.String(allow_none=True)
+    encoding_format = fields.String(allow_none=True)
     exists = fields.Boolean()
 
 
 class OutputSchema(ParameterBaseSchema):
     """Schema for plan input."""
 
-    mapped_to = fields.String()
-    encoding_format = fields.String()
+    mapped_to = fields.String(allow_none=True)
+    encoding_format = fields.String(allow_none=True)
     create_folder = fields.Boolean()
     exists = fields.Boolean()
     last_touched_by_this_plan = fields.Boolean()
@@ -133,7 +133,7 @@ class PlanReferenceSchema(Schema):
 
     id = fields.String(required=True)
     name = fields.String(required=True)
-    description = fields.String()
+    description = fields.String(allow_none=True)
 
 
 class ParameterTargetSchema(Schema):
@@ -152,7 +152,7 @@ class MappingSchema(Schema):
     plan_id = fields.String(required=True)
     name = fields.String(required=True)
     type = fields.String()
-    description = fields.String()
+    description = fields.String(allow_none=True)
     default_value = fields.String()
     targets = fields.List(fields.Nested(ParameterTargetSchema))
 
