@@ -506,7 +506,7 @@ def test_add_and_create_dataset(directory_tree, runner, project, subdirectory, d
         cli, ["dataset", "add", "--copy", "new-dataset", str(directory_tree)], catch_exceptions=False
     )
     assert 1 == result.exit_code
-    assert 'Dataset "new-dataset" does not exist.' in result.output
+    assert "Dataset 'new-dataset' does not exist." in result.output
 
     existing_file = project.path / datadir / "my-folder" / "my-file"
     existing_file.parent.mkdir(parents=True, exist_ok=True)
@@ -2723,3 +2723,32 @@ def test_update_with_no_dataset(runner, project):
     result = runner.invoke(cli, ["dataset", "update", "--all"])
 
     assert 0 == result.exit_code, format_result_exception(result)
+
+
+def test_add_local_data_to_s3_datasets(runner, project, mocker, directory_tree):
+    """Test adding local data to a dataset with s3 storage backend."""
+    storage_factory = mocker.patch("renku.infrastructure.storage.factory.StorageFactory.get_storage", autospec=True)
+    s3_storage = storage_factory.return_value
+
+    s3_storage.upload.return_value = []
+
+    uri = "s3://s3.endpoint/bucket/path"
+    result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", uri])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "add", "s3-data", "--copy", directory_tree], input="\n\n\n")
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("s3-data")
+
+    assert 3 == len(dataset.files)
+    assert {f"{uri}/directory_tree/file1", f"{uri}/directory_tree/dir1/file2", f"{uri}/directory_tree/dir1/file3"} == {
+        f.based_on.url for f in dataset.files
+    }
+
+    assert {
+        "9d98eede4ccb193e379d6dbd7cc1eb86",
+        "7bec9352114f8139c2640b2554563508",
+        "dacb3fd4bbd9ab5a17e2f7686b90c1d2",
+    } == {f.based_on.checksum for f in dataset.files}

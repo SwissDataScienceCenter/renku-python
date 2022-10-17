@@ -17,34 +17,55 @@
 # limitations under the License.
 """A factory to get various data providers."""
 
-from typing import TYPE_CHECKING
+from typing import List, Type, Union
 from urllib.parse import urlparse
 
 from renku.core import errors
+from renku.core.dataset.providers.api import (
+    AddProviderInterface,
+    ExportProviderInterface,
+    ImportProviderInterface,
+    ProviderApi,
+    StorageProvider,
+)
 from renku.core.plugin.dataset_provider import get_supported_dataset_providers
 from renku.core.util import communication
 from renku.core.util.doi import is_doi
-
-if TYPE_CHECKING:
-    from renku.core.dataset.providers.api import ProviderApi
 
 
 class ProviderFactory:
     """Create a provider type from URI."""
 
     @staticmethod
-    def get_providers():
+    def get_providers() -> List[Type[ProviderApi]]:
         """Return a list of providers sorted based on their priorities (higher priority providers come first)."""
         providers = get_supported_dataset_providers()
-        return sorted(providers, key=lambda p: p.priority.value)
+        return sorted(providers, key=lambda p: p.priority.value)  # type: ignore
 
     @staticmethod
-    def get_add_provider(uri) -> "ProviderApi":
+    def get_add_providers() -> List[Union[Type[ProviderApi], Type[AddProviderInterface]]]:
+        """Get a list of dataset add providers."""
+        return [p for p in ProviderFactory.get_providers() if issubclass(p, AddProviderInterface)]
+
+    @staticmethod
+    def get_export_providers() -> List[Union[Type[ProviderApi], Type[ExportProviderInterface]]]:
+        """Get a list of dataset exporter providers."""
+        return [p for p in ProviderFactory.get_providers() if issubclass(p, ExportProviderInterface)]
+
+    @staticmethod
+    def get_import_providers() -> List[Union[Type[ProviderApi], Type[ImportProviderInterface]]]:
+        """Get a list of dataset importer providers."""
+        return [p for p in ProviderFactory.get_providers() if issubclass(p, ImportProviderInterface)]
+
+    @staticmethod
+    def get_storage_providers() -> List[Union[Type[ProviderApi], Type[StorageProvider]]]:
+        """Get a list of backend storage providers."""
+        return [p for p in ProviderFactory.get_providers() if issubclass(p, StorageProvider)]
+
+    @staticmethod
+    def get_add_provider(uri):
         """Get an add provider based on uri."""
-        for provider in ProviderFactory.get_providers():
-            if not provider.supports_add():
-                continue
-
+        for provider in ProviderFactory.get_add_providers():
             try:
                 if provider.supports(uri):
                     return provider(uri=uri)
@@ -54,24 +75,16 @@ class ProviderFactory:
         raise errors.DatasetProviderNotFound(uri=uri)
 
     @staticmethod
-    def get_create_provider(uri) -> "ProviderApi":
-        """Get a create provider based on uri."""
-        for provider in ProviderFactory.get_providers():
-            if not provider.supports_create():
-                continue
-            try:
-                if provider.supports(uri):
-                    return provider(uri=uri)
-            except BaseException as e:
-                communication.warn(f"Couldn't test provider {provider}: {e}")
-
-        raise errors.DatasetProviderNotFound(uri=uri)
-
-    get_pull_provider = get_create_provider
-    get_mount_provider = get_pull_provider
+    def get_export_provider(provider_name):
+        """Get the export provider with a given name."""
+        provider_name = provider_name.lower()
+        try:
+            return next(p for p in ProviderFactory.get_export_providers() if p.name.lower() == provider_name)(uri=None)
+        except StopIteration:
+            raise errors.DatasetProviderNotFound(name=provider_name)
 
     @staticmethod
-    def get_import_provider(uri) -> "ProviderApi":
+    def get_import_provider(uri):
         """Get an import provider based on uri."""
         is_doi_ = is_doi(uri)
         if not is_doi_:
@@ -81,10 +94,7 @@ class ProviderFactory:
 
         warning = ""
 
-        for provider in ProviderFactory.get_providers():
-            if not provider.supports_import():
-                continue
-
+        for provider in ProviderFactory.get_import_providers():
             try:
                 if provider.supports(uri):
                     return provider(uri=uri, is_doi=is_doi_)
@@ -92,15 +102,22 @@ class ProviderFactory:
                 warning += f"Couldn't test provider {provider}: {e}\n"
 
         url = uri.split("/")[1].split(".")[0] if is_doi_ else uri  # NOTE: Get DOI provider name if uri is a DOI
-        supported_providers = ", ".join(p.name for p in ProviderFactory.get_providers() if p.supports_import())
+        supported_providers = ", ".join(p.name for p in ProviderFactory.get_import_providers())
         message = warning + f"Provider not found: {url}\nHint: Supported providers are: {supported_providers}"
         raise errors.DatasetProviderNotFound(message=message)
 
     @staticmethod
-    def from_name(provider_name) -> "ProviderApi":
-        """Get provider from a given name."""
-        provider_name = provider_name.lower()
-        try:
-            return next(p for p in ProviderFactory.get_providers() if p.name.lower() == provider_name)(uri=None)
-        except StopIteration:
-            raise errors.DatasetProviderNotFound(name=provider_name)
+    def get_storage_provider(uri):
+        """Get a backend storage provider based on uri."""
+        for provider in ProviderFactory.get_storage_providers():
+            try:
+                if provider.supports(uri):
+                    return provider(uri=uri)
+            except BaseException as e:
+                communication.warn(f"Couldn't test provider {provider}: {e}")
+
+        raise errors.DatasetProviderNotFound(uri=uri)
+
+    get_create_provider = get_storage_provider
+    get_mount_provider = get_storage_provider
+    get_pull_provider = get_storage_provider

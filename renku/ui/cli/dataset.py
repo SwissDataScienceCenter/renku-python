@@ -802,7 +802,7 @@ def add_provider_options(*param_decls, **attrs):
     from renku.core.dataset.providers.factory import ProviderFactory
     from renku.ui.cli.utils.click import create_options
 
-    providers = [p for p in ProviderFactory.get_providers() if p.supports_add() and p.get_add_parameters()]
+    providers = [p for p in ProviderFactory.get_add_providers() if p.get_add_parameters()]
     return create_options(providers=providers, parameter_function="get_add_parameters")
 
 
@@ -973,7 +973,7 @@ def export_provider_argument(*param_decls, **attrs):
         def get_providers_names():
             from renku.core.dataset.providers.factory import ProviderFactory
 
-            return [p.name.lower() for p in ProviderFactory.get_providers() if p.supports_export()]
+            return [p.name.lower() for p in ProviderFactory.get_export_providers()]
 
         return argument("provider", type=click.Choice(Proxy(get_providers_names)))(f)
 
@@ -985,7 +985,7 @@ def export_provider_options(*param_decls, **attrs):
     from renku.core.dataset.providers.factory import ProviderFactory
     from renku.ui.cli.utils.click import create_options
 
-    providers = [p for p in ProviderFactory.get_providers() if p.supports_export() and p.get_export_parameters()]
+    providers = [p for p in ProviderFactory.get_export_providers() if p.get_export_parameters()]
     return create_options(providers=providers, parameter_function="get_export_parameters")
 
 
@@ -1016,7 +1016,7 @@ def import_provider_options(*param_decls, **attrs):
     from renku.core.dataset.providers.factory import ProviderFactory
     from renku.ui.cli.utils.click import create_options
 
-    providers = [p for p in ProviderFactory.get_providers() if p.supports_import() and p.get_import_parameters()]
+    providers = [p for p in ProviderFactory.get_import_providers() if p.get_import_parameters()]
     return create_options(providers=providers, parameter_function="get_import_parameters")
 
 

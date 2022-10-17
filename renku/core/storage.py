@@ -171,7 +171,7 @@ def init_external_storage(force=False):
 @check_external_storage_wrapper
 def track_paths_in_storage(*paths):
     """Track paths in the external storage."""
-    if not project_context.external_storage_requested:
+    if not project_context.external_storage_requested or not check_external_storage():
         return
 
     # Calculate which paths can be tracked in lfs

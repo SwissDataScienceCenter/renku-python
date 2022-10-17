@@ -23,7 +23,6 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
 from renku.core import errors
 from renku.core.plugin import hookimpl
-from renku.core.util.metadata import get_canonical_key, read_credentials, store_credentials
 from renku.core.util.util import NO_VALUE, NoValueType
 from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
@@ -34,6 +33,7 @@ if TYPE_CHECKING:
         ProviderDatasetFile,
         ProviderParameter,
     )
+    from renku.core.interface.storage import IStorage
     from renku.domain_model.dataset import Dataset, DatasetTag
 
 
@@ -67,7 +67,7 @@ class ProviderApi(IDatasetProviderPlugin):
                 raise NotImplementedError(f"{required_property} must be set for {cls}")
 
     def __repr__(self):
-        return f"<DatasetProvider {self.name}>"
+        return f"<DataProvider {self.name}>"
 
     @classmethod
     @hookimpl
@@ -81,59 +81,63 @@ class ProviderApi(IDatasetProviderPlugin):
         """Whether or not this provider supports a given URI."""
         raise NotImplementedError
 
-    @staticmethod
-    def supports_add() -> bool:
-        """Whether this provider supports adding data to datasets."""
-        return False
+    @property
+    def uri(self) -> str:
+        """Return provider's URI."""
+        return self._uri
 
-    @staticmethod
-    def supports_create() -> bool:
-        """Whether this provider supports creating a dataset."""
-        return False
 
-    @staticmethod
-    def supports_export() -> bool:
-        """Whether this provider supports dataset export."""
-        return False
-
-    @staticmethod
-    def supports_import() -> bool:
-        """Whether this provider supports dataset import."""
-        return False
-
-    @staticmethod
-    def add(uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
-        """Add files from a URI to a dataset."""
-        raise NotImplementedError
+class AddProviderInterface(abc.ABC):
+    """Interface defining providers that can add data to a dataset."""
 
     @staticmethod
     def get_add_parameters() -> List["ProviderParameter"]:
         """Returns parameters that can be set for add."""
         return []
 
+    @abc.abstractmethod
+    def add(self, uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
+        """Add files from a URI to a dataset."""
+        raise NotImplementedError
+
+
+class ExportProviderInterface(abc.ABC):
+    """Interface defining export providers."""
+
     @staticmethod
     def get_export_parameters() -> List["ProviderParameter"]:
         """Returns parameters that can be set for export."""
         return []
+
+    @abc.abstractmethod
+    def get_exporter(self, dataset: "Dataset", *, tag: Optional["DatasetTag"], **kwargs) -> "ExporterApi":
+        """Get export manager."""
+        raise NotImplementedError
+
+
+class ImportProviderInterface(abc.ABC):
+    """Interface defining import providers."""
 
     @staticmethod
     def get_import_parameters() -> List["ProviderParameter"]:
         """Returns parameters that can be set for import."""
         return []
 
-    @property
-    def uri(self) -> str:
-        """Return provider's URI."""
-        return self._uri
-
-    def get_exporter(self, dataset: "Dataset", *, tag: Optional["DatasetTag"], **kwargs) -> "ExporterApi":
-        """Get export manager."""
-        raise NotImplementedError
-
+    @abc.abstractmethod
     def get_importer(self, **kwargs) -> "ImporterApi":
         """Get import manager."""
         raise NotImplementedError
 
+
+class StorageProvider(abc.ABC):
+    """Interface defining backend storage providers."""
+
+    @abc.abstractmethod
+    def get_storage(self, credentials: Optional["ProviderCredentials"] = None) -> "IStorage":
+        """Return the storage manager for the provider."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def on_create(self, dataset: "Dataset") -> None:
         """Hook to perform provider-specific actions on a newly-created dataset."""
         raise NotImplementedError
@@ -277,6 +281,8 @@ class ProviderCredentials(abc.ABC, UserDict):
 
     def get_canonical_credentials_names(self) -> Tuple[str, ...]:
         """Return canonical credentials names that can be used as config keys."""
+        from renku.core.util.metadata import get_canonical_key
+
         return tuple(get_canonical_key(key) for key in self.get_credentials_names())
 
     def get_credentials_section_name(self) -> str:
@@ -288,6 +294,8 @@ class ProviderCredentials(abc.ABC, UserDict):
 
     def read(self) -> Dict[str, Union[str, NoValueType]]:
         """Read credentials from the config and return them. Set non-existing values to None."""
+        from renku.core.util.metadata import read_credentials
+
         section = self.get_credentials_section_name()
 
         def read_and_convert_credentials(key) -> Union[str, NoValueType]:
@@ -301,6 +309,8 @@ class ProviderCredentials(abc.ABC, UserDict):
 
     def store(self) -> None:
         """Store credentials globally."""
+        from renku.core.util.metadata import store_credentials
+
         section = self.get_credentials_section_name()
 
         for key, value in self.items():
