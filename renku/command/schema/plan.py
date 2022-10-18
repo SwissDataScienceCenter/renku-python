@@ -25,6 +25,7 @@ from renku.command.schema.agent import PersonSchema
 from renku.command.schema.annotation import AnnotationSchema
 from renku.command.schema.calamus import JsonLDSchema, Nested, fields, oa, prov, renku, schema
 from renku.command.schema.parameter import CommandInputSchema, CommandOutputSchema, CommandParameterSchema
+from renku.domain_model.workflow.parameter import WorkflowFileInput
 from renku.domain_model.workflow.plan import Plan
 
 MAX_GENERATED_NAME_LENGTH = 25
@@ -65,4 +66,11 @@ class PlanSchema(JsonLDSchema):
             in_data.unfreeze()
             in_data.invalidated_at = in_data.invalidated_at.replace(microsecond=0).astimezone(timezone.utc)
             in_data.freeze()
+
+        # NOTE: Remove hidden dependency on workflow files (if any)
+        inputs = [i for i in in_data.inputs if not isinstance(i, WorkflowFileInput)]
+        if len(inputs) != len(in_data.inputs):
+            in_data = in_data.copy()
+            in_data.inputs = inputs
+
         return in_data

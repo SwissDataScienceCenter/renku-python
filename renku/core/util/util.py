@@ -22,7 +22,7 @@ from typing import Any, NewType, Optional
 from packaging.version import Version
 
 
-def to_string(value: Any) -> str:
+def to_string(value: Optional[Any]) -> str:
     """Return a string representation of value and return an empty string for None."""
     return str(value) if value is not None else ""
 

@@ -43,7 +43,7 @@ def test_template_list(isolated_runner):
     sys.argv = command
 
     try:
-        result = isolated_runner.invoke(cli, command)
+        result = isolated_runner.invoke(cli, command, replace_argv=False)
 
         assert 0 == result.exit_code, format_result_exception(result)
         assert "python-minimal" in result.output
@@ -104,7 +104,7 @@ def test_template_show_no_id_outside_project(isolated_runner):
     sys.argv = command
 
     try:
-        result = isolated_runner.invoke(cli, command)
+        result = isolated_runner.invoke(cli, command, replace_argv=False)
 
         assert 2 == result.exit_code, format_result_exception(result)
         assert "No Renku project found" in result.output

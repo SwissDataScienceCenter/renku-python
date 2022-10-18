@@ -324,10 +324,14 @@ class ToilProvider(IWorkflowProvider):
                                 directory.mkdir()
 
                                 for path, file_id in fid.items():
-                                    toil.exportFile(file_id, str((basedir / path).absolute()))
+                                    destination = (basedir / path).absolute()
+                                    destination.parent.mkdir(parents=True, exist_ok=True)
+                                    toil.exportFile(file_id, str(destination))
                                     outputs.append(path)
                             else:
-                                toil.exportFile(fid, str((basedir / name).absolute()))
+                                destination = (basedir / name).absolute()
+                                destination.parent.mkdir(parents=True, exist_ok=True)
+                                toil.exportFile(fid, str(destination))
                                 outputs.append(name)
                             bar.update(1)
         except FailedJobsException as e:

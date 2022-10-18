@@ -41,6 +41,7 @@ MAX_GENERATED_NAME_LENGTH = 25
 class AbstractPlan(Persistent, ABC):
     """Abstract base class for all plans."""
 
+    date_created: datetime
     creators: List[Person] = list()
 
     def __init__(
@@ -71,7 +72,7 @@ class AbstractPlan(Persistent, ABC):
         if name is None:
             self.name: str = self._get_default_name()
         else:
-            AbstractPlan.validate_name(name)
+            self.validate_name(name)
             self.name = name
 
     def __repr__(self):
@@ -83,7 +84,7 @@ class AbstractPlan(Persistent, ABC):
         return self.invalidated_at is not None
 
     @staticmethod
-    def generate_id(uuid: Optional[str] = None) -> str:
+    def generate_id(*, uuid: Optional[str] = None, **_) -> str:
         """Generate an identifier for Plan."""
         uuid = uuid or uuid4().hex
         return f"/plans/{uuid}"
@@ -100,18 +101,15 @@ class AbstractPlan(Persistent, ABC):
     @staticmethod
     def validate_name(name: str):
         """Check a name for invalid characters."""
-        if not re.match("[a-zA-Z0-9-_]+", name):
-            raise errors.ParameterError(
-                f"Name {name} contains illegal characters. Only English letters, numbers, _ and - are allowed."
-            )
+        validate_plan_name(name=name)
 
-    def assign_new_id(self) -> str:
+    def assign_new_id(self, *, uuid: Optional[str] = None) -> str:
         """Assign a new UUID.
 
         This is required only when there is another plan which is exactly the same except the parameters' list.
         """
         current_uuid = self._extract_uuid()
-        new_uuid = uuid4().hex
+        new_uuid = uuid or uuid4().hex
         self.id = self.id.replace(current_uuid, new_uuid)
 
         # NOTE: We also need to re-assign the _p_oid since identifier has changed
@@ -201,16 +199,7 @@ class Plan(AbstractPlan):
         )
 
         # NOTE: Validate plan
-        all_names = [p.name for p in itertools.chain(self.inputs, self.outputs, self.parameters)]
-        seen: Set[str] = set()
-
-        duplicates: List[str] = []
-        for n in all_names:
-            if n in seen:
-                duplicates.append(n)
-            else:
-                seen.add(n)
-
+        duplicates = get_duplicate_arguments_names(plan=self)
         if duplicates:
             duplicates_string = ", ".join(duplicates)
             raise errors.ParameterError(f"Duplicate input, output or parameter names found: {duplicates_string}")
@@ -220,30 +209,31 @@ class Plan(AbstractPlan):
         """Comma-separated list of keywords associated with workflow."""
         return ", ".join(self.keywords)
 
-    def is_similar_to(self, other: "Plan") -> bool:
-        """Return true if plan has the same inputs/outputs/arguments as another plan."""
+    def is_equal_to(self, other: "Plan") -> bool:
+        """Return true if plan hasn't changed from the other plan."""
 
-        def get_input_patterns(plan: Plan):
-            return {e.default_value for e in plan.inputs}
+        def are_equal_with_order(values, other_values):
+            return len(values) == len(other_values) and all(s.is_equal_to(o) for s, o in zip(values, other_values))
 
-        def get_output_patterns(plan: Plan):
-            return {e.default_value for e in plan.outputs}
+        def are_equal(values, other_values):
+            return len(values) == len(other_values) and set(values) == set(other_values)
 
-        def get_parameters(plan: Plan):
-            return {(a.position, a.prefix, a.default_value) for a in plan.parameters}
-
-        # TODO: Check order of inputs/outputs/parameters as well after sorting by position
+        # TODO: Include ``annotations`` if it is added to the workflow definition file
         return (
-            self.command == other.command
-            and set(self.success_codes) == set(other.success_codes)
-            and get_input_patterns(self) == get_input_patterns(other)
-            and get_output_patterns(self) == get_output_patterns(other)
-            and get_parameters(self) == get_parameters(other)
+            self.name == other.name
+            and self.description == other.description
+            and self.project_id == other.project_id
+            and self.command == other.command
+            and are_equal(self.success_codes, other.success_codes)
+            and are_equal(self.keywords, other.keywords)
+            and are_equal(self.creators, other.creators)
+            and are_equal_with_order(self.inputs, other.inputs)
+            and are_equal_with_order(self.outputs, other.outputs)
+            and are_equal_with_order(self.parameters, other.parameters)
         )
 
     def resolve_mapping_path(self, mapping_path: str) -> Tuple[CommandParameterBase, "Plan"]:
         """Resolve a mapping path to its reference parameter."""
-
         parts = mapping_path.split(".", maxsplit=1)
 
         if len(parts) > 1:
@@ -289,18 +279,18 @@ class Plan(AbstractPlan):
             (p for p in self.inputs + self.outputs + self.parameters if parameter_id == p.id), None  # type: ignore
         )
 
-    def find_parameter_workflow(self, parameter: CommandParameterBase) -> Optional[AbstractPlan]:
+    def find_parameter_workflow(self, parameter: CommandParameterBase) -> Optional["Plan"]:
         """Return the workflow a parameter belongs to."""
         if self.find_parameter(parameter):
             return self
         return None
 
-    def assign_new_id(self):
+    def assign_new_id(self, *, uuid: Optional[str] = None):
         """Assign a new UUID.
 
         This is required only when there is another plan which is exactly the same except the parameters' list.
         """
-        new_uuid = super().assign_new_id()
+        new_uuid = super().assign_new_id(uuid=uuid)
         current_uuid = self._extract_uuid()
         if hasattr(self, "parameters"):
             self.parameters = copy.deepcopy(self.parameters)
@@ -329,14 +319,14 @@ class Plan(AbstractPlan):
         """Return if an ``Plan`` has correct derived_from."""
         return self.derived_from is not None and self.id != self.derived_from
 
-    def to_argv(self, with_streams: bool = False) -> List[Any]:
+    def to_argv(self, with_streams: bool = False, quote_string: bool = True) -> List[Any]:
         """Convert a Plan into argv list."""
         arguments = itertools.chain(self.inputs, self.outputs, self.parameters)
         filtered_arguments = filter(lambda a: a.position is not None and not getattr(a, "mapped_to", None), arguments)
         arguments = sorted(filtered_arguments, key=lambda a: a.position)  # type: ignore
 
         argv = self.command.split(" ") if self.command else []
-        argv.extend(e for a in arguments for e in a.to_argv())
+        argv.extend(e for a in arguments for e in a.to_argv(quote_string=quote_string))
 
         if with_streams:
             arguments = itertools.chain(self.inputs, self.outputs, self.parameters)
@@ -390,3 +380,26 @@ class PlanDetailsJson(marshmallow.Schema):
     description = marshmallow.fields.String()
     keywords = marshmallow.fields.List(marshmallow.fields.String())
     id = marshmallow.fields.String()
+
+
+def get_duplicate_arguments_names(plan: Plan) -> List[str]:
+    """Return a list of duplicate inputs/outputs/parameters names in a plan."""
+    all_names = [p.name for p in itertools.chain(plan.inputs, plan.outputs, plan.parameters) if p.name]
+    seen: Set[str] = set()
+
+    duplicates: List[str] = []
+    for n in all_names:
+        if n in seen:
+            duplicates.append(n)
+        else:
+            seen.add(n)
+
+    return duplicates
+
+
+def validate_plan_name(name: str, extra_valid_characters: str = "-_"):
+    """Check a name for invalid characters."""
+    if not re.match(f"[a-zA-Z0-9][a-zA-Z0-9{extra_valid_characters}]+", name):
+        raise errors.ParameterError(
+            f"Name {name} contains illegal characters. Only English letters, numbers, _ and - are allowed."
+        )

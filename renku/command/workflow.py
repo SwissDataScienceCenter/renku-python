@@ -69,7 +69,7 @@ def edit_workflow_command():
 
 def export_workflow_command():
     """Command that exports a workflow into a given format."""
-    return Command().command(export_workflow).require_clean().with_database(write=False)
+    return Command().command(export_workflow).require_migration().with_database(write=False)
 
 
 def workflow_inputs_command():
@@ -84,7 +84,7 @@ def workflow_outputs_command():
 
 def execute_workflow_command(skip_metadata_update: bool):
     """Command that executes a workflow."""
-    command = Command().command(execute_workflow).require_migration().require_clean()
+    command = Command().command(execute_workflow).require_migration()
     if skip_metadata_update:
         command = command.with_database(write=False)
     else:

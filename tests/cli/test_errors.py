@@ -89,7 +89,7 @@ def test_cli_initialization_no_err_help(cmd, runner):
     sys.argv = cmd
     with tempfile.TemporaryDirectory() as tmpdir:
         with chdir(tmpdir):
-            result = runner.invoke(cli, cmd)
+            result = runner.invoke(cli, cmd, replace_argv=False)
             assert 0 == result.exit_code, format_result_exception(result)
 
 

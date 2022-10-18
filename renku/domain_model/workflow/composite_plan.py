@@ -90,6 +90,25 @@ class CompositePlan(AbstractPlan):
 
         return dict(existing)
 
+    def is_equal_to(self, other: "CompositePlan") -> bool:
+        """Return true if plan hasn't changed from the other plan."""
+
+        def are_equal_with_order(values, other_values):
+            return len(values) == len(other_values) and all(s.is_equal_to(o) for s, o in zip(values, other_values))
+
+        def are_equal(values, other_values):
+            return len(values) == len(other_values) and set(values) == set(other_values)
+
+        # TODO: Include ``annotations``, ``mappings``, and ``links`` if they are added to the workflow definition file
+        return (
+            self.name == other.name
+            and self.description == other.description
+            and self.project_id == other.project_id
+            and are_equal(self.keywords, other.keywords)
+            and are_equal(self.creators, other.creators)
+            and are_equal_with_order(self.plans, other.plans)
+        )
+
     def set_mappings_from_strings(self, mapping_strings: List[str]) -> None:
         """Set mappings by parsing mapping strings."""
         for mapping_string in mapping_strings:

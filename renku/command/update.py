@@ -35,6 +35,7 @@ from renku.core.workflow.activity import (
 from renku.core.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.execute import execute_workflow_graph
 from renku.domain_model.project_context import project_context
+from renku.domain_model.workflow.parameter import WorkflowFileInput
 
 
 def update_command(skip_metadata_update: bool):
@@ -77,6 +78,14 @@ def _update(
 
     if len(activities) == 0:
         raise errors.NothingToExecuteError()
+
+    for activity in activities:
+        for input in activity.plan_with_values.inputs:
+            if isinstance(input, WorkflowFileInput):
+                raise errors.WorkflowError(
+                    f"Cannot update when a workflow file has changed: '{input.actual_value}'\n"
+                    f"Run the workflow file, 'renku run {input.actual_value}', and then run 'renku update'"
+                )
 
     # NOTE: When updating we only want to eliminate activities that are overridden, not their parents
     activities = sort_activities(activities, remove_overridden_parents=False)

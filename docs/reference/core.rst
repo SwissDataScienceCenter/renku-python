@@ -77,6 +77,10 @@ Schema classes used to serialize domain models to JSON-LD.
    :members:
    :show-inheritance:
 
+.. automodule:: renku.command.schema.workflow_file
+   :members:
+   :show-inheritance:
+
 
 Datasets
 --------

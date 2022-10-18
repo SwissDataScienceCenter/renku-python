@@ -42,7 +42,7 @@ def get_relative_path_to_cwd(path: Union[Path, str]) -> str:
 def get_absolute_path(path: Union[Path, str], base: Union[Path, str] = None, resolve_symlinks: bool = False) -> str:
     """Return absolute normalized path."""
     if base is not None:
-        base = Path(base).resolve()
+        base = Path(base).resolve() if resolve_symlinks else os.path.abspath(base)
         path = os.path.join(base, path)
 
     if resolve_symlinks:
@@ -66,7 +66,7 @@ def get_safe_relative_path(path: Union[Path, str], base: Union[Path, str]) -> Pa
 
 
 def get_relative_path(path: Union[Path, str], base: Union[Path, str], strict: bool = False) -> Optional[str]:
-    """Return a relative path to the base if path is within base without resolving symlinks."""
+    """Return a relative path to the base if path is within base with/without resolving symlinks."""
     try:
         absolute_path = get_absolute_path(path=path, base=base)
         return str(Path(absolute_path).relative_to(base))
@@ -79,7 +79,14 @@ def get_relative_path(path: Union[Path, str], base: Union[Path, str], strict: bo
 
 def is_subpath(path: Union[Path, str], base: Union[Path, str]) -> bool:
     """Return True if path is within or same as base."""
-    return get_relative_path(path, base) is not None
+    absolute_path = get_absolute_path(path=path)
+    absolute_base = get_absolute_path(path=base)
+    try:
+        Path(absolute_path).relative_to(absolute_base)
+    except ValueError:
+        return False
+    else:
+        return True
 
 
 def get_relative_paths(paths: Sequence[Union[Path, str]], base: Union[Path, str]) -> List[str]:
@@ -234,7 +241,7 @@ def hash_file(path: Union[Path, str], hash_type: str = "sha256") -> Optional[str
         return hash_file_descriptor(f, hash_type)
 
 
-def hash_str(content: str, hash_type: str = "sha256") -> str:
+def hash_string(content: str, hash_type: str = "md5") -> str:
     """Calculate the sha256 hash of a string."""
     content_bytes = content.encode("utf-8")
 
@@ -255,17 +262,16 @@ def hash_file_descriptor(file: BinaryIO, hash_type: str = "sha256") -> str:
     return hash_value.hexdigest()
 
 
-def safe_read_yaml(file: str) -> Dict[str, Any]:
+def safe_read_yaml(path: Union[Path, str]) -> Dict[str, Any]:
     """Parse a YAML file.
 
     Returns:
-        In case of success a dictionary of the YAML's content,
-        otherwise raises a ParameterError exception.
+        In case of success a dictionary of the YAML's content, otherwise raises a ParameterError exception.
     """
     try:
         from renku.core.util import yaml as yaml
 
-        return yaml.read_yaml(file)
+        return yaml.read_yaml(path)
     except Exception as e:
         raise errors.ParameterError(e)
 

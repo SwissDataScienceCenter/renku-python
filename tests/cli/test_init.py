@@ -325,7 +325,7 @@ def test_init_new_metadata_defaults_is_overwritten(isolated_runner, project_init
 
     project = Database.from_path(Path(data["test_project"]) / ".renku" / "metadata").get("project")
     metadata = json.loads(project.template_metadata)
-    assert False is metadata["bool_var"]
+    assert metadata["bool_var"] is False
     assert "maybe" == metadata["enum_var"]
     assert "some description" == metadata["description"]
     assert 70.12 == metadata["number_val"]

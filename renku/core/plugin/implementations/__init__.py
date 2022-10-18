@@ -30,10 +30,14 @@ from renku.core.dataset.providers.zenodo import ZenodoProvider
 from renku.core.session.docker import DockerSessionProvider
 from renku.core.session.renkulab import RenkulabSessionProvider
 from renku.core.workflow.converters.cwl import CWLExporter
+from renku.core.workflow.converters.renku import RenkuWorkflowFileExporter
+from renku.core.workflow.parser.renku import RenkuWorkflowFileParser
 from renku.core.workflow.providers.cwltool import CWLToolProvider
+from renku.core.workflow.providers.local import LocalWorkflowProvider
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.api import ProviderApi
+    from renku.core.interface.workflow_file_parser import IWorkflowFileParser
     from renku.domain_model.session import ISessionProvider
     from renku.domain_model.workflow.converters import IWorkflowConverter
     from renku.domain_model.workflow.provider import IWorkflowProvider
@@ -41,8 +45,8 @@ if TYPE_CHECKING:
 __all__: List[str] = []
 
 session_providers: "List[Type[ISessionProvider]]" = [DockerSessionProvider, RenkulabSessionProvider]
-workflow_exporters: "List[Type[IWorkflowConverter]]" = [CWLExporter]
-workflow_providers: "List[Type[IWorkflowProvider]]" = [CWLToolProvider]
+workflow_exporters: "List[Type[IWorkflowConverter]]" = [CWLExporter, RenkuWorkflowFileExporter]
+workflow_providers: "List[Type[IWorkflowProvider]]" = [CWLToolProvider, LocalWorkflowProvider]
 dataset_providers: "List[Type[ProviderApi]]" = [
     DataverseProvider,
     GitProvider,
@@ -53,6 +57,7 @@ dataset_providers: "List[Type[ProviderApi]]" = [
     WebProvider,
     ZenodoProvider,
 ]
+workflow_file_parsers: "List[Type[IWorkflowFileParser]]" = [RenkuWorkflowFileParser]
 
 try:
     from renku.core.workflow.providers.toil import ToilProvider
