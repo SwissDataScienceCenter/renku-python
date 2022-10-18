@@ -171,6 +171,7 @@ class PlanViewModel:
         id: str,
         name: str,
         created: datetime,
+        command: str,
         full_command: str,
         inputs: List[CommandInputViewModel],
         outputs: List[CommandOutputViewModel],
@@ -190,6 +191,7 @@ class PlanViewModel:
         self.name = name
         self.description = description
         self.created = created
+        self.command = command
         self.full_command = full_command
         self.success_codes = success_codes
         self.inputs = inputs
@@ -223,6 +225,7 @@ class PlanViewModel:
             description=plan.description,
             created=plan.date_created,
             full_command=" ".join(plan.to_argv(with_streams=True)),
+            command=plan.command,
             success_codes=", ".join(str(c) for c in plan.success_codes),
             inputs=[CommandInputViewModel.from_input(input, plan.id) for input in plan.inputs],
             outputs=[CommandOutputViewModel.from_output(output, plan.id) for output in plan.outputs],
