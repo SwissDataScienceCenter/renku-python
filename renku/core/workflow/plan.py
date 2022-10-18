@@ -144,7 +144,7 @@ def show_workflow(
     workflow = cast(Union[Plan, CompositePlan], plan_gateway.get_by_name_or_id(name_or_id))
 
     if is_plan_removed(workflow):
-        raise errors.ParameterError(f"The specified workflow '{name_or_id}' cannot be found.")
+        raise errors.ParameterError(name_or_id)
 
     if with_metadata:
         activities = activity_gateway.get_all_activities()

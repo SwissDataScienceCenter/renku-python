@@ -700,7 +700,7 @@ class IntermittentSettingExistsError(ServiceError):
     and one tries to work on content already deleted from another one.
     """
 
-    code = SVC_ERROR_INTERMITTENT + 111
+    code = SVC_ERROR_INTERMITTENT + 112
     userMessage = "There was an error with the setting '{setting_name}'. Please refresh the page and try again."
     devMessage = "Unexpected error on setting '{setting_name}', possibly caused by concurrent actions."
 
@@ -745,6 +745,25 @@ class IntermittentProjectTemplateUnavailable(ServiceError):
 
     def __init__(self, exception=None):
         super().__init__(exception=exception)
+
+
+class IntermittentWorkflowNotFound(ServiceError):
+    """An operation failed because a workflow could not be found.
+
+    It may be a synchronization error happening when two or more concurrent operations overlap
+    and one tries to read content not yet created.
+    """
+
+    code = SVC_ERROR_INTERMITTENT + 150
+    userMessage = "The workflow '{name_or_id}' could not be found. Check that the name/id is correct and try again."
+    devMessage = "Unexpected error on workflow '{name_or_id}', possibly caused by concurrent actions."
+
+    def __init__(self, exception=None, name_or_id=ERROR_NOT_AVAILABLE):
+        super().__init__(
+            userMessage=self.userMessage.format(name_or_id=name_or_id),
+            devMessage=self.devMessage.format(name_or_id=name_or_id),
+            exception=exception,
+        )
 
 
 class IntermittentTimeoutError(ServiceError):

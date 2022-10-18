@@ -41,7 +41,7 @@ class PlanGateway(IPlanGateway):
         workflow = self.get_by_id(name_or_id) or self.get_by_name(name_or_id)
 
         if not workflow:
-            raise errors.ParameterError(f'The specified workflow "{name_or_id}" cannot be found.')
+            raise errors.WorkflowNotFoundError(f'The specified workflow "{name_or_id}" cannot be found.')
         return workflow
 
     def list_by_name(self, starts_with: str, ends_with: str = None) -> List[str]:
