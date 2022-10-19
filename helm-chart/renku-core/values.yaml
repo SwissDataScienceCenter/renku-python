@@ -56,7 +56,17 @@ service:
   type: ClusterIP
   port: 80
 ingress:
-  enabled: false
+  enabled: true
+  className: "nginx"
+  annotations:
+    nginx.ingress.kubernetes.io/affinity: cookie
+    nginx.ingress.kubernetes.io/session-cookie-name: stickyCoreIngressCookie
+    nginx.ingress.kubernetes.io/session-cookie-expires: "172800"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "172800"
+    nginx.ingress.kubernetes.io/affinity-mode: balanced
+    nginx.ingress.kubernetes.io/session-cookie-path: /
+  hosts: []
+  tls: []
 metrics:
   enabled: false
   image:
@@ -113,3 +123,12 @@ podSecurityContext:
   fsGroup: 100
 securityContext:
   allowPrivilegeEscalation: false
+
+gatewayAuth:
+  serviceName: tasko-renku-gateway-auth
+
+traefik:
+  image:
+    name: renku/core-traefik
+    tag: v1.8.0
+    pullPolicy: IfNotPresent

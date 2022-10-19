@@ -1,54 +1,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "renku-core.fullname" . }}-nginx
+  name: {{ include "renku-core.fullname" . }}-metadata-versions
 data:
-  nginx-server-blocks.conf: |
-    {{- range $version := .Values.versions }}
-    upstream {{ $version.name }} {
-      server {{ include "renku-core.fullname" $ }}-{{ $version.name }};
-      keepalive 32;
-      keepalive_timeout 60s;
-    }
-    {{ end }}
-
-    server {
-      listen 8080;
-
-      server_name {{ include "renku-core.fullname" . }};
-
-      sendfile on;
-      tcp_nopush on;
-      client_max_body_size 0; # Required for uploading large files
-
-      location /renku/version {
-        root /;
-        add_header Content-Type application/json;
-        try_files /usr/share/nginx/html/version.json =404;
-      }
-
-      {{- range $version := .Values.versions }}
-      location /renku/{{ $version.prefix }} {
-        rewrite /renku/{{ $version.prefix }}/(.*) /renku/$1  break;
-        proxy_set_header Host $host;
-        proxy_pass http://{{ $version.name }};
-        proxy_send_timeout {{ $.Values.requestTimeout }}s;
-        proxy_read_timeout {{ $.Values.requestTimeout }}s;
-        proxy_http_version 1.1;
-        proxy_set_header "Connection" "";
-      }
-      {{- end }}
-
-      location /renku {
-        proxy_set_header Host $host;
-        proxy_pass http://{{ .Values.versions.latest.name }};
-        proxy_send_timeout {{ $.Values.requestTimeout }}s;
-        proxy_read_timeout {{ $.Values.requestTimeout }}s;
-        proxy_http_version 1.1;
-        proxy_set_header "Connection" "";
-      }
-    }
-  version.json: |
+  metadata-versions.json: |
     {
       "name": "renku-core",
       "versions": [
@@ -64,3 +19,53 @@ data:
         {{- end }}
       ]
     }
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "renku-core.fullname" . }}-traefik
+data:
+  traefik-config.yaml: |
+    http:
+      routers:
+        core:
+          entryPoints:
+            - web
+          service: core
+          rule: PathPrefix(`/api/renku`)
+          middlewares:
+            - auth-renku
+            - cookiefilter
+            - api
+            {{- range $version := .Values.versions }}
+            - {{ $version.name }}
+            {{ end }}
+      services:
+        core:
+          loadBalancer:
+            servers:
+              - url: http://localhost:8080
+      middlewares:
+        auth-renku:
+          forwardAuth:
+            address: "http://{{ .Values.gatewayAuth.serviceName }}/?auth=renku"
+            trustForwardHeader: true
+            authResponseHeaders: ["Authorization", "Renku-user-id", "Renku-user-fullname", "Renku-user-email"]
+        api:
+          stripPrefix:
+            prefixes: ["/api"]
+        no-cookies:
+          headers:
+            customRequestHeaders:
+              Cookie: ""
+        cookiefilter:
+          plugin:
+            cookiefilter:
+              keepCookies:
+                - stickyCoreIngressCookie
+        {{- range $version := .Values.versions }}
+        {{ $version.name }}:
+          replacePathRegex:
+            regex: "^/renku/{{ $version.prefix }}/(.*)"
+            replacement: "/renku/$1"
+        {{ end }}

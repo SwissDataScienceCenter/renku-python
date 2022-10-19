@@ -13,20 +13,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku service version serializers."""
+"""Renku service metadata versions list serializers."""
 from marshmallow import Schema, fields
 
+class VersionsListVersion(Schema):
+    """A single instance of renku metadata version information."""
 
-class VersionResponse(Schema):
-    """Version response schema."""
+    version = fields.String()
+    data = fields.Nested(Schema.from_dict({"metadata_version": fields.String()}))
 
-    latest_version = fields.String()
-    supported_project_version = fields.Number()
-    minimum_api_version = fields.String()
-    maximum_api_version = fields.String()
+class VersionsListResponse(Schema):
+    """Lists all available renku metadata versions."""
+
+    name = fields.String()
+    versions = fields.List(fields.Nested(VersionsListVersion))
 
 
-class VersionResponseRPC(Schema):
-    """Version response RPC schema."""
+class VersionsListResponseRPC(Schema):
+    """Versions list response RPC schema."""
 
-    result = fields.Nested(VersionResponse)
+    result = fields.Nested(VersionsListResponse)
