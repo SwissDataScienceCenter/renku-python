@@ -28,6 +28,8 @@ global:
       renku-redis-host: "true"
     existingSecret: redis-secret
     existingSecretPasswordKey: redis-password
+
+  debug: false
 # base path - this is the reverse proxy base path
 apiBasePath: /api
 cacheDirectory: /svc/cache
