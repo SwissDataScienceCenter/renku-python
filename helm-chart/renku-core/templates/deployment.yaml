@@ -55,6 +55,7 @@ spec:
         {{- include "certificates.initContainer" $ | nindent 8 }}
       securityContext:
         {{- toYaml $.Values.podSecurityContext | nindent 8 }}
+      automountServiceAccountToken: false
       containers:
       {{ if $.Values.metrics.enabled }}
         - name: {{ $.Chart.Name}}-rqmetrics
