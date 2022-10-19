@@ -17,11 +17,11 @@
 # limitations under the License.
 """Renku service version controller."""
 import json
-from renku import __version__
+
+from renku.ui.service import config
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.serializers.versions_list import VersionsListResponseRPC
 from renku.ui.service.views import result_response
-from renku.ui.service import config
 
 
 class VersionsListCtrl(ServiceCtrl):

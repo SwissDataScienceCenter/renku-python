@@ -16,11 +16,13 @@
 """Renku service metadata versions list serializers."""
 from marshmallow import Schema, fields
 
+
 class VersionsListVersion(Schema):
     """A single instance of renku metadata version information."""
 
     version = fields.String()
     data = fields.Nested(Schema.from_dict({"metadata_version": fields.String()}))
+
 
 class VersionsListResponse(Schema):
     """Lists all available renku metadata versions."""

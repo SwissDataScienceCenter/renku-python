@@ -16,7 +16,7 @@ charts:
           CLEAN_INSTALL: "1"
           BUILD_CORE_SERVICE: "1"
       core-traefik:
-        contextPath: Dockerfile.traefik
+        contextPath: .
         dockerfilePath: Dockerfile.traefik
         valuesPath: traefik.image
 

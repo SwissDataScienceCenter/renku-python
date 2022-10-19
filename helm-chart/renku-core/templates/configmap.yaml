@@ -48,7 +48,7 @@ data:
       middlewares:
         auth-renku:
           forwardAuth:
-            address: "http://{{ .Values.gatewayAuth.serviceName }}/?auth=renku"
+            address: "http://{{ .Release.Name | trunc 63 | trimSuffix "-" }}-gateway-auth/?auth=renku"
             trustForwardHeader: true
             authResponseHeaders: ["Authorization", "Renku-user-id", "Renku-user-fullname", "Renku-user-email"]
         api:

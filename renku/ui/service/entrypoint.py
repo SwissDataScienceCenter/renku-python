@@ -154,6 +154,7 @@ def build_routes(app):
     app.register_blueprint(apispec_blueprint)
     app.register_blueprint(versions_list_blueprint)
 
+
 app = create_app()
 
 
