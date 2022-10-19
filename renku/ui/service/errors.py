@@ -632,7 +632,7 @@ class IntermittentProjectIdError(ServiceError):
     """
 
     code = SVC_ERROR_INTERMITTENT + 1
-    userMessage = "An unexpcted error occurred. This may be a temporary problem. Please try again in a few minutes."
+    userMessage = "An unexpected error occurred. This may be a temporary problem. Please try again in a few minutes."
     devMessage = (
         "Project id cannot be found. It may be a temporary problem. Check the Sentry exception for further details."
     )

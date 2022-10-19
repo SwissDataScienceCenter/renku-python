@@ -19,6 +19,8 @@
 
 import json
 
+import pytest
+
 from renku.domain_model.provenance.agent import Person
 from renku.infrastructure.gateway.project_gateway import ProjectGateway
 from renku.ui.cli import cli
@@ -186,3 +188,56 @@ def test_project_edit_unset(runner, project, subdirectory, with_injection):
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
+
+
+@pytest.mark.parametrize(
+    "metadata",
+    [
+        [
+            {
+                "@id": "https://example.com/annotation1",
+                "@type": "https://schema.org/specialType",
+                "https://schema.org/specialProperty": "some_unique_value",
+            },
+            {
+                "@id": "https://example.com/annotation2",
+                "@type": "https://schema.org/specialType2",
+                "https://schema.org/specialProperty2": "some_unique_value2",
+            },
+        ],
+        {
+            "@id": "https://example.com/annotation1",
+            "@type": "https://schema.org/specialType",
+            "https://schema.org/specialProperty": "some_unique_value",
+        },
+    ],
+)
+@pytest.mark.parametrize("source", [None, "test1"])
+def test_project_edit_metadata(runner, project, metadata, source, with_injection):
+    """Check project metadata editing."""
+    metadata_path = project.path / "metadata.json"
+    metadata_path.write_text(json.dumps(metadata))
+    args = [
+        "project",
+        "edit",
+        "--metadata",
+        str(metadata_path),
+    ]
+    if source is not None:
+        args.append("--metadata-source")
+        args.append(source)
+    result = runner.invoke(cli, args)
+    assert 0 == result.exit_code, format_result_exception(result)
+    with with_injection():
+        project_gateway = ProjectGateway()
+        project = project_gateway.get_project()
+        annotation_bodies = [annotation.body for annotation in project.annotations]
+        annotation_sources = [annotation.source for annotation in project.annotations]
+    if isinstance(metadata, dict):
+        metadata = [metadata]
+    if source is None:
+        source = "renku"
+    assert all([imetadata in annotation_bodies for imetadata in metadata])
+    assert all([imetadata in metadata for imetadata in annotation_bodies])
+    assert len(annotation_bodies) == len(metadata)
+    assert all([isource == source for isource in annotation_sources])

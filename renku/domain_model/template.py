@@ -508,7 +508,8 @@ class TemplateMetadata:
     @classmethod
     def from_project(cls, project: Optional["Project"]) -> "TemplateMetadata":
         """Return an instance from reading template-related metadata from a project."""
-        from renku.core.util.metadata import get_renku_version
+        from renku.core.util.metadata import read_renku_version_from_dockerfile
+        from renku.version import __version__
 
         if not project:
             metadata = {}
@@ -528,7 +529,7 @@ class TemplateMetadata:
         # NOTE: Always set __renku_version__ to the value read from the Dockerfile (if available) since setting/updating
         # the template doesn't change project's metadata version and shouldn't update the Renku version either
         renku_version = metadata.get("__renku_version__")
-        metadata["__renku_version__"] = get_renku_version() or renku_version or ""
+        metadata["__renku_version__"] = read_renku_version_from_dockerfile() or renku_version or __version__
 
         return cls(metadata=metadata, immutable_files=immutable_files)
 

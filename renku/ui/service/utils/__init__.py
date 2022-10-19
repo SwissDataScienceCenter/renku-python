@@ -27,7 +27,7 @@ def make_project_path(user, project):
     valid_project = project and "owner" in project and "name" in project and "project_id" in project
 
     if valid_user and valid_project:
-        return CACHE_PROJECTS_PATH / user["user_id"] / project["project_id"] / project["owner"] / project["slug"]
+        return CACHE_PROJECTS_PATH / user["user_id"] / project["owner"] / project["slug"]
 
 
 def make_file_path(user, cached_file):

@@ -108,12 +108,13 @@ def measure(message="TOTAL"):
 
 
 @contextlib.contextmanager
-def renku_project_context(path):
+def renku_project_context(path, check_git_path=True):
     """Provide a project context with repo path injected."""
     from renku.core.util.git import get_git_path
     from renku.domain_model.project_context import project_context
 
-    path = get_git_path(path)
+    if check_git_path:
+        path = get_git_path(path)
 
     with project_context.with_path(path=path), chdir(path):
         project_context.external_storage_requested = True
