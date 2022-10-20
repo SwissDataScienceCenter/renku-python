@@ -2,7 +2,7 @@ FROM python:3.9-slim as base
 
 # hadolint ignore=DL3008,DL3009,DL3013
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y git git-lfs=2.* python3-dev && \
+    apt-get install --no-install-recommends -y git git-lfs=2.* python3-dev tini && \
     pip install --no-cache-dir --upgrade pip poetry
 
 FROM base as builder
@@ -52,4 +52,4 @@ ENV RENKU_SVC_NUM_WORKERS 4
 ENV RENKU_SVC_NUM_THREADS 8
 ENV RENKU_DISABLE_VERSION_CHECK=1
 
-ENTRYPOINT ["renku"]
+ENTRYPOINT ["tini", "-g", "--", "renku"]

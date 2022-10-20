@@ -141,8 +141,30 @@
           "type": "object"
       },
       "nodeSelector": {
-          "description": "Node selector for deployment",
-          "type": "object"
+        "description": "Node selector for deployment",
+        "type": "object"
+    },
+      "horizontalPodAutoscaling": {
+          "description": "Setup for scaling the core service",
+          "type": "object",
+          "properties": {
+            "minReplicas": {
+                "description": "Flag to turn on/off Sentry",
+                "type": "integer",
+                "minimum": 1
+            },
+            "maxReplicas": {
+                "description": "URI of the sentry Data Source Name",
+                "type": "integer",
+                "minimum": 1
+            },
+            "averageMemoryUtilization": {
+                "description": "Name of the sentry environment to post to",
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 100
+            }
+        }
       },
       "tolerations": {
           "description": "Tolerations for deployment",
