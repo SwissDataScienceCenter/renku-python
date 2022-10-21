@@ -223,7 +223,7 @@ class CompositePlanViewModel:
             created=plan.date_created,
             mappings=[ParameterMappingViewModel.from_mapping(mapping) for mapping in plan.mappings],
             links=[ParameterLinkViewModel.from_link(link, plan) for link in plan.links],
-            steps=[StepViewModel(id=s.id, name=s.name) for s in plan.plans],
+            steps=[StepViewModel(id=s.id, name=s.name) for s in getattr(plan, "newest_plans", plan.plans)],
             creators=[PersonViewModel.from_person(p) for p in plan.creators] if plan.creators else None,
             keywords=plan.keywords,
             annotations=json.dumps([{"id": a.id, "body": a.body, "source": a.source} for a in plan.annotations])

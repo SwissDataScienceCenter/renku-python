@@ -177,6 +177,7 @@ def show_workflow(
             workflow.touches_existing_files = touches_existing_files
             workflow.latest = plan_chain[0].id
             workflow.duration = _get_plan_duration(workflow, duration_cache, activity_map)
+            workflow.newest_plans = [get_latest_plan(p) for p in workflow.plans]
 
     return plan_view(cast(AbstractPlan, workflow))
 
