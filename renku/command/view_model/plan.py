@@ -44,6 +44,7 @@ class CommandInputViewModel:
         prefix: Optional[str] = None,
         mapped_to: Optional[str] = None,
         plan_id: Optional[str] = None,
+        encoding_format: Optional[str] = None,
     ):
         self.name = name
         self.description = description
@@ -54,6 +55,7 @@ class CommandInputViewModel:
         self.plan_id = plan_id
         self.type = "Input"
         self.exists = (project_context.path / self.default_value).exists()
+        self.encoding_format = encoding_format
 
     @classmethod
     def from_input(cls, input: CommandInput, plan_id: Optional[str] = None):
@@ -73,6 +75,7 @@ class CommandInputViewModel:
             prefix=input.prefix,
             mapped_to=input.mapped_to.stream_type if input.mapped_to else None,
             plan_id=plan_id,
+            encoding_format=",".join(input.encoding_format) if input.encoding_format else None,
         )
 
 
@@ -89,6 +92,7 @@ class CommandOutputViewModel:
         prefix: Optional[str] = None,
         mapped_to: Optional[str] = None,
         plan_id: Optional[str] = None,
+        encoding_format: Optional[str] = None,
     ):
         self.name = name
         self.description = description
@@ -100,6 +104,7 @@ class CommandOutputViewModel:
         self.plan_id = plan_id
         self.type = "Output"
         self.exists = (project_context.path / self.default_value).exists()
+        self.encoding_format = encoding_format
 
     @classmethod
     def from_output(cls, output: CommandOutput, plan_id: Optional[str] = None):
@@ -120,6 +125,7 @@ class CommandOutputViewModel:
             prefix=output.prefix,
             mapped_to=output.mapped_to.stream_type if output.mapped_to else None,
             plan_id=plan_id,
+            encoding_format=",".join(output.encoding_format) if output.encoding_format else None,
         )
 
 
