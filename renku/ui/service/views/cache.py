@@ -96,7 +96,7 @@ def upload_file_view(user_data, cache):
       tags:
         - cache
     """
-    return UploadFilesCtrl(cache, user_data, request).to_response()
+    return UploadFilesCtrl(cache, user_data, request).to_response(request)
 
 
 @cache_blueprint.route(

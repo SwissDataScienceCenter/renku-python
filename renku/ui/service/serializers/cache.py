@@ -37,7 +37,6 @@ from renku.ui.service.serializers.common import (
 )
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
-
 def extract_file(request):
     """Extract file from Flask request.
 
@@ -53,8 +52,16 @@ def extract_file(request):
         raise ValidationError("wrong filename: {0}".format(file.filename))
 
     if file:
-        file.filename = secure_filename(file.filename)
         return file
+
+def extract_filename(request):
+    """Extract filename from Flask request.
+
+    Raises:
+        `ValidationError`: If file data or filename is missing in request.
+    """
+    file = extract_file(request)
+    return secure_filename(file.filename)
 
 
 class FileUploadRequest(ArchiveSchema):
