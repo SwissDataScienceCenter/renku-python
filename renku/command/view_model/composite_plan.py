@@ -45,7 +45,7 @@ parameter_type_mapping: Dict[type, str] = {
 
 def _parameter_id_to_plan_id(parameter_id: str):
     """Extract plan id from a parameter id."""
-    parts = parameter_id.split("/")
+    parts = parameter_id[1:].split("/")
     parts = parts[:-2]
     id = "/".join(parts)
     return f"/{id}"
@@ -221,7 +221,7 @@ class CompositePlanViewModel:
             name=plan.name,
             description=plan.description,
             created=plan.date_created,
-            mappings=[ParameterMappingViewModel.from_mapping(mapping) for mapping in plan.mappings],
+            mappings=[ParameterMappingViewModel.from_mapping(mapping, plan.id) for mapping in plan.mappings],
             links=[ParameterLinkViewModel.from_link(link, plan) for link in plan.links],
             steps=[StepViewModel(id=s.id, name=s.name) for s in getattr(plan, "newest_plans", plan.plans)],
             creators=[PersonViewModel.from_person(p) for p in plan.creators] if plan.creators else None,
