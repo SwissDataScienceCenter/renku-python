@@ -163,8 +163,8 @@ class LinkSchema(Schema):
     id = fields.String(required=True)
     plan_id = fields.String(required=True)
     type = fields.String()
-    source = fields.Nested(ParameterTargetSchema)
-    sinks = fields.List(fields.Nested(ParameterTargetSchema))
+    source_entry = fields.Nested(ParameterTargetSchema, data_key="source")
+    sink_entries = fields.List(fields.Nested(ParameterTargetSchema), data_key="sinks")
 
 
 class CompositePlanDetailsResponse(AbstractPlanResponse):
