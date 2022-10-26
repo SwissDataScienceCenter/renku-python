@@ -143,6 +143,7 @@ class Command:
         self._finalized: bool = False
         self._track_std_streams: bool = False
         self._working_directory: Optional[str] = None
+        self._context_added: bool = False
 
     def __getattr__(self, name: str) -> Any:
         """Bubble up attributes of wrapped builders."""
@@ -165,8 +166,10 @@ class Command:
             builder("Command"): Current ``CommandBuilder``.
             context(dict): Current context dictionary.
         """
-        path = get_git_path(self._working_directory or ".")
-        project_context.push_path(path)
+        if not project_context.has_context():
+            path = get_git_path(self._working_directory or ".")
+            project_context.push_path(path)
+            self._context_added = True
 
         context["bindings"] = {}
         context["constructor_bindings"] = {}
@@ -192,7 +195,8 @@ class Command:
         """
         remove_injector()
 
-        project_context.pop_context()
+        if self._context_added:
+            project_context.pop_context()
 
         if result.error:
             raise result.error
