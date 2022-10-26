@@ -1970,15 +1970,18 @@ def test_dataset_ls_with_tag(runner, tmp_path):
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.vcr
-def test_create_with_s3_backend(runner, project):
+@pytest.mark.parametrize(
+    "storage", ["s3://s3.amazonaws.com/giab/", "s3://os.zhdk.cloud.switch.ch/renku-python-test-public/"]
+)
+def test_create_with_s3_backend(runner, project, storage):
     """Test creating a dataset with a valid S3 backend storage."""
-    result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://giab/"], input="\n\n\n")
+    result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", storage], input="\n\n\n")
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     dataset = get_dataset_with_injection("s3-data")
 
-    assert "s3://giab/" == dataset.storage
+    assert storage == dataset.storage
 
     # NOTE: Dataset's data dir is git-ignored
     dataset_datadir = os.path.join(DATA_DIR, "s3-data")
@@ -1990,7 +1993,9 @@ def test_create_with_s3_backend(runner, project):
 @pytest.mark.vcr
 def test_create_with_non_existing_s3_backend(runner, project):
     """Test creating a dataset with an invalid S3 backend storage."""
-    result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://no-giab/"], input="\n\n\n")
+    result = runner.invoke(
+        cli, ["dataset", "create", "s3-data", "--storage", "s3://s3.amazonaws.com/no-giab/"], input="\n\n\n"
+    )
 
     assert 2 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "S3 bucket 'no-giab' doesn't exists" in result.output
@@ -2001,7 +2006,9 @@ def test_create_with_non_existing_s3_backend(runner, project):
 @pytest.mark.vcr
 def test_create_with_unauthorized_s3_backend(runner, project):
     """Test creating a dataset with an invalid credentials."""
-    result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://amazon/"], input="\n\n\n")
+    result = runner.invoke(
+        cli, ["dataset", "create", "s3-data", "--storage", "s3://s3.amazonaws.com/amazon/"], input="\n\n\n"
+    )
 
     assert 1 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "Authentication failed when accessing the remote storage" in result.output
@@ -2012,7 +2019,9 @@ def test_create_with_unauthorized_s3_backend(runner, project):
 @pytest.mark.vcr
 def test_pull_data_from_s3_backend(runner, project):
     """Test pulling data for a dataset with an S3 backend."""
-    result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://giab/"], input="\n\n\n")
+    result = runner.invoke(
+        cli, ["dataset", "create", "s3-data", "--storage", "s3://s3.amazonaws.com/giab/"], input="\n\n\n"
+    )
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
@@ -2022,8 +2031,8 @@ def test_pull_data_from_s3_backend(runner, project):
             "dataset",
             "add",
             "s3-data",
-            "s3://giab/Aspera_download_from_ftp.README",
-            "s3://giab/technical/unimask/02structural.bed.gz",
+            "s3://s3.amazonaws.com/giab/Aspera_download_from_ftp.README",
+            "s3://s3.amazonaws.com/giab/technical/unimask/02structural.bed.gz",
         ],
     )
 
@@ -2051,7 +2060,9 @@ def test_pull_data_from_s3_backend(runner, project):
 @pytest.mark.vcr
 def test_pull_data_from_s3_backend_to_a_location(runner, project, tmp_path):
     """Test pulling data for a dataset with an S3 backend to a location other than dataset's data directory."""
-    result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://giab/"], input="\n\n\n")
+    result = runner.invoke(
+        cli, ["dataset", "create", "s3-data", "--storage", "s3://s3.amazonaws.com/giab/"], input="\n\n\n"
+    )
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
@@ -2061,8 +2072,8 @@ def test_pull_data_from_s3_backend_to_a_location(runner, project, tmp_path):
             "dataset",
             "add",
             "s3-data",
-            "s3://giab/Aspera_download_from_ftp.README",
-            "s3://giab/technical/unimask/02structural.bed.gz",
+            "s3://s3.amazonaws.com/giab/Aspera_download_from_ftp.README",
+            "s3://s3.amazonaws.com/giab/technical/unimask/02structural.bed.gz",
         ],
     )
 
@@ -2093,10 +2104,18 @@ def test_pull_data_from_s3_backend_to_a_location(runner, project, tmp_path):
 @pytest.mark.parametrize(
     "args,uris,storage_uri",
     [
-        (["--create", "--storage", "s3://giab"], ["s3://giab"], None),
-        ([], ["s3://giab/tools", "s3://giab/use_cases"], "s3://giab"),
-        ([], ["s3://giab"], "s3://giab"),
-        ([], ["s3://giab/tools", "s3://giab/changelog_details"], "s3://giab"),
+        (["--create", "--storage", "s3://s3.amazonaws.com/giab"], ["s3://s3.amazonaws.com/giab"], None),
+        (
+            [],
+            ["s3://s3.amazonaws.com/giab/tools", "s3://s3.amazonaws.com/giab/use_cases"],
+            "s3://s3.amazonaws.com/giab",
+        ),
+        ([], ["s3://s3.amazonaws.com/giab"], "s3://s3.amazonaws.com/giab"),
+        (
+            [],
+            ["s3://s3.amazonaws.com/giab/tools", "s3://s3.amazonaws.com/giab/changelog_details"],
+            "s3://s3.amazonaws.com/giab",
+        ),
     ],
 )
 def test_adding_data_from_s3(runner, project, create_s3_dataset, mocker, args, uris, storage_uri):
@@ -2124,11 +2143,11 @@ def test_adding_data_from_s3(runner, project, create_s3_dataset, mocker, args, u
     "cmd_args,expected_error_msg",
     [
         (
-            ["--create", "s3://giab/tools"],
+            ["--create", "s3://s3.amazonaws.com/giab/tools"],
             "Creating a S3 dataset at the same time as adding data requires the '--storage' parameter to be set",
         ),
         (
-            ["s3://giab", "--storage", "s3://giab"],
+            ["s3://s3.amazonaws.com/giab", "--storage", "s3://s3.amazonaws.com/giab"],
             "Using the '--storage' parameter is only required if the '--create' parameter is also used",
         ),
         (
@@ -2136,15 +2155,15 @@ def test_adding_data_from_s3(runner, project, create_s3_dataset, mocker, args, u
             "does not match the defined storage url",
         ),
         (
-            ["s3://giab/*"],
+            ["s3://s3.amazonaws.com/giab/*"],
             "Wildcards like '*' or '?' are not supported in the uri for S3 datasets",
         ),
         (
-            ["s3://giab/test?.txt"],
+            ["s3://s3.amazonaws.com/giab/test?.txt"],
             "Wildcards like '*' or '?' are not supported in the uri for S3 datasets",
         ),
         (
-            ["s3://giab", "--source", "tools"],
+            ["s3://s3.amazonaws.com/giab", "--source", "tools"],
             "Cannot use '-s/--src/--source' with URLs or local files",
         ),
     ],
@@ -2152,7 +2171,7 @@ def test_adding_data_from_s3(runner, project, create_s3_dataset, mocker, args, u
 def test_invalid_s3_args(runner, project, create_s3_dataset, cmd_args, expected_error_msg, mocker):
     """Test invalid arguments for adding data to S3 dataset."""
     mock_s3_storage = mocker.patch("renku.infrastructure.storage.s3.S3Storage", autospec=True)
-    storage_uri = "s3://giab"
+    storage_uri = "s3://s3.amazonaws.com/giab"
     dataset_name = "test-s3-dataset"
     if "--create" not in cmd_args:
         instance_s3_storage = mock_s3_storage.return_value
@@ -2168,11 +2187,11 @@ def test_invalid_s3_args(runner, project, create_s3_dataset, cmd_args, expected_
 @pytest.mark.parametrize(
     "storage_uri,add_uri",
     [
-        ("s3://giab", "s3://test"),
-        ("s3://giab/test", "s3://test"),
-        ("s3://giab/test", "s3://giab"),
-        ("s3://giab/1/2/3", "s3://giab/1/2/4"),
-        ("s3://giab/1/2/3", "s3://giab/1/3/2"),
+        ("s3://s3.amazonaws.com/giab", "s3://s3.amazonaws.com/test"),
+        ("s3://s3.amazonaws.com/giab/test", "s3://s3.amazonaws.com/test"),
+        ("s3://s3.amazonaws.com/giab/test", "s3://s3.amazonaws.com/giab"),
+        ("s3://s3.amazonaws.com/giab/1/2/3", "s3://s3.amazonaws.com/giab/1/2/4"),
+        ("s3://s3.amazonaws.com/giab/1/2/3", "s3://s3.amazonaws.com/giab/1/3/2"),
     ],
 )
 def test_adding_s3_data_outside_sub_path_not_allowed(runner, project, create_s3_dataset, mocker, storage_uri, add_uri):
@@ -2190,7 +2209,9 @@ def test_adding_s3_data_outside_sub_path_not_allowed(runner, project, create_s3_
 @retry_failed
 def test_mount_unmount_data_from_s3_backend(runner, project):
     """Test mounting/unmounting data for a dataset with an S3 backend."""
-    result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://giab/"], input="\n\n\n")
+    result = runner.invoke(
+        cli, ["dataset", "create", "s3-data", "--storage", "s3://s3.amazonaws.com/giab/"], input="\n\n\n"
+    )
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
@@ -2217,10 +2238,12 @@ def test_mount_unmount_data_from_s3_backend(runner, project):
 
 
 @pytest.mark.integration
-@retry_failed
+# @retry_failed
 def test_mount_data_from_an_existing_mount_point(runner, project, tmp_path):
     """Test get data for a dataset with an S3 backend from an existing mount-point."""
-    result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", "s3://giab/"], input="\n\n\n")
+    result = runner.invoke(
+        cli, ["dataset", "create", "s3-data", "--storage", "s3://s3.amazonaws.com/giab/"], input="\n\n\n"
+    )
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
@@ -2234,7 +2257,12 @@ def test_mount_data_from_an_existing_mount_point(runner, project, tmp_path):
 
     mount_point = tmp_path / "s3-mount"
     mount_point.mkdir(exist_ok=True, parents=True)
-    subprocess.run(["rclone", "mount", "--read-only", "--no-modtime", "--daemon", "s3://giab/", str(mount_point)])
+    env = os.environ.copy()
+    env["RCLONE_CONFIG_S3_TYPE"] = "s3"
+    env["RCLONE_CONFIG_S3_PROVIDER"] = "AWS"
+    subprocess.run(
+        ["rclone", "mount", "--read-only", "--no-modtime", "--daemon", "s3://giab/", str(mount_point)], env=env
+    )
 
     try:
         result = runner.invoke(cli, ["dataset", "mount", "s3-data", "--yes", "--existing", str(mount_point)])

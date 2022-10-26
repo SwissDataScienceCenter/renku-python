@@ -116,7 +116,7 @@ def renku_project_context(path, check_git_path=True):
     if check_git_path:
         path = get_git_path(path)
 
-    with project_context.with_path(path=path), chdir(path):
+    with project_context.with_path(path=path):
         project_context.external_storage_requested = True
         yield project_context.path
 
