@@ -1,5 +1,6 @@
 export const baseUrl = "https://dev.renku.ch"
 export const oldGitlabProjectId = 5011
+export const sampleGitProjectUrl = "https://dev.renku.ch/gitlab/tasko.olevski/test-project-2.git"
 
 // Two sets of credentials are needed only if the Renku deployment
 // has a separate Gitlab that requires logging into another Renku
