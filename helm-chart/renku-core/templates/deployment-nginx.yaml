@@ -14,6 +14,7 @@ spec:
       labels:
         app.kubernetes.io/name: {{ include "renku-core.fullname" $ }}-nginx
     spec:
+      automountServiceAccountToken: false
       containers:
         - name: nginx
           image: bitnami/nginx:1.21.4

@@ -55,8 +55,36 @@ def test_show_project_view(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@pytest.mark.parametrize(
+    "custom_metadata",
+    [
+        [
+            {
+                "@id": "http://example.com/metadata12",
+                "@type": "https://schema.org/myType",
+                "https://schema.org/property1": 1,
+                "https://schema.org/property2": "test",
+            },
+        ],
+        [
+            {
+                "@id": "http://example.com/metadata12",
+                "@type": "https://schema.org/myType",
+                "https://schema.org/property1": 1,
+                "https://schema.org/property2": "test",
+            },
+            {
+                "@id": "http://example.com/metadata1",
+                "@type": "https://schema.org/myType1",
+                "https://schema.org/property4": 3,
+                "https://schema.org/property5": "test1",
+            },
+        ],
+    ],
+)
+@pytest.mark.parametrize("custom_metadata_source", [None, "testSource"])
 @retry_failed
-def test_edit_project_view(svc_client_with_repo):
+def test_edit_project_view(svc_client_with_repo, custom_metadata, custom_metadata_source):
     """Test editing project metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
@@ -64,13 +92,10 @@ def test_edit_project_view(svc_client_with_repo):
         "project_id": project_id,
         "description": "my new title",
         "creator": {"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"},
-        "custom_metadata": {
-            "@id": "http://example.com/metadata12",
-            "@type": "https://schema.org/myType",
-            "https://schema.org/property1": 1,
-            "https://schema.org/property2": "test",
-        },
+        "custom_metadata": custom_metadata,
     }
+    if custom_metadata_source is not None:
+        edit_payload["custom_metadata_source"] = custom_metadata_source
     response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
 
     assert_rpc_response(response)
@@ -78,12 +103,7 @@ def test_edit_project_view(svc_client_with_repo):
     assert {
         "description": "my new title",
         "creator": {"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"},
-        "custom_metadata": {
-            "@id": "http://example.com/metadata12",
-            "@type": "https://schema.org/myType",
-            "https://schema.org/property1": 1,
-            "https://schema.org/property2": "test",
-        },
+        "custom_metadata": custom_metadata,
     } == response.json["result"]["edited"]
 
     edit_payload = {
@@ -108,12 +128,14 @@ def test_edit_project_view_unset(svc_client_with_repo):
         "description": "my new title",
         "creator": {"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"},
         "keywords": ["keyword1", "keyword2"],
-        "custom_metadata": {
-            "@id": "http://example.com/metadata12",
-            "@type": "https://schema.org/myType",
-            "https://schema.org/property1": 1,
-            "https://schema.org/property2": "test",
-        },
+        "custom_metadata": [
+            {
+                "@id": "http://example.com/metadata12",
+                "@type": "https://schema.org/myType",
+                "https://schema.org/property1": 1,
+                "https://schema.org/property2": "test",
+            }
+        ],
     }
     response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
 
@@ -138,12 +160,14 @@ def test_edit_project_view_failures(svc_client_with_repo):
         "project_id": project_id,
         "description": "my new title",
         "creator": {"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"},
-        "custom_metadata": {
-            "@id": "http://example.com/metadata12",
-            "@type": "https://schema.org/myType",
-            "https://schema.org/property1": 1,
-            "https://schema.org/property2": "test",
-        },
+        "custom_metadata": [
+            {
+                "@id": "http://example.com/metadata12",
+                "@type": "https://schema.org/myType",
+                "https://schema.org/property1": 1,
+                "https://schema.org/property2": "test",
+            }
+        ],
     }
     payload["FAKE_FIELD"] = "FAKE_VALUE"
     response = svc_client.post("/project.edit", data=json.dumps(payload), headers=headers)

@@ -44,8 +44,11 @@ class ProjectShowResponse(Schema):
     created = fields.DateTime(metadata={"description": "The date this project was created at."})
     creator = fields.Nested(DatasetCreators, metadata={"description": "The creator of this project"})
     agent = fields.String(metadata={"description": "The renku version last used on this project"})
-    custom_metadata = fields.Dict(
-        dump_default=None, attribute="annotations", metadata={"description": "Custom JSON-LD metadata of the project"}
+    custom_metadata = fields.List(
+        fields.Dict(),
+        dump_default=None,
+        attribute="annotations",
+        metadata={"description": "Custom JSON-LD metadata of the project"},
     )
     template_info = fields.String(
         metadata={"description": "The template that was used in the creation of this project"}
@@ -69,7 +72,13 @@ class ProjectEditRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySch
 
     description = fields.String(metadata={"description": "New description for the project"})
     creator = fields.Nested(DatasetCreators, metadata={"description": "New creator for the project"})
-    custom_metadata = fields.Dict(allow_none=True, metadata={"description": "New custom JSON-LD metadata"})
+    custom_metadata = fields.List(
+        fields.Dict(), metadata={"description": "New custom metadata for the project"}, allow_none=True
+    )
+    custom_metadata_source = fields.String(
+        allow_none=True,
+        metadata={"description": "The source for the JSON-LD metadata"},
+    )
     keywords = fields.List(fields.String(), allow_none=True, metadata={"description": "New keyword(s) for the project"})
 
 

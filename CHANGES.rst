@@ -18,6 +18,53 @@
 Changes
 =======
 
+`1.8.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.8.0...v1.8.1>`__ (2022-10-26)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **service:** don't change working directory, as it isn't thread-safe
+   (`#3182 <https://github.com/SwissDataScienceCenter/renku-python/issues/3182>`__)
+   (`909b001 <https://github.com/SwissDataScienceCenter/renku-python/commit/909b001fb0a0ac3e6deb2d03f5f9218a7ee7d42e>`__)
+
+Features
+~~~~~~~~
+
+-  **dataset:** support non-AWS S3 URI
+   (`#3159 <https://github.com/SwissDataScienceCenter/renku-python/issues/3159>`__)
+   (`b81bbe5 <https://github.com/SwissDataScienceCenter/renku-python/commit/b81bbe58b65ac0cd1048a05fae87550d3db4e991>`__)
+
+`1.8.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.7.1...v1.8.0>`__ (2022-10-14)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+-  **cli:** make file size display consistent
+   (`#3111 <https://github.com/SwissDataScienceCenter/renku-python/issues/3111>`__)
+   (`21b70c1 <https://github.com/SwissDataScienceCenter/renku-python/commit/21b70c1c98aaaa8942cd206842aa9d1ddd4f8cce>`__)
+-  **core:** logging wrong chunk attribute
+   (`#3140 <https://github.com/SwissDataScienceCenter/renku-python/issues/3140>`__)
+   (`a187aec <https://github.com/SwissDataScienceCenter/renku-python/commit/a187aec612350ed78d626e0e54279d38d0f19655>`__)
+-  **service:** fix working dir when cloning outside of project_clone
+   view
+   (`#3164 <https://github.com/SwissDataScienceCenter/renku-python/issues/3164>`__)
+   (`9dd6a2d <https://github.com/SwissDataScienceCenter/renku-python/commit/9dd6a2dfe81908ed747d18890d233b23cec9af4f>`__)
+
+Features
+~~~~~~~~
+
+-  **api:** allow querying command builder
+   (`#3085 <https://github.com/SwissDataScienceCenter/renku-python/issues/3085>`__)
+   (`cc7f90b <https://github.com/SwissDataScienceCenter/renku-python/commit/cc7f90b87722ae14fa7954edca4c3ecc950bf37e>`__)
+-  **cli:** set list of custom metadata for project and dataset
+   (`#3165 <https://github.com/SwissDataScienceCenter/renku-python/issues/3165>`__)
+   (`739ec47 <https://github.com/SwissDataScienceCenter/renku-python/commit/739ec47739f46d60a217ff264bbe4c8418675df7>`__)
+-  **core:** use current renku version when setting template for old
+   projects
+   (`#3162 <https://github.com/SwissDataScienceCenter/renku-python/issues/3162>`__)
+   (`945e27a <https://github.com/SwissDataScienceCenter/renku-python/commit/945e27af7730b23136b537758af0c2399ef629ad>`__)
+
 `1.7.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.7.0...v1.7.1>`__ (2022-09-06)
 -------------------------------------------------------------------------------------------------------
 

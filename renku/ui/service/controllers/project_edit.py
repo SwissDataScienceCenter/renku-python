@@ -64,6 +64,14 @@ class ProjectEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
         else:
             custom_metadata = NO_VALUE
 
+        if "custom_metadata_source" in self.ctx:
+            custom_metadata_source = self.ctx.get("custom_metadata_source")
+        else:
+            custom_metadata_source = NO_VALUE
+
+        if custom_metadata_source is NO_VALUE and custom_metadata is not NO_VALUE:
+            custom_metadata_source = "renku"
+
         if "keywords" in self.ctx:
             keywords = self.ctx.get("keywords")
         else:
@@ -77,6 +85,7 @@ class ProjectEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
                 description=description,
                 creator=creator,
                 custom_metadata=custom_metadata,
+                custom_metadata_source=custom_metadata_source,
                 keywords=keywords,
             )
         )

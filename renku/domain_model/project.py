@@ -176,7 +176,7 @@ class Project(persistent.Persistent):
 
         return f"/projects/{namespace}/{slug}"
 
-    def update_metadata(self, custom_metadata=None, **kwargs):
+    def update_metadata(self, custom_metadata=None, custom_metadata_source=None, **kwargs):
         """Updates metadata."""
         editable_attributes = ["creator", "description", "keywords"]
         for name, value in kwargs.items():
@@ -185,10 +185,18 @@ class Project(persistent.Persistent):
             if value is not NO_VALUE and value != getattr(self, name):
                 setattr(self, name, value)
 
-        if custom_metadata is not NO_VALUE:
-            existing_metadata = [a for a in self.annotations if a.source != "renku"]
-
+        if custom_metadata is not NO_VALUE and custom_metadata_source is not NO_VALUE:
+            existing_metadata = [a for a in self.annotations if a.source != custom_metadata_source]
             if custom_metadata is not None:
-                existing_metadata.append(Annotation(id=Annotation.generate_id(), body=custom_metadata, source="renku"))
+                if not isinstance(custom_metadata, list):
+                    custom_metadata = [custom_metadata]
+                for icustom_metadata in custom_metadata:
+                    existing_metadata.append(
+                        Annotation(
+                            id=Annotation.generate_id(),
+                            body=icustom_metadata,
+                            source=custom_metadata_source,
+                        )
+                    )
 
             self.annotations = existing_metadata
