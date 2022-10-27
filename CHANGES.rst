@@ -18,8 +18,25 @@
 Changes
 =======
 
+`1.8.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.8.0...v1.8.1>`__ (2022-10-26)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **service:** don't change working directory, as it isn't thread-safe
+   (`#3182 <https://github.com/SwissDataScienceCenter/renku-python/issues/3182>`__)
+   (`909b001 <https://github.com/SwissDataScienceCenter/renku-python/commit/909b001fb0a0ac3e6deb2d03f5f9218a7ee7d42e>`__)
+
+Features
+~~~~~~~~
+
+-  **dataset:** support non-AWS S3 URI
+   (`#3159 <https://github.com/SwissDataScienceCenter/renku-python/issues/3159>`__)
+   (`b81bbe5 <https://github.com/SwissDataScienceCenter/renku-python/commit/b81bbe58b65ac0cd1048a05fae87550d3db4e991>`__)
+
 `1.8.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.7.1...v1.8.0>`__ (2022-10-14)
-=======================================================================================================
+-------------------------------------------------------------------------------------------------------
 
 Bug Fixes
 ~~~~~~~~~
