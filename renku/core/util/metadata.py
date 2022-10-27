@@ -44,7 +44,7 @@ def construct_creators(
     """Parse input and return a list of Person."""
     creators = creators or []
 
-    if not isinstance(creators, Iterable) or isinstance(creators, str):
+    if not isinstance(creators, Iterable):
         raise errors.ParameterError("Invalid creators type")
 
     people = []
