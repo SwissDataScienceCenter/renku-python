@@ -9,7 +9,7 @@ export const options = {
   scenarios: {
     testUploads: {
       executor: 'per-vu-iterations',
-      vus: 30,
+      vus: 3,
       iterations: 1,
     },
   }
