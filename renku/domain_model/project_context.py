@@ -100,11 +100,6 @@ class ProjectContext(threading.local):
         return self.path / DOCKERFILE
 
     @property
-    def empty(self) -> bool:
-        """Return True if there is no pushed context."""
-        return not bool(self._context_stack)
-
-    @property
     def global_config_dir(self) -> str:
         """Return user's config directory."""
         import click

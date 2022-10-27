@@ -17,31 +17,29 @@
 # limitations under the License.
 """Base storage handler."""
 
+import abc
 import json
 import os
 import subprocess
 from pathlib import Path
-from typing import Any, List, Union
+from typing import Any, Dict, List, Union
 
 from renku.core import errors
 from renku.core.interface.storage import FileHash, IStorage
 from renku.core.util.util import NO_VALUE
 
 
-class RCloneBaseStorage(IStorage):
+class RCloneBaseStorage(IStorage, abc.ABC):
     """Base external storage handler class."""
 
-    def copy(self, source: Union[Path, str], destination: Union[Path, str]) -> None:
-        """Copy data from ``source`` to ``destination``."""
-        self.set_configurations()
-        execute_rclone_command("copyto", source, destination)
+    def copy(self, uri: str, destination: Union[Path, str]) -> None:
+        """Copy data from ``uri`` to ``destination``."""
+        self.run_rclone_command("copyto", uri, str(destination))
 
     def exists(self, uri: str) -> bool:
         """Checks if a remote storage URI exists."""
-        self.set_configurations()
-
         try:
-            execute_rclone_command("lsf", uri, max_depth=1)
+            self.run_rclone_command("lsf", uri=uri, max_depth=1)
         except errors.StorageObjectNotFound:
             return False
         else:
@@ -67,9 +65,7 @@ class RCloneBaseStorage(IStorage):
                     }
                 ]
         """
-        self.set_configurations()
-
-        hashes_raw = execute_rclone_command("lsjson", "--hash", "-R", "--files-only", uri)
+        hashes_raw = self.run_rclone_command("lsjson", uri, hash=True, R=True, files_only=True)
         hashes = json.loads(hashes_raw)
         if not hashes:
             raise errors.ParameterError(f"Cannot find URI: {uri}")
@@ -90,25 +86,32 @@ class RCloneBaseStorage(IStorage):
 
     def mount(self, path: Union[Path, str]) -> None:
         """Mount the provider's URI to the given path."""
-        self.set_configurations()
-        execute_rclone_command("mount", self.provider.uri, path, daemon=True, read_only=True, no_modtime=True)
+        self.run_rclone_command("mount", self.provider.uri, str(path), daemon=True, read_only=True, no_modtime=True)
 
-    def set_configurations(self) -> None:
-        """Set required configurations for rclone to access the storage."""
+    def get_configurations(self) -> Dict[str, str]:
+        """Get required configurations for rclone to access the storage."""
+        configurations = {}
         for name, value in self.credentials.items():
-            name = get_rclone_env_var_name(self.provider.name, name)
             if value is not NO_VALUE:
-                set_rclone_env_var(name=name, value=value)
+                name = get_rclone_env_var_name(self.provider.name, name)
+                configurations[name] = value
+
+        return configurations
 
 
-def execute_rclone_command(command: str, *args: Any, **kwargs) -> str:
+def run_rclone_command(command: str, *args: Any, env=None, **kwargs) -> str:
     """Execute an R-clone command."""
+    os_env = os.environ.copy()
+    if env:
+        os_env.update(env)
+
     try:
         result = subprocess.run(
-            ("rclone", command, *transform_kwargs(**kwargs), *args),
+            ("rclone", command, *transform_kwargs(**kwargs), *transform_args(*args)),
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            env=os_env,
         )
     except FileNotFoundError:
         raise errors.RCloneException("RClone is not installed. See https://rclone.org/install/")
@@ -121,7 +124,7 @@ def execute_rclone_command(command: str, *args: Any, **kwargs) -> str:
     if result.returncode in (3, 4):
         raise errors.StorageObjectNotFound(all_outputs)
     elif "AccessDenied" in all_outputs:
-        raise errors.AuthenticationError("Authentication failed when accessing the remote storage")
+        raise errors.AuthenticationError(f"Authentication failed when accessing the remote storage: {all_outputs}")
     else:
         raise errors.RCloneException(f"Remote storage operation failed: {all_outputs}")
 
@@ -154,8 +157,3 @@ def get_rclone_env_var_name(provider_name, name) -> str:
     # See https://rclone.org/docs/#config-file
     name = name.replace(" ", "_").replace("-", "_")
     return f"RCLONE_CONFIG_{provider_name}_{name}".upper()
-
-
-def set_rclone_env_var(name, value) -> None:
-    """Set value for an RClone config env var."""
-    os.environ[name] = value
