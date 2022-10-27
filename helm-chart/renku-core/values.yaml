@@ -98,7 +98,7 @@ versions:
     fullnameOverride: ""
     image:
       repository: renku/renku-core
-      tag: "v1.8.0"
+      tag: "v1.8.1"
       pullPolicy: IfNotPresent
   v8:
     name: v8

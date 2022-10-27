@@ -20,7 +20,7 @@
 import re
 import urllib
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple, cast
 
 from renku.core import errors
 from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials, ProviderPriority
@@ -43,8 +43,11 @@ class S3Provider(ProviderApi):
 
     def __init__(self, uri: Optional[str]):
         super().__init__(uri=uri)
-        bucket, _ = extract_bucket_and_path(uri=self.uri)
+
+        endpoint, bucket, _ = parse_s3_uri(uri=self.uri)
+
         self._bucket: str = bucket
+        self._endpoint: str = endpoint
 
     @staticmethod
     def supports(uri: str) -> bool:
@@ -100,16 +103,16 @@ class S3Provider(ProviderApi):
         if not storage.exists(uri):
             raise errors.ParameterError(f"S3 bucket '{uri}' doesn't exists.")
 
-        repository = project_context.repository
+        destination_path_in_repo = Path(destination).relative_to(project_context.repository.path)
         hashes = storage.get_hashes(uri=uri)
         return [
             DatasetAddMetadata(
-                entity_path=Path(destination).relative_to(repository.path) / hash.path,
+                entity_path=destination_path_in_repo / hash.path,
                 url=hash.base_uri,
                 action=DatasetAddAction.NONE,
                 based_on=RemoteEntity(checksum=hash.hash if hash.hash else "", url=hash.base_uri, path=hash.path),
                 source=Path(hash.full_uri),
-                destination=Path(destination).relative_to(repository.path),
+                destination=destination_path_in_repo,
                 gitignored=True,
             )
             for hash in hashes
@@ -119,6 +122,11 @@ class S3Provider(ProviderApi):
     def bucket(self) -> str:
         """Return S3 bucket name."""
         return self._bucket
+
+    @property
+    def endpoint(self) -> str:
+        """Return S3 bucket endpoint."""
+        return self._endpoint
 
     def on_create(self, dataset: "Dataset") -> None:
         """Hook to perform provider-specific actions on a newly-created dataset."""
@@ -145,15 +153,39 @@ class S3Credentials(ProviderCredentials):
         """Return a tuple of the required credentials for a provider."""
         return "Access Key ID", "Secret Access Key"
 
+    @property
+    def provider(self) -> S3Provider:
+        """Return the associated provider instance."""
+        return cast(S3Provider, self._provider)
 
-def extract_bucket_and_path(uri: str) -> Tuple[str, str]:
-    """Extract bucket name and path within the bucket from a given URI.
+    def get_credentials_section_name(self) -> str:
+        """Get section name for storing credentials.
 
-    NOTE: We only support s3://<bucket-name>/<path> at the moment.
+        NOTE: This methods should be overridden by subclasses to allow multiple credentials per providers if needed.
+        """
+        return self.provider.endpoint.lower()
+
+
+def create_renku_s3_uri(uri: str) -> str:
+    """Create a S3 URI to work with Renku."""
+    _, bucket, path = parse_s3_uri(uri=uri)
+
+    return f"s3://{bucket}/{path}"
+
+
+def parse_s3_uri(uri: str) -> Tuple[str, str, str]:
+    """Extract endpoint, bucket name, and path within the bucket from a given URI.
+
+    NOTE: We only support s3://<endpoint>/<bucket-name>/<path> at the moment.
     """
     parsed_uri = urllib.parse.urlparse(uri)
 
-    if parsed_uri.scheme.lower() != "s3" or not parsed_uri.netloc:
-        raise errors.ParameterError(f"Invalid S3 URI: {uri}")
+    endpoint = parsed_uri.netloc
+    path = parsed_uri.path.strip("/")
 
-    return parsed_uri.netloc, parsed_uri.path
+    if parsed_uri.scheme.lower() != "s3" or not endpoint or not path:
+        raise errors.ParameterError(f"Invalid S3 URI: {uri}. Valid format is 's3://<endpoint>/<bucket-name>/<path>'")
+
+    bucket, _, path = path.partition("/")
+
+    return endpoint, bucket, path.strip("/")
