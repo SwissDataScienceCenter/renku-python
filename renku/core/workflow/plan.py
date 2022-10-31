@@ -25,8 +25,6 @@ from typing import Dict, Generator, List, Optional, Set, Tuple, Union, cast, ove
 from renku.command.command_builder import inject
 from renku.command.format.workflow import WORKFLOW_FORMATS
 from renku.command.view_model.activity_graph import ActivityGraphViewModel
-from renku.command.view_model.composite_plan import CompositePlanViewModel
-from renku.command.view_model.plan import plan_view
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.plan_gateway import IPlanGateway
@@ -116,6 +114,8 @@ def list_workflows(plan_gateway: IPlanGateway, format: str, columns: List[str]):
     Returns:
         List of workflows formatted by ``format``.
     """
+    from renku.command.view_model.plan import plan_view
+
     workflows = plan_gateway.get_newest_plans_by_names()
 
     if format not in WORKFLOW_FORMATS:
@@ -141,6 +141,8 @@ def show_workflow(
     Returns:
         Details of the Plan.
     """
+    from renku.command.view_model.plan import plan_view
+
     workflow = cast(Union[Plan, CompositePlan], plan_gateway.get_by_name_or_id(name_or_id))
 
     if is_plan_removed(workflow):
@@ -179,7 +181,7 @@ def show_workflow(
             workflow.duration = _get_plan_duration(workflow, duration_cache, activity_map)
             workflow.newest_plans = [get_latest_plan(p) for p in workflow.plans]
 
-    return plan_view(cast(AbstractPlan, workflow))
+    return plan_view(cast(AbstractPlan, workflow), latest=with_metadata)
 
 
 @inject.autoparams("plan_gateway")
@@ -259,6 +261,7 @@ def edit_workflow(
     Returns:
         Details of the modified Plan.
     """
+    from renku.command.view_model.plan import plan_view
 
     derived_from = plan_gateway.get_by_name_or_id(name)
 
@@ -380,6 +383,7 @@ def compose_workflow(
     Returns:
         The newly created ``CompositePlan``.
     """
+    from renku.command.view_model.composite_plan import CompositePlanViewModel
     from renku.core.workflow.activity import get_activities_until_paths, sort_activities
 
     if plan_gateway.get_by_name(name):

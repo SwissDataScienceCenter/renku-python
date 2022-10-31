@@ -22,6 +22,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, NamedTuple, Optional
 
 from renku.command.view_model.agent import PersonViewModel
+from renku.core.workflow.plan import get_latest_plan
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.parameter import (
     CommandInput,
@@ -43,12 +44,13 @@ parameter_type_mapping: Dict[type, str] = {
 }
 
 
-def _parameter_id_to_plan_id(parameter_id: str):
+def _parameter_id_to_plan_id(parameter: CommandParameterBase, parent_plan: AbstractPlan, latest: bool = False):
     """Extract plan id from a parameter id."""
-    parts = parameter_id[1:].split("/")
-    parts = parts[:-2]
-    id = "/".join(parts)
-    return f"/{id}"
+    containing_plan = parent_plan.get_parameter_path(parameter)[-1]
+
+    if latest:
+        containing_plan = get_latest_plan(containing_plan)
+    return containing_plan.id
 
 
 def _parameter_to_type_string(parameter: CommandParameterBase):
@@ -63,37 +65,44 @@ class ParameterMappingViewModel:
         self,
         name: str,
         default_value: str,
-        targets: List[CommandParameterBase],
+        maps_to: List[str],
+        targets: List[ParameterReference],
         description: Optional[str] = None,
         plan_id: Optional[str] = None,
     ):
         self.name = name
         self.default_value = default_value
-        self.maps_to = [t.name for t in targets]
-        self.targets = [
-            ParameterReference(t.id, _parameter_id_to_plan_id(t.id), _parameter_to_type_string(t), t.name)
-            for t in targets
-        ]
+        self.maps_to = maps_to
+        self.targets = targets
         self.description = description
         self.plan_id = plan_id
         self.type = "Mapping"
 
     @classmethod
-    def from_mapping(cls, mapping: ParameterMapping, plan_id: Optional[str] = None):
+    def from_mapping(cls, mapping: ParameterMapping, plan: AbstractPlan, latest: bool = False):
         """Create view model from ``ParameterMapping``.
 
         Args:
             mapping(ParameterMapping): Mapping to create view model from.
+            plan(AbstractPlan): Parent plan.
+            latest(bool): Whether to get latest plan data.
 
         Returns:
             View model of mapping.
         """
+        targets = [
+            ParameterReference(
+                t.id, _parameter_id_to_plan_id(t, plan, latest=latest), _parameter_to_type_string(t), t.name
+            )
+            for t in mapping.mapped_parameters
+        ]
         return cls(
             name=mapping.name,
             default_value=str(mapping.default_value),
-            targets=mapping.mapped_parameters,
+            maps_to=[t.name for t in mapping.mapped_parameters],
+            targets=targets,
             description=mapping.description,
-            plan_id=plan_id,
+            plan_id=plan.id,
         )
 
 
@@ -118,12 +127,13 @@ class ParameterLinkViewModel:
         self.type = "Link"
 
     @classmethod
-    def from_link(cls, link: ParameterLink, plan: AbstractPlan):
+    def from_link(cls, link: ParameterLink, plan: AbstractPlan, latest: bool = False):
         """Create view model from ``ParameterLink``.
 
         Args:
             link(ParameterLink): Link to get view model from.
             plan(AbstractPlan): Parent plan.
+            latest(bool): Whether to get latest plan data.
 
         Returns:
             View model for link.
@@ -134,7 +144,7 @@ class ParameterLinkViewModel:
 
         source_entry = ParameterReference(
             link.source.id,
-            _parameter_id_to_plan_id(link.source.id),
+            _parameter_id_to_plan_id(link.source, plan, latest=latest),
             _parameter_to_type_string(link.source),
             link.source.name,
         )
@@ -149,7 +159,10 @@ class ParameterLinkViewModel:
             sinks.append(sink_path)
             sink_entries.append(
                 ParameterReference(
-                    sink.id, _parameter_id_to_plan_id(sink.id), _parameter_to_type_string(sink), sink.name
+                    sink.id,
+                    _parameter_id_to_plan_id(sink, plan, latest=latest),
+                    _parameter_to_type_string(sink),
+                    sink.name,
                 )
             )
         return cls(
@@ -207,11 +220,12 @@ class CompositePlanViewModel:
             self.duration = duration.seconds
 
     @classmethod
-    def from_composite_plan(cls, plan: CompositePlan):
+    def from_composite_plan(cls, plan: CompositePlan, latest: bool = False):
         """Create view model from ``Plan``.
 
         Args:
             plan(CompositePlan): Composite Plan to get view model from.
+            latest(bool): Whether to get latest plan data.
 
         Returns:
             View model of composite Plan.
@@ -221,8 +235,8 @@ class CompositePlanViewModel:
             name=plan.name,
             description=plan.description,
             created=plan.date_created,
-            mappings=[ParameterMappingViewModel.from_mapping(mapping, plan.id) for mapping in plan.mappings],
-            links=[ParameterLinkViewModel.from_link(link, plan) for link in plan.links],
+            mappings=[ParameterMappingViewModel.from_mapping(mapping, plan, latest) for mapping in plan.mappings],
+            links=[ParameterLinkViewModel.from_link(link, plan, latest) for link in plan.links],
             steps=[StepViewModel(id=s.id, name=s.name) for s in getattr(plan, "newest_plans", plan.plans)],
             creators=[PersonViewModel.from_person(p) for p in plan.creators] if plan.creators else None,
             keywords=plan.keywords,

@@ -249,11 +249,12 @@ class PlanViewModel:
         )
 
 
-def plan_view(workflow: AbstractPlan) -> Union[CompositePlanViewModel, PlanViewModel]:
+def plan_view(workflow: AbstractPlan, latest: bool = False) -> Union[CompositePlanViewModel, PlanViewModel]:
     """Convert an ``CompositePlan`` or ``Plan`` to a ``ViewModel``.
 
     Args:
         workflow(AbstractPlan): Plan to convert.
+        latest(bool): Whether to get latest plan data.
 
     Returns:
         View model for converted Plan.
