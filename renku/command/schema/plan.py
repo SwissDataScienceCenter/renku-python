@@ -35,7 +35,7 @@ class PlanSchema(JsonLDSchema):
     class Meta:
         """Meta class."""
 
-        rdf_type = [prov.Plan, schema.Action, schema.CreativeWork]
+        rdf_type = [prov.Plan, schema.Action, schema.CreativeWork, renku.Plan]
         model = Plan
         unknown = marshmallow.EXCLUDE
 
@@ -47,7 +47,7 @@ class PlanSchema(JsonLDSchema):
     invalidated_at = fields.DateTime(prov.invalidatedAtTime, format="iso")
     keywords = fields.List(schema.keywords, fields.String(), load_default=None)
     name = fields.String(schema.name, load_default=None)
-    derived_from = fields.String(prov.wasDerivedFrom, load_default=None)
+    derived_from = fields.IRI(prov.wasDerivedFrom, load_default=None)
     project_id = fields.IRI(renku.hasPlan, reverse=True)
     outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, load_default=None)
     parameters = Nested(renku.hasArguments, CommandParameterSchema, many=True, load_default=None)

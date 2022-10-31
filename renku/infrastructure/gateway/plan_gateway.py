@@ -66,6 +66,10 @@ class PlanGateway(IPlanGateway):
     def add(self, plan: AbstractPlan) -> None:
         """Add a plan to the database."""
         database = project_context.database
+
+        if database["plans"].get(plan.id) is not None:
+            return
+
         database["plans"].add(plan)
 
         if plan.derived_from is not None:
