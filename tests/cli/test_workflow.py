@@ -1385,7 +1385,8 @@ def test_reverted_activity_status(runner, project, with_injection):
     write_and_commit_file(project.repository, input, "content")
     output = project.path / "output"
 
-    assert 0 == runner.invoke(cli, ["run", "cat", input], stdout=output).exit_code
+    result = runner.invoke(cli, ["run", "cat", input], stdout=output)
+    assert 0 == result.exit_code, format_result_exception(result)
     write_and_commit_file(project.repository, input, "changes")
 
     with with_injection():
@@ -1409,3 +1410,33 @@ def test_reverted_activity_status(runner, project, with_injection):
     assert activity_id not in runner.invoke(cli, ["log"]).output
     assert "input" not in runner.invoke(cli, ["workflow", "inputs"]).output
     assert "output" not in runner.invoke(cli, ["workflow", "outputs"]).output
+
+
+def test_rerun_doesnt_update_plan_index(runner, project, with_injection):
+    """Test that a rerun does not update the plan index."""
+    input = project.path / "input"
+    write_and_commit_file(project.repository, input, "content")
+    output = project.path / "output"
+
+    original_description = "1111111111111111"
+    result = runner.invoke(
+        cli, ["run", "--name", "my-workflow", "--description", original_description, "cat", input], stdout=output
+    )
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    new_description = "22222222222222222"
+    result = runner.invoke(cli, ["workflow", "edit", "my-workflow", "--description", new_description])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "show", "my-workflow"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert new_description in result.output
+    assert original_description not in result.output
+
+    result = runner.invoke(cli, ["rerun", output])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "show", "my-workflow"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert new_description in result.output
+    assert original_description not in result.output
