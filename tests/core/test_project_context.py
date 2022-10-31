@@ -25,7 +25,7 @@ from renku.core import errors
 from renku.domain_model.project_context import ProjectContext
 
 
-def _use_project_context(tmpdir):
+def test_use_project_context(tmpdir):
     """Test ProjectContext object."""
     project_context = ProjectContext()
 
@@ -100,7 +100,7 @@ def test_database(tmpdir):
         _ = project_context.database
 
 
-def _use_project_context_with_path():
+def test_use_project_context_with_path():
     """Test ProjectContext.with_path leaves the state as before."""
     project_context = ProjectContext()
 
@@ -115,7 +115,7 @@ def _use_project_context_with_path():
     assert before_path == project_context.path
 
 
-def _use_project_context_with_path_empty():
+def test_use_project_context_with_path_empty():
     """Test ProjectContext.with_path leaves the state as before when no path was pushed before."""
     project_context = ProjectContext()
 
@@ -134,3 +134,32 @@ def test_get_repository_outside_a_project(tmpdir):
     with project_context.with_path(tmpdir.mkdir("project")):
         with pytest.raises(errors.ConfigurationError):
             _ = project_context.repository
+
+
+def test_reuse_context(tmp_path):
+    """Test that the same context can be used for multiple commands."""
+    from renku.command.command_builder.command import Command
+    from renku.domain_model.project_context import project_context
+
+    def _test():
+        """Dummy method for testing."""
+        pass
+
+    testdir = tmp_path / "test"
+    testdir.mkdir(parents=True, exist_ok=True)
+
+    assert not project_context.has_context()
+
+    with project_context.with_path(testdir):
+        assert project_context.has_context()
+
+        Command().command(_test).build().execute()
+        assert project_context.has_context()
+
+        Command().command(_test).build().execute()
+        assert project_context.has_context()
+
+        Command().command(_test).build().execute()
+        assert project_context.has_context()
+
+    assert not project_context.has_context()
