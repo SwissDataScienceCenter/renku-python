@@ -2,7 +2,7 @@
 
 ## To run
 1. Download k6: https://k6.io/docs/get-started/installation/ - you can also get a binary from the github page
-2. Enter the credentials and deployment you wish to test in a file named `condig.js`, you can
+2. Enter the credentials and deployment you wish to test in a file named `config.js`, you can
 use the `example.config.js` to start - just make a copy and rename it.
 3. Run the tests with `k6 run testFileName.js`
 
