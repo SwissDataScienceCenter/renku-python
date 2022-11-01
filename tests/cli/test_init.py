@@ -148,12 +148,12 @@ def test_init_initial_branch(isolated_runner, project_init):
     "remote",
     [
         (
-            "https://user:password@dev.renku.ch/gitlab/group/subgroup/project.git",
+            "https://user:password@gitlab.dev.renku.ch/group/subgroup/project.git",
             "https://dev.renku.ch/projects/group/subgroup/project",
         ),
         ("ssh://@dev.renku.ch:group/subgroup/project.git", "https://dev.renku.ch/projects/group/subgroup/project"),
         (
-            "https://user:password@dev.renku.ch/gitlab/group/subgroup/sub-subgroup/project.git",
+            "https://user:password@gitlab.dev.renku.ch/group/subgroup/sub-subgroup/project.git",
             "https://dev.renku.ch/projects/group/subgroup/sub-subgroup/project",
         ),
         (

@@ -76,7 +76,7 @@ def it_remote_public_renku_repo_url():
 @pytest.fixture(scope="module")
 def it_remote_public_repo_url():
     """Returns a remote path to a public integration test repository."""
-    return "https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku"
+    return "https://gitlab.dev.renku.ch/renku-python-integration-tests/no-renku"
 
 
 @pytest.fixture(scope="function")
