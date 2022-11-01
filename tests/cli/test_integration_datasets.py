@@ -507,7 +507,7 @@ def test_dataset_reimport_renkulab_dataset(runner, project, url):
     assert 0 == runner.invoke(cli, ["dataset", "import", url], input="y").exit_code
 
     result = runner.invoke(cli, ["dataset", "import", url], input="y")
-    assert 1 == result.exit_code
+    assert 1 == result.exit_code, format_result_exception(result)
     assert "Dataset exists" in result.output
 
 
@@ -1734,7 +1734,8 @@ def test_migration_submodule_datasets(isolated_runner, old_repository_with_submo
         assert not path.is_symlink()
         assert file.based_on is not None
         assert Path(file.entity.path).name == Path(file.based_on.path).name
-        assert "https://gitlab.dev.renku.ch/mohammad.alisafaee/remote-renku-project.git" == file.based_on.url
+        # NOTE: Old repo URL pre-cloudnative gitlab, not changed by migration
+        assert "https://dev.renku.ch/gitlab/mohammad.alisafaee/remote-renku-project.git" == file.based_on.url
 
 
 @pytest.mark.integration
