@@ -666,7 +666,7 @@ def test_dataset_export_upload_tag(
 @pytest.mark.integration
 def test_dataset_export_to_local(runner, tmp_path):
     """Test exporting a version of dataset to a local directory."""
-    url = "https://dev.renku.ch/gitlab/renku-python-integration-tests/lego-datasets.git"
+    url = "https://gitlab.dev.renku.ch/renku-python-integration-tests/lego-datasets.git"
     repository = Repository.clone_from(url=url, path=tmp_path / "repo")
     # NOTE: Install LFS and disable LFS smudge filter to make sure that we can get valid content in that case
     repository.lfs.install(skip_smudge=True)
@@ -1440,7 +1440,7 @@ def test_import_from_renku_project(tmpdir, project, runner):
     """Check metadata for an imported dataset from other renkulab repo."""
     from renku.domain_model.project_context import project_context
 
-    url = "https://dev.renku.ch/gitlab/renku-testing/project-9.git"
+    url = "https://gitlab.dev.renku.ch/renku-testing/project-9.git"
 
     def get_remote_file():
         repo_path = tmpdir.mkdir("remote_repo")
@@ -1734,7 +1734,7 @@ def test_migration_submodule_datasets(isolated_runner, old_repository_with_submo
         assert not path.is_symlink()
         assert file.based_on is not None
         assert Path(file.entity.path).name == Path(file.based_on.path).name
-        assert "https://dev.renku.ch/gitlab/mohammad.alisafaee/remote-renku-project.git" == file.based_on.url
+        assert "https://gitlab.dev.renku.ch/mohammad.alisafaee/remote-renku-project.git" == file.based_on.url
 
 
 @pytest.mark.integration
@@ -1948,7 +1948,7 @@ def test_dataset_update_removes_deleted_files(project, runner, with_injection):
 @pytest.mark.integration
 def test_dataset_ls_with_tag(runner, tmp_path):
     """Test listing dataset files from a given tag."""
-    url = "https://dev.renku.ch/gitlab/renku-python-integration-tests/lego-datasets.git"
+    url = "https://gitlab.dev.renku.ch/renku-python-integration-tests/lego-datasets.git"
     repository = Repository.clone_from(url=url, path=tmp_path / "repo")
 
     os.chdir(repository.path)

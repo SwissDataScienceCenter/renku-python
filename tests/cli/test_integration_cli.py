@@ -28,7 +28,7 @@ from tests.utils import format_result_exception, retry_failed
 
 @pytest.mark.integration
 @retry_failed
-@pytest.mark.parametrize("url", ["https://dev.renku.ch/gitlab/renku-testing/project-9"])
+@pytest.mark.parametrize("url", ["https://gitlab.dev.renku.ch/renku-testing/project-9"])
 def test_renku_clone(runner, monkeypatch, url):
     """Test cloning of a Renku repo and existence of required settings."""
     import renku.core.storage
@@ -59,7 +59,7 @@ def test_renku_clone(runner, monkeypatch, url):
 
 @pytest.mark.integration
 @retry_failed
-@pytest.mark.parametrize("url", ["https://dev.renku.ch/gitlab/renku-testing/project-9"])
+@pytest.mark.parametrize("url", ["https://gitlab.dev.renku.ch/renku-testing/project-9"])
 def test_renku_clone_with_config(tmp_path, url):
     """Test cloning of a Renku repo and existence of required settings."""
     with chdir(tmp_path):
@@ -75,7 +75,7 @@ def test_renku_clone_with_config(tmp_path, url):
 
 @pytest.mark.integration
 @retry_failed
-@pytest.mark.parametrize("url", ["https://dev.renku.ch/gitlab/renku-testing/project-9"])
+@pytest.mark.parametrize("url", ["https://gitlab.dev.renku.ch/renku-testing/project-9"])
 def test_renku_clone_checkout_rev(tmp_path, url):
     """Test cloning of a repo checking out a rev with static config."""
     with chdir(tmp_path):
@@ -102,7 +102,7 @@ def test_renku_clone_checkout_revs(tmp_path, rev, detached):
         repository, _ = (
             project_clone_command()
             .build()
-            .execute("https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku.git", checkout_revision=rev)
+            .execute("https://gitlab.dev.renku.ch/renku-python-integration-tests/no-renku.git", checkout_revision=rev)
         ).output
 
         if detached:
@@ -117,7 +117,7 @@ def test_renku_clone_checkout_revs(tmp_path, rev, detached):
 @retry_failed
 def test_renku_clone_uses_project_name(runner, path, expected_path):
     """Test renku clone uses project name as target-path by default."""
-    remote = "https://dev.renku.ch/gitlab/renku-testing/project-9"
+    remote = "https://gitlab.dev.renku.ch/renku-testing/project-9"
 
     with runner.isolated_filesystem() as project_path:
         result = runner.invoke(cli, ["clone", remote, path])
