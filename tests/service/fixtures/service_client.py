@@ -220,7 +220,7 @@ def svc_client_templates_creation(svc_client_with_templates):
         "parameters": parameters,
         "project_name": f"Test renku-core {uuid.uuid4().hex[:12]}",
         "project_namespace": "renku-python-integration-tests",
-        "project_repository": "https://dev.renku.ch/gitlab",
+        "project_repository": "https://gitlab.dev.renku.ch",
         "project_description": "new service project",
         "project_custom_metadata": {
             "@id": "http://example.com/metadata12",

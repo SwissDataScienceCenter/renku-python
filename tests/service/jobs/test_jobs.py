@@ -202,7 +202,7 @@ def test_project_cleanup_success(svc_client_cache):
     project_data = {
         "project_name": "deadbeef",
         "project_repository": "https://dev.renku.ch",
-        "project_namespace": "gitlab/renku-qa",
+        "project_namespace": "renku-qa",
         "identifier": "0xdeadbeef",
         "depth": 1,
         "url": "https://github.com/SwissDataScienceCenter/renku-project-template",
