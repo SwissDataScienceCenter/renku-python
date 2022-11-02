@@ -22,6 +22,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, NamedTuple, Optional
 
 from renku.command.view_model.agent import PersonViewModel
+from renku.core.errors import ParameterNotFoundError
 from renku.core.workflow.plan import get_latest_plan
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.parameter import (
@@ -46,7 +47,12 @@ parameter_type_mapping: Dict[type, str] = {
 
 def _parameter_id_to_plan_id(parameter: CommandParameterBase, parent_plan: AbstractPlan, latest: bool = False):
     """Extract plan id from a parameter id."""
-    containing_plan = parent_plan.get_parameter_path(parameter)[-1]
+    plan_path = parent_plan.get_parameter_path(parameter)
+
+    if plan_path is None or len(plan_path) < 1:
+        raise ParameterNotFoundError(parameter.name, parent_plan.name)
+
+    containing_plan = plan_path[-1]
 
     if latest:
         containing_plan = get_latest_plan(containing_plan)
