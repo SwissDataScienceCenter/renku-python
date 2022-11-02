@@ -21,6 +21,7 @@ from datetime import timezone
 
 import marshmallow
 
+from renku.command.schema.agent import PersonSchema
 from renku.command.schema.annotation import AnnotationSchema
 from renku.command.schema.calamus import JsonLDSchema, Nested, fields, oa, prov, renku, schema
 from renku.command.schema.parameter import CommandInputSchema, CommandOutputSchema, CommandParameterSchema
@@ -41,6 +42,7 @@ class PlanSchema(JsonLDSchema):
 
     command = fields.String(renku.command, load_default=None)
     description = fields.String(schema.description, load_default=None)
+    creators = Nested(schema.creator, PersonSchema, many=True)
     id = fields.Id()
     inputs = Nested(renku.hasInputs, CommandInputSchema, many=True, load_default=None)
     date_created = fields.DateTime(schema.dateCreated, format="iso")

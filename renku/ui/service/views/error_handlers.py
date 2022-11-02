@@ -42,6 +42,7 @@ from renku.core.errors import (
     TemplateMissingReferenceError,
     TemplateUpdateError,
     UninitializedProject,
+    WorkflowNotFoundError,
 )
 from renku.ui.service.errors import (
     IntermittentAuthenticationError,
@@ -52,6 +53,7 @@ from renku.ui.service.errors import (
     IntermittentRedisError,
     IntermittentSettingExistsError,
     IntermittentTimeoutError,
+    IntermittentWorkflowNotFound,
     ProgramGitError,
     ProgramGraphCorruptError,
     ProgramInternalError,
@@ -362,6 +364,22 @@ def handle_datasets_write_errors(f):
         except RenkuException as e:
             if str(e).startswith("invalid file reference"):
                 raise IntermittentFileNotExistsError(e)
+            raise
+
+    return decorated_function
+
+
+def handle_workflow_errors(f):
+    """Wrapper which handles workflow errors."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except WorkflowNotFoundError as e:
+            raise IntermittentWorkflowNotFound(e, name_or_id=e.name_or_id)
+        except RenkuException:
             raise
 
     return decorated_function

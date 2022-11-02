@@ -19,6 +19,7 @@
 
 from marshmallow import EXCLUDE
 
+from renku.command.schema.agent import PersonSchema
 from renku.command.schema.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.command.schema.parameter import ParameterLinkSchema, ParameterMappingSchema
 from renku.command.schema.plan import PlanSchema
@@ -37,6 +38,7 @@ class CompositePlanSchema(JsonLDSchema):
 
     description = fields.String(schema.description, load_default=None)
     id = fields.Id()
+    creators = Nested(schema.creator, PersonSchema, many=True)
     mappings = Nested(renku.hasMappings, [ParameterMappingSchema], many=True, load_default=None)
     date_created = fields.DateTime(schema.dateCreated, format="iso")
     invalidated_at = fields.DateTime(prov.invalidatedAtTime, format="iso")

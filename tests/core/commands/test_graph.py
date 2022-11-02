@@ -170,6 +170,7 @@ def input_objects(request, dataset_model, activity_model, plan_model):
                         "http://www.w3.org/ns/prov#Plan",
                         "https://swissdatasciencecenter.github.io/renku-ontology#Plan",
                     ],
+                    "http://schema.org/creator": [{"@id": "mailto:john.doe@example.com"}],
                     "http://schema.org/dateCreated": [{"@value": "2022-07-12T16:29:14+02:00"}],
                     "http://schema.org/keywords": [],
                     "http://schema.org/name": [{"@value": "my-plan"}],
@@ -207,6 +208,7 @@ def input_objects(request, dataset_model, activity_model, plan_model):
                         "http://www.w3.org/ns/prov#Plan",
                         "https://swissdatasciencecenter.github.io/renku-ontology#Plan",
                     ],
+                    "http://schema.org/creator": [{"@id": "mailto:john.doe@example.com"}],
                     "http://schema.org/dateCreated": [{"@value": "2022-07-12T16:29:14+02:00"}],
                     "http://schema.org/keywords": [],
                     "http://schema.org/name": [{"@value": "my-plan"}],
@@ -221,6 +223,12 @@ def input_objects(request, dataset_model, activity_model, plan_model):
                     "https://swissdatasciencecenter.github.io/renku-ontology#hasPlan": [
                         {"@id": "/plans/7f8bcaa36ef844528b88230343503163"}
                     ],
+                },
+                {
+                    "@id": "mailto:john.doe@example.com",
+                    "@type": ["http://schema.org/Person", "http://www.w3.org/ns/prov#Person"],
+                    "http://schema.org/email": [{"@value": "john.doe@example.com"}],
+                    "http://schema.org/name": [{"@value": "John Doe"}],
                 },
             ],
         ),
@@ -279,6 +287,14 @@ def test_graph_export_full():
         )
     ]
 
+    plan = Plan(
+        id="/plans/abcdefg123456",
+        command="echo",
+        name="echo",
+        date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
+        creators=[Person(email="test@example.com", name="John Doe")],
+    )
+
     activity_gateway = MagicMock(spec=IActivityGateway)
     activity_gateway.get_all_activities.return_value = [
         MagicMock(
@@ -287,12 +303,7 @@ def test_graph_export_full():
             association=Association(
                 id="/activities/abcdefg123456/association",
                 agent=Person(email="test@example.com", name="John Doe"),
-                plan=Plan(
-                    id="/plans/abcdefg123456",
-                    command="echo",
-                    name="echo",
-                    date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
-                ),
+                plan=plan,
             ),
         )
     ]
@@ -300,18 +311,13 @@ def test_graph_export_full():
     plan_gateway = MagicMock(spec=IPlanGateway)
     plan_gateway.get_all_plans.return_value = [
         CompositePlan(
-            id="/plans/abcdefg123456",
+            id="/plans/composite1",
             name="composite",
             date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
-            plans=[
-                Plan(
-                    id="/plans/abcdefg123456",
-                    command="echo",
-                    name="echo",
-                    date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
-                )
-            ],
-        )
+            creators=[Person(email="test@example.com", name="John Doe")],
+            plans=[plan],
+        ),
+        plan,
     ]
 
     project_gateway = MagicMock(spec=IProjectGateway)
@@ -324,7 +330,7 @@ def test_graph_export_full():
         plan_gateway=plan_gateway,
     )
 
-    assert result == [
+    expected_output = [
         {
             "@id": "/activities/abcdefg123456",
             "@type": ["http://www.w3.org/ns/prov#Activity"],
@@ -344,6 +350,7 @@ def test_graph_export_full():
                 "http://www.w3.org/ns/prov#Plan",
                 "https://swissdatasciencecenter.github.io/renku-ontology#Plan",
             ],
+            "http://schema.org/creator": [{"@id": "mailto:test@example.com"}],
             "http://schema.org/dateCreated": [{"@value": "2022-07-12T16:29:14+02:00"}],
             "http://schema.org/keywords": [],
             "http://schema.org/name": [{"@value": "echo"}],
@@ -354,11 +361,36 @@ def test_graph_export_full():
             "https://swissdatasciencecenter.github.io/renku-ontology#successCodes": [],
         },
         {
+            "@id": "/plans/composite1",
+            "@type": [
+                "http://schema.org/Action",
+                "http://schema.org/CreativeWork",
+                "http://www.w3.org/ns/prov#Plan",
+                "https://swissdatasciencecenter.github.io/renku-ontology#CompositePlan",
+            ],
+            "http://schema.org/creator": [{"@id": "mailto:test@example.com"}],
+            "http://schema.org/dateCreated": [{"@value": "2022-07-12T16:29:14+02:00"}],
+            "http://schema.org/keywords": [],
+            "http://schema.org/name": [{"@value": "composite"}],
+            "https://swissdatasciencecenter.github.io/renku-ontology#hasMappings": [],
+            "https://swissdatasciencecenter.github.io/renku-ontology#hasSubprocess": [{"@id": "/plans/abcdefg123456"}],
+            "https://swissdatasciencecenter.github.io/renku-ontology#workflowLinks": [],
+        },
+        {
+            "@id": "/projects/my-project",
+            "https://swissdatasciencecenter.github.io/renku-ontology#hasPlan": [
+                {"@id": "/plans/composite1"},
+                {"@id": "/plans/abcdefg123456"},
+            ],
+        },
+        {
             "@id": "/projects/my-project",
             "https://swissdatasciencecenter.github.io/renku-ontology#hasActivity": [
                 {"@id": "/activities/abcdefg123456"}
             ],
-            "https://swissdatasciencecenter.github.io/renku-ontology#hasPlan": [{"@id": "/plans/abcdefg123456"}],
+            "https://swissdatasciencecenter.github.io/renku-ontology#hasPlan": [
+                {"@id": "/plans/abcdefg123456"},
+            ],
         },
         {
             "@id": "mailto:test@example.com",
@@ -429,6 +461,7 @@ def test_graph_export_full():
             "https://swissdatasciencecenter.github.io/renku-ontology#hasDataset": [{"@id": "/datasets/0000000aaaaaaa"}],
         },
     ]
+    assert not DeepDiff(result, expected_output, ignore_order=True, exclude_regex_paths=r"root.*\['@id'\]")
 
 
 @pytest.mark.parametrize(
