@@ -368,7 +368,7 @@ def test_workflow_remove_command(runner, project):
     assert 2 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["workflow", "show", workflow_name])
-    assert 2 == result.exit_code, format_result_exception(result)
+    assert 1 == result.exit_code, format_result_exception(result)
 
 
 def test_workflow_remove_with_composite_command(runner, project):
