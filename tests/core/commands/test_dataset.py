@@ -249,7 +249,7 @@ def test_uppercase_dataset_name_is_valid():
 @pytest.mark.integration
 def test_get_dataset_by_tag(with_injection, tmp_path):
     """Test getting datasets by a given tag."""
-    url = "https://dev.renku.ch/gitlab/renku-python-integration-tests/lego-datasets.git"
+    url = "https://gitlab.dev.renku.ch/renku-python-integration-tests/lego-datasets.git"
     repository = Repository.clone_from(url=url, path=tmp_path / "repo")
 
     with project_context.with_path(repository.path), with_injection():

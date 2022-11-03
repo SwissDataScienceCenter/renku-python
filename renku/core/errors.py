@@ -573,11 +573,20 @@ class MappingNotFoundError(RenkuException):
 
 
 class ChildWorkflowNotFoundError(RenkuException):
-    """Raised when a parameter reference cannot be resolved to a parameter."""
+    """Raised when a child could not be found on a composite workflow."""
 
     def __init__(self, child: str, workflow: str):
         """Embed exception and build a custom message."""
         super().__init__(f"Cannot find child step '{child}' on workflow {workflow}")
+
+
+class WorkflowNotFoundError(RenkuException):
+    """Raised when a workflow could not be found."""
+
+    def __init__(self, name_or_id: str):
+        """Embed exception and build a custom message."""
+        self.name_or_id = name_or_id
+        super().__init__(f"The specified workflow '{name_or_id}' cannot be found.")
 
 
 class ParameterLinkError(RenkuException):
