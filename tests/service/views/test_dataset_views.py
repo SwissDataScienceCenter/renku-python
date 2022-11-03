@@ -658,7 +658,7 @@ def test_list_datasets_anonymous(svc_client_with_repo, it_remote_repo_url):
     assert UserRepoNoAccessError.code == response.json["error"]["code"]
 
     params = {
-        "git_url": "https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku",
+        "git_url": "https://gitlab.dev.renku.ch/renku-python-integration-tests/no-renku",
     }
 
     response = svc_client.get("/datasets.list", query_string=params, headers={})
@@ -733,7 +733,7 @@ def test_list_dataset_files_anonymous(svc_client_with_repo, it_remote_repo_url):
     assert_rpc_response(response, "error")
     assert UserRepoNoAccessError.code == response.json["error"]["code"]
 
-    params = {"git_url": "https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku", "name": "mydata"}
+    params = {"git_url": "https://gitlab.dev.renku.ch/renku-python-integration-tests/no-renku", "name": "mydata"}
 
     response = svc_client.get("/datasets.files_list", query_string=params, headers={})
     assert_rpc_response(response, "error")
@@ -1482,18 +1482,16 @@ def test_remote_edit_view(svc_client, it_remote_repo_url, identity_headers):
     assert response.json["result"]["job_id"]
 
 
+@pytest.mark.remote_repo("protected")
 @pytest.mark.integration
 @pytest.mark.service
 @retry_failed
-def test_protected_branch(svc_protected_repo):
+def test_protected_branch(svc_client_with_repo):
     """Test adding a file to protected branch."""
-    svc_client, headers, payload, response = svc_protected_repo
-
-    assert_rpc_response(response)
-    assert {"result"} == set(response.json.keys())
+    svc_client, headers, project_id, _ = svc_client_with_repo
 
     payload = {
-        "project_id": response.json["result"]["project_id"],
+        "project_id": project_id,
         "name": uuid.uuid4().hex,
     }
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)

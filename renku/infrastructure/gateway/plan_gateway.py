@@ -41,7 +41,7 @@ class PlanGateway(IPlanGateway):
         workflow = self.get_by_id(name_or_id) or self.get_by_name(name_or_id)
 
         if not workflow:
-            raise errors.ParameterError(f'The specified workflow "{name_or_id}" cannot be found.')
+            raise errors.WorkflowNotFoundError(name_or_id)
         return workflow
 
     def list_by_name(self, starts_with: str, ends_with: str = None) -> List[str]:
@@ -66,6 +66,10 @@ class PlanGateway(IPlanGateway):
     def add(self, plan: AbstractPlan) -> None:
         """Add a plan to the database."""
         database = project_context.database
+
+        if database["plans"].get(plan.id) is not None:
+            return
+
         database["plans"].add(plan)
 
         if plan.derived_from is not None:

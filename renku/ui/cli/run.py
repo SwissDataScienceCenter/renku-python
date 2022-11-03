@@ -307,6 +307,14 @@ from renku.ui.cli.utils.callback import ClickCallback
 @click.option("--isolation", is_flag=True, default=False, help="Invoke the given command in isolation.")
 @click.argument("command_line", nargs=-1, required=True, type=click.UNPROCESSED)
 @click.option("--verbose", is_flag=True, default=False, help="Print generated plan after the execution.")
+@click.option(
+    "--creator",
+    "creators",
+    default=None,
+    multiple=True,
+    type=click.UNPROCESSED,
+    help="Creator's name, email, and affiliation. Accepted format is 'Forename Surname <email> [affiliation]'.",
+)
 def run(
     name,
     description,
@@ -321,9 +329,11 @@ def run(
     isolation,
     command_line,
     verbose,
+    creators,
 ):
     """Tracking work on a specific problem."""
     from renku.command.run import run_command
+    from renku.core.util.metadata import construct_creators
     from renku.ui.cli.utils.terminal import print_plan
 
     communicator = ClickCallback()
@@ -331,6 +341,9 @@ def run(
 
     if isolation:
         command = command.with_git_isolation()
+
+    if creators:
+        creators, _ = construct_creators(creators)
 
     result = (
         command.with_communicator(communicator)
@@ -347,6 +360,7 @@ def run(
             no_output_detection=no_output_detection,
             success_codes=success_codes,
             command_line=command_line,
+            creators=creators,
         )
     )
 

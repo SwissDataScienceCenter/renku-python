@@ -21,6 +21,7 @@ from datetime import timezone
 
 import marshmallow
 
+from renku.command.schema.agent import PersonSchema
 from renku.command.schema.annotation import AnnotationSchema
 from renku.command.schema.calamus import JsonLDSchema, Nested, fields, oa, prov, renku, schema
 from renku.command.schema.parameter import CommandInputSchema, CommandOutputSchema, CommandParameterSchema
@@ -35,19 +36,20 @@ class PlanSchema(JsonLDSchema):
     class Meta:
         """Meta class."""
 
-        rdf_type = [prov.Plan, schema.Action, schema.CreativeWork]
+        rdf_type = [prov.Plan, schema.Action, schema.CreativeWork, renku.Plan]
         model = Plan
         unknown = marshmallow.EXCLUDE
 
     command = fields.String(renku.command, load_default=None)
     description = fields.String(schema.description, load_default=None)
+    creators = Nested(schema.creator, PersonSchema, many=True)
     id = fields.Id()
     inputs = Nested(renku.hasInputs, CommandInputSchema, many=True, load_default=None)
     date_created = fields.DateTime(schema.dateCreated, format="iso")
     invalidated_at = fields.DateTime(prov.invalidatedAtTime, format="iso")
     keywords = fields.List(schema.keywords, fields.String(), load_default=None)
     name = fields.String(schema.name, load_default=None)
-    derived_from = fields.String(prov.wasDerivedFrom, load_default=None)
+    derived_from = fields.IRI(prov.wasDerivedFrom, load_default=None)
     project_id = fields.IRI(renku.hasPlan, reverse=True)
     outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, load_default=None)
     parameters = Nested(renku.hasArguments, CommandParameterSchema, many=True, load_default=None)
