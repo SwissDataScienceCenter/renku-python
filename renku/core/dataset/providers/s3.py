@@ -29,7 +29,7 @@ from renku.core.dataset.providers.api import (
     ProviderApi,
     ProviderCredentials,
     ProviderPriority,
-    StorageProvider,
+    StorageProviderInterface,
 )
 from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata, ProviderParameter
 from renku.core.interface.storage import IStorage, IStorageFactory
@@ -42,7 +42,7 @@ if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset
 
 
-class S3Provider(ProviderApi, AddProviderInterface, StorageProvider):
+class S3Provider(ProviderApi, AddProviderInterface, StorageProviderInterface):
     """S3 provider."""
 
     priority = ProviderPriority.HIGHEST

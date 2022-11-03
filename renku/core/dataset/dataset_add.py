@@ -316,7 +316,7 @@ def move_files_to_dataset(dataset: Dataset, files: List[DatasetAddMetadata]):
         track_in_lfs = True
 
         # NOTE: If file is in a sub-directory of a dataset's remote storage URI, only update the metadata
-        if file.action == DatasetAddAction.REMOTE_STORAGE:
+        if file.remote_storage:
             if dataset.storage and is_uri_subfolder(dataset.storage, file.url):
                 file.action = DatasetAddAction.METADATA_ONLY
             else:
@@ -334,7 +334,7 @@ def move_files_to_dataset(dataset: Dataset, files: List[DatasetAddMetadata]):
             assert file.provider, f"Storage provider isn't set for {file} with DOWNLOAD action"
             storage = file.provider.get_storage()
             storage.download(file.url, file.destination)
-        elif file.action == DatasetAddAction.METADATA_ONLY:
+        elif file.metadata_only:
             # NOTE: Nothing to do when adding file to a dataset with a parent remote storage
             pass
         else:

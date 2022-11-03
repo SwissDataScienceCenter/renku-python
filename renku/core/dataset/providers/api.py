@@ -129,7 +129,7 @@ class ImportProviderInterface(abc.ABC):
         raise NotImplementedError
 
 
-class StorageProvider(abc.ABC):
+class StorageProviderInterface(abc.ABC):
     """Interface defining backend storage providers."""
 
     @abc.abstractmethod

@@ -28,7 +28,7 @@ from renku.command.schema.dataset import DatasetSchema
 from renku.domain_model.dataset import Dataset
 
 if TYPE_CHECKING:
-    from renku.core.dataset.providers.api import StorageProvider
+    from renku.core.dataset.providers.api import StorageProviderInterface
     from renku.domain_model.dataset import DatasetTag, RemoteEntity
 
 
@@ -53,7 +53,7 @@ class DatasetAddMetadata:
     action: DatasetAddAction
     source: Path
     destination: Path
-    provider: Optional["StorageProvider"] = None
+    provider: Optional["StorageProviderInterface"] = None
     based_on: Optional["RemoteEntity"] = None
 
     @property

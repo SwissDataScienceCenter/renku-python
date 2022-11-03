@@ -26,7 +26,7 @@ from renku.core.dataset.providers.api import (
     ExportProviderInterface,
     ImportProviderInterface,
     ProviderApi,
-    StorageProvider,
+    StorageProviderInterface,
 )
 from renku.core.plugin.dataset_provider import get_supported_dataset_providers
 from renku.core.util import communication
@@ -58,9 +58,9 @@ class ProviderFactory:
         return [p for p in ProviderFactory.get_providers() if issubclass(p, ImportProviderInterface)]
 
     @staticmethod
-    def get_storage_providers() -> List[Union[Type[ProviderApi], Type[StorageProvider]]]:
+    def get_storage_providers() -> List[Union[Type[ProviderApi], Type[StorageProviderInterface]]]:
         """Get a list of backend storage providers."""
-        return [p for p in ProviderFactory.get_providers() if issubclass(p, StorageProvider)]
+        return [p for p in ProviderFactory.get_providers() if issubclass(p, StorageProviderInterface)]
 
     @staticmethod
     def get_add_provider(uri):
@@ -93,8 +93,9 @@ class ProviderFactory:
                 raise errors.DatasetProviderNotFound(message=f"Cannot parse URL '{uri}'")
 
         warning = ""
+        import_providers = ProviderFactory.get_import_providers()
 
-        for provider in ProviderFactory.get_import_providers():
+        for provider in import_providers:
             try:
                 if provider.supports(uri):
                     return provider(uri=uri, is_doi=is_doi_)
@@ -102,7 +103,7 @@ class ProviderFactory:
                 warning += f"Couldn't test provider {provider}: {e}\n"
 
         url = uri.split("/")[1].split(".")[0] if is_doi_ else uri  # NOTE: Get DOI provider name if uri is a DOI
-        supported_providers = ", ".join(p.name for p in ProviderFactory.get_import_providers())
+        supported_providers = ", ".join(p.name for p in import_providers)
         message = warning + f"Provider not found: {url}\nHint: Supported providers are: {supported_providers}"
         raise errors.DatasetProviderNotFound(message=message)
 

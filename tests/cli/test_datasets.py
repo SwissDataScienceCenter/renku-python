@@ -23,6 +23,7 @@ import shutil
 import textwrap
 import time
 from pathlib import Path
+from unittest.mock import call
 
 import pytest
 
@@ -2741,14 +2742,22 @@ def test_add_local_data_to_s3_datasets(runner, project, mocker, directory_tree):
     assert 0 == result.exit_code, format_result_exception(result)
 
     dataset = get_dataset_with_injection("s3-data")
+    files_uri = [f"{uri}/directory_tree/file1", f"{uri}/directory_tree/dir1/file2", f"{uri}/directory_tree/dir1/file3"]
 
     assert 3 == len(dataset.files)
-    assert {f"{uri}/directory_tree/file1", f"{uri}/directory_tree/dir1/file2", f"{uri}/directory_tree/dir1/file3"} == {
-        f.based_on.url for f in dataset.files
-    }
+    assert set(files_uri) == {f.based_on.url for f in dataset.files}
 
     assert {
         "9d98eede4ccb193e379d6dbd7cc1eb86",
         "7bec9352114f8139c2640b2554563508",
         "dacb3fd4bbd9ab5a17e2f7686b90c1d2",
     } == {f.based_on.checksum for f in dataset.files}
+
+    source_base = project.path / "data" / "s3-data" / "directory_tree"
+    calls = [
+        call(source=source_base / "file1", uri=files_uri[0]),
+        call(source=source_base / "dir1" / "file2", uri=files_uri[1]),
+        call(source=source_base / "dir1" / "file3", uri=files_uri[2]),
+    ]
+
+    s3_storage.upload.assert_has_calls(calls=calls, any_order=True)
