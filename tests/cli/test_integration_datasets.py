@@ -2121,7 +2121,7 @@ def test_pull_data_from_s3_backend_to_a_location(runner, project, tmp_path):
 )
 def test_adding_data_from_s3(runner, project, create_s3_dataset, mocker, args, uris, storage_uri):
     """Ensure metadata from a bucket can be added."""
-    mock_s3_storage = mocker.patch("renku.infrastructure.storage.s3.S3Storage", autospec=True)
+    mock_s3_storage = mocker.patch("renku.infrastructure.storage.factory.StorageFactory.get_storage", autospec=True)
     instance_s3_storage = mock_s3_storage.return_value
     dataset_name = "test-s3-dataset"
     instance_s3_storage.get_hashes.return_value = [
@@ -2144,12 +2144,8 @@ def test_adding_data_from_s3(runner, project, create_s3_dataset, mocker, args, u
     "cmd_args,expected_error_msg",
     [
         (
-            ["--create", "s3://s3.amazonaws.com/giab/tools"],
-            "Creating a S3 dataset at the same time as adding data requires the '--storage' parameter to be set",
-        ),
-        (
             ["s3://s3.amazonaws.com/giab", "--storage", "s3://s3.amazonaws.com/giab"],
-            "Using the '--storage' parameter is only required if the '--create' parameter is also used",
+            "Storage can be set only when creating a dataset",
         ),
         (
             ["https://github.com/SwissDataScienceCenter/renku-python/raw/develop/README.rst"],
@@ -2157,11 +2153,11 @@ def test_adding_data_from_s3(runner, project, create_s3_dataset, mocker, args, u
         ),
         (
             ["s3://s3.amazonaws.com/giab/*"],
-            "Wildcards like '*' or '?' are not supported in the uri for S3 datasets",
+            "Wildcards like '*' or '?' are not supported for S3 URIs",
         ),
         (
             ["s3://s3.amazonaws.com/giab/test?.txt"],
-            "Wildcards like '*' or '?' are not supported in the uri for S3 datasets",
+            "Wildcards like '*' or '?' are not supported for S3 URIs",
         ),
         (
             ["s3://s3.amazonaws.com/giab", "--source", "tools"],
@@ -2171,7 +2167,7 @@ def test_adding_data_from_s3(runner, project, create_s3_dataset, mocker, args, u
 )
 def test_invalid_s3_args(runner, project, create_s3_dataset, cmd_args, expected_error_msg, mocker):
     """Test invalid arguments for adding data to S3 dataset."""
-    mock_s3_storage = mocker.patch("renku.infrastructure.storage.s3.S3Storage", autospec=True)
+    mock_s3_storage = mocker.patch("renku.infrastructure.storage.factory.StorageFactory.get_storage", autospec=True)
     storage_uri = "s3://s3.amazonaws.com/giab"
     dataset_name = "test-s3-dataset"
     if "--create" not in cmd_args:
@@ -2182,28 +2178,6 @@ def test_invalid_s3_args(runner, project, create_s3_dataset, cmd_args, expected_
     res = runner.invoke(cli, ["dataset", "add", dataset_name, *cmd_args])
     assert res.exit_code != 0
     assert expected_error_msg in res.stderr
-
-
-@pytest.mark.integration
-@pytest.mark.parametrize(
-    "storage_uri,add_uri",
-    [
-        ("s3://s3.amazonaws.com/giab", "s3://s3.amazonaws.com/test"),
-        ("s3://s3.amazonaws.com/giab/test", "s3://s3.amazonaws.com/test"),
-        ("s3://s3.amazonaws.com/giab/test", "s3://s3.amazonaws.com/giab"),
-        ("s3://s3.amazonaws.com/giab/1/2/3", "s3://s3.amazonaws.com/giab/1/2/4"),
-        ("s3://s3.amazonaws.com/giab/1/2/3", "s3://s3.amazonaws.com/giab/1/3/2"),
-    ],
-)
-def test_adding_s3_data_outside_sub_path_not_allowed(runner, project, create_s3_dataset, mocker, storage_uri, add_uri):
-    """Ensure that data from bucket that does not match storage bucket name or path cannot be added."""
-    mocker.patch("renku.infrastructure.storage.s3.S3Storage", autospec=True)
-    dataset_name = "test-s3-dataset"
-    res = create_s3_dataset(dataset_name, storage_uri)
-    assert res.exit_code == 0
-    res = runner.invoke(cli, ["dataset", "add", dataset_name, add_uri])
-    assert res.exit_code != 0
-    assert "should be located within or at the storage uri" in res.stderr
 
 
 @pytest.mark.integration
@@ -2239,7 +2213,7 @@ def test_mount_unmount_data_from_s3_backend(runner, project):
 
 
 @pytest.mark.integration
-# @retry_failed
+@retry_failed
 def test_mount_data_from_an_existing_mount_point(runner, project, tmp_path):
     """Test get data for a dataset with an S3 backend from an existing mount-point."""
     result = runner.invoke(

@@ -26,7 +26,7 @@ from uuid import UUID, uuid4
 
 from renku.core import errors
 from renku.core.config import get_value, set_value
-from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
+from renku.core.dataset.providers.api import ExporterApi, ExportProviderInterface, ProviderApi, ProviderPriority
 from renku.core.util import communication
 from renku.domain_model.project_context import project_context
 
@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset, DatasetTag
 
 
-class OLOSProvider(ProviderApi):
+class OLOSProvider(ProviderApi, ExportProviderInterface):
     """Provider for OLOS integration."""
 
     priority = ProviderPriority.HIGH
@@ -51,11 +51,6 @@ class OLOSProvider(ProviderApi):
     def supports(uri):
         """Check if provider supports a given URI for importing."""
         return False
-
-    @staticmethod
-    def supports_export():
-        """Whether this provider supports dataset export."""
-        return True
 
     @staticmethod
     def get_export_parameters() -> List["ProviderParameter"]:
