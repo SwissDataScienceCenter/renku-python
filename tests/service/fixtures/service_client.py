@@ -153,29 +153,6 @@ def view_user_data(identity_headers):
     return user_data
 
 
-@pytest.fixture(scope="module")
-def authentication_headers_raw():
-    """Get authentication headers without renku user identification."""
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer {0}".format(os.getenv("IT_OAUTH_GIT_TOKEN")),
-    }
-
-    return headers
-
-
-@pytest.fixture(scope="module")
-def authentication_headers(authentication_headers_raw):
-    """Get authentication headers."""
-    identification = {
-        "Renku-User-Id": "b4b4de0eda0f471ab82702bd5c367fa7",
-        "Renku-User-FullName": "Just Sam",
-        "Renku-User-Email": "contact@renkulab.io",
-    }
-
-    return {**authentication_headers_raw, **identification}
-
-
 @pytest.fixture
 def svc_client_with_user(svc_client_cache):
     """Service client with a predefined user."""
@@ -220,7 +197,7 @@ def svc_client_templates_creation(svc_client_with_templates):
         "parameters": parameters,
         "project_name": f"Test renku-core {uuid.uuid4().hex[:12]}",
         "project_namespace": "renku-python-integration-tests",
-        "project_repository": "https://dev.renku.ch/gitlab",
+        "project_repository": "https://gitlab.dev.renku.ch",
         "project_description": "new service project",
         "project_custom_metadata": {
             "@id": "http://example.com/metadata12",

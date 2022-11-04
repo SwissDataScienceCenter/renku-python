@@ -25,6 +25,8 @@ from uuid import uuid4
 
 from renku.core import errors
 from renku.core.util.datetime8601 import local_now
+from renku.domain_model.provenance.agent import Person
+from renku.domain_model.provenance.annotation import Annotation
 from renku.domain_model.workflow.parameter import (
     CommandInput,
     CommandOutput,
@@ -38,6 +40,8 @@ from renku.domain_model.workflow.plan import MAX_GENERATED_NAME_LENGTH, Abstract
 
 class CompositePlan(AbstractPlan):
     """A plan containing child plans."""
+
+    annotations: List[Annotation] = list()
 
     def __init__(
         self,
@@ -53,6 +57,8 @@ class CompositePlan(AbstractPlan):
         name: str,
         plans: List[Union["CompositePlan", Plan]],
         project_id: Optional[str] = None,
+        annotations: Optional[List[Annotation]] = None,
+        creators: Optional[List[Person]] = None,
     ):
         super().__init__(
             derived_from=derived_from,
@@ -63,7 +69,9 @@ class CompositePlan(AbstractPlan):
             keywords=keywords,
             name=name,
             project_id=project_id,
+            creators=creators,
         )
+        self.annotations: List[Annotation] = annotations or []
 
         self.plans: List[Union["CompositePlan", Plan]] = plans
         self.mappings: List[ParameterMapping] = mappings or []
@@ -365,7 +373,7 @@ class CompositePlan(AbstractPlan):
     def _get_default_name(self) -> str:
         return uuid4().hex[:MAX_GENERATED_NAME_LENGTH]
 
-    def derive(self) -> "CompositePlan":
+    def derive(self, creator: Optional[Person] = None) -> "CompositePlan":
         """Create a new ``CompositePlan`` that is derived from self."""
         derived = copy.copy(self)
         derived.derived_from = self.id
@@ -374,6 +382,10 @@ class CompositePlan(AbstractPlan):
         derived.mappings = self.mappings.copy()
         derived.links = self.links.copy()
         derived.assign_new_id()
+
+        if creator and hasattr(creator, "email") and not any(c for c in self.creators if c.email == creator.email):
+            self.creators.append(creator)
+
         return derived
 
     def is_derivation(self) -> bool:

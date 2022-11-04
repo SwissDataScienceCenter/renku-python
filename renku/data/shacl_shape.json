@@ -983,7 +983,7 @@
             }
          ],
          "closed": false,
-         "targetClass": "prov:Plan",
+         "targetClass": "renku:Plan",
          "property": [
             {
                "nodeKind": "sh:Literal",
