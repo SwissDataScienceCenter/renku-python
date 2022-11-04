@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
 
 from renku.core import errors
-from renku.core.dataset.providers.api import ProviderApi, ProviderPriority
+from renku.core.dataset.providers.api import AddProviderInterface, ProviderApi, ProviderPriority
 from renku.core.storage import pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.dataset import check_url
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderParameter
 
 
-class GitProvider(ProviderApi):
+class GitProvider(ProviderApi, AddProviderInterface):
     """Git provider."""
 
     priority = ProviderPriority.NORMAL
@@ -49,11 +49,6 @@ class GitProvider(ProviderApi):
         """Whether or not this provider supports a given URI."""
         is_remote, is_git = check_url(uri)
         return is_remote and is_git
-
-    @staticmethod
-    def supports_add() -> bool:
-        """Whether this provider supports adding data to datasets."""
-        return True
 
     @staticmethod
     def get_add_parameters() -> List["ProviderParameter"]:
@@ -77,8 +72,8 @@ class GitProvider(ProviderApi):
             ),
         ]
 
-    @staticmethod
     def add(
+        self,
         uri: str,
         destination: Path,
         *,

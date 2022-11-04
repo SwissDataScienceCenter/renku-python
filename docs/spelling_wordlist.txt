@@ -108,6 +108,7 @@ installable
 interoperability
 io
 ipynb
+IStorage
 iteratively
 ize
 izing
