@@ -26,7 +26,7 @@ from urllib.parse import urlparse
 
 from renku.core import errors
 from renku.core.constant import CACHE
-from renku.core.dataset.providers.api import ProviderApi, ProviderPriority
+from renku.core.dataset.providers.api import AddProviderInterface, ProviderApi, ProviderPriority
 from renku.core.util import communication
 from renku.core.util.contexts import wait_for
 from renku.core.util.dataset import check_url
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata
 
 
-class WebProvider(ProviderApi):
+class WebProvider(ProviderApi, AddProviderInterface):
     """A provider for downloading data from web URLs."""
 
     priority = ProviderPriority.LOWEST
@@ -49,13 +49,8 @@ class WebProvider(ProviderApi):
         is_remote, is_git = check_url(uri)
         return is_remote and not is_git
 
-    @staticmethod
-    def supports_add() -> bool:
-        """Whether this provider supports adding data to datasets."""
-        return True
-
-    @staticmethod
     def add(
+        self,
         uri: str,
         destination: Path,
         *,

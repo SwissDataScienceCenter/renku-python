@@ -321,7 +321,7 @@ addopts = "--flake8 --black --doctest-glob=\"*.rst\" --doctest-modules --cov --c
 doctest_optionflags = "ALLOW_UNICODE"
 flake8-ignore = ["*.py", "E121", "E126", "E203", "E226", "E231", "W503", "W504", "docs/conf.py", "docs/cheatsheet/conf.py", "ALL"]
 flake8-max-line-length = 120
-testpaths = ["docs", "tests", "renku", "conftest.py"]
+testpaths = ["docs", "tests", "conftest.py"]
 markers = [
     "integration: mark a test as a integration.",
     "jobs: mark a test as a job test.",

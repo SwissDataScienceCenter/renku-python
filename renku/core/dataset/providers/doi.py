@@ -22,13 +22,13 @@ from pathlib import Path
 from typing import Optional
 
 from renku.core import errors
-from renku.core.dataset.providers.api import ImporterApi, ProviderApi, ProviderPriority
+from renku.core.dataset.providers.api import ImporterApi, ImportProviderInterface, ProviderApi, ProviderPriority
 from renku.core.util.doi import extract_doi, is_doi
 
 DOI_BASE_URL = "https://dx.doi.org"
 
 
-class DOIProvider(ProviderApi):
+class DOIProvider(ProviderApi, ImportProviderInterface):
     """`doi.org <http://doi.org>`_ registry API provider."""
 
     priority = ProviderPriority.HIGHER
