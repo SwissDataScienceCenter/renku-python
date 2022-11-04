@@ -20,7 +20,7 @@
 import abc
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Union
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials
@@ -47,17 +47,45 @@ class IStorageFactory(abc.ABC):
 
     @staticmethod
     @abc.abstractmethod
-    def get_storage(provider: "ProviderApi", credentials: "ProviderCredentials") -> "IStorage":
-        """Return a storage that handles provider."""
+    def get_storage(
+        storage_scheme: str,
+        provider: "ProviderApi",
+        credentials: "ProviderCredentials",
+        configuration: Dict[str, str],
+        uri_convertor: Callable[[str], str],
+    ) -> "IStorage":
+        """Return a storage that handles provider.
+
+        Args:
+            storage_scheme(str): Storage name.
+            provider(ProviderApi): The backend provider.
+            credentials(ProviderCredentials): Credentials for the provider.
+            configuration(Dict[str, str]): Storage-specific configuration that are passed to the IStorage implementation
+            uri_convertor(Callable[[str], str]): A function that converts backend-specific URI to a URI that is usable
+                by the IStorage implementation.
+
+        Returns:
+            An instance of IStorage.
+        """
         raise NotImplementedError
 
 
 class IStorage(abc.ABC):
     """Interface for the external storage handler."""
 
-    def __init__(self, provider: "ProviderApi", credentials: "ProviderCredentials"):
+    def __init__(
+        self,
+        storage_scheme: str,
+        provider: "ProviderApi",
+        credentials: "ProviderCredentials",
+        provider_configuration: Dict[str, str],
+        provider_uri_convertor: Callable[[str], str],
+    ):
+        self._storage_scheme: str = storage_scheme
         self._provider: "ProviderApi" = provider
         self._credentials: "ProviderCredentials" = credentials
+        self._provider_configuration: Dict[str, str] = provider_configuration
+        self._provider_uri_convertor: Callable[[str], str] = provider_uri_convertor
 
     @property
     def credentials(self) -> "ProviderCredentials":
@@ -69,9 +97,14 @@ class IStorage(abc.ABC):
         """Return the dataset provider for this storage handler."""
         return self._provider
 
+    @property
+    def storage_scheme(self) -> str:
+        """Storage's URI scheme."""
+        return self._storage_scheme
+
     @abc.abstractmethod
-    def copy(self, uri: str, destination: Union[Path, str]) -> None:
-        """Copy data from ``uri`` to ``destination``."""
+    def download(self, uri: str, destination: Union[Path, str]) -> None:
+        """Download data from ``uri`` to ``destination``."""
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -95,5 +128,6 @@ class IStorage(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def run_rclone_command(self, command: str, uri: str, *args, **kwargs) -> Any:
-        """Run a RClone command by possibly add storage-specific flags."""
+    def upload(self, source: Union[Path, str], uri: str) -> None:
+        """Upload data from ``source`` to ``uri``."""
+        raise NotImplementedError
