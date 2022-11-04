@@ -517,6 +517,7 @@ class BaseRepository:
 
         NOTE: This function returns the same value as inputs: If input is an absolute path output is an absolute path.
         The same is true for relative paths.
+        NOTE: Relative paths should be relative to the current working directory and not the repository's root.
         """
         ignored = []
 

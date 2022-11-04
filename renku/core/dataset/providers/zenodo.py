@@ -26,7 +26,13 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from renku.core import errors
-from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
+from renku.core.dataset.providers.api import (
+    ExporterApi,
+    ExportProviderInterface,
+    ImportProviderInterface,
+    ProviderApi,
+    ProviderPriority,
+)
 from renku.core.dataset.providers.repository import RepositoryImporter, make_request
 from renku.core.util import communication
 from renku.core.util.doi import is_doi
@@ -52,7 +58,7 @@ ZENODO_FILES_URL = "depositions/{0}/files"
 ZENODO_NEW_DEPOSIT_URL = "depositions"
 
 
-class ZenodoProvider(ProviderApi):
+class ZenodoProvider(ProviderApi, ExportProviderInterface, ImportProviderInterface):
     """Zenodo registry API provider."""
 
     priority = ProviderPriority.HIGH
@@ -71,16 +77,6 @@ class ZenodoProvider(ProviderApi):
             return True
 
         return False
-
-    @staticmethod
-    def supports_export():
-        """Whether this provider supports dataset export."""
-        return True
-
-    @staticmethod
-    def supports_import():
-        """Whether this provider supports dataset import."""
-        return True
 
     @staticmethod
     def get_record_id(uri):

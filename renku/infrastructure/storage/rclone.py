@@ -17,7 +17,6 @@
 # limitations under the License.
 """Base storage handler."""
 
-import abc
 import json
 import os
 import subprocess
@@ -29,17 +28,17 @@ from renku.core.interface.storage import FileHash, IStorage
 from renku.core.util.util import NO_VALUE
 
 
-class RCloneBaseStorage(IStorage, abc.ABC):
-    """Base external storage handler class."""
+class RCloneStorage(IStorage):
+    """External storage implementation that uses RClone."""
 
-    def copy(self, uri: str, destination: Union[Path, str]) -> None:
-        """Copy data from ``uri`` to ``destination``."""
-        self.run_rclone_command("copyto", uri, str(destination))
+    def download(self, uri: str, destination: Union[Path, str]) -> None:
+        """Download data from ``uri`` to ``destination``."""
+        self.run_command_with_uri("copyto", uri, destination)
 
     def exists(self, uri: str) -> bool:
         """Checks if a remote storage URI exists."""
         try:
-            self.run_rclone_command("lsf", uri=uri, max_depth=1)
+            self.run_command_with_uri("lsf", uri=uri, max_depth=1)
         except errors.StorageObjectNotFound:
             return False
         else:
@@ -59,13 +58,14 @@ class RCloneBaseStorage(IStorage, abc.ABC):
 
                 [
                     {
-                        "Path":"resources/hg19.windowmaskerSdust.bed.gz.tbi","Name":"hg19.windowmaskerSdust.bed.gz.tbi",
+                        "Path":"resources/hg19.window.masker.bed.gz.tbi","Name":"hg19.window.masker.bed.gz.tbi",
                         "Size":578288,"MimeType":"application/x-gzip","ModTime":"2022-02-07T18:45:52.000000000Z",
                         "IsDir":false,"Hashes":{"md5":"e93ac5364e7799bbd866628d66c7b773"},"Tier":"STANDARD"
                     }
                 ]
         """
-        hashes_raw = self.run_rclone_command("lsjson", uri, hash=True, R=True, files_only=True)
+        hashes_raw = self.run_command_with_uri("lsjson", uri, hash=True, R=True, files_only=True)
+        # TODO: Handle JSON load errors
         hashes = json.loads(hashes_raw)
         if not hashes:
             raise errors.ParameterError(f"Cannot find URI: {uri}")
@@ -86,33 +86,48 @@ class RCloneBaseStorage(IStorage, abc.ABC):
 
     def mount(self, path: Union[Path, str]) -> None:
         """Mount the provider's URI to the given path."""
-        self.run_rclone_command("mount", self.provider.uri, str(path), daemon=True, read_only=True, no_modtime=True)
+        self.run_command_with_uri("mount", self.provider.uri, str(path), daemon=True, read_only=True, no_modtime=True)
 
     def get_configurations(self) -> Dict[str, str]:
         """Get required configurations for rclone to access the storage."""
         configurations = {}
         for name, value in self.credentials.items():
             if value is not NO_VALUE:
-                name = get_rclone_env_var_name(self.provider.name, name)
+                name = get_rclone_env_var_name(self.storage_scheme, name)
                 configurations[name] = value
+
+        for name, value in self._provider_configuration.items():
+            name = get_rclone_env_var_name(self.storage_scheme, name)
+            configurations[name] = value
 
         return configurations
 
+    def run_command_with_uri(self, command: str, uri: str, *args, **kwargs) -> Any:
+        """Run a RClone command by converting a given URI."""
+        uri = self._provider_uri_convertor(uri)
+
+        return self.run_command(command, uri, *args, **kwargs)
+
+    def run_command(self, command: str, *args, **kwargs) -> Any:
+        """Run a RClone command with storage-specific configuration."""
+        return run_rclone_command(command, *args, **kwargs, env=self.get_configurations())
+
+    def upload(self, source: Union[Path, str], uri: str) -> None:
+        """Upload data from ``source`` to ``uri``."""
+        uri = self._provider_uri_convertor(uri)
+
+        self.run_command("copyto", source, uri)
+
 
 def run_rclone_command(command: str, *args: Any, env=None, **kwargs) -> str:
-    """Execute an R-clone command."""
+    """Execute an RClone command."""
     os_env = os.environ.copy()
     if env:
         os_env.update(env)
 
+    full_command = ("rclone", command, *transform_kwargs(**kwargs), *transform_args(*args))
     try:
-        result = subprocess.run(
-            ("rclone", command, *transform_kwargs(**kwargs), *transform_args(*args)),
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=os_env,
-        )
+        result = subprocess.run(full_command, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=os_env)
     except FileNotFoundError:
         raise errors.RCloneException("RClone is not installed. See https://rclone.org/install/")
 
