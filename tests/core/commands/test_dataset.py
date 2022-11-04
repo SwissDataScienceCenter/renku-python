@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dataset tests."""
+
 import copy
 import datetime
 import os
@@ -37,7 +38,6 @@ from renku.core.constant import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.dataset.context import DatasetContext
 from renku.core.dataset.dataset_add import add_to_dataset
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.dataset.providers.s3 import parse_s3_uri
 from renku.core.dataset.tag import get_dataset_by_tag
 from renku.core.errors import ParameterError
 from renku.core.util.contexts import chdir
@@ -264,26 +264,3 @@ def test_get_dataset_by_tag(with_injection, tmp_path):
 
         # Get a non-existing tag
         assert get_dataset_by_tag(dataset=parts_dataset, tag="v42") is None
-
-
-@pytest.mark.parametrize(
-    "uri, path",
-    [
-        ("s3://no.path/bucket/", ""),
-        ("S3://uppercase.scheme/bucket/path", "path"),
-        ("s3://slashes.are.stripped.from.path///bucket///path/to/data//", "path/to/data"),
-    ],
-)
-def test_valid_s3_uri(uri, path):
-    """Test valid s3 URI are parsed correctly."""
-    _, bucket, parsed_path = parse_s3_uri(uri=uri)
-
-    assert "bucket" == bucket
-    assert path == parsed_path
-
-
-@pytest.mark.parametrize("uri", ["https://invalid.scheme/bucket/", "s3:no-endpoint/bucket/path", "s3://no.bucket/"])
-def test_invalid_s3_uri(uri):
-    """Test invalid s3 URI raise an error."""
-    with pytest.raises(errors.ParameterError):
-        parse_s3_uri(uri=uri)

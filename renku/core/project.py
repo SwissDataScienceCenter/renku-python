@@ -17,7 +17,6 @@
 # limitations under the License.
 """Project business logic."""
 
-
 from typing import Dict, List, Optional, Union, cast
 
 from renku.command.command_builder import inject
