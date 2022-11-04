@@ -101,6 +101,7 @@ def project_model():
 @pytest.fixture()
 def plan_model():
     """Plan object."""
+    from renku.domain_model.provenance.agent import Person
     from renku.domain_model.workflow.plan import Plan
 
     def _create_plan(name="my-plan", command="echo", identifier="7f8bcaa36ef844528b88230343503163"):
@@ -109,6 +110,13 @@ def plan_model():
             name=name,
             command=command,
             date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
+            creators=[
+                Person(
+                    id=Person.generate_id(email="john.doe@example.com", full_identity="john.doe"),
+                    email="john.doe@example.com",
+                    name="John Doe",
+                )
+            ],
         )
 
     yield _create_plan

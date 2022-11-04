@@ -203,7 +203,7 @@ def test_template_set_uses_renku_version_when_non_existing(tmpdir, runner):
     from renku.domain_model.project_context import project_context
     from renku.version import __version__
 
-    url = "https://dev.renku.ch/gitlab/renku-testing/project-9.git"
+    url = "https://gitlab.dev.renku.ch/renku-testing/project-9.git"
     repo_path = tmpdir.mkdir("repo")
     Repository.clone_from(url=url, path=repo_path, env={"GIT_LFS_SKIP_SMUDGE": "1"})
 

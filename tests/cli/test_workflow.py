@@ -368,7 +368,7 @@ def test_workflow_remove_command(runner, project):
     assert 2 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["workflow", "show", workflow_name])
-    assert 2 == result.exit_code, format_result_exception(result)
+    assert 1 == result.exit_code, format_result_exception(result)
 
 
 def test_workflow_remove_with_composite_command(runner, project):
@@ -443,6 +443,16 @@ def test_workflow_edit(runner, project):
     database = Database.from_path(project.database_path)
     first_plan = database["plans"][_get_plan_id(result.stdout)]
     assert first_plan.description == "Test workflow"
+
+    cmd = ["workflow", "edit", workflow_name, "--keyword", "bio", "--keyword", "informatics"]
+    result = runner.invoke(cli, cmd)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    database = Database.from_path(project.database_path)
+    first_plan = database["plans"][_get_plan_id(result.stdout)]
+    assert 2 == len(first_plan.keywords)
+    assert "bio" in first_plan.keywords
+    assert "informatics" in first_plan.keywords
 
     # edit parameter
     cmd = ["workflow", "edit", workflow_name, "--rename-param", "param1=param2"]
