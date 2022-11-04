@@ -17,7 +17,6 @@
 # limitations under the License.
 """Template tests."""
 
-import shutil
 import textwrap
 
 import pytest
@@ -25,22 +24,6 @@ import pytest
 from renku.core import errors
 from renku.core.util.metadata import read_renku_version_from_dockerfile
 from renku.domain_model.template import TemplateMetadata, TemplateParameter, TemplatesManifest
-
-try:
-    import importlib_resources
-except ImportError:
-    import importlib.resources as importlib_resources  # type: ignore
-
-
-@pytest.fixture()
-def dummy_source(tmp_path):
-    """Provide a dummy (renku) source for a template."""
-    ref = importlib_resources.files("renku") / "templates"
-    with importlib_resources.as_file(ref) as embedded_templates:
-        shutil.copytree(str(embedded_templates), str(tmp_path))
-
-    yield tmp_path
-
 
 TEMPLATE_METADATA = {"__name__": "my-project", "__project_description__": "My Project", "__renku_version__": "42.0.0"}
 

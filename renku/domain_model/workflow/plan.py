@@ -30,6 +30,7 @@ from werkzeug.utils import secure_filename
 
 from renku.core import errors
 from renku.core.util.datetime8601 import local_now
+from renku.domain_model.provenance.agent import Person
 from renku.domain_model.provenance.annotation import Annotation
 from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter, CommandParameterBase
 from renku.infrastructure.database import Persistent
@@ -39,6 +40,8 @@ MAX_GENERATED_NAME_LENGTH = 25
 
 class AbstractPlan(Persistent, ABC):
     """Abstract base class for all plans."""
+
+    creators: List[Person] = list()
 
     def __init__(
         self,
@@ -51,12 +54,16 @@ class AbstractPlan(Persistent, ABC):
         name: Optional[str] = None,
         project_id: Optional[str] = None,
         derived_from: Optional[str] = None,
+        creators: Optional[List[Person]] = None,
     ):
         self.description: Optional[str] = description
         self.id: str = id
         self.date_created: datetime = date_created or local_now()
         self.invalidated_at: Optional[datetime] = invalidated_at
         self.keywords: List[str] = keywords or []
+
+        if creators:
+            self.creators = creators
 
         self.project_id: Optional[str] = project_id
         self.derived_from: Optional[str] = derived_from
@@ -132,7 +139,7 @@ class AbstractPlan(Persistent, ABC):
         """Return the workflow a parameter belongs to."""
         raise NotImplementedError()
 
-    def derive(self) -> "AbstractPlan":
+    def derive(self, creator: Optional[Person] = None) -> "AbstractPlan":
         """Create a new ``AbstractPlan`` that is derived from self."""
         raise NotImplementedError()
 
@@ -173,6 +180,7 @@ class Plan(AbstractPlan):
         outputs: Optional[List[CommandOutput]] = None,
         success_codes: Optional[List[int]] = None,
         annotations: Optional[List[Annotation]] = None,
+        creators: Optional[List[Person]] = None,
     ):
         self.command: str = command
         self.inputs: List[CommandInput] = inputs or []
@@ -189,6 +197,7 @@ class Plan(AbstractPlan):
             name=name,
             project_id=project_id,
             derived_from=derived_from,
+            creators=creators,
         )
 
         # NOTE: Validate plan
@@ -299,7 +308,7 @@ class Plan(AbstractPlan):
             for a in self.parameters:
                 a.id = a.id.replace(current_uuid, new_uuid)
 
-    def derive(self) -> "Plan":
+    def derive(self, creator: Optional[Person] = None) -> "Plan":
         """Create a new ``Plan`` that is derived from self."""
         derived = copy.copy(self)
         derived.derived_from = self.id
@@ -310,6 +319,10 @@ class Plan(AbstractPlan):
         derived.outputs = self.outputs.copy()
         derived.success_codes = self.success_codes.copy()
         derived.assign_new_id()
+
+        if creator and hasattr(creator, "email") and not any(c for c in self.creators if c.email == creator.email):
+            self.creators.append(creator)
+
         return derived
 
     def is_derivation(self) -> bool:
