@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utilities for renku service controllers."""
+import shutil
+
 from renku.command.clone import project_clone_command
 from renku.core.util.contexts import renku_project_context
 from renku.ui.service.cache.models.project import Project
@@ -31,7 +33,9 @@ def user_project_clone(cache, user_data, project_data):
 
     user = cache.ensure_user(user_data)
     project = cache.make_project(user, project_data, persist=False)
-    project.abs_path.mkdir(parents=True, exist_ok=True)
+
+    # NOTE: Create parent dir so lock file can be created.
+    project.abs_path.parent.mkdir(parents=True, exist_ok=True)
 
     with project.write_lock(), renku_project_context(project.abs_path, check_git_path=False):
         git_url = project_data.get("git_url")
@@ -50,6 +54,12 @@ def user_project_clone(cache, user_data, project_data):
             else:
                 service_log.debug(f"project already cloned, skipping clone: {git_url}")
                 return found_project
+
+        if project.abs_path.exists():
+            # NOTE: Remove dir since a previous clone might have failed somewhere in the middle.
+            shutil.rmtree(str(project.abs_path))
+
+        project.abs_path.mkdir(parents=True, exist_ok=True)
 
         repo, project.initialized = (
             project_clone_command()
