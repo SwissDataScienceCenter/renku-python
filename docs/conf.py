@@ -357,6 +357,7 @@ nitpick_ignore = [
     ("py:class", "IActivityGateway"),
     ("py:class", "IDatasetGateway"),
     ("py:class", "IPlanGateway"),
+    ("py:class", "IStorage"),
     ("py:class", "IStorageFactory"),
     ("py:class", "NoValueType"),
     ("py:class", "OID_TYPE"),

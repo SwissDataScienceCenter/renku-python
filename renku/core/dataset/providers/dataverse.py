@@ -28,7 +28,13 @@ from urllib import parse as urlparse
 
 from renku.core import errors
 from renku.core.config import get_value, set_value
-from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
+from renku.core.dataset.providers.api import (
+    ExporterApi,
+    ExportProviderInterface,
+    ImportProviderInterface,
+    ProviderApi,
+    ProviderPriority,
+)
 from renku.core.dataset.providers.dataverse_metadata_templates import (
     AUTHOR_METADATA_TEMPLATE,
     CONTACT_METADATA_TEMPLATE,
@@ -71,7 +77,7 @@ DATAVERSE_SUBJECTS = [
 ]
 
 
-class DataverseProvider(ProviderApi):
+class DataverseProvider(ProviderApi, ExportProviderInterface, ImportProviderInterface):
     """Dataverse API provider."""
 
     priority = ProviderPriority.HIGH
@@ -94,16 +100,6 @@ class DataverseProvider(ProviderApi):
         is_dataverse_doi = is_doi_ and check_dataverse_doi(is_doi_.group(0))
 
         return is_dataverse_uri or is_dataverse_doi
-
-    @staticmethod
-    def supports_export():
-        """Whether this provider supports dataset export."""
-        return True
-
-    @staticmethod
-    def supports_import():
-        """Whether this provider supports dataset import."""
-        return True
 
     @staticmethod
     def get_export_parameters() -> List["ProviderParameter"]:

@@ -15,16 +15,21 @@
 # limitations under the License.
 """Models for providers."""
 
+import dataclasses
 import os
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any, List, NamedTuple, Optional, Type
+from typing import TYPE_CHECKING, Any, List, NamedTuple, Optional, Type
 
 from humanize import naturalsize
 from marshmallow import EXCLUDE
 
 from renku.command.schema.dataset import DatasetSchema
-from renku.domain_model.dataset import Dataset, DatasetTag, RemoteEntity
+from renku.domain_model.dataset import Dataset
+
+if TYPE_CHECKING:
+    from renku.core.dataset.providers.api import StorageProviderInterface
+    from renku.domain_model.dataset import DatasetTag, RemoteEntity
 
 
 class DatasetAddAction(Enum):
@@ -34,23 +39,37 @@ class DatasetAddAction(Enum):
     MOVE = auto()
     SYMLINK = auto()
     NONE = auto()
+    DOWNLOAD = auto()  # For URIs that are from a storage provider
+    METADATA_ONLY = auto()  # For URIs that will be added to a dataset with a storage backend
+    REMOTE_STORAGE = auto()  # For URIs that are from a remote storage provider
 
 
-class DatasetAddMetadata(NamedTuple):
+@dataclasses.dataclass
+class DatasetAddMetadata:
     """Metadata for a new file that will be added to a dataset."""
 
-    entity_path: Path
+    entity_path: Path  # Entity path relative to the project's root
     url: str
     action: DatasetAddAction
     source: Path
     destination: Path
+    provider: Optional["StorageProviderInterface"] = None
     based_on: Optional["RemoteEntity"] = None
-    gitignored: bool = False
 
     @property
     def has_action(self) -> bool:
-        """Returns if file action is not NONE."""
+        """Returns if file's action is not NONE."""
         return self.action != DatasetAddAction.NONE
+
+    @property
+    def metadata_only(self) -> bool:
+        """Returns if file should be added to a remote storage."""
+        return self.action == DatasetAddAction.METADATA_ONLY
+
+    @property
+    def remote_storage(self) -> bool:
+        """Returns if file is from a remote storage."""
+        return self.action == DatasetAddAction.REMOTE_STORAGE
 
     def get_absolute_commit_path(self, project_path: Path) -> str:
         """Return path of the file in the repository."""

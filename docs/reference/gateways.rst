@@ -68,15 +68,11 @@ Implementation of Gateway interfaces.
    :members:
    :show-inheritance:
 
-.. automodule:: renku.infrastructure.storage.base
-   :members:
-   :show-inheritance:
-
 .. automodule:: renku.infrastructure.storage.factory
    :members:
    :show-inheritance:
 
-.. automodule:: renku.infrastructure.storage.s3
+.. automodule:: renku.infrastructure.storage.rclone
    :members:
    :show-inheritance:
 

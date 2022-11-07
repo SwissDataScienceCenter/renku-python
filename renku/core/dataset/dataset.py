@@ -37,7 +37,6 @@ from renku.core.dataset.providers.s3 import S3Credentials
 from renku.core.dataset.request_model import ImageRequestModel
 from renku.core.dataset.tag import get_dataset_by_tag, prompt_access_token, prompt_tag_selection
 from renku.core.interface.dataset_gateway import IDatasetGateway
-from renku.core.interface.storage import IStorageFactory
 from renku.core.storage import check_external_storage, pull_paths_from_storage, track_paths_in_storage
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
@@ -399,7 +398,7 @@ def export_dataset(name, provider_name, tag, **kwargs):
 
     dataset: Optional[Dataset] = datasets_provenance.get_by_name(name, strict=True, immutable=True)
 
-    provider = ProviderFactory.from_name(provider_name)
+    provider = ProviderFactory.get_export_provider(provider_name=provider_name)
 
     selected_tag = None
     tags = datasets_provenance.get_all_tags(dataset)  # type: ignore
@@ -879,11 +878,7 @@ def update_dataset_custom_metadata(
 
 
 @inject.autoparams("dataset_gateway")
-def move_files(
-    dataset_gateway: IDatasetGateway,
-    files: Dict[Path, Path],
-    to_dataset_name: Optional[str] = None,
-):
+def move_files(dataset_gateway: IDatasetGateway, files: Dict[Path, Path], to_dataset_name: Optional[str] = None):
     """Move files and their metadata from one or more datasets to a target dataset.
 
     Args:
@@ -1222,13 +1217,11 @@ def filter_dataset_files(
     return sorted(records, key=lambda r: r.date_added)
 
 
-@inject.autoparams("storage_factory")
-def pull_external_data(name: str, storage_factory: IStorageFactory, location: Optional[Path] = None) -> None:
+def pull_external_data(name: str, location: Optional[Path] = None) -> None:
     """Pull/copy data for an external storage to a dataset's data directory or a specified location.
 
     Args:
         name(str): Name of the dataset
-        storage_factory(IStorageFactory):Injected storage factory.
         location(Optional[Path]): A directory to copy data to (Default value = None).
     """
     datasets_provenance = DatasetsProvenance()
@@ -1256,11 +1249,8 @@ def pull_external_data(name: str, storage_factory: IStorageFactory, location: Op
             create_symlinks = False
 
     provider = ProviderFactory.get_pull_provider(uri=dataset.storage)
+    storage = provider.get_storage()
 
-    credentials = S3Credentials(provider)
-    prompt_for_credentials(credentials)
-
-    storage = storage_factory.get_storage(provider=provider, credentials=credentials)
     updated_files = []
 
     for file in dataset.files:
@@ -1268,16 +1258,16 @@ def pull_external_data(name: str, storage_factory: IStorageFactory, location: Op
         path.parent.mkdir(parents=True, exist_ok=True)
         # NOTE: Don't check if destination exists. ``IStorage.copy`` won't copy a file if it exists and is not modified.
 
-        if not file.source:
+        if not file.based_on:
             raise errors.DatasetImportError(f"Dataset file doesn't have a URI: {file.entity.path}")
 
         with communication.busy(f"Copying {file.entity.path} ..."):
-            storage.copy(file.source, path)
+            storage.download(file.based_on.url, path)
 
             # NOTE: Make files read-only since we don't support pushing data to the remote storage
             os.chmod(path, 0o400)
 
-            if file.based_on and not file.based_on.checksum:
+            if not file.based_on.checksum:
                 md5_hash = hash_file(path, hash_type="md5") or ""
                 file.based_on = RemoteEntity(checksum=md5_hash, url=file.based_on.url, path=file.based_on.path)
 
@@ -1313,20 +1303,13 @@ def read_dataset_data_location(dataset: Dataset) -> Optional[str]:
     return get_value(section="dataset-locations", key=dataset.name, config_filter=ConfigFilter.LOCAL_ONLY)
 
 
-@inject.autoparams("storage_factory")
-def mount_external_storage(
-    name: str,
-    existing: Optional[Path],
-    yes: bool,
-    storage_factory: IStorageFactory,
-) -> None:
+def mount_external_storage(name: str, existing: Optional[Path], yes: bool) -> None:
     """Mount an external storage to a dataset's data directory.
 
     Args:
         name(str): Name of the dataset
         existing(Optional[Path]): An existing mount point to use instead of actually mounting the external storage.
         yes(bool): Don't prompt when removing non-empty dataset's data directory.
-        storage_factory(IStorageFactory): Injected storage factory.
     """
     dataset, datadir = _get_dataset_with_external_storage(name=name)
 
@@ -1350,8 +1333,8 @@ def mount_external_storage(
     provider = ProviderFactory.get_mount_provider(uri=dataset.storage)
     credentials = S3Credentials(provider)
     prompt_for_credentials(credentials)
+    storage = provider.get_storage(credentials=credentials)
 
-    storage = storage_factory.get_storage(provider=provider, credentials=credentials)
     with communication.busy(f"Mounting {provider.uri}"):
         storage.mount(datadir)
 
