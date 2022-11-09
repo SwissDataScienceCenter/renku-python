@@ -51,6 +51,7 @@ from renku.ui.service.views.project import project_blueprint
 from renku.ui.service.views.templates import templates_blueprint
 from renku.ui.service.views.version import version_blueprint
 from renku.ui.service.views.versions_list import versions_list_blueprint
+from renku.ui.service.views.workflow_plans import workflow_plans_blueprint
 
 logging.basicConfig(level=os.getenv("SERVICE_LOG_LEVEL", "WARNING"))
 
@@ -143,6 +144,7 @@ def register_exceptions(app):
 
 def build_routes(app):
     """Register routes to given app instance."""
+    app.register_blueprint(workflow_plans_blueprint)
     app.register_blueprint(cache_blueprint)
     app.register_blueprint(config_blueprint)
     app.register_blueprint(dataset_blueprint)

@@ -722,7 +722,6 @@ import os
 import shutil
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import click
 from lazy_object_proxy import Proxy
@@ -732,12 +731,10 @@ from renku.command.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS, WO
 from renku.command.util import ERROR
 from renku.command.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
 from renku.core import errors
+from renku.core.util.util import NO_VALUE
 from renku.ui.cli.utils.callback import ClickCallback
 from renku.ui.cli.utils.plugins import available_workflow_providers, supported_formats
 from renku.ui.cli.utils.terminal import show_text_with_pager
-
-if TYPE_CHECKING:
-    from renku.command.view_model.composite_plan import CompositePlanViewModel
 
 
 def _complete_workflows(ctx, param, incomplete):
@@ -748,46 +745,6 @@ def _complete_workflows(ctx, param, incomplete):
         return list(filter(lambda x: x.startswith(incomplete), result.output))
     except Exception:
         return []
-
-
-def _print_composite_plan(composite_plan: "CompositePlanViewModel"):
-    """Print a CompositePlan to stdout."""
-    from renku.ui.cli.utils.terminal import print_markdown
-
-    click.echo(click.style("Id: ", bold=True, fg=color.MAGENTA) + click.style(composite_plan.id, bold=True))
-    click.echo(click.style("Name: ", bold=True, fg=color.MAGENTA) + click.style(composite_plan.name, bold=True))
-
-    if composite_plan.description:
-        print_markdown(composite_plan.description)
-
-    click.echo(click.style("Steps: ", bold=True, fg=color.MAGENTA))
-    for step in composite_plan.steps:
-        click.echo(click.style(f"\t- {step.name}:", bold=True))
-        click.echo(click.style("\t\tId: ", bold=True, fg=color.MAGENTA) + click.style(f"{step.id}", bold=True))
-
-    if composite_plan.mappings:
-        click.echo(click.style("Mappings: ", bold=True, fg=color.MAGENTA))
-        for mapping in composite_plan.mappings:
-            click.echo(click.style(f"\t- {mapping.name}:", bold=True))
-
-            if mapping.description:
-                click.echo(click.style(f"\t\t{mapping.description}"))
-
-            click.echo(
-                click.style("\t\tDefault Value: ", bold=True, fg=color.MAGENTA)
-                + click.style(mapping.default_value, bold=True)
-            )
-            click.echo(click.style("\tMaps to: ", bold=True, fg=color.MAGENTA))
-            for maps_to in mapping.maps_to:
-                click.echo(click.style(f"\t\t{maps_to}", bold=True))
-
-    if composite_plan.links:
-        click.echo(click.style("Links: ", bold=True, fg=color.MAGENTA))
-        for link in composite_plan.links:
-            click.echo(click.style("\t- From: ", bold=True, fg=color.MAGENTA) + click.style(link.source, bold=True))
-            click.echo(click.style("\t\t To: ", bold=True, fg=color.MAGENTA))
-            for sink in link.sinks:
-                click.echo(click.style(f"\t\t- {sink}", bold=True))
 
 
 @click.group()
@@ -823,7 +780,7 @@ def show(name_or_id):
     """Show details for workflow <name_or_id>."""
     from renku.command.view_model.plan import PlanViewModel
     from renku.command.workflow import show_workflow_command
-    from renku.ui.cli.utils.terminal import print_plan
+    from renku.ui.cli.utils.terminal import print_composite_plan, print_plan
 
     plan = show_workflow_command().build().execute(name_or_id=name_or_id).output
 
@@ -831,7 +788,7 @@ def show(name_or_id):
         if isinstance(plan, PlanViewModel):
             print_plan(plan)
         else:
-            _print_composite_plan(plan)
+            print_composite_plan(plan)
     else:
         click.secho(ERROR + f"Workflow '{name_or_id}' not found.")
 
@@ -874,6 +831,14 @@ def remove(name, force):
     multiple=True,
     help="End a composite plan at this file as output.",
 )
+@click.option(
+    "--creator",
+    "creators",
+    default=None,
+    multiple=True,
+    type=click.UNPROCESSED,
+    help="Creator's name, email, and affiliation. Accepted format is 'Forename Surname <email> [affiliation]'.",
+)
 @click.argument("name", required=True)
 @click.argument("steps", nargs=-1, type=click.UNPROCESSED, shell_complete=_complete_workflows)
 def compose(
@@ -890,11 +855,14 @@ def compose(
     keyword,
     sources,
     sinks,
+    creators,
     name,
     steps,
 ):
     """Create a composite workflow consisting of multiple steps."""
     from renku.command.workflow import compose_workflow_command
+    from renku.core.util.metadata import construct_creators
+    from renku.ui.cli.utils.terminal import print_composite_plan
 
     if (sources or sinks) and steps:
         click.secho(ERROR + "--from/--to cannot be used at the same time as passing run/step names.")
@@ -902,6 +870,9 @@ def compose(
     elif not (sources or sinks or steps):
         click.secho(ERROR + "Either --from/--to passing run/step names is required.")
         exit(1)
+
+    if creators:
+        creators, _ = construct_creators(creators)
 
     if map_all:
         map_inputs = map_outputs = map_params = True
@@ -924,11 +895,12 @@ def compose(
             steps=steps,
             sources=sources,
             sinks=sinks,
+            creators=creators,
         )
     )
 
     if not result.error:
-        _print_composite_plan(result.output)
+        print_composite_plan(result.output)
 
 
 @workflow.command()
@@ -973,11 +945,49 @@ def compose(
     type=click.Path(exists=True, dir_okay=False),
     help="Custom metadata to be associated with the workflow.",
 )
-def edit(workflow_name, name, description, set_params, map_params, rename_params, describe_params, metadata):
+@click.option(
+    "--creator",
+    "creators",
+    default=[NO_VALUE],
+    multiple=True,
+    type=click.UNPROCESSED,
+    help="Creator's name, email, and affiliation. Accepted format is 'Forename Surname <email> [affiliation]'.",
+)
+@click.option(
+    "--keyword",
+    "keywords",
+    default=[NO_VALUE],
+    type=click.UNPROCESSED,
+    multiple=True,
+    help="List of keywords for the workflow.",
+)
+def edit(
+    workflow_name,
+    name,
+    description,
+    set_params,
+    map_params,
+    rename_params,
+    describe_params,
+    metadata,
+    creators,
+    keywords,
+):
     """Edit workflow details."""
     from renku.command.view_model.plan import PlanViewModel
     from renku.command.workflow import edit_workflow_command
-    from renku.ui.cli.utils.terminal import print_plan
+    from renku.core.util.metadata import construct_creators
+    from renku.ui.cli.utils.terminal import print_composite_plan, print_plan
+
+    if list(creators) == [NO_VALUE]:
+        creators = NO_VALUE
+
+    keywords = list(keywords)
+    if keywords == [NO_VALUE]:
+        keywords = NO_VALUE
+
+    if creators and creators is not NO_VALUE:
+        creators, _ = construct_creators(creators, ignore_email=True)
 
     custom_metadata = None
 
@@ -995,6 +1005,8 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
             map_params=map_params,
             rename_params=rename_params,
             describe_params=describe_params,
+            creators=creators,
+            keywords=keywords,
             custom_metadata=custom_metadata,
         )
     )
@@ -1003,7 +1015,7 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
         if isinstance(plan, PlanViewModel):
             print_plan(plan)
         else:
-            _print_composite_plan(plan)
+            print_composite_plan(plan)
 
 
 @workflow.command()
@@ -1286,7 +1298,7 @@ def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config, skip_
     """Execute a workflow by iterating through a range of provided parameters."""
     from renku.command.view_model.plan import PlanViewModel
     from renku.command.workflow import iterate_workflow_command, show_workflow_command
-    from renku.ui.cli.utils.terminal import print_plan
+    from renku.ui.cli.utils.terminal import print_composite_plan, print_plan
 
     if len(mappings) == 0 and mapping_path is None:
         raise errors.UsageError("No mapping has been given for the iteration!")
@@ -1297,7 +1309,7 @@ def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config, skip_
         if isinstance(plan, PlanViewModel):
             print_plan(plan)
         else:
-            _print_composite_plan(plan)
+            print_composite_plan(plan)
 
     communicator = ClickCallback()
     iterate_workflow_command(skip_metadata_update=skip_metadata_update).with_communicator(communicator).build().execute(

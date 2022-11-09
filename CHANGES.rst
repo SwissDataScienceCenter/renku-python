@@ -18,8 +18,69 @@
 Changes
 =======
 
+`1.9.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.9.0...v1.9.1>`__ (2022-11-07)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **service:** fix import of private datasets with gitlab cloud native
+   deployments
+   (`#3193 <https://github.com/SwissDataScienceCenter/renku-python/issues/3193>`__)
+   (`5fbc8d2 <https://github.com/SwissDataScienceCenter/renku-python/commit/5fbc8d23df03642e5c12ebae456891e33b5537bb>`__)
+-  **service:** remove project cache directory before clone
+   (`#3195 <https://github.com/SwissDataScienceCenter/renku-python/issues/3195>`__)
+   (`e046b3a <https://github.com/SwissDataScienceCenter/renku-python/commit/e046b3a2cbafa731f8c5e836152f5b1429d5cf0f>`__)
+
+Features
+~~~~~~~~
+
+-  **dataset:** copy data to s3
+   (`#3163 <https://github.com/SwissDataScienceCenter/renku-python/issues/3163>`__)
+   (`bb326d2 <https://github.com/SwissDataScienceCenter/renku-python/commit/bb326d2a38a455d4e120719d5e54ab11721d4e0e>`__)
+
+`1.9.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.8.1...v1.9.0>`__ (2022-11-03)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix metadata to match RFC and properly format wasDerivedFrom
+   (`#3166 <https://github.com/SwissDataScienceCenter/renku-python/issues/3166>`__)
+   (`42aee90 <https://github.com/SwissDataScienceCenter/renku-python/commit/42aee90b893fd24b0b7cf968f7958ce46905e88f>`__)
+-  **core:** fix rerun overwriting plan details with previous versions
+   (`#3172 <https://github.com/SwissDataScienceCenter/renku-python/issues/3172>`__)
+   (`72ad1d5 <https://github.com/SwissDataScienceCenter/renku-python/commit/72ad1d58e6477288b95d483e91963b96a7411b1b>`__)
+-  **service:** fixes core service not working with python 3.10
+   (`#3186 <https://github.com/SwissDataScienceCenter/renku-python/issues/3186>`__)
+   (`dc7554f <https://github.com/SwissDataScienceCenter/renku-python/commit/dc7554fc8e3ae02444792e0f97b30417860dd5ed>`__)
+
+Features
+~~~~~~~~
+
+-  **svc:** added workflow endpoints in core service for new workflow UI
+   (`#3135 <https://github.com/SwissDataScienceCenter/renku-python/issues/3135>`__)
+   (`3cf7c5d <https://github.com/SwissDataScienceCenter/renku-python/commit/3cf7c5df8a04acea407a28f3eee46bc49b1a80db>`__)
+
+`1.8.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.8.0...v1.8.1>`__ (2022-10-26)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **service:** don't change working directory, as it isn't thread-safe
+   (`#3182 <https://github.com/SwissDataScienceCenter/renku-python/issues/3182>`__)
+   (`909b001 <https://github.com/SwissDataScienceCenter/renku-python/commit/909b001fb0a0ac3e6deb2d03f5f9218a7ee7d42e>`__)
+
+Features
+~~~~~~~~
+
+-  **dataset:** support non-AWS S3 URI
+   (`#3159 <https://github.com/SwissDataScienceCenter/renku-python/issues/3159>`__)
+   (`b81bbe5 <https://github.com/SwissDataScienceCenter/renku-python/commit/b81bbe58b65ac0cd1048a05fae87550d3db4e991>`__)
+
 `1.8.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.7.1...v1.8.0>`__ (2022-10-14)
-=======================================================================================================
+-------------------------------------------------------------------------------------------------------
 
 Bug Fixes
 ~~~~~~~~~

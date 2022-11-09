@@ -17,11 +17,9 @@
 # limitations under the License.
 """Storage factory implementation."""
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Dict
 
-from renku.core import errors
 from renku.core.interface.storage import IStorage, IStorageFactory
-from renku.core.util.urls import get_scheme
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials
@@ -31,15 +29,32 @@ class StorageFactory(IStorageFactory):
     """Return an external storage."""
 
     @staticmethod
-    def get_storage(provider: "ProviderApi", credentials: "ProviderCredentials") -> "IStorage":
-        """Return a storage that handles provider."""
-        from .s3 import S3Storage
+    def get_storage(
+        storage_scheme: str,
+        provider: "ProviderApi",
+        credentials: "ProviderCredentials",
+        configuration: Dict[str, str],
+        uri_convertor: Callable[[str], str],
+    ) -> "IStorage":
+        """Return a storage that handles provider.
 
-        storage_handlers = {"s3": S3Storage}
+        Args:
+            storage_scheme(str): Storage name.
+            provider(ProviderApi): The backend provider.
+            credentials(ProviderCredentials): Credentials for the provider.
+            configuration(Dict[str, str]): Storage-specific configuration that are passed to the IStorage implementation
+            uri_convertor(Callable[[str], str]): A function that converts backend-specific URI to a URI that is usable
+                by the IStorage implementation.
 
-        scheme = get_scheme(uri=provider.uri).lower()
+        Returns:
+            An instance of IStorage.
+        """
+        from .rclone import RCloneStorage
 
-        if scheme not in storage_handlers:
-            raise errors.StorageProviderNotFound(provider.uri)
-
-        return storage_handlers[scheme](provider=provider, credentials=credentials)
+        return RCloneStorage(
+            storage_scheme=storage_scheme,
+            provider=provider,
+            credentials=credentials,
+            provider_configuration=configuration,
+            provider_uri_convertor=uri_convertor,
+        )

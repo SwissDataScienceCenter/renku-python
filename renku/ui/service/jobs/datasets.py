@@ -91,6 +91,10 @@ def _is_safe_to_pass_gitlab_token(project_git_url, dataset_uri):
     project_host = GitURL.parse(project_git_url).hostname
     dataset_host = urllib.parse.urlparse(dataset_uri).netloc
 
+    # NOTE: URLs changed from domain/gitlab to gitlab.domain when moving to cloud native gitlab
+    if project_host.startswith("gitlab.") and not dataset_host.startswith("gitlab."):
+        project_host = project_host.replace("gitlab.", "", 1)
+
     return project_host == dataset_host
 
 
