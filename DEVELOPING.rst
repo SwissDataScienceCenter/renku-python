@@ -266,3 +266,5 @@ number.
 - Go to the `Renku` repository and approve/merge the automatically created PR
   there.
 - Announce that we have a new version through appropriate channels.
+
+
