@@ -75,24 +75,12 @@ metrics:
     tag: 0.0.2
     pullPolicy: IfNotPresent
 resources:
-  core:
-    requests:
-      memory: 4Gi
-  rqmetrics:
-    requests:
-      memory: 50Mi
-  datasetsWorkers:
-    requests:
-      memory: 2Gi
-  managementWorkers:
-    requests:
-      memory: 100Mi
-  scheduler:
-    requests:
-      memory: 100Mi
-  traefik:
-    requests:
-      memory: 100Mi
+  core: {}
+  rqmetrics: {}
+  datasetsWorkers: {}
+  managementWorkers: {}
+  scheduler: {}
+  traefik: {}
 
 # nodeSelector: {}
 
