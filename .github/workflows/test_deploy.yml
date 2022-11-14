@@ -8,7 +8,7 @@ on:
       - "v*.*.*"
 env:
   DEPENDENCY_CACHE_PREFIX: "v2"
-  NETWORK_CACHE_PREFIX: "v1"
+  NETWORK_CACHE_PREFIX: "v2"
 jobs:
   set-matrix:
     runs-on: ubuntu-latest
