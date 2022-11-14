@@ -26,3 +26,13 @@ export const credentials = [
     password: "secret-password1",
   },
 ];
+
+// Describes the configuration of a Jupyter Server.
+export const serverOptions = {
+  cpu_request: 0.5,
+  defaultUrl: "/lab",
+  disk_request: "1G",
+  gpu_request: 0,
+  lfs_auto_fetch: false,
+  mem_request: "1G",
+};
