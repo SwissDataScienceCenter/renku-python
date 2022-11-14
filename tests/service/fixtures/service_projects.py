@@ -50,14 +50,6 @@ def project_metadata(project) -> Generator[Tuple["RenkuProject", Dict[str, Any]]
 
 
 @pytest.fixture(scope="module")
-def it_git_access_token():
-    """Returns a git access token for a testing run."""
-    from tests.fixtures.config import IT_GIT_ACCESS_TOKEN
-
-    return IT_GIT_ACCESS_TOKEN
-
-
-@pytest.fixture(scope="module")
 def it_remote_repo_url():
     """Returns a remote path to integration test repository."""
     from tests.fixtures.config import IT_REMOTE_REPO_URL
@@ -76,7 +68,7 @@ def it_remote_public_renku_repo_url():
 @pytest.fixture(scope="module")
 def it_remote_public_repo_url():
     """Returns a remote path to a public integration test repository."""
-    return "https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku"
+    return "https://gitlab.dev.renku.ch/renku-python-integration-tests/no-renku"
 
 
 @pytest.fixture(scope="function")
@@ -124,3 +116,11 @@ def it_protected_repo_url():
     from tests.fixtures.config import IT_PROTECTED_REMOTE_REPO_URL
 
     return IT_PROTECTED_REMOTE_REPO_URL
+
+
+@pytest.fixture(scope="module")
+def it_workflow_repo_url():
+    """Returns a repository url containing workflows."""
+    from tests.fixtures.config import IT_WORKFLOW_REPO_URL
+
+    return IT_WORKFLOW_REPO_URL

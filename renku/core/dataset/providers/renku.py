@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from renku.command.login import read_renku_token
 from renku.core import errors
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.dataset.providers.api import ImporterApi, ProviderApi, ProviderPriority
+from renku.core.dataset.providers.api import ImporterApi, ImportProviderInterface, ProviderApi, ProviderPriority
 from renku.core.storage import pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.git import clone_renku_repository, get_cache_directory_for_repository, get_file_size
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset
 
 
-class RenkuProvider(ProviderApi):
+class RenkuProvider(ProviderApi, ImportProviderInterface):
     """Renku API provider."""
 
     priority = ProviderPriority.HIGH
@@ -65,11 +65,6 @@ class RenkuProvider(ProviderApi):
 
         _, dataset_id = RenkuProvider._extract_project_and_dataset_ids(parsed_url)
         return dataset_id is not None
-
-    @staticmethod
-    def supports_import():
-        """Whether this provider supports dataset import."""
-        return True
 
     @staticmethod
     def get_import_parameters() -> List["ProviderParameter"]:
@@ -327,7 +322,19 @@ class RenkuImporter(ImporterApi):
         results: List["DatasetAddMetadata"] = []
         new_files: Dict[Path, List[str]] = defaultdict(list)
 
-        if checksums is None:
+        if self.provider_dataset.storage:  # NOTE: Dataset with a backend storage
+            results = [
+                DatasetAddMetadata(
+                    entity_path=Path(f.path),
+                    url=url,
+                    based_on=RemoteEntity(checksum=f.checksum, path=f.path, url=url),
+                    action=DatasetAddAction.METADATA_ONLY,
+                    source=remote_repository.path / f.path,
+                    destination=destination / f.path,
+                )
+                for f in self.provider_dataset_files
+            ]
+        elif checksums is None:
             with project_context.with_path(remote_repository.path):
                 pull_paths_from_storage(
                     project_context.repository, *(remote_repository.path / p for p in sources)  # type: ignore
@@ -380,13 +387,14 @@ class RenkuImporter(ImporterApi):
 
     def copy_extra_metadata(self, new_dataset: "Dataset") -> None:
         """Copy provider specific metadata once the dataset is created."""
-
         if not self.provider_dataset.images:
             return
 
         for image in self.provider_dataset.images:
             if image.is_absolute:
                 continue
+
+            assert isinstance(self._remote_path, Path)  # TODO: Replace with proper typing
 
             remote_image_path = self._remote_path / image.content_url
             local_image_path = project_context.path / image.content_url

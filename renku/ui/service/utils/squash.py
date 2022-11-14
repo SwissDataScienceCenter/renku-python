@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utilities for renku service controllers."""
-import collections
+import collections.abc
 
 
 def squash(data, parent_key="", sep="."):
@@ -28,7 +28,7 @@ def squash(data, parent_key="", sep="."):
             k = k[1:]
 
         new_key = parent_key + sep + k if parent_key else k
-        if isinstance(v, collections.MutableMapping):
+        if isinstance(v, collections.abc.MutableMapping):
             items.extend(squash(v, new_key, sep=sep).items())
         else:
             items.append((new_key, v))

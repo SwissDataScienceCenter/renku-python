@@ -114,6 +114,13 @@ class DynamicProxy:
     def __getattr__(self, name):
         return getattr(self._subject, name)
 
+    def __getattribute__(self, name: str):
+        if name == "__class__":
+            # NOTE: Makes isinstance() checks work with proxies
+            return object.__getattribute__(self._subject, "__class__")
+
+        return object.__getattribute__(self, name)
+
     def __setattr__(self, name, value):
         if name == "_subject" or not hasattr(self._subject, name):
             super().__setattr__(name, value)

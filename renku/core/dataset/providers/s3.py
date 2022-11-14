@@ -22,12 +22,19 @@ import urllib
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple, cast
 
+from renku.command.command_builder import inject
 from renku.core import errors
-from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials, ProviderPriority
+from renku.core.dataset.providers.api import (
+    AddProviderInterface,
+    ProviderApi,
+    ProviderCredentials,
+    ProviderPriority,
+    StorageProviderInterface,
+)
 from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata, ProviderParameter
-from renku.core.util.dispatcher import get_storage
+from renku.core.interface.storage import IStorage, IStorageFactory
 from renku.core.util.metadata import prompt_for_credentials
-from renku.core.util.urls import get_scheme, is_uri_subfolder
+from renku.core.util.urls import get_scheme
 from renku.domain_model.dataset import RemoteEntity
 from renku.domain_model.project_context import project_context
 
@@ -35,7 +42,7 @@ if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset
 
 
-class S3Provider(ProviderApi):
+class S3Provider(ProviderApi, AddProviderInterface, StorageProviderInterface):
     """S3 provider."""
 
     priority = ProviderPriority.HIGHEST
@@ -55,16 +62,6 @@ class S3Provider(ProviderApi):
         return get_scheme(uri) == "s3"
 
     @staticmethod
-    def supports_create() -> bool:
-        """Whether this provider supports creating a dataset."""
-        return True
-
-    @staticmethod
-    def supports_add() -> bool:
-        """Whether this provider supports adding data to datasets."""
-        return True
-
-    @staticmethod
     def get_add_parameters() -> List["ProviderParameter"]:
         """Returns parameters that can be set for add."""
         from renku.core.dataset.providers.models import ProviderParameter
@@ -80,28 +77,41 @@ class S3Provider(ProviderApi):
             ),
         ]
 
-    @staticmethod
-    def add(uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
-        """Add files from a URI to a dataset."""
-        dataset = kwargs.get("dataset")
-        if dataset and dataset.storage and not dataset.storage.lower().startswith("s3://"):
-            raise errors.ParameterError(
-                "Files from S3 buckets can only be added to datasets with S3 storage, "
-                f"the dataset {dataset.name} has non-S3 storage {dataset.storage}."
-            )
-        if re.search(r"[*?]", uri):
-            raise errors.ParameterError("Wildcards like '*' or '?' are not supported in the uri for S3 datasets.")
-        provider = S3Provider(uri=uri)
-        credentials = S3Credentials(provider=provider)
-        prompt_for_credentials(credentials)
+    @inject.autoparams("storage_factory")
+    def get_storage(
+        self, storage_factory: "IStorageFactory", credentials: Optional["ProviderCredentials"] = None
+    ) -> "IStorage":
+        """Return the storage manager for the provider."""
+        s3_configuration = {
+            "type": "s3",
+            "provider": "AWS",
+            "endpoint": self.endpoint,
+        }
 
-        storage = get_storage(provider=provider, credentials=credentials)
-        if dataset and dataset.storage and not is_uri_subfolder(dataset.storage, uri):
-            raise errors.ParameterError(
-                f"S3 uri {uri} should be located within or at the storage uri {dataset.storage}."
-            )
-        if not storage.exists(uri):
-            raise errors.ParameterError(f"S3 bucket '{uri}' doesn't exists.")
+        def create_renku_storage_s3_uri(uri: str) -> str:
+            """Create a S3 URI to work with the Renku storage handler."""
+            _, bucket, path = parse_s3_uri(uri=uri)
+
+            return f"s3://{bucket}/{path}"
+
+        if not credentials:
+            credentials = S3Credentials(provider=self)
+            prompt_for_credentials(credentials)
+
+        return storage_factory.get_storage(
+            storage_scheme="s3",
+            provider=self,
+            credentials=credentials,
+            configuration=s3_configuration,
+            uri_convertor=create_renku_storage_s3_uri,
+        )
+
+    def add(self, uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
+        """Add files from a URI to a dataset."""
+        if re.search(r"[*?]", uri):
+            raise errors.ParameterError("Wildcards like '*' or '?' are not supported for S3 URIs.")
+
+        storage = self.get_storage()
 
         destination_path_in_repo = Path(destination).relative_to(project_context.repository.path)
         hashes = storage.get_hashes(uri=uri)
@@ -109,11 +119,12 @@ class S3Provider(ProviderApi):
             DatasetAddMetadata(
                 entity_path=destination_path_in_repo / hash.path,
                 url=hash.base_uri,
-                action=DatasetAddAction.NONE,
+                action=DatasetAddAction.REMOTE_STORAGE,
+                # TODO: Store the original URI for use as source; based_on is not needed
                 based_on=RemoteEntity(checksum=hash.hash if hash.hash else "", url=hash.base_uri, path=hash.path),
-                source=Path(hash.full_uri),
+                source=Path(hash.base_uri),
                 destination=destination_path_in_repo,
-                gitignored=True,
+                provider=self,
             )
             for hash in hashes
         ]
@@ -132,8 +143,7 @@ class S3Provider(ProviderApi):
         """Hook to perform provider-specific actions on a newly-created dataset."""
         credentials = S3Credentials(provider=self)
         prompt_for_credentials(credentials)
-
-        storage = get_storage(provider=self, credentials=credentials)
+        storage = self.get_storage(credentials=credentials)
 
         # NOTE: The underlying rclone tool cannot tell if a directory within a S3 bucket exists or not
         if not storage.exists(self.uri):
@@ -145,7 +155,7 @@ class S3Provider(ProviderApi):
 class S3Credentials(ProviderCredentials):
     """S3-specific credentials."""
 
-    def __init__(self, provider: ProviderApi):
+    def __init__(self, provider: S3Provider):
         super().__init__(provider=provider)
 
     @staticmethod
@@ -166,13 +176,6 @@ class S3Credentials(ProviderCredentials):
         return self.provider.endpoint.lower()
 
 
-def create_renku_s3_uri(uri: str) -> str:
-    """Create a S3 URI to work with Renku."""
-    _, bucket, path = parse_s3_uri(uri=uri)
-
-    return f"s3://{bucket}/{path}"
-
-
 def parse_s3_uri(uri: str) -> Tuple[str, str, str]:
     """Extract endpoint, bucket name, and path within the bucket from a given URI.
 
@@ -183,7 +186,7 @@ def parse_s3_uri(uri: str) -> Tuple[str, str, str]:
     endpoint = parsed_uri.netloc
     path = parsed_uri.path.strip("/")
 
-    if parsed_uri.scheme.lower() != "s3" or not endpoint or not path:
+    if parsed_uri.scheme.lower() != "s3" or not endpoint:
         raise errors.ParameterError(f"Invalid S3 URI: {uri}. Valid format is 's3://<endpoint>/<bucket-name>/<path>'")
 
     bucket, _, path = path.partition("/")
