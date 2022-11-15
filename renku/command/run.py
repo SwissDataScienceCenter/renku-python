@@ -204,7 +204,9 @@ def _run_command(
         if not creators:
             creators = [cast(Person, get_git_user(project_context.repository))]
 
-        plan = tool.to_plan(name=name, description=description, keywords=keyword, creators=creators)
+        plan = tool.to_plan(
+            name=name, description=description, keywords=keyword, creators=creators, date_created=started_at_time
+        )
         activity = Activity.from_plan(
             plan=plan,
             repository=project_context.repository,
