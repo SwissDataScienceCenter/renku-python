@@ -21,7 +21,7 @@ import os
 import re
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, cast, Dict, List, Optional, Tuple, Union
 from uuid import uuid4
 
 import cwl_utils.parser.cwl_v1_2 as cwl
@@ -109,6 +109,7 @@ class CWLExporter(IWorkflowConverter):
         if output:
             if output.is_dir():
                 tmpdir = output
+                filename = None
             else:
                 tmpdir = output.parent
                 filename = output
@@ -116,21 +117,27 @@ class CWLExporter(IWorkflowConverter):
             tmpdir = Path(tempfile.mkdtemp())
 
         if isinstance(workflow, CompositePlan):
-            cwl_workflow = CWLExporter._convert_composite(workflow, basedir, resolve_paths=resolve_paths)
+            cwl_workflow = CWLExporter._convert_composite(workflow, basedir, resolve_paths=resolve_paths)  # type: ignore
             if nest_workflows:
                 # INFO: There is only one parent workflow with all children embedded in it
+                if cwl_workflow.requirements is None:
+                    cwl_workflow.requirements = []
                 cwl_workflow.requirements.append(cwl.SubworkflowFeatureRequirement())
             else:
                 # INFO: The parent composite worfklow references other workflow files,
                 # write the child workflows in separate files and reference them in parent
-                for step in enumerate(cwl_workflow.steps):
-                    path = (tmpdir / f"{uuid4()}.cwl").resolve()
+                for step in cast(List[WorkflowStep], cwl_workflow.steps):
+                    if filename is None:
+                        filename = Path(f"{uuid4()}.cwl")
+                    path = (tmpdir / filename).resolve()
                     step.run = str(path)
                     write_yaml(path, step.save())
-            filename = f"parent_{uuid4()}.cwl"
+            if filename is None:
+                filename = Path(f"parent_{uuid4()}.cwl")
         else:
-            cwl_workflow = CWLExporter._convert_step(workflow, basedir, resolve_paths=resolve_paths)
-            filename = f"{uuid4()}.cwl"
+            cwl_workflow = CWLExporter._convert_step(workflow, basedir, resolve_paths=resolve_paths)  # type: ignore
+            if filename is None:
+                filename = Path(f"{uuid4()}.cwl")
 
         cwl_workflow_dict: Dict[str, Any] = cwl_workflow.save()
         path = (tmpdir / filename).resolve()
@@ -210,14 +217,14 @@ class CWLExporter(IWorkflowConverter):
             location = Path(path)
             if resolve_paths:
                 location = location.resolve()
-                location = location.as_uri()
+                location_str = str(location.as_uri())
             else:
-                location = str(location)
+                location_str = str(location)
             workflow_object.inputs.append(
                 cwl.WorkflowInputParameter(
                     id=id_,
                     type=type_,
-                    default={"location": location, "class": type_},
+                    default={"location": location_str, "class": type_},
                 )
             )
 
@@ -316,15 +323,15 @@ class CWLExporter(IWorkflowConverter):
         location = basedir / ".renku"
         if resolve_paths:
             location = location.resolve()
-            location = location.as_uri()
+            location_str = location.as_uri()
         else:
-            location = str(location)
+            location_str = str(location)
         tool_object.inputs.append(
             cwl.CommandInputParameter(
                 id="input_renku_metadata",
                 type="Directory",
                 inputBinding=None,
-                default={"location": location, "class": "Directory"},
+                default={"location": location_str, "class": "Directory"},
             )
         )
 
@@ -389,16 +396,16 @@ class CWLExporter(IWorkflowConverter):
         location = basedir / input.actual_value
         if resolve_paths:
             location = location.resolve()
-            location = location.as_uri()
+            location_str = location.as_uri()
         else:
-            location = str(location)
+            location_str = str(location)
         return cwl.CommandInputParameter(
             id=sanitized_id,
             type=type_,
             inputBinding=cwl.CommandLineBinding(position=position, prefix=prefix, separate=separate)
             if position or prefix
             else None,
-            default={"location": location, "class": type_},
+            default={"location": location_str, "class": type_},
         )
 
     @staticmethod
