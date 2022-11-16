@@ -524,7 +524,7 @@ def export_workflow(
         values(Optional[str]): Path to values file to apply before export.
         basedir(Optional[str]): The base path prepended to all paths in the exported workflow,
             if None it defaults to the absolute path of the renku project.
-        resolve_paths(bool): Resolve all symlinks and make paths absolute, defatuls to True.
+        resolve_paths(bool): Resolve all symlinks and make paths absolute, defaults to True.
         nest_workflows(bool): Whether to try to nest all workflows into one specification and file or not,
             defaults to False.
     Returns:
@@ -538,7 +538,9 @@ def export_workflow(
         nest_workflows = False
 
     if basedir is None:
-        basedir = str(project_context.path.resolve())
+        basedir_path = project_context.path
+    elif isinstance(basedir, str):
+        basedir_path = Path(basedir)
 
     workflow = plan_gateway.get_by_name_or_id(name_or_id)
 
@@ -566,7 +568,7 @@ def export_workflow(
     converter = workflow_converter(format)
     return converter(
         workflow=workflow,
-        basedir=basedir,
+        basedir=basedir_path,
         output=output_path,
         output_format=format,
         resolve_paths=resolve_paths,

@@ -21,7 +21,7 @@ import os
 import re
 import tempfile
 from pathlib import Path
-from typing import Any, cast, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, cast
 from uuid import uuid4
 
 import cwl_utils.parser.cwl_v1_2 as cwl
@@ -103,6 +103,8 @@ class CWLExporter(IWorkflowConverter):
         nest_workflows: Optional[bool],  # if True, generate a single workflow spec and file
     ) -> str:
         """Converts the specified workflow to CWL format."""
+        filename = None
+
         if nest_workflows is None:
             nest_workflows = False
 
@@ -117,7 +119,9 @@ class CWLExporter(IWorkflowConverter):
             tmpdir = Path(tempfile.mkdtemp())
 
         if isinstance(workflow, CompositePlan):
-            cwl_workflow = CWLExporter._convert_composite(workflow, basedir, resolve_paths=resolve_paths)  # type: ignore
+            cwl_workflow = CWLExporter._convert_composite(
+                workflow, basedir, resolve_paths=resolve_paths
+            )  # type: ignore
             if nest_workflows:
                 # INFO: There is only one parent workflow with all children embedded in it
                 if cwl_workflow.requirements is None:
