@@ -18,6 +18,16 @@
 Changes
 =======
 
+`1.9.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.9.1...v1.9.2>`__ (2022-11-15)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **workflow:** set plan creation date to activity start date
+   (`#3210 <https://github.com/SwissDataScienceCenter/renku-python/issues/3210>`__)
+   (`c18f85c <https://github.com/SwissDataScienceCenter/renku-python/commit/c18f85cd834d036aaa76691d4552f9ab335c8f9f>`__)
+
 `1.9.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.9.0...v1.9.1>`__ (2022-11-07)
 -------------------------------------------------------------------------------------------------------
 
