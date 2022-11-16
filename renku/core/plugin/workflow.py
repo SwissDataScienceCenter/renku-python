@@ -45,7 +45,12 @@ def workflow_format() -> Tuple[IWorkflowConverter, List[str]]:  # type: ignore
 
 @hookspec(firstresult=True)
 def workflow_convert(
-    workflow: Plan, basedir: Path, output: Optional[Path], output_format: Optional[str]
+    workflow: Plan,
+    basedir: Path,
+    output: Optional[Path],
+    output_format: Optional[str],
+    resolve_paths: bool,
+    nest_workflows: bool,
 ) -> str:  # type: ignore
     """Plugin Hook for ``workflow export`` call.
 
@@ -82,7 +87,13 @@ class WorkflowConverterProtocol(Protocol):
     """Typing protocol to specify type of the workflow converter hook."""
 
     def __call__(
-        self, workflow: Plan, basedir: Path, output: Optional[Path] = None, output_format: Optional[str] = None
+        self,
+        workflow: Plan,
+        basedir: Path,
+        output: Optional[Path] = None,
+        output_format: Optional[str] = None,
+        resolve_paths: bool = True,
+        nest_workflows: bool = False,
     ) -> str:
         """Dummy method to let mypy know the type of the hook implementation."""
         raise NotImplementedError()

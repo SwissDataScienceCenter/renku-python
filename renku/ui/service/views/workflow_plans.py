@@ -19,6 +19,7 @@
 from flask import request
 
 from renku.ui.service.config import SERVICE_PREFIX
+from renku.ui.service.controllers.workflow_plans_export import WorkflowPlansExportCtrl
 from renku.ui.service.controllers.workflow_plans_list import WorkflowPlansListCtrl
 from renku.ui.service.controllers.workflow_plans_show import WorkflowPlansShowCtrl
 from renku.ui.service.views.api_versions import V1_4, VersionedBlueprint
@@ -86,3 +87,33 @@ def show_plan_view(user_data, cache):
         - workflow plans
     """
     return WorkflowPlansShowCtrl(cache, user_data, dict(request.args)).to_response()
+
+
+@workflow_plans_blueprint.route(
+    "/workflow_plans.export", methods=["GET"], provide_automatic_options=False, versions=[V1_4]
+)
+@handle_common_except
+@handle_workflow_errors
+@requires_cache
+@optional_identity
+def export_plan_view(user_data, cache):
+    """
+    Export a workflow.
+
+    ---
+    get:
+      description: Export a workflow to a specific format.
+      parameters:
+        - in: query
+          schema: WorkflowPlansExportRequest
+      responses:
+        200:
+          description: The details of the plan.
+          content:
+            application/json:
+              schema:
+                WorkflowPlansExportResponseRPC
+      tags:
+        - workflow plans
+    """
+    return WorkflowPlansExportCtrl(cache, user_data, dict(request.args)).to_response()

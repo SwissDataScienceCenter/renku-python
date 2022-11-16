@@ -25,6 +25,7 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import wraps
 from pathlib import Path
+from subprocess import check_output
 from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, Iterator, List, Optional, Tuple, Type, Union
 
 import pytest
@@ -465,3 +466,10 @@ def assert_rpc_response(response, with_key="result"):
     assert response and 200 == response.status_code
 
     assert with_key in response.json.keys(), str(response.json)
+
+
+def assert_valid_cwl(cwl: Path) -> str:
+    """Run cwltool --validate --strict on a cwl file and checks if the file is valid."""
+    output = str(check_output(["cwltool", "--validate", "--strict", str(cwl.resolve())]))
+    assert f"{str(cwl.resolve())} is valid CWL" in output
+    return output

@@ -19,7 +19,7 @@
 
 import pytest
 
-from tests.utils import assert_rpc_response, retry_failed
+from tests.utils import assert_rpc_response, assert_valid_cwl, retry_failed
 
 
 @pytest.mark.remote_repo("workflow")
@@ -174,3 +174,32 @@ def test_show_workflow_plans_view(plan_id, expected_fields, executions, touches_
 
     assert touches_files == response.json["result"]["touches_existing_files"]
     assert latest == response.json["result"]["latest"]
+
+
+@pytest.mark.parametrize(
+    "plan_id",
+    [
+        "/plans/6943ee7f620c4f2d8f75b657e9d9e765",
+        "/plans/56b3149fc21e43bea9b73b887934e084",
+        "/plans/7c4e51b1ac7143c287b5b0001d843310",
+        "/plans/6fee5bb01de449f6bc39d7e7cd23f4c2",
+    ],
+)
+@pytest.mark.remote_repo("workflow")
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+def test_workflow_export(plan_id, svc_client_with_repo, tmp_path):
+    """Check listing of plans."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    params = {"project_id": project_id, "plan_id": plan_id}
+
+    response = svc_client.get("/workflow_plans.export", query_string=params, headers=headers)
+
+    assert_rpc_response(response)
+    assert response.json.get("error") is None
+    cwl_path = tmp_path / "test.cwl"
+    with open(cwl_path, "w") as f:
+        f.write(response.json["result"])
+    assert_valid_cwl(cwl_path)

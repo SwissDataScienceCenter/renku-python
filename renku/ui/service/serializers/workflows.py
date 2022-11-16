@@ -16,6 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service workflow serializers."""
+from enum import Enum
+
 from marshmallow import Schema, fields
 from marshmallow_oneofschema import OneOfSchema
 
@@ -191,3 +193,23 @@ class WorkflowPlansShowResponseRPC(JsonRPCResponse):
     """Response schema for plan show view."""
 
     result = fields.Nested(PlanSuperSchema)
+
+
+class WorkflowExportFormatEnum(Enum):
+    """Accepted workflow format names."""
+
+    CWL: str = "cwl"
+
+
+class WorkflowPlansExportRequest(LocalRepositorySchema, RemoteRepositorySchema):
+    """Request schema for exporting a plan."""
+
+    plan_id = fields.String(required=True)
+    # NOTE: the enum values (not names) are used to deserialize format, the result from deserialize is Enum
+    format = fields.Enum(WorkflowExportFormatEnum, missing=WorkflowExportFormatEnum.CWL, by_value=True)
+
+
+class WorkflowPlansExportResponseRPC(JsonRPCResponse):
+    """Response schema for exporting a plan."""
+
+    result = fields.String()

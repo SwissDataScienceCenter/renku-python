@@ -72,6 +72,11 @@ def write_yaml(path, data):
         yaml.dump(data, fp, default_flow_style=False, Dumper=Dumper)
 
 
+def dumps_yaml(data) -> str:
+    """Convert YAML data to a YAML string."""
+    return yaml.dump(data)
+
+
 def load_yaml(data):
     """Load YAML data and return its content as a dict."""
     return yaml.load(data, Loader=NoDatesSafeLoader) or {}
