@@ -98,15 +98,31 @@ class CWLExporter(IWorkflowConverter):
         workflow: Union[CompositePlan, Plan],
         basedir: Path,
         output: Optional[Path],
-        output_format: Optional[str],  # only YAML is generated
-        resolve_paths: bool,  # if True will make paths absolute and resolve symlinks
-        nest_workflows: Optional[bool],  # if True, generate a single workflow spec and file
+        output_format: Optional[str],
+        resolve_paths: Optional[bool],
+        nest_workflows: Optional[bool],
     ) -> str:
-        """Converts the specified workflow to CWL format."""
+        """Converts the specified workflow to CWL format.
+
+        Args:
+            worflow(Union[CompositePlan, Plan]): The plan or composite plan to be converted to cwl.
+            basedir(Path): The path of the base location used as a prefix for all workflow input and outputs.
+            output(Optional[Path]): The file where the CWL specification should be saved,
+                if None then no file is created.
+            output_format(Optional[str]): Not used. Only YAML is generated, regardless of what is provided.
+            resolve_paths(Optional[bool]): Whether to make all paths absolute and resolve all symlinks,
+                True by default.
+            nest_workflows(Optional[bool]): Whether nested CWL workflows should be used or each sub-workflow should be
+                a separate file, False by default.
+
+        Returns:
+            The contents of the CWL workflow as string. If nested workflows are used then only the parent
+            specification is returned.
+        """
         filename = None
 
-        if nest_workflows is None:
-            nest_workflows = False
+        if resolve_paths is None:
+            resolve_paths = True
 
         if output:
             if output.is_dir():
@@ -118,10 +134,9 @@ class CWLExporter(IWorkflowConverter):
         else:
             tmpdir = Path(tempfile.mkdtemp())
 
+        cwl_workflow: Union[cwl.Workflow, CommandLineTool]
         if isinstance(workflow, CompositePlan):
-            cwl_workflow = CWLExporter._convert_composite(
-                workflow, basedir, resolve_paths=resolve_paths
-            )  # type: ignore
+            cwl_workflow = CWLExporter._convert_composite(workflow, basedir, resolve_paths=resolve_paths)
             if nest_workflows:
                 # INFO: There is only one parent workflow with all children embedded in it
                 if cwl_workflow.requirements is None:
@@ -139,7 +154,7 @@ class CWLExporter(IWorkflowConverter):
             if filename is None:
                 filename = Path(f"parent_{uuid4()}.cwl")
         else:
-            cwl_workflow = CWLExporter._convert_step(workflow, basedir, resolve_paths=resolve_paths)  # type: ignore
+            cwl_workflow = CWLExporter._convert_step(workflow, basedir, resolve_paths=resolve_paths)
             if filename is None:
                 filename = Path(f"{uuid4()}.cwl")
 

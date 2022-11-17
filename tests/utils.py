@@ -25,10 +25,13 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta
 from functools import wraps
 from pathlib import Path
-from subprocess import check_output
 from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, Iterator, List, Optional, Tuple, Type, Union
 
 import pytest
+from cwltool.context import LoadingContext
+from cwltool.load_tool import load_tool
+from cwltool.resolver import tool_resolver
+from cwltool.workflow import default_make_tool
 from flaky import flaky
 
 from renku.command.command_builder.command import inject, replace_injection
@@ -468,8 +471,7 @@ def assert_rpc_response(response, with_key="result"):
     assert with_key in response.json.keys(), str(response.json)
 
 
-def assert_valid_cwl(cwl: Path) -> str:
-    """Run cwltool --validate --strict on a cwl file and checks if the file is valid."""
-    output = str(check_output(["cwltool", "--validate", "--strict", str(cwl.resolve())]))
-    assert f"{str(cwl.resolve())} is valid CWL" in output
-    return output
+def validate_cwl(cwl: Path):
+    """Load a CWL file and raise an exception if it is invalid."""
+    context = LoadingContext({"construct_tool_object": default_make_tool, "resolver": tool_resolver})
+    load_tool(cwl.resolve().as_uri(), context)

@@ -49,7 +49,7 @@ class WorkflowPlansExportCtrl(ServiceCtrl, RenkuOperationMixin):
                 name_or_id=self.ctx["plan_id"],
                 format=self.ctx["format"].value,
                 output=None,
-                values=None,
+                values=self.ctx["values"],
                 basedir=".",
                 resolve_paths=False,
                 nest_workflows=True,

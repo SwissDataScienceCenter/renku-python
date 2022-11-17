@@ -17,9 +17,11 @@
 # limitations under the License.
 """Renku service dataset view tests."""
 
+import json
+
 import pytest
 
-from tests.utils import assert_rpc_response, assert_valid_cwl, retry_failed
+from tests.utils import assert_rpc_response, retry_failed, validate_cwl
 
 
 @pytest.mark.remote_repo("workflow")
@@ -190,16 +192,74 @@ def test_show_workflow_plans_view(plan_id, expected_fields, executions, touches_
 @pytest.mark.integration
 @retry_failed
 def test_workflow_export(plan_id, svc_client_with_repo, tmp_path):
-    """Check listing of plans."""
+    """Check exporting of workflows."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
     params = {"project_id": project_id, "plan_id": plan_id}
 
-    response = svc_client.get("/workflow_plans.export", query_string=params, headers=headers)
+    response = svc_client.post("/workflow_plans.export", data=json.dumps(params), headers=headers)
 
     assert_rpc_response(response)
     assert response.json.get("error") is None
     cwl_path = tmp_path / "test.cwl"
     with open(cwl_path, "w") as f:
         f.write(response.json["result"])
-    assert_valid_cwl(cwl_path)
+    validate_cwl(cwl_path)
+
+
+@pytest.mark.parametrize(
+    "plan_id,values,expected_cwl_substrings",
+    [
+        (
+            "/plans/6943ee7f620c4f2d8f75b657e9d9e765",
+            {"step1": {"input-1": "modified-input-1", "input-2": "modified-input-2"}},
+            [
+                "envValue: modified-input-1",
+                "envValue: modified-input-2",
+            ],
+        ),
+        (
+            "/plans/56b3149fc21e43bea9b73b887934e084",
+            {"input-1": "modified-input-1", "input-2": "modified-input-2"},
+            [
+                "envValue: modified-input-1",
+                "envValue: modified-input-2",
+            ],
+        ),
+        (
+            "/plans/7c4e51b1ac7143c287b5b0001d843310",
+            {"input-1": "modified-input-1", "output-2": "modified-output-2"},
+            [
+                "envValue: modified-input-1",
+                "envValue: modified-output-2",
+            ],
+        ),
+        (
+            "/plans/6fee5bb01de449f6bc39d7e7cd23f4c2",
+            {"input-1": "modified-input-1", "output-2": "modified-output-2"},
+            [
+                "envValue: modified-input-1",
+                "envValue: modified-output-2",
+            ],
+        ),
+    ],
+)
+@pytest.mark.remote_repo("workflow")
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+def test_workflow_export_with_values(plan_id, values, expected_cwl_substrings, svc_client_with_repo, tmp_path):
+    """Check exporting of workflows when values are passed."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    params = {"project_id": project_id, "plan_id": plan_id, "values": values}
+
+    response = svc_client.post("/workflow_plans.export", data=json.dumps(params), headers=headers)
+
+    assert_rpc_response(response)
+    assert response.json.get("error") is None
+    cwl_path = tmp_path / "test.cwl"
+    with open(cwl_path, "w") as f:
+        f.write(response.json["result"])
+    validate_cwl(cwl_path)
+    assert all([i in response.json["result"] for i in expected_cwl_substrings])

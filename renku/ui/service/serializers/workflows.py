@@ -22,6 +22,7 @@ from marshmallow import Schema, fields
 from marshmallow_oneofschema import OneOfSchema
 
 from renku.domain_model.dataset import DatasetCreatorsJson
+from renku.ui.cli.utils.plugins import supported_formats
 from renku.ui.service.serializers.common import LocalRepositorySchema, RemoteRepositorySchema
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
@@ -195,10 +196,10 @@ class WorkflowPlansShowResponseRPC(JsonRPCResponse):
     result = fields.Nested(PlanSuperSchema)
 
 
-class WorkflowExportFormatEnum(Enum):
-    """Accepted workflow format names."""
-
-    CWL: str = "cwl"
+WorkflowExportFormatEnum = Enum(  # type: ignore
+    "WorkflowExportFormatEnum",
+    zip(supported_formats(), supported_formats()),
+)
 
 
 class WorkflowPlansExportRequest(LocalRepositorySchema, RemoteRepositorySchema):
@@ -206,7 +207,8 @@ class WorkflowPlansExportRequest(LocalRepositorySchema, RemoteRepositorySchema):
 
     plan_id = fields.String(required=True)
     # NOTE: the enum values (not names) are used to deserialize format, the result from deserialize is Enum
-    format = fields.Enum(WorkflowExportFormatEnum, missing=WorkflowExportFormatEnum.CWL, by_value=True)
+    format = fields.Enum(WorkflowExportFormatEnum, missing=getattr(WorkflowExportFormatEnum, "cwl"), by_value=True)
+    values = fields.Dict(keys=fields.String(), missing=None)
 
 
 class WorkflowPlansExportResponseRPC(JsonRPCResponse):

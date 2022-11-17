@@ -62,11 +62,12 @@ V1_0 = ApiVersion("1.0")
 V1_1 = ApiVersion("1.1")
 V1_2 = ApiVersion("1.2")
 V1_3 = ApiVersion("1.3")
-V1_4 = ApiVersion("1.4", is_base_version=True)
+V1_4 = ApiVersion("1.4")
+V1_5 = ApiVersion("1.5", is_base_version=True)
 
-VERSIONS_FROM_V1_1 = [V1_1, V1_2, V1_3, V1_4]
+VERSIONS_FROM_V1_1 = [V1_1, V1_2, V1_3, V1_4, V1_5]
 VERSIONS_FROM_V1_0 = [V1_0] + VERSIONS_FROM_V1_1
 ALL_VERSIONS = [V0_9] + VERSIONS_FROM_V1_0
 
 MINIMUM_VERSION = V0_9
-MAXIMUM_VERSION = V1_4
+MAXIMUM_VERSION = V1_5

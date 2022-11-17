@@ -92,8 +92,8 @@ class WorkflowConverterProtocol(Protocol):
         basedir: Path,
         output: Optional[Path] = None,
         output_format: Optional[str] = None,
-        resolve_paths: bool = True,
-        nest_workflows: bool = False,
+        resolve_paths: Optional[bool] = None,
+        nest_workflows: Optional[bool] = None,
     ) -> str:
         """Dummy method to let mypy know the type of the hook implementation."""
         raise NotImplementedError()

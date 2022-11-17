@@ -1045,14 +1045,27 @@ def edit(
 def export(workflow_name, format, output, values):
     """Export workflow."""
     from renku.command.workflow import export_workflow_command
+    from renku.core.util.os import safe_read_yaml
 
     communicator = ClickCallback()
+
+    values_dict = None
+    if values is not None:
+        values_dict = safe_read_yaml(values)
 
     result = (
         export_workflow_command()
         .with_communicator(communicator)
         .build()
-        .execute(name_or_id=workflow_name, format=format, output=output, values=values)
+        .execute(
+            name_or_id=workflow_name,
+            format=format,
+            output=output,
+            values=values_dict,
+            basedir=None,
+            resolve_paths=False,
+            nest_workflows=False,
+        )
     )
 
     if not output:
