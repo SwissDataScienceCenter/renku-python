@@ -1787,7 +1787,7 @@ name = "responses"
 version = "0.22.0"
 description = "A utility library for mocking out the `requests` Python library."
 category = "main"
-optional = false
+optional = true
 python-versions = ">=3.7"
 
 [package.dependencies]
@@ -2313,7 +2313,7 @@ name = "types-toml"
 version = "0.10.8.1"
 description = "Typing stubs for toml"
 category = "main"
-optional = false
+optional = true
 python-versions = "*"
 
 [[package]]
@@ -2644,7 +2644,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "4ba7ca0846f4ed2c8d0a50d352583c4e28702541d5221110793f6813608e2c5a"
+content-hash = "8758be2a335c9feeb447c2732b00508f33c6f43b2d9297209c0518e1214e3f6b"
 
 [metadata.files]
 addict = [

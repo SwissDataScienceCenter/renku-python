@@ -1063,7 +1063,7 @@ def export(workflow_name, format, output, values):
             output=output,
             values=values_dict,
             basedir=None,
-            resolve_paths=False,
+            resolve_paths=True,
             nest_workflows=False,
         )
     )

@@ -30,7 +30,7 @@ hookspec = pluggy.HookspecMarker("renku")
 
 
 @hookspec
-def workflow_format() -> Tuple[IWorkflowConverter, List[str]]:  # type: ignore
+def workflow_format() -> Tuple[IWorkflowConverter, List[str]]:  # type: ignore[empty-body]
     """Plugin Hook for ``workflow export`` call.
 
     Can be used to export renku workflows in different formats.
@@ -44,14 +44,14 @@ def workflow_format() -> Tuple[IWorkflowConverter, List[str]]:  # type: ignore
 
 
 @hookspec(firstresult=True)
-def workflow_convert(
+def workflow_convert(  # type: ignore[empty-body]
     workflow: Plan,
     basedir: Path,
     output: Optional[Path],
     output_format: Optional[str],
     resolve_paths: bool,
     nest_workflows: bool,
-) -> str:  # type: ignore
+) -> str:
     """Plugin Hook for ``workflow export`` call.
 
     Can be used to export renku workflows in different formats.

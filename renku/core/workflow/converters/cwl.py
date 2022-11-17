@@ -146,11 +146,10 @@ class CWLExporter(IWorkflowConverter):
                 # INFO: The parent composite worfklow references other workflow files,
                 # write the child workflows in separate files and reference them in parent
                 for step in cast(List[WorkflowStep], cwl_workflow.steps):
-                    if filename is None:
-                        filename = Path(f"{uuid4()}.cwl")
-                    path = (tmpdir / filename).resolve()
-                    step.run = str(path)
-                    write_yaml(path, step.save())
+                    step_filename = Path(f"{uuid4()}.cwl")
+                    step_path = (tmpdir / step_filename).resolve()
+                    write_yaml(step_path, step.run.save())
+                    step.run = str(step_path)
             if filename is None:
                 filename = Path(f"parent_{uuid4()}.cwl")
         else:
