@@ -18,6 +18,7 @@
 """Git regex tests."""
 
 import os
+import time
 
 import pytest
 
@@ -287,6 +288,15 @@ from renku.domain_model.git import GitURL
             "port": "1234",
             "env": "https://gitlab.example.com:1234/",
         },
+        {
+            "href": "https://gitlab.example.com/renku-test/test-2022-11-11-17-01-46.git",
+            "scheme": "https",
+            "hostname": "gitlab.example.com",
+            "name": "test-2022-11-11-17-01-46",
+            "path": "renku-test/test-2022-11-11-17-01-46.git",
+            "owner": "renku-test",
+            "env": "https://gitlab.example.com",
+        },
     ],
 )
 def test_valid_href(fields):
@@ -296,4 +306,8 @@ def test_valid_href(fields):
     if gitlab_env:
         os.environ["GITLAB_BASE_URL"] = gitlab_env
 
+    start = time.monotonic()
     assert GitURL(**fields) == GitURL.parse(fields["href"])
+    duration = time.monotonic() - start
+
+    assert duration < 1.0, "Something wrong with the GitUrl regexes, probably catastrophic backtracking"
