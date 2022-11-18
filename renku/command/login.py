@@ -21,7 +21,9 @@ import os
 import time
 import urllib
 import webbrowser
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
+
+from pydantic import validate_arguments
 
 from renku.command.command_builder import Command
 from renku.core import errors
@@ -46,7 +48,8 @@ def login_command():
     return Command().command(_login)
 
 
-def _login(endpoint, git_login, yes):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _login(endpoint: Optional[str], git_login: bool, yes: bool):
     from renku.core.util import requests
 
     try:
@@ -222,7 +225,8 @@ def logout_command():
     return Command().command(_logout)
 
 
-def _logout(endpoint):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _logout(endpoint: Optional[str]):
     if endpoint:
         parsed_endpoint = parse_authentication_endpoint(endpoint=endpoint)
         key = parsed_endpoint.netloc
@@ -275,7 +279,8 @@ def credentials_command():
     return Command().command(_credentials)
 
 
-def _credentials(command, hostname):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _credentials(command: str, hostname: Optional[str]):
     if command != "get":
         return
 

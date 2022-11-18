@@ -98,6 +98,7 @@ pluggy = "==1.0.0"
 poetry-dynamic-versioning = { version = ">=0.14,<0.18", optional = true }
 portalocker = ">=2.2.1,<2.5"
 psutil = ">=5.4.7,<5.9.2"
+pydantic = "==1.10.2"
 pydocstyle = { version = "<6.1.2,>=4.0.1", optional = true }
 pyjwt = ">=2.1.0,<2.5.0"
 pyld = "==2.0.3"
@@ -227,6 +228,7 @@ all = [
     "plantweb",
     "poetry-dynamic-versioning",
     "ptvsd",
+    "pydantic",
     "pydocstyle",
     "pyte",
     "pytest",

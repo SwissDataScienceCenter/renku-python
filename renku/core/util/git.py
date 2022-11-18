@@ -602,7 +602,7 @@ def push_changes(repository: "Repository", remote: Optional[str] = None, reset: 
 
 def clone_renku_repository(
     url: str,
-    path: Union[Path, str],
+    path: Optional[Union[Path, str]],
     gitlab_token=None,
     deployment_hostname=None,
     depth: Optional[int] = None,
@@ -681,7 +681,7 @@ def clone_renku_repository(
 
 def clone_repository(
     url,
-    path: Union[Path, str] = None,
+    path: Optional[Union[Path, str]] = None,
     install_githooks=True,
     install_lfs=True,
     skip_smudge=True,
@@ -693,7 +693,7 @@ def clone_repository(
     checkout_revision=None,
     no_checkout: bool = False,
     clean: bool = False,
-    clone_options: List[str] = None,
+    clone_options: Optional[List[str]] = None,
 ) -> "Repository":
     """Clone a Git repository and install Git hooks and LFS.
 

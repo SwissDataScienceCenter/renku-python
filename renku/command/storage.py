@@ -17,6 +17,10 @@
 # limitations under the License.
 """Renku storage command."""
 
+from typing import List
+
+from pydantic import validate_arguments
+
 from renku.command.command_builder.command import Command
 from renku.core.storage import (
     check_lfs_migrate_info,
@@ -29,7 +33,8 @@ from renku.core.util import communication
 from renku.domain_model.project_context import project_context
 
 
-def _check_lfs(everything=False):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _check_lfs(everything: bool = False):
     """Check if large files are not in lfs.
 
     Args:
@@ -51,11 +56,12 @@ def check_lfs_command():
     return Command().command(_check_lfs)
 
 
-def _fix_lfs(paths):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _fix_lfs(paths: List[str]):
     """Migrate large files into lfs.
 
     Args:
-        paths: Paths to migrate to LFS.
+        paths(List[str]): Paths to migrate to LFS.
     """
     migrate_files_to_lfs(paths)
 
@@ -72,11 +78,12 @@ def fix_lfs_command():
     )
 
 
-def _pull(paths):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _pull(paths: List[str]):
     """Pull the specified paths from external storage.
 
     Args:
-        paths: Paths to pull from LFS.
+        paths(List[str]): Paths to pull from LFS.
     """
     pull_paths_from_storage(project_context.repository, *paths)
 
@@ -86,11 +93,12 @@ def pull_command():
     return Command().command(_pull)
 
 
-def _clean(paths):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _clean(paths: List[str]):
     """Remove files from lfs cache/turn them back into pointer files.
 
     Args:
-        paths: Paths to turn back to pointer files.
+        paths:List[str]: Paths to turn back to pointer files.
     """
     untracked_paths, local_only_paths = clean_storage_cache(*paths)
 
@@ -112,11 +120,12 @@ def clean_command():
     return Command().command(_clean)
 
 
-def _check_lfs_hook(paths):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _check_lfs_hook(paths: List[str]):
     """Check if paths should be in LFS.
 
     Args:
-        paths: Paths to check
+        paths(List[str]): Paths to check
 
     Returns:
         List of files that should be in LFS.

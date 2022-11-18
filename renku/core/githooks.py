@@ -20,6 +20,8 @@
 import stat
 from pathlib import Path
 
+from pydantic import validate_arguments
+
 from renku.core.util.git import get_hook_path
 from renku.domain_model.project_context import project_context
 
@@ -31,6 +33,7 @@ except ImportError:
 HOOKS = ("pre-commit",)
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def install(force: bool, path: Path):
     """Install Git hooks."""
     warning_messages = []

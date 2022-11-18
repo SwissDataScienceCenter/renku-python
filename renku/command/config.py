@@ -17,6 +17,10 @@
 # limitations under the License.
 """Get and set Renku repository or global options."""
 
+from typing import Dict, Optional
+
+from pydantic import validate_arguments
+
 from renku.command.command_builder.command import Command
 from renku.core import errors
 from renku.core.config import get_config, get_value, remove_value, set_value
@@ -39,13 +43,16 @@ def _split_section_and_key(key):
     return "renku", key
 
 
-def _update_multiple_config(values, global_only=False, commit_message=None):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _update_multiple_config(
+    values: Dict[str, Optional[str]], global_only: bool = False, commit_message: Optional[str] = None
+):
     """Add, update, or remove multiple configuration values.
 
     Args:
-        values: Dictionary of config key values to update.
-        global_only: Whether to only update global config (Default value = False).
-        commit_message: Commit message for change (Default value = None).
+        values(Dict[str, str]): Dictionary of config key values to update.
+        global_only(bool): Whether to only update global config (Default value = False).
+        commit_message(Optional[str]): Commit message for change (Default value = None).
     """
     for k, v in values.items():
         if v is not None:
@@ -65,15 +72,23 @@ def update_multiple_config():
     )
 
 
-def _update_config(key, *, value=None, remove=False, global_only=False, commit_message=None):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _update_config(
+    key: str,
+    *,
+    value: Optional[str] = None,
+    remove: bool = False,
+    global_only: bool = False,
+    commit_message: Optional[str] = None,
+):
     """Add, update, or remove configuration values.
 
     Args:
-        key: Config key.
-        value: Config value (Default value = None).
-        remove: Whether to remove values (Default value = False).
-        global_only: Whether to only update global config (Default value = False).
-        commit_message: Commit message for change (Default value = None).
+        key(str): Config key.
+        value(Optional[str]): Config value (Default value = None).
+        remove(bool): Whether to remove values (Default value = False).
+        global_only(bool): Whether to only update global config (Default value = False).
+        commit_message(Optional[str]): Commit message for change (Default value = None).
     Raises:
         errors.ParameterError: If key wasn't found.
     Returns:
@@ -100,7 +115,8 @@ def update_config():
     )
 
 
-def _read_config(key, config_filter=ConfigFilter.ALL, as_string=True):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _read_config(key: Optional[str], config_filter: ConfigFilter = ConfigFilter.ALL, as_string: bool = True):
     """Read configuration.
 
     Args:

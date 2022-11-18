@@ -19,6 +19,8 @@
 
 from typing import Dict, List, Optional, Union, cast
 
+from pydantic import validate_arguments
+
 from renku.command.command_builder import inject
 from renku.command.view_model.project import ProjectViewModel
 from renku.core.interface.project_gateway import IProjectGateway
@@ -29,12 +31,13 @@ from renku.domain_model.provenance.agent import Person
 
 
 @inject.autoparams()
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def edit_project(
     description: Optional[Union[str, NoValueType]],
     creator: Union[Dict, str, NoValueType],
     keywords: Optional[Union[List[str], NoValueType]],
     custom_metadata: Optional[Union[Dict, List[Dict], NoValueType]],
-    custom_metadata_source: str,
+    custom_metadata_source: Optional[Union[str, NoValueType]],
     project_gateway: IProjectGateway,
 ):
     """Edit dataset metadata.

@@ -18,7 +18,9 @@
 """Knowledge graph building."""
 
 import json
-from typing import Dict, List, Set, Union
+from typing import Dict, List, Optional, Set, Union
+
+from pydantic import validate_arguments
 
 from renku.command.command_builder.command import Command, inject
 from renku.command.schema.activity import ActivitySchema
@@ -52,7 +54,10 @@ def export_graph_command():
     return Command().command(export_graph).with_database(write=False).require_migration()
 
 
-def export_graph(format: str = "json-ld", revision_or_range: str = None, strict: bool = False) -> GraphViewModel:
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def export_graph(
+    format: str = "json-ld", revision_or_range: Optional[str] = None, strict: bool = False
+) -> GraphViewModel:
     """Output graph in specific format.
 
     Args:

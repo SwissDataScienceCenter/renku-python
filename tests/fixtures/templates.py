@@ -86,7 +86,6 @@ def project_init(template):
         ),
         "remote": ["--template-source", template["url"], "--template-ref", template["ref"]],
         "id": ["--template-id", template["id"]],
-        "index": ["--template-index", template["index"]],
         "force": ["--force"],
         "parameters": ["--parameter", "p1=v1", "--parameter", "p2=v2"],
         "parameters_equal_missing": ["--parameter", "p3:v3"],
