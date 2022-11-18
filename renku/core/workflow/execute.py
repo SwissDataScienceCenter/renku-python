@@ -50,7 +50,7 @@ def execute_workflow_graph(
     dag: "DiGraph",
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
-    provider="cwltool",
+    provider="toil",
     config=None,
 ):
     """Execute a Run with/without subprocesses.
@@ -59,7 +59,7 @@ def execute_workflow_graph(
         dag(DiGraph): The workflow graph to execute.
         activity_gateway(IActivityGateway): The injected activity gateway.
         plan_gateway(IPlanGateway): The injected plan gateway.
-        provider: Provider to run the workflow with (Default value = "cwltool").
+        provider: Provider to run the workflow with (Default value = "toil").
         config: Path to config for the workflow provider (Default value = None).
     """
     inputs = {i.actual_value for p in dag.nodes for i in p.inputs}
