@@ -18,6 +18,16 @@
 Changes
 =======
 
+`1.9.3 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.9.2...v1.9.3>`__ (2022-11-17)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix git url regex matching taking too long
+   (`#3213 <https://github.com/SwissDataScienceCenter/renku-python/issues/3213>`__)
+   (`8245ce3 <https://github.com/SwissDataScienceCenter/renku-python/commit/8245ce3c7eb3170a0c544db875f4fc4918474b1d>`__)
+
 `1.9.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.9.1...v1.9.2>`__ (2022-11-15)
 -------------------------------------------------------------------------------------------------------
 

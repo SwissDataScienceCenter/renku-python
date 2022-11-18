@@ -44,7 +44,7 @@ _RE_HOSTNAME = (
 
 _RE_PORT = r":(?P<port>\d+)"
 
-_RE_PATHNAME = r"(?P<path>(([\w\-\~\.]+)/)*?(((?P<owner>([\w\-\.]+/?)+)/)?(?P<name>[\w\-\.]+)(\.git)?)?)/*"
+_RE_PATHNAME = r"(?P<path>((\~[\w\-\.]+)/)*?(((?P<owner>[\w\-\./]+?)/)?(?P<name>[\w\-\.]+)(\.git)?)?)/*"
 
 _RE_PATHNAME_WITH_GITLAB = (
     r"(?P<path>((((gitlab/){0,1}|([\w\-\~\.]+/)*?)(?P<owner>([\w\-\.]+/)*[\w\-\.]+)/)?"
