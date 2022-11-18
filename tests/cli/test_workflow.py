@@ -161,6 +161,9 @@ def test_workflow_compose(runner, project, run_shell):
     assert composite_plan.mappings[1].default_value == "other_output.csv"
     assert composite_plan.mappings[1].description == "the final output file produced"
 
+    result = runner.invoke(cli, ["workflow", "ls"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
