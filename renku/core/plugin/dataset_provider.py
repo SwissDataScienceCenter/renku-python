@@ -27,7 +27,7 @@ hookspec = pluggy.HookspecMarker("renku")
 
 
 @hookspec
-def dataset_provider() -> "Type[ProviderApi]":
+def dataset_provider() -> "Type[ProviderApi]":  # type: ignore[empty-body]
     """Plugin Hook for different dataset providers.
 
     Returns:

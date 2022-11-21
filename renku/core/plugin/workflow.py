@@ -30,7 +30,7 @@ hookspec = pluggy.HookspecMarker("renku")
 
 
 @hookspec
-def workflow_format() -> Tuple[IWorkflowConverter, List[str]]:  # type: ignore
+def workflow_format() -> Tuple[IWorkflowConverter, List[str]]:  # type: ignore[empty-body]
     """Plugin Hook for ``workflow export`` call.
 
     Can be used to export renku workflows in different formats.
@@ -44,9 +44,14 @@ def workflow_format() -> Tuple[IWorkflowConverter, List[str]]:  # type: ignore
 
 
 @hookspec(firstresult=True)
-def workflow_convert(
-    workflow: Plan, basedir: Path, output: Optional[Path], output_format: Optional[str]
-) -> str:  # type: ignore
+def workflow_convert(  # type: ignore[empty-body]
+    workflow: Plan,
+    basedir: Path,
+    output: Optional[Path],
+    output_format: Optional[str],
+    resolve_paths: bool,
+    nest_workflows: bool,
+) -> str:
     """Plugin Hook for ``workflow export`` call.
 
     Can be used to export renku workflows in different formats.
@@ -82,7 +87,13 @@ class WorkflowConverterProtocol(Protocol):
     """Typing protocol to specify type of the workflow converter hook."""
 
     def __call__(
-        self, workflow: Plan, basedir: Path, output: Optional[Path] = None, output_format: Optional[str] = None
+        self,
+        workflow: Plan,
+        basedir: Path,
+        output: Optional[Path] = None,
+        output_format: Optional[str] = None,
+        resolve_paths: Optional[bool] = None,
+        nest_workflows: Optional[bool] = None,
     ) -> str:
         """Dummy method to let mypy know the type of the hook implementation."""
         raise NotImplementedError()
