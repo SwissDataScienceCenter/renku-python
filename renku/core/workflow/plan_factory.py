@@ -22,6 +22,7 @@ import re
 import shlex
 import time
 from contextlib import contextmanager
+from datetime import datetime
 from itertools import chain
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
@@ -701,11 +702,13 @@ class PlanFactory:
         description: Optional[str] = None,
         keywords: Optional[List[str]] = None,
         creators: Optional[List[Person]] = None,
+        date_created: Optional[datetime] = None,
     ) -> Plan:
         """Return an instance of ``Plan`` based on this factory."""
         plan = Plan(
             id=self.plan_id,
             name=name,
+            date_created=date_created,
             description=description,
             keywords=keywords,
             command=" ".join(self.base_command),
