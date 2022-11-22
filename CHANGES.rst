@@ -18,6 +18,47 @@
 Changes
 =======
 
+`1.9.3 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.9.2...v1.9.3>`__ (2022-11-17)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix git url regex matching taking too long
+   (`#3213 <https://github.com/SwissDataScienceCenter/renku-python/issues/3213>`__)
+   (`8245ce3 <https://github.com/SwissDataScienceCenter/renku-python/commit/8245ce3c7eb3170a0c544db875f4fc4918474b1d>`__)
+
+`1.9.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.9.1...v1.9.2>`__ (2022-11-15)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **workflow:** set plan creation date to activity start date
+   (`#3210 <https://github.com/SwissDataScienceCenter/renku-python/issues/3210>`__)
+   (`c18f85c <https://github.com/SwissDataScienceCenter/renku-python/commit/c18f85cd834d036aaa76691d4552f9ab335c8f9f>`__)
+
+`1.9.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.9.0...v1.9.1>`__ (2022-11-07)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **service:** fix import of private datasets with gitlab cloud native
+   deployments
+   (`#3193 <https://github.com/SwissDataScienceCenter/renku-python/issues/3193>`__)
+   (`5fbc8d2 <https://github.com/SwissDataScienceCenter/renku-python/commit/5fbc8d23df03642e5c12ebae456891e33b5537bb>`__)
+-  **service:** remove project cache directory before clone
+   (`#3195 <https://github.com/SwissDataScienceCenter/renku-python/issues/3195>`__)
+   (`e046b3a <https://github.com/SwissDataScienceCenter/renku-python/commit/e046b3a2cbafa731f8c5e836152f5b1429d5cf0f>`__)
+
+Features
+~~~~~~~~
+
+-  **dataset:** copy data to s3
+   (`#3163 <https://github.com/SwissDataScienceCenter/renku-python/issues/3163>`__)
+   (`bb326d2 <https://github.com/SwissDataScienceCenter/renku-python/commit/bb326d2a38a455d4e120719d5e54ab11721d4e0e>`__)
+
 `1.9.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.8.1...v1.9.0>`__ (2022-11-03)
 -------------------------------------------------------------------------------------------------------
 

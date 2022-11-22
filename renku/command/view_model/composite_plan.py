@@ -221,6 +221,7 @@ class CompositePlanViewModel:
         self.touches_existing_files = touches_existing_files
         self.latest = latest
         self.type = "CompositePlan"
+        self.full_command = ""
 
         if duration is not None:
             self.duration = duration.seconds
