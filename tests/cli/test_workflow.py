@@ -161,6 +161,9 @@ def test_workflow_compose(runner, project, run_shell):
     assert composite_plan.mappings[1].default_value == "other_output.csv"
     assert composite_plan.mappings[1].description == "the final output file produced"
 
+    result = runner.invoke(cli, ["workflow", "ls"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -1450,3 +1453,17 @@ def test_rerun_doesnt_update_plan_index(runner, project, with_injection):
     assert 0 == result.exit_code, format_result_exception(result)
     assert new_description in result.output
     assert original_description not in result.output
+
+
+def test_plan_creation_date(runner, project, with_injection):
+    """Test Plan's creation date is before Activity's start date."""
+    result = runner.invoke(cli, ["run", "--name", "r1", "--no-output", "sleep", "2"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    with with_injection():
+        plan_gateway = PlanGateway()
+        plan = plan_gateway.get_by_name("r1")
+        activity_gateway = ActivityGateway()
+        activity = activity_gateway.get_all_activities()[0]
+
+    assert plan.date_created <= activity.started_at_time
