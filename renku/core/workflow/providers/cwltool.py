@@ -104,7 +104,14 @@ class CWLToolProvider(IWorkflowProvider):
         with tempfile.NamedTemporaryFile() as f:
             # export Plan to cwl
             converter = workflow_converter("cwl")
-            converter(workflow=workflow, basedir=basedir, output=Path(f.name), output_format=None)
+            converter(
+                workflow=workflow,
+                basedir=basedir,
+                output=Path(f.name),
+                output_format=None,
+                resolve_paths=True,
+                nest_workflows=False,
+            )
 
             process = factory.make(os.path.relpath(str(f.name)))
 

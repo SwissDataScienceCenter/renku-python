@@ -26,7 +26,7 @@ hookspec = pluggy.HookspecMarker("renku")
 
 
 @hookspec
-def session_provider() -> Tuple[ISessionProvider, str]:
+def session_provider() -> Tuple[ISessionProvider, str]:  # type: ignore[empty-body]
     """Plugin Hook for ``session`` sub-command.
 
     Returns:

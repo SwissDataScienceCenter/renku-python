@@ -20,7 +20,7 @@
 import itertools
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, Generator, List, Optional, Set, Tuple, Union, cast, overload
+from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union, cast, overload
 
 from pydantic import validate_arguments
 
@@ -34,7 +34,7 @@ from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.git import get_git_user
-from renku.core.util.os import are_paths_related, get_relative_paths, safe_read_yaml
+from renku.core.util.os import are_paths_related, get_relative_paths
 from renku.core.util.util import NO_VALUE, NoValueType
 from renku.core.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.value_resolution import CompositePlanValueResolver, ValueResolver
@@ -518,7 +518,10 @@ def export_workflow(
     plan_gateway: IPlanGateway,
     format: str,
     output: Optional[Union[str, Path]],
-    values: Optional[str],
+    values: Optional[Dict[str, Any]],
+    basedir: Optional[str],
+    resolve_paths: Optional[bool],
+    nest_workflows: Optional[bool],
 ):
     """Export a workflow to a given format.
 
@@ -527,10 +530,23 @@ def export_workflow(
         plan_gateway(IPlanGateway): The injected Plan gateway.
         format(str): Format to export to.
         output(Optional[str]): Output path to store result at.
-        values(Optional[str]): Path to values file to apply before export.
+        values(Optional[Dict[str,Any]]): Parameter names and values to apply before export.
+        basedir(Optional[str]): The base path prepended to all paths in the exported workflow,
+            if None it defaults to the absolute path of the renku project.
+        resolve_paths(Optional[bool]): Resolve all symlinks and make paths absolute, defaults to True.
+        nest_workflows(Optional[bool]): Whether to try to nest all workflows into one specification and file or not,
+            defaults to False.
     Returns:
         The exported workflow as string.
     """
+
+    if resolve_paths is None:
+        resolve_paths = True
+
+    if basedir is None:
+        basedir_path = project_context.path
+    elif isinstance(basedir, str):
+        basedir_path = Path(basedir)
 
     workflow = plan_gateway.get_by_name_or_id(name_or_id)
 
@@ -544,8 +560,7 @@ def export_workflow(
         output_path = cast(Path, output)
 
     if values:
-        parsed_values = safe_read_yaml(values)
-        rv = ValueResolver.get(workflow, parsed_values)
+        rv = ValueResolver.get(workflow, values)
         workflow = rv.apply()
         if rv.missing_parameters:
             communication.warn(
@@ -556,7 +571,14 @@ def export_workflow(
     from renku.core.plugin.workflow import workflow_converter
 
     converter = workflow_converter(format)
-    return converter(workflow=workflow, basedir=project_context.path, output=output_path, output_format=format)
+    return converter(
+        workflow=workflow,
+        basedir=basedir_path,
+        output=output_path,
+        output_format=format,
+        resolve_paths=resolve_paths,
+        nest_workflows=nest_workflows,
+    )
 
 
 def _lookup_paths_in_paths(lookup_paths: List[str], target_paths: List[str]):
