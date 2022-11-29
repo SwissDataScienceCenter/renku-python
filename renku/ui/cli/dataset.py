@@ -1128,6 +1128,7 @@ def update(
             check_data_directory=check_data_directory,
             update_all=update_all,
             dry_run=dry_run,
+            plain=plain,
         )
     )
 

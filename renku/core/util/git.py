@@ -250,7 +250,7 @@ def get_full_repository_path(url: Optional[str]) -> str:
     Returns:
         The hostname plus path extracted from the URL.
     """
-    if not str:
+    if str is None:
         return ""
 
     parsed_url = parse_git_url(url)
