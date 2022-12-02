@@ -184,6 +184,7 @@ import click
 
 from renku.command.options import option_external_storage_requested
 from renku.core import errors
+from renku.ui.cli.utils import color
 
 INVALID_DATA_DIRS = [".", ".renku", ".git"]
 """Paths that cannot be used as data directory name."""
@@ -281,7 +282,7 @@ def init(
     initial_branch,
 ):
     """Initialize a project in PATH. Default is the current path."""
-    from renku.command.init import init_command
+    from renku.command.init import init_project_command
     from renku.core.util.git import check_global_git_user_is_configured
     from renku.ui.cli.utils.callback import ClickCallback
 
@@ -301,7 +302,7 @@ def init(
         custom_metadata = json.loads(Path(metadata).read_text())
 
     communicator = ClickCallback()
-    init_command().with_communicator(communicator).build().execute(
+    init_project_command().with_communicator(communicator).build().execute(
         external_storage_requested=external_storage_requested,
         path=path,
         name=name,
@@ -318,7 +319,4 @@ def init(
         install_mergetool=True,
     )
 
-    # Install git hooks
-    from .githooks import install
-
-    ctx.invoke(install, force=force)
+    click.secho("OK", fg=color.GREEN)

@@ -34,14 +34,14 @@ HOOKS = ("pre-commit",)
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
-def install(force: bool, path: Path):
+def install_githooks(force: bool, path: Path):
     """Install Git hooks."""
     warning_messages = []
     for hook in HOOKS:
         hook_path = get_hook_path(name=hook, path=path)
         if hook_path.exists():
             if not force:
-                warning_messages.append("Hook already exists. Skipping {0}".format(str(hook_path)))
+                warning_messages.append(f"Hook already exists. Skipping {hook_path}")
                 continue
             else:
                 hook_path.unlink()
@@ -55,7 +55,7 @@ def install(force: bool, path: Path):
     return warning_messages
 
 
-def uninstall():
+def uninstall_githooks():
     """Uninstall Git hooks."""
     for hook in HOOKS:
         hook_path = get_hook_path(name=hook, path=project_context.path)
