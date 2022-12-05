@@ -288,7 +288,7 @@ exclude = '''
 add_ignore = ["D105", "D107", "D202", "D401"]
 
 [tool.bandit]
-skips = ["B101"]
+skips = ["B101", "B603", "B404"]
 
 [tool.isort]
 multi_line_output = 3

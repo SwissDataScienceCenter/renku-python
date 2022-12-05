@@ -75,6 +75,7 @@ repos:
     - id: bandit
       args: [--configfile, pyproject.toml]
       types: [python]
+      additional_dependencies: ["bandit[toml]"]
   - repo: local
     hooks:
     - id: poetry-check
