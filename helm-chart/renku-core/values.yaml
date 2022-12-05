@@ -28,6 +28,7 @@ global:
       renku-redis-host: "true"
     existingSecret: redis-secret
     existingSecretPasswordKey: redis-password
+  debug: false
 # base path - this is the reverse proxy base path
 apiBasePath: /api
 cacheDirectory: /svc/cache
@@ -96,7 +97,7 @@ versions:
     fullnameOverride: ""
     image:
       repository: renku/renku-core
-      tag: "v1.8.1"
+      tag: "v1.10.0"
       pullPolicy: IfNotPresent
   v8:
     name: v8

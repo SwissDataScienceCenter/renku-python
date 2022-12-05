@@ -161,6 +161,9 @@ def test_workflow_compose(runner, project, run_shell):
     assert composite_plan.mappings[1].default_value == "other_output.csv"
     assert composite_plan.mappings[1].description == "the final output file produced"
 
+    result = runner.invoke(cli, ["workflow", "ls"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -368,7 +371,7 @@ def test_workflow_remove_command(runner, project):
     assert 2 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["workflow", "show", workflow_name])
-    assert 2 == result.exit_code, format_result_exception(result)
+    assert 1 == result.exit_code, format_result_exception(result)
 
 
 def test_workflow_remove_with_composite_command(runner, project):
@@ -443,6 +446,16 @@ def test_workflow_edit(runner, project):
     database = Database.from_path(project.database_path)
     first_plan = database["plans"][_get_plan_id(result.stdout)]
     assert first_plan.description == "Test workflow"
+
+    cmd = ["workflow", "edit", workflow_name, "--keyword", "bio", "--keyword", "informatics"]
+    result = runner.invoke(cli, cmd)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    database = Database.from_path(project.database_path)
+    first_plan = database["plans"][_get_plan_id(result.stdout)]
+    assert 2 == len(first_plan.keywords)
+    assert "bio" in first_plan.keywords
+    assert "informatics" in first_plan.keywords
 
     # edit parameter
     cmd = ["workflow", "edit", workflow_name, "--rename-param", "param1=param2"]
@@ -1385,7 +1398,8 @@ def test_reverted_activity_status(runner, project, with_injection):
     write_and_commit_file(project.repository, input, "content")
     output = project.path / "output"
 
-    assert 0 == runner.invoke(cli, ["run", "cat", input], stdout=output).exit_code
+    result = runner.invoke(cli, ["run", "cat", input], stdout=output)
+    assert 0 == result.exit_code, format_result_exception(result)
     write_and_commit_file(project.repository, input, "changes")
 
     with with_injection():
@@ -1409,3 +1423,47 @@ def test_reverted_activity_status(runner, project, with_injection):
     assert activity_id not in runner.invoke(cli, ["log"]).output
     assert "input" not in runner.invoke(cli, ["workflow", "inputs"]).output
     assert "output" not in runner.invoke(cli, ["workflow", "outputs"]).output
+
+
+def test_rerun_doesnt_update_plan_index(runner, project, with_injection):
+    """Test that a rerun does not update the plan index."""
+    input = project.path / "input"
+    write_and_commit_file(project.repository, input, "content")
+    output = project.path / "output"
+
+    original_description = "1111111111111111"
+    result = runner.invoke(
+        cli, ["run", "--name", "my-workflow", "--description", original_description, "cat", input], stdout=output
+    )
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    new_description = "22222222222222222"
+    result = runner.invoke(cli, ["workflow", "edit", "my-workflow", "--description", new_description])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "show", "my-workflow"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert new_description in result.output
+    assert original_description not in result.output
+
+    result = runner.invoke(cli, ["rerun", output])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "show", "my-workflow"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert new_description in result.output
+    assert original_description not in result.output
+
+
+def test_plan_creation_date(runner, project, with_injection):
+    """Test Plan's creation date is before Activity's start date."""
+    result = runner.invoke(cli, ["run", "--name", "r1", "--no-output", "sleep", "2"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    with with_injection():
+        plan_gateway = PlanGateway()
+        plan = plan_gateway.get_by_name("r1")
+        activity_gateway = ActivityGateway()
+        activity = activity_gateway.get_all_activities()[0]
+
+    assert plan.date_created <= activity.started_at_time

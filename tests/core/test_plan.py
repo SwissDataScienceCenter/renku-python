@@ -131,7 +131,7 @@ def test_plan_delete_errors(project_with_injection):
 
 def test_plan_get_initial_id(project_with_injection):
     """Test getting initial id of a plan."""
-    grand_parent, parent, plan, child, grand_child, unrelated = create_dummy_plans()
+    grand_parent, parent, plan, child, grand_child, _ = create_dummy_plans()
 
     initial_id = get_initial_id(plan)
 
@@ -143,7 +143,7 @@ def test_plan_get_initial_id(project_with_injection):
 
 def test_get_activities(project_with_injection):
     """Test getting activities of a plan."""
-    grand_parent, parent, plan, child, grand_child, unrelated = create_dummy_plans()
+    grand_parent, _, plan, child, grand_child, unrelated = create_dummy_plans()
     activities = [
         create_dummy_activity(plan),
         create_dummy_activity(grand_parent),

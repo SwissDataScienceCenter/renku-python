@@ -78,7 +78,7 @@ def get_relative_path(path: Union[Path, str], base: Union[Path, str], strict: bo
 
 
 def is_subpath(path: Union[Path, str], base: Union[Path, str]) -> bool:
-    """Return True if path is within base."""
+    """Return True if path is within or same as base."""
     return get_relative_path(path, base) is not None
 
 

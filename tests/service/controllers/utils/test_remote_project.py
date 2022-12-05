@@ -33,14 +33,14 @@ def test_project_metadata_remote():
         "email": "testing@user.com",
         "token": "123",
     }
-    request_data = {"git_url": "https://dev.renku.ch/gitlab/renku-python-integration-tests/import-me"}
+    request_data = {"git_url": "https://gitlab.dev.renku.ch/renku-python-integration-tests/import-me"}
     ctrl = RemoteProject(user_data, request_data)
     path = ctrl.remote_url
 
     assert path
     assert "https" == path.scheme
-    assert "oauth2:123@dev.renku.ch" == path.netloc
-    assert "/gitlab/renku-python-integration-tests/import-me" == path.path
+    assert "oauth2:123@gitlab.dev.renku.ch" == path.netloc
+    assert "/renku-python-integration-tests/import-me" == path.path
     assert "" == path.params
     assert "" == path.query
     assert "" == path.fragment
@@ -55,7 +55,7 @@ def test_project_metadata_custom_remote():
     }
 
     request_data = {
-        "git_url": "https://dev.renku.ch/gitlab/renku-python-integration-tests/import-me",
+        "git_url": "https://gitlab.dev.renku.ch/renku-python-integration-tests/import-me",
         "ref": "my-branch",
     }
 
@@ -72,12 +72,12 @@ def test_project_metadata_remote_err():
         "email": "testing@user.com",
         "token": "123",
     }
-    request_data = {"git_url": "/dev.renku.ch/gitlab/renku-python-integration-tests/import-me"}
+    request_data = {"git_url": "/gitlab.dev.renku.ch/renku-python-integration-tests/import-me"}
 
     with pytest.raises(ValidationError):
         RemoteProject(user_data, request_data)
 
-    request_data["git_url"] = "httpz://dev.renku.ch/gitlab/renku-python-integration-tests/import-me"
+    request_data["git_url"] = "httpz://gitlab.dev.renku.ch/renku-python-integration-tests/import-me"
 
     with pytest.raises(ValidationError):
         RemoteProject(user_data, request_data)
@@ -93,7 +93,7 @@ def test_remote_project_context():
         "email": "testing@user.com",
         "token": "123",
     }
-    request_data = {"git_url": "https://dev.renku.ch/gitlab/renku-python-integration-tests/import-me"}
+    request_data = {"git_url": "https://gitlab.dev.renku.ch/renku-python-integration-tests/import-me"}
     ctrl = RemoteProject(user_data, request_data)
 
     with ctrl.remote() as project_path:

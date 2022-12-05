@@ -24,7 +24,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
 
 from renku.core import errors
-from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderPriority
+from renku.core.dataset.providers.api import (
+    AddProviderInterface,
+    ExporterApi,
+    ExportProviderInterface,
+    ProviderApi,
+    ProviderPriority,
+)
 from renku.core.storage import check_external_storage, track_paths_in_storage
 from renku.core.util import communication
 from renku.core.util.dataset import check_url
@@ -37,7 +43,7 @@ if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset, DatasetTag
 
 
-class FilesystemProvider(ProviderApi):
+class FilesystemProvider(ProviderApi, AddProviderInterface, ExportProviderInterface):
     """Local filesystem provider."""
 
     priority = ProviderPriority.LOW
@@ -53,16 +59,6 @@ class FilesystemProvider(ProviderApi):
         """Whether or not this provider supports a given URI."""
         is_remote, _ = check_url(uri)
         return not is_remote
-
-    @staticmethod
-    def supports_add():
-        """Whether this provider supports adding data to datasets."""
-        return True
-
-    @staticmethod
-    def supports_export():
-        """Whether this provider supports dataset export."""
-        return True
 
     @staticmethod
     def get_add_parameters() -> List["ProviderParameter"]:
@@ -103,12 +99,11 @@ class FilesystemProvider(ProviderApi):
 
         return [ProviderParameter("path", flags=["p", "path"], help="Path to copy data to.", type=str)]
 
-    @staticmethod
     def add(
+        self,
         uri: str,
         destination: Path,
         *,
-        dataset: Optional["Dataset"] = None,
         external: bool = False,
         move: bool = False,
         copy: bool = False,
@@ -136,19 +131,15 @@ class FilesystemProvider(ProviderApi):
         elif copy:
             prompt_action = False
 
-        if dataset is None:
-            raise errors.ParameterError("Dataset is not passed")
-
         u = urllib.parse.urlparse(uri)
         path = u.path
 
         action = DatasetAddAction.SYMLINK if external else default_action
-        absolute_dataset_data_dir = (project_context.path / dataset.get_datadir()).resolve()
         source_root = Path(get_absolute_path(path))
         warnings: List[str] = []
 
         def check_recursive_addition(src: Path):
-            if src.resolve() == absolute_dataset_data_dir:
+            if is_subpath(destination, src):
                 raise errors.ParameterError(f"Cannot recursively add path containing dataset's data directory: {path}")
 
         def get_destination_root():
@@ -169,7 +160,7 @@ class FilesystemProvider(ProviderApi):
 
         def get_metadata(src: Path) -> DatasetAddMetadata:
             is_tracked = repository.contains(src)
-            in_datadir = is_subpath(src, absolute_dataset_data_dir)
+            in_datadir = is_subpath(src, destination)
 
             relative_path = src.relative_to(source_root)
             dst = destination_root / relative_path
@@ -208,7 +199,7 @@ class FilesystemProvider(ProviderApi):
 
         if not force and prompt_action and not external:
             communication.confirm(
-                f"The following files will be copied to {dataset.get_datadir()} "
+                f"The following files will be copied to {destination.relative_to(project_context.path)} "
                 "(use '--move' or '--link' to move or symlink them instead, '--copy' to not show this warning):\n\t"
                 + "\n\t".join(str(e.source) for e in results)
                 + "\nProceed?",

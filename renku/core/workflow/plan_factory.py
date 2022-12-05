@@ -22,6 +22,7 @@ import re
 import shlex
 import time
 from contextlib import contextmanager
+from datetime import datetime
 from itertools import chain
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
@@ -41,6 +42,7 @@ from renku.core.util.os import get_absolute_path, get_relative_path, is_subpath
 from renku.core.workflow.types import PATH_OBJECTS, Directory, File
 from renku.domain_model.datastructures import DirectoryTree
 from renku.domain_model.project_context import project_context
+from renku.domain_model.provenance.agent import Person
 from renku.domain_model.workflow.parameter import (
     DIRECTORY_MIME_TYPE,
     CommandInput,
@@ -699,11 +701,14 @@ class PlanFactory:
         name: Optional[str] = None,
         description: Optional[str] = None,
         keywords: Optional[List[str]] = None,
+        creators: Optional[List[Person]] = None,
+        date_created: Optional[datetime] = None,
     ) -> Plan:
         """Return an instance of ``Plan`` based on this factory."""
         plan = Plan(
             id=self.plan_id,
             name=name,
+            date_created=date_created,
             description=description,
             keywords=keywords,
             command=" ".join(self.base_command),
@@ -712,6 +717,7 @@ class PlanFactory:
             parameters=self.parameters,
             project_id=project_gateway.get_project().id,
             success_codes=self.success_codes,
+            creators=creators,
         )
 
         pm = get_plugin_manager()

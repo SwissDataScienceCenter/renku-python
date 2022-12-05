@@ -209,6 +209,9 @@ def get_renku_repo_url(remote_url, deployment_hostname=None, access_token=None):
     credentials = f"renku:{access_token}@" if access_token else ""
     hostname = deployment_hostname or parsed_remote.hostname
 
+    if hostname.startswith("gitlab."):
+        hostname = hostname.replace("gitlab.", "", 1)
+
     return urllib.parse.urljoin(f"https://{credentials}{hostname}", path)
 
 
@@ -247,7 +250,7 @@ def get_full_repository_path(url: Optional[str]) -> str:
     Returns:
         The hostname plus path extracted from the URL.
     """
-    if not str:
+    if str is None:
         return ""
 
     parsed_url = parse_git_url(url)
@@ -759,6 +762,10 @@ def clone_repository(
                     repository.pull()
                 except errors.GitCommandError:  # NOTE: When ref is not a branch, an error is thrown
                     pass
+            else:
+                # NOTE: not same remote, so don't reuse
+                clean_directory()
+                return None
         except errors.GitError:  # NOTE: Not a git repository, remote not found, or checkout failed
             clean_directory()
         else:

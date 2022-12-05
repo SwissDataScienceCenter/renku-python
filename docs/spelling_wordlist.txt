@@ -108,6 +108,7 @@ installable
 interoperability
 io
 ipynb
+IStorage
 iteratively
 ize
 izing
@@ -171,6 +172,7 @@ Postgresql
 powerline
 pre
 prepend
+prepended
 prepending
 preprocessed
 preprocessing
