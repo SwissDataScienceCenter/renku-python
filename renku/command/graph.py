@@ -44,7 +44,7 @@ from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.plan import AbstractPlan, Plan
 
 try:
-    import importlib_resources
+    import importlib_resources  # type: ignore[import]
 except ImportError:
     import importlib.resources as importlib_resources  # type: ignore
 

@@ -90,7 +90,7 @@ def list_datasets():
 
     for dataset in datasets_provenance.datasets:
         tags = datasets_provenance.get_all_tags(dataset)
-        dataset = DynamicProxy(dataset)
+        dataset = cast(Dataset, DynamicProxy(dataset))
         dataset.tags = tags
         dataset.tags_csv = ",".join(tag.name for tag in tags)
         dataset.datadir_path = str(dataset.get_datadir())

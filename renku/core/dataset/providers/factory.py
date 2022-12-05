@@ -33,6 +33,7 @@ from renku.core.util import communication
 from renku.core.util.doi import is_doi
 
 
+# TODO: Fix return type of methods once python supports type intersections: python/typing/issues/213
 class ProviderFactory:
     """Create a provider type from URI."""
 
@@ -67,8 +68,8 @@ class ProviderFactory:
         """Get an add provider based on uri."""
         for provider in ProviderFactory.get_add_providers():
             try:
-                if provider.supports(uri):
-                    return provider(uri=uri)
+                if provider.supports(uri):  # type: ignore[union-attr]
+                    return provider(uri=uri)  # type: ignore[call-arg]
             except BaseException as e:
                 communication.warn(f"Couldn't test provider {provider}: {e}")
 
@@ -79,7 +80,10 @@ class ProviderFactory:
         """Get the export provider with a given name."""
         provider_name = provider_name.lower()
         try:
-            return next(p for p in ProviderFactory.get_export_providers() if p.name.lower() == provider_name)(uri=None)
+            provider = next(
+                p for p in ProviderFactory.get_export_providers() if p.name.lower() == provider_name  # type: ignore
+            )
+            return provider(uri=None)  # type: ignore
         except StopIteration:
             raise errors.DatasetProviderNotFound(name=provider_name)
 
@@ -97,13 +101,13 @@ class ProviderFactory:
 
         for provider in import_providers:
             try:
-                if provider.supports(uri):
-                    return provider(uri=uri, is_doi=is_doi_)
+                if provider.supports(uri):  # type: ignore[union-attr]
+                    return provider(uri=uri, is_doi=is_doi_)  # type: ignore[call-arg]
             except BaseException as e:
                 warning += f"Couldn't test provider {provider}: {e}\n"
 
         url = uri.split("/")[1].split(".")[0] if is_doi_ else uri  # NOTE: Get DOI provider name if uri is a DOI
-        supported_providers = ", ".join(p.name for p in import_providers)
+        supported_providers = ", ".join(p.name for p in import_providers)  # type: ignore
         message = warning + f"Provider not found: {url}\nHint: Supported providers are: {supported_providers}"
         raise errors.DatasetProviderNotFound(message=message)
 
@@ -112,8 +116,8 @@ class ProviderFactory:
         """Get a backend storage provider based on uri."""
         for provider in ProviderFactory.get_storage_providers():
             try:
-                if provider.supports(uri):
-                    return provider(uri=uri)
+                if provider.supports(uri):  # type: ignore[union-attr]
+                    return provider(uri=uri)  # type: ignore[call-arg]
             except BaseException as e:
                 communication.warn(f"Couldn't test provider {provider}: {e}")
 

@@ -237,10 +237,10 @@ def log(columns, format, workflows, datasets, no_pager, no_color):
 
         if no_color:
             text = strip_ansi_codes(text)
-
-        if no_pager:
-            click.echo(text)
-        else:
-            show_text_with_pager(text)
     else:
-        click.echo(LOG_FORMATS[format](result, columns), not no_pager)
+        text = LOG_FORMATS[format](result, columns)  # type: ignore
+
+    if no_pager:
+        click.echo(text)
+    else:
+        show_text_with_pager(text)

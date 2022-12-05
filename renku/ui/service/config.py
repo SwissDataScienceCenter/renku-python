@@ -21,7 +21,7 @@ import tempfile
 from pathlib import Path
 
 try:
-    import importlib_resources
+    import importlib_resources  # type: ignore[import]
 except ImportError:
     import importlib.resources as importlib_resources  # type: ignore
 

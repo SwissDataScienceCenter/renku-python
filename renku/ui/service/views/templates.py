@@ -101,4 +101,4 @@ def create_project_from_template(user_data, cache):
       tags:
         - templates
     """
-    return TemplatesCreateProjectCtrl(cache, user_data, dict(request.json)).to_response()
+    return TemplatesCreateProjectCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore

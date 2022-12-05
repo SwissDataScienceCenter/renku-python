@@ -172,8 +172,10 @@ def _check_existing_destinations(destinations):
     if not existing:
         return
 
-    existing = "\n\t".join(existing)
-    raise errors.ParameterError(f"The following move target exist, use '--force' flag to overwrite them:\n\t{existing}")
+    existing_str = "\n\t".join(existing)
+    raise errors.ParameterError(
+        f"The following move target exist, use '--force' flag to overwrite them:\n\t{existing_str}"
+    )
 
 
 def _warn_about_ignored_destinations(destinations):

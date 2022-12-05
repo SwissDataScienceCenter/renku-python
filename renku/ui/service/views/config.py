@@ -86,4 +86,4 @@ def set_config(user_data, cache):
       tags:
         - config
     """
-    return SetConfigCtrl(cache, user_data, dict(request.json)).to_response()
+    return SetConfigCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore

@@ -19,8 +19,9 @@
 
 import os.path
 import re
+from datetime import datetime
 from itertools import islice
-from typing import Tuple
+from typing import Dict, List, Optional, Tuple, cast
 
 from renku.command.command_builder.command import Command
 from renku.core.util import communication
@@ -114,12 +115,12 @@ def _get_modifications_from_diff(diff):
     Returns:
         List of metadata modifications made in diff.
     """
-    modifications = {
+    modifications: Dict[str, Dict[str, List[str]]] = {
         "metadata": {"restored": [], "modified": [], "removed": []},
         "files": {"restored": [], "modified": [], "removed": []},
     }
 
-    metadata_objects = {}
+    metadata_objects: Dict[str, Tuple[str, str, datetime]] = {}
 
     for diff_index in diff:
         entry = diff_index.a_path or diff_index.b_path
@@ -127,10 +128,12 @@ def _get_modifications_from_diff(diff):
 
         if str(project_context.database_path) == os.path.commonpath([project_context.database_path, entry_path]):
             # metadata file
-            entry, change_type, identifier, entry_date = _get_modification_type_from_db(entry)
+            modification_type = _get_modification_type_from_db(entry)
 
-            if not entry:
+            if not modification_type:
                 continue
+
+            entry, change_type, identifier, entry_date = modification_type
 
             if identifier not in metadata_objects or entry_date < metadata_objects[identifier][2]:
                 # we only want he least recent change of a metadata object
@@ -196,11 +199,14 @@ def _prompt_for_checkpoint(commits):
 
         while True:
             # loop until user makes a valid selection
+            invalid = False
             if selection == "m" and more_pages:
                 current_index += CHECKPOINTS_PER_PAGE
                 break
             elif selection == "q":
                 return
+            elif selection is None:
+                invalid = True
             else:
                 try:
                     selected = int(selection)
@@ -210,9 +216,12 @@ def _prompt_for_checkpoint(commits):
                         communication.warn("Not a valid checkpoint")
                         selected = None
                 except (ValueError, TypeError):
-                    communication.warn(
-                        "Please enter a valid checkpoint number" + (", 'q' or 'm'" if more_pages else "or 'q")
-                    )
+                    invalid = True
+
+            if invalid:
+                communication.warn(
+                    "Please enter a valid checkpoint number" + (", 'q' or 'm'" if more_pages else "or 'q")
+                )
 
             prompt = "Checkpoint ([q] to quit)"
             if more_pages:
@@ -231,7 +240,7 @@ def _prompt_for_checkpoint(commits):
     return all_checkpoints[selected]
 
 
-def _get_modification_type_from_db(path: str):
+def _get_modification_type_from_db(path: str) -> Optional[Tuple[str, str, str, datetime]]:
     """Get the modification type for an entry in the database.
 
     Args:
@@ -278,10 +287,10 @@ def _get_modification_type_from_db(path: str):
             f"Dataset: {db_object.name}",
             change_type,
             f"dataset_{db_object.name}",
-            db_object.date_removed or db_object.date_published or db_object.date_created,
+            cast(datetime, db_object.date_removed or db_object.date_published or db_object.date_created),
         )
     else:
-        return None, None, None, None
+        return None
 
 
 def _checkpoint_iterator(commits):

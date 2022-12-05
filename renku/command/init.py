@@ -110,7 +110,7 @@ def _init(
     template_id: Optional[str],
     template_source: Optional[str],
     template_ref: Optional[str],
-    input_parameters: Optional[Dict[str, str]],
+    input_parameters: Dict[str, str],
     custom_metadata: Optional[Dict[str, Any]],
     force: bool,
     data_dir: Optional[Path],

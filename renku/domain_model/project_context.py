@@ -192,7 +192,7 @@ class ProjectContext(threading.local):
         return self._top.repository
 
     @repository.setter
-    def repository(self, value: "Repository"):
+    def repository(self, value: Optional["Repository"]):
         """Set the current repository."""
         self._top.repository = value
 
