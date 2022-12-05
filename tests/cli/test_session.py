@@ -63,3 +63,21 @@ def test_session_up_down(runner, project, dummy_session_provider, monkeypatch):
     result = runner.invoke(cli, ["session", "ls", "-p", "dummy"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert 2 == len(result.output.splitlines())
+
+
+def test_session_start_config_requests(runner, project, dummy_session_provider, monkeypatch):
+    """Test session with configuration in the renku config."""
+    import docker
+
+    result = runner.invoke(cli, ["config", "set", "interactive.cpu_request", "0.5"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    result = runner.invoke(cli, ["config", "set", "interactive.disk_request", "100mb"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    result = runner.invoke(cli, ["config", "set", "interactive.mem_request", "100mb"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    with monkeypatch.context() as monkey:
+        monkey.setattr(docker, "from_env", MagicMock())
+        result = runner.invoke(cli, ["session", "start", "-p", "docker"])
+        assert 0 == result.exit_code, format_result_exception(result)
+        assert "successfully started" in result.output
