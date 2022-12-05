@@ -570,6 +570,7 @@ def update_datasets(
     check_data_directory: bool,
     update_all: bool,
     dry_run: bool,
+    plain: bool,
     dataset_gateway: IDatasetGateway,
 ) -> Tuple[List[DatasetViewModel], List[DatasetFileViewModel]]:
     """Update dataset files.
@@ -587,6 +588,7 @@ def update_datasets(
         check_data_directory(bool): Whether to check the dataset's data directory for new files.
         update_all(bool): Whether to update all datasets.
         dry_run(bool): Whether to return a preview of what would be updated.
+        plain(bool): Whether plain output should be produced.
         dataset_gateway(IDatasetGateway): Injected dataset gateway.
     """
     from renku.core.dataset.providers.renku import RenkuProvider
@@ -680,7 +682,7 @@ def update_datasets(
     )
 
     if not records:
-        if must_match_records:
+        if must_match_records and not plain:
             raise errors.ParameterError("No files matched the criteria.")
         return imported_dataset_updates_view_models, []
 

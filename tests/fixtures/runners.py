@@ -154,17 +154,20 @@ class RenkuRunner(CliRunner):
 def run_shell():
     """Create a shell cmd runner."""
 
-    def run_(cmd, return_ps=None, sleep_for=None):
+    def run_(cmd, return_ps=None, sleep_for=None, work_dir=None):
         """Spawn subprocess and execute shell command.
 
         Args:
             cmd(str): The command to run.
             return_ps: Return process object.
             sleep_for: After executing command sleep for n seconds.
+            work_dir: The directory where the command should be executed from
         Returns:
             Process object or tuple (stdout, stderr).
         """
-        ps = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        ps = subprocess.Popen(
+            cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=work_dir
+        )
 
         if return_ps:
             return ps

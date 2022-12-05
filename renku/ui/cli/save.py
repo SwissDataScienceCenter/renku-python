@@ -119,8 +119,9 @@ def save(message, destination, paths):
     )
 
     if saved_paths:
-        click.echo("Successfully saved to remote branch {}: \n\t{}".format(branch, "\n\t".join(saved_paths)))
+        paths_str = "\n\t".join(saved_paths)
+        click.echo(f"Successfully saved to remote branch {branch}: \n\t{paths_str}")
     else:
-        click.echo("There were no changes to save.")
+        click.echo(f"Successfully saved to remote branch {branch}.")
 
     click.secho("OK", fg=color.GREEN)
