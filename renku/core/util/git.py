@@ -716,7 +716,7 @@ def clone_repository(
     Returns:
         The cloned repository.
     """
-    from renku.core.githooks import install
+    from renku.core.githooks import install_githooks as install_githooks_function
     from renku.infrastructure.repository import Repository
 
     path = Path(path) if path else Path(get_repository_name(url))
@@ -829,7 +829,7 @@ def clone_repository(
                 config_writer.set_value(section, option, value)
 
     if install_githooks:
-        install(force=True, path=repository.path)
+        install_githooks_function(force=True, path=repository.path)
 
     if install_lfs:
         repository.lfs.install(skip_smudge=skip_smudge)
