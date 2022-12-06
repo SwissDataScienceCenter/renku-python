@@ -21,6 +21,8 @@ import webbrowser
 from itertools import chain
 from typing import List, Optional
 
+from pydantic import validate_arguments
+
 from renku.core import errors
 from renku.core.config import get_value
 from renku.core.plugin.session import get_supported_session_providers
@@ -37,7 +39,8 @@ def _safe_get_provider(provider: str) -> ISessionProvider:
         raise errors.ParameterError(f"Session provider '{provider}' is not available!")
 
 
-def session_list(config_path: str, provider: Optional[str] = None):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def session_list(config_path: Optional[str], provider: Optional[str] = None):
     """List interactive sessions."""
 
     def list_sessions(session_provider: ISessionProvider) -> List[Session]:
@@ -56,10 +59,11 @@ def session_list(config_path: str, provider: Optional[str] = None):
     return list(chain(*map(list_sessions, providers)))
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def session_start(
     provider: str,
     config_path: Optional[str],
-    image_name: str = None,
+    image_name: Optional[str] = None,
     cpu_request: Optional[float] = None,
     mem_request: Optional[str] = None,
     disk_request: Optional[str] = None,
@@ -121,7 +125,8 @@ def session_start(
     return session_name
 
 
-def session_stop(session_name: str, stop_all: bool = False, provider: Optional[str] = None):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def session_stop(session_name: Optional[str], stop_all: bool = False, provider: Optional[str] = None):
     """Stop interactive session."""
 
     def stop_sessions(session_provider: ISessionProvider) -> bool:
@@ -148,6 +153,7 @@ def session_stop(session_name: str, stop_all: bool = False, provider: Optional[s
         raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def session_open(session_name: str, provider: Optional[str] = None):
     """Open interactive session in the browser."""
 

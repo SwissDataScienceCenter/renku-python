@@ -21,7 +21,9 @@ import os
 import time
 import urllib
 import webbrowser
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, cast
+
+from pydantic import validate_arguments
 
 from renku.command.command_builder import Command
 from renku.core import errors
@@ -46,7 +48,8 @@ def login_command():
     return Command().command(_login)
 
 
-def _login(endpoint, git_login, yes):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _login(endpoint: Optional[str], git_login: bool, yes: bool):
     from renku.core.util import requests
 
     try:
@@ -58,7 +61,7 @@ def _login(endpoint, git_login, yes):
 
     remote_name, remote_url = None, None
     if git_login:
-        if not repository:
+        if repository is None:
             raise errors.ParameterError("Cannot use '--git' flag outside a project.")
 
         remote = get_remote(repository)
@@ -132,7 +135,7 @@ def _login(endpoint, git_login, yes):
     _store_token(parsed_endpoint.netloc, access_token)
 
     if git_login:
-        _set_git_credential_helper(repository=repository, hostname=parsed_endpoint.netloc)
+        _set_git_credential_helper(repository=cast("Repository", repository), hostname=parsed_endpoint.netloc)
         backup_remote_name, backup_exists, remote = create_backup_remote(
             repository=repository, remote_name=remote_name, url=remote_url  # type:ignore
         )
@@ -142,7 +145,7 @@ def _login(endpoint, git_login, yes):
             communication.error(f"Cannot create backup remote '{backup_remote_name}' for '{remote_url}'")
         else:
             _set_renku_url_for_remote(
-                repository=repository,
+                repository=cast("Repository", repository),
                 remote_name=remote_name,  # type:ignore
                 remote_url=remote_url,  # type:ignore
                 hostname=parsed_endpoint.netloc,
@@ -222,7 +225,8 @@ def logout_command():
     return Command().command(_logout)
 
 
-def _logout(endpoint):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _logout(endpoint: Optional[str]):
     if endpoint:
         parsed_endpoint = parse_authentication_endpoint(endpoint=endpoint)
         key = parsed_endpoint.netloc
@@ -275,7 +279,8 @@ def credentials_command():
     return Command().command(_credentials)
 
 
-def _credentials(command, hostname):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _credentials(command: str, hostname: Optional[str]):
     if command != "get":
         return
 

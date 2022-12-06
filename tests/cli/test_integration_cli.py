@@ -120,7 +120,7 @@ def test_renku_clone_uses_project_name(runner, path, expected_path):
     remote = "https://gitlab.dev.renku.ch/renku-testing/project-9"
 
     with runner.isolated_filesystem() as project_path:
-        result = runner.invoke(cli, ["clone", remote, path])
+        result = runner.invoke(cli, ["clone", remote] + ([path] if path else []))
         assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
         assert (Path(project_path) / expected_path / "Dockerfile").exists()
 

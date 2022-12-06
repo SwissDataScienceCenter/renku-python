@@ -49,7 +49,7 @@ def migration_check_project_view_0_9(user_data, cache):
         - cache
     """
     ctrl = MigrationsCheckCtrl(cache, user_data, dict(request.args), GitlabAPIProvider())
-    ctrl.RESPONSE_SERIALIZER = ProjectMigrationCheckResponseRPC_0_9()
+    ctrl.RESPONSE_SERIALIZER = ProjectMigrationCheckResponseRPC_0_9()  # type: ignore
     return ctrl.to_response()
 
 

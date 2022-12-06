@@ -66,14 +66,13 @@ class Project:
     def __init__(self):
         try:
             repository = get_git_repository()
+            path = repository.path
         except ValueError:
             repository = None
             path = Path(".")
-        else:
-            path = repository.path
 
         project_context.replace_path(path)
-        project_context.repository = repository
+        project_context.repository = repository  # type: ignore
         self._path = project_context.path
         self._repository = repository
 

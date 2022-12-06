@@ -1026,6 +1026,9 @@ class ObjectReader:
 
             cls = self._get_class(object_type)
 
+            if cls is None:
+                raise TypeError(f"Couldn't find class '{object_type}'")
+
             if issubclass(cls, datetime.datetime):
                 assert create
                 data = data["@renku_data_value"]
@@ -1065,7 +1068,7 @@ class ObjectReader:
 
             if issubclass(cls, persistent.Persistent):
                 new_object = cls.__new__(cls)
-                new_object._p_oid = oid
+                new_object._p_oid = oid  # type: ignore[attr-defined]
                 self.set_ghost_state(new_object, data)
             elif issubclass(cls, Enum):
                 # NOTE: Enum replaces __new__ on classes with its own versions that validates entries

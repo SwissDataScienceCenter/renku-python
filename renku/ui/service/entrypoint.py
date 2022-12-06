@@ -36,6 +36,7 @@ from renku.ui.service.errors import (
     ProgramHttpRequestError,
     ProgramHttpServerError,
     ProgramHttpTimeoutError,
+    ServiceError,
 )
 from renku.ui.service.logger import service_log
 from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET
@@ -123,6 +124,7 @@ def register_exceptions(app):
             if request.method in NO_PAYLOAD_METHODS:
                 return Response(status=code)
 
+            error: ServiceError
             if code == 400:
                 error = ProgramHttpRequestError(e)
             elif code == 404:

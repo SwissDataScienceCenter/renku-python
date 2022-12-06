@@ -42,7 +42,7 @@ class CommandLineTool(cwl.CommandLineTool):
 
     def get_dict(self):
         """Set outputs to empty if not set."""
-        d = super(CommandLineTool, self).get_dict()
+        d = super(CommandLineTool, self).get_dict()  # type: ignore[misc]
         if "outputs" not in d:
             d["outputs"] = []
         return d
@@ -53,7 +53,7 @@ class WorkflowStep(cwl.WorkflowStep):
 
     def get_dict(self):
         """Set out to empty if not set."""
-        d = super(WorkflowStep, self).get_dict()
+        d = super(WorkflowStep, self).get_dict()  # type: ignore[misc]
         if "out" not in d:
             d["out"] = []
         return d

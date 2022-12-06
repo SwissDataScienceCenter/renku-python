@@ -19,6 +19,8 @@
 
 from typing import List
 
+from pydantic import validate_arguments
+
 from renku.command.command_builder import Command, inject
 from renku.command.view_model.log import LogViewModel
 from renku.core.interface.activity_gateway import IActivityGateway
@@ -32,6 +34,7 @@ def log_command():
 
 
 @inject.autoparams("activity_gateway", "dataset_gateway")
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def _log(
     activity_gateway: IActivityGateway,
     dataset_gateway: IDatasetGateway,

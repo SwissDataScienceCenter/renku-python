@@ -18,7 +18,9 @@
 """Renku ``update`` command."""
 
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
+
+from pydantic import validate_arguments
 
 from renku.command.command_builder.command import Command
 from renku.core import errors
@@ -45,13 +47,14 @@ def update_command(skip_metadata_update: bool):
     return command
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def _update(
     update_all: bool,
     dry_run: bool,
     ignore_deleted: bool,
     provider: str,
     config: Optional[str],
-    paths=None,
+    paths: Optional[List[str]] = None,
 ):
     if not paths and not update_all and not dry_run:
         raise ParameterError("Either PATHS, --all/-a, or --dry-run/-n should be specified.")

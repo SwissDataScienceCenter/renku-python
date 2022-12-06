@@ -19,6 +19,8 @@
 
 from typing import List, Optional
 
+from pydantic import validate_arguments
+
 from renku.command.command_builder.command import Command, inject
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
@@ -40,6 +42,7 @@ def rerun_command(skip_metadata_update: bool):
 
 
 @inject.autoparams()
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def _rerun(
     dry_run: bool,
     sources: List[str],

@@ -19,6 +19,9 @@
 
 import os
 from pathlib import Path
+from typing import List, Optional
+
+from pydantic import validate_arguments
 
 from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
@@ -38,15 +41,16 @@ def move_command():
     return Command().command(_move).require_migration().require_clean().with_database(write=True).with_commit()
 
 
-def _move(sources, destination, force, verbose, to_dataset):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _move(sources: List[str], destination: str, force: bool, verbose: bool, to_dataset: Optional[str]):
     """Move files and check repository for potential problems.
 
     Args:
-        sources: Source file(s) to move.
-        destination: Destination to move files to.
-        force: Whether or not to overwrite destination files.
-        verbose: Toggle verbose output.
-        to_dataset: Target dataset to move files into.
+        sources(List[str]): Source file(s) to move.
+        destination(str): Destination to move files to.
+        force(bool): Whether or not to overwrite destination files.
+        verbose(bool): Toggle verbose output.
+        to_dataset(Optional[str]): Target dataset to move files into.
     """
     repository = project_context.repository
 
@@ -168,8 +172,10 @@ def _check_existing_destinations(destinations):
     if not existing:
         return
 
-    existing = "\n\t".join(existing)
-    raise errors.ParameterError(f"The following move target exist, use '--force' flag to overwrite them:\n\t{existing}")
+    existing_str = "\n\t".join(existing)
+    raise errors.ParameterError(
+        f"The following move target exist, use '--force' flag to overwrite them:\n\t{existing_str}"
+    )
 
 
 def _warn_about_ignored_destinations(destinations):

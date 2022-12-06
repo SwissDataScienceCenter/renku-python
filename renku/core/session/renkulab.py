@@ -196,7 +196,12 @@ class RenkulabSessionProvider(ISessionProvider):
             repository.commit("Automated commit by Renku CLI.")
 
     def _remote_head_hexsha(self):
-        return get_remote(repository=project_context.repository).head
+        remote = get_remote(repository=project_context.repository)
+
+        if remote is None:
+            raise errors.GitRemoteNotFoundError()
+
+        return remote.head
 
     @staticmethod
     def _send_renku_request(req_type: str, *args, **kwargs):
