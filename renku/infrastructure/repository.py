@@ -29,7 +29,22 @@ from datetime import datetime
 from functools import lru_cache
 from itertools import zip_longest
 from pathlib import Path
-from typing import Any, Callable, Dict, Generator, List, NamedTuple, Optional, Set, Tuple, Type, TypeVar, Union, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
 import git
 
@@ -259,7 +274,7 @@ class BaseRepository:
 
         self.run_git_command("checkout", reference)
 
-    def clean(self, paths: List[Union[Path, str]] = None):
+    def clean(self, paths: Optional[Sequence[Union[Path, str]]] = None):
         """Remove untracked files."""
         self.run_git_command("clean", "-xdff", paths)
 
@@ -613,7 +628,7 @@ class BaseRepository:
                 return True
 
         def get_content_from_submodules():
-            for submodule in self.submodules:
+            for submodule in self.submodules:  # type: ignore[attr-defined]
                 try:
                     Path(absolute_path).relative_to(submodule.path)
                 except ValueError:
@@ -947,13 +962,13 @@ class Repository(BaseRepository):
         url: Union[Path, str],
         path: Union[Path, str],
         *,
-        branch: str = None,
+        branch: Optional[str] = None,
         recursive: bool = False,
-        depth: int = None,
+        depth: Optional[int] = None,
         progress: Optional[Callable] = None,
         no_checkout: bool = False,
-        env: dict = None,
-        clone_options: List[str] = None,
+        env: Optional[dict] = None,
+        clone_options: Optional[List[str]] = None,
     ) -> "Repository":
         """Clone a remote repository and create an instance."""
         try:

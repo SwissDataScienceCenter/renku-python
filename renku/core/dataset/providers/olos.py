@@ -120,13 +120,14 @@ class OLOSExporter(ExporterApi):
 
     def _get_dataset_metadata(self):
         try:
-            identifier = UUID(self.dataset.identifier, version=4)
+            identifier = str(UUID(self.dataset.identifier, version=4))
         except ValueError:
             identifier = uuid4().hex
+
         metadata = {
             "publicationDate": datetime.date.today().isoformat(),
             "description": self.dataset.description,
-            "identifier": str(identifier),
+            "identifier": identifier,
             "keywords": self.dataset.keywords,
             "title": self.dataset.title,
             "access": "CLOSED",
@@ -236,8 +237,8 @@ class _OLOSDeposition:
         """Create URL for creating a dataset."""
         url_parts = urlparse.urlparse(server_url)
 
-        query_params = urllib.parse.urlencode(query_params)
-        url_parts = url_parts._replace(path=api_path, query=query_params)
+        query_params_encoded = urllib.parse.urlencode(query_params)
+        url_parts = url_parts._replace(path=api_path, query=query_params_encoded)
         return urllib.parse.urlunparse(url_parts)
 
     def _get(self, url):

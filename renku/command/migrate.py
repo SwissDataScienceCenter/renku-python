@@ -17,6 +17,10 @@
 # limitations under the License.
 """Migrate project to the latest Renku version."""
 
+from typing import List
+
+from pydantic import validate_arguments
+
 from renku.command.command_builder.command import Command
 from renku.domain_model.project_context import project_context
 
@@ -88,15 +92,14 @@ def _template_migration_check():
 
     try:
         project = project_context.project
+        template_source = project.template_source
+        template_ref = project.template_ref
+        template_id = project.template_id
     except ValueError:
         project = None
         template_source = None
         template_ref = None
         template_id = None
-    else:
-        template_source = project.template_source
-        template_ref = project.template_ref
-        template_id = project.template_id
 
     update_available, update_allowed, current_version, new_version = check_for_template_update(project)
 
@@ -200,11 +203,12 @@ def _check_project():
     return status | SUPPORTED_RENKU_PROJECT
 
 
-def _check_immutable_template_files(paths):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _check_immutable_template_files(paths: List[str]):
     """Check paths and return a list of those that are marked immutable in the project template.
 
     Args:
-        paths: Paths to check.
+        paths(List[str]): Paths to check.
 
     Returns:
         List of immutable template files.

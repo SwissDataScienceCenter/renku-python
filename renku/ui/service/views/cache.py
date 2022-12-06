@@ -125,7 +125,7 @@ def delete_file_chunks_view(user_data, cache):
       tags:
         - cache
     """
-    return DeleteFileChunksCtrl(cache, user_data, dict(request.json)).to_response()
+    return DeleteFileChunksCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
 @cache_blueprint.route("/cache.project_clone", methods=["POST"], provide_automatic_options=False, versions=ALL_VERSIONS)
@@ -154,7 +154,7 @@ def project_clone_view(user_data, cache):
       tags:
         - cache
     """
-    return ProjectCloneCtrl(cache, user_data, dict(request.json)).to_response()
+    return ProjectCloneCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
 @cache_blueprint.route("/cache.project_list", methods=["GET"], provide_automatic_options=False, versions=ALL_VERSIONS)
@@ -206,7 +206,7 @@ def migrate_project_view(user_data, cache):
       tags:
         - cache
     """
-    return MigrateProjectCtrl(cache, user_data, dict(request.json)).to_response()
+    return MigrateProjectCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
 @cache_blueprint.route(

@@ -54,4 +54,4 @@ def graph_build_view(user_data, cache):
       tags:
         - graph
     """
-    return GraphExportCtrl(cache, user_data, dict(request.json)).to_response()
+    return GraphExportCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
