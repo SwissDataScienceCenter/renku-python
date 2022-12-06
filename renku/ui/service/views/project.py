@@ -57,7 +57,7 @@ def show_project_view(user_data, cache):
       tags:
         - project
     """
-    return ProjectShowCtrl(cache, user_data, dict(request.json)).to_response()
+    return ProjectShowCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
 @project_blueprint.route(
@@ -90,7 +90,7 @@ def edit_project_view(user_data, cache):
       tags:
         - project
     """
-    return ProjectEditCtrl(cache, user_data, dict(request.json)).to_response()
+    return ProjectEditCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
 @project_blueprint.route(

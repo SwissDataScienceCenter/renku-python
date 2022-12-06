@@ -21,6 +21,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, NamedTuple, Optional, Set, Union
 
+from pydantic import validate_arguments
+
 from renku.core.config import get_value
 from renku.core.util.os import get_relative_path_to_cwd, get_relative_paths
 from renku.core.workflow.activity import (
@@ -44,6 +46,7 @@ class StatusResult(NamedTuple):
     deleted_inputs: Set[str]
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def get_status(paths: Optional[List[Union[Path, str]]] = None, ignore_deleted: bool = False) -> StatusResult:
     """Return status of a project.
 

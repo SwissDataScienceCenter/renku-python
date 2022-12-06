@@ -232,7 +232,6 @@ def resolve_data_directory(data_dir, path):
     help="Data directory within the project",
 )
 @click.option("-t", "--template-id", help="Provide the id of the template to use.")
-@click.option("-i", "--template-index", help="Deprecated", type=int)
 @click.option("-s", "--template-source", help="Provide the templates repository url or path.")
 @click.option(
     "-r", "--template-ref", default=None, help="Specify the reference to checkout on remote template repository."
@@ -271,7 +270,6 @@ def init(
     description,
     keyword,
     template_id,
-    template_index,
     template_source,
     template_ref,
     parameters,
@@ -293,10 +291,6 @@ def init(
         raise errors.ParameterError("'-d/--describe' is deprecated: Use 'renku template show' instead.")
     if list_templates:
         raise errors.ParameterError("'-l/--list-templates' is deprecated: Use 'renku template ls' instead.")
-    if template_index:
-        raise errors.ParameterError(
-            "'-i/--template-index' is deprecated: Use '-t/--template-id' to pass a template id."
-        )
 
     datadir = resolve_data_directory(datadir, path)
 

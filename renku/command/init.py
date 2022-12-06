@@ -20,8 +20,10 @@
 import os
 import shutil
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from uuid import uuid4
+
+from pydantic import validate_arguments
 
 from renku.command.command_builder.command import Command, inject
 from renku.command.mergetool import setup_mergetool
@@ -98,45 +100,47 @@ def init_command():
     return Command().command(_init).with_database()
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def _init(
-    external_storage_requested,
-    path,
-    name,
-    description,
-    keywords,
-    template_id,
-    template_source,
-    template_ref,
-    input_parameters,
-    custom_metadata,
-    force,
-    data_dir,
-    initial_branch,
-    install_mergetool,
+    external_storage_requested: bool,
+    path: str,
+    name: Optional[str],
+    description: Optional[str],
+    keywords: Optional[List[str]],
+    template_id: Optional[str],
+    template_source: Optional[str],
+    template_ref: Optional[str],
+    input_parameters: Dict[str, str],
+    custom_metadata: Optional[Dict[str, Any]],
+    force: bool,
+    data_dir: Optional[Path],
+    initial_branch: Optional[str],
+    install_mergetool: bool,
 ):
     """Initialize a renku project.
 
     Args:
-        external_storage_requested: Whether or not external storage should be used.
-        path: Path to initialize repository at.
-        name: Name of the project.
-        description: Description of the project.
-        keywords: keywords for the project.
-        template_id: id of the template to use.
-        template_source: Source to get the template from.
-        template_ref: Reference to use to get the template.
-        input_parameters: Template parameters.
-        custom_metadata: Custom JSON-LD metadata for project.
-        force: Whether to overwrite existing files and delete existing metadata.
-        data_dir: Where to store dataset data.
-        initial_branch: Default git branch.
+        external_storage_requested(bool): Whether or not external storage should be used.
+        path(str): Path to initialize repository at.
+        name(Optional[str]): Name of the project.
+        description(Optional[str]): Description of the project.
+        keywords(Optional[List[str]]): keywords for the project.
+        template_id(Optional[str]): id of the template to use.
+        template_source(Optional[str]): Source to get the template from.
+        template_ref(Optional[str]): Reference to use to get the template.
+        input_parameters(Optional[Dict[str, str]]): Template parameters.
+        custom_metadata(Optional[Dict[str, Any]]): Custom JSON-LD metadata for project.
+        force(bool): Whether to overwrite existing files and delete existing metadata.
+        data_dir(Optional[str]): Where to store dataset data.
+        initial_branch(Optional[str]): Default git branch.
         install_mergetool(bool): Whether to set up the renku metadata mergetool in the created project.
     """
     if not project_context.external_storage_requested:
         external_storage_requested = False
 
     project_context.push_path(path, save_changes=True)
-    project_context.datadir = data_dir
+    if data_dir is not None:
+        project_context.datadir = str(data_dir)
     project_context.external_storage_requested = external_storage_requested
 
     communication.echo("Initializing Git repository...")
@@ -157,7 +161,7 @@ def _init(
     )
     name = name or os.path.basename(path.rstrip(os.path.sep))
 
-    metadata = dict()
+    metadata: Dict[str, Any] = dict()
     # NOTE: supply metadata
     metadata["__template_source__"] = template_source
     metadata["__template_ref__"] = template_ref
@@ -256,7 +260,7 @@ def create_from_template(
     name: Optional[str] = None,
     namespace: Optional[str] = None,
     custom_metadata: Optional[Dict] = None,
-    data_dir: Optional[str] = None,
+    data_dir: Optional[Union[str, Path]] = None,
     commit_message: Optional[str] = None,
     description: Optional[str] = None,
     keywords: Optional[List[str]] = None,
@@ -315,6 +319,7 @@ def create_from_template(
             set_value("renku", DATA_DIR_CONFIG_KEY, str(data_dir))
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def _create_from_template_local(
     template_path: Path,
     name: str,

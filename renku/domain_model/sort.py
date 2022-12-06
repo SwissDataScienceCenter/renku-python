@@ -18,12 +18,14 @@
 """Process Git repository."""
 
 from collections import deque
+from typing import Any, Deque
 
 GRAY, BLACK = 0, 1
 
 
 def topological(nodes):
     """Return nodes in a topological order."""
+    order: Deque[Any]
     order, enter, state = deque(), set(nodes), {}
 
     def dfs(node):
