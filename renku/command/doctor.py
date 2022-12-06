@@ -19,6 +19,8 @@
 
 import traceback
 
+from pydantic import validate_arguments
+
 from renku.command.command_builder.command import Command
 from renku.command.util import ERROR
 
@@ -29,12 +31,13 @@ and if in doubt ask an expert around or file an issue. Thanks!
 """
 
 
-def _doctor_check(fix, force):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _doctor_check(fix: bool, force: bool):
     """Check your system and repository for potential problems.
 
     Args:
-        fix: Whether to apply fixes or just check.
-        force: Whether to force-fix some actions.
+        fix(bool): Whether to apply fixes or just check.
+        force(bool): Whether to force-fix some actions.
 
     Returns:
         Tuple of whether the project is ok or not and list of problems found.

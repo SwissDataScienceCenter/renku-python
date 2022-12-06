@@ -19,6 +19,7 @@
 
 import re
 from functools import wraps
+from typing import cast
 
 from jwt import ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError
 from marshmallow import ValidationError
@@ -197,7 +198,7 @@ def handle_base_except(f):
             return error_response(e)
         # NOTE: GitError here may not be necessary anymore
         except GitError as e:
-            return error_response(ProgramGitError(e, e.message if e.message else None))
+            return error_response(ProgramGitError(e, cast(str, e.message) if hasattr(e, "message") else ""))
         except (Exception, BaseException, OSError, IOError) as e:
             if hasattr(e, "stderr") and e.stderr:
                 error_message = " ".join(e.stderr.strip().split("\n"))
@@ -330,7 +331,7 @@ def handle_config_write_errors(f):
             if "Invalid parameter value" in str(e):
                 parameter = None
                 match = re.search('Key "(.*)" not found', str(e))
-                if len(match.groups()) > 0:
+                if match is not None and len(match.groups()) > 0:
                     parameter = match.group(1)
                 raise IntermittentSettingExistsError(e, parameter)
             raise

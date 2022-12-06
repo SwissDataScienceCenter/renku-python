@@ -46,7 +46,7 @@ from renku.domain_model.template import (
 from renku.infrastructure.repository import Repository
 
 try:
-    import importlib_resources
+    import importlib_resources  # type:ignore
 except ImportError:
     import importlib.resources as importlib_resources  # type:ignore
 

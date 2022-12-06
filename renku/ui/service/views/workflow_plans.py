@@ -116,4 +116,4 @@ def export_plan_view(user_data, cache):
       tags:
         - workflow plans
     """
-    return WorkflowPlansExportCtrl(cache, user_data, dict(request.json)).to_response()
+    return WorkflowPlansExportCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore

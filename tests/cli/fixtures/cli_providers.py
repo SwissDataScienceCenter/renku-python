@@ -18,7 +18,7 @@
 """Renku CLI fixtures for providers testing."""
 import json
 import os
-import pathlib
+import posixpath
 import re
 import urllib
 import warnings
@@ -143,7 +143,7 @@ def doi_responses():
         base_url = "https://dataverse.harvard.edu"
 
         url_parts = list(urllib.parse.urlparse(base_url))
-        url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSION_API)
+        url_parts[2] = posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSION_API)
         pattern = "{url}.*".format(url=urllib.parse.urlunparse(url_parts))
 
         response.add_callback(method="GET", url=re.compile(pattern), callback=version_callback)

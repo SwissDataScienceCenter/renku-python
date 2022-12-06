@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
 
 import networkx
+from pydantic import validate_arguments
 
 from renku.command.command_builder import inject
 from renku.core import errors
@@ -413,6 +414,7 @@ def get_latest_activity_before(activities: Iterable[Activity], activity: Activit
 
 
 @inject.autoparams("activity_gateway")
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def revert_activity(
     *, activity_gateway: IActivityGateway, activity_id: str, delete_plan: bool, force: bool, metadata_only: bool
 ) -> Activity:

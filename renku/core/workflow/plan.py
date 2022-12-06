@@ -22,6 +22,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union, cast, overload
 
+from pydantic import validate_arguments
+
 from renku.command.command_builder import inject
 from renku.command.format.workflow import WORKFLOW_FORMATS
 from renku.command.view_model.activity_graph import ActivityGraphViewModel
@@ -89,6 +91,7 @@ def get_derivative_chain(
 
 
 @inject.autoparams()
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def search_workflows(name: str, plan_gateway: IPlanGateway) -> List[str]:
     """Get all the workflows whose Plan.name start with the given name.
 
@@ -103,7 +106,8 @@ def search_workflows(name: str, plan_gateway: IPlanGateway) -> List[str]:
 
 
 @inject.autoparams()
-def list_workflows(plan_gateway: IPlanGateway, format: str, columns: List[str]):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def list_workflows(plan_gateway: IPlanGateway, format: str, columns: str):
     """List or manage workflows with subcommands.
 
     Args:
@@ -128,6 +132,7 @@ def list_workflows(plan_gateway: IPlanGateway, format: str, columns: List[str]):
 
 
 @inject.autoparams("plan_gateway", "activity_gateway")
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def show_workflow(
     name_or_id: str, plan_gateway: IPlanGateway, activity_gateway: IActivityGateway, with_metadata: bool = False
 ):
@@ -185,6 +190,7 @@ def show_workflow(
 
 
 @inject.autoparams("plan_gateway")
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def remove_plan(name_or_id: str, force: bool, plan_gateway: IPlanGateway, when: datetime = local_now()):
     """Remove the workflow by its name or id.
 
@@ -230,6 +236,7 @@ def remove_plan(name_or_id: str, force: bool, plan_gateway: IPlanGateway, when: 
 
 
 @inject.autoparams()
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def edit_workflow(
     name: str,
     new_name: Optional[str],
@@ -338,21 +345,22 @@ def edit_workflow(
 
 
 @inject.autoparams()
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def compose_workflow(
     name: str,
-    description: str,
-    mappings: List[str],
-    defaults: List[str],
-    links: List[str],
-    param_descriptions: List[str],
+    description: Optional[str],
+    mappings: Optional[List[str]],
+    defaults: Optional[List[str]],
+    links: Optional[List[str]],
+    param_descriptions: Optional[List[str]],
     map_inputs: bool,
     map_outputs: bool,
     map_params: bool,
     link_all: bool,
-    keywords: List[str],
-    steps: List[str],
-    sources: List[str],
-    sinks: List[str],
+    keywords: Optional[List[str]],
+    steps: Optional[List[str]],
+    sources: Optional[List[str]],
+    sinks: Optional[List[str]],
     creators: Optional[List[Person]],
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
@@ -362,19 +370,19 @@ def compose_workflow(
 
     Args:
         name(str): Name of the new composed Plan.
-        description(str): Description for the Plan.
-        mappings(List[str]): Mappings between parameters of this and child Plans.
-        defaults(List[str]): Default values for parameters.
-        links(List[str]): Links between parameters of child Plans.
-        param_descriptions(List[str]): Descriptions of parameters.
+        description(Optional[str]): Description for the Plan.
+        mappings(Optional[List[str]]): Mappings between parameters of this and child Plans.
+        defaults(Optional[List[str]]): Default values for parameters.
+        links(Optional[List[str]]): Links between parameters of child Plans.
+        param_descriptions(Optional[List[str]]): Descriptions of parameters.
         map_inputs(bool): Whether or not to automatically expose child inputs.
         map_outputs(bool): Whether or not to automatically expose child outputs.
         map_params(bool): Whether or not to automatically expose child parameters.
         link_all(bool): Whether or not to automatically link child steps' parameters.
-        keywords(List[str]): Keywords for the Plan.
-        steps(List[str]): Child steps to include.
-        sources(List[str]): Starting files when automatically detecting child Plans.
-        sinks(List[str]): Ending files when automatically detecting child Plans.
+        keywords(Optional[List[str]]): Keywords for the Plan.
+        steps(Optional[List[str]]): Child steps to include.
+        sources(Optional[List[str]]): Starting files when automatically detecting child Plans.
+        sinks(Optional[List[str]]): Ending files when automatically detecting child Plans.
         creators(Optional[List[Person]]): Creator(s) of the composite plan.
         activity_gateway(IActivityGateway): Injected activity gateway.
         plan_gateway(IPlanGateway): Injected plan gateway.
@@ -504,6 +512,7 @@ def compose_workflow(
 
 
 @inject.autoparams()
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def export_workflow(
     name_or_id,
     plan_gateway: IPlanGateway,
@@ -609,6 +618,7 @@ def _lookup_paths_in_paths(lookup_paths: List[str], target_paths: List[str]):
 
 
 @inject.autoparams()
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def visualize_graph(
     sources: List[str],
     targets: List[str],
@@ -650,7 +660,8 @@ def visualize_graph(
 
 
 @inject.autoparams()
-def workflow_inputs(activity_gateway: IActivityGateway, paths: List[str] = None):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def workflow_inputs(activity_gateway: IActivityGateway, paths: Optional[List[str]] = None):
     """Get inputs used by workflows.
 
     Args:
@@ -669,7 +680,8 @@ def workflow_inputs(activity_gateway: IActivityGateway, paths: List[str] = None)
 
 
 @inject.autoparams()
-def workflow_outputs(activity_gateway: IActivityGateway, paths: List[str] = None):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def workflow_outputs(activity_gateway: IActivityGateway, paths: Optional[List[str]] = None):
     """Get inputs used by workflows.
 
     Args:

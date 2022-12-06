@@ -523,6 +523,7 @@ Unlink all files from a dataset:
 import json
 import os
 from pathlib import Path
+from typing import List, Union, cast
 
 import click
 from lazy_object_proxy import Proxy
@@ -531,7 +532,7 @@ import renku.ui.cli.utils.color as color
 from renku.command.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.command.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.command.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
-from renku.core.util.util import NO_VALUE
+from renku.core.util.util import NO_VALUE, NoValueType
 
 
 def _complete_datasets(ctx, param, incomplete):
@@ -689,7 +690,7 @@ def edit(name, title, description, creators, metadata, metadata_source, keywords
     from renku.core.util.metadata import construct_creators
     from renku.ui.cli.utils.callback import ClickCallback
 
-    images = NO_VALUE
+    images: Union[None, NoValueType] = NO_VALUE
 
     if list(creators) == [NO_VALUE]:
         creators = NO_VALUE
@@ -720,7 +721,7 @@ def edit(name, title, description, creators, metadata, metadata_source, keywords
     no_email_warnings = False
 
     if creators and creators is not NO_VALUE:
-        creators, no_email_warnings = construct_creators(creators, ignore_email=True)
+        creators, no_email_warnings = construct_creators(creators, ignore_email=True)  # type: ignore
 
     if metadata and metadata is not NO_VALUE:
         path = Path(metadata)
@@ -755,7 +756,9 @@ def edit(name, title, description, creators, metadata, metadata_source, keywords
     else:
         click.echo("Successfully updated: {}.".format(", ".join(updated.keys())))
         if no_email_warnings:
-            click.echo(ClickCallback.WARNING + "No email or wrong format for: " + ", ".join(no_email_warnings))
+            click.echo(
+                ClickCallback.WARNING + "No email or wrong format for: " + ", ".join(cast(List[str], no_email_warnings))
+            )
 
 
 @dataset.command("show")
@@ -802,7 +805,7 @@ def add_provider_options(*param_decls, **attrs):
     from renku.core.dataset.providers.factory import ProviderFactory
     from renku.ui.cli.utils.click import create_options
 
-    providers = [p for p in ProviderFactory.get_add_providers() if p.get_add_parameters()]
+    providers = [p for p in ProviderFactory.get_add_providers() if p.get_add_parameters()]  # type: ignore
     return create_options(providers=providers, parameter_function="get_add_parameters")
 
 
@@ -973,7 +976,7 @@ def export_provider_argument(*param_decls, **attrs):
         def get_providers_names():
             from renku.core.dataset.providers.factory import ProviderFactory
 
-            return [p.name.lower() for p in ProviderFactory.get_export_providers()]
+            return [p.name.lower() for p in ProviderFactory.get_export_providers()]  # type: ignore
 
         return argument("provider", type=click.Choice(Proxy(get_providers_names)))(f)
 
@@ -985,7 +988,7 @@ def export_provider_options(*param_decls, **attrs):
     from renku.core.dataset.providers.factory import ProviderFactory
     from renku.ui.cli.utils.click import create_options
 
-    providers = [p for p in ProviderFactory.get_export_providers() if p.get_export_parameters()]
+    providers = [p for p in ProviderFactory.get_export_providers() if p.get_export_parameters()]  # type: ignore
     return create_options(providers=providers, parameter_function="get_export_parameters")
 
 
@@ -1006,7 +1009,7 @@ def export(name, provider, tag, **kwargs):
             name=name, provider_name=provider, tag=tag, **kwargs
         )
     except (ValueError, errors.InvalidAccessToken, errors.DatasetNotFound, errors.RequestError) as e:
-        raise click.BadParameter(e)
+        raise click.BadParameter(str(e))
 
     click.secho("OK", fg=color.GREEN)
 
@@ -1016,7 +1019,7 @@ def import_provider_options(*param_decls, **attrs):
     from renku.core.dataset.providers.factory import ProviderFactory
     from renku.ui.cli.utils.click import create_options
 
-    providers = [p for p in ProviderFactory.get_import_providers() if p.get_import_parameters()]
+    providers = [p for p in ProviderFactory.get_import_providers() if p.get_import_parameters()]  # type: ignore
     return create_options(providers=providers, parameter_function="get_import_parameters")
 
 

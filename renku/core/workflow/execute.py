@@ -24,6 +24,8 @@ from functools import reduce
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
 
+from pydantic import validate_arguments
+
 from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
@@ -105,6 +107,7 @@ def execute_workflow_graph(
 
 
 @inject.autoparams()
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def execute_workflow(
     name_or_id: str,
     set_params: List[str],
@@ -339,6 +342,7 @@ def _build_iterations(
 
 
 @inject.autoparams()
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def iterate_workflow(
     name_or_id: str,
     mapping_path: Optional[str],
