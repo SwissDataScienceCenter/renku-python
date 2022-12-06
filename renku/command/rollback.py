@@ -220,7 +220,7 @@ def _prompt_for_checkpoint(commits):
 
             if invalid:
                 communication.warn(
-                    "Please enter a valid checkpoint number" + (", 'q' or 'm'" if more_pages else "or 'q")
+                    "Please enter a valid checkpoint number" + (", 'q' or 'm'" if more_pages else "or 'q'")
                 )
 
             prompt = "Checkpoint ([q] to quit)"

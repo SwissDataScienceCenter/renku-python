@@ -40,7 +40,6 @@ repos:
       rev: "v0.990"
       hooks:
           - id: mypy
-            language_version: '3.9'
             args:
             - --no-strict-optional
             - --ignore-missing-imports

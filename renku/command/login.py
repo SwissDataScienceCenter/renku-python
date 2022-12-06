@@ -135,7 +135,7 @@ def _login(endpoint: Optional[str], git_login: bool, yes: bool):
     _store_token(parsed_endpoint.netloc, access_token)
 
     if git_login:
-        _set_git_credential_helper(repository=cast(Repository, repository), hostname=parsed_endpoint.netloc)
+        _set_git_credential_helper(repository=cast("Repository", repository), hostname=parsed_endpoint.netloc)
         backup_remote_name, backup_exists, remote = create_backup_remote(
             repository=repository, remote_name=remote_name, url=remote_url  # type:ignore
         )
@@ -145,7 +145,7 @@ def _login(endpoint: Optional[str], git_login: bool, yes: bool):
             communication.error(f"Cannot create backup remote '{backup_remote_name}' for '{remote_url}'")
         else:
             _set_renku_url_for_remote(
-                repository=cast(Repository, repository),
+                repository=cast("Repository", repository),
                 remote_name=remote_name,  # type:ignore
                 remote_url=remote_url,  # type:ignore
                 hostname=parsed_endpoint.netloc,
