@@ -103,6 +103,13 @@ def session_start(
 
     # set resource settings
     cpu_limit = cpu_request or get_value("interactive", "cpu_request")
+
+    if cpu_limit is not None:
+        try:
+            cpu_limit = float(cpu_limit)
+        except ValueError:
+            raise errors.SessionStartError(f"Invalid value for cpu_request (must be float): {cpu_limit}")
+
     disk_limit = disk_request or get_value("interactive", "disk_request")
     mem_limit = mem_request or get_value("interactive", "mem_request")
     gpu = gpu_request or get_value("interactive", "gpu_request")
