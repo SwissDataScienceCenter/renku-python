@@ -99,15 +99,6 @@ versions:
       repository: renku/renku-core
       tag: "v1.10.0"
       pullPolicy: IfNotPresent
-  v8:
-    name: v8
-    prefix: "8"
-    nameOverride: ""
-    fullnameOverride: ""
-    image:
-      repository: renku/renku-core
-      tag: "v0.16.7"
-      pullPolicy: IfNotPresent
 podSecurityContext:
   runAsUser: 1000
   runAsGroup: 1000
