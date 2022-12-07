@@ -19,7 +19,7 @@
 
 from datetime import datetime
 from itertools import chain
-from typing import List, Optional, Union, cast
+from typing import Dict, List, Optional, Union, cast
 from uuid import uuid4
 
 from werkzeug.utils import cached_property
@@ -71,6 +71,10 @@ class Usage(Immutable):
         return f"{activity_id}/usages/{uuid4().hex}"
 
 
+class HiddenUsage(Usage):
+    """Represent a dependent path corresponding to a ``HiddenInput``."""
+
+
 class Generation(Immutable):
     """Represent an act of generating a path."""
 
@@ -92,6 +96,7 @@ class Activity(Persistent):
     """Represent an activity in the repository."""
 
     invalidated_at: Optional[datetime] = None
+    hidden_usages: List[HiddenUsage] = list()
 
     def __init__(
         self,
@@ -101,6 +106,7 @@ class Activity(Persistent):
         association: Association,
         ended_at_time: datetime,
         generations: Optional[List[Generation]] = None,
+        hidden_usages: Optional[List[HiddenUsage]] = None,
         id: str,
         invalidated_at: Optional[datetime] = None,
         invalidations: Optional[List[Entity]] = None,
@@ -114,6 +120,7 @@ class Activity(Persistent):
         self.association: Association = association
         self.ended_at_time: datetime = ended_at_time
         self.generations: List[Generation] = generations or []
+        self.hidden_usages: List[HiddenUsage] = hidden_usages or []
         self.id: str = id
         self.invalidated_at: Optional[datetime] = invalidated_at
         self.invalidations: List[Entity] = invalidations or []
@@ -143,27 +150,35 @@ class Activity(Persistent):
         """Convert a ``Plan`` to a ``Activity``."""
         from renku.core.plugin.pluginmanager import get_plugin_manager
 
-        usages = {}
+        usages: Dict[str, Usage] = {}
+        hidden_usages: Dict[str, HiddenUsage] = {}
         generations = {}
         parameter_values = []
 
         activity_id = id or cls.generate_id()
 
-        for input in plan.inputs:
+        def process_input(input, already_processed, cls, add_parameter_value):
             input_path = input.actual_value
 
-            parameter_values.append(
-                ParameterValue(id=ParameterValue.generate_id(activity_id), parameter_id=input.id, value=input_path)
-            )
+            if add_parameter_value:
+                parameter_values.append(
+                    ParameterValue(id=ParameterValue.generate_id(activity_id), parameter_id=input.id, value=input_path)
+                )
 
-            if input_path in usages:
-                continue
+            if input_path in already_processed:
+                return
 
             entity = get_entity_from_revision(repository=repository, path=input_path, bypass_cache=True)
 
-            dependency = Usage(entity=entity, id=Usage.generate_id(activity_id))
+            dependency = cls(entity=entity, id=cls.generate_id(activity_id))
 
-            usages[input_path] = dependency
+            already_processed[input_path] = dependency
+
+        for input in plan.inputs:
+            process_input(input=input, already_processed=usages, cls=Usage, add_parameter_value=True)
+
+        for input in plan.hidden_inputs:
+            process_input(input=input, already_processed=hidden_usages, cls=HiddenUsage, add_parameter_value=False)
 
         for output in plan.outputs:
             output_path = output.actual_value
@@ -197,6 +212,7 @@ class Activity(Persistent):
             association=association,
             agents=[agent, person],
             usages=list(usages.values()),
+            hidden_usages=list(hidden_usages.values()),
             generations=list(generations.values()),
             parameters=parameter_values,
             project_id=project_gateway.get_project().id,

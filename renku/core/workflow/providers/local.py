@@ -83,7 +83,7 @@ def get_plan_std_stream_mapping(plan: "Plan") -> Generator[Dict[str, Any], None,
     std_arguments = [a for a in arguments if a.mapped_to]  # type: ignore
 
     for argument in std_arguments:
-        Path(argument.actual_value).parent.mkdir(parents=True, exist_ok=True)
+        Path(str(argument.actual_value)).parent.mkdir(parents=True, exist_ok=True)
 
     open_mode = {"stdin": "r", "stdout": "w", "stderr": "w"}
     streams = {}

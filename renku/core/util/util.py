@@ -22,9 +22,9 @@ from typing import Any, NewType, Optional
 from packaging.version import Version
 
 
-def to_string(value: Optional[Any]) -> str:
+def to_string(value: Optional[Any], strip: bool = False) -> str:
     """Return a string representation of value and return an empty string for None."""
-    return str(value) if value is not None else ""
+    return "" if value is None else str(value).strip() if strip else str(value)
 
 
 def to_semantic_version(value: str) -> Optional[Version]:

@@ -32,7 +32,13 @@ from renku.core import errors
 from renku.core.util.datetime8601 import local_now
 from renku.domain_model.provenance.agent import Person
 from renku.domain_model.provenance.annotation import Annotation
-from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter, CommandParameterBase
+from renku.domain_model.workflow.parameter import (
+    CommandInput,
+    CommandOutput,
+    CommandParameter,
+    CommandParameterBase,
+    HiddenInput,
+)
 from renku.infrastructure.database import Persistent
 
 MAX_GENERATED_NAME_LENGTH = 25
@@ -161,31 +167,36 @@ class Plan(AbstractPlan):
 
     annotations: List[Annotation] = list()
 
+    hidden_inputs: List[HiddenInput] = list()
+    """Includes a list of dependencies that are defined by Renku and should be hidden from users."""
+
     def __init__(
         self,
         *,
-        parameters: Optional[List[CommandParameter]] = None,
+        annotations: Optional[List[Annotation]] = None,
         command: str,
+        creators: Optional[List[Person]] = None,
+        date_created: Optional[datetime] = None,
+        derived_from: Optional[str] = None,
         description: Optional[str] = None,
+        hidden_inputs: List[HiddenInput] = None,
         id: str,
         inputs: Optional[List[CommandInput]] = None,
-        date_created: Optional[datetime] = None,
         invalidated_at: Optional[datetime] = None,
         keywords: Optional[List[str]] = None,
         name: Optional[str] = None,
-        derived_from: Optional[str] = None,
-        project_id: Optional[str] = None,
         outputs: Optional[List[CommandOutput]] = None,
+        parameters: Optional[List[CommandParameter]] = None,
+        project_id: Optional[str] = None,
         success_codes: Optional[List[int]] = None,
-        annotations: Optional[List[Annotation]] = None,
-        creators: Optional[List[Person]] = None,
     ):
+        self.annotations: List[Annotation] = annotations or []
         self.command: str = command
+        self.hidden_inputs: List[HiddenInput] = hidden_inputs or []
         self.inputs: List[CommandInput] = inputs or []
         self.outputs: List[CommandOutput] = outputs or []
         self.parameters: List[CommandParameter] = parameters or []
         self.success_codes: List[int] = success_codes or []
-        self.annotations: List[Annotation] = annotations or []
         super().__init__(
             id=id,
             description=description,
@@ -397,9 +408,9 @@ def get_duplicate_arguments_names(plan: Plan) -> List[str]:
     return duplicates
 
 
-def validate_plan_name(name: str, extra_valid_characters: str = "-_"):
+def validate_plan_name(name: str, extra_valid_characters: str = "_-"):
     """Check a name for invalid characters."""
-    if not re.match(f"[a-zA-Z0-9][a-zA-Z0-9{extra_valid_characters}]+", name):
+    if not re.match(f"^[a-zA-Z0-9][a-zA-Z0-9{extra_valid_characters}]+$", name):
         raise errors.ParameterError(
-            f"Name {name} contains illegal characters. Only English letters, numbers, _ and - are allowed."
+            f"Name '{name}' contains illegal characters. Only English letters, numbers, _ and - are allowed."
         )

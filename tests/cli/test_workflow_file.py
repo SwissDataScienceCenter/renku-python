@@ -109,14 +109,20 @@ def test_run_workflow_file_with_no_commit(runner, workflow_file_project):
 
 @pytest.mark.parametrize("workflow_file_project", ["workflow-file-simple.yml"], indirect=True)
 def test_run_workflow_file_in_dirty_repository(runner, workflow_file_project: RenkuWorkflowFileProject):
-    """Test running a workflow file in a dirty repository."""
+    """Test running a workflow file in a dirty repository doesn't commit files that are not part of workflow file."""
     dirty_files = {"Dockerfile"}
-    untracked_files = {"workflow-file-simple.yml", "data/collection/colors.csv", "data/collection/models.csv"}
+    part_of_workflow_file = {"workflow-file-simple.yml", "data/collection/colors.csv", "data/collection/models.csv"}
+    untracked_files = {"untracked"}
+    staged_files = {"staged"}
 
     (workflow_file_project.path / "Dockerfile").write_text("some changes")
+    (workflow_file_project.path / "untracked").touch()
+    (workflow_file_project.path / "staged").touch()
+    workflow_file_project.repository.add(workflow_file_project.path / "staged")
     assert workflow_file_project.repository.is_dirty()
     assert dirty_files == {c.a_path for c in workflow_file_project.repository.unstaged_changes}
-    assert untracked_files == set(workflow_file_project.repository.untracked_files)
+    assert untracked_files | part_of_workflow_file == set(workflow_file_project.repository.untracked_files)
+    assert staged_files == {c.a_path for c in workflow_file_project.repository.staged_changes}
 
     commit_before = workflow_file_project.repository.head.commit.hexsha
 
@@ -129,10 +135,12 @@ def test_run_workflow_file_in_dirty_repository(runner, workflow_file_project: Re
     # Repository is still dirty with the same files as before
     assert workflow_file_project.repository.is_dirty()
     assert dirty_files == {c.a_path for c in workflow_file_project.repository.unstaged_changes}
+    # Untracked files that were parts of the workflow file are committed and the rest remained untracked
     assert untracked_files == set(workflow_file_project.repository.untracked_files)
+    assert staged_files == {c.a_path for c in workflow_file_project.repository.staged_changes}
 
 
-def test_workflow_file_output_with_no_persist(runner, workflow_file_project: RenkuWorkflowFileProject):
+def test_workflow_file_with_no_persist(runner, workflow_file_project: RenkuWorkflowFileProject):
     """Test generated outputs that have ``persist == False`` aren't committed."""
     assert "intermediate" not in workflow_file_project.repository.untracked_files
 
@@ -156,10 +164,10 @@ def test_export_graph_with_workflow_file(runner, workflow_file_project):
     result = runner.invoke(cli, ["graph", "export", "--full"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    assert "workflow-file.yml::workflow-file" in result.output
-    assert "workflow-file.yml::head" in result.output
-    assert "workflow-file.yml::tail" in result.output
-    assert "workflow-file.yml::line-count" in result.output
+    assert "workflow-file" in result.output
+    assert "workflow-file.head" in result.output
+    assert "workflow-file.tail" in result.output
+    assert "workflow-file.line-count" in result.output
     assert "renku-ontology#WorkflowFileCompositePlan" in result.output
     assert "renku-ontology#WorkflowFilePlan" in result.output
 
@@ -260,7 +268,7 @@ def test_workflow_file_plan_versioning(runner, workflow_file_project, with_injec
             name: workflow-file
             steps:
               head:
-                command: head $$n $$inputs > $$outputs
+                command: head $$parameters $$inputs > $$outputs
                 inputs:
                   - data/collection/models.csv
                 outputs:
@@ -270,7 +278,7 @@ def test_workflow_file_plan_versioning(runner, workflow_file_project, with_injec
                     prefix: -n
                     value: $n
               tail:
-                command: tail $$n $$inputs > $$outputs
+                command: tail $$parameters $$inputs > $$outputs
                 inputs:
                   - intermediate
                 outputs:
@@ -280,7 +288,7 @@ def test_workflow_file_plan_versioning(runner, workflow_file_project, with_injec
                     prefix: -n
                     value: 5
               line-count:
-                command: wc $$inputs > $$outputs
+                command: wc $$parameters $$inputs > $$outputs
                 inputs:
                   - output.csv
                 outputs:
@@ -296,10 +304,10 @@ def test_workflow_file_plan_versioning(runner, workflow_file_project, with_injec
 
     with with_injection():
         plan_gateway = PlanGateway()
-        root_plan_1 = plan_gateway.get_by_name("workflow-file.yml::workflow-file")
-        head_1 = plan_gateway.get_by_name("workflow-file.yml::head")
-        tail_1 = plan_gateway.get_by_name("workflow-file.yml::tail")
-        line_count_1 = plan_gateway.get_by_name("workflow-file.yml::line-count")
+        root_plan_1 = plan_gateway.get_by_name("workflow-file")
+        head_1 = plan_gateway.get_by_name("workflow-file.head")
+        tail_1 = plan_gateway.get_by_name("workflow-file.tail")
+        line_count_1 = plan_gateway.get_by_name("workflow-file.line-count")
 
     workflow_file.write_text(content.safe_substitute(n=20))
     result = runner.invoke(cli, ["run", workflow_file])
@@ -308,10 +316,10 @@ def test_workflow_file_plan_versioning(runner, workflow_file_project, with_injec
 
     with with_injection():
         plan_gateway = PlanGateway()
-        root_plan_2 = plan_gateway.get_by_name("workflow-file.yml::workflow-file")
-        head_2 = plan_gateway.get_by_name("workflow-file.yml::head")
-        tail_2 = plan_gateway.get_by_name("workflow-file.yml::tail")
-        line_count_2 = plan_gateway.get_by_name("workflow-file.yml::line-count")
+        root_plan_2 = plan_gateway.get_by_name("workflow-file")
+        head_2 = plan_gateway.get_by_name("workflow-file.head")
+        tail_2 = plan_gateway.get_by_name("workflow-file.tail")
+        line_count_2 = plan_gateway.get_by_name("workflow-file.line-count")
 
     workflow_file.write_text(content.safe_substitute(n=30))
     result = runner.invoke(cli, ["run", workflow_file])
@@ -319,10 +327,10 @@ def test_workflow_file_plan_versioning(runner, workflow_file_project, with_injec
 
     with with_injection():
         plan_gateway = PlanGateway()
-        root_plan_3 = plan_gateway.get_by_name("workflow-file.yml::workflow-file")
-        head_3 = plan_gateway.get_by_name("workflow-file.yml::head")
-        tail_3 = plan_gateway.get_by_name("workflow-file.yml::tail")
-        line_count_3 = plan_gateway.get_by_name("workflow-file.yml::line-count")
+        root_plan_3 = plan_gateway.get_by_name("workflow-file")
+        head_3 = plan_gateway.get_by_name("workflow-file.head")
+        tail_3 = plan_gateway.get_by_name("workflow-file.tail")
+        line_count_3 = plan_gateway.get_by_name("workflow-file.line-count")
 
     # Root plan has newer versions since one of its sub-plans changed
     assert root_plan_2.id != root_plan_1.id
@@ -346,3 +354,116 @@ def test_workflow_file_plan_versioning(runner, workflow_file_project, with_injec
     assert line_count_1.derived_from is None
     assert line_count_2.derived_from is None
     assert line_count_3.derived_from is None
+
+
+def test_duplicate_workflow_file_plan_name(runner, workflow_file_project):
+    """Test workflow file execution fails if a plan with the same name exists."""
+    workflow_file_project.repository.add(all=True)
+    workflow_file_project.repository.commit("Commit before run")
+
+    result = runner.invoke(cli, ["run", "--name", "workflow-file", "echo", "hello world!"], stdout="output")
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["run", workflow_file_project.workflow_file])
+
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "Duplicate workflow file name: Workflow 'workflow-file' already exists." in result.output
+
+    # Showing workflow files with duplicate name still works
+    result = runner.invoke(cli, ["workflow", "show", workflow_file_project.workflow_file])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+
+def test_workflow_file_plan_versioning_when_moved(runner, workflow_file_project, with_injection):
+    """Test workflow file steps will be new plans when moved.
+
+    NOTE: Plans are versioned based on their path and name only. Moving a workflow file creates new plans even if they
+    haven't changed.
+    """
+    workflow_file = workflow_file_project.path / "workflow-file.yml"
+    content = Template(
+        textwrap.dedent(
+            """
+            name: $name
+            steps:
+              head:
+                command: head $$parameters $$inputs > $$outputs
+                inputs:
+                  - data/collection/models.csv
+                outputs:
+                  - intermediate
+                parameters:
+                  n:
+                    prefix: -n
+                    value: 10
+              tail:
+                command: tail $$parameters $$inputs > $$outputs
+                inputs:
+                  - intermediate
+                outputs:
+                  - output.csv
+                parameters:
+                  n:
+                    prefix: -n
+                    value: 5
+            """
+        )
+    )
+
+    workflow_file.write_text(content.safe_substitute(name="workflow-file"))
+    result = runner.invoke(cli, ["run", workflow_file])
+    assert 0 == result.exit_code, format_result_exception(result)
+    time.sleep(1)
+
+    with with_injection():
+        plan_gateway = PlanGateway()
+        root_plan_1 = plan_gateway.get_by_name("workflow-file")
+        head_1 = plan_gateway.get_by_name("workflow-file.head")
+        tail_1 = plan_gateway.get_by_name("workflow-file.tail")
+
+    moved_workflow_file = workflow_file_project.path / "moved-workflow-file.yml"
+    moved_workflow_file.write_text(content.safe_substitute(name="moved-workflow-file"))
+    result = runner.invoke(cli, ["run", moved_workflow_file])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    with with_injection():
+        plan_gateway = PlanGateway()
+        root_plan_2 = plan_gateway.get_by_name("moved-workflow-file")
+        head_2 = plan_gateway.get_by_name("moved-workflow-file.head")
+        tail_2 = plan_gateway.get_by_name("moved-workflow-file.tail")
+
+    assert root_plan_2.id != root_plan_1.id
+    assert root_plan_2.derived_from is None
+
+    # ``head`` and ``tail`` are new plans
+    assert head_2.id != head_1.id
+    assert head_2.derived_from is None
+
+    assert tail_1.id != tail_2.id
+    assert tail_2.derived_from is None
+
+
+def test_workflow_file_is_visualized_as_dependency(runner, workflow_file_project):
+    """Test visualizing a path that is generated by a workflow file, shows the workflow file as a dependency."""
+    result = runner.invoke(cli, ["run", workflow_file_project.workflow_file])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["workflow", "visualize", "results/output.csv.wc"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    assert "workflow-file.yml" in result.output
+
+
+def test_workflow_file_status(runner, workflow_file_project):
+    """Test ``renku status`` shows if a workflow file has changes."""
+    result = runner.invoke(cli, ["run", workflow_file_project.workflow_file])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    workflow_file = workflow_file_project.path / workflow_file_project.workflow_file
+    workflow_file.write_text(workflow_file.read_text() + "\n")
+
+    result = runner.invoke(cli, ["status"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    assert "Outdated workflow files and their outputs(1):" in result.output
+    assert "workflow-file.yml: intermediate, results/output.csv, results/output.csv.wc" in result.output

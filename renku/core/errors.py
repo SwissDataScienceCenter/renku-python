@@ -538,6 +538,10 @@ class WorkflowExportError(WorkflowError):
     """Raises when a workflow cannot be exported."""
 
 
+class DuplicateWorkflowNameError(WorkflowError):
+    """Raises when a workflow name already exists."""
+
+
 class WorkflowExecuteError(WorkflowError):
     """Raises when a workflow execution fails."""
 
@@ -553,17 +557,16 @@ class WorkflowExecuteError(WorkflowError):
 class WorkflowRerunError(WorkflowError):
     """Raises when a workflow re-execution fails."""
 
-    def __init__(self, workflow_file):
+    def __init__(self, cwl_file):
         """Build a custom message."""
         msg = (
-            "Unable to finish re-executing workflow; check the workflow"
-            " execution outline above and the generated {0} file for"
-            " potential issues, then remove the {0} file and try again".format(str(workflow_file))
+            "Unable to finish re-executing workflow; check the workflow execution outline above and the generated "
+            f"{cwl_file} file for potential issues, then remove the {cwl_file} file and try again"
         )
         super().__init__(msg)
 
 
-class ParameterNotFoundError(RenkuException):
+class ParameterNotFoundError(WorkflowError):
     """Raised when a parameter reference cannot be resolved to a parameter."""
 
     def __init__(self, parameter: str, workflow: str):
@@ -571,7 +574,7 @@ class ParameterNotFoundError(RenkuException):
         super().__init__(f"Cannot find parameter '{parameter}' on workflow {workflow}")
 
 
-class MappingExistsError(RenkuException):
+class MappingExistsError(WorkflowError):
     """Raised when a parameter mapping exists already."""
 
     def __init__(self, existing_mappings: List[str]):
@@ -583,7 +586,7 @@ class MappingExistsError(RenkuException):
         )
 
 
-class MappingNotFoundError(RenkuException):
+class MappingNotFoundError(WorkflowError):
     """Raised when a parameter mapping does not exist."""
 
     def __init__(self, mapping: str, workflow: str):
@@ -619,15 +622,18 @@ class ParameterLinkError(RenkuException):
 class GraphCycleError(RenkuException):
     """Raised when a parameter reference cannot be resolved to a parameter."""
 
-    def __init__(self, cycles: List[List[str]]):
+    def __init__(self, cycles: List[List[str]], message: str = None):
         """Embed exception and build a custom message."""
-        cycle_str = "), (".join(", ".join(cycle) for cycle in cycles)
-        super().__init__(
-            f"Cycles detected in execution graph: ({cycle_str})\nCircular workflows are not supported in renku\n"
-            "If this happened as part of a 'renku run' or 'renku workflow execute', please git reset and clean"
-            "the project and try again. This might be due to renku erroneously detecting an input as an output, "
-            "if so, please specify the wrongly detected output as an explicit input using '--input'."
-        )
+        if message:
+            super().__init__(message)
+        else:
+            cycle_str = "), (".join(", ".join(cycle) for cycle in cycles)
+            super().__init__(
+                f"Cycles detected in execution graph: ({cycle_str})\nCircular workflows are not supported in renku\n"
+                "If this happened as part of a 'renku run' or 'renku workflow execute', please git reset and clean"
+                "the project and try again. This might be due to renku erroneously detecting an input as an output, "
+                "if so, please specify the wrongly detected output as an explicit input using '--input'."
+            )
 
 
 class NothingToExecuteError(RenkuException):

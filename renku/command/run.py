@@ -36,5 +36,7 @@ def run_workflow_file_command(no_commit: bool, commit_only: Optional[List[str]])
     return (
         command.with_database(write=False)
         if no_commit
-        else command.with_database(write=True).with_commit(commit_only=commit_only)
+        else command.with_database(write=True).with_commit(
+            commit_only=commit_only, skip_staging=True, skip_dirty_checks=True
+        )
     )

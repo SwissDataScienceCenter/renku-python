@@ -53,14 +53,16 @@ from renku.domain_model.provenance.agent import Person
 class StatusResult(NamedTuple):
     """Represent status of a project.
 
-    A quadruple containing a mapping of stale outputs to modified usages, a mapping of stale activities that have no
-    generation to modified usages, a set of modified usages, and a set of deleted usages.
+    A quintuple containing a mapping of stale outputs to modified usages, a mapping of stale activities that have no
+    generation to modified usages, a set of modified usages, a set of deleted usages, and a map of modified hidden
+    inputs to paths that they generate.
     """
 
     outdated_outputs: Dict[str, Set[str]]
     outdated_activities: Dict[str, Set[str]]
     modified_inputs: Set[str]
     deleted_inputs: Set[str]
+    modified_hidden_inputs: Dict[str, Set[str]]
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
@@ -76,22 +78,36 @@ def get_status(paths: Optional[List[Union[Path, str]]] = None, ignore_deleted: b
 
     """
 
-    def mark_generations_as_stale(activity):
-        for generation in activity.generations:
-            generation_path = get_relative_path_to_cwd(project_context.path / generation.entity.path)
-            stale_outputs[generation_path].add(usage_path)
+    def get_all_generations(activity):
+        return (
+            get_relative_path_to_cwd(project_context.path / generation.entity.path)
+            for generation in activity.generations
+        )
 
-    repository = project_context.repository
+    def get_downstream_activities(start_activity, entity, ignore_deleted):
+        # NOTE: Add all downstream activities if the modified entity is in paths; otherwise, add only activities that
+        # chain-generate at least one of the paths
+        generation_paths = [] if not paths or entity.path in paths else paths
+
+        return get_downstream_generating_activities(
+            starting_activities={start_activity},
+            paths=generation_paths,
+            ignore_deleted=ignore_deleted,
+            project_path=project_context.path,
+        )
 
     ignore_deleted = ignore_deleted or get_value("renku", "update_ignore_delete")
 
-    modified, deleted = get_all_modified_and_deleted_activities_and_entities(repository)
+    modified, deleted, hidden_modified = get_all_modified_and_deleted_activities_and_entities(
+        repository=project_context.repository, check_hidden_dependencies=True
+    )
 
     modified = {(a, e) for a, e in modified if is_activity_valid(a)}
     deleted = {(a, e) for a, e in deleted if is_activity_valid(a)}
+    hidden_modified = {(a, e) for a, e in hidden_modified if is_activity_valid(a)}
 
-    if not modified and not deleted:
-        return StatusResult({}, {}, set(), set())
+    if not modified and not deleted and not hidden_modified:
+        return StatusResult({}, {}, set(), set(), {})
 
     paths = paths or []
     paths = get_relative_paths(base=project_context.path, paths=[Path.cwd() / p for p in paths])  # type: ignore
@@ -99,35 +115,43 @@ def get_status(paths: Optional[List[Union[Path, str]]] = None, ignore_deleted: b
     modified_inputs: Set[str] = set()
     stale_outputs: Dict[str, Set[str]] = defaultdict(set)
     stale_activities: Dict[str, Set[str]] = defaultdict(set)
+    modified_hidden_inputs: Dict[str, Set[str]] = defaultdict(set)
 
     for start_activity, entity in modified:
-        usage_path = get_relative_path_to_cwd(project_context.path / entity.path)
-
-        # NOTE: Add all downstream activities if the modified entity is in paths; otherwise, add only activities that
-        # chain-generate at least one of the paths
-        generation_paths = [] if not paths or entity.path in paths else paths
-
-        activities = get_downstream_generating_activities(
-            starting_activities={start_activity},
-            paths=generation_paths,
-            ignore_deleted=ignore_deleted,
-            project_path=project_context.path,
+        activities = get_downstream_activities(
+            start_activity=start_activity, entity=entity, ignore_deleted=ignore_deleted
         )
         if activities:
+            usage_path = get_relative_path_to_cwd(project_context.path / entity.path)
             modified_inputs.add(usage_path)
 
             for activity in activities:
                 if len(activity.generations) == 0:
                     stale_activities[activity.id].add(usage_path)
                 else:
-                    mark_generations_as_stale(activity)
+                    for generation_path in get_all_generations(activity):
+                        stale_outputs[generation_path].add(usage_path)
 
     deleted_paths = {e.path for _, e in deleted}
     deleted_paths = {
         get_relative_path_to_cwd(project_context.path / d) for d in deleted_paths if not paths or d in paths
     }
 
-    return StatusResult(stale_outputs, stale_activities, modified_inputs, deleted_paths)
+    for start_activity, entity in hidden_modified:
+        activities = get_downstream_activities(start_activity=start_activity, entity=entity, ignore_deleted=True)
+        if activities:
+            usage_path = get_relative_path_to_cwd(project_context.path / entity.path)
+            for activity in activities:
+                for generation_path in get_all_generations(activity):
+                    modified_hidden_inputs[usage_path].add(generation_path)
+
+    return StatusResult(
+        outdated_outputs=stale_outputs,
+        outdated_activities=stale_activities,
+        modified_inputs=modified_inputs,
+        deleted_inputs=deleted_paths,
+        modified_hidden_inputs=modified_hidden_inputs,
+    )
 
 
 def get_valid_plan_name(name: str) -> str:
@@ -167,7 +191,7 @@ def run_command_line(
 
         workflows = plan_gateway.get_newest_plans_by_names()
         if name in workflows:
-            raise errors.ParameterError(f"Duplicate workflow name: workflow '{name}' already exists.")
+            raise errors.DuplicateWorkflowNameError(f"Duplicate workflow name: Workflow '{name}' already exists.")
 
     paths = explicit_outputs if no_output_detection else project_context.repository.all_files
     mapped_std = get_mapped_std_streams(paths, streams=("stdout", "stderr"))

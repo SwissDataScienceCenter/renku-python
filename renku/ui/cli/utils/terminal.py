@@ -66,26 +66,27 @@ def print_markdown(text: str, err: bool = False):
     Console(stderr=err).print(Markdown(text))
 
 
-def print_key_value(key, value, print_empty: bool = True, err: bool = False, indent: str = ""):
+def print_key_value(key, value, print_empty: bool = True, err: bool = False, indent: int = 0):
     """Print a key value pair."""
     if print_empty or value or (not isinstance(value, bool) and value == 0):
-        click.echo(indent + style_key(key) + style_value(value), err=err)
+        click.echo(" " * indent + style_key(key) + style_value(value), err=err)
 
 
-def print_key(key, err: bool = False, indent: str = ""):
+def print_key(key, err: bool = False, indent: int = 0):
     """Print a key."""
-    click.echo(indent + style_key(key), err=err)
+    click.echo(" " * indent + style_key(key), err=err)
 
 
-def print_value(value, err: bool = False, indent: str = ""):
+def print_value(value, err: bool = False, indent: int = 0):
     """Print a value."""
-    click.echo(indent + style_value(value), err=err)
+    click.echo(" " * indent + style_value(value), err=err)
 
 
-def print_description(description, err: bool = False, indent: str = ""):
+def print_description(description, err: bool = False, indent: int = 0):
     """Print a description."""
     if description:
-        click.echo(f"{indent}\t\t{description}", err=err)
+        indent_str = " " * indent
+        click.echo(f"{indent_str}\t\t{description}", err=err)
 
 
 def print_plan(plan: "PlanViewModel", err: bool = False):
@@ -201,10 +202,11 @@ def print_workflow_file(workflow_file: "WorkflowFileViewModel"):
 
 def print_step(step: "StepViewModel"):
     """Print a step of a workflow file to stderr."""
-    i1 = "    "
-    i2 = f"{i1}    "
-    i3 = f"{i2}    "
-    i4 = f"{i3}    "
+    indent = 4
+    i1 = indent
+    i2 = 2 * indent
+    i3 = 3 * indent
+    i4 = 4 * indent
 
     print_value(f"{step.name}:", indent=i1)
 

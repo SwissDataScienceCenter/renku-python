@@ -27,7 +27,7 @@ from renku.command.view_model.agent import PersonViewModel
 from renku.command.view_model.composite_plan import CompositePlanViewModel
 from renku.domain_model.project_context import project_context
 from renku.domain_model.workflow.composite_plan import CompositePlan
-from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter, WorkflowFileInput
+from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter
 from renku.domain_model.workflow.plan import AbstractPlan, Plan
 
 
@@ -232,11 +232,7 @@ class PlanViewModel:
             full_command=" ".join(plan.to_argv(with_streams=True)),
             command=plan.command,
             success_codes=", ".join(str(c) for c in plan.success_codes),
-            inputs=[
-                CommandInputViewModel.from_input(input, plan.id)
-                for input in plan.inputs
-                if not isinstance(input, WorkflowFileInput)
-            ],
+            inputs=[CommandInputViewModel.from_input(input, plan.id) for input in plan.inputs],
             outputs=[CommandOutputViewModel.from_output(output, plan.id) for output in plan.outputs],
             parameters=[CommandParameterViewModel.from_parameter(param, plan.id) for param in plan.parameters],
             annotations=json.dumps([{"id": a.id, "body": a.body, "source": a.source} for a in plan.annotations])
@@ -263,6 +259,7 @@ def plan_view(workflow: AbstractPlan, latest: bool = False) -> Union[CompositePl
         View model for converted Plan.
     """
 
+    # TODO: Should we pass ``latest`` to the following calls
     if isinstance(workflow, CompositePlan):
         return CompositePlanViewModel.from_composite_plan(workflow)
     return PlanViewModel.from_plan(cast(Plan, workflow))

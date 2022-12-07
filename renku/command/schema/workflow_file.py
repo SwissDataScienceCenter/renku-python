@@ -24,8 +24,6 @@ from renku.command.schema.composite_plan import CompositePlanSchema
 from renku.command.schema.plan import PlanSchema
 from renku.domain_model.workflow.workflow_file import WorkflowFileCompositePlan, WorkflowFilePlan
 
-MAX_GENERATED_NAME_LENGTH = 25
-
 
 class WorkflowFilePlanSchema(PlanSchema):
     """WorkflowFilePlan schema."""

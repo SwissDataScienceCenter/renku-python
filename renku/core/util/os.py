@@ -20,7 +20,6 @@
 import fnmatch
 import glob
 import hashlib
-import io
 import os
 import re
 import shutil
@@ -118,6 +117,12 @@ def are_paths_related(a, b) -> bool:
     common_path = os.path.commonpath((a, b))
     absolute_common_path = os.path.abspath(common_path)
     return absolute_common_path == os.path.abspath(a) or absolute_common_path == os.path.abspath(b)
+
+
+def are_paths_equal(a: Union[Path, str], b: Union[Path, str]) -> bool:
+    """Returns if two paths are the same."""
+    # NOTE: The two paths should be identical; we don't consider the case where one is a sub-path of another
+    return get_absolute_path(a) == get_absolute_path(b)
 
 
 def is_path_empty(path: Union[Path, str]) -> bool:
@@ -238,14 +243,6 @@ def hash_file(path: Union[Path, str], hash_type: str = "sha256") -> Optional[str
         return None
 
     with open(path, "rb") as f:
-        return hash_file_descriptor(f, hash_type)
-
-
-def hash_string(content: str, hash_type: str = "md5") -> str:
-    """Calculate the sha256 hash of a string."""
-    content_bytes = content.encode("utf-8")
-
-    with io.BytesIO(content_bytes) as f:
         return hash_file_descriptor(f, hash_type)
 
 

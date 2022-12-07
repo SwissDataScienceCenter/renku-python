@@ -71,12 +71,12 @@ def get_plan(
     if plan:
         return plan
 
-    path = name_or_id_or_path or workflow_file
+    path = cast(str, name_or_id_or_path or workflow_file)
 
-    if not os.path.exists(path):  # type: ignore
-        raise errors.WorkflowNotFoundError(path)  # type: ignore
+    if not os.path.exists(path):
+        raise errors.WorkflowNotFoundError(path)
 
-    return path  # type: ignore
+    return path
 
 
 @overload
@@ -428,7 +428,7 @@ def compose_workflow(
     from renku.core.workflow.activity import get_activities_until_paths, sort_activities
 
     if plan_gateway.get_by_name(name):
-        raise errors.ParameterError(f"Duplicate workflow name: workflow '{name}' already exists.")
+        raise errors.DuplicateWorkflowNameError(f"Duplicate workflow name: Workflow '{name}' already exists.")
 
     child_workflows = []
     plan_activities = []
@@ -688,7 +688,7 @@ def visualize_graph(
     activities = get_activities_until_paths(
         paths=targets, sources=sources, revision=revision, activity_gateway=activity_gateway
     )
-    graph = create_activity_graph(list(activities), with_inputs_outputs=show_files)
+    graph = create_activity_graph(list(activities), with_inputs_outputs=show_files, with_hidden_dependencies=True)
     return ActivityGraphViewModel(graph)
 
 

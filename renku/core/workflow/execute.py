@@ -120,6 +120,27 @@ def execute_workflow_graph(
         activity_gateway.add_activity_collection(activity_collection)
 
 
+def check_for_cycles(graph: ExecutionGraph):
+    """Check for cycles in the graph and raises an error if there are any."""
+    if not graph.cycles:
+        return
+
+    cycles_str = []
+    for cycle in graph.cycles:
+        nodes = []
+        for node in cycle:
+            if isinstance(node, AbstractPlan):
+                nodes.append(f"[{node.name}]")
+            else:
+                cls = node.__class__.__name__.replace("Command", "")
+                nodes.append(f"{cls}: {node.actual_value}")
+        cycles_str.append(" -> ".join(nodes))
+
+    message = "Circular workflows are not supported in Renku. Please remove these cycles:\n\t"
+    message += "\n\t".join(cycles_str)
+    raise errors.GraphCycleError(message=message, cycles=[])
+
+
 @inject.autoparams()
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
 def execute_workflow(

@@ -22,7 +22,7 @@ from __future__ import annotations
 import itertools
 from datetime import datetime
 from pathlib import Path
-from typing import Any, List, Optional, Sequence, Union
+from typing import Any, Callable, List, Optional, Sequence, Type, TypeVar, Union, overload
 
 import bashlex
 import networkx as nx
@@ -37,9 +37,10 @@ from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.plugin.workflow_file_parser import read_workflow_file
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
-from renku.core.util.os import get_absolute_path, is_subpath
+from renku.core.util.os import are_paths_equal, is_subpath
+from renku.core.util.util import to_string
 from renku.core.workflow.concrete_execution_graph import ExecutionGraph
-from renku.core.workflow.execute import execute_workflow_graph
+from renku.core.workflow.execute import check_for_cycles, execute_workflow_graph
 from renku.core.workflow.plan import get_latest_plan, is_plan_removed
 from renku.core.workflow.run import get_valid_parameter_name, get_valid_plan_name
 from renku.domain_model.project_context import project_context
@@ -47,8 +48,8 @@ from renku.domain_model.workflow.parameter import (
     CommandInput,
     CommandOutput,
     CommandParameter,
+    HiddenInput,
     MappedIOStream,
-    WorkflowFileInput,
     generate_parameter_name,
 )
 from renku.domain_model.workflow.plan import get_duplicate_arguments_names
@@ -72,10 +73,10 @@ class WorkflowFile:
         self.description: Optional[str] = description
         self.keywords: List[str] = [str(k) for k in keywords] if keywords else []
 
-        self.qualified_name = generate_qualified_plan_name(path=path, name=name)
+        self.qualified_name = name
 
-        validate_workflow_file(self)
-        set_missing_names(self)
+        self.validate()
+        self.set_missing_names()
 
     @inject.autoparams("project_gateway")
     def to_plan(self, project_gateway: IProjectGateway) -> WorkflowFileCompositePlan:
@@ -92,11 +93,76 @@ class WorkflowFile:
             path=self.path,
             plans=[s.to_plan(project_id=project_id) for s in self.steps],
             project_id=project_id,
-            qualified_name=self.qualified_name,
         )
 
         # NOTE: Make derivative chains and potentially re-use existing plans
         return calculate_derivatives(workflow_file_root_plan)
+
+    def validate(self):
+        """Validate a workflow file."""
+
+        def validate_plan_name(name, kind="Workflow file"):
+            valid_name = get_valid_plan_name(name)
+            if valid_name != name:
+                raise errors.ParseError(f"{kind} name is invalid: '{name}' (Hint: '{valid_name}' is valid)")
+
+        def is_name_reserved(name) -> bool:
+            return name in ["inputs", "outputs", "parameters"]
+
+        def validate_step(step):
+            validate_plan_name(name=step.name, kind="Step")
+
+            for parameter in itertools.chain(step.inputs, step.outputs, step.parameters):
+                if parameter.name:
+                    valid_name = get_valid_parameter_name(parameter.name)
+                    if valid_name != parameter.name:
+                        raise errors.ParseError(
+                            f"Parameter name in step '{step.name}' is invalid: '{parameter.name}' "
+                            f"(Hint: '{valid_name}' is valid)"
+                        )
+
+                    if is_name_reserved(parameter.name):
+                        raise errors.ParseError(
+                            "Names 'inputs', 'outputs', and 'parameters' are reserved and cannot be used as parameter "
+                            f"name in step '{step.name}'"
+                        )
+
+            duplicates = get_duplicate_arguments_names(plan=step)
+            if duplicates:
+                duplicates_string = ", ".join(sorted(duplicates))
+                raise errors.ParseError(f"Duplicate input, output or parameter names found: {duplicates_string}")
+
+        validate_plan_name(self.name)
+
+        for s in self.steps:
+            if s.name == self.name:
+                raise errors.ParseError(f"Step '{s.name}' cannot have the same name as the workflow file")
+            validate_step(s)
+
+    def set_missing_names(self):
+        """Set missing names for attributes."""
+
+        def is_name_unique(name, step) -> bool:
+            for parameter in itertools.chain(step.inputs, step.outputs, step.parameters):
+                if parameter.name == name:
+                    return False
+            return True
+
+        def is_name_reserved(name) -> bool:
+            return name in ["inputs", "outputs", "parameters"]
+
+        for step in self.steps:
+            for parameter in itertools.chain(step.inputs, step.outputs, step.parameters):
+                if not parameter.name:
+                    # NOTE: Use prefix as the name if it's unique
+                    if parameter.prefix:
+                        valid_name = get_valid_parameter_name(parameter.prefix.strip(" -="))
+                        if is_name_unique(name=valid_name, step=step) and not is_name_reserved(valid_name):
+                            parameter.name = valid_name
+                            continue
+
+                    kind = parameter.__class__.__name__.lower()
+                    parameter.name = generate_parameter_name(parameter=parameter, kind=kind)
 
 
 class Step:
@@ -116,6 +182,7 @@ class Step:
         parameters: List[Parameter] = None,
         path: Union[Path, str],
         success_codes: Optional[List[int]] = None,
+        workflow_file_name: str,
     ):
         self.command: str = command
         self.date_created = date_created or local_now()
@@ -128,18 +195,18 @@ class Step:
         self.outputs: List[Output] = outputs or []
         self.parameters: List[Parameter] = parameters or []
         self.path: str = str(path)
-        self.success_codes: List[int] = [int(s) for s in success_codes] if success_codes else []
+        self.success_codes: List[int] = success_codes or []
 
-        self.qualified_name = generate_qualified_plan_name(path=path, name=name)
+        self.qualified_name = generate_qualified_plan_name(workflow_file_name=workflow_file_name, step_name=name)
 
         StepCommandParser(step=self).parse_command()
 
     def to_plan(self, project_id: str) -> WorkflowFilePlan:
         """Convert a step to a WorkflowFilePlan."""
         id = WorkflowFilePlan.generate_id(path=self.path, name=self.name)
-        inputs = [p.to_command_input(plan_id=id, index=i) for i, p in enumerate(self.inputs, start=1)]
-        # NOTE: Add the workflow file itself as a dependency so that the workflow update machinery works
-        workflow_file = WorkflowFileInput(
+
+        # NOTE: Add the workflow file itself as a hidden dependency
+        workflow_file = HiddenInput(
             default_value=self.path,
             description="Workflow file",
             id=CommandInput.generate_id(plan_id=id, name="workflow-file", postfix="workflow-file"),
@@ -149,22 +216,21 @@ class Step:
             postfix="workflow-file",
             prefix=None,
         )
-        inputs.append(workflow_file)
 
         return WorkflowFilePlan(
             command=self.command,
             date_created=self.date_created,
             derived_from=None,  # NOTE: We create the derivatives chain later
             description=self.description,
+            hidden_inputs=[workflow_file],
             id=id,
-            inputs=inputs,
+            inputs=[p.to_command_input(plan_id=id, index=i) for i, p in enumerate(self.inputs, start=1)],
             keywords=self.keywords.copy(),
             name=self.qualified_name,
             outputs=[p.to_command_output(plan_id=id, index=i) for i, p in enumerate(self.outputs, start=1)],
             parameters=[p.to_command_parameter(plan_id=id, index=i) for i, p in enumerate(self.parameters, start=1)],
             path=self.path,
             project_id=project_id,
-            qualified_name=self.qualified_name,
             success_codes=self.success_codes.copy(),
         )
 
@@ -192,12 +258,18 @@ class BaseParameter:
         self.prefix: Optional[str] = prefix
 
 
+BaseParameterType = TypeVar("BaseParameterType", bound=BaseParameter)
+
+
 class Parameter(BaseParameter):
     """A parameter for a workflow file."""
 
     def __init__(self, value: Any, **kwargs):
         super().__init__(**kwargs)
         self.value: Any = value
+
+        if not value:
+            raise errors.ParameterError("Attribute 'value' must be set for 'Parameter' instances")
 
     def to_command_parameter(self, plan_id: str, index: int) -> CommandParameter:
         """Convert to a Plan parameter."""
@@ -222,10 +294,14 @@ class HiddenParameter(Parameter):
 class BasePath(BaseParameter):
     """Base for workflow Input/Output."""
 
-    def __init__(self, path: str, mapped_to: Optional[str] = None, **kwargs):
+    def __init__(self, path: str, mapped_to: Optional[str] = None, persist: bool = True, **kwargs):
         super().__init__(**kwargs)
         self.mapped_to: Optional[str] = mapped_to.lower().strip() if mapped_to else None
         self.path: str = path
+        self.persist: bool = persist
+
+        if not path:
+            raise errors.ParameterError(f"Attribute 'path' must be set for '{self.__class__.__name__}' instances")
 
 
 class Input(BasePath):
@@ -251,16 +327,14 @@ class Input(BasePath):
 class Output(BasePath):
     """An output from a workflow file."""
 
-    def __init__(self, persist: bool = True, **kwargs):
-        super().__init__(**kwargs)
-        self.persist: bool = persist
-
     def to_command_output(self, plan_id: str, index: int) -> CommandOutput:
         """Convert to a Plan output."""
         postfix = self.name if self.name_set_by_user else str(index)
+        path = Path(self.path)
+        create_folder = not path.exists() and path.parent.resolve() != Path.cwd()
 
         return CommandOutput(
-            create_folder=False,
+            create_folder=create_folder,
             default_value=self.path,
             derived_from=None,
             description=self.description,
@@ -274,21 +348,23 @@ class Output(BasePath):
         )
 
 
-def generate_qualified_plan_name(path: Union[Path, str], name: str) -> str:
+def generate_qualified_plan_name(workflow_file_name: str, step_name: str) -> str:
     """Generate name for ``WorkflowFile`` and ``Step``."""
     # NOTE: Call ``as_posix()`` to convert Windows paths to posix paths to have a platform-independent name
-    return f"{Path(path).as_posix()}::{name}"
+    return f"{workflow_file_name}.{step_name}"
 
 
+@inject.params(plan_gateway=IPlanGateway)
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
 def run_workflow_file(
-    path: Union[Path, str], steps: List[str], dry_run: bool, workflow_file: Optional[WorkflowFile], provider: str
+    path: Union[Path, str],
+    steps: List[str],
+    dry_run: bool,
+    workflow_file: Optional[WorkflowFile],
+    provider: str,
+    plan_gateway: IPlanGateway,
 ):
     """Run a workflow file."""
-
-    def find_step(plan):
-        return next(s for s in workflow_file.steps if plan.qualified_name == s.qualified_name)
-
     from renku.command.view_model.workflow_file import WorkflowFileViewModel
 
     try:
@@ -300,11 +376,21 @@ def run_workflow_file(
     workflow_file = workflow_file or read_workflow_file(path=path, parser="renku")
     workflow = workflow_file.to_plan()
 
+    # NOTE: Check workflow file name is unique
+    existing_plan = plan_gateway.get_by_name(workflow.name)
+    if existing_plan:
+        if not isinstance(existing_plan, WorkflowFileCompositePlan) or existing_plan.path != workflow.path:
+            raise errors.DuplicateWorkflowNameError(
+                f"Duplicate workflow file name: Workflow '{workflow.name}' already exists."
+            )
+
     # NOTE: Filter steps after calculating derivatives so that the root plan (that has a subset of steps) isn't
     # considered as a new version of the plan.
     selected_steps = filter_steps(workflow=workflow, steps=steps) if steps else [workflow]
 
     graph = ExecutionGraph(workflows=selected_steps, virtual_links=True)
+
+    check_for_cycles(graph=graph)
 
     if not dry_run:
         # NOTE: We pass the non-filtered plan to be tracked; we can detect that a subset of steps were executed by
@@ -312,7 +398,9 @@ def run_workflow_file(
         execute_workflow_graph(dag=graph.workflow_graph, provider=provider, workflow_file_plan=workflow)
         dry_run_executions = []
     else:
-        executed_steps = [find_step(plan) for plan in nx.topological_sort(graph.workflow_graph)]
+        plans = list(nx.topological_sort(graph.workflow_graph))
+        plan_step_mapping = {p: s for p in plans for s in workflow_file.steps if p.name == s.qualified_name}
+        executed_steps = [plan_step_mapping[plan] for plan in plans]
         dry_run_executions = [f"Will execute step '{s.name}': {s.original_command}" for s in executed_steps]
 
     selected_steps_names = [s.name for s in selected_steps]
@@ -335,99 +423,32 @@ def filter_steps(workflow: WorkflowFileCompositePlan, steps: List[str]) -> List[
     return [s for s in workflow.plans if s.unqualified_name in selected_steps]
 
 
-def to_string(value: Any) -> str:
-    """Convert a given value to string and strip surrounding whitespaces."""
-    from renku.core.util.util import to_string
-
-    return to_string(value).strip()
-
-
-def validate_workflow_file(workflow_file: WorkflowFile):
-    """Validate a workflow file."""
-
-    def validate_plan_name(name, kind="Workflow file"):
-        valid_name = get_valid_plan_name(name)
-        if valid_name != name:
-            raise errors.ParseError(f"{kind} name is invalid: '{name}' (Hint: '{valid_name}' is valid)")
-
-    def is_name_reserved(name) -> bool:
-        return name in ["inputs", "outputs", "parameters"]
-
-    def validate_step(step):
-        validate_plan_name(name=step.name, kind="Step")
-
-        for parameter in itertools.chain(step.inputs, step.outputs, step.parameters):
-            if parameter.name:
-                valid_name = get_valid_parameter_name(parameter.name)
-                if valid_name != parameter.name:
-                    raise errors.ParseError(
-                        f"Parameter name in step '{step.name}' is invalid: '{parameter.name}' "
-                        f"(Hint: '{valid_name}' is valid)"
-                    )
-
-                if is_name_reserved(parameter.name):
-                    raise errors.ParseError(
-                        "Names 'inputs', 'outputs', and 'parameters' are reserved and cannot be used as parameter name "
-                        f"in step '{step.name}'"
-                    )
-
-        duplicates = get_duplicate_arguments_names(plan=step)
-        if duplicates:
-            duplicates_string = ", ".join(sorted(duplicates))
-            raise errors.ParseError(f"Duplicate input, output or parameter names found: {duplicates_string}")
-
-    validate_plan_name(workflow_file.name)
-
-    for s in workflow_file.steps:
-        if s.name == workflow_file.name:
-            raise errors.ParseError(f"Step '{s.name}' cannot have the same name as the workflow file")
-        validate_step(s)
-
-
-def set_missing_names(workflow_file: WorkflowFile):
-    """Set missing names for attributes."""
-
-    def is_name_unique(name, step) -> bool:
-        for parameter in itertools.chain(step.inputs, step.outputs, step.parameters):
-            if parameter.name == name:
-                return False
-        return True
-
-    def is_name_reserved(name) -> bool:
-        return name in ["inputs", "outputs", "parameters"]
-
-    for step in workflow_file.steps:
-        for parameter in itertools.chain(step.inputs, step.outputs, step.parameters):
-            if not parameter.name:
-                # NOTE: Use prefix as the name if it's unique
-                if parameter.prefix:
-                    valid_name = get_valid_parameter_name(parameter.prefix.strip(" -="))
-                    if is_name_unique(name=valid_name, step=step) and not is_name_reserved(valid_name):
-                        parameter.name = valid_name
-                        continue
-
-                parameter.name = generate_parameter_name(parameter=parameter, kind=parameter.__class__.__name__.lower())
-
-
 @inject.autoparams("plan_gateway")
 def calculate_derivatives(
-    plan: Union[WorkflowFileCompositePlan, WorkflowFilePlan], plan_gateway: IPlanGateway, sequence: Optional[int] = None
+    plan: Union[WorkflowFileCompositePlan, WorkflowFilePlan],
+    plan_gateway: IPlanGateway,
+    sequence: Optional[itertools.count] = None,
 ) -> Union[WorkflowFileCompositePlan, WorkflowFilePlan]:
     """Check for existing plans and set derivative chain if needed.
 
     Args:
         plan(Union[WorkflowFileCompositePlan, WorkflowFilePlan]): The potential derivative plan.
         plan_gateway(IPlanGateway): ``PlanGateway`` instance.
-        sequence(Optional[int]): sequence is used to generate deterministic IDs in case a previous ID cannot be used for
-            a plan (e.g. when a plan was deleted and re-executed) (Default value = False).
+        sequence(Optional[itertools.count]): sequence is used to generate deterministic IDs in case a previous ID
+             cannot be used for a plan (e.g. when a plan was deleted and re-executed) (Default value = False).
 
     Returns:
         Union[WorkflowFileCompositePlan, WorkflowFilePlan]: An existing plan, if found and is the same; otherwise, the
             passed-in ``plan``.
     """
 
-    def get_next_sequence() -> int:
-        return 1 if sequence is None else sequence + 1
+    def get_next_sequence_value() -> int:
+        nonlocal sequence
+
+        if not sequence:
+            sequence = itertools.count(0)
+
+        return next(sequence)
 
     existing_plan = plan_gateway.get_by_id(plan.id)
     existing_plan = get_latest_plan(plan=existing_plan)
@@ -438,15 +459,15 @@ def calculate_derivatives(
         create_derivatives = False
     elif is_plan_removed(existing_plan):
         # NOTE: The plan was deleted. Re-call with the next sequence ID
-        sequence = get_next_sequence()
-        plan.assign_new_id(sequence=sequence)
+        sequence_value = get_next_sequence_value()
+        plan.assign_new_id(sequence=sequence_value)
         return calculate_derivatives(plan=plan, sequence=sequence)
     elif not isinstance(existing_plan, type(plan)):
         # NOTE: A plan with the same ID existing that is not part of a workflow file, so, we cannot form a derivation
         # chain. Re-call with the next sequence ID.
         # should be improbable. Just change the ID. This also makes it impossible to ever form a derivation chain.
-        sequence = get_next_sequence()
-        plan.assign_new_id(sequence=sequence)
+        sequence_value = get_next_sequence_value()
+        plan.assign_new_id(sequence=sequence_value)
         return calculate_derivatives(plan=plan, sequence=sequence)
     elif plan.is_equal_to(existing_plan):  # type: ignore
         # NOTE: It's the same plan, so, re-use the existing one (which also re-uses sub-plans if any).
@@ -481,6 +502,7 @@ class StepCommandParser(nodevisitor):
     def __init__(self, step: Step):
         self.step: Step = step
         self.processed_parameters: List[Union[BasePath, BaseParameter]] = []
+        self.command: str = ""
 
     def parse_command(self) -> None:
         """Parse the command and assign some properties (e.g. position) for parameters and the command."""
@@ -490,7 +512,7 @@ class StepCommandParser(nodevisitor):
             # NOTE: Parse the command to an AST
             parsed_commands = bashlex.parse(self.step.command)
         except ParsingError as e:
-            raise errors.ParseError(f"Cannot parse command {self.step.command}") from e
+            raise errors.ParseError(f"Cannot parse command {self.step.command}: {e}")
 
         if len(parsed_commands) > 1:
             raise errors.ParseError(f"Command must be a single line: {self.step.command}")
@@ -500,10 +522,15 @@ class StepCommandParser(nodevisitor):
         # NOTE: Process each token in the AST
         self.visit(parsed_command)
 
-        unprocessed_nodes = [str(n) for n in parsed_command.parts if not n.processed]
+        # NOTE: Set step's command
+        self.step.command = self.command
+
+        unprocessed_nodes = [self.get_node_as_string(n) for n in parsed_command.parts if not n.processed]
         if unprocessed_nodes:
             nodes_str = "\n\t".join(unprocessed_nodes)
-            communication.warn(f"The following command tokens weren't processed:\n\t{nodes_str}")
+            communication.warn(
+                f"The following command tokens weren't processed in step '{self.step.name}':\n\t{nodes_str}"
+            )
 
         parameters_with_position = (
             p
@@ -520,23 +547,32 @@ class StepCommandParser(nodevisitor):
             if not p.implicit and p not in self.processed_parameters
         ]
         if unprocessed_parameters:
-            parameters_str = "\n\t".join(unprocessed_parameters)  # type: ignore
+            parameters_str = "\n\t".join(unprocessed_parameters)
             communication.warn(
-                f"The following inputs/outputs/parameters didn't appear in the command '{self.step.command}':"
-                "\n(set 'implicit' attribute for them to 'true' if this is intentional)"
-                f"\n\t{parameters_str}"
+                f"The following inputs/outputs/parameters didn't appear in the command of step '{self.step.name}': "
+                f"'{self.step.original_command}':"
+                f"\n(set 'implicit' attribute for them to 'true' if this is intentional)\n\t{parameters_str}"
             )
 
     def visitnode(self, node):
         """Start of processing a single command token."""
         if node.kind in ["list", "pipeline"]:
-            raise errors.ParseError(f"Cannot run multiple commands/piping in '{self.step.command}'")
+            raise errors.ParseError(
+                f"Cannot run multiple commands/piping in step '{self.step.name}': {self.step.command}"
+            )
         if node.kind not in ("command", "word", "redirect", "tilde", "parameter"):
-            raise errors.ParseError(f"Unsupported command token: '{node}' in '{self.step.command}'")
+            message = self.get_node_as_string(node)
+            raise errors.ParseError(
+                f"Unsupported command token: '{message}' in step '{self.step.name}': {self.step.command}"
+            )
 
         # NOTE: Set a marker for each node if not already set
         if getattr(node, "processed", None) is None:
             node.processed = False
+
+    def get_node_as_string(self, node) -> str:
+        """Return user-friendly error message for ``bashlex`` nodes."""
+        return f"Node {node.kind}: {self.step.command[node.pos[0]:node.pos[1]]}"
 
     def visitcommand(self, node, parts):
         """Process a full command.
@@ -545,13 +581,11 @@ class StepCommandParser(nodevisitor):
         is called only once.
         """
         if not parts:
-            raise errors.ParseError(f"No command to parse: {node}")
+            message = self.get_node_as_string(node)
+            raise errors.ParseError(f"No command to parse in step '{self.step.name}': {message}")
 
         node.processed = True
 
-        command: str = ""
-        command_done: bool = False
-        prefix: str = ""
         position_offset = 0
 
         def get_position(node, increase_offset: bool = False) -> int:
@@ -588,11 +622,15 @@ class StepCommandParser(nodevisitor):
             else:
                 argument = self.find_argument_by_name(name=name)
                 if not argument:
-                    raise errors.ParseError(f"Cannot find a parameter with name '{name}'")
+                    raise errors.ParseError(f"Cannot find a parameter with name '{name}' in step '{self.step.name}'")
                 argument.position = get_position(node)
                 self.processed_parameters.append(argument)
 
             return True
+
+        command: str = ""
+        command_done: bool = False
+        prefix: str = ""
 
         for index, node in enumerate(parts):
             # NOTE: We assume all redirections come at the end of the command. So, stop processing once reaching a
@@ -603,7 +641,7 @@ class StepCommandParser(nodevisitor):
             if node.kind == "word":
                 node.processed = True
                 word = node.word
-                assert isinstance(word, str), f"Token value isn't string: {node}"
+                assert isinstance(word, str), f"Token value isn't string: {node} in step '{self.step.name}'"
 
                 if process_variable(token=word, node=node):
                     continue
@@ -611,16 +649,33 @@ class StepCommandParser(nodevisitor):
                 word = self.unescape_dollar_sign(word)
 
                 # NOTE: If no command has not been found yet, don't search in the outputs
-                argument = self.find_argument(argument=word, prefix=prefix, search_outputs=bool(command))
+                argument = self.find_argument(
+                    prefix=prefix,
+                    value=word,
+                    search_outputs=bool(command),
+                    exclude_prefix=False,
+                )
+
+                # NOTE: Search with no ``prefix`` if we cannot find a match and command is not done yet.
+                if not argument and not command_done:
+                    argument = self.find_argument(
+                        prefix=None,
+                        value=word,
+                        search_outputs=bool(command),
+                        exclude_prefix=True,
+                    )
+
                 if argument:
                     command_done = True
                     prefix = ""
                     argument.position = get_position(node)
                     self.processed_parameters.append(argument)
                 elif word == "--":
-                    if prefix:
-                        raise errors.ParseError(f"Cannot find a parameter for '{prefix}'")
+                    # NOTE: Command ends with we see ``--``
                     command_done = True
+                    if prefix:
+                        command = f"{command} {prefix}"
+                        prefix = ""
                     position = get_position(node)
                     parameter = HiddenParameter(name=f"hidden-{position}", value=word, position=position)
                     self.step.parameters.append(parameter)
@@ -635,7 +690,10 @@ class StepCommandParser(nodevisitor):
                 elif not command_done:
                     command = word if not command else f"{command} {word}"
                 elif prefix:
-                    raise errors.ParseError(f"Cannot find a parameter for '{prefix} {word}'")
+                    # NOTE: The prefix was (probably) a parameter that wasn't defined
+                    raise errors.ParseError(
+                        f"Cannot find an argument for '{prefix}' in step '{self.step.name}': {self.step.command}"
+                    )
                 else:
                     prefix = word
             elif node.kind == "tilde":
@@ -646,9 +704,11 @@ class StepCommandParser(nodevisitor):
             if not command_done:
                 command = f"{command} {prefix}"
             else:
-                raise errors.ParseError(f"Cannot find a parameter for '{prefix}'")
+                raise errors.ParseError(
+                    f"Cannot find an argument for '{prefix}' in step '{self.step.name}': {self.step.command}"
+                )
 
-        self.step.command = command
+        self.command = command
 
     def visitredirect(self, node, input, type, output, heredoc):
         """Process a redirect."""
@@ -663,7 +723,9 @@ class StepCommandParser(nodevisitor):
 
         if type in (">", ">|"):  # stdout or stderr
             if input is not None and (not isinstance(input, int) or input not in (1, 2)):
-                raise errors.ParseError(f"Unsupported output redirection '{input}{type}' in {self.step.command}")
+                raise errors.ParseError(
+                    f"Unsupported output redirection '{input}{type}' in step '{self.step.name}': {self.step.command}"
+                )
 
             stream = "stdout" if input is None or input == 1 else "stderr"  # input == 2
 
@@ -680,12 +742,16 @@ class StepCommandParser(nodevisitor):
                 else:
                     parameter = self.find_argument_by_name(name=name, collection=self.step.outputs)
                     if not parameter:
-                        raise errors.ParseError(f"Cannot find variable '{name}' for {stream}")
+                        raise errors.ParseError(
+                            f"Cannot find variable '{name}' for {stream} in step '{self.step.name}'"
+                        )
             else:
                 path = output.word
-                parameter = self.find_output(path=path, prefix=None)
+                parameter = self.find_output(path=path, prefix=None, exclude_prefix=False)
                 if not parameter:
-                    raise errors.ParseError(f"Cannot find '{stream}' == '{path}' in outputs for {self.step.command}")
+                    raise errors.ParseError(
+                        f"Cannot find '{stream}' == '{path}' in outputs in step '{self.step.name}': {self.step.command}"
+                    )
 
             parameter.mapped_to = stream
         elif type == "<":  # stdin
@@ -695,8 +761,7 @@ class StepCommandParser(nodevisitor):
                 if name == "inputs":
                     if len(self.step.inputs) != 0:
                         raise errors.ParseError(
-                            "There must be exactly one input when using '$inputs' in stdin"
-                            f" in step '{self.step.name}'"
+                            f"There must be exactly one input when using '$inputs' as stdin in step '{self.step.name}'"
                         )
                     parameter = self.step.inputs[0]
                 else:
@@ -705,20 +770,29 @@ class StepCommandParser(nodevisitor):
                         raise errors.ParseError(f"Cannot find variable '{name}' for stdin")
             else:
                 path = output.word
-                parameter = self.find_input(path=path, prefix=None)
+                parameter = self.find_input(path=path, prefix=None, exclude_prefix=False)
                 if not parameter:
-                    raise errors.ParseError(f"Cannot find 'stdin' == '{path}' in inputs for {self.step.command}")
+                    raise errors.ParseError(
+                        f"Cannot find 'stdin' == '{path}' in inputs in step '{self.step.name}': {self.step.command}"
+                    )
 
             parameter.mapped_to = "stdin"
         elif type in (">&", "<&"):
             # NOTE: Renku metadata doesn't support a stream that is mapped to another
-            stream = f"{to_string(input)}{type}{output}"
-            raise errors.ParseError(f"Stream-to-stream redirection is not supported '{stream}' in {self.step.command}")
+            stream = f"{to_string(input, strip=True)}{type}{output}"
+            raise errors.ParseError(
+                f"Stream-to-stream redirection '{stream}' isn't supported in step '{self.step.name}': "
+                f"{self.step.command}"
+            )
         elif type == ">>":
-            stream = f"{to_string(input)}{type}{output}"
-            raise errors.ParseError(f"Appending redirection is not supported '{stream}' in {self.step.command}")
+            stream = f"{to_string(input, strip=True)}{type}{output}"
+            raise errors.ParseError(
+                f"Appending redirection '{stream}' is not supported in step '{self.step.name}': {self.step.command}"
+            )
         else:
-            raise errors.ParseError(f"Unsupported redirection operator '{type}' in {self.step.command}")
+            raise errors.ParseError(
+                f"Unsupported redirection operator '{type}' in step '{self.step.name}': {self.step.command}"
+            )
 
         node.processed = True
         node.output.processed = True
@@ -731,23 +805,6 @@ class StepCommandParser(nodevisitor):
         """Unescape $ in the command."""
         return word.replace("$$", "$")
 
-    def find_argument(self, argument: str, prefix: Optional[str], search_outputs: bool) -> Optional[BaseParameter]:
-        """Check the argument against inputs/outputs/parameters to find its type."""
-        parameter = self.find_and_process_parameter(value=argument, prefix=prefix)
-        if parameter:
-            return parameter
-
-        input = self.find_input(path=argument, prefix=prefix)
-        if input:
-            return input
-
-        if search_outputs:
-            output = self.find_output(path=argument, prefix=prefix)
-            if output:
-                return output
-
-        return None
-
     def find_argument_by_name(self, name: str, collection=None) -> Optional[BaseParameter]:
         """Find an inputs/outputs/parameters with the given name."""
         collection = collection or itertools.chain(self.step.inputs, self.step.outputs, self.step.parameters)
@@ -757,92 +814,168 @@ class StepCommandParser(nodevisitor):
 
         return argument
 
-    def find_and_process_parameter(self, value: str, prefix: Optional[str]) -> Optional[Parameter]:
+    def find_argument(
+        self, prefix: Optional[str], value: str, search_outputs: bool, exclude_prefix: bool
+    ) -> Optional[BaseParameter]:
+        """Check the argument against inputs/outputs/parameters to find its type.
+
+        Args:
+            prefix(Optional[str]): Argument prefix.
+            value(str): Argument value.
+            search_outputs(bool): Whether to search outputs or not. When no part of a command hasn't found yet, we
+                shouldn't search outputs.
+            exclude_prefix(bool): Whether prefix must be excluded in search or not. When the command hasn't been fully
+                found, the prefix might be part of the command and not the argument.
+
+        Returns:
+            Optional[BaseParameter]: An Input, Output, or Parameter instance if a match is found; None otherwise.
+        """
+        parameter = self.find_parameter(prefix=prefix, value=value, exclude_prefix=exclude_prefix)
+        if parameter:
+            return parameter
+
+        input = self.find_input(prefix=prefix, path=value, exclude_prefix=exclude_prefix)
+        if input:
+            return input
+
+        if search_outputs:
+            output = self.find_output(prefix=prefix, path=value, exclude_prefix=exclude_prefix)
+            if output:
+                return output
+
+        return None
+
+    def find_parameter(self, prefix: Optional[str], value: str, exclude_prefix: bool) -> Optional[Parameter]:
         """Find a parameter based on its value and prefix; adjust parameter's prefix if needed."""
-        value = to_string(value)
-        prefix = to_string(prefix)
+        return self.find_and_process_argument(
+            cls=Parameter,
+            collection=self.step.parameters,
+            prefix=prefix,
+            value=value,
+            exclude_prefix=exclude_prefix,
+            are_values_equal=lambda a, b: a == b,
+        )
+
+    def find_input(self, prefix: Optional[str], path: str, exclude_prefix: bool) -> Optional[BasePath]:
+        """Search for a given path in inputs."""
+        return self.find_and_process_argument(
+            cls=Input,
+            collection=self.step.inputs,
+            prefix=prefix,
+            value=path,
+            exclude_prefix=exclude_prefix,
+            are_values_equal=are_paths_equal,
+        )
+
+    def find_output(self, prefix: Optional[str], path: str, exclude_prefix: bool) -> Optional[BasePath]:
+        """Search for a given path in outputs."""
+        return self.find_and_process_argument(
+            cls=Output,
+            collection=self.step.outputs,
+            prefix=prefix,
+            value=path,
+            exclude_prefix=exclude_prefix,
+            are_values_equal=are_paths_equal,
+        )
+
+    @overload
+    def find_and_process_argument(
+        self,
+        *,
+        cls: Type[BaseParameterType],
+        collection: Sequence[Parameter],
+        prefix: Optional[str],
+        value: str,
+        exclude_prefix: bool,
+        are_values_equal: Callable[[str, str], bool],
+    ) -> Optional[Parameter]:
+        ...
+
+    @overload
+    def find_and_process_argument(
+        self,
+        *,
+        cls: Type[BaseParameterType],
+        collection: Sequence[BasePath],
+        prefix: Optional[str],
+        value: str,
+        exclude_prefix: bool,
+        are_values_equal: Callable[[str, str], bool],
+    ) -> Optional[BasePath]:
+        ...
+
+    def find_and_process_argument(
+        self,
+        *,
+        cls: Type[BaseParameterType],
+        collection: Sequence[Union[BasePath, Parameter]],
+        prefix: Optional[str],
+        value: str,
+        exclude_prefix: bool,
+        are_values_equal: Callable[[str, str], bool],
+    ) -> Optional[Union[BasePath, Parameter]]:
+        """Find the given input/output/parameter in the collection."""
+        prefix = to_string(prefix, strip=True)
+        value = to_string(value, strip=True)
+
+        attribute = "value" if cls == Parameter else "path"
+
+        # NOTE: Search for cases that prefix can be part of the command and not the argument
+        if exclude_prefix:
+            for parameter in collection:
+                parameter_value = to_string(getattr(parameter, attribute), strip=True)
+
+                if not parameter.prefix and are_values_equal(value, parameter_value):
+                    return parameter
+            return None
 
         has_equal = False
         new_prefix, new_value = "", ""
         if "=" in value and not prefix:
             has_equal = True
             new_prefix, new_value = value.split("=", maxsplit=1)
+            new_prefix = new_prefix.strip()
 
-        for parameter in self.step.parameters:
+        for parameter in collection:
             # NOTE: Process each parameter only once
             if parameter in self.processed_parameters:
                 continue
 
-            if value == to_string(parameter.value) and prefix == to_string(parameter.prefix):
-                if parameter.prefix:
-                    # NOTE: Add a separator between prefix and value
-                    parameter.prefix = parameter.prefix.strip() + " "
-                return parameter
-            # NOTE: If no prefix is given then it's possible that value is a parameter prefix
-            elif not prefix and not parameter.prefix and value == to_string(parameter.prefix):
-                return parameter
-            elif (
-                has_equal
-                and new_prefix == to_string(parameter.prefix).strip("=")
-                and new_value == to_string(parameter.value)
+            parameter_prefix = to_string(parameter.prefix, strip=True)
+            parameter_value = to_string(getattr(parameter, attribute), strip=True)
+
+            separator = "=" if prefix.endswith("=") else " "
+
+            if prefix.strip(separator) == parameter_prefix.strip(separator) and are_values_equal(
+                value, parameter_value
             ):
                 if parameter.prefix:
-                    # NOTE: Add proper separator between prefix and value
-                    parameter.prefix = parameter.prefix.strip("=") + "="
+                    # NOTE: Add a separator between prefix and value
+                    parameter.prefix = parameter_prefix.strip(separator) + separator
+                return parameter
+            elif (
+                has_equal and new_prefix == parameter_prefix.strip("=") and are_values_equal(new_value, parameter_value)
+            ):
+                if parameter.prefix:
+                    # NOTE: Add a separator between prefix and value
+                    parameter.prefix = parameter_prefix.strip("=") + "="
                 return parameter
 
         # NOTE: Do this in a second loop since the previous comparisons have higher priority
-        for parameter in self.step.parameters:
-            # NOTE: Process each parameter only once
-            if parameter in self.processed_parameters:
-                continue
-
-            if not parameter.prefix or not parameter.value:
-                combined_value = (
-                    f"{prefix} {value}"
-                    if isinstance(parameter.value, str) and " " in parameter.value
-                    else f"{prefix}{value}"
-                )
-                parameter_value = parameter.prefix or parameter.value
-                # NOTE: Use ``split`` to ignore multiple whitespaces in comparison
-                if combined_value.split() == str(parameter_value).split():
-                    return parameter
-
-        return None
-
-    def find_input(self, path: str, prefix: Optional[str]) -> Optional[BasePath]:
-        """Search for a given path in inputs."""
-        return self.find_and_process_path(collection=self.step.inputs, path=path, prefix=prefix)
-
-    def find_output(self, path: str, prefix: Optional[str]) -> Optional[BasePath]:
-        """Search for a given path in outputs."""
-        return self.find_and_process_path(collection=self.step.outputs, path=path, prefix=prefix)
-
-    def find_and_process_path(
-        self, collection: Sequence[BasePath], path: str, prefix: Optional[str]
-    ) -> Optional[BasePath]:
-        """Find the given path in the collection."""
-
-        def are_paths_equal(a: Union[Path, str], b: Union[Path, str]) -> bool:
-            """Returns if two paths are the same."""
-            # NOTE: The two paths should be identical; we don't consider the case where one is a sub-path of another
-            return get_absolute_path(a) == get_absolute_path(b)
-
-        prefix = to_string(prefix).strip("=")
-
         for parameter in collection:
-            if parameter in self.processed_parameters:
+            # NOTE: Process each parameter only once
+            # NOTE: This only concerns parameters that have value but no prefix
+            if parameter in self.processed_parameters or parameter.prefix:
                 continue
 
-            if are_paths_equal(path, parameter.path) and prefix == to_string(parameter.prefix).strip("="):
-                if parameter.prefix and not parameter.prefix.endswith("="):
-                    # NOTE: Add a separator between prefix and value
-                    parameter.prefix = parameter.prefix.strip() + " "
+            # NOTE: Use ``split`` to ignore multiple whitespaces in comparison
+            parameter_value = to_string(getattr(parameter, attribute), strip=True).split()  # type: ignore
+            if parameter_value == f"{prefix}{value}".split() or parameter_value == f"{prefix} {value}".split():
                 return parameter
 
         return None
 
 
-def get_workflow_file_generations(workflow_file: WorkflowFile) -> List[str]:
-    """Return a list of all outputs that must be committed."""
-    return [o.path for step in workflow_file.steps for o in step.outputs if o.persist]
+def get_all_workflow_file_inputs_and_outputs(workflow_file: WorkflowFile) -> List[str]:
+    """Return a list of all inputs and outputs that must be committed."""
+    return [io.path for step in workflow_file.steps for io in itertools.chain(step.inputs, step.outputs) if io.persist]

@@ -439,7 +439,7 @@ following listing shows a more complete definition of the same workflow file:
                 prefix: -n
                 value: 10
 
-    As is show, you can use the name of each argument (i.e. input, output, or
+    As is shown, you can use the name of each argument (i.e. input, output, or
     parameter) prefixed with a ``$`` to refer to an argument.
 
     In addition, you can use ``$inputs``, ``$outputs``, or ``$parameters`` to refer
@@ -481,7 +481,7 @@ from renku.command.run import run_workflow_file_command
 from renku.core import errors
 from renku.core.plugin.workflow_file_parser import read_workflow_file
 from renku.core.util.os import is_subpath
-from renku.core.workflow.workflow_file import get_workflow_file_generations
+from renku.core.workflow.workflow_file import get_all_workflow_file_inputs_and_outputs
 from renku.domain_model.project_context import project_context
 from renku.ui.cli.utils.callback import ClickCallback
 from renku.ui.cli.utils.plugins import available_workflow_providers
@@ -508,7 +508,6 @@ from renku.ui.cli.utils.terminal import print_workflow_file
 )
 @click.option("--isolation", is_flag=True, default=False, help="Invoke the given command in isolation.")
 @click.option("--file", is_flag=True, default=False, help="Force running of a workflow file.")
-@click.argument("command_line", nargs=-1, metavar="<COMMAND> or <WORKFLOW FILE>", required=True, type=click.UNPROCESSED)
 @click.option("--verbose", is_flag=True, default=False, help="Print generated plan after the execution.")
 @click.option(
     "--creator",
@@ -527,6 +526,7 @@ from renku.ui.cli.utils.terminal import print_workflow_file
     type=click.Choice(Proxy(available_workflow_providers), case_sensitive=False),
     help="The workflow engine to use for executing workflow files.",
 )
+@click.argument("command_line", nargs=-1, metavar="<COMMAND> or <WORKFLOW FILE>", required=True, type=click.UNPROCESSED)
 def run(
     name,
     description,
@@ -602,7 +602,9 @@ def run(
             commit_only = None
         else:
             workflow_file = read_workflow_file(path=path, parser="renku")
-            commit_only = get_workflow_file_generations(workflow_file) + [str(project_context.metadata_path)]
+            commit_only = (
+                [path] + get_all_workflow_file_inputs_and_outputs(workflow_file) + [str(project_context.metadata_path)]
+            )
 
         provider = provider or "local"
 

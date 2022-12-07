@@ -33,11 +33,10 @@ class WorkflowFileCompositePlan(CompositePlan):
 
     plans: List[WorkflowFilePlan]
 
-    def __init__(self, *, path: Union[Path, str], qualified_name: str, **kwargs):
+    def __init__(self, *, path: Union[Path, str], **kwargs):
         super().__init__(**kwargs)
 
         self.path: str = str(path)
-        self.qualified_name: str = qualified_name
 
     @staticmethod
     def generate_id(path: Union[Path, str] = None, sequence: Optional[int] = None, **_) -> str:
@@ -49,11 +48,6 @@ class WorkflowFileCompositePlan(CompositePlan):
         key = f"{path}" if sequence is None else f"{path}::{sequence}"
         key_bytes = key.encode("utf-8")
         return CompositePlan.generate_id(uuid=hashlib.md5(key_bytes).hexdigest()[:32])
-
-    @staticmethod
-    def validate_name(name: str):
-        """Check a name for invalid characters."""
-        validate_plan_name(name=name, extra_valid_characters="/:-_")
 
     def assign_new_id(self, *, sequence: Optional[int] = None, **_) -> str:
         """Assign a new UUID or a deterministic."""
@@ -68,11 +62,10 @@ class WorkflowFileCompositePlan(CompositePlan):
 class WorkflowFilePlan(Plan):
     """Represent a Plan that is converted from a workflow file."""
 
-    def __init__(self, *, path: Union[Path, str], qualified_name: str, **kwargs):
+    def __init__(self, *, path: Union[Path, str], **kwargs):
         super().__init__(**kwargs)
 
         self.path: str = str(path)
-        self.qualified_name: str = qualified_name
 
     @staticmethod
     def generate_id(path: Union[Path, str] = None, name: str = None, sequence: Optional[int] = None, **_) -> str:
@@ -87,12 +80,12 @@ class WorkflowFilePlan(Plan):
     @staticmethod
     def validate_name(name: str):
         """Check a name for invalid characters."""
-        validate_plan_name(name=name, extra_valid_characters="/:-_")
+        validate_plan_name(name=name, extra_valid_characters="._-")
 
     @property
     def unqualified_name(self) -> str:
         """Name of the plan as appears in the workflow file definition."""
-        return self.qualified_name.rsplit("::", maxsplit=1)[-1]
+        return self.name.rsplit(".", maxsplit=1)[-1]
 
     def assign_new_id(self, *, sequence: Optional[int] = None, **_) -> str:
         """Assign a new UUID or a deterministic."""

@@ -31,7 +31,7 @@ from renku.ui.cli import cli
 from tests.utils import format_result_exception, write_and_commit_file
 
 
-@pytest.mark.parametrize("provider", ["local"])
+@pytest.mark.parametrize("provider", available_workflow_providers())
 @pytest.mark.parametrize("skip_metadata_update", [True, False])
 def test_rerun(project, with_injection, renku_cli, provider, skip_metadata_update):
     """Test rerun."""

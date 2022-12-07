@@ -36,6 +36,7 @@ steps:
     inputs:
       intermediate:
         path: intermediate
+        persist: false
     outputs:
       models-and-colors:
         path: results/output.csv

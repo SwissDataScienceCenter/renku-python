@@ -90,6 +90,6 @@ def read_workflow_file(path: Union[Path, str], parser: str = "renku") -> "Workfl
         raise errors.ParameterError(f"Multiple parsers found for '{parser}': {selected_parsers}.")
 
     parsers.remove(selected_parsers[0])
-    parse_function = pm.subset_hook_caller("parse", [p[0] for p in parsers])
+    parse_function = pm.subset_hook_caller("parse", remove_plugins=[p[0] for p in parsers])
 
     return parse_function(path=path)

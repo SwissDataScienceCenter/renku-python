@@ -75,13 +75,12 @@ class RenkuWorkflowFileExporter(IWorkflowConverter):
     @staticmethod
     def convert_composite_plan(plan: CompositePlan, path: Path):
         """Converts a composite plan to a workflow file."""
-        data: Dict[str, Any] = {"name": plan.name}
-        if plan.description:
-            data["description"] = plan.description
-        if plan.keywords:
-            data["keywords"] = plan.keywords
-        if plan.plans:
-            data["steps"] = [{p.name: RenkuWorkflowFileExporter.convert_step(step=p)} for p in plan.plans]
+        data: Dict[str, Any] = {
+            "name": plan.name,
+            "description": plan.description,
+            "keywords": plan.keywords,
+            "steps": [{p.name: RenkuWorkflowFileExporter.convert_step(step=p)} for p in plan.plans],
+        }
 
         write_yaml(path=path, data=data)
 
@@ -102,7 +101,7 @@ class RenkuWorkflowFileExporter(IWorkflowConverter):
         def convert_path(parameter):
             data = {"path": parameter.actual_value}
             if parameter.prefix:
-                data["prefix"] = parameter.prefix.rstrip(" =")
+                data["prefix"] = parameter.prefix.rstrip()
             if parameter.description:
                 data["description"] = parameter.description
 
@@ -111,7 +110,7 @@ class RenkuWorkflowFileExporter(IWorkflowConverter):
         def convert_parameter(parameter):
             data = {"value": parameter.actual_value}
             if parameter.prefix:
-                data["prefix"] = parameter.prefix.rstrip(" =")
+                data["prefix"] = parameter.prefix.rstrip()
             if parameter.description:
                 data["description"] = parameter.description
 
@@ -123,11 +122,11 @@ class RenkuWorkflowFileExporter(IWorkflowConverter):
                 "Cannot export CompositePlans within a CompositePlan to Renku workflow file format"
             )
 
-        step_data: Dict = {"command": " ".join(step.to_argv(with_streams=True))}
-        if step.description:
-            step_data["description"] = step.description
-        if step.keywords:
-            step_data["keywords"] = step.keywords
+        step_data: Dict = {
+            "command": " ".join(step.to_argv(with_streams=True)),
+            "description": step.description,
+            "keywords": step.keywords,
+        }
         if step.inputs:
             step_data["inputs"] = [{p.name: convert_path(p)} for p in step.inputs]
         if step.outputs:

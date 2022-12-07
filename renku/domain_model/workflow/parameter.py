@@ -307,8 +307,8 @@ class CommandInput(CommandParameterBase):
         return parameter
 
 
-class WorkflowFileInput(CommandInput):
-    """An input to a command that is a workflow file."""
+class HiddenInput(CommandInput):
+    """An input to a command that is added by Renku and should be hidden from users."""
 
 
 class CommandOutput(CommandParameterBase):
