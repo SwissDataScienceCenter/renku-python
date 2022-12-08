@@ -19,7 +19,7 @@
 
 import itertools
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union, cast, overload
 
@@ -34,7 +34,6 @@ from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.plugin.workflow_file_parser import read_workflow_file
 from renku.core.util import communication
-from renku.core.util.datetime8601 import local_now
 from renku.core.util.git import get_git_user
 from renku.core.util.os import are_paths_related, get_relative_paths
 from renku.core.util.util import NO_VALUE, NoValueType
@@ -224,7 +223,7 @@ def show_workflow(name_or_id_or_path: str, activity_gateway: IActivityGateway, w
 
 @inject.autoparams("plan_gateway")
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
-def remove_plan(name_or_id: str, force: bool, plan_gateway: IPlanGateway, when: datetime = local_now()):
+def remove_plan(name_or_id: str, force: bool, plan_gateway: IPlanGateway):
     """Remove the workflow by its name or id.
 
     Args:
@@ -263,7 +262,7 @@ def remove_plan(name_or_id: str, force: bool, plan_gateway: IPlanGateway, when: 
         communication.confirm(prompt_text, abort=True, warning=True)
 
     derived_plan = latest_version.derive()
-    derived_plan.delete(when=when)
+    derived_plan.delete()
 
     plan_gateway.add(derived_plan)
 

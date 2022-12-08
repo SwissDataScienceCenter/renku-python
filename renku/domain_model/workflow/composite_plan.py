@@ -50,6 +50,7 @@ class CompositePlan(AbstractPlan):
         description: Optional[str] = None,
         id: str,
         date_created: Optional[datetime] = None,
+        date_modified: Optional[datetime] = None,
         invalidated_at: Optional[datetime] = None,
         keywords: Optional[List[str]] = None,
         links: Optional[List[ParameterLink]] = None,
@@ -65,6 +66,7 @@ class CompositePlan(AbstractPlan):
             description=description,
             id=id,
             date_created=date_created,
+            date_modified=date_modified,
             invalidated_at=invalidated_at,
             keywords=keywords,
             name=name,
@@ -396,7 +398,7 @@ class CompositePlan(AbstractPlan):
         """Create a new ``CompositePlan`` that is derived from self."""
         derived = copy.copy(self)
         derived.derived_from = self.id
-        derived.date_created = local_now()
+        derived.date_modified = local_now()
         derived.plans = self.plans.copy()
         derived.mappings = self.mappings.copy()
         derived.links = self.links.copy()

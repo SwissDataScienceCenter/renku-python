@@ -30,7 +30,6 @@ from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.util import communication
-from renku.core.util.datetime8601 import local_now
 from renku.core.workflow.plan import get_activities, is_plan_removed, remove_plan
 from renku.domain_model.entity import Entity
 from renku.domain_model.project_context import project_context
@@ -471,8 +470,6 @@ def revert_activity(
     """
     repository = project_context.repository
 
-    delete_time = local_now()
-
     def delete_associated_plan(activity):
         if not delete_plan:
             return
@@ -483,7 +480,7 @@ def revert_activity(
         if used_by_other_activities:
             return
 
-        remove_plan(name_or_id=plan.id, force=True, when=delete_time)
+        remove_plan(name_or_id=plan.id, force=True)
 
     def revert_generations(activity) -> Tuple[Set[str], Set[str]]:
         """Either revert each generation to an older version (created by an earlier activity) or delete it."""
@@ -541,7 +538,7 @@ def revert_activity(
     revert_generations(activity)
     activity_gateway.remove(activity, force=force)
     # NOTE: Delete the activity after processing metadata or otherwise we won't see the activity as the latest generator
-    activity.delete(when=delete_time)
+    activity.delete()
 
     return activity
 

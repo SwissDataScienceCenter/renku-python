@@ -125,24 +125,6 @@ def test_correct_relative_path(isolated_runner, old_project, with_injection):
 
 
 @pytest.mark.migration
-def test_remove_committed_lock_file(isolated_runner, old_project):
-    """Check that renku lock file has been successfully removed from git."""
-    (old_project.path / ".renku.lock").write_text("lock")
-
-    old_project.repository.add(".renku.lock", force=True)
-    old_project.repository.commit("locked")
-
-    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    assert not (old_project.path / ".renku.lock").exists()
-    assert not old_project.repository.is_dirty(untracked_files=True)
-
-    ignored = (old_project.path / ".gitignore").read_text()
-    assert ".renku.lock" in ignored
-
-
-@pytest.mark.migration
 def test_graph_building_after_migration(isolated_runner, old_project):
     """Check that structural migration did not break graph building."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
@@ -417,31 +399,34 @@ def test_migrate_can_preserve_dataset_ids(isolated_runner, old_dataset_project, 
 
 
 @pytest.mark.migration
-def test_migrate_preserves_creation_date_when_preserving_ids(isolated_runner, old_dataset_project):
-    """Test migrate doesn't change dataset's dateCreated when --preserve-identifiers is passed."""
+def test_migrate_preserves_date_when_preserving_ids(isolated_runner, old_dataset_project):
+    """Test migrate doesn't change dataset's dateCreated/Modified when --preserve-identifiers is passed."""
     assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict", "--preserve-identifiers"]).exit_code
 
     dataset = get_dataset_with_injection("mixed")
 
     assert "2020-08-10 21:35:20+00:00" == dataset.date_created.isoformat(" ")
+    assert "2020-08-10 21:35:20+00:00" == dataset.date_modified.isoformat(" ")
 
 
 @pytest.mark.migration
 @pytest.mark.parametrize("old_dataset_project", ["old-datasets-v0.16.0.git"], indirect=True)
-def test_migrate_preserves_creation_date_for_mutated_datasets(isolated_runner, old_dataset_project):
-    """Test migration of datasets that were mutated keeps original dateCreated."""
+def test_migrate_preserves_date_for_mutated_datasets(isolated_runner, old_dataset_project):
+    """Test migration of datasets that were mutated keeps original dateCreated/Modified."""
     assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict"]).exit_code
 
     dataset = get_dataset_with_injection("local")
 
-    assert "2021-07-23 14:34:58+00:00" == dataset.date_created.isoformat(" ")
+    assert "2021-07-23 14:34:24+00:00" == dataset.date_created.isoformat(" ")
+    assert "2021-07-23 14:34:58+00:00" == dataset.date_modified.isoformat(" ")
 
 
 @pytest.mark.migration
-def test_migrate_sets_correct_creation_date_for_non_mutated_datasets(isolated_runner, old_dataset_project):
-    """Test migration of datasets that weren't mutated uses commit date as dateCreated."""
+def test_migrate_sets_correct_date_for_non_mutated_datasets(isolated_runner, old_dataset_project):
+    """Test migration of datasets that weren't mutated uses commit date as dateCreated/Modified."""
     assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict"]).exit_code
 
     dataset = get_dataset_with_injection("mixed")
 
-    assert "2020-08-10 23:35:56+02:00" == dataset.date_created.isoformat(" ")
+    assert "2020-08-10 21:35:20+00:00" == dataset.date_created.isoformat(" ")
+    assert "2020-08-10 23:35:56+02:00" == dataset.date_modified.isoformat(" ")

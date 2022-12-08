@@ -398,6 +398,18 @@
             },
             {
                "nodeKind": "sh:Literal",
+               "path": "schema:dateModified",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "sh:moreThanOrEquals": {
+                  "@id": "schema:dateCreated"
+               },
+               "maxCount": 1,
+               "sh:pattern": "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\+\\d{2}:\\d{2}"
+            },
+            {
+               "nodeKind": "sh:Literal",
                "path": "prov:invalidatedAtTime",
                "datatype": {
                   "@id": "xsd:string"
@@ -726,7 +738,7 @@
                   "@id": "prov:Entity"
                },
                "maxCount": 1,
-               "sh:pattern": "http(s)?://[^/]+/remote-entity/\\S+"
+               "sh:pattern": "http(s)?://[^/]+/remote-entities/\\S+"
             },
             {
                "nodeKind": "sh:Literal",
@@ -1123,6 +1135,19 @@
                "path": "schema:dateCreated",
                "datatype": {
                   "@id": "xsd:string"
+               },
+               "minCount": 1,
+               "maxCount": 1,
+               "sh:pattern": "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\+\\d{2}:\\d{2}"
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "schema:dateModified",
+               "datatype": {
+                  "@id": "xsd:string"
+               },
+               "sh:moreThanOrEquals": {
+                  "@id": "schema:dateCreated"
                },
                "minCount": 1,
                "maxCount": 1,

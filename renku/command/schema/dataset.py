@@ -148,6 +148,7 @@ class DatasetSchema(JsonLDSchema):
     annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
     creators = Nested(schema.creator, PersonSchema, many=True)
     date_created = fields.DateTime(schema.dateCreated, load_default=None, format="iso", extra_formats=("%Y-%m-%d",))
+    date_modified = fields.DateTime(schema.dateModified, load_default=None, format="iso", extra_formats=("%Y-%m-%d",))
     date_removed = fields.DateTime(prov.invalidatedAtTime, load_default=None, format="iso")
     date_published = fields.DateTime(
         schema.datePublished, load_default=None, format="%Y-%m-%d", extra_formats=("iso", "%Y-%m-%dT%H:%M:%S")

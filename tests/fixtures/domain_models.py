@@ -64,6 +64,7 @@ def dataset_model():
             name=name,
             dataset_files=files,
             date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
+            date_modified=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
         )
 
     yield _create_dataset
@@ -110,6 +111,7 @@ def plan_model():
             name=name,
             command=command,
             date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
+            date_modified=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
             creators=[
                 Person(
                     id=Person.generate_id(email="john.doe@example.com", full_identity="john.doe"),
@@ -137,6 +139,7 @@ def composite_plan_model(plan_model):
             name=name,
             plans=steps,
             date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
+            date_modified=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
         )
 
     yield _create_composite

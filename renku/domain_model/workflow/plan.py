@@ -56,6 +56,7 @@ class AbstractPlan(Persistent, ABC):
         description: Optional[str] = None,
         id: str,
         date_created: Optional[datetime] = None,
+        date_modified: Optional[datetime] = None,
         invalidated_at: Optional[datetime] = None,
         keywords: Optional[List[str]] = None,
         name: Optional[str] = None,
@@ -66,6 +67,7 @@ class AbstractPlan(Persistent, ABC):
         self.description: Optional[str] = description
         self.id: str = id
         self.date_created: datetime = date_created or local_now()
+        self.date_modified: datetime = date_modified or local_now()
         self.invalidated_at: Optional[datetime] = invalidated_at
         self.keywords: List[str] = keywords or []
 
@@ -151,14 +153,14 @@ class AbstractPlan(Persistent, ABC):
         """Return if an ``AbstractPlan`` has correct derived_from."""
         raise NotImplementedError()
 
-    def delete(self, *, when: datetime = local_now()):
+    def delete(self):
         """Mark a plan as deleted.
 
         NOTE: Don't call this function for deleting plans since it doesn't delete the whole plan derivatives chain. Use
         renku.core.workflow.plan::remove_plan instead.
         """
         self.unfreeze()
-        self.invalidated_at = when
+        self.invalidated_at = local_now()
         self.freeze()
 
 
@@ -177,6 +179,7 @@ class Plan(AbstractPlan):
         command: str,
         creators: Optional[List[Person]] = None,
         date_created: Optional[datetime] = None,
+        date_modified: Optional[datetime] = None,
         derived_from: Optional[str] = None,
         description: Optional[str] = None,
         hidden_inputs: List[HiddenInput] = None,
@@ -201,6 +204,7 @@ class Plan(AbstractPlan):
             id=id,
             description=description,
             date_created=date_created,
+            date_modified=date_modified,
             invalidated_at=invalidated_at,
             keywords=keywords,
             name=name,

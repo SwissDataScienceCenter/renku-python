@@ -41,6 +41,7 @@ class CompositePlanSchema(JsonLDSchema):
     creators = Nested(schema.creator, PersonSchema, many=True)
     mappings = Nested(renku.hasMappings, [ParameterMappingSchema], many=True, load_default=None)
     date_created = fields.DateTime(schema.dateCreated, format="iso")
+    date_modified = fields.DateTime(schema.dateModified, format="iso")
     invalidated_at = fields.DateTime(prov.invalidatedAtTime, format="iso")
     keywords = fields.List(schema.keywords, fields.String(), load_default=None)
     name = fields.String(schema.name, load_default=None)

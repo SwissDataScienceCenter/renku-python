@@ -515,16 +515,16 @@ class TemplateMetadata:
             metadata = {}
             immutable_files: List[str] = []
         else:
-            metadata = json.loads(project.template_metadata) if project.template_metadata else {}
+            metadata = json.loads(project.template_metadata.metadata) if project.template_metadata.metadata else {}
 
             # NOTE: Make sure project's template metadata is updated
-            metadata["__template_source__"] = project.template_source
-            metadata["__template_ref__"] = project.template_ref
-            metadata["__template_version__"] = project.template_version
-            metadata["__template_id__"] = project.template_id
+            metadata["__template_source__"] = project.template_metadata.template_source
+            metadata["__template_ref__"] = project.template_metadata.template_ref
+            metadata["__template_version__"] = project.template_metadata.template_version
+            metadata["__template_id__"] = project.template_metadata.template_id
             # NOTE: Ignore Project.automated_update since it's default is False and won't allow any update at all
 
-            immutable_files = project.immutable_template_files or []
+            immutable_files = project.template_metadata.immutable_template_files or []
 
         # NOTE: Always set __renku_version__ to the value read from the Dockerfile (if available) since setting/updating
         # the template doesn't change project's metadata version and shouldn't update the Renku version either

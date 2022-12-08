@@ -65,11 +65,16 @@ class ProjectViewModel:
         """
         template_info = ""
 
-        if project.template_source:
-            if project.template_source == "renku":
-                template_info = f"{project.template_id} ({project.template_version})"
+        if project.template_metadata.template_source:
+            if project.template_metadata.template_source == "renku":
+                template_info = (
+                    f"{project.template_metadata.template_id} " f"({project.template_metadata.template_version})"
+                )
             else:
-                template_info = f"{project.template_source}@{project.template_ref}: {project.template_id}"
+                template_info = (
+                    f"{project.template_metadata.template_source}@"
+                    f"{project.template_metadata.template_ref}: {project.template_metadata.template_id}"
+                )
 
         return cls(
             id=project.id,
