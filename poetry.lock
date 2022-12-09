@@ -2659,7 +2659,7 @@ toil = ["toil"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "682499bbf8c1089a5d605af9592f5d9dd6386b937cbaa122431c7c0c112b3004"
+content-hash = "fbabac7973ff852fdd4f397321c105369b75a318e7652ad657ff30390ac5419d"
 
 [metadata.files]
 addict = [
