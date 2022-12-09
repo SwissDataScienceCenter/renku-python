@@ -117,7 +117,7 @@ def register_exceptions(app):
 
         # NOTE: craft user messages
         if hasattr(e, "code"):
-            code = e.code
+            code = int(e.code)
 
             # NOTE: return an http error for methods with no body allowed. This prevents undesired exceptions.
             NO_PAYLOAD_METHODS = "HEAD"
