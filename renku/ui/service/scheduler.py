@@ -35,7 +35,7 @@ def schedule(connection=None):
 
     build_scheduler = Scheduler(connection=connection or WorkerQueues.connection, interval=cleanup_interval)
     build_scheduler.log = scheduler_log
-    build_scheduler.log.debug = build_scheduler.log.info
+    build_scheduler.log.debug = build_scheduler.log.info  # type: ignore
     scheduler_log.info("scheduler created")
 
     # remove old jobs from the queue

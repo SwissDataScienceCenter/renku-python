@@ -168,7 +168,7 @@ jobs:
       - name: Test mypy
         env:
           POETRY_VIRTUALENVS_CREATE: false
-        run: mypy
+        run: mypy renku
 
   test-distro:
     runs-on: ubuntu-latest

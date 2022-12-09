@@ -95,10 +95,16 @@ def initialize_database(database):
 
     activity_catalog = Catalog(dump_downstream_relations, load_downstream_relations, btree=BTrees.family32.OO)
     activity_catalog.addValueIndex(
-        IActivityDownstreamRelation["downstream"], dump_activity, load_activity, btree=BTrees.family32.OO
+        IActivityDownstreamRelation["downstream"],  # type: ignore[misc]
+        dump_activity,
+        load_activity,
+        btree=BTrees.family32.OO,
     )
     activity_catalog.addValueIndex(
-        IActivityDownstreamRelation["upstream"], dump_activity, load_activity, btree=BTrees.family32.OO
+        IActivityDownstreamRelation["upstream"],  # type: ignore[misc]
+        dump_activity,
+        load_activity,
+        btree=BTrees.family32.OO,
     )
     # NOTE: Transitive query factory is needed for transitive (follow more than 1 edge) queries
     downstream_transitive_factory = TransposingTransitive("downstream", "upstream")

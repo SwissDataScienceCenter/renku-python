@@ -18,7 +18,7 @@
 """Curses utilities."""
 import curses
 import curses.panel
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from renku.command.view_model.text_canvas import Point
 from renku.core import errors
@@ -62,8 +62,8 @@ class CursesActivityGraphViewer:
         self.y_pos = 0
         self.x_pos = 0
         self.color_cache: Dict[str, int] = {}
-        self.activity_overlay = None
-        self.help_overlay = None
+        self.activity_overlay: Optional[curses._CursesWindow] = None
+        self.help_overlay: Optional[curses._CursesWindow] = None
         self._select_activity()
         self.use_color = use_color
 

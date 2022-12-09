@@ -50,8 +50,8 @@ def migrate_project_view_1_0(user_data, cache):
       tags:
         - cache
     """
-    ctrl = MigrateProjectCtrl(cache, user_data, dict(request.json))
-    ctrl.RESPONSE_SERIALIZER = ProjectMigrateResponseRPC_1_0()
+    ctrl = MigrateProjectCtrl(cache, user_data, dict(request.json))  # type: ignore
+    ctrl.RESPONSE_SERIALIZER = ProjectMigrateResponseRPC_1_0()  # type: ignore
     return ctrl.to_response()
 
 

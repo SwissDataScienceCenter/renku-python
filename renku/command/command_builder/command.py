@@ -357,6 +357,7 @@ class Command:
         Returns:
             Command: This command.
         """
+
         self._operation = operation
 
         return self

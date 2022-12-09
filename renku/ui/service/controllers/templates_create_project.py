@@ -18,7 +18,7 @@
 """Renku service template create project controller."""
 import shutil
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 from marshmallow import EXCLUDE
 
@@ -49,7 +49,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
         self.ctx["commit_message"] = f"{MESSAGE_PREFIX} init {self.ctx['project_name']}"
         super(TemplatesCreateProjectCtrl, self).__init__(cache, user_data, request_data)
 
-        self.template = None
+        self.template: Optional[Dict] = None
 
     @property
     def context(self):
@@ -156,8 +156,8 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
                 default_metadata=self.default_metadata,
                 custom_metadata=self.ctx["project_custom_metadata"],
                 template_version=self.template_version,
-                immutable_template_files=self.template.get("immutable_template_files", []),
-                automated_template_update=self.template.get("allow_template_update", True),
+                immutable_template_files=self.template.get("immutable_template_files", []),  # type: ignore[union-attr]
+                automated_template_update=self.template.get("allow_template_update", True),  # type: ignore[union-attr]
                 user=self.git_user,
                 initial_branch=self.ctx["initial_branch"],
                 commit_message=self.ctx["commit_message"],
