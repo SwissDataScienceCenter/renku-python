@@ -19,7 +19,7 @@
 
 import datetime
 import os
-import pathlib
+import posixpath
 import re
 import uuid
 import weakref
@@ -118,7 +118,7 @@ def generate_project_id(name, creator):
     else:
         raise ValueError("Project name not set")
 
-    project_url = urljoin(f"https://{host}", pathlib.posixpath.join(PROJECT_URL_PATH, owner, name))
+    project_url = urljoin(f"https://{host}", posixpath.join(PROJECT_URL_PATH, owner, name))
     return project_url
 
 
@@ -246,14 +246,14 @@ class CommitMixin:
         if self.path:
             path = self.path
             if project_context.has_context() and os.path.isabs(path):
-                path = pathlib.Path(path).relative_to(project_context.path)
+                path = Path(path).relative_to(project_context.path)
             return generate_label(path, hexsha)
         return hexsha
 
     def __attrs_post_init__(self):
         """Post-init hook."""
         if self.path and project_context.has_context():
-            path = pathlib.Path(self.path)
+            path = Path(self.path)
             if path.is_absolute():
                 self.path = str(path.relative_to(project_context.path))
 
@@ -413,7 +413,7 @@ class MappedIOStream(object):
             host = project_context.remote.host or host
         host = os.environ.get("RENKU_DOMAIN") or host
 
-        return urljoin("https://{host}".format(host=host), pathlib.posixpath.join("/iostreams", self.stream_type))
+        return urljoin("https://{host}".format(host=host), posixpath.join("/iostreams", self.stream_type))
 
     def default_label(self):
         """Set default label."""
@@ -624,7 +624,7 @@ class Run(CommitMixin):
         if not identifier:
             identifier = str(uuid.uuid4())
 
-        return urljoin("https://{host}".format(host=host), pathlib.posixpath.join("/runs", quote(identifier, safe="")))
+        return urljoin("https://{host}".format(host=host), posixpath.join("/runs", quote(identifier, safe="")))
 
     def __lt__(self, other):
         """Compares two subprocesses order based on their dependencies."""
@@ -931,7 +931,7 @@ class ProcessRun(Activity):
 
         return urljoin(
             "https://{host}".format(host=host),
-            pathlib.posixpath.join("/activities", f"commit/{commit_hexsha}"),
+            posixpath.join("/activities", f"commit/{commit_hexsha}"),
         )
 
     @classmethod
@@ -1743,7 +1743,7 @@ class ImageObject:
     @staticmethod
     def generate_id(dataset: Dataset, position: int) -> str:
         """Generate @id field."""
-        return urljoin(dataset._id + "/", pathlib.posixpath.join("images", str(position)))
+        return urljoin(dataset._id + "/", posixpath.join("images", str(position)))
 
     @property
     def is_absolute(self):
@@ -2029,7 +2029,7 @@ def generate_file_id(hexsha, path):
 
     # TODO: Use plural name for entity id: /blob/ -> /blobs/
     # always set the id by the identifier
-    return urljoin(f"https://{host}", pathlib.posixpath.join(f"/blob/{hexsha}/{quote(str(path))}"))
+    return urljoin(f"https://{host}", posixpath.join(f"/blob/{hexsha}/{quote(str(path))}"))
 
 
 class MappedIOStreamSchema(JsonLDSchema):

@@ -20,6 +20,9 @@
 import os
 from pathlib import Path
 from subprocess import run
+from typing import List, Protocol, runtime_checkable
+
+from pydantic import validate_arguments
 
 from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
@@ -33,13 +36,23 @@ from renku.core.util.os import delete_dataset_file, expand_directories
 from renku.domain_model.project_context import project_context
 
 
+@runtime_checkable
+class EditCommandCallable(Protocol):
+    """Typing Protocoll for edit command."""
+
+    def __call__(self, filename: str) -> None:
+        """The call method."""
+        ...
+
+
 @inject.autoparams()
-def _remove(sources, edit_command, dataset_gateway: IDatasetGateway):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _remove(sources: List[str], edit_command: EditCommandCallable, dataset_gateway: IDatasetGateway):
     """Remove files and check repository for potential problems.
 
     Args:
-        sources: Files to remove.
-        edit_command: Command to execute for editing .gitattributes.
+        sources(List[str]): Files to remove.
+        edit_command(Callable[[str], None]): Command to execute for editing .gitattributes.
         dataset_gateway(IDatasetGateway): Injected dataset gateway.
     """
     repository = project_context.repository

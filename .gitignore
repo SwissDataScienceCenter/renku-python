@@ -97,3 +97,6 @@ tmp/
 
 # pytest-recording cache
 cassettes
+
+# snyk
+.dccache

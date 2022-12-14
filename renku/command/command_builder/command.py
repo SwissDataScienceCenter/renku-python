@@ -357,6 +357,7 @@ class Command:
         Returns:
             Command: This command.
         """
+
         self._operation = operation
 
         return self
@@ -364,6 +365,8 @@ class Command:
     @check_finalized
     def working_directory(self, directory: str) -> "Command":
         """Set the working directory for the command.
+
+        WARNING: Should not be used in the core service.
 
         Args:
             directory(str): The working directory to work in.

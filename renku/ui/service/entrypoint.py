@@ -36,6 +36,7 @@ from renku.ui.service.errors import (
     ProgramHttpRequestError,
     ProgramHttpServerError,
     ProgramHttpTimeoutError,
+    ServiceError,
 )
 from renku.ui.service.logger import service_log
 from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET
@@ -116,13 +117,14 @@ def register_exceptions(app):
 
         # NOTE: craft user messages
         if hasattr(e, "code"):
-            code = e.code
+            code = int(e.code)
 
             # NOTE: return an http error for methods with no body allowed. This prevents undesired exceptions.
             NO_PAYLOAD_METHODS = "HEAD"
             if request.method in NO_PAYLOAD_METHODS:
                 return Response(status=code)
 
+            error: ServiceError
             if code == 400:
                 error = ProgramHttpRequestError(e)
             elif code == 404:

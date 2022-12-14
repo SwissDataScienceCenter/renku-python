@@ -20,9 +20,10 @@
 import os
 import sys
 from subprocess import call
-from typing import cast
+from typing import List, Optional, Tuple, Union, cast
 
 import click
+from pydantic import validate_arguments
 
 from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
@@ -47,19 +48,20 @@ def run_command():
 
 
 @inject.autoparams("activity_gateway", "plan_gateway")
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def _run_command(
-    name,
-    description,
-    keyword,
-    explicit_inputs,
-    explicit_outputs,
-    explicit_parameters,
-    no_output,
-    no_input_detection,
-    no_output_detection,
-    success_codes,
-    command_line,
-    creators,
+    name: Optional[str],
+    description: Optional[str],
+    keyword: Optional[List[str]],
+    explicit_inputs: Optional[List[str]],
+    explicit_outputs: Optional[List[str]],
+    explicit_parameters: Optional[List[str]],
+    no_output: bool,
+    no_input_detection: bool,
+    no_output_detection: bool,
+    success_codes: Optional[List[int]],
+    command_line: Union[str, List[str], Tuple[str]],
+    creators: Optional[List[Person]],
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
 ) -> PlanViewModel:
@@ -143,15 +145,15 @@ def _run_command(
 
             return result
 
-        explicit_inputs = parse_explicit_definition(explicit_inputs, "input")
-        explicit_outputs = parse_explicit_definition(explicit_outputs, "output")
-        explicit_parameters = parse_explicit_definition(explicit_parameters, "param")
+        explicit_inputs_parsed = parse_explicit_definition(explicit_inputs, "input")
+        explicit_outputs_parsed = parse_explicit_definition(explicit_outputs, "output")
+        explicit_parameters_parsed = parse_explicit_definition(explicit_parameters, "param")
 
         factory = PlanFactory(
             command_line=command_line,
-            explicit_inputs=explicit_inputs,
-            explicit_outputs=explicit_outputs,
-            explicit_parameters=explicit_parameters,
+            explicit_inputs=explicit_inputs_parsed,
+            explicit_outputs=explicit_outputs_parsed,
+            explicit_parameters=explicit_parameters_parsed,
             directory=os.getcwd(),
             working_dir=working_dir,
             no_input_detection=no_input_detection,
@@ -204,7 +206,9 @@ def _run_command(
         if not creators:
             creators = [cast(Person, get_git_user(project_context.repository))]
 
-        plan = tool.to_plan(name=name, description=description, keywords=keyword, creators=creators)
+        plan = tool.to_plan(
+            name=name, description=description, keywords=keyword, creators=creators, date_created=started_at_time
+        )
         activity = Activity.from_plan(
             plan=plan,
             repository=project_context.repository,

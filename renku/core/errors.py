@@ -627,7 +627,11 @@ class DockerError(RenkuException):
         super().__init__(f"Docker failed: {reason}")
 
 
-class RenkulabSessionError(RenkuException):
+class SessionStartError(RenkuException):
+    """Raised when an error occurs trying to start sessions."""
+
+
+class RenkulabSessionError(SessionStartError):
     """Raised when an error occurs trying to start sessions with the notebook service."""
 
 

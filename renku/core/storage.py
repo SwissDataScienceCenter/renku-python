@@ -255,8 +255,8 @@ def list_tracked_paths():
         files = check_output(_CMD_STORAGE_LIST, cwd=project_context.path, encoding="UTF-8")
     except (KeyboardInterrupt, OSError) as e:
         raise errors.ParameterError(f"Couldn't run 'git lfs ls-files':\n{e}")
-    files = [project_context.path / f for f in files.splitlines()]
-    return files
+    files_split = [project_context.path / f for f in files.splitlines()]
+    return files_split
 
 
 @check_external_storage_wrapper
@@ -312,7 +312,7 @@ def pull_paths_from_storage(repository: "Repository", *paths):
 
 
 @check_external_storage_wrapper
-def clean_storage_cache(*paths):
+def clean_storage_cache(*check_paths):
     """Remove paths from lfs cache."""
     project_dict = defaultdict(list)
     repositories = {}
@@ -323,7 +323,7 @@ def clean_storage_cache(*paths):
 
     repository = project_context.repository
 
-    for path in expand_directories(paths):
+    for path in expand_directories(check_paths):
         current_repository, _, path = get_in_submodules(repository=repository, commit=repository.head.commit, path=path)
         try:
             absolute_path = Path(path).resolve()
@@ -478,7 +478,11 @@ def get_lfs_migrate_filters() -> Tuple[List[str], List[str]]:
 
 def check_lfs_migrate_info(everything=False, use_size_filter=True):
     """Return list of file groups in history should be in LFS."""
-    ref = ["--everything"] if everything else ["--include-ref", project_context.repository.active_branch.name]
+    ref = (
+        ["--everything"]
+        if everything or not project_context.repository.active_branch
+        else ["--include-ref", project_context.repository.active_branch.name]
+    )
 
     includes, excludes = get_lfs_migrate_filters()
 
@@ -531,8 +535,8 @@ def check_lfs_migrate_info(everything=False, use_size_filter=True):
 def migrate_files_to_lfs(paths):
     """Migrate files to Git LFS."""
     if paths:
-        includes = ["--include", ",".join(paths)]
-        excludes = []
+        includes: List[str] = ["--include", ",".join(paths)]
+        excludes: List[str] = []
     else:
         includes, excludes = get_lfs_migrate_filters()
 

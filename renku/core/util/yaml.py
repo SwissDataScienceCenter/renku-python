@@ -66,10 +66,15 @@ def read_yaml(path):
 def write_yaml(path, data):
     """Store data to a YAML file."""
 
-    Dumper.ignore_aliases = lambda _, data: True
+    Dumper.ignore_aliases = lambda _, data: True  # type: ignore
 
     with Path(path).open("w") as fp:
         yaml.dump(data, fp, default_flow_style=False, Dumper=Dumper)
+
+
+def dumps_yaml(data) -> str:
+    """Convert YAML data to a YAML string."""
+    return yaml.dump(data)
 
 
 def load_yaml(data):

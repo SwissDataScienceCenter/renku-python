@@ -18,6 +18,46 @@
 Changes
 =======
 
+`1.10.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.9.3...v1.10.0>`__ (2022-11-28)
+=========================================================================================================
+
+Bug Fixes
+~~~~~~~~~
+
+-  **workflow:** list composite plans
+   (`#3218 <https://github.com/SwissDataScienceCenter/renku-python/issues/3218>`__)
+   (`98a4b22 <https://github.com/SwissDataScienceCenter/renku-python/commit/98a4b22b3c5f1ab56255811f9f36ea89ede026d6>`__)
+
+Features
+~~~~~~~~
+
+-  **core:** inform users about push in renku save
+   (`#3194 <https://github.com/SwissDataScienceCenter/renku-python/issues/3194>`__)
+   (`2f7f936 <https://github.com/SwissDataScienceCenter/renku-python/commit/2f7f936b35161469d18817b9016d0a5802842a3f>`__)
+-  **service:** add workflow export endpoint
+   (`#3212 <https://github.com/SwissDataScienceCenter/renku-python/issues/3212>`__)
+   (`bb50f86 <https://github.com/SwissDataScienceCenter/renku-python/commit/bb50f86f1adf1e24cec601d689d3bb8aa2ddaeb5>`__)
+
+`1.9.3 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.9.2...v1.9.3>`__ (2022-11-17)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix git url regex matching taking too long
+   (`#3213 <https://github.com/SwissDataScienceCenter/renku-python/issues/3213>`__)
+   (`8245ce3 <https://github.com/SwissDataScienceCenter/renku-python/commit/8245ce3c7eb3170a0c544db875f4fc4918474b1d>`__)
+
+`1.9.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.9.1...v1.9.2>`__ (2022-11-15)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **workflow:** set plan creation date to activity start date
+   (`#3210 <https://github.com/SwissDataScienceCenter/renku-python/issues/3210>`__)
+   (`c18f85c <https://github.com/SwissDataScienceCenter/renku-python/commit/c18f85cd834d036aaa76691d4552f9ab335c8f9f>`__)
+
 `1.9.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.9.0...v1.9.1>`__ (2022-11-07)
 -------------------------------------------------------------------------------------------------------
 
