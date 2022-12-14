@@ -228,7 +228,6 @@ all = [
     "plantweb",
     "poetry-dynamic-versioning",
     "ptvsd",
-    "pydantic",
     "pydocstyle",
     "pyte",
     "pytest",
