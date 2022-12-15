@@ -161,13 +161,14 @@ def test_export_graph_with_workflow_file(runner, workflow_file_project):
     result = runner.invoke(cli, ["run", workflow_file_project.workflow_file])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["graph", "export", "--full"])
+    result = runner.invoke(cli, ["graph", "export", "--full", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     assert "workflow-file" in result.output
     assert "workflow-file.head" in result.output
     assert "workflow-file.tail" in result.output
     assert "workflow-file.line-count" in result.output
+    assert "renku-ontology#WorkflowFileActivityCollection" in result.output
     assert "renku-ontology#WorkflowFileCompositePlan" in result.output
     assert "renku-ontology#WorkflowFilePlan" in result.output
 
@@ -467,3 +468,12 @@ def test_workflow_file_status(runner, workflow_file_project):
 
     assert "Outdated workflow files and their outputs(1):" in result.output
     assert "workflow-file.yml: intermediate, results/output.csv, results/output.csv.wc" in result.output
+
+    result = runner.invoke(cli, ["run", workflow_file_project.workflow_file])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["status"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    assert "Outdated workflow files and their outputs(1):" not in result.output
+    assert "Everything is up-to-date" in result.output

@@ -227,12 +227,12 @@ def _convert_entities_to_graph(
     for entity in entities:
         if entity.id in processed_plans:
             continue
-        if isinstance(entity, (Dataset, Activity, AbstractPlan)):
+        if isinstance(entity, (Dataset, Activity, AbstractPlan, WorkflowFileActivityCollection)):
             # NOTE: Since the database is read-only, it's OK to modify objects; they won't be written back
             entity.unfreeze()
             entity.project_id = project_id
 
-            if isinstance(entity, Activity):
+            if isinstance(entity, (Activity, WorkflowFileActivityCollection)):
                 entity.association.plan.unfreeze()
                 entity.association.plan.project_id = project_id
         schema = next(s for t, s in schemas.items() if isinstance(entity, t))

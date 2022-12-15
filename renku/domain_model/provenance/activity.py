@@ -342,3 +342,6 @@ class WorkflowFileActivityCollection(ActivityCollection):
     def generate_id() -> str:
         """Generate an identifier."""
         return f"/workflow-file-activity-collection/{uuid4().hex}"
+
+    def __repr__(self):
+        return f"<WorkflowFileActivityCollection '{self.id}': {self.association.plan.name} @ {self.ended_at_time}>"

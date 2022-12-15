@@ -52,7 +52,7 @@ class _ObjectWrapper:
 def _fix_id(obj):
     """Fix ids under an activity that were wrong due to a bug."""
 
-    if not obj.id.startswith("/activities/"):
+    if not obj.id.startswith("/activities/") and not obj.id.startswith("/workflow-file-activity-collection/"):
         obj = _ObjectWrapper(obj, id=f"/activities/{obj.id}")
 
     return obj
@@ -179,7 +179,7 @@ class WorkflowFileActivityCollectionSchema(JsonLDSchema):
     class Meta:
         """Meta class."""
 
-        rdf_type = [prov.Activity, prov.Collection]
+        rdf_type = [renku.WorkflowFileActivityCollection, prov.Collection]
         model = WorkflowFileActivityCollection
         unknown = EXCLUDE
 
