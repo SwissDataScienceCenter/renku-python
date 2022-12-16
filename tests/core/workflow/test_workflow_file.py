@@ -29,8 +29,9 @@ import renku.core.workflow.workflow_file
 from renku.core import errors
 from renku.core.plugin.workflow_file_parser import get_available_workflow_file_parsers, read_workflow_file
 from renku.core.util.yaml import load_yaml
+from renku.core.workflow.model.workflow_file import Input, Output, Parameter
 from renku.core.workflow.parser.renku import convert_to_workflow_file
-from renku.core.workflow.workflow_file import Input, Output, Parameter, run_workflow_file
+from renku.core.workflow.workflow_file import run_workflow_file
 
 
 def test_load_valid_renku_workflow_file():
@@ -126,7 +127,7 @@ def test_parse_position_in_renku_workflow_file():
 
 def test_step_command_parser():
     """Test parsing command of a workflow file step."""
-    Step = functools.partial(renku.core.workflow.workflow_file.Step, path="", workflow_file_name="wff")
+    Step = functools.partial(renku.core.workflow.model.workflow_file.Step, path="", workflow_file_name="wff")
 
     step = Step(name="test", command="renku dataset ls-files")
 
@@ -410,7 +411,9 @@ def test_step_command_parser():
 def test_validation_error_invalid_names():
     """Test validating a workflow file with invalid names raises desired errors."""
     WorkflowFile = functools.partial(renku.core.workflow.workflow_file.WorkflowFile, path="")
-    Step = functools.partial(renku.core.workflow.workflow_file.Step, command="ls", path="", workflow_file_name="wff")
+    Step = functools.partial(
+        renku.core.workflow.model.workflow_file.Step, command="ls", path="", workflow_file_name="wff"
+    )
 
     with pytest.raises(errors.ParseError, match="Workflow file name is invalid"):
         WorkflowFile(name="name with space", steps=[])

@@ -182,7 +182,7 @@ Workflows
    :members:
    :show-inheritance:
 
-.. automodule:: renku.core.workflow.concrete_execution_graph
+.. automodule:: renku.core.workflow.model.concrete_execution_graph
    :members:
    :show-inheritance:
 

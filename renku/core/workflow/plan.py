@@ -38,7 +38,7 @@ from renku.core.util.datetime8601 import local_now
 from renku.core.util.git import get_git_user
 from renku.core.util.os import are_paths_related, get_relative_paths
 from renku.core.util.util import NO_VALUE, NoValueType
-from renku.core.workflow.concrete_execution_graph import ExecutionGraph
+from renku.core.workflow.model.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.value_resolution import CompositePlanValueResolver, ValueResolver
 from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.activity import Activity

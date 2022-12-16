@@ -23,7 +23,7 @@ import dataclasses
 from datetime import datetime
 from typing import Any, List, Optional
 
-from renku.core.workflow.workflow_file import HiddenParameter, Input, Output, Parameter, Step, WorkflowFile
+from renku.core.workflow.model.workflow_file import HiddenParameter, Input, Output, Parameter, Step, WorkflowFile
 
 
 @dataclasses.dataclass

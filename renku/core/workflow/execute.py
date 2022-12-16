@@ -34,7 +34,7 @@ from renku.core.storage import check_external_storage, pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.os import is_subpath, safe_read_yaml
-from renku.core.workflow.concrete_execution_graph import ExecutionGraph
+from renku.core.workflow.model.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.plan import is_plan_removed
 from renku.core.workflow.plan_factory import delete_indirect_files_list
 from renku.core.workflow.value_resolution import ValueResolver

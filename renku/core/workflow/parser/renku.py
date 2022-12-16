@@ -26,7 +26,7 @@ from renku.core import errors
 from renku.core.interface.workflow_file_parser import IWorkflowFileParser
 from renku.core.plugin import hookimpl
 from renku.core.util.os import get_absolute_path, get_relative_path, safe_read_yaml
-from renku.core.workflow.workflow_file import BaseParameterType, Input, Output, Parameter, Step, WorkflowFile
+from renku.core.workflow.model.workflow_file import BaseParameterType, Input, Output, Parameter, Step, WorkflowFile
 from renku.domain_model.project_context import project_context
 
 

@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Tuple, Union
 
 if TYPE_CHECKING:
-    from renku.core.workflow.workflow_file import WorkflowFile
+    from renku.core.workflow.model.workflow_file import WorkflowFile
 
 
 class IWorkflowFileParser(metaclass=ABCMeta):

@@ -26,7 +26,7 @@ from renku.core import errors
 from renku.core.interface.workflow_file_parser import IWorkflowFileParser
 
 if TYPE_CHECKING:
-    from renku.core.workflow.workflow_file import WorkflowFile
+    from renku.core.workflow.model.workflow_file import WorkflowFile
 
 
 hookspec = pluggy.HookspecMarker("renku")
