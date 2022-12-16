@@ -258,8 +258,6 @@ def plan_view(workflow: AbstractPlan, latest: bool = False) -> Union[CompositePl
     Returns:
         View model for converted Plan.
     """
-
-    # TODO: Should we pass ``latest`` to the following calls
     if isinstance(workflow, CompositePlan):
-        return CompositePlanViewModel.from_composite_plan(workflow)
+        return CompositePlanViewModel.from_composite_plan(workflow, latest=latest)
     return PlanViewModel.from_plan(cast(Plan, workflow))

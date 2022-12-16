@@ -947,3 +947,68 @@ def test_workflow_file_with_cycle_raises_error(workflow_file_project, with_injec
         assert "Input: data/collection/models.csv" in exception.value.args[0]
         assert "workflow-file.head" in exception.value.args[0]
         assert "Output: data/collection/models.csv" in exception.value.args[0]
+
+
+def test_parse_error_when_required_attribute_is_null():
+    """Test error raises when a required attribute has a None value."""
+    workflow_file = textwrap.dedent(
+        """
+        name:
+        steps:
+          step:
+            command: cmd
+        """
+    )
+
+    with pytest.raises(
+        errors.ParseError, match=re.escape("Attribute 'name' in workflow file is required and cannot be None")
+    ):
+        convert_to_workflow_file(data=load_yaml(workflow_file), path="")
+
+    workflow_file = textwrap.dedent(
+        """
+        name: workflow-file
+        steps:
+          step:
+            command:
+        """
+    )
+
+    with pytest.raises(
+        errors.ParseError, match=re.escape("Attribute 'command' in step 'step' is required and cannot be None")
+    ):
+        convert_to_workflow_file(data=load_yaml(workflow_file), path="")
+
+    workflow_file = textwrap.dedent(
+        """
+        name: workflow-file
+        steps:
+          step:
+            command: cmd
+            inputs:
+              input:
+                path:
+        """
+    )
+
+    with pytest.raises(
+        errors.ParseError, match=re.escape("Attribute 'path' in input 'input' is required and cannot be None")
+    ):
+        convert_to_workflow_file(data=load_yaml(workflow_file), path="")
+
+    workflow_file = textwrap.dedent(
+        """
+        name: workflow-file
+        steps:
+          step:
+            command: cmd
+            parameters:
+              parameter:
+                value: null
+        """
+    )
+
+    with pytest.raises(
+        errors.ParseError, match=re.escape("Attribute 'value' in parameter 'parameter' is required and cannot be None")
+    ):
+        convert_to_workflow_file(data=load_yaml(workflow_file), path="")

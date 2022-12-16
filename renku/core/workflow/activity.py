@@ -21,7 +21,7 @@ import itertools
 import os
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
+from typing import Dict, FrozenSet, Iterable, List, NamedTuple, Optional, Set, Tuple
 
 import networkx
 from pydantic import validate_arguments
@@ -238,10 +238,23 @@ def sort_activities(activities: List[Activity], remove_overridden_parents=True) 
     return list(networkx.topological_sort(graph))
 
 
+class ModifiedActivitiesEntities(NamedTuple):
+    """A class containing sets of modified/deleted activities and entities for both normal and hidden entities."""
+
+    modified: Set[Tuple[Activity, Entity]]
+    """Set of modified activity and entity tuples."""
+
+    deleted: Set[Tuple[Activity, Entity]]
+    """Set of deleted activity and entity tuples."""
+
+    hidden_modified: Set[Tuple[Activity, Entity]]
+    """Set of modified activity and entity tuples for hidden entities."""
+
+
 @inject.autoparams("activity_gateway")
 def get_all_modified_and_deleted_activities_and_entities(
     repository, activity_gateway: IActivityGateway, check_hidden_dependencies: bool = False
-) -> Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]:
+) -> ModifiedActivitiesEntities:
     """
     Return latest activities with at least one modified or deleted input along with the modified/deleted input entity.
 
@@ -252,8 +265,7 @@ def get_all_modified_and_deleted_activities_and_entities(
         activity_gateway(IActivityGateway): The injected Activity gateway.
 
     Returns:
-        Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]: Tuple of
-            modified and deleted activities and entities and also modified activities and entities due to hidden usages.
+        ModifiedActivitiesEntities: Modified and deleted activities and entities.
 
     """
     all_activities = activity_gateway.get_all_activities()
@@ -336,7 +348,7 @@ def get_downstream_generating_activities(
 
 def get_modified_activities(
     activities: FrozenSet[Activity], repository, check_hidden_dependencies: bool
-) -> Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]:
+) -> ModifiedActivitiesEntities:
     """Get lists of activities that have modified/deleted usage entities."""
 
     def get_modified_activities_helper(hashes, modified, deleted, hidden: bool):
@@ -372,7 +384,7 @@ def get_modified_activities(
         hashes = repository.get_object_hashes(paths=hidden_paths)
         get_modified_activities_helper(hashes=hashes, modified=hidden_modified, deleted=set(), hidden=True)
 
-    return modified, deleted, hidden_modified
+    return ModifiedActivitiesEntities(modified=modified, deleted=deleted, hidden_modified=hidden_modified)
 
 
 def filter_overridden_activities(activities: List[Activity]) -> FrozenSet[Activity]:

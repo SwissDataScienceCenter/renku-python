@@ -364,12 +364,14 @@ nitpick_ignore = [
     ("py:class", "Path"),
     ("py:class", "Persistent"),
     ("py:class", "WorkflowFileCompositePlan"),
+    ("py:class", "itertools.count"),
     ("py:class", "optional"),
     ("py:class", '"ValueResolver"'),
     ("py:exc", "errors.ParameterError"),
 ]
 
 nitpick_ignore_regex = [
+    ("py:class", r"bashlex.*"),
     ("py:class", r"calamus.*"),
     ("py:class", r"docker.*"),
     ("py:class", r"marshmallow.*"),

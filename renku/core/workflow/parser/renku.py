@@ -65,6 +65,41 @@ class Attribute:
         self.required: bool = required
         self.list_subtype: Optional[Union[Type, Tuple[Type, ...]]] = list_subtype
 
+    def validate(self, value: Any, kind: str):
+        """Validate a given value to have correct type."""
+        if value is None:
+            if not self.required:
+                return
+            raise errors.ParseError(f"Attribute '{self.name}' in {kind} is required and cannot be None")
+
+        if not isinstance(value, self.types):
+            valid_type_names: Union[str, List[str]] = [t.__name__ for t in self.types]
+            if len(valid_type_names) == 1:
+                valid_type_names = valid_type_names[0]
+
+            raise errors.ParseError(
+                f"Invalid type for attribute '{self.name}' in {kind}: Required '{valid_type_names}' but got "
+                f"'{type(value).__name__}': {value}"
+            )
+        elif self.list_subtype:
+            subtype = self.list_subtype
+            if not isinstance(value, (list, tuple)):
+                raise errors.ParseError(
+                    f"Expected List[{subtype}] for attribute '{self.name}' in {kind} but got "
+                    f"'{type(value).__name__}': {value}"
+                )
+            for element in value:
+                if not isinstance(element, subtype):
+                    if isinstance(subtype, tuple):
+                        subtype_name = ", ".join(s.__name__ for s in subtype)
+                        subtype_name = f"({subtype_name})"
+                    else:
+                        subtype_name = subtype.__name__
+                    raise errors.ParseError(
+                        f"Expected '{subtype_name}' for elements of attribute '{self.name}' in {kind} but "
+                        f"got '{type(element).__name__}': {element}"
+                    )
+
 
 def convert_to_workflow_file(data: Dict[str, Any], path: Union[Path, str]) -> WorkflowFile:
     """Create an instance of ``WorkflowFile``."""
@@ -153,7 +188,6 @@ def convert_to_base_parameter(cls: Type[BaseParameterType], data: Union[Dict[str
     if cls == Parameter:
         attributes.append(Attribute("value", str, int, float, bool, required=True))
     else:
-        # assert cls == Output, f"Invalid parameter type: {cls}"
         attributes.extend(
             [
                 Attribute("path", str, int, float, required=True),
@@ -226,40 +260,7 @@ def validate_attributes(*, kind: str, name: Optional[str], data: Dict[str, Any],
             raise errors.ParseError(f"Invalid attributes for {kind}: {invalid_attributes_str}")
 
         for attribute in attributes:
-            if attribute.name not in data or (not attribute.required and data[attribute.name] is None):
-                continue
-
-            value = data[attribute.name]
-            if not isinstance(value, attribute.types):
-                valid_type_names: Union[str, List[str]] = [t.__name__ for t in attribute.types]
-                if len(valid_type_names) == 1:
-                    valid_type_names = valid_type_names[0]
-
-                raise errors.ParseError(
-                    f"Invalid type for attribute '{attribute.name}' in {kind}: Required '{valid_type_names}' but got "
-                    f"'{type(value).__name__}': {value}"
-                )
-            elif attribute.list_subtype:
-                subtype = attribute.list_subtype
-                if not isinstance(value, (list, tuple)):
-                    raise errors.ParseError(
-                        f"Expected List[{subtype}] for attribute '{attribute.name}' in {kind} but got "
-                        f"'{type(value).__name__}': {value}"
-                    )
-                for element in value:
-                    if not isinstance(element, subtype):
-                        if isinstance(subtype, tuple):
-                            subtype_name = ", ".join(s.__name__ for s in subtype)
-                            subtype_name = f"({subtype_name})"
-                        else:
-                            subtype_name = subtype.__name__
-                        raise errors.ParseError(
-                            f"Expected '{subtype_name}' for elements of attribute '{attribute.name}' in {kind} but "
-                            f"got '{type(element).__name__}': {element}"
-                        )
-
-    required_attributes = [a for a in attributes if a.required]
-    if required_attributes:
-        for attribute in required_attributes:
-            if attribute.name not in data:
+            if attribute.name in data:
+                attribute.validate(value=data[attribute.name], kind=kind)
+            elif attribute.required:
                 raise errors.ParseError(f"Required attribute '{attribute.name}' isn't set for {kind}: {data}")

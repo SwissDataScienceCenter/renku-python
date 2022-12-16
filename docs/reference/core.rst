@@ -186,6 +186,10 @@ Workflows
    :members:
    :show-inheritance:
 
+.. automodule:: renku.core.workflow.model.workflow_file
+   :members:
+   :show-inheritance:
+
 .. automodule:: renku.core.workflow.plan_factory
    :members:
    :show-inheritance:
@@ -194,6 +198,10 @@ Workflows
    :members:
 
 .. automodule:: renku.core.workflow.value_resolution
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.workflow.workflow_file
    :members:
    :show-inheritance:
 
