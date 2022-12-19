@@ -69,14 +69,14 @@ def available_workflow_providers() -> List[str]:
     return [p[1] for p in providers]
 
 
-def execute(dag: "nx.DiGraph", basedir: Path, config: Dict[str, Any], provider: str = "cwltool") -> List[str]:
+def execute(dag: "nx.DiGraph", basedir: Path, config: Dict[str, Any], provider: str = "toil") -> List[str]:
     """Executes a given workflow using the selected provider.
 
     Args:
         dag("nx.DiGraph"): The workflow graph to execute.
         basedir(Path): The root directory of the renku project.
         config(Dict[str, Any]): Configuration values for the workflow provider.
-        provider(str, optional): The workflow executor engine to be used (Default value = "cwltool").
+        provider(str, optional): The workflow executor engine to be used (Default value = "toil").
 
     Returns:
         List[str]: List of paths that has been modified.
