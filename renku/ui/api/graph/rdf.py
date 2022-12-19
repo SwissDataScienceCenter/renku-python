@@ -37,7 +37,6 @@ documentation <https://rdflib.readthedocs.io/en/stable/intro_to_graphs.html>`_.
 
 import json
 
-import pyld
 from rdflib import Graph
 
 from renku.command.graph import export_graph_command
@@ -60,6 +59,8 @@ class RDFGraph(Graph):
 
     def _build(self):
         """Construct the RDF graph representing this Renku project."""
+        import pyld
+
         data = json.dumps(
             pyld.jsonld.expand(
                 export_graph_command().build().execute(revision_or_range=self.revision_or_range).output._graph

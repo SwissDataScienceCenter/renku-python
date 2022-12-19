@@ -99,7 +99,7 @@ class GitProvider(ProviderApi, AddProviderInterface):
             if not sources:
                 return
             for source in sources:
-                if not is_subpath(path=source, base=remote_repository.path):
+                if not is_subpath(path=remote_repository.path / source, base=remote_repository.path):
                     raise errors.ParameterError(f"Path '{source}' is not within the repository")
 
         def get_source_paths() -> Set[Path]:

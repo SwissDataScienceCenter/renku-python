@@ -236,6 +236,13 @@
                "sh:pattern": "http(s)?://[^/]+/activities/[0-9a-f]+"
             },
             {
+               "path": "renku:hasActivityCollection",
+               "sh:class": {
+                  "@id": "renku:WorkflowFileActivityCollection"
+               },
+               "sh:pattern": "http(s)?://[^/]+/workflow-file-activity-collection/[0-9a-f]+"
+            },
+            {
                "nodeKind": "sh:Literal",
                "path": "schema:keywords",
                "datatype": {
@@ -878,6 +885,74 @@
          ]
       },
       {
+         "@id": "_:workflowFileActivityCollectionShape",
+         "@type": "sh:NodeShape",
+         "ignoredProperties": [
+            {
+               "@id": "rdf:type"
+            }
+         ],
+         "closed": true,
+         "targetClass": "renku:WorkflowFileActivityCollection",
+         "property": [
+            {
+               "path": "prov:wasAssociatedWith",
+               "or": [
+                  {
+                     "sh:class": {
+                        "@id": "prov:SoftwareAgent"
+                     }
+                  },
+                  {
+                     "sh:class": {
+                        "@id": "schema:Person"
+                     }
+                  },
+                  {
+                     "nodeKind": "sh:IRI"
+                  }
+               ],
+               "minCount": 2,
+               "maxCount": 2
+            },
+            {
+               "path": "prov:qualifiedAssociation",
+               "sh:class": {
+                  "@id": "prov:Association"
+               },
+               "sh:pattern": "http(s)?://[^/]+/workflow-file-activity-collection/[0-9a-f]+/association"
+            },
+            {
+               "path": "schema:hasPart",
+               "sh:class": {
+                  "@id": "prov:Activity"
+               },
+               "sh:pattern": "http(s)?://[^/]+/activities/[0-9a-f]+"
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:endedAtTime",
+               "datatype": {
+                  "@id": "xsd:dateTime"
+               },
+               "minCount": 1,
+               "maxCount": 1,
+               "sh:moreThanOrEquals": {
+                  "@id": "prov:startedAtTime"
+               }
+            },
+            {
+               "nodeKind": "sh:Literal",
+               "path": "prov:startedAtTime",
+               "datatype": {
+                  "@id": "xsd:dateTime"
+               },
+               "minCount": 1,
+               "maxCount": 1
+            }
+         ]
+      },
+      {
          "@id": "_:associationShape",
          "@type": "sh:NodeShape",
          "ignoredProperties": [
@@ -998,7 +1073,7 @@
                   "@id": "renku:CommandParameter"
                },
                "path": "renku:hasArguments",
-               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-f-]+/parameters/[0-9a-z]+"
+               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-f-]+/parameters/[0-9a-zA-Z_-]+"
             },
             {
                "nodeKind": "sh:Literal",
@@ -1019,7 +1094,7 @@
                   "@id": "renku:CommandInput"
                },
                "path": "renku:hasInputs",
-               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-f-]+/inputs/(stdin|[0-9a-f]+)"
+               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-f-]+/inputs/([0-9a-zA-Z_-]+)"
             },
             {
                "nodeKind": "sh:Literal",
@@ -1034,7 +1109,7 @@
                   "@id": "renku:CommandOutput"
                },
                "path": "renku:hasOutputs",
-               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-f-]+/outputs/(stdout|stderr|[0-9a-f]+)"
+               "sh:pattern": "http(s)?://[^/]+/plans/[0-9a-f-]+/outputs/([0-9a-zA-Z_-]+)"
             },
             {
                "nodeKind": "sh:Literal",

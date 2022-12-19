@@ -65,4 +65,5 @@ class PlanSchema(JsonLDSchema):
             in_data.unfreeze()
             in_data.invalidated_at = in_data.invalidated_at.replace(microsecond=0).astimezone(timezone.utc)
             in_data.freeze()
+
         return in_data

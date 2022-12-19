@@ -25,7 +25,7 @@ import pytest
 
 from renku.command.schema.plan import PlanSchema
 from renku.core import errors
-from renku.core.workflow.concrete_execution_graph import ExecutionGraph
+from renku.core.workflow.model.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.value_resolution import CompositePlanValueResolver
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.plan import Plan

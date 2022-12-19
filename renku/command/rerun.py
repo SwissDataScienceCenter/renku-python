@@ -26,8 +26,8 @@ from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.util.os import get_relative_paths
 from renku.core.workflow.activity import get_activities_until_paths, sort_activities
-from renku.core.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.execute import execute_workflow_graph
+from renku.core.workflow.model.concrete_execution_graph import ExecutionGraph
 from renku.domain_model.project_context import project_context
 
 

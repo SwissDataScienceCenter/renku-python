@@ -21,7 +21,7 @@ import itertools
 import os
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
+from typing import Dict, FrozenSet, Iterable, List, NamedTuple, Optional, Set, Tuple
 
 import networkx
 from pydantic import validate_arguments
@@ -34,7 +34,7 @@ from renku.core.util.datetime8601 import local_now
 from renku.core.workflow.plan import get_activities, is_plan_removed, remove_plan
 from renku.domain_model.entity import Entity
 from renku.domain_model.project_context import project_context
-from renku.domain_model.provenance.activity import Activity
+from renku.domain_model.provenance.activity import Activity, Usage
 
 
 def get_activities_until_paths(
@@ -92,7 +92,10 @@ def get_activities_until_paths(
 
 
 def create_activity_graph(
-    activities: List[Activity], remove_overridden_parents=True, with_inputs_outputs=False
+    activities: List[Activity],
+    remove_overridden_parents=True,
+    with_inputs_outputs=False,
+    with_hidden_dependencies: bool = False,
 ) -> networkx.Graph:
     """Create a dependency DAG from activities."""
     by_usage: Dict[str, Set[Activity]] = defaultdict(set)
@@ -108,7 +111,13 @@ def create_activity_graph(
             graph.add_node(activity)
             if with_inputs_outputs:
                 create_input_output_edges(activity)
-            for usage in activity.usages:
+
+            collection = (
+                itertools.chain(activity.usages, activity.hidden_usages)
+                if with_hidden_dependencies
+                else activity.usages
+            )
+            for usage in collection:
                 path = usage.entity.path
                 by_usage[path].add(activity)
                 parent_activities = by_generation[path]
@@ -129,7 +138,10 @@ def create_activity_graph(
                 graph.add_node(path)
             if not graph.has_edge(activity, path):
                 graph.add_edge(activity, path)
-        for usage in activity.usages:
+        collection = (
+            itertools.chain(activity.usages, activity.hidden_usages) if with_hidden_dependencies else activity.usages
+        )
+        for usage in collection:
             path = usage.entity.path
             if not graph.has_node(path):
                 graph.add_node(path)
@@ -226,10 +238,23 @@ def sort_activities(activities: List[Activity], remove_overridden_parents=True) 
     return list(networkx.topological_sort(graph))
 
 
-@inject.autoparams()
+class ModifiedActivitiesEntities(NamedTuple):
+    """A class containing sets of modified/deleted activities and entities for both normal and hidden entities."""
+
+    modified: Set[Tuple[Activity, Entity]]
+    """Set of modified activity and entity tuples."""
+
+    deleted: Set[Tuple[Activity, Entity]]
+    """Set of deleted activity and entity tuples."""
+
+    hidden_modified: Set[Tuple[Activity, Entity]]
+    """Set of modified activity and entity tuples for hidden entities."""
+
+
+@inject.autoparams("activity_gateway")
 def get_all_modified_and_deleted_activities_and_entities(
-    repository, activity_gateway: IActivityGateway
-) -> Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]:
+    repository, activity_gateway: IActivityGateway, check_hidden_dependencies: bool = False
+) -> ModifiedActivitiesEntities:
     """
     Return latest activities with at least one modified or deleted input along with the modified/deleted input entity.
 
@@ -240,13 +265,14 @@ def get_all_modified_and_deleted_activities_and_entities(
         activity_gateway(IActivityGateway): The injected Activity gateway.
 
     Returns:
-        Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]: Tuple of modified and deleted
-            activities and entities.
+        ModifiedActivitiesEntities: Modified and deleted activities and entities.
 
     """
     all_activities = activity_gateway.get_all_activities()
     relevant_activities = filter_overridden_activities(all_activities)
-    return get_modified_activities(activities=relevant_activities, repository=repository)
+    return get_modified_activities(
+        activities=relevant_activities, repository=repository, check_hidden_dependencies=check_hidden_dependencies
+    )
 
 
 @inject.autoparams()
@@ -321,31 +347,44 @@ def get_downstream_generating_activities(
 
 
 def get_modified_activities(
-    activities: FrozenSet[Activity], repository
-) -> Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]:
+    activities: FrozenSet[Activity], repository, check_hidden_dependencies: bool
+) -> ModifiedActivitiesEntities:
     """Get lists of activities that have modified/deleted usage entities."""
-    modified = set()
-    deleted = set()
+
+    def get_modified_activities_helper(hashes, modified, deleted, hidden: bool):
+        for activity in activities:
+            collection: List[Usage] = activity.hidden_usages if hidden else activity.usages  # type: ignore
+            for usage in collection:
+                entity = usage.entity
+                current_checksum = hashes.get(entity.path, None)
+                usage_path = repository.path / usage.entity.path
+                if current_checksum is None or not usage_path.exists():
+                    deleted.add((activity, entity))
+                elif current_checksum != entity.checksum:
+                    modified.add((activity, entity))
+
+    modified: Set[Tuple[Activity, Entity]] = set()
+    deleted: Set[Tuple[Activity, Entity]] = set()
+    hidden_modified: Set[Tuple[Activity, Entity]] = set()
 
     paths = []
+    hidden_paths = []
 
     for activity in activities:
         for usage in activity.usages:
             paths.append(usage.entity.path)
+        if check_hidden_dependencies:
+            for usage in activity.hidden_usages:
+                hidden_paths.append(usage.entity.path)
 
     hashes = repository.get_object_hashes(paths=paths)
+    get_modified_activities_helper(hashes=hashes, modified=modified, deleted=deleted, hidden=False)
 
-    for activity in activities:
-        for usage in activity.usages:
-            entity = usage.entity
-            current_checksum = hashes.get(entity.path, None)
-            usage_path = repository.path / usage.entity.path
-            if current_checksum is None or not usage_path.exists():
-                deleted.add((activity, entity))
-            elif current_checksum != entity.checksum:
-                modified.add((activity, entity))
+    if check_hidden_dependencies and hidden_paths:
+        hashes = repository.get_object_hashes(paths=hidden_paths)
+        get_modified_activities_helper(hashes=hashes, modified=hidden_modified, deleted=set(), hidden=True)
 
-    return modified, deleted
+    return ModifiedActivitiesEntities(modified=modified, deleted=deleted, hidden_modified=hidden_modified)
 
 
 def filter_overridden_activities(activities: List[Activity]) -> FrozenSet[Activity]:

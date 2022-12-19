@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Plugin hooks for renku workflow customization."""
+
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -70,7 +71,7 @@ def workflow_convert(  # type: ignore[empty-body]
     pass
 
 
-def supported_formats() -> List[str]:
+def get_supported_formats() -> List[str]:
     """Returns the currently available workflow language format types.
 
     Returns:
@@ -121,4 +122,4 @@ def workflow_converter(format: str) -> WorkflowConverterProtocol:
             f"The specified format '{format}' is supported by more than one export plugins!"
         )
     export_plugins.remove(converter[0])
-    return pm.subset_hook_caller("workflow_convert", export_plugins)
+    return pm.subset_hook_caller(name="workflow_convert", remove_plugins=export_plugins)

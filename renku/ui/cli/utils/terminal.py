@@ -30,6 +30,7 @@ from renku.ui.cli.utils import color
 if TYPE_CHECKING:
     from renku.command.view_model.composite_plan import CompositePlanViewModel
     from renku.command.view_model.plan import PlanViewModel
+    from renku.command.view_model.workflow_file import StepViewModel, WorkflowFileViewModel
 
 style_header = functools.partial(click.style, bold=True, fg=color.YELLOW)
 style_key = functools.partial(click.style, bold=True, fg=color.MAGENTA)
@@ -65,26 +66,27 @@ def print_markdown(text: str, err: bool = False):
     Console(stderr=err).print(Markdown(text))
 
 
-def print_key_value(key, value, print_empty: bool = True, err: bool = False):
+def print_key_value(key, value, print_empty: bool = True, err: bool = False, indent: int = 0):
     """Print a key value pair."""
-    if print_empty or value:
-        click.echo(style_key(key) + style_value(value), err=err)
+    if print_empty or value or (not isinstance(value, bool) and value == 0):
+        click.echo(" " * indent + style_key(key) + style_value(value), err=err)
 
 
-def print_key(key, err: bool = False):
+def print_key(key, err: bool = False, indent: int = 0):
     """Print a key."""
-    click.echo(style_key(key), err=err)
+    click.echo(" " * indent + style_key(key), err=err)
 
 
-def print_value(value, err: bool = False):
+def print_value(value, err: bool = False, indent: int = 0):
     """Print a value."""
-    click.echo(style_value(value), err=err)
+    click.echo(" " * indent + style_value(value), err=err)
 
 
-def print_description(description, err: bool = False):
+def print_description(description, err: bool = False, indent: int = 0):
     """Print a description."""
     if description:
-        click.echo(f"\t\t{description}", err=err)
+        indent_str = " " * indent
+        click.echo(f"{indent_str}\t\t{description}", err=err)
 
 
 def print_plan(plan: "PlanViewModel", err: bool = False):
@@ -180,3 +182,70 @@ def print_composite_plan(composite_plan: "CompositePlanViewModel"):
             print_key("\t\t To: ")
             for sink in link.sinks:
                 print_value(f"\t\t\t- {sink}")
+
+
+def print_workflow_file(workflow_file: "WorkflowFileViewModel"):
+    """Print a workflow file to stdout."""
+    print_key_value("Name: ", workflow_file.name)
+    print_key_value("Path: ", workflow_file.path)
+
+    if workflow_file.keywords:
+        print_key_value("Keywords: ", ", ".join(k for k in workflow_file.keywords))
+
+    print_key_value("Description: ", workflow_file.description, print_empty=False)
+
+    print_key("Steps:")
+    for step in workflow_file.steps:
+        print_step(step)
+        click.echo()
+
+
+def print_step(step: "StepViewModel"):
+    """Print a step of a workflow file to stderr."""
+    indent = 4
+    i1 = indent
+    i2 = 2 * indent
+    i3 = 3 * indent
+    i4 = 4 * indent
+
+    print_value(f"{step.name}:", indent=i1)
+
+    print_key_value("Command: ", step.full_command, indent=i2)
+    print_key_value("Processed command: ", step.command, indent=i2)
+    print_key_value("Success codes: ", step.success_codes, print_empty=False, indent=i2)
+    if step.keywords:
+        print_key_value("Keywords: ", ", ".join(k for k in step.keywords), indent=i2)
+    print_key_value("Description: ", step.description, print_empty=False, indent=i2)
+
+    if step.inputs:
+        print_key("Inputs:", indent=i2)
+        for input in step.inputs:
+            print_value(f"{input.name}:", indent=i3)
+            print_key_value("Path: ", input.path, indent=i4)
+            print_key_value("Prefix: ", input.prefix, print_empty=False, indent=i4)
+            print_key_value("Position: ", input.position, print_empty=False, indent=i4)
+            print_key_value("Description: ", input.description, print_empty=False, indent=i4)
+            print_key_value("Mapped to: ", input.mapped_to, print_empty=False, indent=i4)
+            print_key_value("Implicit: ", input.implicit, print_empty=False, indent=i4)
+
+    if step.outputs:
+        print_key("Outputs:", indent=i2)
+        for output in step.outputs:
+            print_value(f"{output.name}:", indent=i3)
+            print_key_value("Path: ", output.path, indent=i4)
+            print_key_value("Prefix: ", output.prefix, print_empty=False, indent=i4)
+            print_key_value("Position: ", output.position, print_empty=False, indent=i4)
+            print_key_value("Description: ", output.description, print_empty=False, indent=i4)
+            print_key_value("Persist: ", output.persist, print_empty=False, indent=i4)
+            print_key_value("Mapped to: ", output.mapped_to, print_empty=False, indent=i4)
+            print_key_value("Implicit: ", output.implicit, print_empty=False, indent=i4)
+
+    if step.parameters:
+        print_key("Parameters:", indent=i2)
+        for parameter in step.parameters:
+            print_value(f"{parameter.name}:", indent=i3)
+            print_key_value("Value: ", parameter.value, indent=i4)
+            print_key_value("Prefix: ", parameter.prefix, print_empty=False, indent=i4)
+            print_key_value("Position: ", parameter.position, print_empty=False, indent=i4)
+            print_key_value("Description: ", parameter.description, print_empty=False, indent=i4)
+            print_key_value("Implicit: ", parameter.implicit, print_empty=False, indent=i4)

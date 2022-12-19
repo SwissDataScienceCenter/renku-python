@@ -24,7 +24,14 @@ from renku.command.schema.annotation import AnnotationSchema
 from renku.command.schema.calamus import JsonLDSchema, Nested, fields, oa, prov, renku, schema
 from renku.command.schema.entity import CollectionSchema, EntitySchema
 from renku.command.schema.plan import PlanSchema
-from renku.domain_model.provenance.activity import Activity, Association, Generation, Usage
+from renku.command.schema.workflow_file import WorkflowFileCompositePlanSchema, WorkflowFilePlanSchema
+from renku.domain_model.provenance.activity import (
+    Activity,
+    Association,
+    Generation,
+    Usage,
+    WorkflowFileActivityCollection,
+)
 from renku.domain_model.provenance.parameter import ParameterValue
 
 
@@ -45,7 +52,7 @@ class _ObjectWrapper:
 def _fix_id(obj):
     """Fix ids under an activity that were wrong due to a bug."""
 
-    if not obj.id.startswith("/activities/"):
+    if not obj.id.startswith("/activities/") and not obj.id.startswith("/workflow-file-activity-collection/"):
         obj = _ObjectWrapper(obj, id=f"/activities/{obj.id}")
 
     return obj
@@ -63,7 +70,7 @@ class AssociationSchema(JsonLDSchema):
 
     agent = Nested(prov.agent, [SoftwareAgentSchema, PersonSchema])
     id = fields.Id()
-    plan = Nested(prov.hadPlan, PlanSchema)
+    plan = Nested(prov.hadPlan, [PlanSchema, WorkflowFilePlanSchema, WorkflowFileCompositePlanSchema])
 
     @pre_dump
     def _pre_dump(self, obj, **kwargs):
@@ -164,3 +171,22 @@ class ActivitySchema(JsonLDSchema):
     def _pre_dump(self, obj, **kwargs):
         """Pre-dump hook."""
         return _fix_id(obj)
+
+
+class WorkflowFileActivityCollectionSchema(JsonLDSchema):
+    """WorkflowFileActivityCollection schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [renku.WorkflowFileActivityCollection, prov.Collection]
+        model = WorkflowFileActivityCollection
+        unknown = EXCLUDE
+
+    activities = Nested(schema.hasPart, ActivitySchema, many=True)
+    agents = Nested(prov.wasAssociatedWith, [PersonSchema, SoftwareAgentSchema], many=True)
+    association = Nested(prov.qualifiedAssociation, AssociationSchema)
+    ended_at_time = fields.DateTime(prov.endedAtTime, add_value_types=True)
+    id = fields.Id()
+    project_id = fields.IRI(renku.hasActivityCollection, reverse=True)
+    started_at_time = fields.DateTime(prov.startedAtTime, add_value_types=True)

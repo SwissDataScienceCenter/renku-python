@@ -196,6 +196,7 @@ nitpick_ignore = [
     ("py:class", "OID_TYPE"),
     ("py:class", "Path"),
     ("py:class", "Persistent"),
+    ("py:class", "WorkflowFileCompositePlan"),
     ("py:class", "optional"),
     ("py:class", '"ValueResolver"'),
     ("py:exc", "errors.ParameterError"),
