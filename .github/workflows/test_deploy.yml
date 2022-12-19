@@ -9,6 +9,7 @@ on:
 env:
   DEPENDENCY_CACHE_PREFIX: "v2"
   NETWORK_CACHE_PREFIX: "v1"
+  TEST_PYTHON_VERSION: "3.7"
 jobs:
   set-matrix:
     runs-on: ubuntu-latest
@@ -23,9 +24,9 @@ jobs:
         run: |
           if [ "$REF" == "refs/heads/$DEFAULT_BRANCH" ] || [[ "$REF" =~ ^refs/tags/.* ]]
           then
-              echo "::set-output name=matrix::{\"python-version\": [\"3.7\", \"3.10\"]}"
+              echo "::set-output name=matrix::{\"python-version\": [\"3.9\", \"3.10\"]}"
           else
-              echo "::set-output name=matrix::{\"python-version\": [\"3.9\"]}"
+              echo "::set-output name=matrix::{\"python-version\": [\"3.7\"]}"
           fi
 
   cleanup-runs:
@@ -49,10 +50,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3.1.0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python 3.8
+      - name: Set up Python ${{ env.TEST_PYTHON_VERSION }}
         uses: actions/setup-python@v4
         with:
-          python-version: "3.8"
+          python-version: ${{ env.TEST_PYTHON_VERSION }}
       - uses: actions/cache@master
         id: dependency-cache
         with:
@@ -137,10 +138,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3.1.0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python 3.8
+      - name: Set up Python ${{ env.TEST_PYTHON_VERSION }}
         uses: actions/setup-python@v4
         with:
-          python-version: "3.8"
+          python-version: ${{ env.TEST_PYTHON_VERSION }}
       - uses: actions/cache@master
         id: dependency-cache
         with:
@@ -180,7 +181,7 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
-          python-version: "3.7"
+          python-version: ${{ env.TEST_PYTHON_VERSION }}
       - uses: actions/cache@master
         id: dependency-cache
         with:
@@ -893,7 +894,7 @@ jobs:
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
-          python-version: "3.7"
+          python-version: ${{ env.TEST_PYTHON_VERSION }}
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
