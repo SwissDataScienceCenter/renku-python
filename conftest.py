@@ -42,6 +42,7 @@ CORE_FIXTURE_LOCATIONS = [
 
 GLOBAL_FIXTURE_LOCATIONS = [
     "tests.fixtures.common",
+    "tests.fixtures.communication",
     "tests.fixtures.config",
     "tests.fixtures.domain_models",
     "tests.fixtures.repository",

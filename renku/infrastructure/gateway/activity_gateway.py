@@ -141,7 +141,7 @@ class ActivityGateway(IActivityGateway):
         database = project_context.database
         return [a for a in database["activities"].values() if not a.deleted or include_deleted]
 
-    def add(self, activity: Activity):
+    def add(self, activity: Activity) -> None:
         """Add an ``Activity`` to storage."""
 
         database = project_context.database
@@ -173,6 +173,10 @@ class ActivityGateway(IActivityGateway):
         database = project_context.database
 
         database["activity-collections"].add(activity_collection)
+
+        if hasattr(activity_collection, "association"):
+            plan_gateway = inject.instance(IPlanGateway)
+            plan_gateway.add(activity_collection.association.plan)
 
     def get_all_activity_collections(self) -> List[ActivityCollection]:
         """Get all activity collections in the project."""

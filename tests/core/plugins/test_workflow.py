@@ -88,8 +88,8 @@ def test_cwl_workflow_export(
     """Check that an exported CWL workflow can fully recreate saved outputs/inputs."""
     for command in create_workflow_commands:
         ps: Popen = run_shell(command, work_dir=project.path, return_ps=True)
-        _ = ps.communicate()
-        assert ps.returncode == 0
+        stdout, stderr = ps.communicate()
+        assert ps.returncode == 0, f"{stdout} + {stderr} + {command}"
 
     assert not project.repository.is_dirty(untracked_files=True)
 

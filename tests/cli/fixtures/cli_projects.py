@@ -18,6 +18,7 @@
 """Renku CLI fixtures for project management."""
 
 import shutil
+from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Generator
 
@@ -104,3 +105,31 @@ def subdirectory(request) -> Generator[Path, None, None]:
 
     with chdir(request.param):
         yield Path(request.param).resolve()
+
+
+@dataclass
+class RenkuWorkflowFileProject(RenkuProject):
+    """A Renku project with a workflow file property."""
+
+    workflow_file: str = field(init=False)
+
+
+@pytest.fixture
+def workflow_file_project(project, request) -> Generator[RenkuWorkflowFileProject, None, None]:
+    """Return a Renku repository with a workflow file."""
+    filename = getattr(request, "param", None) or "workflow-file.yml"
+    workflow_file = Path(__file__).parent / ".." / ".." / "data" / filename
+
+    workflow_file_project = RenkuWorkflowFileProject.__new__(RenkuWorkflowFileProject)
+    for f in fields(project):
+        setattr(workflow_file_project, f.name, getattr(project, f.name))
+    workflow_file_project.workflow_file = filename
+
+    shutil.copy(workflow_file, project.path)
+
+    # Create dummy input files used in the workflow file
+    (project.path / "data" / "collection").mkdir(parents=True)
+    (project.path / "data" / "collection" / "models.csv").write_text("\n".join(f"model-{i}" for i in range(99)))
+    (project.path / "data" / "collection" / "colors.csv").write_text("\n".join(f"color-{i}" for i in range(99)))
+
+    yield workflow_file_project

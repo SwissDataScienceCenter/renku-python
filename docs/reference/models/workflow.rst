@@ -44,6 +44,13 @@ parameter
    :members:
    :show-inheritance:
 
+workflow\_file
+---------------------------------------------------
+
+.. automodule:: renku.domain_model.workflow.workflow_file
+   :members:
+   :show-inheritance:
+
 
 Renku Workflow Conversion
 =========================

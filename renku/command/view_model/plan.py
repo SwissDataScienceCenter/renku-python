@@ -24,12 +24,11 @@ from datetime import datetime, timedelta
 from typing import List, Optional, Union, cast
 
 from renku.command.view_model.agent import PersonViewModel
+from renku.command.view_model.composite_plan import CompositePlanViewModel
 from renku.domain_model.project_context import project_context
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter
 from renku.domain_model.workflow.plan import AbstractPlan, Plan
-
-from .composite_plan import CompositePlanViewModel
 
 
 class CommandInputViewModel:
@@ -250,7 +249,7 @@ class PlanViewModel:
 
 
 def plan_view(workflow: AbstractPlan, latest: bool = False) -> Union[CompositePlanViewModel, PlanViewModel]:
-    """Convert an ``CompositePlan`` or ``Plan`` to a ``ViewModel``.
+    """Convert a ``CompositePlan`` or ``Plan`` to a ``ViewModel``.
 
     Args:
         workflow(AbstractPlan): Plan to convert.
@@ -259,7 +258,6 @@ def plan_view(workflow: AbstractPlan, latest: bool = False) -> Union[CompositePl
     Returns:
         View model for converted Plan.
     """
-
     if isinstance(workflow, CompositePlan):
-        return CompositePlanViewModel.from_composite_plan(workflow)
+        return CompositePlanViewModel.from_composite_plan(workflow, latest=latest)
     return PlanViewModel.from_plan(cast(Plan, workflow))

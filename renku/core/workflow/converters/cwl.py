@@ -30,7 +30,7 @@ from renku.core import errors
 from renku.core.plugin import hookimpl
 from renku.core.plugin.provider import RENKU_ENV_PREFIX
 from renku.core.util.yaml import dumps_yaml, write_yaml
-from renku.core.workflow.concrete_execution_graph import ExecutionGraph
+from renku.core.workflow.model.concrete_execution_graph import ExecutionGraph
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.converters import IWorkflowConverter
 from renku.domain_model.workflow.parameter import DIRECTORY_MIME_TYPE, CommandInput, CommandOutput, CommandParameter

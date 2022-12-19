@@ -206,24 +206,22 @@ def test_hash_directories(git_repository):
     (git_repository.path / "X" / "A").write_text("modified")
 
     assert git_repository.get_object_hash("X", revision="HEAD") is None
-    assert git_repository.get_object_hash("X") is None
+    assert "676a99b0b045074417413e651294be8dcdcfdffd" == git_repository.get_object_hash("X")
 
     with pytest.raises(errors.GitCommandError):
         Repository.hash_object("X")
 
-    # NOTE: When staging a directory then the hash can be calculated
+    # NOTE: Staging a directory makes no difference in hash calculation
     git_repository.add("X")
 
-    directory_hash = git_repository.get_object_hash("X", revision="HEAD")
-
-    assert directory_hash is not None
-    assert directory_hash == git_repository.get_object_hash("X")
+    assert git_repository.get_object_hash("X", revision="HEAD") is None
+    assert "676a99b0b045074417413e651294be8dcdcfdffd" == git_repository.get_object_hash("X")
 
     # NOTE: Hash of the committed directory is the same as the staged hash
     git_repository.commit("Committed X")
 
-    assert directory_hash == git_repository.get_object_hash("X", revision="HEAD")
-    assert directory_hash == git_repository.get_object_hash("X")
+    assert "676a99b0b045074417413e651294be8dcdcfdffd" == git_repository.get_object_hash("X", revision="HEAD")
+    assert "676a99b0b045074417413e651294be8dcdcfdffd" == git_repository.get_object_hash("X")
 
     with pytest.raises(errors.GitCommandError):
         Repository.hash_object("X")

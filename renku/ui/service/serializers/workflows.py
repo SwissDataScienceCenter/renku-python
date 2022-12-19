@@ -22,7 +22,7 @@ from marshmallow import Schema, fields
 from marshmallow_oneofschema import OneOfSchema
 
 from renku.domain_model.dataset import DatasetCreatorsJson
-from renku.ui.cli.utils.plugins import supported_formats
+from renku.ui.cli.utils.plugins import get_supported_formats
 from renku.ui.service.serializers.common import LocalRepositorySchema, RemoteRepositorySchema
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
@@ -198,7 +198,7 @@ class WorkflowPlansShowResponseRPC(JsonRPCResponse):
 
 WorkflowExportFormatEnum = Enum(  # type: ignore
     "WorkflowExportFormatEnum",
-    zip(supported_formats(), supported_formats()),
+    zip(get_supported_formats(), get_supported_formats()),
 )
 
 

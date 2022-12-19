@@ -26,10 +26,10 @@ from pathlib import Path
 from typing import Generator
 
 import pytest
-from click.testing import CliRunner
 
 from renku.core.config import set_value
 from renku.core.constant import DATABASE_PATH, POINTERS, RENKU_HOME
+from renku.core.util import communication
 from renku.core.util.contexts import chdir
 from renku.domain_model.project_context import ProjectContext, project_context
 from renku.infrastructure.repository import Repository
@@ -97,11 +97,15 @@ def fake_home(tmp_path, monkeypatch) -> Generator[Path, None, None]:
 @pytest.fixture
 def project(fake_home) -> Generator[RenkuProject, None, None]:
     """A Renku test project."""
+    from tests.fixtures.runners import RenkuRunner
+
     project_context.clear()
 
     with isolated_filesystem(fake_home.parent, delete=True) as project_path:
         with project_context.with_path(project_path):
-            result = CliRunner().invoke(init, [".", "--template-id", "python-minimal"], "\n", catch_exceptions=False)
+            communication.disable()
+            result = RenkuRunner().invoke(init, [".", "--template-id", "python-minimal"], "\n", catch_exceptions=False)
+            communication.enable()
             assert 0 == result.exit_code, format_result_exception(result)
 
             repository = Repository(project_path, search_parent_directories=True)

@@ -115,7 +115,7 @@ def graph():
     default="HEAD",
     help="Limit graph to changes done in revision (or range of revisions like 'A..B').",
 )
-@click.option("--full", is_flag=True, help="Generate full graph for project. Overrides --revision.")
+@click.option("-f", "--full", is_flag=True, help="Generate full graph for project. Overrides --revision.")
 @click.option("--strict", is_flag=True, default=False, help="Validate triples before output.")
 @click.option(
     "--no-indent", is_flag=True, default=False, help="Format without indentation/pretty-printing (only for JSON-LD)."

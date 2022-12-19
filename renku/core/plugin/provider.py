@@ -90,6 +90,6 @@ def execute(dag: "nx.DiGraph", basedir: Path, config: Dict[str, Any], provider: 
         raise errors.ParameterError(f"The specified workflow executor '{provider}' is not available.")
 
     providers.remove(found_provider)
-    executor = pm.subset_hook_caller("workflow_execute", list(map(lambda x: x[0], providers)))
+    executor = pm.subset_hook_caller("workflow_execute", remove_plugins=list(map(lambda x: x[0], providers)))
 
     return executor(dag=dag, basedir=basedir, config=config)

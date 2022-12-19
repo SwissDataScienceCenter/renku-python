@@ -1,0 +1,61 @@
+name: workflow-file
+description: A sample workflow file used for testing
+keywords:
+  - workflow file
+  - v1
+steps:
+  head:
+    command: head $n $models $colors > $temporary-result
+    description: first stage of the pipeline
+    success_codes:
+      - 0
+      - 127
+    keywords:
+      - preprocessing
+      - first step
+    inputs:
+      - models:
+          description: all available model numbers
+          path: data/collection/models.csv
+      - colors:
+          path: data/collection/colors.csv
+    outputs:
+      temporary-result:
+        description: temporary intermediate result that won't be saved
+        path: intermediate
+        persist: false
+    parameters:
+      n:
+        description: number of lines to print
+        prefix: -n
+        value: 10
+
+  tail:
+    command: tail $parameters intermediate > results/output.csv
+    description: second stage of the pipeline
+    inputs:
+      intermediate:
+        path: intermediate
+        persist: false
+    outputs:
+      models-and-colors:
+        path: results/output.csv
+    parameters:
+      n:
+        prefix: -n
+        value: 5
+
+  line-count:
+    command: wc -l $models-and-colors > $output
+    description: third stage of the pipeline
+    inputs:
+      - data/collection/models.csv
+      - data/collection/colors.csv
+      - models-and-colors:
+          path: results/output.csv
+    outputs:
+      output:
+        description: contains number of lines in the input/output files
+        path: results/output.csv.wc
+    parameters:
+      - -l
