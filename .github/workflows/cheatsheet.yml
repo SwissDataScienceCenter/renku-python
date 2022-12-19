@@ -35,15 +35,15 @@ jobs:
           key: ${{env.CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('build.py')}}
       - name: Install dependencies
         if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          POETRY_VIRTUALENVS_CREATE: false
         run: |
           python -m pip install --upgrade pip
-          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning==0.17.1
-          poetry-dynamic-versioning
-          python -m pip install .[all]
+          python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning-plugin
+          poetry install -E toil -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.cache.outputs.cache-hit == 'true'
         run: |
-          poetry-dynamic-versioning
           python -m pip install --no-deps .
       - name: Set Git config
         run: |

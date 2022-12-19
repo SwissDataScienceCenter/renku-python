@@ -20,7 +20,7 @@ COPY .git /code/renku/.git
 COPY renku /code/renku/renku
 WORKDIR /code/renku
 # hadolint ignore=SC2086
-RUN if [ -n "${BUILD_CORE_SERVICE}" ]; then export EXT_BUILD="--with service" ; fi && \
+RUN if [ -n "${BUILD_CORE_SERVICE}" ]; then export EXT_BUILD="-E service" ; fi && \
     poetry export --without-hashes ${EXT_BUILD} -f requirements.txt --output /tmp/requirements.txt && \
     pip install --no-cache-dir -r /tmp/requirements.txt
 
