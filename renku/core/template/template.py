@@ -403,7 +403,7 @@ class EmbeddedTemplates(TemplatesSource):
         else:
             return (self.reference, self.version) if current_version < Version(self.version) else (reference, version)
 
-    def get_template(self, id, reference: Optional[str]) -> Optional["Template"]:
+    def get_template(self, id, reference: Optional[str]) -> "Template":
         """Return all available versions for a template id."""
         try:
             return next(t for t in self.templates if t.id == id)
@@ -491,7 +491,7 @@ class RepositoryTemplates(TemplatesSource):
         else:
             return any(t.id == id for t in manifest.templates)
 
-    def get_template(self, id, reference: Optional[str]) -> Optional["Template"]:
+    def get_template(self, id, reference: Optional[str]) -> "Template":
         """Return a template at a specific reference."""
         if reference is not None and reference != self.reference:
             try:
