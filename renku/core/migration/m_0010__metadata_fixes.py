@@ -132,12 +132,13 @@ def migrate_activity_ids():
     def fix_id(id: str, changed: bool) -> Tuple[str, bool]:
         """Fix an activity related id."""
         if not id.startswith("/activities/"):
-            return f"/activities{id}", True
-        return id, False or changed
+            return f"/activities/{id.lstrip('/')}", True
+        return id, changed
 
     for activity in activities:
         changed = False
         activity.unfreeze()
+        old_activity_id = activity.id
         activity.id, changed = fix_id(activity.id, changed)
         activity.association.id, changed = fix_id(activity.association.id, changed)
 
@@ -154,10 +155,14 @@ def migrate_activity_ids():
             object.__setattr__(entity, "id", id)
 
         if changed:
+            database["activities"].pop(old_activity_id)
             activity._p_changed = True
-            activity._p_oid = database.hash_id(activity.id)
+            old_id = str(activity._p_oid)
+            os.unlink(project_context.database_path / old_id[0:2] / old_id[2:4] / old_id)
+            activity.reassign_oid()
+            database["activities"].add(activity)
         activity.freeze()
-
+    database["activities"]._p_changed = True
     database.commit()
 
 
@@ -233,22 +238,24 @@ def fix_plan_times(activity_gateway: IActivityGateway, plan_gateway: IPlanGatewa
             activity_map[plan_id] = activity
 
     for plan in plans:
-        if plan.invalidated_at is not None:
-            if plan.invalidated_at < plan.date_created:
+        plan.unfreeze()
+        if hasattr(plan, "invalidated_at"):
+            plan.date_removed = plan.invalidated_at
+            del plan.invalidated_at
+        elif not hasattr(plan, "date_removed"):
+            plan.date_removed = None
+
+        if plan.date_removed is not None:
+            if plan.date_removed < plan.date_created:
                 # NOTE: Fix invalidation times set before creation date on plans
-                plan.unfreeze()
-                plan.invalidated_at = plan.date_created
-                plan.freeze()
-            if plan.invalidated_at.tzinfo is None:
-                # NOTE: There was a bug that caused invalidated_at to be set without timezone (as UTC time)
+                plan.date_removed = plan.date_created
+            if plan.date_removed.tzinfo is None:
+                # NOTE: There was a bug that caused date_removed to be set without timezone (as UTC time)
                 # so we patch in the timezone here
-                plan.unfreeze()
-                plan.invalidated_at = plan.invalidated_at.replace(microsecond=0).astimezone(timezone.utc)
-                plan.freeze()
+                plan.date_removed = plan.date_removed.replace(microsecond=0).astimezone(timezone.utc)
         if plan.id in activity_map and plan.date_created > activity_map[plan.id].started_at_time:
-            plan.unfreeze()
             plan.date_created = activity_map[plan.id].started_at_time
-            plan.freeze()
+        plan.freeze()
 
     # NOTE: switch creation date for modification date
     for tail in plan_gateway.get_newest_plans_by_names(include_deleted=True).values():

@@ -37,7 +37,6 @@ class ProjectSchema(JsonLDSchema):
 
     agent_version = StringList(schema.agent, load_default="pre-0.11.0")
     annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
-    automated_update = fields.Boolean(renku.automatedTemplateUpdate, load_default=True, dump_only=True)
     creator = Nested(schema.creator, PersonSchema, load_default=None)
     date_created = DateTimeList(schema.dateCreated, load_default=None, format="iso", extra_formats=("%Y-%m-%d",))
     description = fields.String(schema.description, load_default=None)
