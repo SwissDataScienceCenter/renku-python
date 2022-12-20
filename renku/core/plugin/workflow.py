@@ -21,11 +21,16 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 import pluggy
-from typing_extensions import Protocol
 
 from renku.core import errors
 from renku.domain_model.workflow.converters import IWorkflowConverter
 from renku.domain_model.workflow.plan import Plan
+
+try:
+    from typing_extensions import Protocol  # NOTE: Required for Python 3.7 compatibility
+except ImportError:
+    from typing import Protocol  # type: ignore
+
 
 hookspec = pluggy.HookspecMarker("renku")
 
