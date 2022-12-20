@@ -293,7 +293,7 @@ def fix_dataset_date_modified(dataset_gateway: IDatasetGateway):
             modification_date = dataset.date_removed or dataset.date_created
 
             if modification_date is not None:
-                assert modification_date < previous_modification_date
+                assert modification_date <= previous_modification_date
                 dataset.unfreeze()
                 dataset.date_modified = modification_date
                 dataset.freeze()
