@@ -301,7 +301,7 @@ def test_init_new_metadata_defaults(isolated_runner, project_init):
     assert 0 == result.exit_code, format_result_exception(result)
 
     project = Database.from_path(Path(data["test_project"]) / ".renku" / "metadata").get("project")
-    metadata = json.loads(project.template_metadata)
+    metadata = json.loads(project.template_metadata.metadata)
     assert True is metadata["bool_var"]
     assert "ask again" == metadata["enum_var"]
     assert "some description" == metadata["description"]
@@ -324,7 +324,7 @@ def test_init_new_metadata_defaults_is_overwritten(isolated_runner, project_init
     assert 0 == result.exit_code, format_result_exception(result)
 
     project = Database.from_path(Path(data["test_project"]) / ".renku" / "metadata").get("project")
-    metadata = json.loads(project.template_metadata)
+    metadata = json.loads(project.template_metadata.metadata)
     assert metadata["bool_var"] is False
     assert "maybe" == metadata["enum_var"]
     assert "some description" == metadata["description"]
@@ -459,7 +459,7 @@ def test_init_with_description(isolated_runner, template):
 
     assert "new project" == project.name
     assert project.id.endswith("new-project")  # make sure id uses slug version of name without space
-    assert "my project description" in project.template_metadata
+    assert "my project description" in project.template_metadata.metadata
     assert "my project description" == project.description
 
     readme_content = (Path("new project") / "README.md").read_text()

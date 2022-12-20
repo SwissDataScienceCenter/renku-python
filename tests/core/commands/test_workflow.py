@@ -19,16 +19,13 @@
 
 
 from contextlib import nullcontext
-from datetime import datetime
 
 import pytest
 
-from renku.command.schema.plan import PlanSchema
 from renku.core import errors
 from renku.core.workflow.model.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.value_resolution import CompositePlanValueResolver
 from renku.domain_model.workflow.composite_plan import CompositePlan
-from renku.domain_model.workflow.plan import Plan
 
 
 def _get_nested_actual_values(run):
@@ -504,14 +501,3 @@ def test_composite_plan_auto_links(composite_plan, mappings, defaults, links, ra
     with maybe_raises:
         for virtual_link in graph.virtual_links:
             grouped.add_link(virtual_link[0], [virtual_link[1]])
-
-
-def test_plan_invalidated_at_datetime_export():
-    """The invalidated_at has a timezone on export."""
-    plan = Plan(id=Plan.generate_id(), name="p1", command="/bin/sh")
-    plan.invalidated_at = datetime.utcnow()
-
-    dumped = PlanSchema().dump(plan)
-
-    date = datetime.fromisoformat(dumped["http://www.w3.org/ns/prov#invalidatedAtTime"])
-    assert date.tzinfo is not None

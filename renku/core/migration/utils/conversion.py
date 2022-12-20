@@ -196,6 +196,7 @@ def convert_dataset(dataset: old_datasets.Dataset, revision: str) -> Tuple[Datas
             date_created=dataset.date_created,
             date_published=dataset.date_published,
             date_removed=None,
+            date_modified=dataset.date_created or dataset.date_published,
             derived_from=convert_derived_from(dataset.derived_from, dataset.same_as),
             description=dataset.description,
             id=id,
