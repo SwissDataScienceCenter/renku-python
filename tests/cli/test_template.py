@@ -135,7 +135,7 @@ def test_template_set_failure(runner, project, with_injection):
     assert 1 == result.exit_code, format_result_exception(result)
     assert "Project already has a template" in result.output
     with with_injection():
-        assert "python-minimal" == project_context.project.template_id
+        assert "python-minimal" == project_context.project.template_metadata.template_id
 
 
 def test_template_set(runner, project, with_injection):
@@ -146,9 +146,9 @@ def test_template_set(runner, project, with_injection):
 
     assert 0 == result.exit_code, format_result_exception(result)
     with with_injection():
-        assert "R-minimal" == project_context.project.template_id
-        assert __template_version__ == project_context.project.template_version
-        assert __template_version__ == project_context.project.template_ref
+        assert "R-minimal" == project_context.project.template_metadata.template_id
+        assert __template_version__ == project_context.project.template_metadata.template_version
+        assert __template_version__ == project_context.project.template_metadata.template_ref
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -162,7 +162,7 @@ def test_template_set_overwrites_modified(runner, project, with_injection):
 
     assert 0 == result.exit_code, format_result_exception(result)
     with with_injection():
-        assert "R-minimal" == project_context.project.template_id
+        assert "R-minimal" == project_context.project.template_metadata.template_id
     assert "my-modifications" not in (project.path / "Dockerfile").read_text()
     assert not project.repository.is_dirty(untracked_files=True)
 
@@ -176,7 +176,7 @@ def test_template_set_interactive(runner, project, with_injection, overwrite, fo
 
     assert 0 == result.exit_code, format_result_exception(result)
     with with_injection():
-        assert "R-minimal" == project_context.project.template_id
+        assert "R-minimal" == project_context.project.template_metadata.template_id
     assert ("my-modifications" in (project.path / "Dockerfile").read_text()) is found
     assert not project.repository.is_dirty(untracked_files=True)
 
@@ -239,18 +239,18 @@ def test_template_update(runner, project, with_injection):
 
     assert 0 == result.exit_code, format_result_exception(result)
     with with_injection():
-        assert "python-minimal" == project_context.project.template_id
-        assert "0.3.2" == project_context.project.template_ref
-        assert "b9ab266fba136bdecfa91dc8d7b6d36b9d427012" == project_context.project.template_version
+        assert "python-minimal" == project_context.project.template_metadata.template_id
+        assert "0.3.2" == project_context.project.template_metadata.template_ref
+        assert "b9ab266fba136bdecfa91dc8d7b6d36b9d427012" == project_context.project.template_metadata.template_version
 
     result = runner.invoke(cli, ["template", "update"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Template is up-to-date" not in result.output
     with with_injection():
-        assert "python-minimal" == project_context.project.template_id
-        assert Version(project_context.project.template_ref) > Version("0.3.2")
-        assert "6c59d8863841baeca8f30062fd16c650cf67da3b" != project_context.project.template_version
+        assert "python-minimal" == project_context.project.template_metadata.template_id
+        assert Version(project_context.project.template_metadata.template_ref) > Version("0.3.2")
+        assert "6c59d8863841baeca8f30062fd16c650cf67da3b" != project_context.project.template_metadata.template_version
 
     result = runner.invoke(cli, ["template", "update"])
 

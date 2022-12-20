@@ -87,6 +87,7 @@ def input_objects(request, dataset_model, activity_model, plan_model):
                     "@type": ["http://schema.org/Dataset", "http://www.w3.org/ns/prov#Entity"],
                     "http://schema.org/creator": [],
                     "http://schema.org/dateCreated": [{"@value": "2022-07-12T16:29:14+02:00"}],
+                    "http://schema.org/dateModified": [{"@value": "2022-07-12T16:29:14+02:00"}],
                     "http://schema.org/hasPart": [{"@id": "/dataset-files/2ac728d65fec48afbfa5e027eb3abd71"}],
                     "http://schema.org/identifier": [{"@value": "14249f1571fb4a2786ddeb7f706b9833"}],
                     "http://schema.org/image": [],
@@ -172,6 +173,7 @@ def input_objects(request, dataset_model, activity_model, plan_model):
                     ],
                     "http://schema.org/creator": [{"@id": "mailto:john.doe@example.com"}],
                     "http://schema.org/dateCreated": [{"@value": "2022-07-12T16:29:14+02:00"}],
+                    "http://schema.org/dateModified": [{"@value": "2022-07-12T16:29:14+02:00"}],
                     "http://schema.org/keywords": [],
                     "http://schema.org/name": [{"@value": "my-plan"}],
                     "https://swissdatasciencecenter.github.io/renku-ontology#command": [{"@value": "echo"}],
@@ -210,6 +212,7 @@ def input_objects(request, dataset_model, activity_model, plan_model):
                     ],
                     "http://schema.org/creator": [{"@id": "mailto:john.doe@example.com"}],
                     "http://schema.org/dateCreated": [{"@value": "2022-07-12T16:29:14+02:00"}],
+                    "http://schema.org/dateModified": [{"@value": "2022-07-12T16:29:14+02:00"}],
                     "http://schema.org/keywords": [],
                     "http://schema.org/name": [{"@value": "my-plan"}],
                     "https://swissdatasciencecenter.github.io/renku-ontology#command": [{"@value": "echo"}],
@@ -268,12 +271,15 @@ def test_graph_export_full():
             ],
             derived_from=Url(url_id="/datasets/0000000aaaaaaa"),
             initial_identifier="abcdefg",
+            date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
+            date_modified=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
         )
     ]
     dataset_gateway.get_by_id.return_value = Dataset(
         id="/datasets/0000000aaaaaaa",
         name="my-dataset",
         date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
+        date_modified=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
         identifier="abcdefg",
         initial_identifier="abcdefg",
     )
@@ -282,6 +288,7 @@ def test_graph_export_full():
             spec=DatasetTag,
             dataset_id=Url(url="/datasets/abcdefg12345"),
             date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
+            date_modified=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
             id="/dataset-tags/my-tag",
             name="my-tag",
         )
@@ -292,6 +299,7 @@ def test_graph_export_full():
         command="echo",
         name="echo",
         date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
+        date_modified=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
         creators=[Person(email="test@example.com", name="John Doe")],
     )
 
@@ -314,6 +322,7 @@ def test_graph_export_full():
             id="/plans/composite1",
             name="composite",
             date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
+            date_modified=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
             creators=[Person(email="test@example.com", name="John Doe")],
             plans=[plan],
         ),
@@ -352,6 +361,7 @@ def test_graph_export_full():
             ],
             "http://schema.org/creator": [{"@id": "mailto:test@example.com"}],
             "http://schema.org/dateCreated": [{"@value": "2022-07-12T16:29:14+02:00"}],
+            "http://schema.org/dateModified": [{"@value": "2022-07-12T16:29:14+02:00"}],
             "http://schema.org/keywords": [],
             "http://schema.org/name": [{"@value": "echo"}],
             "https://swissdatasciencecenter.github.io/renku-ontology#command": [{"@value": "echo"}],
@@ -370,6 +380,7 @@ def test_graph_export_full():
             ],
             "http://schema.org/creator": [{"@id": "mailto:test@example.com"}],
             "http://schema.org/dateCreated": [{"@value": "2022-07-12T16:29:14+02:00"}],
+            "http://schema.org/dateModified": [{"@value": "2022-07-12T16:29:14+02:00"}],
             "http://schema.org/keywords": [],
             "http://schema.org/name": [{"@value": "composite"}],
             "https://swissdatasciencecenter.github.io/renku-ontology#hasMappings": [],
@@ -417,6 +428,8 @@ def test_graph_export_full():
             "http://schema.org/hasPart": [{"@id": "/dataset-files/abcdefg123456789"}],
             "http://www.w3.org/ns/prov#wasDerivedFrom": [{"@id": "/urls/datasets/0000000aaaaaaa"}],
             "https://swissdatasciencecenter.github.io/renku-ontology#originalIdentifier": [{"@value": "abcdefg"}],
+            "http://schema.org/dateCreated": [{"@value": "2022-07-12T16:29:14+02:00"}],
+            "http://schema.org/dateModified": [{"@value": "2022-07-12T16:29:14+02:00"}],
         },
         {
             "@id": "/entities/1234567890/data/my-dataset",
@@ -449,6 +462,7 @@ def test_graph_export_full():
             "@type": ["http://schema.org/Dataset", "http://www.w3.org/ns/prov#Entity"],
             "http://schema.org/creator": [],
             "http://schema.org/dateCreated": [{"@value": "2022-07-12T16:29:14+02:00"}],
+            "http://schema.org/dateModified": [{"@value": "2022-07-12T16:29:14+02:00"}],
             "http://schema.org/hasPart": [],
             "http://schema.org/identifier": [{"@value": "abcdefg"}],
             "http://schema.org/image": [],

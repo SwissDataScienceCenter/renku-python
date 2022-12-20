@@ -268,26 +268,14 @@ class GitMerger:
             or local.description != base.description
             or local.annotations != base.annotations
         )
-        local_template_changed = (
-            base is None
-            or local.template_id != base.template_id
-            or local.template_ref != base.template_ref
-            or local.template_source != base.template_source
-            or local.template_version != base.template_version
-        )
+        local_template_changed = base is None or local.template_metadata != base.template_metadata
         remote_changed = (
             base is None
             or remote.keywords != base.keywords
             or remote.description != base.description
             or remote.annotations != base.annotations
         )
-        remote_template_changed = (
-            base is None
-            or remote.template_id != base.template_id
-            or remote.template_ref != base.template_ref
-            or remote.template_source != base.template_source
-            or remote.template_version != base.template_version
-        )
+        remote_template_changed = base is None or remote.template_metadata != base.template_metadata
 
         if (local_changed or local_template_changed) and not remote_changed and not remote_template_changed:
             return local
@@ -333,34 +321,24 @@ class GitMerger:
             # NOTE: Merge conflicts!
             action = communication.prompt(
                 "Merge conflict detected:\n Project template modified/update in both remote and local branch.\n"
-                f"local: {local.template_source}@{local.template_ref}:{local.template_id}, "
-                "version {local.template_version}\n"
-                f"remote: {remote.template_source}@{remote.template_ref}:{remote.template_id}, "
-                "version {remote.template_version}\n"
+                f"local: {local.template_metadata.template_source}@{local.template_metadata.template_ref}:"
+                f"{local.template_metadata.template_id}, "
+                "version {local.template_metadata.template_version}\n"
+                f"remote: {remote.template_metadata.template_source}@{remote.template_metadata.template_ref}:"
+                f"{remote.template_metadata.template_id}, "
+                "version {remote.template_metadata.template_version}\n"
                 "Which do you want to keep?\n[l]ocal, [r]emote, [a]bort:",
                 default="a",
             )
 
             if action == "r":
-                local.template_id = remote.template_id
-                local.template_ref = remote.template_ref
-                local.template_source = remote.template_source
-                local.template_version = remote.template_version
                 local.template_metadata = remote.template_metadata
-                local.immutable_template_files = remote.immutable_template_files
-                local.automated_update = remote.automated_update
             elif action == "a":
                 raise errors.MetadataMergeError("Merge aborted")
             elif action != "l":
                 raise errors.MetadataMergeError(f"Invalid merge option selected: {action}")
         elif remote_template_changed:
-            local.template_id = remote.template_id
-            local.template_ref = remote.template_ref
-            local.template_source = remote.template_source
-            local.template_version = remote.template_version
             local.template_metadata = remote.template_metadata
-            local.immutable_template_files = remote.immutable_template_files
-            local.automated_update = remote.automated_update
 
         return local
 

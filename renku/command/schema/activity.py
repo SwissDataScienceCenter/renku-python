@@ -17,7 +17,7 @@
 # limitations under the License.
 """Activity JSON-LD schema."""
 
-from marshmallow import EXCLUDE, pre_dump
+from marshmallow import EXCLUDE
 
 from renku.command.schema.agent import PersonSchema, SoftwareAgentSchema
 from renku.command.schema.annotation import AnnotationSchema
@@ -35,29 +35,6 @@ from renku.domain_model.provenance.activity import (
 from renku.domain_model.provenance.parameter import ParameterValue
 
 
-class _ObjectWrapper:
-    """Object wrapper that allows temporarily overriding fields of immutable objects."""
-
-    def __init__(self, wrapped, **override):
-        self.__wrapped = wrapped
-        self.__override = override
-
-    def __getattr__(self, name):
-        if name in self.__override:
-            return self.__override[name]
-
-        return getattr(self.__wrapped, name)
-
-
-def _fix_id(obj):
-    """Fix ids under an activity that were wrong due to a bug."""
-
-    if not obj.id.startswith("/activities/") and not obj.id.startswith("/workflow-file-activity-collection/"):
-        obj = _ObjectWrapper(obj, id=f"/activities/{obj.id}")
-
-    return obj
-
-
 class AssociationSchema(JsonLDSchema):
     """Association schema."""
 
@@ -71,11 +48,6 @@ class AssociationSchema(JsonLDSchema):
     agent = Nested(prov.agent, [SoftwareAgentSchema, PersonSchema])
     id = fields.Id()
     plan = Nested(prov.hadPlan, [PlanSchema, WorkflowFilePlanSchema, WorkflowFileCompositePlanSchema])
-
-    @pre_dump
-    def _pre_dump(self, obj, **kwargs):
-        """Pre-dump hook."""
-        return _fix_id(obj)
 
 
 class UsageSchema(JsonLDSchema):
@@ -92,11 +64,6 @@ class UsageSchema(JsonLDSchema):
     # TODO: DatasetSchema, DatasetFileSchema
     entity = Nested(prov.entity, [EntitySchema, CollectionSchema])
 
-    @pre_dump
-    def _pre_dump(self, obj, **kwargs):
-        """Pre-dump hook."""
-        return _fix_id(obj)
-
 
 class GenerationSchema(JsonLDSchema):
     """Generation schema."""
@@ -111,11 +78,6 @@ class GenerationSchema(JsonLDSchema):
     id = fields.Id()
     # TODO: DatasetSchema, DatasetFileSchema
     entity = Nested(prov.qualifiedGeneration, [EntitySchema, CollectionSchema], reverse=True)
-
-    @pre_dump
-    def _pre_dump(self, obj, **kwargs):
-        """Pre-dump hook."""
-        return _fix_id(obj)
 
 
 class ParameterValueSchema(JsonLDSchema):
@@ -132,11 +94,6 @@ class ParameterValueSchema(JsonLDSchema):
 
     parameter = fields.IRI(schema.valueReference, attribute="parameter_id")
     value = fields.Raw(schema.value)
-
-    @pre_dump
-    def _pre_dump(self, obj, **kwargs):
-        """Pre-dump hook."""
-        return _fix_id(obj)
 
 
 class ActivitySchema(JsonLDSchema):
@@ -166,11 +123,6 @@ class ActivitySchema(JsonLDSchema):
     project_id = fields.IRI(renku.hasActivity, reverse=True)
     started_at_time = fields.DateTime(prov.startedAtTime, add_value_types=True)
     usages = Nested(prov.qualifiedUsage, UsageSchema, many=True)
-
-    @pre_dump
-    def _pre_dump(self, obj, **kwargs):
-        """Pre-dump hook."""
-        return _fix_id(obj)
 
 
 class WorkflowFileActivityCollectionSchema(JsonLDSchema):
