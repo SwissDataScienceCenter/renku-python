@@ -43,7 +43,7 @@ except ImportError:
 
 @runtime_checkable
 class EditCommandCallable(Protocol):
-    """Typing Protocoll for edit command."""
+    """Typing Protocol for edit command."""
 
     def __call__(self, filename: str) -> None:
         """The call method."""
