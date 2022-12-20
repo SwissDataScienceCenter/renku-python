@@ -52,7 +52,7 @@ def execute_workflow_graph(
     dag: "DiGraph",
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
-    provider="cwltool",
+    provider="toil",
     config=None,
     workflow_file_plan: Optional[WorkflowFileCompositePlan] = None,
 ):
@@ -62,7 +62,7 @@ def execute_workflow_graph(
         dag(DiGraph): The workflow graph to execute.
         activity_gateway(IActivityGateway): The injected activity gateway.
         plan_gateway(IPlanGateway): The injected plan gateway.
-        provider: Provider to run the workflow with (Default value = "cwltool").
+        provider: Provider to run the workflow with (Default value = "toil").
         config: Path to config for the workflow provider (Default value = None).
         workflow_file_plan (Optional[WorkflowFileCompositePlan): If passed, a workflow file is executed, so, store
             related metadata.

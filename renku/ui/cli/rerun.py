@@ -96,7 +96,7 @@ from renku.ui.cli.utils.plugins import available_workflow_providers
     "provider",
     "-p",
     "--provider",
-    default="cwltool",
+    default="toil",
     show_default=True,
     type=click.Choice(Proxy(available_workflow_providers), case_sensitive=False),
     help="The workflow engine to use.",
