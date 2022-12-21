@@ -65,7 +65,7 @@ class CWLToolProvider(IWorkflowProvider):
     @hookimpl
     def workflow_provider(self):
         """Workflow provider name."""
-        return (self, "cwltool")
+        return self, "cwltool"
 
     @hookimpl
     def workflow_execute(self, dag: nx.DiGraph, basedir: Path, config: Dict[str, Any]):
@@ -148,6 +148,9 @@ class CWLToolProvider(IWorkflowProvider):
                             if destination.is_dir():
                                 shutil.rmtree(str(destination))
                                 destination = destination.parent
+                                destination.mkdir(parents=True, exist_ok=True)
+                            else:
+                                destination.parent.mkdir(parents=True, exist_ok=True)
                             shutil.move(location, str(destination))
                             continue
 

@@ -103,7 +103,7 @@ from renku.ui.cli.exception_handler import IssueFromTraceback
 from renku.ui.cli.gc import gc
 from renku.ui.cli.githooks import githooks as githooks_command
 from renku.ui.cli.graph import graph
-from renku.ui.cli.init import init as init_command
+from renku.ui.cli.init import init
 from renku.ui.cli.log import log
 from renku.ui.cli.login import credentials, login, logout
 from renku.ui.cli.mergetool import mergetool
@@ -267,7 +267,7 @@ cli.add_command(env)
 cli.add_command(gc)
 cli.add_command(githooks_command)
 cli.add_command(graph)
-cli.add_command(init_command)
+cli.add_command(init)
 cli.add_command(log)
 cli.add_command(login)
 cli.add_command(logout)

@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
 
 import click
+from pydantic import validate_arguments
 
 from renku.command.command_builder.command import inject
 from renku.command.view_model.template import TemplateChangeViewModel, TemplateViewModel
@@ -47,14 +48,16 @@ from renku.domain_model.template import RenderedTemplate, Template, TemplateMeta
 from renku.infrastructure.repository import Repository
 
 
-def list_templates(source, reference) -> List[TemplateViewModel]:
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def list_templates(source: Optional[str], reference: Optional[str]) -> List[TemplateViewModel]:
     """Return available templates from a source."""
     templates_source = fetch_templates_source(source=source, reference=reference)
 
     return [TemplateViewModel.from_template(t) for t in templates_source.templates]
 
 
-def show_template(source, reference, id) -> TemplateViewModel:
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def show_template(source: Optional[str], reference: Optional[str], id: Optional[str]) -> TemplateViewModel:
     """Show template details."""
     if source or id:
         templates_source = fetch_templates_source(source=source, reference=reference)
@@ -86,11 +89,20 @@ def check_for_template_update(project: Optional[Project]) -> Tuple[bool, bool, O
     return update_available, metadata.allow_update, metadata.reference, latest_reference
 
 
-def set_template(source, reference, id, force, interactive, input_parameters, dry_run) -> TemplateChangeViewModel:
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def set_template(
+    source: Optional[str],
+    reference: Optional[str],
+    id: Optional[str],
+    force: bool,
+    interactive: bool,
+    input_parameters: Optional[Dict[str, str]],
+    dry_run: bool,
+) -> TemplateChangeViewModel:
     """Set template for a project."""
     project = project_context.project
 
-    if project.template_source and not force:
+    if project.template_metadata.template_source and not force:
         raise errors.TemplateUpdateError("Project already has a template: To set a template use '-f/--force' flag")
 
     templates_source = fetch_templates_source(source=source, reference=reference)
@@ -113,7 +125,8 @@ def set_template(source, reference, id, force, interactive, input_parameters, dr
     return TemplateChangeViewModel.from_template(template=rendered_template, actions=actions)
 
 
-def update_template(force, interactive, dry_run) -> Optional[TemplateChangeViewModel]:
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def update_template(force: bool, interactive: bool, dry_run: bool) -> Optional[TemplateChangeViewModel]:
     """Update project's template if possible. Return True if updated."""
     template_metadata = TemplateMetadata.from_project(project=project_context.project)
 
@@ -205,7 +218,7 @@ def _set_or_update_project_from_template(
     return rendered_template, actions
 
 
-def select_template(templates_source: TemplatesSource, id=None) -> Optional[Template]:
+def select_template(templates_source: TemplatesSource, id: Optional[str] = None) -> Optional[Template]:
     """Select a template from a template source."""
 
     def prompt_to_select_template():
@@ -235,6 +248,7 @@ def select_template(templates_source: TemplatesSource, id=None) -> Optional[Temp
     return prompt_to_select_template()
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def validate_templates(
     source: Optional[str] = None, reference: Optional[str] = None
 ) -> Dict[str, Union[str, Dict[str, List[str]]]]:

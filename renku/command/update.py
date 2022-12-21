@@ -18,7 +18,9 @@
 """Renku ``update`` command."""
 
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
+
+from pydantic import validate_arguments
 
 from renku.command.command_builder.command import Command
 from renku.core import errors
@@ -30,8 +32,8 @@ from renku.core.workflow.activity import (
     is_activity_valid,
     sort_activities,
 )
-from renku.core.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.execute import execute_workflow_graph
+from renku.core.workflow.model.concrete_execution_graph import ExecutionGraph
 from renku.domain_model.project_context import project_context
 
 
@@ -45,13 +47,14 @@ def update_command(skip_metadata_update: bool):
     return command
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def _update(
     update_all: bool,
     dry_run: bool,
     ignore_deleted: bool,
     provider: str,
     config: Optional[str],
-    paths=None,
+    paths: Optional[List[str]] = None,
 ):
     if not paths and not update_all and not dry_run:
         raise ParameterError("Either PATHS, --all/-a, or --dry-run/-n should be specified.")
@@ -61,7 +64,7 @@ def _update(
     paths = paths or []
     paths = get_relative_paths(base=project_context.path, paths=[Path.cwd() / p for p in paths])
 
-    modified, _ = get_all_modified_and_deleted_activities_and_entities(project_context.repository)
+    modified, _, _ = get_all_modified_and_deleted_activities_and_entities(project_context.repository)
     modified_activities = {a for a, _ in modified if not a.deleted and is_activity_valid(a)}
     modified_paths = {e.path for _, e in modified}
 

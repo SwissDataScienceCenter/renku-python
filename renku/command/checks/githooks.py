@@ -25,7 +25,7 @@ from renku.core.util.git import get_hook_path
 from renku.domain_model.project_context import project_context
 
 try:
-    import importlib_resources
+    import importlib_resources  # type: ignore[import]
 except ImportError:
     import importlib.resources as importlib_resources  # type: ignore
 

@@ -21,7 +21,7 @@ import tempfile
 from pathlib import Path
 
 from renku.command.dataset import create_dataset_command
-from renku.command.init import init_repository
+from renku.core.init import init_repository
 from renku.domain_model.project_context import project_context
 
 

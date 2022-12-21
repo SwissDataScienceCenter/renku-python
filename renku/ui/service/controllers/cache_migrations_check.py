@@ -55,16 +55,16 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
             raise RenkuException("context does not contain `project_id` or `git_url`")
 
         with tempfile.TemporaryDirectory() as tempdir:
-            tempdir = Path(tempdir)
+            tempdir_path = Path(tempdir)
 
             self.git_api_provider.download_files_from_api(
                 [".renku/metadata/root", ".renku/metadata/project", ".renku/metadata.yml", "Dockerfile"],
-                tempdir,
+                tempdir_path,
                 remote=self.ctx["git_url"],
                 ref=self.request_data.get("ref", None),
                 token=self.user_data.get("token", None),
             )
-            with renku_project_context(tempdir):
+            with renku_project_context(tempdir_path):
                 return self.renku_op()
 
     def renku_op(self):

@@ -34,7 +34,7 @@ from renku.domain_model.project_context import project_context
 def url_to_string(url):
     """Convert url from ``list`` or ``ParseResult`` to string."""
     if isinstance(url, list):
-        return ParseResult(scheme=url[0], netloc=url[1], path=url[2], params=None, query=None, fragment=None).geturl()
+        return ParseResult(scheme=url[0], netloc=url[1], path=url[2], params="", query="", fragment="").geturl()
 
     if isinstance(url, ParseResult):
         return url.geturl()

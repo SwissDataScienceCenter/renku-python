@@ -19,7 +19,7 @@
 
 import contextlib
 import os
-import pathlib
+import posixpath
 import re
 import shutil
 import sys
@@ -204,7 +204,7 @@ def get_renku_repo_url(remote_url, deployment_hostname=None, access_token=None):
     path = parsed_remote.path.strip("/")
     if path.startswith("gitlab/"):
         path = path.replace("gitlab/", "")
-    path = pathlib.posixpath.join(CLI_GITLAB_ENDPOINT, path)
+    path = posixpath.join(CLI_GITLAB_ENDPOINT, path)
 
     credentials = f"renku:{access_token}@" if access_token else ""
     hostname = deployment_hostname or parsed_remote.hostname
@@ -254,7 +254,7 @@ def get_full_repository_path(url: Optional[str]) -> str:
         return ""
 
     parsed_url = parse_git_url(url)
-    return pathlib.posixpath.join(parsed_url.hostname, parsed_url.path)  # type:ignore
+    return posixpath.join(parsed_url.hostname, parsed_url.path)  # type:ignore
 
 
 def get_repository_name(url: str) -> str:
@@ -602,7 +602,7 @@ def push_changes(repository: "Repository", remote: Optional[str] = None, reset: 
 
 def clone_renku_repository(
     url: str,
-    path: Union[Path, str],
+    path: Optional[Union[Path, str]],
     gitlab_token=None,
     deployment_hostname=None,
     depth: Optional[int] = None,
@@ -681,7 +681,7 @@ def clone_renku_repository(
 
 def clone_repository(
     url,
-    path: Union[Path, str] = None,
+    path: Optional[Union[Path, str]] = None,
     install_githooks=True,
     install_lfs=True,
     skip_smudge=True,
@@ -693,7 +693,7 @@ def clone_repository(
     checkout_revision=None,
     no_checkout: bool = False,
     clean: bool = False,
-    clone_options: List[str] = None,
+    clone_options: Optional[List[str]] = None,
 ) -> "Repository":
     """Clone a Git repository and install Git hooks and LFS.
 
@@ -716,8 +716,10 @@ def clone_repository(
     Returns:
         The cloned repository.
     """
-    from renku.core.githooks import install
+    from renku.core.githooks import install_githooks as install_githooks_function
     from renku.infrastructure.repository import Repository
+
+    path = Path(path) if path else Path(get_repository_name(url))
 
     def handle_git_exception():
         """Handle git exceptions."""
@@ -734,7 +736,7 @@ def clone_repository(
         raise errors.GitError(message)
 
     def clean_directory():
-        if not clean:
+        if not clean or not path:
             return
         try:
             shutil.rmtree(path)
@@ -778,7 +780,7 @@ def clone_repository(
 
         return Repository.clone_from(
             url,
-            path,
+            cast(Path, path),
             branch=branch,
             recursive=recursive,
             depth=depth,
@@ -788,8 +790,6 @@ def clone_repository(
         )
 
     assert config is None or isinstance(config, dict), f"Config should be a dict not '{type(config)}'"
-
-    path = Path(path) if path else Path(get_repository_name(url))
 
     existing_repository = check_and_reuse_existing_repository()
     if existing_repository is not None:
@@ -829,7 +829,7 @@ def clone_repository(
                 config_writer.set_value(section, option, value)
 
     if install_githooks:
-        install(force=True, path=repository.path)
+        install_githooks_function(force=True, path=repository.path)
 
     if install_lfs:
         repository.lfs.install(skip_smudge=skip_smudge)
@@ -853,7 +853,7 @@ def get_git_progress_instance():
             """Callback for printing Git operation status."""
             self._clear_line()
             print(self._cur_line, end="\r")
-            self._previous_line_length = len(self._cur_line)
+            self._previous_line_length = len(self._cur_line) if self._cur_line else 0
             if (op_code & RemoteProgress.END) != 0:
                 print()
 

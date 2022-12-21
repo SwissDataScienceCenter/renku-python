@@ -18,7 +18,7 @@
 """Migration utility functions."""
 
 import os
-import pathlib
+import posixpath
 import threading
 import uuid
 from urllib.parse import ParseResult, quote, urljoin, urlparse
@@ -47,7 +47,7 @@ def generate_url_id(url_str, url_id):
         host = project_context.remote.host or host
     host = os.environ.get("RENKU_DOMAIN") or host
 
-    return urljoin("https://{host}".format(host=host), pathlib.posixpath.join("/urls", quote(id_, safe="")))
+    return urljoin("https://{host}".format(host=host), posixpath.join("/urls", quote(id_, safe="")))
 
 
 def generate_dataset_tag_id(name, commit):
@@ -59,7 +59,7 @@ def generate_dataset_tag_id(name, commit):
 
     name = "{0}@{1}".format(name, commit)
 
-    return urljoin("https://{host}".format(host=host), pathlib.posixpath.join("/dataset-tags", quote(name, safe="")))
+    return urljoin("https://{host}".format(host=host), posixpath.join("/dataset-tags", quote(name, safe="")))
 
 
 def generate_dataset_id(identifier):
@@ -73,7 +73,7 @@ def generate_dataset_id(identifier):
     host = os.environ.get("RENKU_DOMAIN") or host
 
     # always set the id by the identifier
-    return urljoin(f"https://{host}", pathlib.posixpath.join("/datasets", quote(identifier, safe="")))
+    return urljoin(f"https://{host}", posixpath.join("/datasets", quote(identifier, safe="")))
 
 
 def generate_dataset_file_url(filepath):
@@ -93,7 +93,7 @@ def generate_dataset_file_url(filepath):
         project_id = urlparse(project.id)
 
     filepath = quote(filepath, safe="/")
-    path = pathlib.posixpath.join(project_id.path, "files", "blob", filepath)
+    path = posixpath.join(project_id.path, "files", "blob", filepath)
     project_id = project_id._replace(path=path)
 
     return project_id.geturl()

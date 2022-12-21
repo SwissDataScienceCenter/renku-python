@@ -19,7 +19,7 @@
 
 import datetime
 import os
-import pathlib
+import posixpath
 import re
 import uuid
 import weakref
@@ -35,6 +35,7 @@ import attr
 from attr.validators import instance_of
 from marshmallow import EXCLUDE, pre_dump
 
+from renku.command.schema.agent import PersonSchema
 from renku.command.schema.annotation import AnnotationSchema
 from renku.command.schema.calamus import (
     DateTimeList,
@@ -49,9 +50,10 @@ from renku.command.schema.calamus import (
     renku,
     schema,
 )
-from renku.command.schema.project import ProjectSchema as NewProjectSchema
+from renku.command.schema.project import ProjectSchema as V10ProjectSchema
 from renku.core import errors
 from renku.core.migration.migrate import SUPPORTED_PROJECT_VERSION
+from renku.core.migration.models import v10 as new_schema
 from renku.core.migration.models.refs import LinkReference
 from renku.core.migration.utils import (
     OLD_METADATA_PATH,
@@ -118,7 +120,7 @@ def generate_project_id(name, creator):
     else:
         raise ValueError("Project name not set")
 
-    project_url = urljoin(f"https://{host}", pathlib.posixpath.join(PROJECT_URL_PATH, owner, name))
+    project_url = urljoin(f"https://{host}", posixpath.join(PROJECT_URL_PATH, owner, name))
     return project_url
 
 
@@ -246,14 +248,14 @@ class CommitMixin:
         if self.path:
             path = self.path
             if project_context.has_context() and os.path.isabs(path):
-                path = pathlib.Path(path).relative_to(project_context.path)
+                path = Path(path).relative_to(project_context.path)
             return generate_label(path, hexsha)
         return hexsha
 
     def __attrs_post_init__(self):
         """Post-init hook."""
         if self.path and project_context.has_context():
-            path = pathlib.Path(self.path)
+            path = Path(self.path)
             if path.is_absolute():
                 self.path = str(path.relative_to(project_context.path))
 
@@ -413,7 +415,7 @@ class MappedIOStream(object):
             host = project_context.remote.host or host
         host = os.environ.get("RENKU_DOMAIN") or host
 
-        return urljoin("https://{host}".format(host=host), pathlib.posixpath.join("/iostreams", self.stream_type))
+        return urljoin("https://{host}".format(host=host), posixpath.join("/iostreams", self.stream_type))
 
     def default_label(self):
         """Set default label."""
@@ -624,7 +626,7 @@ class Run(CommitMixin):
         if not identifier:
             identifier = str(uuid.uuid4())
 
-        return urljoin("https://{host}".format(host=host), pathlib.posixpath.join("/runs", quote(identifier, safe="")))
+        return urljoin("https://{host}".format(host=host), posixpath.join("/runs", quote(identifier, safe="")))
 
     def __lt__(self, other):
         """Compares two subprocesses order based on their dependencies."""
@@ -931,7 +933,7 @@ class ProcessRun(Activity):
 
         return urljoin(
             "https://{host}".format(host=host),
-            pathlib.posixpath.join("/activities", f"commit/{commit_hexsha}"),
+            posixpath.join("/activities", f"commit/{commit_hexsha}"),
         )
 
     @classmethod
@@ -1743,7 +1745,7 @@ class ImageObject:
     @staticmethod
     def generate_id(dataset: Dataset, position: int) -> str:
         """Generate @id field."""
-        return urljoin(dataset._id + "/", pathlib.posixpath.join("images", str(position)))
+        return urljoin(dataset._id + "/", posixpath.join("images", str(position)))
 
     @property
     def is_absolute(self):
@@ -1813,7 +1815,9 @@ class OldCommitMixinSchema(JsonLDSchema):
     path = fields.String(prov.atLocation)
     _id = fields.Id(init_name="id")
     _label = fields.String(rdfs.label, init_name="label", load_default=None)
-    _project = Nested(schema.isPartOf, [ProjectSchema, NewProjectSchema], init_name="project", load_default=None)
+    _project = Nested(
+        schema.isPartOf, [ProjectSchema, "V9ProjectSchema", V10ProjectSchema], init_name="project", load_default=None
+    )
 
 
 class OldEntitySchema(OldCommitMixinSchema):
@@ -2029,7 +2033,7 @@ def generate_file_id(hexsha, path):
 
     # TODO: Use plural name for entity id: /blob/ -> /blobs/
     # always set the id by the identifier
-    return urljoin(f"https://{host}", pathlib.posixpath.join(f"/blob/{hexsha}/{quote(str(path))}"))
+    return urljoin(f"https://{host}", posixpath.join(f"/blob/{hexsha}/{quote(str(path))}"))
 
 
 class MappedIOStreamSchema(JsonLDSchema):
@@ -2260,3 +2264,31 @@ class WorkflowRunSchema(ProcessRunSchema):
         unknown = EXCLUDE
 
     _processes = Nested(wfprov.wasPartOfWorkflowRun, ProcessRunSchema, reverse=True, many=True, init_name="processes")
+
+
+class V9ProjectSchema(JsonLDSchema):
+    """Project Schema."""
+
+    class Meta:
+        """Meta class."""
+
+        rdf_type = [schema.Project, prov.Location]
+        model = new_schema.Project
+        unknown = EXCLUDE
+
+    agent_version = StringList(schema.agent, load_default="pre-0.11.0")
+    annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
+    automated_update = fields.Boolean(renku.automatedTemplateUpdate, load_default=True)
+    creator = Nested(schema.creator, PersonSchema, load_default=None)
+    date_created = DateTimeList(schema.dateCreated, load_default=None, format="iso", extra_formats=("%Y-%m-%d",))
+    description = fields.String(schema.description, load_default=None)
+    id = fields.Id(load_default=None)
+    immutable_template_files = fields.List(renku.immutableTemplateFiles, fields.String(), load_default=list())
+    name = fields.String(schema.name, load_default=None)
+    template_id = fields.String(renku.templateId, load_default=None)
+    template_metadata = fields.String(renku.templateMetadata, load_default=None)
+    template_ref = fields.String(renku.templateReference, load_default=None)
+    template_source = fields.String(renku.templateSource, load_default=None)
+    template_version = fields.String(renku.templateVersion, load_default=None)
+    version = StringList(schema.schemaVersion, load_default="1")
+    keywords = fields.List(schema.keywords, fields.String(), load_default=None)

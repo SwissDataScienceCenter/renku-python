@@ -29,7 +29,22 @@ from datetime import datetime
 from functools import lru_cache
 from itertools import zip_longest
 from pathlib import Path
-from typing import Any, Callable, Dict, Generator, List, NamedTuple, Optional, Set, Tuple, Type, TypeVar, Union, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 
 import git
 
@@ -259,7 +274,7 @@ class BaseRepository:
 
         self.run_git_command("checkout", reference)
 
-    def clean(self, paths: List[Union[Path, str]] = None):
+    def clean(self, paths: Optional[Sequence[Union[Path, str]]] = None):
         """Remove untracked files."""
         self.run_git_command("clean", "-xdff", paths)
 
@@ -613,7 +628,7 @@ class BaseRepository:
                 return True
 
         def get_content_from_submodules():
-            for submodule in self.submodules:
+            for submodule in self.submodules:  # type: ignore[attr-defined]
                 try:
                     Path(absolute_path).relative_to(submodule.path)
                 except ValueError:
@@ -746,6 +761,7 @@ class BaseRepository:
         NOTE: path must be relative to the repo's root regardless if this function is called from a subdirectory or not.
         """
         absolute_path = get_absolute_path(path, self.path)
+        had_revision = bool(revision)
 
         # NOTE: If revision is not specified, we use hash-object to hash the (possibly) modified object
         if not revision:
@@ -759,11 +775,15 @@ class BaseRepository:
             if not os.path.isdir(absolute_path):
                 return None
 
-            stashed_revision = self.run_git_command("stash", "create")
-            if not stashed_revision:
-                return None
-
             try:
+                # NOTE: Stage the path. If the path is not staged then it won't be found in ``stashed_revision``
+                if not self.staged_changes:
+                    self.add(relative_path, force=True)
+
+                stashed_revision = self.run_git_command("stash", "create")
+                if not stashed_revision:
+                    return None
+
                 return self.run_git_command("rev-parse", f"{stashed_revision}:{relative_path}")
             except errors.GitCommandError:
                 return None
@@ -784,12 +804,14 @@ class BaseRepository:
         try:
             return self.run_git_command("rev-parse", f"{revision}:{relative_path}")
         except errors.GitCommandError:
-            # NOTE: The file can be in a submodule or it can be a directory which is staged but not committed yet.
-            # It's also possible that the file was not there when the command ran but was there when workflows were
-            # migrated (this can happen only for Usage); the project might be broken too.
-            staged_directory_hash = get_staged_directory_hash()
-            if staged_directory_hash:
-                return staged_directory_hash
+            # NOTE: If a revision was specified then don't look in the staging area
+            if not had_revision:
+                # NOTE: The file can be in a submodule or it can be a directory which is staged but not committed yet.
+                # It's also possible that the file was not there when the command ran but was there when workflows were
+                # migrated (this can happen only for Usage); the project might be broken too.
+                staged_directory_hash = get_staged_directory_hash()
+                if staged_directory_hash:
+                    return staged_directory_hash
 
             return get_object_hash_from_submodules()
 
@@ -947,13 +969,13 @@ class Repository(BaseRepository):
         url: Union[Path, str],
         path: Union[Path, str],
         *,
-        branch: str = None,
+        branch: Optional[str] = None,
         recursive: bool = False,
-        depth: int = None,
+        depth: Optional[int] = None,
         progress: Optional[Callable] = None,
         no_checkout: bool = False,
-        env: dict = None,
-        clone_options: List[str] = None,
+        env: Optional[dict] = None,
+        clone_options: Optional[List[str]] = None,
     ) -> "Repository":
         """Clone a remote repository and create an instance."""
         try:

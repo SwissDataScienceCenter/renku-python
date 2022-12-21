@@ -29,7 +29,7 @@ def test_use_project_context(tmpdir):
     """Test ProjectContext object."""
     project_context = ProjectContext()
 
-    with pytest.raises(errors.ConfigurationError):
+    with pytest.raises(errors.ProjectContextError):
         _ = project_context.path
 
     with pytest.raises(IndexError):
@@ -55,7 +55,7 @@ def test_use_project_context(tmpdir):
     with project_context.with_path(new_path):
         assert project_context.path == new_path
 
-    with pytest.raises(errors.ConfigurationError):
+    with pytest.raises(errors.ProjectContextError):
         _ = project_context.path
 
 
@@ -96,7 +96,7 @@ def test_database(tmpdir):
     # NOTE: Make sure the database was not committed on pop
     assert not (Path(tmpdir) / ".renku" / "metadata" / "root").exists()
 
-    with pytest.raises(errors.ConfigurationError):
+    with pytest.raises(errors.ProjectContextError):
         _ = project_context.database
 
 
@@ -123,7 +123,7 @@ def test_use_project_context_with_path_empty():
         project_context.push_path("after-path-1")
         project_context.push_path("after-path-2")
 
-    with pytest.raises(errors.ConfigurationError):
+    with pytest.raises(errors.ProjectContextError):
         _ = project_context.path
 
 
@@ -132,7 +132,7 @@ def test_get_repository_outside_a_project(tmpdir):
     project_context = ProjectContext()
 
     with project_context.with_path(tmpdir.mkdir("project")):
-        with pytest.raises(errors.ConfigurationError):
+        with pytest.raises(errors.ProjectContextError):
             _ = project_context.repository
 
 

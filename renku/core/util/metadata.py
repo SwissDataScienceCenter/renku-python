@@ -38,9 +38,7 @@ if TYPE_CHECKING:
     from renku.domain_model.provenance.agent import Person
 
 
-def construct_creators(
-    creators: List[Union[dict, str]], ignore_email=False
-) -> Tuple[List["Person"], List[Union[dict, str]]]:
+def construct_creators(creators: List[Union[dict, str]], ignore_email=False) -> Tuple[List["Person"], List[str]]:
     """Parse input and return a list of Person."""
     creators = creators or []
 
@@ -61,7 +59,7 @@ def construct_creators(
     return people, no_email_warnings
 
 
-def construct_creator(creator: Union[dict, str], ignore_email) -> Tuple[Optional["Person"], Optional[Union[dict, str]]]:
+def construct_creator(creator: Union[dict, str], ignore_email) -> Tuple[Optional["Person"], Optional[str]]:
     """Parse input and return an instance of Person."""
     from renku.domain_model.provenance.agent import Person
 
@@ -84,7 +82,7 @@ def construct_creator(creator: Union[dict, str], ignore_email) -> Tuple[Optional
         if not ignore_email:  # pragma: no cover
             raise errors.ParameterError(f'Email is invalid: "{creator}".\n{message}')
         else:
-            no_email_warning = creator
+            no_email_warning = str(creator)
     else:
         no_email_warning = None
 

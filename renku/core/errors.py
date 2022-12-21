@@ -33,6 +33,10 @@ class RenkuException(Exception):
     """
 
 
+class ProjectContextError(RenkuException):
+    """Raise when no project context is pushed or there is a project context-related error."""
+
+
 class DatasetException(RenkuException):
     """Base class for all dataset-related exceptions."""
 
@@ -60,16 +64,21 @@ class NotFound(RenkuException):
 class ParameterError(RenkuException):
     """Raise in case of invalid parameter."""
 
-    def __init__(self, message, param_hint=None):
+    def __init__(self, message, param_hint=None, show_prefix: bool = True):
         """Build a custom message."""
         if param_hint:
             if isinstance(param_hint, (tuple, list)):
                 param_hint = " / ".join('"{}"'.format(x) for x in param_hint)
-            message = "Invalid parameter value for {}: {}".format(param_hint, message)
+            message = f"Invalid parameter value for {param_hint}: {message}"
         else:
-            message = "Invalid parameter value - {}".format(message)
+            if show_prefix:
+                message = f"Invalid parameter value - {message}"
 
         super().__init__(message)
+
+
+class ParseError(RenkuException):
+    """Raise when a workflow file command has invalid format."""
 
 
 class IncompatibleParametersError(ParameterError):
@@ -240,13 +249,15 @@ class InvalidInputPath(RenkuException):
 class InvalidSuccessCode(RenkuException):
     """Raise when the exit-code is not 0 or redefined."""
 
-    def __init__(self, returncode, success_codes=None):
+    def __init__(self, return_code, success_codes=None, message=None):
         """Build a custom message."""
-        if not success_codes:
-            msg = "Command returned non-zero exit status {0}.".format(returncode)
+        if message:
+            msg = message
+        elif not success_codes:
+            msg = "Command returned non-zero exit status {0}.".format(return_code)
         else:
             msg = "Command returned {0} exit status, but it expects {1}".format(
-                returncode, ", ".join((str(code) for code in success_codes))
+                return_code, ", ".join((str(code) for code in success_codes))
             )
         super(InvalidSuccessCode, self).__init__(msg)
 
@@ -447,31 +458,6 @@ class CommitProcessingError(RenkuException):
     """Raised when a commit couldn't be processed during graph build."""
 
 
-class WorkflowExecuteError(RenkuException):
-    """Raises when a workflow execution fails."""
-
-    def __init__(self, fail_reason=None):
-        """Build a custom message."""
-
-        msg = "Unable to finish executing workflow"
-        if fail_reason:
-            msg += f": {fail_reason}"
-        super(WorkflowExecuteError, self).__init__(msg)
-
-
-class WorkflowRerunError(RenkuException):
-    """Raises when a workflow re-execution fails."""
-
-    def __init__(self, workflow_file):
-        """Build a custom message."""
-        msg = (
-            "Unable to finish re-executing workflow; check the workflow"
-            " execution outline above and the generated {0} file for"
-            " potential issues, then remove the {0} file and try again".format(str(workflow_file))
-        )
-        super(WorkflowRerunError, self).__init__(msg)
-
-
 class ExportError(DatasetException):
     """Raised when a dataset cannot be exported."""
 
@@ -544,7 +530,43 @@ class ObjectNotFoundError(RenkuException):
         super().__init__(f"Cannot find object: '{filename}'")
 
 
-class ParameterNotFoundError(RenkuException):
+class WorkflowError(RenkuException):
+    """Base class for workflow-related errors."""
+
+
+class WorkflowExportError(WorkflowError):
+    """Raises when a workflow cannot be exported."""
+
+
+class DuplicateWorkflowNameError(WorkflowError):
+    """Raises when a workflow name already exists."""
+
+
+class WorkflowExecuteError(WorkflowError):
+    """Raises when a workflow execution fails."""
+
+    def __init__(self, fail_reason=None, show_prefix: bool = True):
+        """Build a custom message."""
+
+        msg = "Unable to finish executing workflow"
+        if fail_reason:
+            msg += f": {fail_reason}"
+        super().__init__(msg)
+
+
+class WorkflowRerunError(WorkflowError):
+    """Raises when a workflow re-execution fails."""
+
+    def __init__(self, cwl_file):
+        """Build a custom message."""
+        msg = (
+            "Unable to finish re-executing workflow; check the workflow execution outline above and the generated "
+            f"{cwl_file} file for potential issues, then remove the {cwl_file} file and try again"
+        )
+        super().__init__(msg)
+
+
+class ParameterNotFoundError(WorkflowError):
     """Raised when a parameter reference cannot be resolved to a parameter."""
 
     def __init__(self, parameter: str, workflow: str):
@@ -552,7 +574,7 @@ class ParameterNotFoundError(RenkuException):
         super().__init__(f"Cannot find parameter '{parameter}' on workflow {workflow}")
 
 
-class MappingExistsError(RenkuException):
+class MappingExistsError(WorkflowError):
     """Raised when a parameter mapping exists already."""
 
     def __init__(self, existing_mappings: List[str]):
@@ -564,7 +586,7 @@ class MappingExistsError(RenkuException):
         )
 
 
-class MappingNotFoundError(RenkuException):
+class MappingNotFoundError(WorkflowError):
     """Raised when a parameter mapping does not exist."""
 
     def __init__(self, mapping: str, workflow: str):
@@ -572,7 +594,7 @@ class MappingNotFoundError(RenkuException):
         super().__init__(f"Cannot find mapping '{mapping}' on workflow {workflow}")
 
 
-class ChildWorkflowNotFoundError(RenkuException):
+class ChildWorkflowNotFoundError(WorkflowError):
     """Raised when a child could not be found on a composite workflow."""
 
     def __init__(self, child: str, workflow: str):
@@ -580,7 +602,7 @@ class ChildWorkflowNotFoundError(RenkuException):
         super().__init__(f"Cannot find child step '{child}' on workflow {workflow}")
 
 
-class WorkflowNotFoundError(RenkuException):
+class WorkflowNotFoundError(WorkflowError):
     """Raised when a workflow could not be found."""
 
     def __init__(self, name_or_id: str):
@@ -600,15 +622,18 @@ class ParameterLinkError(RenkuException):
 class GraphCycleError(RenkuException):
     """Raised when a parameter reference cannot be resolved to a parameter."""
 
-    def __init__(self, cycles: List[List[str]]):
+    def __init__(self, cycles: List[List[str]], message: str = None):
         """Embed exception and build a custom message."""
-        cycle_str = "), (".join(", ".join(cycle) for cycle in cycles)
-        super().__init__(
-            f"Cycles detected in execution graph: ({cycle_str})\nCircular workflows are not supported in renku\n"
-            "If this happened as part of a 'renku run' or 'renku workflow execute', please git reset and clean"
-            "the project and try again. This might be due to renku erroneously detecting an input as an output, "
-            "if so, please specify the wrongly detected output as an explicit input using '--input'."
-        )
+        if message:
+            super().__init__(message)
+        else:
+            cycle_str = "), (".join(", ".join(cycle) for cycle in cycles)
+            super().__init__(
+                f"Cycles detected in execution graph: ({cycle_str})\nCircular workflows are not supported in renku\n"
+                "If this happened as part of a 'renku run' or 'renku workflow execute', please git reset and clean"
+                "the project and try again. This might be due to renku erroneously detecting an input as an output, "
+                "if so, please specify the wrongly detected output as an explicit input using '--input'."
+            )
 
 
 class NothingToExecuteError(RenkuException):
@@ -627,7 +652,11 @@ class DockerError(RenkuException):
         super().__init__(f"Docker failed: {reason}")
 
 
-class RenkulabSessionError(RenkuException):
+class SessionStartError(RenkuException):
+    """Raised when an error occurs trying to start sessions."""
+
+
+class RenkulabSessionError(SessionStartError):
     """Raised when an error occurs trying to start sessions with the notebook service."""
 
 

@@ -18,7 +18,7 @@
 """Tag management for dataset."""
 
 import re
-from typing import List, Optional
+from typing import List, Optional, cast
 
 from renku.command.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core import errors
@@ -70,7 +70,7 @@ def list_dataset_tags(dataset_name, format):
 
     tags = datasets_provenance.get_all_tags(dataset)
     tags = sorted(tags, key=lambda t: t.date_created)
-    tags = [DynamicProxy(t) for t in tags]
+    tags = [cast(Dataset, DynamicProxy(t)) for t in tags]
     for tag in tags:
         tag.dataset = dataset.title
 

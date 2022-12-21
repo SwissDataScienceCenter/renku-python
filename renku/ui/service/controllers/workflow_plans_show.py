@@ -42,7 +42,7 @@ class WorkflowPlansShowCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        result = show_workflow_command().build().execute(name_or_id=self.ctx["plan_id"], with_metadata=True)
+        result = show_workflow_command().build().execute(name_or_id_or_path=self.ctx["plan_id"], with_metadata=True)
         return result.output
 
     def to_response(self):

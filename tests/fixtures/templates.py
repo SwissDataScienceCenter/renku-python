@@ -86,7 +86,6 @@ def project_init(template):
         ),
         "remote": ["--template-source", template["url"], "--template-ref", template["ref"]],
         "id": ["--template-id", template["id"]],
-        "index": ["--template-index", template["index"]],
         "force": ["--force"],
         "parameters": ["--parameter", "p1=v1", "--parameter", "p2=v2"],
         "parameters_equal_missing": ["--parameter", "p3:v3"],
@@ -192,7 +191,7 @@ def templates_source(tmp_path, monkeypatch):
             version = str(max(self._versions))
             return version, version
 
-        def get_template(self, id, reference: Optional[str]) -> Optional[Template]:
+        def get_template(self, id, reference: Optional[str]) -> Template:
             """Return a template at a specific reference."""
             if not reference:
                 reference = self.reference

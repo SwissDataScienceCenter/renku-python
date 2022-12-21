@@ -42,6 +42,7 @@ cookiecutter
 Cookiecutter
 coopetition
 CountFlights
+CPU
 cronjob
 Cuda
 customizable
@@ -217,6 +218,7 @@ serializer
 sha
 shacl
 Slurm
+Snyk
 SPARQL
 spawner
 SQLAlchemy
@@ -263,6 +265,7 @@ typesystem
 Ubuntu
 Unmount
 ui
+Unescape
 unhandled
 unicode
 unlink
@@ -296,6 +299,7 @@ Workflows
 worktree
 worktree
 worktrees
+XSS
 yaml
 yml
 Zenodo

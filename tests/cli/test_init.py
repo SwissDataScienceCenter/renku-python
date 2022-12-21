@@ -81,6 +81,7 @@ def test_init(isolated_runner, project_init):
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert new_project.exists()
+    assert "RENKU HOOK. DO NOT REMOVE OR MODIFY." in (new_project / ".git" / "hooks" / "pre-commit").read_text()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
     assert (new_project / ".renku" / "metadata").exists()
@@ -113,17 +114,6 @@ def test_init(isolated_runner, project_init):
     for template_file in template_files:
         expected_file = new_project_2 / template_file.relative_to(new_project)
         assert expected_file.exists()
-
-
-def test_init_with_template_index(isolated_runner, project_init):
-    """Test initialization with --template-index is deprecated."""
-    _, commands = project_init
-
-    # verify providing both index and id fails
-    result = isolated_runner.invoke(cli, commands["init_alt"] + commands["index"] + commands["force"])
-
-    assert 2 == result.exit_code
-    assert "'-i/--template-index' is deprecated: Use '-t/--template-id' to pass a template id" in result.output
 
 
 def test_init_initial_branch(isolated_runner, project_init):
@@ -311,7 +301,7 @@ def test_init_new_metadata_defaults(isolated_runner, project_init):
     assert 0 == result.exit_code, format_result_exception(result)
 
     project = Database.from_path(Path(data["test_project"]) / ".renku" / "metadata").get("project")
-    metadata = json.loads(project.template_metadata)
+    metadata = json.loads(project.template_metadata.metadata)
     assert True is metadata["bool_var"]
     assert "ask again" == metadata["enum_var"]
     assert "some description" == metadata["description"]
@@ -334,8 +324,8 @@ def test_init_new_metadata_defaults_is_overwritten(isolated_runner, project_init
     assert 0 == result.exit_code, format_result_exception(result)
 
     project = Database.from_path(Path(data["test_project"]) / ".renku" / "metadata").get("project")
-    metadata = json.loads(project.template_metadata)
-    assert False is metadata["bool_var"]
+    metadata = json.loads(project.template_metadata.metadata)
+    assert metadata["bool_var"] is False
     assert "maybe" == metadata["enum_var"]
     assert "some description" == metadata["description"]
     assert 70.12 == metadata["number_val"]
@@ -469,7 +459,7 @@ def test_init_with_description(isolated_runner, template):
 
     assert "new project" == project.name
     assert project.id.endswith("new-project")  # make sure id uses slug version of name without space
-    assert "my project description" in project.template_metadata
+    assert "my project description" in project.template_metadata.metadata
     assert "my project description" == project.description
 
     readme_content = (Path("new project") / "README.md").read_text()

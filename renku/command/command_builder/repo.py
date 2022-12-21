@@ -39,6 +39,7 @@ class Commit(Command):
         raise_if_empty: Optional[bool] = False,
         commit_only: Optional[Union[str, List[Union[str, Path]]]] = None,
         skip_staging: bool = False,
+        skip_dirty_checks: bool = False,
     ) -> None:
         """__init__ of Commit.
 
@@ -47,6 +48,8 @@ class Commit(Command):
             commit_if_empty (bool): Whether to commit if there are no modified files (Default value = None).
             raise_if_empty (bool): Whether to raise an exception if there are no modified files (Default value = None).
             commit_only (bool): Only commit the supplied paths (Default value = None).
+            skip_staging(bool): Don't commit staged files.
+            skip_dirty_checks(bool): Don't check if paths are dirty or staged.
         """
         self._builder = builder
         self._message = message
@@ -54,6 +57,7 @@ class Commit(Command):
         self._raise_if_empty = raise_if_empty
         self._commit_filter_paths = commit_only
         self._skip_staging: bool = skip_staging
+        self._skip_dirty_checks: bool = skip_dirty_checks
 
     def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
         """Hook to create a commit transaction.
@@ -71,6 +75,7 @@ class Commit(Command):
             repository=project_context.repository,
             commit_only=self._commit_filter_paths,
             skip_staging=self._skip_staging,
+            skip_dirty_checks=self._skip_dirty_checks,
         )
 
     def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs):

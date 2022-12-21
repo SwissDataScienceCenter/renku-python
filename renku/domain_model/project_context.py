@@ -192,7 +192,7 @@ class ProjectContext(threading.local):
         return self._top.repository
 
     @repository.setter
-    def repository(self, value: "Repository"):
+    def repository(self, value: Optional["Repository"]):
         """Set the current repository."""
         self._top.repository = value
 
@@ -215,7 +215,7 @@ class ProjectContext(threading.local):
         if self._context_stack:
             return self._context_stack[-1]
 
-        raise errors.ConfigurationError("No project context was pushed")
+        raise errors.ProjectContextError("No project context was pushed")
 
     def has_context(self) -> bool:
         """Return if at least one context is pushed."""
@@ -306,7 +306,7 @@ class ProjectContext(threading.local):
                 self.pop_context()
 
             if not could_rollback and before_top is not None:
-                raise errors.ConfigurationError(f"Cannot rollback to {before_top.path}.")
+                raise errors.ProjectContextError(f"Cannot rollback to {before_top.path}.")
 
 
 project_context: ProjectContext = ProjectContext()

@@ -24,7 +24,7 @@ import shutil
 import tempfile
 from enum import Enum, IntEnum, auto
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from packaging.version import Version
 
@@ -46,12 +46,11 @@ from renku.domain_model.template import (
 from renku.infrastructure.repository import Repository
 
 try:
-    import importlib_resources
+    import importlib_resources  # type:ignore
 except ImportError:
     import importlib.resources as importlib_resources  # type:ignore
 
-if TYPE_CHECKING:
-    from renku.domain_model.project import Project
+from renku.domain_model.project import Project, ProjectTemplateMetadata
 
 TEMPLATE_KEEP_FILES = ["readme.md", "readme.rst", "readme.txt", "readme"]
 TEMPLATE_INIT_APPEND_FILES = [".gitignore"]
@@ -126,13 +125,14 @@ def copy_template_to_project(
         """Update template-related metadata in a project."""
         write_template_checksum(rendered_template.checksums)
 
-        project.template_source = rendered_template.template.source
-        project.template_ref = rendered_template.template.reference
-        project.template_id = rendered_template.template.id
-        project.template_version = rendered_template.template.version
-        project.immutable_template_files = rendered_template.template.immutable_files.copy()
-        project.automated_update = rendered_template.template.allow_update
-        project.template_metadata = json.dumps(rendered_template.metadata)
+        project.template_metadata = ProjectTemplateMetadata(
+            template_id=rendered_template.template.id,
+            template_source=rendered_template.template.source,
+            template_ref=rendered_template.template.reference,
+            template_version=rendered_template.template.version,
+            immutable_template_files=rendered_template.template.immutable_files.copy(),
+            metadata=json.dumps(rendered_template.metadata),
+        )
 
     actions_mapping: Dict[FileAction, Tuple[str, str]] = {
         FileAction.APPEND: ("append", "Appending to"),
@@ -188,7 +188,7 @@ def get_file_actions(
 
     old_checksums = read_template_checksum()
     try:
-        immutable_files = project_context.project.immutable_template_files or []
+        immutable_files = project_context.project.template_metadata.immutable_template_files or []
     except (AttributeError, ValueError):  # NOTE: Project is not set
         immutable_files = []
 
@@ -403,7 +403,7 @@ class EmbeddedTemplates(TemplatesSource):
         else:
             return (self.reference, self.version) if current_version < Version(self.version) else (reference, version)
 
-    def get_template(self, id, reference: Optional[str]) -> Optional["Template"]:
+    def get_template(self, id, reference: Optional[str]) -> "Template":
         """Return all available versions for a template id."""
         try:
             return next(t for t in self.templates if t.id == id)
@@ -491,7 +491,7 @@ class RepositoryTemplates(TemplatesSource):
         else:
             return any(t.id == id for t in manifest.templates)
 
-    def get_template(self, id, reference: Optional[str]) -> Optional["Template"]:
+    def get_template(self, id, reference: Optional[str]) -> "Template":
         """Return a template at a specific reference."""
         if reference is not None and reference != self.reference:
             try:

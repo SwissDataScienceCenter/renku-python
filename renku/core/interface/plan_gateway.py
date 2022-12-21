@@ -50,6 +50,6 @@ class IPlanGateway(ABC):
         """Get all plans in project."""
         raise NotImplementedError
 
-    def add(self, plan: AbstractPlan):
+    def add(self, plan: AbstractPlan) -> None:
         """Add a plan to the database."""
         raise NotImplementedError

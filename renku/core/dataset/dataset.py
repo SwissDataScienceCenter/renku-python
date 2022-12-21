@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
 
 import patoolib
+from pydantic import validate_arguments
 
 from renku.command.command_builder.command import inject
 from renku.command.view_model.dataset import DatasetFileViewModel, DatasetViewModel
@@ -68,6 +69,7 @@ if TYPE_CHECKING:
     from renku.infrastructure.repository import Repository
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def search_datasets(name: str) -> List[str]:
     """Get all the datasets whose name starts with the given string.
 
@@ -88,7 +90,7 @@ def list_datasets():
 
     for dataset in datasets_provenance.datasets:
         tags = datasets_provenance.get_all_tags(dataset)
-        dataset = DynamicProxy(dataset)
+        dataset = cast(Dataset, DynamicProxy(dataset))
         dataset.tags = tags
         dataset.tags_csv = ",".join(tag.name for tag in tags)
         dataset.datadir_path = str(dataset.get_datadir())
@@ -97,6 +99,7 @@ def list_datasets():
     return list(datasets)
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def create_dataset(
     name: str,
     title: Optional[str] = None,
@@ -186,6 +189,7 @@ def create_dataset(
     return dataset
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def edit_dataset(
     name: str,
     title: Optional[Union[str, NoValueType]],
@@ -265,21 +269,22 @@ def edit_dataset(
     return updated
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def list_dataset_files(
-    datasets: List[str] = None,
+    datasets: Optional[List[str]] = None,
     tag: Optional[str] = None,
-    creators=None,
-    include=None,
-    exclude=None,
+    creators: Optional[Union[str, List[str], Tuple[str]]] = None,
+    include: Optional[List[str]] = None,
+    exclude: Optional[List[str]] = None,
 ):
     """List dataset files.
 
     Args:
-        datasets(List[str]): Datasets to list files for (Default value = None).
+        datasets(Optional[List[str]]): Datasets to list files for (Default value = None).
         tag(str): Tag to filter by (Default value = None).
-        creators: Creators to filter by (Default value = None).
-        include: Include filters for file paths (Default value = None).
-        exclude: Exclude filters for file paths (Default value = None).
+        creators(Optional[Union[str, List[str], Tuple[str]]]): Creators to filter by (Default value = None).
+        include(Optional[List[str]]): Include filters for file paths (Default value = None).
+        exclude(Optional[List[str]]): Exclude filters for file paths (Default value = None).
 
     Returns:
         List[DynamicProxy]: Filtered dataset files.
@@ -305,14 +310,15 @@ def list_dataset_files(
     return records
 
 
-def file_unlink(name, include, exclude, yes=False):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def file_unlink(name: str, include: Optional[List[str]], exclude: Optional[List[str]], yes: bool = False):
     """Remove matching files from a dataset.
 
     Args:
-        name: Dataset name.
-        include: Include filter for files.
-        exclude: Exclude filter for files.
-        yes: Whether to skip user confirmation or not (Default value = False).
+        name(str): Dataset name.
+        include(Optional[List[str]]): Include filter for files.
+        exclude(Optional[List[str]]): Exclude filter for files.
+        yes(bool): Whether to skip user confirmation or not (Default value = False).
 
     Returns:
         List[DynamicProxy]: List of files that were removed.
@@ -370,24 +376,26 @@ def file_unlink(name, include, exclude, yes=False):
     return records
 
 
-def remove_dataset(name):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def remove_dataset(name: str):
     """Delete a dataset.
 
     Args:
-        name: Name of dataset to delete.
+        name(str): Name of dataset to delete.
     """
     datasets_provenance = DatasetsProvenance()
     dataset = datasets_provenance.get_by_name(name=name, strict=True)
     datasets_provenance.remove(dataset=dataset)
 
 
-def export_dataset(name, provider_name, tag, **kwargs):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def export_dataset(name: str, provider_name: str, tag: Optional[str], **kwargs):
     """Export data to 3rd party provider.
 
     Args:
-        name: Name of dataset to export.
-        provider_name: Provider to use for export.
-        tag: Dataset tag from which to export.
+        name(str): Name of dataset to export.
+        provider_name(str): Provider to use for export.
+        tag(str): Dataset tag from which to export.
     """
     datasets_provenance = DatasetsProvenance()
 
@@ -443,9 +451,10 @@ def export_dataset(name, provider_name, tag, **kwargs):
     communication.echo(f"Exported to: {destination}")
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def import_dataset(
     uri: str,
-    name: str = "",
+    name: Optional[str] = "",
     extract: bool = False,
     yes: bool = False,
     datadir: Optional[Path] = None,
@@ -557,6 +566,7 @@ def import_dataset(
 
 
 @inject.autoparams()
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def update_datasets(
     names: List[str],
     creators: Optional[str],
@@ -753,6 +763,7 @@ def update_datasets(
     return imported_dataset_updates_view_models, dataset_files_view_models
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def show_dataset(name: str, tag: Optional[str] = None):
     """Show detailed dataset information.
 
@@ -1219,6 +1230,7 @@ def filter_dataset_files(
     return sorted(records, key=lambda r: r.date_added)
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def pull_external_data(name: str, location: Optional[Path] = None) -> None:
     """Pull/copy data for an external storage to a dataset's data directory or a specified location.
 
@@ -1305,6 +1317,7 @@ def read_dataset_data_location(dataset: Dataset) -> Optional[str]:
     return get_value(section="dataset-locations", key=dataset.name, config_filter=ConfigFilter.LOCAL_ONLY)
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def mount_external_storage(name: str, existing: Optional[Path], yes: bool) -> None:
     """Mount an external storage to a dataset's data directory.
 
@@ -1341,6 +1354,7 @@ def mount_external_storage(name: str, existing: Optional[Path], yes: bool) -> No
         storage.mount(datadir)
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def unmount_external_storage(name: str) -> None:
     """Mount an external storage to a dataset's data directory.
 
