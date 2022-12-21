@@ -459,6 +459,7 @@ def test_workflow_file_status(runner, workflow_file_project):
     """Test ``renku status`` shows if a workflow file has changes."""
     result = runner.invoke(cli, ["run", workflow_file_project.workflow_file])
     assert 0 == result.exit_code, format_result_exception(result)
+    time.sleep(1)
 
     workflow_file = workflow_file_project.path / workflow_file_project.workflow_file
     workflow_file.write_text(workflow_file.read_text() + "\n")

@@ -77,7 +77,9 @@ def test_session_start_config_requests(runner, project, dummy_session_provider, 
     assert 0 == result.exit_code, format_result_exception(result)
 
     with monkeypatch.context() as monkey:
-        monkey.setattr(docker, "from_env", MagicMock())
+        docker_mock = MagicMock()
+        docker_mock.api.inspect_image.return_value = {}
+        monkey.setattr(docker, "from_env", lambda: docker_mock)
         result = runner.invoke(cli, ["session", "start", "-p", "docker"])
         assert 0 == result.exit_code, format_result_exception(result)
         assert "successfully started" in result.output
