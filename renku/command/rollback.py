@@ -21,7 +21,7 @@ import os.path
 import re
 from datetime import datetime
 from itertools import islice
-from typing import Dict, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Tuple, cast
 
 from renku.command.command_builder.command import Command
 from renku.core.util import communication
@@ -29,6 +29,9 @@ from renku.domain_model.dataset import Dataset
 from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.activity import Activity
 from renku.domain_model.workflow.plan import AbstractPlan
+
+if TYPE_CHECKING:
+    from renku.infrastructure.repository import Commit
 
 CHECKPOINTS_PER_PAGE = 50
 
@@ -40,7 +43,7 @@ def rollback_command():
 
 def _rollback_command():
     """Perform a rollback of the repo."""
-    commits = project_context.repository.iterate_commits(project_context.metadata_path)
+    commits: Generator["Commit", None, None] = project_context.repository.iterate_commits(project_context.metadata_path)
 
     checkpoint = _prompt_for_checkpoint(commits)
 
@@ -304,7 +307,7 @@ def _checkpoint_iterator(commits):
     """
     transaction_pattern = re.compile(r"\n\nrenku-transaction:\s([0-9a-g]+)$")
 
-    current_checkpoint = None
+    current_checkpoint: Optional[Tuple[str, "Commit", str]] = None
 
     for commit in commits:
         commit_message = commit.message
