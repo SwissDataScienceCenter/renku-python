@@ -20,7 +20,6 @@
 import fnmatch
 import glob
 import hashlib
-import io
 import os
 import re
 import shutil
@@ -42,7 +41,7 @@ def get_relative_path_to_cwd(path: Union[Path, str]) -> str:
 def get_absolute_path(path: Union[Path, str], base: Union[Path, str] = None, resolve_symlinks: bool = False) -> str:
     """Return absolute normalized path."""
     if base is not None:
-        base = Path(base).resolve()
+        base = Path(base).resolve() if resolve_symlinks else os.path.abspath(base)
         path = os.path.join(base, path)
 
     if resolve_symlinks:
@@ -66,7 +65,7 @@ def get_safe_relative_path(path: Union[Path, str], base: Union[Path, str]) -> Pa
 
 
 def get_relative_path(path: Union[Path, str], base: Union[Path, str], strict: bool = False) -> Optional[str]:
-    """Return a relative path to the base if path is within base without resolving symlinks."""
+    """Return a relative path to the base if path is within base with/without resolving symlinks."""
     try:
         absolute_path = get_absolute_path(path=path, base=base)
         return str(Path(absolute_path).relative_to(base))
@@ -79,7 +78,14 @@ def get_relative_path(path: Union[Path, str], base: Union[Path, str], strict: bo
 
 def is_subpath(path: Union[Path, str], base: Union[Path, str]) -> bool:
     """Return True if path is within or same as base."""
-    return get_relative_path(path, base) is not None
+    absolute_path = get_absolute_path(path=path)
+    absolute_base = get_absolute_path(path=base)
+    try:
+        Path(absolute_path).relative_to(absolute_base)
+    except ValueError:
+        return False
+    else:
+        return True
 
 
 def get_relative_paths(paths: Sequence[Union[Path, str]], base: Union[Path, str]) -> List[str]:
@@ -111,6 +117,12 @@ def are_paths_related(a, b) -> bool:
     common_path = os.path.commonpath((a, b))
     absolute_common_path = os.path.abspath(common_path)
     return absolute_common_path == os.path.abspath(a) or absolute_common_path == os.path.abspath(b)
+
+
+def are_paths_equal(a: Union[Path, str], b: Union[Path, str]) -> bool:
+    """Returns if two paths are the same."""
+    # NOTE: The two paths should be identical; we don't consider the case where one is a sub-path of another
+    return get_absolute_path(a) == get_absolute_path(b)
 
 
 def is_path_empty(path: Union[Path, str]) -> bool:
@@ -234,14 +246,6 @@ def hash_file(path: Union[Path, str], hash_type: str = "sha256") -> Optional[str
         return hash_file_descriptor(f, hash_type)
 
 
-def hash_str(content: str, hash_type: str = "sha256") -> str:
-    """Calculate the sha256 hash of a string."""
-    content_bytes = content.encode("utf-8")
-
-    with io.BytesIO(content_bytes) as f:
-        return hash_file_descriptor(f, hash_type)
-
-
 def hash_file_descriptor(file: BinaryIO, hash_type: str = "sha256") -> str:
     """Hash content of a file descriptor."""
     hash_type = hash_type.lower()
@@ -255,17 +259,16 @@ def hash_file_descriptor(file: BinaryIO, hash_type: str = "sha256") -> str:
     return hash_value.hexdigest()
 
 
-def safe_read_yaml(file: str) -> Dict[str, Any]:
+def safe_read_yaml(path: Union[Path, str]) -> Dict[str, Any]:
     """Parse a YAML file.
 
     Returns:
-        In case of success a dictionary of the YAML's content,
-        otherwise raises a ParameterError exception.
+        In case of success a dictionary of the YAML's content, otherwise raises a ParameterError exception.
     """
     try:
         from renku.core.util import yaml as yaml
 
-        return yaml.read_yaml(file)
+        return yaml.read_yaml(path)
     except Exception as e:
         raise errors.ParameterError(e)
 

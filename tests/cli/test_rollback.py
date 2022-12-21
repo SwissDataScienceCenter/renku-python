@@ -64,9 +64,9 @@ def test_rollback(runner, project):
     result = runner.invoke(cli, ["rollback"], input="1\nn")
     assert 1 == result.exit_code, format_result_exception(result)
     assert "\tPlan: run3\n" in result.output
-    assert "run2" not in result.output
+    assert "\tPlan: run2\n" not in result.output
     assert "\n\toutput\n" in result.output
-    assert "bar" not in result.output
+    assert "\n\tbar" not in result.output
     assert "\n\tinput" in result.output
     assert "\n\toutput" in result.output
 

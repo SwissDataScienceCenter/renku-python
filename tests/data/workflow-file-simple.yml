@@ -1,0 +1,43 @@
+name: workflow-file
+description: A sample workflow file used for testing
+keywords:
+  - workflow file
+  - v1
+steps:
+  - head:
+      command: head $parameters $inputs > $outputs
+      description: first stage of the pipeline
+      keywords:
+        - preprocessing
+        - first step
+      inputs:
+        - data/collection/models.csv
+        - data/collection/colors.csv
+      outputs:
+        - intermediate
+      parameters:
+        - -n
+        - 10
+
+  - tail:
+      command: tail -n 5 intermediate > $outputs
+      description: second stage of the pipeline
+      inputs:
+        - intermediate
+      outputs:
+        - results/output.csv
+      parameters:
+        - -n
+        - 5
+
+  - line-count:
+      command: wc -l $inputs > results/output.csv.wc
+      description: third stage of the pipeline
+      inputs:
+        - data/collection/models.csv
+        - data/collection/colors.csv
+        - results/output.csv
+      outputs:
+        - results/output.csv.wc
+      parameters:
+        - -l

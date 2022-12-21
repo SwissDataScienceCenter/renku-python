@@ -17,6 +17,7 @@
 # limitations under the License.
 """Project class."""
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Dict, List, Optional, cast
 from urllib.parse import quote
@@ -37,6 +38,18 @@ if TYPE_CHECKING:
     from renku.infrastructure.repository import Repository
 
 
+@dataclass
+class ProjectTemplateMetadata:
+    """Metadata about the template used in a project."""
+
+    template_id: Optional[str] = None
+    metadata: str = ""
+    template_ref: Optional[str] = None
+    template_source: Optional[str] = None
+    template_version: Optional[str] = None
+    immutable_template_files: Optional[List[str]] = None
+
+
 class Project(persistent.Persistent):
     """Represent a project."""
 
@@ -51,18 +64,12 @@ class Project(persistent.Persistent):
         *,
         agent_version: Optional[str] = None,
         annotations: Optional[List[Annotation]] = None,
-        automated_update: bool = False,
         creator: Person,
         date_created: Optional[datetime] = None,
         description: Optional[str] = None,
         id: Optional[str] = None,
-        immutable_template_files: Optional[List[str]] = None,
         name: Optional[str] = None,
-        template_id: Optional[str] = None,
-        template_metadata: str = "{}",
-        template_ref: Optional[str] = None,
-        template_source: Optional[str] = None,
-        template_version: Optional[str] = None,
+        template_metadata: Optional[ProjectTemplateMetadata] = None,
         version: Optional[str] = None,
         keywords: Optional[List[str]] = None,
     ):
@@ -76,22 +83,17 @@ class Project(persistent.Persistent):
             assert generated_name is not None, "Cannot generate Project id with no name"
             id = Project.generate_id(namespace=namespace, name=generated_name)
 
+        self.name: Optional[str] = name
         self.agent_version: Optional[str] = agent_version
         self.annotations: List[Annotation] = annotations or []
-        self.automated_update: bool = automated_update
         self.creator: Person = creator
         self.date_created: datetime = fix_datetime(date_created) or local_now()
         self.description: Optional[str] = description
         self.id: str = id
-        self.immutable_template_files: Optional[List[str]] = immutable_template_files
-        self.name: Optional[str] = name
-        self.template_id: Optional[str] = template_id
-        self.template_metadata: str = template_metadata
-        self.template_ref: Optional[str] = template_ref
-        self.template_source: Optional[str] = template_source
-        self.template_version: Optional[str] = template_version
         self.version: str = version
         self.keywords = keywords or []
+
+        self.template_metadata: ProjectTemplateMetadata = template_metadata or ProjectTemplateMetadata()
 
         # NOTE: We copy this over as class variables don't get saved in the DB
         self.minimum_renku_version = Project.minimum_renku_version

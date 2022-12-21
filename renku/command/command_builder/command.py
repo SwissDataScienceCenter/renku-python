@@ -404,6 +404,7 @@ class Command:
         raise_if_empty: bool = False,
         commit_only: Optional[Union[str, List[Union[str, Path]]]] = None,
         skip_staging: bool = False,
+        skip_dirty_checks: bool = False,
     ) -> "Command":
         """Create a commit.
 
@@ -413,10 +414,20 @@ class Command:
             raise_if_empty(bool, optional): Whether to raise an exception if there are no modified files
                 (Default value = False).
             commit_only(bool, optional): Only commit the supplied paths (Default value = None).
+            skip_staging(bool): Don't commit staged files.
+            skip_dirty_checks(bool): Don't check if paths are dirty or staged.
         """
         from renku.command.command_builder.repo import Commit
 
-        return Commit(self, message, commit_if_empty, raise_if_empty, commit_only, skip_staging)
+        return Commit(
+            self,
+            message=message,
+            commit_if_empty=commit_if_empty,
+            raise_if_empty=raise_if_empty,
+            commit_only=commit_only,
+            skip_staging=skip_staging,
+            skip_dirty_checks=skip_dirty_checks,
+        )
 
     @check_finalized
     def lock_project(self) -> "Command":

@@ -159,7 +159,7 @@ def test_05_stdout(project, with_injection):
     with with_injection():
         plan = factory.to_plan()
 
-    assert ["echo", '"Hello world!"'] == plan.to_argv()
+    assert ["echo", "'Hello world!'"] == plan.to_argv()
 
 
 def test_stdout_with_conflicting_arg(project, with_injection):

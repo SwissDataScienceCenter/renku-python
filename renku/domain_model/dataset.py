@@ -215,7 +215,7 @@ class RemoteEntity(Slots):
         parsed_url = urlparse(url)
         prefix = quote(posixpath.join(parsed_url.netloc, parsed_url.path))
         path = quote(str(path))
-        return f"/remote-entity/{prefix}/{checksum}/{path}"
+        return f"/remote-entities/{prefix}/{checksum}/{path}"
 
     def __eq__(self, other):
         if self is other:
@@ -336,6 +336,7 @@ class Dataset(Persistent):
         date_created: Optional[datetime] = None,
         date_published: Optional[datetime] = None,
         date_removed: Optional[datetime] = None,
+        date_modified: Optional[datetime] = None,
         derived_from: Optional[Url] = None,
         description: Optional[str] = None,
         id: Optional[str] = None,
@@ -376,7 +377,7 @@ class Dataset(Persistent):
         # `dataset_files` includes existing files and those that have been removed in the previous version
         self.dataset_files: List[DatasetFile] = dataset_files or []
         self.date_created: Optional[datetime] = date_created
-        self.date_modified: datetime = local_now()
+        self.date_modified: datetime = date_modified or local_now()
         self.date_published: Optional[datetime] = fix_datetime(date_published)
         self.date_removed: Optional[datetime] = fix_datetime(date_removed)
         self.derived_from: Optional[Url] = derived_from
@@ -491,9 +492,9 @@ class Dataset(Persistent):
         self.initial_identifier = dataset.initial_identifier
         self.derived_from = Url(url_id=dataset.id)
         self.same_as = None
-        self.date_created = date_created or local_now()
+        self.date_created = date_created or dataset.date_created
         self.date_modified = local_now()
-        self.date_published = None
+        self.date_published = dataset.date_published
 
         if creator and hasattr(creator, "email") and not any(c for c in self.creators if c.email == creator.email):
             self.creators.append(creator)

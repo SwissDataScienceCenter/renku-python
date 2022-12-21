@@ -18,6 +18,7 @@
 """Test ``update`` command."""
 
 import os
+import shutil
 import time
 from pathlib import Path
 
@@ -286,7 +287,7 @@ def test_update_siblings(project, run, no_lfs_warning, provider):
 def test_update_siblings_in_output_directory(project, run, provider):
     """Files in output directory are linked or removed after update."""
     source = os.path.join(project.path, "source.txt")
-    output = Path(os.path.join(project.path, "output"))  # a directory
+    output = project.path / "output"  # a directory
 
     def write_source():
         """Write source from files."""
@@ -313,6 +314,12 @@ def test_update_siblings_in_output_directory(project, run, provider):
 
     files = [("third", "3"), ("fourth", "4")]
     write_source()
+
+    # NOTE: Delete ``output`` directory content
+    shutil.rmtree(output, ignore_errors=True)
+    project.repository.add(all=True)
+    project.repository.commit("Delete previously-generated files")
+    output.mkdir(exist_ok=True)
 
     assert 0 == run(args=["update", "-p", provider, "output"])
 

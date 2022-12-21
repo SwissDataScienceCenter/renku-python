@@ -91,7 +91,7 @@ jobs:
           git commit -m "chore: Update cheatsheet json"
       - name: Push changes
         uses: ad-m/github-push-action@master
-        if: (steps.publish-pdf.outcome != 'Skipped' || steps.publish-json.outcome != 'Skipped) && success()
+        if: (steps.publish-pdf.outcome != 'Skipped' || steps.publish-json.outcome != 'Skipped') && success()
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.ref }}

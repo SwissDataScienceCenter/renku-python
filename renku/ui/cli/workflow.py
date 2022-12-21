@@ -15,7 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Manage the set of CWL files created by ``renku`` commands.
+"""Manage the set of execution templates created by the ``renku run`` command.
 
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
@@ -136,11 +136,11 @@ the YAML should follow the this structure:
 
     learning_rate: 0.9
     dataset_input: dataset.csv
-    chart_output: mychart.png
-    myworkflow:
+    chart_output: chart.png
+    my-workflow:
         lr: 0.8
-        lookuptable: lookup.xml
-        myotherworkflow:
+        lookup-table: lookup.xml
+        my-other-workflow:
             language: en
 
 In addition to being passed on the command line and being available to
@@ -303,7 +303,7 @@ Composing Plans into larger workflows
 
 For more complex workflows consisting of several steps, you can use the
 ``renku workflow compose`` command. This creates a new workflow that has
-substeps.
+sub-steps.
 
 The basic usage is:
 
@@ -733,8 +733,8 @@ from renku.command.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
 from renku.core import errors
 from renku.core.util.util import NO_VALUE
 from renku.ui.cli.utils.callback import ClickCallback
-from renku.ui.cli.utils.plugins import available_workflow_providers, supported_formats
-from renku.ui.cli.utils.terminal import show_text_with_pager
+from renku.ui.cli.utils.plugins import available_workflow_providers, get_supported_formats
+from renku.ui.cli.utils.terminal import print_workflow_file, show_text_with_pager
 
 
 def _complete_workflows(ctx, param, incomplete):
@@ -775,22 +775,33 @@ def list_workflows(format, columns):
 
 
 @workflow.command()
-@click.argument("name_or_id", metavar="<name_or_id>", shell_complete=_complete_workflows)
-def show(name_or_id):
-    """Show details for workflow <name_or_id>."""
+@click.argument("name_or_id_or_path", metavar="<name_or_id_or_path>", shell_complete=_complete_workflows)
+def show(name_or_id_or_path):
+    """Show details for workflow <name_or_id_or_path>."""
     from renku.command.view_model.plan import PlanViewModel
+    from renku.command.view_model.workflow_file import WorkflowFileViewModel
     from renku.command.workflow import show_workflow_command
     from renku.ui.cli.utils.terminal import print_composite_plan, print_plan
 
-    plan = show_workflow_command().build().execute(name_or_id=name_or_id).output
+    communicator = ClickCallback()
+
+    plan = (
+        show_workflow_command()
+        .with_communicator(communicator)
+        .build()
+        .execute(name_or_id_or_path=name_or_id_or_path)
+        .output
+    )
 
     if plan:
-        if isinstance(plan, PlanViewModel):
+        if isinstance(plan, WorkflowFileViewModel):
+            print_workflow_file(plan)
+        elif isinstance(plan, PlanViewModel):
             print_plan(plan)
         else:
             print_composite_plan(plan)
     else:
-        click.secho(ERROR + f"Workflow '{name_or_id}' not found.")
+        click.secho(ERROR + f"Workflow '{name_or_id_or_path}' not found.")
 
 
 @workflow.command()
@@ -1021,9 +1032,10 @@ def edit(
 @workflow.command()
 @click.argument("workflow_name", metavar="<name or uuid>", shell_complete=_complete_workflows)
 @click.option(
+    "-f",
     "--format",
     default="cwl",
-    type=click.Choice(Proxy(supported_formats), case_sensitive=False),
+    type=click.Choice(Proxy(get_supported_formats), case_sensitive=False),
     show_default=True,
     help="Workflow language format.",
 )
@@ -1123,7 +1135,7 @@ def outputs(ctx, paths):
     "provider",
     "-p",
     "--provider",
-    default="cwltool",
+    default="toil",
     show_default=True,
     type=click.Choice(Proxy(available_workflow_providers), case_sensitive=False),
     help="The workflow engine to use.",
@@ -1141,7 +1153,7 @@ def outputs(ctx, paths):
 )
 @click.option(
     "--values",
-    metavar="<file>",
+    metavar="<values-file>",
     type=click.Path(exists=True, dir_okay=False),
     help="YAML file containing parameter mappings to be used.",
 )
@@ -1299,7 +1311,7 @@ def visualize(sources, columns, exclude_files, ascii, revision, format, interact
     "provider",
     "-p",
     "--provider",
-    default="cwltool",
+    default="toil",
     show_default=True,
     type=click.Choice(Proxy(available_workflow_providers), case_sensitive=False),
     help="The workflow engine to use.",
@@ -1316,7 +1328,7 @@ def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config, skip_
     if len(mappings) == 0 and mapping_path is None:
         raise errors.UsageError("No mapping has been given for the iteration!")
 
-    plan = show_workflow_command().build().execute(name_or_id=name_or_id).output
+    plan = show_workflow_command().build().execute(name_or_id_or_path=name_or_id).output
 
     if plan:
         if isinstance(plan, PlanViewModel):

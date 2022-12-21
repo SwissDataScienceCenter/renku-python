@@ -27,9 +27,9 @@ from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.util import communication
 
 try:
-    from typing import Literal
+    from typing_extensions import Literal  # NOTE: Required for Python 3.7 compatibility
 except ImportError:
-    from typing_extensions import Literal  # type: ignore
+    from typing import Literal  # type: ignore
 
 if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset, DatasetTag

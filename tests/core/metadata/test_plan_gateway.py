@@ -52,12 +52,8 @@ def test_plan_gateway_newest_plans(project_with_injection):
     """Test getting newest plans."""
     plan = Plan(id=Plan.generate_id(), name="plan", command="")
     plan2 = Plan(id=Plan.generate_id(), name="plan", command="")
-    invalidated_plan = Plan(
-        id=Plan.generate_id(), name="invalidated_plan", command="", invalidated_at=datetime.utcnow()
-    )
-    invalidated_plan2 = Plan(
-        id=Plan.generate_id(), name="invalidated_plan", command="", invalidated_at=datetime.utcnow()
-    )
+    invalidated_plan = Plan(id=Plan.generate_id(), name="invalidated_plan", command="", date_removed=datetime.utcnow())
+    invalidated_plan2 = Plan(id=Plan.generate_id(), name="invalidated_plan", command="", date_removed=datetime.utcnow())
 
     plan_gateway = PlanGateway()
 

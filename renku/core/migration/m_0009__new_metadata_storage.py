@@ -25,7 +25,7 @@ from collections import defaultdict
 from hashlib import sha1
 from itertools import chain
 from pathlib import Path, PurePosixPath
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union, cast
 from urllib.parse import urlparse
 
 from renku.command.command_builder import inject
@@ -35,6 +35,7 @@ from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.migration.models import v9 as old_schema
+from renku.core.migration.models import v10 as new_schema
 from renku.core.migration.models.migration import DatasetMigrationContext, MigrationContext, MigrationType
 from renku.core.migration.utils import (
     OLD_DATASETS_PATH,
@@ -47,7 +48,6 @@ from renku.core.migration.utils.conversion import convert_dataset
 from renku.core.util import communication
 from renku.core.util.yaml import load_yaml
 from renku.domain_model.entity import NON_EXISTING_ENTITY_CHECKSUM, Collection, Entity
-from renku.domain_model.project import Project
 from renku.domain_model.project_context import has_graph_files, project_context
 from renku.domain_model.provenance.activity import Activity, Association, Generation, Usage
 from renku.domain_model.provenance.agent import Person, SoftwareAgent
@@ -117,28 +117,28 @@ def _maybe_migrate_project_to_database(project_gateway: IProjectGateway):
     metadata_path = project_context.metadata_path.joinpath(OLD_METADATA_PATH)
 
     if metadata_path.exists():
-        old_project = old_schema.Project.from_yaml(metadata_path)
+        old_project = cast(old_schema.Project, old_schema.Project.from_yaml(metadata_path))
 
         id_path = urlparse(old_project._id).path
         id_path = id_path.replace("/projects/", "")
         id_path = Path(id_path)
         namespace, name = str(id_path.parent), id_path.name
-        id = Project.generate_id(namespace=namespace, name=name)
+        id = new_schema.Project.generate_id(namespace=namespace, name=name)
 
-        new_project = Project(
+        new_project = new_schema.Project(
             agent_version=old_project.agent_version,
-            automated_update=old_project.automated_update,
             creator=_old_agent_to_new_agent(old_project.creator),
             date_created=old_project.created,
             id=id,
-            immutable_template_files=old_project.immutable_template_files,
             name=old_project.name,
+            version=old_project.version,
             template_id=old_project.template_id,
             template_metadata=old_project.template_metadata,
             template_ref=old_project.template_ref,
             template_source=old_project.template_source,
             template_version=old_project.template_version,
-            version=old_project.version,
+            immutable_template_files=old_project.immutable_template_files,
+            automated_update=old_project.automated_update,
         )
 
         project_gateway.update_project(new_project)

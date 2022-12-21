@@ -266,14 +266,14 @@ def _get_modification_type_from_db(path: str) -> Optional[Tuple[str, str, str, d
             derived = database.get_by_id(db_object.derived_from)
             if db_object.name == derived.name:
                 change_type = "modified"
-        if db_object.invalidated_at:
+        if db_object.date_removed:
             change_type = "restored"
 
         return (
             f"Plan: {db_object.name}",
             change_type,
             f"plan_{db_object.name}",
-            db_object.invalidated_at or db_object.date_created,
+            db_object.date_removed or db_object.date_created,
         )
     elif isinstance(db_object, Dataset):
         change_type = "removed"

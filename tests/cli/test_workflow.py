@@ -22,6 +22,7 @@ import itertools
 import logging
 import os
 import re
+import shutil
 import sys
 import tempfile
 import uuid
@@ -626,7 +627,7 @@ def test_workflow_execute_command(
 
     if is_composite:
         composed_name = uuid.uuid4().hex
-        cmd = itertools.chain(["workflow", "compose", composed_name], map(lambda x: x[0], workflows))
+        cmd = ["workflow", "compose", composed_name] + [w[0] for w in workflows]
 
         result = runner.invoke(cli, cmd)
         assert 0 == result.exit_code, format_result_exception(result)
@@ -928,11 +929,11 @@ def test_workflow_visualize_dot(runner, project, workflow_graph):
     result = runner.invoke(cli, ["workflow", "visualize", "--format", "dot", "--revision", "HEAD^", "H", "S"])
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert '"Y" -> "bash -c \\"cat X Y | tee R S\\"";' in result.output
-    assert '"X" -> "bash -c \\"cat X Y | tee R S\\"";' in result.output
-    assert '"bash -c \\"cat X Y | tee R S\\"" -> "R";' in result.output
-    assert '"bash -c \\"cat X Y | tee R S\\"" -> "S";' in result.output
-    assert 4 == result.output.count('"bash -c \\"cat X Y | tee R S\\"')
+    assert '"Y" -> "bash -c \'cat X Y | tee R S\'";' in result.output
+    assert '"X" -> "bash -c \'cat X Y | tee R S\'";' in result.output
+    assert '"bash -c \'cat X Y | tee R S\'" -> "R";' in result.output
+    assert '"bash -c \'cat X Y | tee R S\'" -> "S";' in result.output
+    assert 4 == result.output.count("\"bash -c 'cat X Y | tee R S'")
 
     assert 1 == result.output.count('"echo other > H" -> "H"')
     assert 1 == result.output.count('-> "H"')
@@ -1467,3 +1468,23 @@ def test_plan_creation_date(runner, project, with_injection):
         activity = activity_gateway.get_all_activities()[0]
 
     assert plan.date_created <= activity.started_at_time
+
+
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_outputs_in_sub_directories(runner, project, provider):
+    """Test parent directories for outputs is created."""
+    results = project.path / "results"
+    output = results / "2022" / "csv" / "output.csv"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    assert 0 == runner.invoke(cli, ["run", "--name", "r1", "--", "echo", "some-data"], stdout=output).exit_code
+
+    # NOTE: Delete output's parent directories
+    shutil.rmtree(results)
+    project.repository.add(all=True)
+    project.repository.commit("Deleted parents")
+    assert not output.exists()
+
+    result = runner.invoke(cli, ["workflow", "execute", "-p", provider, "r1"], catch_exceptions=False)
+
+    assert 0 == result.exit_code
+    assert output.exists()
