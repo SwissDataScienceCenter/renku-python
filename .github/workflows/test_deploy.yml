@@ -754,6 +754,9 @@ jobs:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          CLOUD_STORAGE_AZURE_KEY: ${{ secrets.CLOUD_STORAGE_AZURE_KEY }}
+          CLOUD_STORAGE_S3_ACCESS_KEY_ID: ${{ secrets.CLOUD_STORAGE_S3_ACCESS_KEY_ID }}
+          CLOUD_STORAGE_S3_SECRET_ACCESS_KEY: ${{ secrets.CLOUD_STORAGE_S3_SECRET_ACCESS_KEY }}
         run: pytest -m "integration and not service and not serial" -v --timeout=600 -n auto
       - name: Start Redis
         uses: supercharge/redis-github-action@1.4.0
@@ -912,6 +915,9 @@ jobs:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          CLOUD_STORAGE_AZURE_KEY: ${{ secrets.CLOUD_STORAGE_AZURE_KEY }}
+          CLOUD_STORAGE_S3_ACCESS_KEY_ID: ${{ secrets.CLOUD_STORAGE_S3_ACCESS_KEY_ID }}
+          CLOUD_STORAGE_S3_SECRET_ACCESS_KEY: ${{ secrets.CLOUD_STORAGE_S3_SECRET_ACCESS_KEY }}
         run: pytest -m "integration and not serial" -v
       - name: Start Redis
         uses: supercharge/redis-github-action@1.4.0
