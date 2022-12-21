@@ -115,10 +115,10 @@ def modified_environ(*remove, **update):
     """
     env = os.environ
     update = update or {}
-    remove = remove or []
+    remove_list = list(remove) or []
 
     # List of environment variables being updated or removed.
-    stomped = (set(update.keys()) | set(remove)) & set(env.keys())
+    stomped = (set(update.keys()) | set(remove_list)) & set(env.keys())
     # Environment variables and values to restore on exit.
     update_after = {k: env[k] for k in stomped}
     # Environment variables and values to remove on exit.
@@ -126,7 +126,7 @@ def modified_environ(*remove, **update):
 
     try:
         env.update(update)
-        [env.pop(k, None) for k in remove]
+        [env.pop(k, None) for k in remove_list]
         yield
     finally:
         env.update(update_after)

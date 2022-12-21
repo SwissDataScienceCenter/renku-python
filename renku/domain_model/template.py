@@ -88,7 +88,7 @@ class TemplatesSource:
         raise NotImplementedError
 
     @abstractmethod
-    def get_template(self, id, reference: Optional[str]) -> Optional["Template"]:
+    def get_template(self, id, reference: Optional[str]) -> "Template":
         """Return a template at a specific reference."""
         raise NotImplementedError
 
