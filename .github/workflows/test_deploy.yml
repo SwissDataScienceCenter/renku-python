@@ -190,7 +190,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install coveralls poetry wheel twine poetry-dynamic-versioning-plugin
           make download-templates
-          pip install .[all]
+          poetry install -E toil -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         run: |
@@ -634,7 +634,7 @@ jobs:
           curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
           brew install shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
-          python -m pip install wheel poetry
+          python -m pip install wheel poetry poetry-dynamic-versioning-plugin
           make download-templates
           poetry install -E toil -E service --with dev,tests,docs
           git config --global --add user.name "Renku Bot"
@@ -852,7 +852,7 @@ jobs:
           curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
           brew install shellcheck node || brew link --overwrite node
           python -m pip install --upgrade pip
-          python -m pip install wheel poetry
+          python -m pip install wheel poetry poetry-dynamic-versioning-plugin
           make download-templates
           poetry install -E toil -E service --with dev,tests,docs
           git config --global --add user.name "Renku Bot"

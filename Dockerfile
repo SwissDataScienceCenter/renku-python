@@ -31,7 +31,8 @@ RUN if [ -n "${CLEAN_INSTALL}" ]; then git reset --hard ; fi && \
     make download-templates
 
 ARG BUILD_CORE_SERVICE
-RUN pip wheel --wheel-dir /wheels ".[toil]" && \
+RUN if [ -n "${BUILD_CORE_SERVICE}" ]; then export EXT_BUILD="[service]" ; fi && \
+    pip wheel --wheel-dir /wheels ".${EXT_BUILD}" && \
     pip install --no-cache-dir --no-index --no-warn-script-location --force --root=/pythonroot/ /wheels/*.whl
 
 FROM base
