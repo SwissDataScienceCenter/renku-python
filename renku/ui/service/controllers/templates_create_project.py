@@ -17,19 +17,19 @@
 # limitations under the License.
 """Renku service template create project controller."""
 import shutil
-from pathlib import Path
-from typing import Dict, Optional
+from typing import Any, Dict, Optional, cast
 
 from marshmallow import EXCLUDE
 
 from renku.command.init import create_from_template_local_command
+from renku.core import errors
+from renku.core.template.template import fetch_templates_source
 from renku.core.util.contexts import renku_project_context
-from renku.domain_model.template import TEMPLATE_MANIFEST, TemplatesManifest
+from renku.domain_model.template import Template
 from renku.infrastructure.repository import Repository
 from renku.ui.service.config import MESSAGE_PREFIX
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
-from renku.ui.service.controllers.utils.project_clone import user_project_clone
 from renku.ui.service.errors import UserProjectCreationError
 from renku.ui.service.serializers.templates import ProjectTemplateRequest, ProjectTemplateResponseRPC
 from renku.ui.service.utils import new_repo_push
@@ -45,11 +45,14 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def __init__(self, cache, user_data, request_data):
         """Construct a templates read manifest controller."""
-        self.ctx = TemplatesCreateProjectCtrl.REQUEST_SERIALIZER.load({**user_data, **request_data}, unknown=EXCLUDE)
+        self.ctx = cast(
+            Dict[str, Any],
+            TemplatesCreateProjectCtrl.REQUEST_SERIALIZER.load({**user_data, **request_data}, unknown=EXCLUDE),
+        )
         self.ctx["commit_message"] = f"{MESSAGE_PREFIX} init {self.ctx['project_name']}"
         super(TemplatesCreateProjectCtrl, self).__init__(cache, user_data, request_data)
 
-        self.template: Optional[Dict] = None
+        self.template: Optional[Template] = None
 
     @property
     def context(self):
@@ -59,16 +62,12 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
     @property
     def default_metadata(self):
         """Default metadata for project creation."""
-        automated_update = True
-        if self.template and "allow_template_update" in self.template:
-            automated_update = self.template["allow_template_update"]
 
         metadata = {
             "__template_source__": self.ctx["git_url"],
             "__template_ref__": self.ctx["ref"],
             "__template_id__": self.ctx["identifier"],
             "__namespace__": self.ctx["project_namespace"],
-            "__automated_update__": automated_update,
             "__repository__": self.ctx["project_repository"],
             "__sanitized_project_name__": self.ctx["project_name_stripped"],
             "__project_slug__": self.ctx["project_slug"],
@@ -114,26 +113,26 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def setup_template(self):
         """Reads template manifest."""
-        project = user_project_clone(self.user_data, self.ctx)
-        templates = TemplatesManifest.from_path(Path(project.abs_path) / TEMPLATE_MANIFEST).get_raw_content()
+        templates_source = fetch_templates_source(source=self.ctx["git_url"], reference=self.ctx["ref"])
         identifier = self.ctx["identifier"]
-        self.template = next((template for template in templates if template["folder"] == identifier), None)
-        if self.template is None:
+        try:
+            self.template = templates_source.get_template(id=identifier, reference=None)
+        except (errors.InvalidTemplateError, errors.TemplateNotFoundError) as e:
             raise UserProjectCreationError(
                 error_message=f"the template '{identifier}' does not exist in the target template's repository"
-            )
+            ) from e
 
-        repository = Repository(project.abs_path)
+        repository = Repository(templates_source.path)
         self.template_version = repository.head.commit.hexsha
 
         # Verify missing parameters
-        template_parameters = self.template.get("variables", {})
+        template_parameters = set(p.name for p in self.template.parameters)
         provided_parameters = {p["key"]: p["value"] for p in self.ctx["parameters"]}
-        missing_keys = list(template_parameters.keys() - provided_parameters.keys())
+        missing_keys = list(template_parameters - provided_parameters.keys())
         if len(missing_keys) > 0:
             raise UserProjectCreationError(error_message=f"the template requires a value for '${missing_keys[0]}'")
 
-        return project, provided_parameters
+        return provided_parameters
 
     def new_project_push(self, project_path):
         """Push new project to the remote."""
@@ -141,23 +140,22 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def new_project(self):
         """Create new project from template."""
-        template_project, provided_parameters = self.setup_template()
+        provided_parameters = self.setup_template()
+        assert self.template is not None
         new_project = self.setup_new_project()
         new_project_path = new_project.abs_path
 
-        source_path = template_project.abs_path / self.ctx["identifier"]
-
         with renku_project_context(new_project_path):
             create_from_template_local_command().build().execute(
-                source_path,
+                self.template.path,
                 name=self.ctx["project_name"],
                 namespace=self.ctx["project_namespace"],
                 metadata=provided_parameters,
                 default_metadata=self.default_metadata,
                 custom_metadata=self.ctx["project_custom_metadata"],
                 template_version=self.template_version,
-                immutable_template_files=self.template.get("immutable_template_files", []),  # type: ignore[union-attr]
-                automated_template_update=self.template.get("allow_template_update", True),  # type: ignore[union-attr]
+                immutable_template_files=self.template.immutable_files,
+                automated_template_update=self.template.allow_update,
                 user=self.git_user,
                 initial_branch=self.ctx["initial_branch"],
                 commit_message=self.ctx["commit_message"],
