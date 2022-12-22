@@ -18,6 +18,39 @@
 Changes
 =======
 
+`2.0.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.10.0...v2.0.0>`__ (2022-12-21)
+========================================================================================================
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** fix setting CPU request in renku.ini for renku session start
+   (`#3232 <https://github.com/SwissDataScienceCenter/renku-python/issues/3232>`__)
+   (`f367cc7 <https://github.com/SwissDataScienceCenter/renku-python/commit/f367cc74a7daeb474a1dc5e8ce5b53190f6cbd0f>`__)
+-  **core:** githooks are initialized in wrong directory
+   (`#3230 <https://github.com/SwissDataScienceCenter/renku-python/issues/3230>`__)
+   (`7a718ab <https://github.com/SwissDataScienceCenter/renku-python/commit/7a718ab463848aab1d22a276c2dea9904aedf1c1>`__)
+-  **service:** fix Snyk XSS warnings
+   (`#3234 <https://github.com/SwissDataScienceCenter/renku-python/issues/3234>`__)
+   (`5aeb81f <https://github.com/SwissDataScienceCenter/renku-python/commit/5aeb81fbd9f9ee57100e3e727725b165cf5be4ea>`__)
+-  **service:** use temporary directory to clone project templates on
+   project creation
+   (`#3243 <https://github.com/SwissDataScienceCenter/renku-python/issues/3243>`__)
+   (`74c0456 <https://github.com/SwissDataScienceCenter/renku-python/commit/74c0456534d8793889305dddf41a6117a7fc4e2d>`__)
+
+Features
+~~~~~~~~
+
+-  **core:** make toil the default workflow backend
+   (`#3220 <https://github.com/SwissDataScienceCenter/renku-python/issues/3220>`__)
+   (`81ce86e <https://github.com/SwissDataScienceCenter/renku-python/commit/81ce86e9f725964d23217fd97750bb575d3d1bf3>`__)
+-  **core:** Migration to metadata version v10 containing various metadata fixes, requiring a project migration.
+   (`#3236 <https://github.com/SwissDataScienceCenter/renku-python/issues/3236>`__)
+   (`8dfd510 <https://github.com/SwissDataScienceCenter/renku-python/commit/8dfd510c255f48430b5451d81ca27becd4cd6390>`__)
+-  **workflow:** support for workflow definition files
+   (`#3176 <https://github.com/SwissDataScienceCenter/renku-python/issues/3176>`__)
+   (`b7b2395 <https://github.com/SwissDataScienceCenter/renku-python/commit/b7b2395a248e1e25ea6b3dc3c38191da84984c5d>`__)
+
 `1.10.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.9.3...v1.10.0>`__ (2022-11-28)
 =========================================================================================================
 

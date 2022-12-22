@@ -34,9 +34,6 @@ jobs:
           conventional-changelog -r 1 -p angular -c context.json | pandoc --from markdown --to rst | sed -e '/=======/r /dev/stdin' -e 's/=======/=======\n/' -i CHANGES.rst
           conventional-changelog -r 1 -p angular -c context.json > release_body.md
           rm context.json
-      - name: Update version.py
-        run: |
-          sed -ri 's/__version__ = "[0-9.]+"/__version__ = "${{ github.event.inputs.version }}"/g' renku/version.py
       - name: Update Chart version
         run: |
           yq eval -i '.version = "${{ github.event.inputs.version }}"' helm-chart/renku-core/Chart.yaml
