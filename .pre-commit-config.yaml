@@ -1,5 +1,3 @@
-default_language_version:
-    python: python3.8
 repos:
     - repo: https://github.com/pre-commit/pre-commit-hooks
       rev: v2.3.0
@@ -18,14 +16,12 @@ repos:
           - id: isort
             name: isort (python)
     - repo: https://github.com/pycqa/flake8
-      rev: "3.9.2"
+      rev: "6.0.0"
       hooks:
           - id: flake8
             exclude: ^docs/
-            args:
-                - "--max-line-length=120"
-                - "--show-source"
-                - "--ignore=E121,E126,E203,E226,E231,W503,W504"
+            additional_dependencies:
+            - Flake8-pyproject==1.2.2
     - repo: https://github.com/pycqa/pydocstyle
       rev: 4.0.1
       hooks:

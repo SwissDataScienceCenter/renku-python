@@ -31,7 +31,7 @@ jobs:
       persist: ${{ steps.deploy-comment.outputs.persist}}
     steps:
       - id: deploy-comment
-        uses: SwissDataScienceCenter/renku-actions/check-pr-description@v1.4.1
+        uses: SwissDataScienceCenter/renku-actions/check-pr-description@v1.4.2
         with:
           string: /deploy
           pr_ref: ${{ github.event.number }}
