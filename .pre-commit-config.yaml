@@ -16,11 +16,12 @@ repos:
           - id: isort
             name: isort (python)
     - repo: https://github.com/pycqa/flake8
-      rev: "3.9.2"
+      rev: "6.0.0"
       hooks:
           - id: flake8
             exclude: ^docs/
-            additional_dependencies: [Flake8-pyproject]
+            additional_dependencies:
+            - Flake8-pyproject==1.2.2
     - repo: https://github.com/pycqa/pydocstyle
       rev: 4.0.1
       hooks:
