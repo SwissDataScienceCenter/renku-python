@@ -27,7 +27,7 @@ RUN if [ -n "${CLEAN_INSTALL}" ]; then git reset --hard ; fi && \
     make download-templates
 
 ENV POETRY_HOME=/opt/poetry
-# hadolint ignore=DL4006
+# hadolint ignore=DL4006,SC2086
 RUN if [ -n "${BUILD_CORE_SERVICE}" ]; then export EXT_BUILD="-E service" ; fi && \
     mkdir -p /opt/poetry && \
     curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.3.1 python3 - && \
@@ -36,7 +36,7 @@ RUN if [ -n "${BUILD_CORE_SERVICE}" ]; then export EXT_BUILD="-E service" ; fi &
     /opt/poetry/bin/poetry config virtualenvs.options.no-setuptools true && \
     /opt/poetry/bin/poetry config virtualenvs.options.no-pip true  && \
     /opt/poetry/bin/poetry self add "poetry-dynamic-versioning[plugin]" && \
-    /opt/poetry/bin/poetry install "${EXT_BUILD}" -E toil
+    /opt/poetry/bin/poetry install ${EXT_BUILD} -E toil
 
 FROM base
 ARG BUILD_CORE_SERVICE
