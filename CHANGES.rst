@@ -18,8 +18,17 @@
 Changes
 =======
 
+`2.0.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.0.0...v2.0.1>`__ (2023-01-04)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** fix template migration not working in version 2.0.0
+   (`1b05470 <https://github.com/SwissDataScienceCenter/renku-python/commit/1b0547019945fd1f9bb58faa6aea1fd578e43111>`__)
+
 `2.0.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.10.0...v2.0.0>`__ (2022-12-21)
-========================================================================================================
+--------------------------------------------------------------------------------------------------------
 
 Bug Fixes
 ~~~~~~~~~
@@ -52,7 +61,7 @@ Features
    (`b7b2395 <https://github.com/SwissDataScienceCenter/renku-python/commit/b7b2395a248e1e25ea6b3dc3c38191da84984c5d>`__)
 
 `1.10.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.9.3...v1.10.0>`__ (2022-11-28)
-=========================================================================================================
+---------------------------------------------------------------------------------------------------------
 
 Bug Fixes
 ~~~~~~~~~
