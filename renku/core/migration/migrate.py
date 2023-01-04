@@ -199,7 +199,7 @@ def _update_template(project_gateway: IProjectGateway) -> bool:
         # NOTE: Old project, we don't know the status until it is migrated
         return False
 
-    if not project.template_version:
+    if not hasattr(project, "template_metadata") or not project.template_metadata.template_version:
         return False
 
     return bool(update_template(interactive=False, force=False, dry_run=False))
