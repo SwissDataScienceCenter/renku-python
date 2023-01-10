@@ -11,7 +11,7 @@ jobs:
   create-release-pr:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.1.0
+      - uses: actions/checkout@v3.2.0
         with:
           fetch-depth: 0
           token: "${{ secrets.RENKUBOT_GITHUB_TOKEN }}"
@@ -31,12 +31,9 @@ jobs:
         id: changelog
         run: |
           echo '{"version": "${{ github.event.inputs.version }}"}' > context.json
-          conventional-changelog -r 1 -p angular -c context.json | pandoc --from markdown --to rst | sed -e '/=======/r /dev/stdin' -e 's/=======/=======\n/' -i CHANGES.rst
+          conventional-changelog -r 1 -p angular -c context.json | pandoc --from markdown --to rst | sed -e '/=======\n/r /dev/stdin' -e 's/=======\n/=======\n\n/' -i CHANGES.rst
           conventional-changelog -r 1 -p angular -c context.json > release_body.md
           rm context.json
-      - name: Update version.py
-        run: |
-          sed -ri 's/__version__ = "[0-9.]+"/__version__ = "${{ github.event.inputs.version }}"/g' renku/version.py
       - name: Update Chart version
         run: |
           yq eval -i '.version = "${{ github.event.inputs.version }}"' helm-chart/renku-core/Chart.yaml
