@@ -18,6 +18,7 @@
 """Integration tests for dataset command."""
 
 import os
+import random
 import re
 import shutil
 import subprocess
@@ -673,6 +674,10 @@ def test_dataset_export_to_local(runner, tmp_path):
     repository.lfs.install(skip_smudge=True)
 
     os.chdir(repository.path)
+
+    result = runner.invoke(cli, ["migrate"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
 
     output_path: Path = tmp_path / "exported"
 
@@ -1955,6 +1960,10 @@ def test_dataset_ls_with_tag(runner, tmp_path):
 
     os.chdir(repository.path)
 
+    result = runner.invoke(cli, ["migrate"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
     result = runner.invoke(cli, ["dataset", "ls-files", "--tag", "v1"])
 
     assert 0 == result.exit_code, format_result_exception(result)
@@ -2232,12 +2241,12 @@ def test_adding_data_from_cloud_storage(runner, project, create_cloud_storage_da
         (
             "s3://s3.amazonaws.com/giab",
             ["s3://s3.amazonaws.com/giab/*"],
-            "Wildcards like '*' or '?' are not supported for S3 URIs",
+            "Wildcards like '*' or '?' are not supported for cloud storage URIs",
         ),
         (
             "s3://s3.amazonaws.com/giab",
             ["s3://s3.amazonaws.com/giab/test?.txt"],
-            "Wildcards like '*' or '?' are not supported for S3 URIs",
+            "Wildcards like '*' or '?' are not supported for cloud storage URIs",
         ),
         (
             "s3://s3.amazonaws.com/giab",
@@ -2257,12 +2266,12 @@ def test_adding_data_from_cloud_storage(runner, project, create_cloud_storage_da
         (
             "azure://renkupythontest1/test-private-1",
             ["azure://renkupythontest1/test-private-1/*"],
-            "Wildcards like '*' or '?' are not supported for Azure URIs",
+            "Wildcards like '*' or '?' are not supported for cloud storage URIs",
         ),
         (
             "azure://renkupythontest1/test-private-1",
             ["azure://renkupythontest1/test-private-1/test?.txt"],
-            "Wildcards like '*' or '?' are not supported for Azure URIs",
+            "Wildcards like '*' or '?' are not supported for cloud storage URIs",
         ),
         (
             "azure://renkupythontest1/test-private-1",
@@ -2403,8 +2412,8 @@ def test_mount_data_from_an_existing_mount_point(
 @pytest.mark.parametrize(
     "storage",
     [
-        ("s3://os.zhdk.cloud.switch.ch/renku-python-integration-test"),
-        ("azure://renkupythontest1/test-private-1/renku-python-test"),
+        "s3://os.zhdk.cloud.switch.ch/renku-python-integration-test",
+        "azure://renkupythontest1/test-private-1/renku-python-test",
     ],
 )
 def test_add_data_to_mounted_cloud_storage(runner, project, tmp_path, cloud_storage_credentials, storage):
@@ -2416,7 +2425,8 @@ def test_add_data_to_mounted_cloud_storage(runner, project, tmp_path, cloud_stor
     cloud_data = project.path / "data" / "cloud-data"
 
     local_data = tmp_path / "local-data"
-    local_data.write_text("some content")
+    random_data = str(random.random())
+    local_data.write_text(random_data)
 
     try:
         assert not cloud_data.exists()
@@ -2433,10 +2443,11 @@ def test_add_data_to_mounted_cloud_storage(runner, project, tmp_path, cloud_stor
         # NOTE: It takes a while to sync for S3; we unmount/mount to make changes visible
         if storage.startswith("s3"):
             runner.invoke(cli, ["dataset", "mount", "cloud-data", "--unmount"])
-            runner.invoke(cli, ["dataset", "mount", "cloud-data", "--yes"])
+            runner.invoke(cli, ["dataset", "pull", "cloud-data"])
 
         copied_data = cloud_data / "local-data"
         assert copied_data.exists()
+        assert random_data == copied_data.read_text()
     finally:
         result = runner.invoke(cli, ["dataset", "mount", "cloud-data", "--unmount"])
 

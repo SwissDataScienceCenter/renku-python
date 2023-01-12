@@ -17,32 +17,24 @@
 # limitations under the License.
 """Azure dataset provider."""
 
-import re
 import urllib
-from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple, cast
 
 from renku.command.command_builder import inject
 from renku.core import errors
-from renku.core.dataset.providers.api import (
-    AddProviderInterface,
-    ProviderApi,
-    ProviderCredentials,
-    ProviderPriority,
-    StorageProviderInterface,
-)
-from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata, ProviderParameter
+from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials, ProviderPriority
+from renku.core.dataset.providers.cloud import CloudStorageAddProvider
+from renku.core.dataset.providers.models import ProviderParameter
 from renku.core.interface.storage import IStorage, IStorageFactory
 from renku.core.util.metadata import get_canonical_key, prompt_for_credentials
 from renku.core.util.urls import get_scheme
-from renku.domain_model.dataset import RemoteEntity
 from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset
 
 
-class AzureProvider(ProviderApi, AddProviderInterface, StorageProviderInterface):
+class AzureProvider(ProviderApi, CloudStorageAddProvider):
     """Azure provider."""
 
     priority = ProviderPriority.HIGHEST
@@ -109,29 +101,6 @@ class AzureProvider(ProviderApi, AddProviderInterface, StorageProviderInterface)
             configuration=azure_configuration,
             uri_convertor=create_renku_storage_azure_uri,
         )
-
-    def add(self, uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
-        """Add files from a URI to a dataset."""
-        if re.search(r"[*?]", uri):
-            raise errors.ParameterError("Wildcards like '*' or '?' are not supported for Azure URIs.")
-
-        storage = self.get_storage()
-
-        destination_path_in_repo = Path(destination).relative_to(project_context.repository.path)
-        hashes = storage.get_hashes(uri=uri)
-        return [
-            DatasetAddMetadata(
-                entity_path=destination_path_in_repo / hash.path,
-                url=hash.base_uri,
-                action=DatasetAddAction.REMOTE_STORAGE,
-                # TODO: Store the original URI for use as source; based_on is not needed
-                based_on=RemoteEntity(checksum=hash.hash if hash.hash else "", url=hash.base_uri, path=hash.path),
-                source=Path(hash.base_uri),
-                destination=destination_path_in_repo,
-                provider=self,
-            )
-            for hash in hashes
-        ]
 
     @property
     def account(self) -> str:

@@ -362,9 +362,6 @@ def move_files_to_dataset(dataset: Dataset, files: List[DatasetAddMetadata]):
                 md5_hash = file.based_on.checksum
             else:
                 file_uri = get_upload_uri(dataset=dataset, entity_path=file.entity_path)
-                print("FILE")
-                print(file_to_upload)
-                print(file.destination)
                 storage.upload(source=file_to_upload, uri=file_uri)
                 md5_hash = hash_file(file_to_upload, hash_type="md5") or ""
 
