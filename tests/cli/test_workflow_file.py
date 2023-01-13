@@ -71,12 +71,15 @@ def test_dry_run_workflow_file(runner, workflow_file_project):
 
 def test_run_workflow_file_with_selected_steps(runner, workflow_file_project):
     """Test running a sub-set of steps of a workflow file."""
-    result = runner.invoke(cli, ["run", "--dry-run", workflow_file_project.workflow_file, "head", "line-count"])
+    result = runner.invoke(cli, ["run", workflow_file_project.workflow_file, "head", "tail"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    assert "Will execute step 'head': head $n $models $colors > $temporary-result" in result.output
-    assert "Will execute step 'tail': tail $parameters intermediate > results/output.csv" not in result.output
-    assert "Will execute step 'line-count': wc -l $models-and-colors > $output" in result.output
+    assert "Executing step 'workflow-file.head':" in result.output
+    assert "Executing step 'workflow-file.tail':" in result.output
+    assert "Executing step 'workflow-file.line-count':" not in result.output
+
+    # Third step's output isn't created
+    assert not (workflow_file_project.path / "results" / "output.csv.wc").exists()
 
 
 def test_run_workflow_file_with_no_commit(runner, workflow_file_project):
@@ -355,6 +358,15 @@ def test_workflow_file_plan_versioning(runner, workflow_file_project, with_injec
     assert line_count_1.derived_from is None
     assert line_count_2.derived_from is None
     assert line_count_3.derived_from is None
+
+
+def test_workflow_file_plan_versioning_with_selected_steps(runner, workflow_file_project):
+    """Test plans are versioned correctly when executing subsets of steps."""
+    result = runner.invoke(cli, ["run", workflow_file_project.workflow_file, "head", "tail"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["run", workflow_file_project.workflow_file])
+    assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_duplicate_workflow_file_plan_name(runner, workflow_file_project):
