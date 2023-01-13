@@ -138,8 +138,12 @@ def run_rclone_command(command: str, *args: Any, env=None, **kwargs) -> str:
     all_outputs = result.stdout + result.stderr
     if result.returncode in (3, 4):
         raise errors.StorageObjectNotFound(all_outputs)
-    elif "AccessDenied" in all_outputs:
-        raise errors.AuthenticationError(f"Authentication failed when accessing the remote storage: {all_outputs}")
+    elif (
+        "AccessDenied" in all_outputs
+        or "no authentication method configured" in all_outputs
+        or "Need account+key" in all_outputs
+    ):
+        raise errors.AuthenticationError(f"Authentication failed when accessing the cloud storage: {all_outputs}")
     else:
         raise errors.RCloneException(f"Remote storage operation failed: {all_outputs}")
 

@@ -595,7 +595,7 @@ def list_dataset(format, columns):
     help="Custom metadata to be associated with the dataset.",
 )
 @click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords.")
-@click.option("-s", "--storage", default=None, type=click.STRING, help="URI of the storage backend.")
+@click.option("-s", "--storage", default=None, type=click.STRING, help="URI of the cloud storage backend.")
 @click.option(
     "--datadir",
     default=None,
@@ -1193,7 +1193,7 @@ def update(
     help="A directory to copy data to, instead of the dataset's data directory.",
 )
 def pull(name, location):
-    """Pull data from an external storage."""
+    """Pull data from a cloud storage."""
     from renku.command.dataset import pull_external_data_command
     from renku.ui.cli.utils.callback import ClickCallback
 
@@ -1213,7 +1213,7 @@ def pull(name, location):
 @click.option("-u", "--unmount", is_flag=True, help="Unmount dataset's external storage.")
 @click.option("-y", "--yes", is_flag=True, help="No prompt when removing non-empty dataset's data directory.")
 def mount(name, existing, unmount, yes):
-    """Mount an external storage in the dataset's data directory."""
+    """Mount a cloud storage in the dataset's data directory."""
     from renku.command.dataset import mount_external_storage_command
     from renku.ui.cli.utils.callback import ClickCallback
 
@@ -1223,3 +1223,13 @@ def mount(name, existing, unmount, yes):
         command.execute(name=name)
     else:
         command.execute(name=name, existing=existing, yes=yes)
+
+
+@dataset.command(hidden=True)
+@click.argument("name", shell_complete=_complete_datasets)
+def unmount(name):
+    """Unmount an external storage in the dataset's data directory."""
+    from renku.command.dataset import unmount_external_storage_command
+    from renku.ui.cli.utils.callback import ClickCallback
+
+    unmount_external_storage_command().with_communicator(ClickCallback()).build().execute(name=name)
