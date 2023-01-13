@@ -38,10 +38,11 @@ def is_release():
 
 def _get_distribution_url():
     try:
-        d = distribution("renku")
-        return d.metadata["Home-page"]
+        url = distribution("renku").metadata["Home-page"]
     except Exception:
-        return "https://github.com/swissdatasciencecenter/renku-python"
+        url = None
+
+    return "https://github.com/swissdatasciencecenter/renku-python" if not url else url
 
 
 version_url = f"{_get_distribution_url()}/tree/v{__version__}"

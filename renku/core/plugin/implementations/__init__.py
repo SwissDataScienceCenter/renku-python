@@ -19,6 +19,7 @@
 
 from typing import TYPE_CHECKING, List, Type
 
+from renku.core.dataset.providers.azure import AzureProvider
 from renku.core.dataset.providers.dataverse import DataverseProvider
 from renku.core.dataset.providers.git import GitProvider
 from renku.core.dataset.providers.local import FilesystemProvider
@@ -48,6 +49,7 @@ session_providers: "List[Type[ISessionProvider]]" = [DockerSessionProvider, Renk
 workflow_exporters: "List[Type[IWorkflowConverter]]" = [CWLExporter, RenkuWorkflowFileExporter]
 workflow_providers: "List[Type[IWorkflowProvider]]" = [CWLToolProvider, LocalWorkflowProvider]
 dataset_providers: "List[Type[ProviderApi]]" = [
+    AzureProvider,
     DataverseProvider,
     GitProvider,
     FilesystemProvider,
