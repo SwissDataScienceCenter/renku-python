@@ -45,7 +45,6 @@ class CloudStorageAddProvider(AddProviderInterface, StorageProviderInterface):
                 entity_path=destination_path_in_repo / hash.path,
                 url=hash.base_uri,
                 action=DatasetAddAction.REMOTE_STORAGE,
-                # TODO: Store the original URI for use as source; based_on is not needed
                 based_on=RemoteEntity(checksum=hash.hash if hash.hash else "", url=hash.base_uri, path=hash.path),
                 source=Path(hash.base_uri),
                 destination=destination_path_in_repo,
