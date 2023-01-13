@@ -54,7 +54,6 @@ python = "^3.7.1"
 appdirs = "<=1.4.4,>=1.4.3"
 attrs = ">=21.1.0,<22.2.0"
 bashlex = ">=0.16,<0.17"
-black = { version = "==22.10.0", optional = true }
 calamus = ">=0.3.13,<0.5"
 click = ">=8.0,<8.1.4"
 click-option-group = "<0.6.0,>=0.5.2"
@@ -122,7 +121,7 @@ sentry-sdk = { version = ">=1.5.11,<1.5.12", extras = ["flask"],  optional = tru
 walrus = { version = ">=0.8.2,<0.10.0", optional = true }
 
 [tool.poetry.group.dev.dependencies]
-black = "==22.6.0"
+black = "==22.10.0"
 flake8 = [
     { version = ">=6.0.0,<7.0.0", python = ">=3.8.1"},
     { version = ">=4.0.0,<5.0.0", python = "<3.8.1"}
