@@ -97,6 +97,24 @@ def dataverse_demo(project, dataverse_demo_cleanup):
 
 
 @pytest.fixture
+def cloud_storage_credentials(project):
+    """Set credentials for all cloud storages."""
+    # S3
+    s3_access_key_id = os.getenv("CLOUD_STORAGE_S3_ACCESS_KEY_ID", "")
+    s3_secret_access_key = os.getenv("CLOUD_STORAGE_S3_SECRET_ACCESS_KEY", "")
+    s3_section = "os.zhdk.cloud.switch.ch"
+    set_value(section=s3_section, key="access-key-id", value=s3_access_key_id, global_only=True)
+    set_value(section=s3_section, key="secret-access-key", value=s3_secret_access_key, global_only=True)
+
+    # Azure
+    azure_account = "renkupythontest1"
+    azure_key = os.getenv("CLOUD_STORAGE_AZURE_KEY", "")
+    azure_section = f"{azure_account}.blob.core.windows.net"
+    set_value(section=azure_section, key="account", value=azure_account, global_only=True)
+    set_value(section=azure_section, key="key", value=azure_key, global_only=True)
+
+
+@pytest.fixture
 def doi_responses():
     """Responses for doi.org requests."""
     import responses

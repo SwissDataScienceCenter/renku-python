@@ -322,23 +322,33 @@ def move_files_to_dataset(dataset: Dataset, files: List[DatasetAddMetadata]):
             else:
                 file.action = DatasetAddAction.DOWNLOAD
 
-        if file.action == DatasetAddAction.COPY:
-            shutil.copy(file.source, file.destination)
-        elif file.action == DatasetAddAction.MOVE:
-            shutil.move(file.source, file.destination, copy_function=shutil.copy)  # type: ignore
-        elif file.action == DatasetAddAction.SYMLINK:
-            create_external_file(target=file.source, path=file.destination)
-            # NOTE: Don't track symlinks to external files in LFS
-            track_in_lfs = False
-        elif file.action == DatasetAddAction.DOWNLOAD:
-            assert file.provider, f"Storage provider isn't set for {file} with DOWNLOAD action"
-            storage = file.provider.get_storage()
-            storage.download(file.url, file.destination)
-        elif file.metadata_only:
-            # NOTE: Nothing to do when adding file to a dataset with a parent remote storage
-            pass
-        else:
-            raise errors.OperationError(f"Invalid action {file.action}")
+        file_to_upload = file.source.resolve()
+
+        try:
+            if file.action == DatasetAddAction.COPY:
+                shutil.copy(file.source, file.destination)
+            elif file.action == DatasetAddAction.MOVE:
+                shutil.move(file.source, file.destination, copy_function=shutil.copy)  # type: ignore
+            elif file.action == DatasetAddAction.SYMLINK:
+                create_external_file(target=file.source, path=file.destination)
+                # NOTE: Don't track symlinks to external files in LFS
+                track_in_lfs = False
+            elif file.action == DatasetAddAction.DOWNLOAD:
+                assert file.provider, f"Storage provider isn't set for {file} with DOWNLOAD action"
+                download_storage = file.provider.get_storage()
+                download_storage.download(file.url, file.destination)
+                file_to_upload = file.destination
+            elif file.metadata_only:
+                # NOTE: Nothing to do when adding file to a dataset with a parent remote storage
+                pass
+            else:
+                raise errors.OperationError(f"Invalid action {file.action}")
+        except OSError as e:
+            # NOTE: It's ok if copying data to a read-only mounted cloud storage fails
+            if "Read-only file system" in str(e) and storage:
+                pass
+            else:
+                raise
 
         if track_in_lfs and not dataset.storage:
             track_paths_in_storage(file.destination)
@@ -352,8 +362,8 @@ def move_files_to_dataset(dataset: Dataset, files: List[DatasetAddMetadata]):
                 md5_hash = file.based_on.checksum
             else:
                 file_uri = get_upload_uri(dataset=dataset, entity_path=file.entity_path)
-                storage.upload(source=file.destination, uri=file_uri)
-                md5_hash = hash_file(file.destination, hash_type="md5") or ""
+                storage.upload(source=file_to_upload, uri=file_uri)
+                md5_hash = hash_file(file_to_upload, hash_type="md5") or ""
 
             file.based_on = RemoteEntity(url=file_uri, path=file.entity_path, checksum=md5_hash)
 

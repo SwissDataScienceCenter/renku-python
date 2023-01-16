@@ -34,7 +34,6 @@ from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.pointer_file import create_external_file, is_external_file_updated, update_external_file
 from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.models import ProviderDataset
-from renku.core.dataset.providers.s3 import S3Credentials
 from renku.core.dataset.request_model import ImageRequestModel
 from renku.core.dataset.tag import get_dataset_by_tag, prompt_access_token, prompt_tag_selection
 from renku.core.interface.dataset_gateway import IDatasetGateway
@@ -882,10 +881,8 @@ def update_dataset_custom_metadata(
     if custom_metadata is not None and custom_metadata_source is not None:
         if isinstance(custom_metadata, dict):
             custom_metadata = [custom_metadata]
-        for icustom_metadata in custom_metadata:
-            existing_metadata.append(
-                Annotation(id=Annotation.generate_id(), body=icustom_metadata, source=custom_metadata_source)
-            )
+        for cm in custom_metadata:
+            existing_metadata.append(Annotation(id=Annotation.generate_id(), body=cm, source=custom_metadata_source))
 
     dataset.annotations = existing_metadata
 
@@ -1346,7 +1343,7 @@ def mount_external_storage(name: str, existing: Optional[Path], yes: bool) -> No
     datadir.mkdir(parents=True, exist_ok=True)
 
     provider = ProviderFactory.get_mount_provider(uri=dataset.storage)
-    credentials = S3Credentials(provider)
+    credentials = provider.get_credentials()
     prompt_for_credentials(credentials)
     storage = provider.get_storage(credentials=credentials)
 
