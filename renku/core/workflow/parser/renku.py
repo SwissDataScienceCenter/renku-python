@@ -210,7 +210,7 @@ def get_elements(data: Union[Dict[str, Any], List[Dict[str, Any]]]) -> Generator
     """Get elements of a list of dict as a dict."""
     if isinstance(data, list):
         for element in data:
-            if isinstance(element, list):
+            if isinstance(element, list):  # type: ignore[unreachable]
                 raise errors.ParseError(f"Data cannot be a list: {element}")
             yield element
     elif not isinstance(data, dict):

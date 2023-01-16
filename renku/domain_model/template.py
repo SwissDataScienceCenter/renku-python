@@ -433,7 +433,9 @@ class TemplateParameter:
             issues.append(issue)
 
         if self.possible_values and not isinstance(self.possible_values, list):
-            issue = f"Invalid type for possible values of template variable '{self.name}': '{self.possible_values}'"
+            issue = (  # type: ignore[unreachable]
+                "Invalid type for possible values of template variable " f"'{self.name}': '{self.possible_values}'"
+            )
             if raise_errors:
                 raise errors.InvalidTemplateError(issue)
             issues.append(issue)

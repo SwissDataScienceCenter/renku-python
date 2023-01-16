@@ -54,7 +54,6 @@ python = "^3.7.1"
 appdirs = "<=1.4.4,>=1.4.3"
 attrs = ">=21.1.0,<22.2.0"
 bashlex = ">=0.16,<0.17"
-black = { version = "==22.6.0", optional = true }
 calamus = ">=0.3.13,<0.5"
 click = ">=8.0,<8.1.4"
 click-option-group = "<0.6.0,>=0.5.2"
@@ -111,7 +110,7 @@ apispec-webframeworks = { version = "<0.6,>=0.5.2", optional = true }
 circus = { version = "==0.17.1", optional = true }
 flask = { version = "==2.1.1", optional = true }
 gunicorn = { version = "*", optional = true }
-marshmallow = { version = ">=3.18.0", optional = true }
+marshmallow = { version = ">=3.18.0,<3.20.0", optional = true }
 marshmallow-oneofschema = { version = ">=3.0.1,<4.0.0", optional = true }
 pillow = { version = ">=9.0.0,<9.4", optional = true }
 python-dotenv = { version = ">=0.19.0,<0.21.0", optional = true }
@@ -122,7 +121,7 @@ sentry-sdk = { version = ">=1.5.11,<1.5.12", extras = ["flask"],  optional = tru
 walrus = { version = ">=0.8.2,<0.10.0", optional = true }
 
 [tool.poetry.group.dev.dependencies]
-black = "==22.6.0"
+black = "==22.10.0"
 flake8 = [
     { version = ">=6.0.0,<7.0.0", python = ">=3.8.1"},
     { version = ">=4.0.0,<5.0.0", python = "<3.8.1"}
@@ -222,6 +221,8 @@ exclude = '''
 [tool.pydocstyle]
 add_ignore = ["D105", "D107", "D202", "D401"]
 
+[tool.bandit]
+skips = ["B101", "B603", "B404"]
 
 [tool.isort]
 multi_line_output = 3
@@ -275,6 +276,11 @@ files = [
     "renku/**/*.py",
     "tests/**/*.py"
 ]
+pretty = true
+show_column_numbers = true
+show_error_codes = true
+show_error_context = true
+warn_unreachable = true
 implicit_optional = true
 check_untyped_defs = true
 
