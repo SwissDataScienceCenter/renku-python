@@ -21,7 +21,6 @@ import fnmatch
 import os
 import re
 import tempfile
-from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
@@ -41,9 +40,6 @@ if TYPE_CHECKING:
 def construct_creators(creators: List[Union[dict, str]], ignore_email=False) -> Tuple[List["Person"], List[str]]:
     """Parse input and return a list of Person."""
     creators = creators or []
-
-    if not isinstance(creators, Iterable):
-        raise errors.ParameterError("Invalid creators type")
 
     people = []
     no_email_warnings = []
