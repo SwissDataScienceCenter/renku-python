@@ -18,8 +18,34 @@
 Changes
 =======
 
+`1.11.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.10.0...v1.11.0>`__ (2023-01-17)
+----------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** fix setting CPU request in renku.ini for renku session start
+   (`#3232 <https://github.com/SwissDataScienceCenter/renku-python/issues/3232>`__)
+   (`f367cc7 <https://github.com/SwissDataScienceCenter/renku-python/commit/f367cc7>`__)
+-  **core:** githooks are initialized in wrong directory
+   (`#3230 <https://github.com/SwissDataScienceCenter/renku-python/issues/3230>`__)
+   (`7a718ab <https://github.com/SwissDataScienceCenter/renku-python/commit/7a718ab>`__)
+-  **service:** Snyk XSS warnings
+   (`#3234 <https://github.com/SwissDataScienceCenter/renku-python/issues/3234>`__)
+   (`5aeb81f <https://github.com/SwissDataScienceCenter/renku-python/commit/5aeb81f>`__)
+
+Features
+~~~~~~~~
+
+-  **core:** make toil the default workflow backend
+   (`#3220 <https://github.com/SwissDataScienceCenter/renku-python/issues/3220>`__)
+   (`81ce86e <https://github.com/SwissDataScienceCenter/renku-python/commit/81ce86e>`__)
+-  **workflow:** support for workflow definition files
+   (`#3176 <https://github.com/SwissDataScienceCenter/renku-python/issues/3176>`__)
+   (`b7b2395 <https://github.com/SwissDataScienceCenter/renku-python/commit/b7b2395>`__)
+
 `1.10.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.9.3...v1.10.0>`__ (2022-11-28)
-=========================================================================================================
+---------------------------------------------------------------------------------------------------------
 
 Bug Fixes
 ~~~~~~~~~
