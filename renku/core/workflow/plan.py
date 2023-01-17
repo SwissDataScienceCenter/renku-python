@@ -19,7 +19,7 @@
 
 import itertools
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union, cast, overload
 
@@ -79,12 +79,12 @@ def get_plan(
 
 
 @overload
-def get_latest_plan(plan: None = ..., plan_gateway: IPlanGateway = ...) -> None:  # noqa: D103
+def get_latest_plan(plan: None = ..., plan_gateway: IPlanGateway = ...) -> None:
     ...
 
 
 @overload
-def get_latest_plan(plan: AbstractPlan, plan_gateway: IPlanGateway = ...) -> AbstractPlan:  # noqa: D103
+def get_latest_plan(plan: AbstractPlan, plan_gateway: IPlanGateway = ...) -> AbstractPlan:
     ...
 
 
@@ -197,12 +197,12 @@ def show_workflow(name_or_id_or_path: str, activity_gateway: IActivityGateway, w
             if isinstance(workflow, Plan):
 
                 num_executions = 0
-                last_execution = None
+                last_execution: Optional[datetime] = None
 
                 for activity in relevant_activities:
                     num_executions += 1
 
-                    if not last_execution or last_execution < activity.ended_at_time:
+                    if last_execution is None or last_execution < activity.ended_at_time:
                         last_execution = activity.ended_at_time
 
                 workflow = cast(Plan, DynamicProxy(workflow))
@@ -810,7 +810,7 @@ def get_plans_with_metadata(activity_gateway: IActivityGateway, plan_gateway: IP
         latest_plan.touches_existing_files = False
         latest_plan.number_of_executions = 0
         latest_plan.created = latest_plan.date_created
-        latest_plan.last_executed = None
+        latest_plan.last_executed = cast(Optional[datetime], None)
         latest_plan.children = []
         duration = _get_plan_duration(latest_plan, duration_cache, activity_map)
 
@@ -819,7 +819,7 @@ def get_plans_with_metadata(activity_gateway: IActivityGateway, plan_gateway: IP
 
         if isinstance(plan_chain[0], Plan):
             for activity in activity_map.get(latest_plan.id, []):
-                if not latest_plan.last_executed or latest_plan.last_executed < activity.ended_at_time:
+                if latest_plan.last_executed is None or latest_plan.last_executed < activity.ended_at_time:
                     latest_plan.last_executed = activity.ended_at_time
 
                 latest_plan.number_of_executions += 1

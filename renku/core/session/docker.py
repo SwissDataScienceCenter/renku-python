@@ -22,6 +22,7 @@ from typing import Any, Dict, Iterable, List, Optional, cast
 from uuid import uuid4
 
 import docker
+from requests.exceptions import ReadTimeout
 
 from renku.core import errors
 from renku.core.config import get_value
@@ -77,16 +78,22 @@ class DockerSessionProvider(ISessionProvider):
 
     def find_image(self, image_name: str, config: Optional[Dict[str, Any]]) -> bool:
         """Find the given container image."""
-        try:
-            self.docker_client().images.get(image_name)
-        except docker.errors.ImageNotFound:
+        with communication.busy(msg=f"Checking for image {image_name}"):
             try:
-                with communication.busy(msg=f"Pulling image from remote {image_name}"):
-                    self.docker_client().images.pull(image_name)
-            except docker.errors.NotFound:
-                return False
+                self.docker_client().images.get(image_name)
+            except docker.errors.ImageNotFound:
+                try:
+                    self.docker_client().images.get_registry_data(image_name)
+                except docker.errors.NotFound:
+                    return False
             else:
                 return True
+
+        try:
+            with communication.busy(msg=f"Pulling image from remote {image_name}"):
+                self.docker_client().images.pull(image_name)
+        except docker.errors.NotFound:
+            return False
         else:
             return True
 
@@ -208,8 +215,14 @@ class DockerSessionProvider(ISessionProvider):
             message = f"The session for '{image_name}' has been successfully started. It is available at:\n\t"
             message += "\n\t".join(jupyter_urls)
             return message
-        except (docker.errors.APIError, docker.errors.BuildError) as error:
-            raise errors.DockerError(str(error))
+        except docker.errors.BuildError as error:
+            raise errors.DockerError("Couldn't build the image. See inner exception for details.") from error
+        except docker.errors.APIError as error:
+            raise errors.DockerError("Docker API returned an error. See inner exception for details.") from error
+        except ReadTimeout as error:
+            raise errors.DockerError(
+                "Couldn't reach the Docker API. Is the docker service running and up to date?"
+            ) from error
 
     def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> bool:
         """Stops all or a given interactive session."""

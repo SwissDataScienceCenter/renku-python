@@ -411,7 +411,7 @@ def iterate_workflow(
     tag_separator = "@"
     index_pattern = re.compile(r"{iter_index}")
 
-    iter_params: Optional[Dict[str, Any]] = {"indexed": {}, "params": {}, "tagged": {}}
+    iter_params: Dict[str, Any] = {"indexed": {}, "params": {}, "tagged": {}}
     workflow_params = {}
     if mapping_path:
         mapping = safe_read_yaml(mapping_path)
@@ -423,42 +423,42 @@ def iterate_workflow(
             iter_params["indexed"][param_name] = param_value  # type: ignore
         else:
             try:
-                param_value = ast.literal_eval(param_value)
+                evaluated_param_value = ast.literal_eval(param_value)
             except Exception:
                 raise errors.ParameterError(
                     f"The value of '{param_name}' parameter is neither a list nor templated variable!"
                 )
 
-            if isinstance(param_value, list) and len(param_value) == 1:
+            if isinstance(evaluated_param_value, list) and len(evaluated_param_value) == 1:
                 communication.warn(
                     f"The parameter '{param_name}' has only one element '{param_value}', "
                     "changing it to be a fixed parameter!"
                 )
                 workflow_params[param_name] = param_value[0]
                 continue
-            elif not isinstance(param_value, list):
+            elif not isinstance(evaluated_param_value, list):
                 workflow_params[param_name] = param_value
                 continue
 
             if tag_separator in param_name:
                 name, tag = param_name.split(tag_separator, maxsplit=1)
                 if tag in iter_params["tagged"]:
-                    iter_params["tagged"][tag][name] = param_value
+                    iter_params["tagged"][tag][name] = evaluated_param_value
                 else:
-                    iter_params["tagged"][tag] = {name: param_value}
+                    iter_params["tagged"][tag] = {name: evaluated_param_value}
 
                 param_name = name
             else:
-                iter_params["params"][param_name] = param_value
+                iter_params["params"][param_name] = evaluated_param_value
 
         set_param = reduce(lambda x, y: {y: x}, reversed(param_name.split(".")), param_value)  # type: ignore
         workflow_params = always_merger.merge(workflow_params, set_param)
 
-    iter_params = _validate_iterate_parameters(workflow, workflow_params, cast(Dict[str, Any], iter_params))
-    if iter_params is None:
+    validated_iter_params = _validate_iterate_parameters(workflow, workflow_params, cast(Dict[str, Any], iter_params))
+    if validated_iter_params is None:
         return
 
-    plans, execute_plan = _build_iterations(workflow, workflow_params, iter_params, index_pattern)
+    plans, execute_plan = _build_iterations(workflow, workflow_params, validated_iter_params, index_pattern)
 
     communication.echo(f"\n\n{tabulate(execute_plan, execute_plan[0].keys())}")
     if not dry_run:
