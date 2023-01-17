@@ -6,6 +6,11 @@ on:
         description: New release version
         type: string
         required: true
+      ref:
+        description: Branch/ref to create a release from
+        type: string
+        required: true
+        default: develop
 
 jobs:
   create-release-pr:
@@ -15,7 +20,7 @@ jobs:
         with:
           fetch-depth: 0
           token: "${{ secrets.RENKUBOT_GITHUB_TOKEN }}"
-          ref: 'develop'
+          ref: '${{ github.event.inputs.ref }}'
       - uses: actions/setup-node@v3
       - name: Create Branch
         run: git checkout -b "release/v${{ github.event.inputs.version }}"
