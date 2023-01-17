@@ -24,13 +24,13 @@ Changes
 Bug Fixes
 ~~~~~~~~~
 
--  **cli:** fix setting cpu request in renku.ini for renku session start
+-  **cli:** fix setting CPU request in renku.ini for renku session start
    (`#3232 <https://github.com/SwissDataScienceCenter/renku-python/issues/3232>`__)
    (`f367cc7 <https://github.com/SwissDataScienceCenter/renku-python/commit/f367cc7>`__)
 -  **core:** githooks are initialized in wrong directory
    (`#3230 <https://github.com/SwissDataScienceCenter/renku-python/issues/3230>`__)
    (`7a718ab <https://github.com/SwissDataScienceCenter/renku-python/commit/7a718ab>`__)
--  **service:** snyk xss warnings
+-  **service:** Snyk XSS warnings
    (`#3234 <https://github.com/SwissDataScienceCenter/renku-python/issues/3234>`__)
    (`5aeb81f <https://github.com/SwissDataScienceCenter/renku-python/commit/5aeb81f>`__)
 
