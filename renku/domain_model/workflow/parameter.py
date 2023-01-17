@@ -68,6 +68,10 @@ class MappedIOStream:
 class CommandParameterBase:
     """Represents a parameter for a Plan."""
 
+    # NOTE: This attribute is only used by workflow-file machinery to check if plans are the same or not. We need it,
+    # because names are generated randomly when not set by users which make the comparison return incorrect result.
+    name_set_by_user: bool = False
+
     def __init__(
         self,
         *,
@@ -75,6 +79,7 @@ class CommandParameterBase:
         description: Optional[str],
         id: str,
         name: Optional[str],
+        name_set_by_user: bool = False,
         position: Optional[int] = None,
         prefix: Optional[str] = None,
         derived_from: Optional[str] = None,
@@ -90,6 +95,7 @@ class CommandParameterBase:
         self.derived_from: Optional[str] = derived_from
         # NOTE: ``postfix`` is used only to generate a nicer ``id`` for a parameter. Its value isn't used anywhere else.
         self.postfix: Optional[str] = postfix
+        self.name_set_by_user: bool = name_set_by_user
 
         if name is not None:
             self.name: str = name
@@ -132,10 +138,13 @@ class CommandParameterBase:
     @staticmethod
     def _get_equality_attributes() -> List[str]:
         """Return a list of attributes values that determine if instances are equal."""
-        return ["name", "description", "default_value", "prefix", "position"]
+        # NOTE: We treat name differently
+        return ["description", "default_value", "prefix", "position"]
 
     def is_equal_to(self, other) -> bool:
         """Return if attributes that cause a change in the parameter, are the same."""
+        if self.name_set_by_user != other.name_set_by_user or (self.name_set_by_user and self.name != other.name):
+            return False
         return all(getattr(self, a) == getattr(other, a) for a in self._get_equality_attributes())
 
     def to_argv(self, quote_string: bool = True) -> List[Any]:
@@ -193,6 +202,7 @@ class CommandParameter(CommandParameterBase):
         description: str = None,
         id: str,
         name: str = None,
+        name_set_by_user: bool = False,
         position: Optional[int] = None,
         prefix: str = None,
         derived_from: str = None,
@@ -203,6 +213,7 @@ class CommandParameter(CommandParameterBase):
             description=description,
             id=id,
             name=name,
+            name_set_by_user=name_set_by_user,
             position=position,
             prefix=prefix,
             derived_from=derived_from,
@@ -245,6 +256,7 @@ class CommandInput(CommandParameterBase):
         id: str,
         mapped_to: Optional[MappedIOStream] = None,
         name: Optional[str] = None,
+        name_set_by_user: bool = False,
         position: Optional[int] = None,
         prefix: Optional[str] = None,
         encoding_format: Optional[List[str]] = None,
@@ -258,6 +270,7 @@ class CommandInput(CommandParameterBase):
             description=description,
             id=id,
             name=name,
+            name_set_by_user=name_set_by_user,
             position=position,
             prefix=prefix,
             derived_from=derived_from,
@@ -323,6 +336,7 @@ class CommandOutput(CommandParameterBase):
         id: str,
         mapped_to: Optional[MappedIOStream] = None,
         name: Optional[str] = None,
+        name_set_by_user: bool = False,
         position: Optional[int] = None,
         prefix: Optional[str] = None,
         encoding_format: Optional[List[str]] = None,
@@ -336,6 +350,7 @@ class CommandOutput(CommandParameterBase):
             description=description,
             id=id,
             name=name,
+            name_set_by_user=name_set_by_user,
             position=position,
             prefix=prefix,
             derived_from=derived_from,
@@ -381,7 +396,8 @@ class CommandOutput(CommandParameterBase):
     @staticmethod
     def _get_equality_attributes() -> List[str]:
         """Return a list of attributes values that determine if instances are equal."""
-        return CommandParameterBase._get_equality_attributes() + ["encoding_format", "create_folder"]
+        # NOTE: Don't include ``create_folder`` in comparison since its value is state-dependent
+        return CommandParameterBase._get_equality_attributes() + ["encoding_format"]
 
     def derive(self, plan_id: str) -> "CommandOutput":
         """Create a new ``CommandOutput`` that is derived from self."""
@@ -400,10 +416,18 @@ class ParameterMapping(CommandParameterBase):
         description: Optional[str] = None,
         id: str,
         name: Optional[str] = None,
+        name_set_by_user: bool = False,
         mapped_parameters: List[CommandParameterBase],
         **kwargs,
     ):
-        super().__init__(default_value=default_value, description=description, id=id, name=name, **kwargs)
+        super().__init__(
+            default_value=default_value,
+            description=description,
+            id=id,
+            name=name,
+            name_set_by_user=name_set_by_user,
+            **kwargs,
+        )
 
         self.mapped_parameters: List[CommandParameterBase] = mapped_parameters
 
