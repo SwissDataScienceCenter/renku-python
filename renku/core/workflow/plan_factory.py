@@ -127,7 +127,7 @@ class PlanFactory:
         self.annotations: List[Dict[str, Any]] = []
         self.existing_directories: Set[str] = set()
 
-        self.add_inputs_and_parameters(*detected_arguments)
+        self.add_inputs_and_parameters(detected_arguments)
 
     def split_command_and_args(self):
         """Return tuple with command and args from command line arguments."""
@@ -168,10 +168,10 @@ class PlanFactory:
 
         return None
 
-    def add_inputs_and_parameters(self, *arguments):
+    def add_inputs_and_parameters(self, arguments: List[str]):
         """Yield command input parameters."""
         position = 0
-        prefix = None
+        prefix: Optional[str] = None
 
         output_streams = {getattr(self, stream_name) for stream_name in ("stdout", "stderr")}
 
@@ -185,9 +185,9 @@ class PlanFactory:
 
             if argument.startswith("--"):
                 if "=" in argument:
-                    prefix, default = argument.split("=", 1)
+                    prefix, value = argument.split("=", 1)
                     prefix += "="
-                    default, type = self.guess_type(default, ignore_filenames=output_streams)
+                    default, type = self.guess_type(value, ignore_filenames=output_streams)
 
                     position += 1
                     if type in PATH_OBJECTS:
@@ -207,9 +207,9 @@ class PlanFactory:
             elif argument.startswith("-"):
                 if len(argument) > 2:
                     if "=" in argument:
-                        prefix, default = argument.split("=", 1)
+                        prefix, value = argument.split("=", 1)
                         prefix += "="
-                        default, type = self.guess_type(default, ignore_filenames=output_streams)
+                        default, type = self.guess_type(value, ignore_filenames=output_streams)
                     else:
                         # possibly a flag with value
                         prefix = argument[0:2]

@@ -116,7 +116,7 @@ class GitMerger:
                 # NOTE: cleanup worktree
                 try:
                     repository.remove_worktree(worktree_path)
-                except Exception:
+                except Exception:  # nosec
                     pass
                 raise
 
@@ -126,7 +126,7 @@ class GitMerger:
             raise errors.MetadataMergeError(f"Cannot merge {local} and {remote}: disparate types.")
         if isinstance(local, (BTree, Index, Bucket)):
             return self.merge_btrees(local, remote)
-        elif isinstance(local, TreeSet):
+        elif isinstance(local, TreeSet):  # type: ignore[unreachable]
             return self.merge_treesets(local, remote)
         elif isinstance(local, Catalog):
             return self.merge_catalogs(local, remote)
