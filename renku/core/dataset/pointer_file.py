@@ -28,7 +28,7 @@ from renku.domain_model.project_context import project_context
 from renku.infrastructure.repository import Repository
 
 
-def create_pointer_file(target: Union[str, Path], checksum: str = None):
+def create_pointer_file(target: Union[str, Path], checksum: Optional[str] = None):
     """Create a new pointer file."""
     target = Path(target).resolve()
 
@@ -87,7 +87,7 @@ def update_external_file(path: Union[Path, str], checksum: Optional[str]):
     create_external_file(target=target, path=absolute_path, checksum=checksum)
 
 
-def create_external_file(target: Path, path: Union[Path, str], checksum: str = None):
+def create_external_file(target: Path, path: Union[Path, str], checksum: Optional[str] = None):
     """Create a new external file."""
     try:
         pointer_file = create_pointer_file(target=target, checksum=checksum)

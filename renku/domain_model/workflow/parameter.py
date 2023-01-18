@@ -44,7 +44,7 @@ class MappedIOStream:
 
     STREAMS = ["stdin", "stdout", "stderr"]
 
-    def __init__(self, *, id: str = None, stream_type: str):
+    def __init__(self, *, id: Optional[str] = None, stream_type: str):
         assert stream_type in MappedIOStream.STREAMS
 
         self.id: str = id or MappedIOStream.generate_id(stream_type)
@@ -199,14 +199,14 @@ class CommandParameter(CommandParameterBase):
         self,
         *,
         default_value: Any = None,
-        description: str = None,
+        description: Optional[str] = None,
         id: str,
-        name: str = None,
+        name: Optional[str] = None,
         name_set_by_user: bool = False,
         position: Optional[int] = None,
-        prefix: str = None,
-        derived_from: str = None,
-        postfix: str = None,
+        prefix: Optional[str] = None,
+        derived_from: Optional[str] = None,
+        postfix: Optional[str] = None,
     ):
         super().__init__(
             default_value=default_value,
@@ -365,7 +365,7 @@ class CommandOutput(CommandParameterBase):
 
     @staticmethod
     def generate_id(
-        plan_id: str, position: Optional[int] = None, postfix: str = None, name: Optional[str] = None
+        plan_id: str, position: Optional[int] = None, postfix: Optional[str] = None, name: Optional[str] = None
     ) -> str:
         """Generate an id for CommandOutput."""
         return CommandParameterBase._generate_id(

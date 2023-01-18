@@ -71,7 +71,7 @@ jobs:
           python -m pip install coveralls poetry poetry-dynamic-versioning[plugin] wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
           python -c "import pydocstyle;print(pydocstyle.__file__)"
           echo "${{ env.pythonLocation }}"
       - name: Install renku into cache
@@ -79,7 +79,7 @@ jobs:
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku Bot"
@@ -123,14 +123,14 @@ jobs:
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
           poetry self add "poetry-dynamic-versioning[plugin]"
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku Bot"
@@ -168,13 +168,13 @@ jobs:
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku Bot"
@@ -209,13 +209,13 @@ jobs:
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Build Package
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -258,13 +258,13 @@ jobs:
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku Bot"
@@ -329,13 +329,13 @@ jobs:
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku Bot"
@@ -406,13 +406,13 @@ jobs:
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku Bot"
@@ -483,13 +483,13 @@ jobs:
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku Bot"
@@ -546,7 +546,7 @@ jobs:
           python -m pip install wheel poetry
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
@@ -584,7 +584,7 @@ jobs:
           python -m pip install wheel poetry
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
@@ -629,7 +629,7 @@ jobs:
           python -m pip install wheel poetry
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
@@ -673,7 +673,7 @@ jobs:
           python -m pip install wheel poetry
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
@@ -719,13 +719,13 @@ jobs:
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku Bot"
@@ -816,13 +816,13 @@ jobs:
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku Bot"
@@ -901,7 +901,7 @@ jobs:
           python -m pip install wheel poetry
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
           brew install rclone osxfuse
@@ -952,7 +952,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install poetry poetry-lock-package twine
           poetry self add "poetry-dynamic-versioning[plugin]"
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Tag if necessary
