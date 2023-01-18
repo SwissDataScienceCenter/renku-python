@@ -481,7 +481,7 @@ from renku.command.run import run_workflow_file_command
 from renku.core import errors
 from renku.core.plugin.workflow_file_parser import read_workflow_file
 from renku.core.util.os import is_subpath
-from renku.core.workflow.workflow_file import get_all_workflow_file_inputs_and_outputs
+from renku.core.workflow.workflow_file import get_workflow_file_inputs_and_outputs
 from renku.domain_model.project_context import project_context
 from renku.ui.cli.utils.callback import ClickCallback
 from renku.ui.cli.utils.plugins import available_workflow_providers
@@ -594,6 +594,7 @@ def run(
             communicator.warn("All flags other than '--file', '--verbose', '--dry-run', and 'no-commit' are ignored")
 
         path = command_line[0]
+        steps = command_line[1:]
         no_commit = no_commit or dry_run
 
         # NOTE: Read the workflow file to get list of generated files that should be committed
@@ -603,7 +604,9 @@ def run(
         else:
             workflow_file = read_workflow_file(path=path, parser="renku")
             commit_only = (
-                [path] + get_all_workflow_file_inputs_and_outputs(workflow_file) + [str(project_context.metadata_path)]
+                [path]
+                + get_workflow_file_inputs_and_outputs(workflow_file=workflow_file, steps=steps)
+                + [str(project_context.metadata_path)]
             )
 
         provider = provider or "local"
@@ -612,7 +615,7 @@ def run(
             run_workflow_file_command(no_commit=no_commit, commit_only=commit_only)
             .with_communicator(communicator)
             .build()
-            .execute(path=path, steps=command_line[1:], dry_run=dry_run, workflow_file=workflow_file, provider=provider)
+            .execute(path=path, steps=steps, dry_run=dry_run, workflow_file=workflow_file, provider=provider)
         )
 
         if dry_run:

@@ -108,6 +108,8 @@ def filter_steps(workflow: WorkflowFileCompositePlan, steps: List[str]) -> List[
     return [s for s in workflow.plans if s.unqualified_name in selected_steps]
 
 
-def get_all_workflow_file_inputs_and_outputs(workflow_file: WorkflowFile) -> List[str]:
+def get_workflow_file_inputs_and_outputs(workflow_file: WorkflowFile, steps: List[str]) -> List[str]:
     """Return a list of all inputs and outputs that must be committed."""
-    return [io.path for step in workflow_file.steps for io in itertools.chain(step.inputs, step.outputs) if io.persist]
+    selected_steps = [s for s in workflow_file.steps if s.name in steps] if steps else workflow_file.steps
+
+    return [io.path for step in selected_steps for io in itertools.chain(step.inputs, step.outputs) if io.persist]
