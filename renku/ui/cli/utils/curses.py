@@ -22,6 +22,7 @@ from typing import Dict, List, Optional, Tuple
 
 from renku.command.view_model.text_canvas import Point
 from renku.core import errors
+from renku.core.util import communication
 from renku.domain_model.provenance.activity import Activity
 
 
@@ -59,13 +60,14 @@ class CursesActivityGraphViewer:
         self.current_layer = 0
         self.layer_position = 0
         self.max_layer = len(navigation_data) - 1
-        self.y_pos = 0
-        self.x_pos = 0
+        self.y_pos: int = 0
+        self.x_pos: int = 0
         self.color_cache: Dict[str, int] = {}
         self.activity_overlay: Optional[curses._CursesWindow] = None
         self.help_overlay: Optional[curses._CursesWindow] = None
         self._select_activity()
         self.use_color = use_color
+        self.free_move: bool = False
 
     def _init_curses(self, screen):
         """Initialize curses screen for interactive mode."""
@@ -88,7 +90,16 @@ class CursesActivityGraphViewer:
         text_data_lines = self.text_data.splitlines()
 
         self.content_max_x = max(len(line) for line in text_data_lines)
-        self.content_max_y = len(self.text_data)
+        self.content_max_y = len(text_data_lines)
+
+        int16_max = 32767
+        if self.content_max_y > int16_max or self.content_max_x > int16_max:
+            communication.warn(
+                f"Graph is too large for interactive visualization, cropping to {int16_max} lines/columns."
+            )
+            self.content_max_x = min(self.content_max_x, int16_max)
+            self.content_max_y = min(self.content_max_y, int16_max)
+
         self.content_pad = curses.newpad(self.content_max_y, self.content_max_x)
         for i, l in enumerate(text_data_lines):
             self._addstr_with_color_codes(self.content_pad, i, 0, l)
@@ -281,6 +292,7 @@ class CursesActivityGraphViewer:
             content = (
                 "Navigate using arrow keys\n"
                 "Press <enter> to show activity details\n"
+                "Press <f> to toggle free arrow movement\n"
                 "Press <h> to show/hide this help\n"
                 "Press <q> to exit\n"
             )
@@ -290,7 +302,7 @@ class CursesActivityGraphViewer:
             del self.help_overlay
             self.help_overlay = None
 
-    def _move_viewscreen(self):
+    def _move_viewscreen_to_activity(self):
         """Move viewscreen to include selected activity."""
         if self.activity_start.x - 1 < self.x_pos:
             self.x_pos = max(self.activity_start.x - 1, 0)
@@ -314,17 +326,31 @@ class CursesActivityGraphViewer:
 
             # handle keypress
             if input_char == curses.KEY_DOWN or chr(input_char) == "k":
-                self._change_layer(1)
+                if self.free_move:
+                    self.y_pos = min(self.y_pos + 1, self.content_max_y - self.rows - 1)
+                else:
+                    self._change_layer(1)
             elif input_char == curses.KEY_UP or chr(input_char) == "i":
-                self._change_layer(-1)
+                if self.free_move:
+                    self.y_pos = max(self.y_pos - 1, 0)
+                else:
+                    self._change_layer(-1)
             elif input_char == curses.KEY_RIGHT or chr(input_char) == "l":
-                self._change_layer_position(1)
+                if self.free_move:
+                    self.x_pos = min(self.x_pos + 1, self.content_max_x - self.cols - 1)
+                else:
+                    self._change_layer_position(1)
             elif input_char == curses.KEY_LEFT or chr(input_char) == "j":
-                self._change_layer_position(-1)
+                if self.free_move:
+                    self.x_pos = max(self.x_pos - 1, 0)
+                else:
+                    self._change_layer_position(-1)
             elif input_char == curses.KEY_ENTER or input_char == 10 or input_char == 13:
                 self._update_activity_overlay(screen)
             elif chr(input_char) == "h":
                 self._update_help_overlay(screen)
+            elif chr(input_char) == "f":
+                self.free_move = not self.free_move
             elif input_char < 256 and chr(input_char) == "q":
                 running = False
 
@@ -332,7 +358,8 @@ class CursesActivityGraphViewer:
             self._select_activity()
             self._blink_text(self.content_pad, self.activity_start, self.activity_end, bold=True)
 
-            self._move_viewscreen()
+            if not self.free_move:
+                self._move_viewscreen_to_activity()
 
             self._refresh(screen)
 

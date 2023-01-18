@@ -1193,7 +1193,7 @@ def execute(
         )
 
 
-@workflow.command(no_args_is_help=True)
+@workflow.command()
 @click.option(
     "--from",
     "sources",
@@ -1267,7 +1267,7 @@ def visualize(sources, columns, exclude_files, ascii, revision, format, interact
             max_width = max(node[1].x for layer in navigation_data for node in layer)
             tty_size = shutil.get_terminal_size(fallback=(120, 120))
 
-            if no_pager or not sys.stdout.isatty() or os.system(f"less 2>{os.devnull}") != 0:
+            if no_pager or not sys.stdout.isatty() or os.system(f"less 2>{os.devnull}") != 0:  # nosec
                 use_pager = False
             elif pager:
                 use_pager = True
