@@ -18,6 +18,11 @@
 Changes
 =======
 
+`1.11.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.11.0...v1.11.1>`__ (2023-01-18)
+----------------------------------------------------------------------------------------------------------
+
+Bugfix release fixing Python 3.7 compatibility
+
 `1.11.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.10.0...v1.11.0>`__ (2023-01-17)
 ----------------------------------------------------------------------------------------------------------
 
