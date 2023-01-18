@@ -41,7 +41,7 @@ jobs:
         id: changelog
         run: |
           echo '{"version": "${{ github.event.inputs.version }}"}' > context.json
-          conventional-changelog -r 1 -p angular -c context.json | sed -e '1,${s/^# /## /}' | pandoc --from markdown --to rst | sed -e '/=======\n/r /dev/stdin' -e 's/=======\n/=======\n\n/' -i CHANGES.rst
+          conventional-changelog -r 1 -p angular -c context.json | sed -e '1,${s/^# /## /}' | pandoc --from markdown --to rst | sed -e '/=======/r /dev/stdin' -e '0,/=======/ s/=======/=======\n/' -i CHANGES.rst
           conventional-changelog -r 1 -p angular -c context.json | sed -e '1,${s/^# /## /}' > release_body.md
           rm context.json
       - name: Update Chart version
