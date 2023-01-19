@@ -133,6 +133,11 @@ class StorageProviderInterface(abc.ABC):
     """Interface defining backend storage providers."""
 
     @abc.abstractmethod
+    def get_credentials(self) -> "ProviderCredentials":
+        """Return an instance of provider's credential class."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def get_storage(self, credentials: Optional["ProviderCredentials"] = None) -> "IStorage":
         """Return the storage manager for the provider."""
         raise NotImplementedError
@@ -285,10 +290,18 @@ class ProviderCredentials(abc.ABC, UserDict):
 
         return tuple(get_canonical_key(key) for key in self.get_credentials_names())
 
+    def get_canonical_credentials_names_with_no_value(self) -> Tuple[str, ...]:
+        """Return canonical credentials names that can be used as config keys for keys with no valid value."""
+        from renku.core.util.metadata import get_canonical_key
+
+        return tuple(get_canonical_key(key) for key in self.get_credentials_names_with_no_value())
+
     def get_credentials_section_name(self) -> str:
         """Get section name for storing credentials.
 
         NOTE: This methods should be overridden by subclasses to allow multiple credentials per providers if needed.
+        NOTE: Values used in this method shouldn't depend on ProviderCredentials attributes since we don't have those
+        attributes when reading credentials. It's OK to use ProviderApi attributes.
         """
         return self.provider.name.lower()  # type: ignore
 
@@ -302,7 +315,7 @@ class ProviderCredentials(abc.ABC, UserDict):
             value = read_credentials(section=section, key=key)
             return NO_VALUE if value is None else value
 
-        data = {key: read_and_convert_credentials(key) for key in self.get_canonical_credentials_names()}
+        data = {key: read_and_convert_credentials(key) for key in self.get_canonical_credentials_names_with_no_value()}
         self.data.update(data)
 
         return self.data

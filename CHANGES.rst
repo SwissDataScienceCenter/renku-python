@@ -18,6 +18,26 @@
 Changes
 =======
 
+`2.1.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.0.1...v2.1.0>`__ (2023-01-18)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** check for image in registry before pulling and improve error messages
+   (`#3265 <https://github.com/SwissDataScienceCenter/renku-python/issues/3265>`__)
+   (`d81a487 <https://github.com/SwissDataScienceCenter/renku-python/commit/d81a487b993e0f5ef3e09d8d2a3fc5bc0508d268>`__)
+-  **workflow:** failure when re-/executing a subset of workflow file steps
+   (`#3263 <https://github.com/SwissDataScienceCenter/renku-python/issues/3263>`__)
+   (`7d2094e <https://github.com/SwissDataScienceCenter/renku-python/commit/7d2094e13e951748a7d346ed49c429e120e999bc>`__)
+
+Features
+~~~~~~~~
+
+-  **dataset:** support for azure blob storage
+   (`#3257 <https://github.com/SwissDataScienceCenter/renku-python/issues/3257>`__)
+   (`47fa194 <https://github.com/SwissDataScienceCenter/renku-python/commit/47fa194fd706079946fa756eb41b53272a134319>`__)
+
 `2.0.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.0.0...v2.0.1>`__ (2023-01-04)
 -------------------------------------------------------------------------------------------------------
 

@@ -138,3 +138,8 @@ def mount_external_storage_command(unmount: bool):
     """Command for mounting an external storage."""
     command = unmount_external_storage if unmount else mount_external_storage
     return Command().command(command).lock_dataset().with_database(write=False).require_migration()
+
+
+def unmount_external_storage_command():
+    """Command for unmounting an external storage."""
+    return Command().command(unmount_external_storage).lock_dataset().with_database(write=False).require_migration()
