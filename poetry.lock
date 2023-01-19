@@ -2189,8 +2189,8 @@ requests = ">=2,<3"
 typing-extensions = {version = "*", markers = "python_version < \"3.8\""}
 
 [package.extras]
-all = ["apache-libcloud (>=2.2.1,<3)", "boto (>=2.48.0,<3)", "boto3 (>=1.20.46,<2)", "boto3-stubs[s3,sdb,iam] (==1.24.0)", "celery (>=5.1.0,<6)", "connexion[swagger-ui] (>=2.10.0,<3)", "cwltool (==3.1.20220628170238)", "flask (>=2.0,<3)", "flask-cors (==3.0.10)", "galaxy-tool-util", "google-cloud-storage (>=1.6.0,<2)", "gunicorn (==20.1.0)", "idna (>=2)", "kubernetes (>=12.0.1,<22)", "mypy-boto3-iam (==1.24.0)", "mypy-boto3-s3 (==1.24.0)", "mypy-boto3-sdb (==1.24.0)", "networkx (>=2,<2.8.5)", "pymesos (>=0.3.15,<0.4)", "pynacl (>=1.4.0,<2)", "ruamel.yaml (>=0.15,<0.17.22)", "ruamel.yaml (>=0.15,<=0.17.21)", "ruamel.yaml.clib (>=0.2.6)", "wdlparse (==0.1.0)", "werkzeug (>=2.0,<3)", "wes-service (>=4.0.0,<5)"]
-aws = ["boto (>=2.48.0,<3)", "boto3 (>=1.20.46,<2)", "boto3-stubs[s3,sdb,iam] (==1.24.0)", "mypy-boto3-iam (==1.24.0)", "mypy-boto3-s3 (==1.24.0)", "mypy-boto3-sdb (==1.24.0)"]
+all = ["apache-libcloud (>=2.2.1,<3)", "boto (>=2.48.0,<3)", "boto3 (>=1.20.46,<2)", "boto3-stubs[iam,sdb,s3] (==1.24.0)", "celery (>=5.1.0,<6)", "connexion[swagger-ui] (>=2.10.0,<3)", "cwltool (==3.1.20220628170238)", "flask (>=2.0,<3)", "flask-cors (==3.0.10)", "galaxy-tool-util", "google-cloud-storage (>=1.6.0,<2)", "gunicorn (==20.1.0)", "idna (>=2)", "kubernetes (>=12.0.1,<22)", "mypy-boto3-iam (==1.24.0)", "mypy-boto3-s3 (==1.24.0)", "mypy-boto3-sdb (==1.24.0)", "networkx (>=2,<2.8.5)", "pymesos (>=0.3.15,<0.4)", "pynacl (>=1.4.0,<2)", "ruamel.yaml (>=0.15,<0.17.22)", "ruamel.yaml (>=0.15,<=0.17.21)", "ruamel.yaml.clib (>=0.2.6)", "wdlparse (==0.1.0)", "werkzeug (>=2.0,<3)", "wes-service (>=4.0.0,<5)"]
+aws = ["boto (>=2.48.0,<3)", "boto3 (>=1.20.46,<2)", "boto3-stubs[iam,sdb,s3] (==1.24.0)", "mypy-boto3-iam (==1.24.0)", "mypy-boto3-s3 (==1.24.0)", "mypy-boto3-sdb (==1.24.0)"]
 cwl = ["cwltool (==3.1.20220628170238)", "galaxy-tool-util", "networkx (>=2,<2.8.5)", "ruamel.yaml (>=0.15,<=0.17.21)", "ruamel.yaml.clib (>=0.2.6)"]
 encryption = ["pynacl (>=1.4.0,<2)"]
 google = ["apache-libcloud (>=2.2.1,<3)", "google-cloud-storage (>=1.6.0,<2)"]
@@ -2625,7 +2625,7 @@ cffi = {version = ">=1.11", markers = "platform_python_implementation == \"PyPy\
 cffi = ["cffi (>=1.11)"]
 
 [extras]
-all = ["apispec", "apispec-webframeworks", "black", "circus", "coverage", "fakeredis", "flakehell", "flaky", "flask", "gunicorn", "isort", "marshmallow", "marshmallow-oneofschema", "mypy", "pexpect", "pillow", "plantweb", "poetry-dynamic-versioning", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "python-dotenv", "redis", "renku-sphinx-theme", "responses", "rq", "rq-scheduler", "sentry-sdk", "sphinxcontrib-spelling", "sphinx-click", "sphinx-rtd-theme", "sphinx-tabs", "toil", "types-PyYAML", "types-python-dateutil", "types-redis", "types-requests", "types-tabulate", "walrus"]
+all = ["apispec", "apispec-webframeworks", "black", "circus", "coverage", "fakeredis", "flakehell", "flaky", "flask", "gunicorn", "isort", "marshmallow", "marshmallow-oneofschema", "mypy", "pexpect", "pillow", "plantweb", "poetry-dynamic-versioning", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "python-dotenv", "redis", "renku-sphinx-theme", "responses", "rq", "rq-scheduler", "sentry-sdk", "sphinxcontrib-spelling", "sphinx-click", "sphinx-rtd-theme", "sphinx-tabs", "types-PyYAML", "types-python-dateutil", "types-redis", "types-requests", "types-tabulate", "walrus"]
 docs = ["plantweb", "renku-sphinx-theme", "sphinx-click", "sphinx-rtd-theme", "sphinxcontrib-spelling", "sphinx-tabs"]
 service = ["apispec", "apispec-webframeworks", "circus", "flask", "gunicorn", "marshmallow", "marshmallow-oneofschema", "pillow", "python-dotenv", "redis", "rq", "rq-scheduler", "sentry-sdk", "walrus"]
 tests = ["black", "coverage", "fakeredis", "flakehell", "flaky", "isort", "mypy", "pexpect", "poetry-dynamic-versioning", "pydocstyle", "pyte", "pytest", "pytest-black", "pytest-cache", "pytest-cov", "pytest-flake8", "pytest-mock", "pytest-pep8", "pytest-recording", "pytest-timeout", "pytest-xdist", "responses", "types-PyYAML", "types-python-dateutil", "types-redis", "types-requests", "types-tabulate"]
@@ -2633,7 +2633,7 @@ tests = ["black", "coverage", "fakeredis", "flakehell", "flaky", "isort", "mypy"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.7.1"
-content-hash = "59b01458dbe423a91f68434d06fde234091251714c3d5d899ddce8d7a1b7138c"
+content-hash = "1c935563ff7d2c51d89ae15c5b875d2caa28ab4a87bfcfc8acd72385beddd61a"
 
 [metadata.files]
 addict = [
@@ -3937,6 +3937,13 @@ pyyaml = [
     {file = "PyYAML-6.0-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_12_x86_64.manylinux2010_x86_64.whl", hash = "sha256:f84fbc98b019fef2ee9a1cb3ce93e3187a6df0b2538a651bfb890254ba9f90b5"},
     {file = "PyYAML-6.0-cp310-cp310-win32.whl", hash = "sha256:2cd5df3de48857ed0544b34e2d40e9fac445930039f3cfe4bcc592a1f836d513"},
     {file = "PyYAML-6.0-cp310-cp310-win_amd64.whl", hash = "sha256:daf496c58a8c52083df09b80c860005194014c3698698d1a57cbcfa182142a3a"},
+    {file = "PyYAML-6.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:d4b0ba9512519522b118090257be113b9468d804b19d63c71dbcf4a48fa32358"},
+    {file = "PyYAML-6.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:81957921f441d50af23654aa6c5e5eaf9b06aba7f0a19c18a538dc7ef291c5a1"},
+    {file = "PyYAML-6.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:afa17f5bc4d1b10afd4466fd3a44dc0e245382deca5b3c353d8b757f9e3ecb8d"},
+    {file = "PyYAML-6.0-cp311-cp311-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:dbad0e9d368bb989f4515da330b88a057617d16b6a8245084f1b05400f24609f"},
+    {file = "PyYAML-6.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:432557aa2c09802be39460360ddffd48156e30721f5e8d917f01d31694216782"},
+    {file = "PyYAML-6.0-cp311-cp311-win32.whl", hash = "sha256:bfaef573a63ba8923503d27530362590ff4f576c626d86a9fed95822a8255fd7"},
+    {file = "PyYAML-6.0-cp311-cp311-win_amd64.whl", hash = "sha256:01b45c0191e6d66c470b6cf1b9531a771a83c1c4208272ead47a3ae4f2f603bf"},
     {file = "PyYAML-6.0-cp36-cp36m-macosx_10_9_x86_64.whl", hash = "sha256:897b80890765f037df3403d22bab41627ca8811ae55e9a722fd0392850ec4d86"},
     {file = "PyYAML-6.0-cp36-cp36m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:50602afada6d6cbfad699b0c7bb50d5ccffa7e46a3d738092afddc1f9758427f"},
     {file = "PyYAML-6.0-cp36-cp36m-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:48c346915c114f5fdb3ead70312bd042a953a8ce5c7106d5bfb1a5254e47da92"},
@@ -4217,6 +4224,7 @@ termcolor = [
 ]
 toil = [
     {file = "toil-5.7.1-py3-none-any.whl", hash = "sha256:81041ba89867a3a37e265a5e073c60a6dfe9ed03342fb3a53bb48f7c04ef1b4b"},
+    {file = "toil-5.7.1.tar.gz", hash = "sha256:99a11bb1d138068861013f78f72489ff6ed9af02ceed8a551879a73738c9ebe7"},
 ]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},

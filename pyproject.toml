@@ -251,7 +251,6 @@ all = [
     "sphinx-click",
     "sphinx-rtd-theme",
     "sphinx-tabs",
-    "toil",
     "types-PyYAML",
     "types-python-dateutil",
     "types-redis",
