@@ -99,6 +99,7 @@ class CursesActivityGraphViewer:
             )
             self.content_max_x = min(self.content_max_x, int16_max)
             self.content_max_y = min(self.content_max_y, int16_max)
+            text_data_lines = [line[: self.content_max_x] for line in text_data_lines[self.content_max_y]]
 
         self.content_pad = curses.newpad(self.content_max_y, self.content_max_x)
         for i, l in enumerate(text_data_lines):
