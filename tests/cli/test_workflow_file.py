@@ -82,6 +82,15 @@ def test_run_workflow_file_with_selected_steps(runner, workflow_file_project):
     assert not (workflow_file_project.path / "results" / "output.csv.wc").exists()
 
 
+def test_run_non_existing_workflow_file(runner, workflow_file_project):
+    """Test running a non-existing workflow file gives proper error if file has YAML extension."""
+    result = runner.invoke(cli, ["run", "non-existing-workflow-file.yml"])
+
+    assert 2 == result.exit_code, format_result_exception(result)
+
+    assert "No such file or directory: 'non-existing-workflow-file.yml'" in result.output
+
+
 def test_run_workflow_file_with_no_commit(runner, workflow_file_project):
     """Test running a workflow file with ``--no-commit`` option."""
     commit_before = workflow_file_project.repository.head.commit.hexsha
