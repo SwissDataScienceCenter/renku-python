@@ -18,8 +18,7 @@
 """Interactive session business logic."""
 
 import webbrowser
-from itertools import chain
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from pydantic import validate_arguments
 
@@ -40,7 +39,7 @@ def _safe_get_provider(provider: str) -> ISessionProvider:
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
-def session_list(config_path: Optional[str], provider: Optional[str] = None):
+def session_list(config_path: Optional[str], provider: Optional[str] = None) -> Tuple[List[Session], List[str]]:
     """List interactive sessions."""
 
     def list_sessions(session_provider: ISessionProvider) -> List[Session]:
@@ -56,7 +55,17 @@ def session_list(config_path: Optional[str], provider: Optional[str] = None):
 
     providers = [_safe_get_provider(provider)] if provider else get_supported_session_providers()
 
-    return list(chain(*map(list_sessions, providers)))
+    all_sessions = []
+    error_messages = []
+    for session_provider in sorted(providers, key=lambda p: p.get_name()):
+        try:
+            sessions = list_sessions(session_provider)
+        except errors.RenkuException as e:
+            error_messages.append(f"Cannot get sessions list from '{session_provider.get_name()}': {e}")
+        else:
+            all_sessions.extend(sessions)
+
+    return all_sessions, error_messages
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
@@ -91,11 +100,10 @@ def session_start(
 
         if not provider_api.find_image(image_name, config):
             communication.confirm(
-                f"The container image '{image_name}' does not exists. Would you like to build it?",
-                abort=True,
+                f"The container image '{image_name}' does not exists. Would you like to build it?", abort=True
             )
             with communication.busy(msg=f"Building image {image_name}"):
-                _ = provider_api.build_image(project_context.docker_path.parent, image_name, config)
+                provider_api.build_image(project_context.docker_path.parent, image_name, config)
             communication.echo(f"Image {image_name} built successfully.")
     else:
         if not provider_api.find_image(image_name, config):

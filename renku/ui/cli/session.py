@@ -151,6 +151,7 @@ import click
 from lazy_object_proxy import Proxy
 
 from renku.command.format.session import SESSION_FORMATS
+from renku.command.util import ERROR
 from renku.core import errors
 from renku.ui.cli.utils.callback import ClickCallback
 from renku.ui.cli.utils.plugins import get_supported_session_providers_names
@@ -186,8 +187,12 @@ def list_sessions(provider, config, format):
     """List interactive sessions."""
     from renku.command.session import session_list_command
 
-    result = session_list_command().build().execute(provider=provider, config_path=config)
-    click.echo(SESSION_FORMATS[format](result.output))
+    sessions, error_messages = session_list_command().build().execute(provider=provider, config_path=config).output
+    click.echo(SESSION_FORMATS[format](sessions))
+    if error_messages:
+        click.echo()
+        for message in error_messages:
+            click.echo(ERROR + message)
 
 
 @session.command("start")

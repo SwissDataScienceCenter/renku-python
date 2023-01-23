@@ -63,7 +63,7 @@ class DockerSessionProvider(ISessionProvider):
         port_key = f"{jupyter_port}/tcp"
         if port_key not in ports:
             return list()
-        return map(lambda x: f'http://{x["HostIp"]}:{x["HostPort"]}/?token={auth_token}', ports[port_key])
+        return map(lambda x: f"http://{x['HostIp']}:{x['HostPort']}/?token={auth_token}", ports[port_key])
 
     def _get_docker_containers(self, project_name: str) -> List[docker.models.containers.Container]:
         return self.docker_client().containers.list(filters={"label": f"renku_project={project_name}"})
@@ -84,7 +84,7 @@ class DockerSessionProvider(ISessionProvider):
             except docker.errors.ImageNotFound:
                 try:
                     self.docker_client().images.get_registry_data(image_name)
-                except docker.errors.NotFound:
+                except docker.errors.APIError:
                     return False
             else:
                 return True

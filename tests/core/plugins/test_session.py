@@ -170,11 +170,11 @@ def test_session_list(
 ):
     with patch.multiple(session_provider, session_list=fake_session_list, **provider_patches):
         with with_injection():
+            provider = provider_name if provider_exists else "no_provider"
+
             if not isinstance(result, list) and issubclass(result, Exception):
                 with pytest.raises(result):
-                    session_list(provider=provider_name if provider_exists else "no_provider", config_path=None)
+                    session_list(provider=provider, config_path=None)
             else:
-                assert (
-                    session_list(provider=provider_name if provider_exists else "no_provider", config_path=None)
-                    == result
-                )
+                sessions, _ = session_list(provider=provider, config_path=None)
+                assert sessions == result
