@@ -562,10 +562,10 @@ def run(
             return False
 
         path = Path(command_line[0])
-        if not path.is_file() or not is_subpath(path=path, base=project_context.path):
-            return False
         if path.suffix.lower() in [".yml", ".yaml"] and not os.access(path, os.X_OK):
             return True
+        if not path.is_file() or not is_subpath(path=path, base=project_context.path):
+            return False
 
         try:
             content = read_workflow_file(path=path)
