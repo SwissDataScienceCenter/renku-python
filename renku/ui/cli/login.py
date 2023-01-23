@@ -55,14 +55,23 @@ the command-line or set it once in project's configuration:
     rights of this file to be readable only by you. This token exists only on
     your system and won't be pushed to a remote server.
 
-This command also allows you to log into gitlab server for private repositories.
-You can use this method instead of creating an SSH key. Passing ``--git`` will
+By default, this command also logs you into gitlab server for project's
+repository. You can use this method instead of creating an SSH key. This will
 change the repository's remote URL to an endpoint in the deployment that adds
-authentication to gitlab requests.
+authentication to gitlab requests. Renku warns you each time that the remote
+URL will change. To disable this warning, either pass ``--yes`` to the command
+or set ``show_login_warning`` to ``False`` for the project or globally:
+
+.. code-block:: console
+
+    $ renku config set [--global] show_login_warning False
+
+You can avoid the remote from being changed by passing ``--no-git`` option to
+the login command.
 
 .. note::
 
-    Project's remote URL will be changed when using ``--git`` option. Changes
+    Project's remote URL will be changed when logging in to Renku. Changes
     are undone when logging out from renku in the CLI. Original remote URL will
     be stored in a remote with name ``renku-backup-<remote-name>``.
 
@@ -97,14 +106,14 @@ from renku.ui.cli.utils.callback import ClickCallback
 
 @click.command()
 @click.argument("endpoint", required=False, default=None)
-@click.option("--git", is_flag=True, default=False, help="Log in to gitlab too.")
-@click.option("--yes", is_flag=True, default=False, hidden=True, help="Do not ask for user confirmation.")  # For tests
-def login(endpoint, git, yes):
+@click.option("--no-git", is_flag=True, default=False, help="Don't log in to gitlab.")
+@click.option("--yes", is_flag=True, default=False, help="Do not warn users about remote URL change.")
+def login(endpoint, no_git, yes):
     """Log in to the platform."""
     from renku.command.login import login_command
 
     communicator = ClickCallback()
-    login_command().with_communicator(communicator).build().execute(endpoint=endpoint, git_login=git, yes=yes)
+    login_command().with_communicator(communicator).build().execute(endpoint=endpoint, git_login=not no_git, yes=yes)
     click.secho("Successfully logged in.", fg=color.GREEN)
 
 

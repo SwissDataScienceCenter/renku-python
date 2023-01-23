@@ -86,21 +86,25 @@ the ``renku config`` command:
 +--------------------------------+-------------------------------------+-----------+
 | Name                           | Description                         | Default   |
 +================================+=====================================+===========+
-| ``show_lfs_message``           | Whether to show messages about      | ``True``  |
-|                                | files being added to git LFS or not |           |
-+--------------------------------+-------------------------------------+-----------+
-| ``lfs_threshold``              | Threshold file size below which     | ``100kb`` |
-|                                | files are not added to git LFS      |           |
-+--------------------------------+-------------------------------------+-----------+
 | ``data_directory``             | Path to the data directory          | ``data/`` |
 |                                | (read-only after project creation)  |           |
-+--------------------------------+-------------------------------------+-----------+
-| ``zenodo.access_token``        | Access token for Zenodo API         | ``None``  |
 +--------------------------------+-------------------------------------+-----------+
 | ``dataverse.access_token``     | Access token for Dataverse API      | ``None``  |
 +--------------------------------+-------------------------------------+-----------+
 | ``dataverse.server_url``       | URL for the Dataverse API server    | ``None``  |
 |                                | to use                              |           |
++--------------------------------+-------------------------------------+-----------+
+| ``lfs_threshold``              | Threshold file size below which     | ``100kb`` |
+|                                | files are not added to git LFS      |           |
++--------------------------------+-------------------------------------+-----------+
+| ``show_lfs_message``           | Whether to show messages about      | ``True``  |
+|                                | files being added to git LFS or not |           |
++--------------------------------+-------------------------------------+-----------+
+| ``show_login_warning``         | Whether to warn when logging in to  | ``True``  |
+|                                | Renku inside a project that causes  |           |
+|                                | project's git remote to be changed. |           |
++--------------------------------+-------------------------------------+-----------+
+| ``zenodo.access_token``        | Access token for Zenodo API         | ``None``  |
 +--------------------------------+-------------------------------------+-----------+
 
 See the section on `renku.ini <https://renku.readthedocs.io/en/latest/reference/templates.html#renku>`_
