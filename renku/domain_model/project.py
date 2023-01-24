@@ -48,6 +48,7 @@ class ProjectTemplateMetadata:
     template_source: Optional[str] = None
     template_version: Optional[str] = None
     immutable_template_files: Optional[List[str]] = None
+    ssh_supported: bool = False
 
 
 class Project(persistent.Persistent):

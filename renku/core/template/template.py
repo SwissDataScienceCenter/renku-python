@@ -132,6 +132,7 @@ def copy_template_to_project(
             template_version=rendered_template.template.version,
             immutable_template_files=rendered_template.template.immutable_files.copy(),
             metadata=json.dumps(rendered_template.metadata),
+            ssh_supported=rendered_template.template.ssh_supported,
         )
 
     actions_mapping: Dict[FileAction, Tuple[str, str]] = {

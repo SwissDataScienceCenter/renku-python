@@ -88,6 +88,7 @@ def _template_migration_check():
     Returns:
         Dictionary of template migration status.
     """
+    from renku.core.config import get_value
     from renku.core.template.usecase import check_for_template_update
 
     try:
@@ -95,11 +96,15 @@ def _template_migration_check():
         template_source = project.template_metadata.template_source
         template_ref = project.template_metadata.template_ref
         template_id = project.template_metadata.template_id
+        ssh_supported = project.template_metadata.ssh_supported
     except (ValueError, AttributeError):
         project = None
         template_source = None
         template_ref = None
         template_id = None
+        ssh_supported = False
+
+    ssh_supported = get_value("renku", "ssh_supported") == "true" or ssh_supported
 
     update_available, update_allowed, current_version, new_version = check_for_template_update(project)
 
@@ -111,6 +116,7 @@ def _template_migration_check():
         "template_source": template_source,
         "template_ref": template_ref,
         "template_id": template_id,
+        "ssh_supported": ssh_supported,
     }
 
 
