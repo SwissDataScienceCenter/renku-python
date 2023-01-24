@@ -38,7 +38,9 @@ def get_relative_path_to_cwd(path: Union[Path, str]) -> str:
     return os.path.relpath(absolute_path, os.getcwd())
 
 
-def get_absolute_path(path: Union[Path, str], base: Union[Path, str] = None, resolve_symlinks: bool = False) -> str:
+def get_absolute_path(
+    path: Union[Path, str], base: Optional[Union[Path, str]] = None, resolve_symlinks: bool = False
+) -> str:
     """Return absolute normalized path."""
     if base is not None:
         base = Path(base).resolve() if resolve_symlinks else os.path.abspath(base)
@@ -251,7 +253,7 @@ def hash_file_descriptor(file: BinaryIO, hash_type: str = "sha256") -> str:
     hash_type = hash_type.lower()
     assert hash_type in ("sha256", "md5")
 
-    hash_value = hashlib.sha256() if hash_type == "sha256" else hashlib.md5()
+    hash_value = hashlib.sha256() if hash_type == "sha256" else hashlib.md5()  # nosec
 
     for byte_block in iter(lambda: file.read(BLOCK_SIZE), b""):
         hash_value.update(byte_block)

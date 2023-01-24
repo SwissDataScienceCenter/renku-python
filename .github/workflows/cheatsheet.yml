@@ -41,7 +41,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.cache.outputs.cache-hit == 'true'
         run: |

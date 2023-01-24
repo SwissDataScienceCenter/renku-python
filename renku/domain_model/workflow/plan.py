@@ -182,7 +182,7 @@ class Plan(AbstractPlan):
         date_modified: Optional[datetime] = None,
         derived_from: Optional[str] = None,
         description: Optional[str] = None,
-        hidden_inputs: List[HiddenInput] = None,
+        hidden_inputs: Optional[List[HiddenInput]] = None,
         id: str,
         inputs: Optional[List[CommandInput]] = None,
         date_removed: Optional[datetime] = None,

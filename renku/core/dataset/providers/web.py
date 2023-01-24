@@ -21,7 +21,7 @@ import concurrent.futures
 import os
 import urllib
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple
 from urllib.parse import urlparse
 
 from renku.core import errors
@@ -55,7 +55,7 @@ class WebProvider(ProviderApi, AddProviderInterface):
         destination: Path,
         *,
         extract: bool = False,
-        filename: str = None,
+        filename: Optional[str] = None,
         multiple: bool = False,
         **kwargs,
     ) -> List["DatasetAddMetadata"]:
@@ -109,7 +109,7 @@ def download_file(
     uri: str,
     destination: Path,
     extract: bool = False,
-    filename: str = None,
+    filename: Optional[str] = None,
     multiple: bool = False,
     delay: float = 0,
 ) -> List["DatasetAddMetadata"]:

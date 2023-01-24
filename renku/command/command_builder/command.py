@@ -469,7 +469,7 @@ class Command:
         return Communicator(self, communicator)
 
     @check_finalized
-    def with_database(self, write: bool = False, path: str = None, create: bool = False) -> "Command":
+    def with_database(self, write: bool = False, path: Optional[str] = None, create: bool = False) -> "Command":
         """Provide an object database connection.
 
         Args:

@@ -18,7 +18,7 @@
 """Renku exceptions."""
 
 from pathlib import Path
-from typing import List, Union
+from typing import List, Optional, Union
 
 import click
 from packaging.version import Version
@@ -84,9 +84,13 @@ class ParseError(RenkuException):
 class IncompatibleParametersError(ParameterError):
     """Raise in case of incompatible parameters/flags."""
 
-    def __init__(self, a: str = None, b: str = None):
+    def __init__(self, first_param: Optional[str] = None, second_param: Optional[str] = None):
         """Build a custom message."""
-        message = f"{a} is incompatible with {b}" if a is not None and b is not None else "Incompatible parameters"
+        message = (
+            f"{first_param} is incompatible with {second_param}"
+            if first_param is not None and second_param is not None
+            else "Incompatible parameters"
+        )
         super().__init__(message)
 
 
@@ -622,7 +626,7 @@ class ParameterLinkError(RenkuException):
 class GraphCycleError(RenkuException):
     """Raised when a parameter reference cannot be resolved to a parameter."""
 
-    def __init__(self, cycles: List[List[str]], message: str = None):
+    def __init__(self, cycles: List[List[str]], message: Optional[str] = None):
         """Embed exception and build a custom message."""
         if message:
             super().__init__(message)
@@ -699,7 +703,7 @@ class MinimumVersionError(RenkuException):
 class DatasetProviderNotFound(DatasetException, ParameterError):
     """Raised when a dataset provider cannot be found based on a URI or a provider name."""
 
-    def __init__(self, *, name: str = None, uri: str = None, message: str = None):
+    def __init__(self, *, name: Optional[str] = None, uri: Optional[str] = None, message: Optional[str] = None):
         if message is None:
             if name:
                 message = f"Provider '{name}' not found"
@@ -725,7 +729,7 @@ class RCloneException(DatasetException):
 class StorageObjectNotFound(RCloneException):
     """Raised when a file or directory cannot be found in the remote storage."""
 
-    def __init__(self, error: str = None):
+    def __init__(self, error: Optional[str] = None):
         message = "Cannot find file/directory"
         if error:
             message = f"{message}: {error}"
