@@ -61,7 +61,7 @@ def dummy_session_provider():
             disk_request: Optional[str] = None,
             gpu_request: Optional[str] = None,
         ) -> Tuple[str, str]:
-            name = uuid4().hex
+            name = f"session-random-{uuid4().hex}-name"
             self.sessions.append(name)
             return name, ""
 

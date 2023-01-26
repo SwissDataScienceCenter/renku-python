@@ -17,6 +17,7 @@
 # limitations under the License.
 """Test ``service`` command."""
 
+import re
 from unittest.mock import MagicMock
 
 from renku.ui.cli import cli
@@ -34,9 +35,9 @@ def test_session_up_down(runner, project, dummy_session_provider, monkeypatch):
     for _ in range(3):
         result = runner.invoke(cli, ["session", "start", "-p", "dummy"])
         assert 0 == result.exit_code, format_result_exception(result)
-        assert "successfully started" in result.output
+        assert "session-random-" in result.output
 
-    session_id = result.output.splitlines()[-1]
+    session_id = re.findall(r".*(session-random-.*-name).*", result.output, re.MULTILINE)[0]
 
     result = runner.invoke(cli, ["session", "ls", "-p", "dummy"])
     assert 0 == result.exit_code, format_result_exception(result)
