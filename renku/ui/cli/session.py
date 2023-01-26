@@ -223,21 +223,15 @@ def start(provider, config, image, cpu, disk, gpu, memory):
     from renku.command.session import session_start_command
 
     communicator = ClickCallback()
-    result = (
-        session_start_command()
-        .with_communicator(communicator)
-        .build()
-        .execute(
-            provider=provider,
-            config_path=config,
-            image_name=image,
-            cpu_request=cpu,
-            mem_request=memory,
-            disk_request=disk,
-            gpu_request=gpu,
-        )
+    session_start_command().with_communicator(communicator).build().execute(
+        provider=provider,
+        config_path=config,
+        image_name=image,
+        cpu_request=cpu,
+        mem_request=memory,
+        disk_request=disk,
+        gpu_request=gpu,
     )
-    click.echo(result.output)
 
 
 @session.command("stop")

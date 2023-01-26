@@ -57,7 +57,7 @@ def session_list(config_path: Optional[str], provider: Optional[str] = None) -> 
 
     all_sessions = []
     error_messages = []
-    for session_provider in sorted(providers, key=lambda p: p.get_name()):
+    for session_provider in sorted(providers, key=lambda p: p.priority):
         try:
             sessions = list_sessions(session_provider)
         except errors.RenkuException as e:
@@ -123,7 +123,7 @@ def session_start(
     gpu = gpu_request or get_value("interactive", "gpu_request")
 
     with communication.busy(msg="Waiting for session to start..."):
-        session_name = provider_api.session_start(
+        provider_message, warning_message = provider_api.session_start(
             config=config,
             project_name=project_name,
             image_name=image_name,
@@ -132,8 +132,10 @@ def session_start(
             disk_request=disk_limit,
             gpu_request=gpu,
         )
-    communication.echo(msg=f"Session {session_name} successfully started")
-    return session_name
+
+    if warning_message:
+        communication.warn(warning_message)
+    communication.echo(provider_message)
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
@@ -155,8 +157,21 @@ def session_stop(session_name: Optional[str], stop_all: bool = False, provider: 
 
     providers = [_safe_get_provider(provider)] if provider else get_supported_session_providers()
 
+    is_stopped = False
+    error_messages = []
     with communication.busy(msg=f"Waiting for {session_detail} to stop..."):
-        is_stopped = any(map(stop_sessions, providers))
+        for session_provider in sorted(providers, key=lambda p: p.priority):
+            try:
+                is_stopped = stop_sessions(session_provider)
+            except errors.RenkuException as e:
+                error_messages.append(f"Cannot stop sessions in provider '{session_provider.get_name()}': {e}")
+
+            if is_stopped and session_name:
+                break
+
+    if error_messages:
+        for message in error_messages:
+            communication.error(message)
 
     if not is_stopped:
         if not session_name:

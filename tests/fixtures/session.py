@@ -17,7 +17,7 @@
 # limitations under the License.
 """Renku session fixtures."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import pytest
 
@@ -60,10 +60,10 @@ def dummy_session_provider():
             mem_request: Optional[str] = None,
             disk_request: Optional[str] = None,
             gpu_request: Optional[str] = None,
-        ) -> str:
+        ) -> Tuple[str, str]:
             name = uuid4().hex
             self.sessions.append(name)
-            return name
+            return name, ""
 
         def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> bool:
             if stop_all:

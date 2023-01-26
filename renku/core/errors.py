@@ -656,6 +656,10 @@ class DockerError(RenkuException):
         super().__init__(f"Docker failed: {reason}")
 
 
+class DockerAPIError(DockerError):
+    """Raised when error has returned from the Docker API."""
+
+
 class SessionStartError(RenkuException):
     """Raised when an error occurs trying to start sessions."""
 

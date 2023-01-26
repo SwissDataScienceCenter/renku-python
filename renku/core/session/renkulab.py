@@ -24,10 +24,12 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from renku.core import errors
 from renku.core.config import get_value, set_value
+from renku.core.login import read_renku_token
 from renku.core.plugin import hookimpl
 from renku.core.session.utils import get_renku_project_name, get_renku_url
 from renku.core.util import communication, requests
 from renku.core.util.git import get_remote
+from renku.core.util.jwt import is_token_expired
 from renku.domain_model.project_context import project_context
 from renku.domain_model.session import ISessionProvider, Session
 
@@ -39,7 +41,7 @@ def _get_token(renku_url: str) -> Tuple[str, bool]:
     Otherwise the anonymous user token will be used. Returns the token and a flag to
     indicate if the user is registered (true) or anonymous(false).
     """
-    registered_token = get_value(section="http", key=urllib.parse.urlparse(renku_url).netloc)
+    registered_token = read_renku_token(renku_url)
     if not registered_token:
         return _get_anonymous_credentials(renku_url=renku_url), False
     return registered_token, True
@@ -107,6 +109,10 @@ class RenkulabSessionProvider(ISessionProvider):
         token, _ = _get_token(renku_url=self._renku_url())
         if token is None:
             raise errors.AuthenticationError("Please run the renku login command to authenticate with Renku.")
+        elif is_token_expired(token):
+            raise errors.AuthenticationError(
+                "Authentication token is expired: Please run the renku login command to authenticate with Renku."
+            )
         return token
 
     def _is_user_registered(self) -> bool:
@@ -203,10 +209,15 @@ class RenkulabSessionProvider(ISessionProvider):
 
         return remote.head
 
-    @staticmethod
-    def _send_renku_request(req_type: str, *args, **kwargs):
+    def _send_renku_request(self, req_type: str, *args, **kwargs):
         res = getattr(requests, req_type)(*args, **kwargs)
         if res.status_code == 401:
+            # NOTE: Check if logged in to KC but not the Renku UI
+            token = read_renku_token(endpoint=self._renku_url())
+            if token and not is_token_expired(token):
+                raise errors.AuthenticationError(
+                    f"Please log in the Renku UI at {self._renku_url()} to complete authentication with Renku"
+                )
             raise errors.AuthenticationError(
                 "Please run the renku login command to authenticate with Renku or to refresh your expired credentials."
             )
@@ -282,11 +293,11 @@ class RenkulabSessionProvider(ISessionProvider):
         mem_request: Optional[str] = None,
         disk_request: Optional[str] = None,
         gpu_request: Optional[str] = None,
-    ) -> str:
+    ) -> Tuple[str, str]:
         """Creates an interactive session.
 
         Returns:
-            str: a unique id for the created interactive session.
+            Tuple[str, str]: Provider message and a possible warning message.
         """
         repository = project_context.repository
 
@@ -333,7 +344,7 @@ class RenkulabSessionProvider(ISessionProvider):
         if res.status_code in [200, 201]:
             session_name = res.json()["name"]
             self._wait_for_session_status(session_name, "running")
-            return session_name
+            return f"Session {session_name} successfully started", ""
         raise errors.RenkulabSessionError("Cannot start session via the notebook service because " + res.text)
 
     def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> bool:

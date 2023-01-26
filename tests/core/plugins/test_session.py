@@ -38,7 +38,7 @@ def fake_start(
     disk_request,
     gpu_request,
 ):
-    return "0xdeadbeef"
+    return "0xdeadbeef", ""
 
 
 def fake_stop(self, project_name, session_name, stop_all):
@@ -89,6 +89,7 @@ def test_session_start(
     parameters,
     result,
     with_injection,
+    mock_communication,
 ):
     with patch.multiple(
         session_provider,
@@ -108,7 +109,8 @@ def test_session_start(
                 with pytest.raises(result):
                     session_start(provider=provider_name, config_path=None, **parameters)
             else:
-                assert session_start(provider=provider_name, config_path=None, **parameters) == result
+                session_start(provider=provider_name, config_path=None, **parameters)
+                assert result in mock_communication.stdout_lines
 
 
 @pytest.mark.parametrize(
