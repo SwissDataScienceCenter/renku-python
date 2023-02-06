@@ -18,12 +18,14 @@
 """Classes to represent inputs/outputs/parameters in a Plan."""
 
 import copy
+import shlex
 import urllib
 from abc import abstractmethod
 from pathlib import Path, PurePosixPath
 from typing import Any, Iterator, List, Optional
 from uuid import uuid4
 
+from renku.core import errors
 from renku.core.errors import ParameterError
 from renku.core.util.urls import get_slug
 
@@ -42,11 +44,20 @@ class MappedIOStream:
 
     STREAMS = ["stdin", "stdout", "stderr"]
 
-    def __init__(self, *, id: str = None, stream_type: str):
+    def __init__(self, *, id: Optional[str] = None, stream_type: str):
         assert stream_type in MappedIOStream.STREAMS
 
         self.id: str = id or MappedIOStream.generate_id(stream_type)
         self.stream_type = stream_type
+
+    @classmethod
+    def from_str(cls, stream_type: str) -> "MappedIOStream":
+        """Create an instance from the given stream type string."""
+        if stream_type not in MappedIOStream.STREAMS:
+            streams = ", ".join(MappedIOStream.STREAMS)
+            raise errors.ParameterError(f"'{stream_type}' must be one of {streams}")
+
+        return cls(stream_type=stream_type)
 
     @staticmethod
     def generate_id(stream_type: str) -> str:
@@ -57,6 +68,10 @@ class MappedIOStream:
 class CommandParameterBase:
     """Represents a parameter for a Plan."""
 
+    # NOTE: This attribute is only used by workflow-file machinery to check if plans are the same or not. We need it,
+    # because names are generated randomly when not set by users which make the comparison return incorrect result.
+    name_set_by_user: bool = False
+
     def __init__(
         self,
         *,
@@ -64,6 +79,7 @@ class CommandParameterBase:
         description: Optional[str],
         id: str,
         name: Optional[str],
+        name_set_by_user: bool = False,
         position: Optional[int] = None,
         prefix: Optional[str] = None,
         derived_from: Optional[str] = None,
@@ -77,7 +93,9 @@ class CommandParameterBase:
         self._v_actual_value = None
         self._v_actual_value_set: bool = False
         self.derived_from: Optional[str] = derived_from
+        # NOTE: ``postfix`` is used only to generate a nicer ``id`` for a parameter. Its value isn't used anywhere else.
         self.postfix: Optional[str] = postfix
+        self.name_set_by_user: bool = name_set_by_user
 
         if name is not None:
             self.name: str = name
@@ -85,14 +103,28 @@ class CommandParameterBase:
             self.name = self._get_default_name()
 
     @staticmethod
-    def _generate_id(plan_id: str, parameter_type: str, position: Optional[int], postfix: Optional[str] = None) -> str:
+    def _generate_id(
+        plan_id: str,
+        parameter_type: str,
+        position: Optional[int],
+        postfix: Optional[str] = None,
+        name: Optional[str] = None,
+    ) -> str:
         """Generate an id for parameters."""
         # /plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/1
         # /plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/stdin
-        # /plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/dda5fcbf00984917be46dc12f5f7b675
-        position_str = str(position) if position is not None else uuid4().hex
-        postfix = urllib.parse.quote(postfix) if postfix else position_str
-        return f"{plan_id}/{parameter_type}/{postfix}"
+        # /plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/data.csv
+        # /plans/723fd784-9347-4081-84de-a6dbb067545b/inputs/dda5fc0f00984917be46dc12f5f7b675
+        id = uuid4().hex
+
+        if postfix:
+            id = urllib.parse.quote(postfix)
+        elif position is not None:
+            id = str(position)
+        elif name:
+            id = name
+
+        return f"{plan_id}/{parameter_type}/{id}"
 
     def __repr__(self):
         return f"<{self.__class__.__name__} '{self.actual_value}'>"
@@ -103,12 +135,24 @@ class CommandParameterBase:
         assert self.id, "Id is not set"
         return PurePosixPath(self.id).name
 
-    def to_argv(self) -> List[Any]:
+    @staticmethod
+    def _get_equality_attributes() -> List[str]:
+        """Return a list of attributes values that determine if instances are equal."""
+        # NOTE: We treat name differently
+        return ["description", "default_value", "prefix", "position"]
+
+    def is_equal_to(self, other) -> bool:
+        """Return if attributes that cause a change in the parameter, are the same."""
+        if self.name_set_by_user != other.name_set_by_user or (self.name_set_by_user and self.name != other.name):
+            return False
+        return all(getattr(self, a) == getattr(other, a) for a in self._get_equality_attributes())
+
+    def to_argv(self, quote_string: bool = True) -> List[Any]:
         """String representation (sames as cmd argument)."""
         value = self.actual_value
 
-        if isinstance(value, str) and " " in value:
-            value = f'"{value}"'
+        if isinstance(value, str) and quote_string and " " in value:
+            value = shlex.quote(value)
 
         if self.prefix:
             if self.prefix.endswith(" "):
@@ -137,9 +181,7 @@ class CommandParameterBase:
         return getattr(self, "_v_actual_value_set", False)
 
     def _generate_name(self, base) -> str:
-        name = get_slug(self.prefix.strip(" -="), invalid_chars=["."]) if self.prefix else base
-        position = self.position or uuid4().hex[:RANDOM_ID_LENGTH]
-        return f"{name}-{position}"
+        return generate_parameter_name(parameter=self, kind=base)
 
     def _get_default_name(self) -> str:
         raise NotImplementedError
@@ -157,19 +199,21 @@ class CommandParameter(CommandParameterBase):
         self,
         *,
         default_value: Any = None,
-        description: str = None,
+        description: Optional[str] = None,
         id: str,
-        name: str = None,
+        name: Optional[str] = None,
+        name_set_by_user: bool = False,
         position: Optional[int] = None,
-        prefix: str = None,
-        derived_from: str = None,
-        postfix: str = None,
+        prefix: Optional[str] = None,
+        derived_from: Optional[str] = None,
+        postfix: Optional[str] = None,
     ):
         super().__init__(
             default_value=default_value,
             description=description,
             id=id,
             name=name,
+            name_set_by_user=name_set_by_user,
             position=position,
             prefix=prefix,
             derived_from=derived_from,
@@ -177,10 +221,12 @@ class CommandParameter(CommandParameterBase):
         )
 
     @staticmethod
-    def generate_id(plan_id: str, position: Optional[int] = None, postfix: str = None) -> str:
+    def generate_id(
+        plan_id: str, position: Optional[int] = None, postfix: Optional[str] = None, name: Optional[str] = None
+    ) -> str:
         """Generate an id for CommandParameter."""
         return CommandParameterBase._generate_id(
-            plan_id, parameter_type="parameters", position=position, postfix=postfix
+            plan_id, parameter_type="parameters", position=position, postfix=postfix, name=name
         )
 
     def __repr__(self):
@@ -210,6 +256,7 @@ class CommandInput(CommandParameterBase):
         id: str,
         mapped_to: Optional[MappedIOStream] = None,
         name: Optional[str] = None,
+        name_set_by_user: bool = False,
         position: Optional[int] = None,
         prefix: Optional[str] = None,
         encoding_format: Optional[List[str]] = None,
@@ -223,6 +270,7 @@ class CommandInput(CommandParameterBase):
             description=description,
             id=id,
             name=name,
+            name_set_by_user=name_set_by_user,
             position=position,
             prefix=prefix,
             derived_from=derived_from,
@@ -235,22 +283,45 @@ class CommandInput(CommandParameterBase):
         self.encoding_format: Optional[List[str]] = encoding_format
 
     @staticmethod
-    def generate_id(plan_id: str, position: Optional[int] = None, postfix: Optional[str] = None) -> str:
+    def generate_id(
+        plan_id: str, position: Optional[int] = None, postfix: Optional[str] = None, name: Optional[str] = None
+    ) -> str:
         """Generate an id for CommandInput."""
-        return CommandParameterBase._generate_id(plan_id, parameter_type="inputs", position=position, postfix=postfix)
+        return CommandParameterBase._generate_id(
+            plan_id, parameter_type="inputs", position=position, postfix=postfix, name=name
+        )
 
     def to_stream_representation(self) -> str:
         """Input stream representation."""
-        return f"< {self.default_value}" if self.mapped_to else ""
+        return f"< {shlex.quote(self.actual_value)}" if self.mapped_to else ""
 
     def _get_default_name(self) -> str:
         return self._generate_name(base="input")
+
+    def is_equal_to(self, other) -> bool:
+        """Return if attributes that cause a change in the parameter, are the same."""
+        if self.mapped_to:
+            if not other.mapped_to or self.mapped_to.stream_type != other.mapped_to.stream_type:
+                return False
+        elif other.mapped_to:
+            return False
+
+        return super().is_equal_to(other)
+
+    @staticmethod
+    def _get_equality_attributes() -> List[str]:
+        """Return a list of attributes values that determine if instances are equal."""
+        return CommandParameterBase._get_equality_attributes() + ["encoding_format"]
 
     def derive(self, plan_id: str) -> "CommandInput":
         """Create a new ``CommandInput`` that is derived from self."""
         parameter = copy.copy(self)
         parameter.id = CommandInput.generate_id(plan_id=plan_id, position=self.position, postfix=self.postfix)
         return parameter
+
+
+class HiddenInput(CommandInput):
+    """An input to a command that is added by Renku and should be hidden from users."""
 
 
 class CommandOutput(CommandParameterBase):
@@ -265,6 +336,7 @@ class CommandOutput(CommandParameterBase):
         id: str,
         mapped_to: Optional[MappedIOStream] = None,
         name: Optional[str] = None,
+        name_set_by_user: bool = False,
         position: Optional[int] = None,
         prefix: Optional[str] = None,
         encoding_format: Optional[List[str]] = None,
@@ -278,6 +350,7 @@ class CommandOutput(CommandParameterBase):
             description=description,
             id=id,
             name=name,
+            name_set_by_user=name_set_by_user,
             position=position,
             prefix=prefix,
             derived_from=derived_from,
@@ -291,19 +364,40 @@ class CommandOutput(CommandParameterBase):
         self.encoding_format: Optional[List[str]] = encoding_format
 
     @staticmethod
-    def generate_id(plan_id: str, position: Optional[int] = None, postfix: str = None) -> str:
+    def generate_id(
+        plan_id: str, position: Optional[int] = None, postfix: Optional[str] = None, name: Optional[str] = None
+    ) -> str:
         """Generate an id for CommandOutput."""
-        return CommandParameterBase._generate_id(plan_id, parameter_type="outputs", position=position, postfix=postfix)
+        return CommandParameterBase._generate_id(
+            plan_id, parameter_type="outputs", position=position, postfix=postfix, name=name
+        )
 
     def to_stream_representation(self) -> str:
         """Input stream representation."""
         if not self.mapped_to:
             return ""
 
-        return f"> {self.default_value}" if self.mapped_to.stream_type == "stdout" else f" 2> {self.default_value}"
+        value = shlex.quote(self.actual_value)
+        return f"> {value}" if self.mapped_to.stream_type == "stdout" else f" 2> {value}"
 
     def _get_default_name(self) -> str:
         return self._generate_name(base="output")
+
+    def is_equal_to(self, other) -> bool:
+        """Return if attributes that cause a change in the parameter, are the same."""
+        if self.mapped_to:
+            if not other.mapped_to or self.mapped_to.stream_type != other.mapped_to.stream_type:
+                return False
+        elif other.mapped_to:
+            return False
+
+        return super().is_equal_to(other)
+
+    @staticmethod
+    def _get_equality_attributes() -> List[str]:
+        """Return a list of attributes values that determine if instances are equal."""
+        # NOTE: Don't include ``create_folder`` in comparison since its value is state-dependent
+        return CommandParameterBase._get_equality_attributes() + ["encoding_format"]
 
     def derive(self, plan_id: str) -> "CommandOutput":
         """Create a new ``CommandOutput`` that is derived from self."""
@@ -322,17 +416,29 @@ class ParameterMapping(CommandParameterBase):
         description: Optional[str] = None,
         id: str,
         name: Optional[str] = None,
+        name_set_by_user: bool = False,
         mapped_parameters: List[CommandParameterBase],
         **kwargs,
     ):
-        super().__init__(default_value=default_value, description=description, id=id, name=name, **kwargs)
+        super().__init__(
+            default_value=default_value,
+            description=description,
+            id=id,
+            name=name,
+            name_set_by_user=name_set_by_user,
+            **kwargs,
+        )
 
         self.mapped_parameters: List[CommandParameterBase] = mapped_parameters
 
     @staticmethod
-    def generate_id(plan_id: str, position: Optional[int] = None, postfix: Optional[str] = None) -> str:
-        """Generate an id for CommandOutput."""
-        return CommandParameterBase._generate_id(plan_id, parameter_type="mappings", position=position, postfix=postfix)
+    def generate_id(
+        plan_id: str, position: Optional[int] = None, postfix: Optional[str] = None, name: Optional[str] = None
+    ) -> str:
+        """Generate an id for ParameterMapping."""
+        return CommandParameterBase._generate_id(
+            plan_id, parameter_type="mappings", position=position, postfix=postfix, name=name
+        )
 
     def to_stream_representation(self) -> str:
         """Input stream representation."""
@@ -390,3 +496,10 @@ class ParameterLink:
         """Generate an id for parameters."""
         # /plans/723fd784-9347-4081-84de-a6dbb067545b/links/dda5fcbf-0098-4917-be46-dc12f5f7b675
         return f"{plan_id}/links/{uuid4()}"
+
+
+def generate_parameter_name(parameter, kind) -> str:
+    """Generate a name for an input, output, or parameter."""
+    name = get_slug(parameter.prefix.strip(" -="), invalid_chars=["."]) if parameter.prefix else kind
+    position = parameter.position if parameter.position is not None else uuid4().hex[:RANDOM_ID_LENGTH]
+    return f"{name}-{position}"

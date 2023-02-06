@@ -191,7 +191,7 @@ def templates_source(tmp_path, monkeypatch):
             version = str(max(self._versions))
             return version, version
 
-        def get_template(self, id, reference: Optional[str]) -> Optional[Template]:
+        def get_template(self, id, reference: Optional[str]) -> Template:
             """Return a template at a specific reference."""
             if not reference:
                 reference = self.reference

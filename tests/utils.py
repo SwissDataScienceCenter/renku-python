@@ -89,10 +89,11 @@ def assert_dataset_is_mutated(old: "Dataset", new: "Dataset", mutator=None):
     assert old.identifier != new.identifier
     assert new.derived_from is not None
     assert old.id == new.derived_from.url_id
-    if old.date_created and new.date_created:
-        assert old.date_created <= new.date_created
+    if old.date_created:
+        assert old.date_created == new.date_created
+    if old.date_published:
+        assert old.date_published == new.date_published
     assert new.same_as is None
-    assert new.date_published is None
     assert new.identifier in new.id
 
     if mutator:
@@ -115,10 +116,10 @@ def modified_environ(*remove, **update):
     """
     env = os.environ
     update = update or {}
-    remove = remove or []
+    remove_set = set(remove or [])
 
     # List of environment variables being updated or removed.
-    stomped = (set(update.keys()) | set(remove)) & set(env.keys())
+    stomped = (set(update.keys()) | remove_set) & set(env.keys())
     # Environment variables and values to restore on exit.
     update_after = {k: env[k] for k in stomped}
     # Environment variables and values to remove on exit.
@@ -126,7 +127,7 @@ def modified_environ(*remove, **update):
 
     try:
         env.update(update)
-        [env.pop(k, None) for k in remove]
+        [env.pop(k, None) for k in remove_set]
         yield
     finally:
         env.update(update_after)

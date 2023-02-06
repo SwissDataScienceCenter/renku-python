@@ -49,6 +49,7 @@ from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.migration.models.migration import MigrationContext, MigrationType
 from renku.core.migration.utils import OLD_METADATA_PATH, is_using_temporary_datasets_path, read_project_version
 from renku.core.util import communication
+from renku.domain_model.project import ProjectTemplateMetadata
 from renku.domain_model.project_context import project_context
 
 try:
@@ -56,7 +57,7 @@ try:
 except ImportError:
     import importlib.resources as importlib_resources  # type: ignore
 
-SUPPORTED_PROJECT_VERSION = 9
+SUPPORTED_PROJECT_VERSION = 10
 
 
 def check_for_migration():
@@ -100,6 +101,7 @@ def migrate_project(
     NOTE: The project path must be pushed to the project_context before calling this function.
 
     Args:
+        project_gateway(IProjectGateway): The injected project gateway.
         force_template_update: Whether to force update the template  (Default value = False).
         skip_template_update: Whether to skip updating the template (Default value = False).
         skip_docker_update: Whether to skip updating the Dockerfile (Default value = False).
@@ -122,7 +124,13 @@ def migrate_project(
     except ValueError:
         project = None
 
-    if not skip_template_update and project and project.template_source:
+    if (
+        not skip_template_update
+        and project
+        and hasattr(project, "template_metadata")
+        and isinstance(project.template_metadata, ProjectTemplateMetadata)
+        and project.template_metadata.template_source
+    ):
         try:
             template_updated = _update_template()
         except TemplateUpdateError:
@@ -191,7 +199,7 @@ def _update_template(project_gateway: IProjectGateway) -> bool:
         # NOTE: Old project, we don't know the status until it is migrated
         return False
 
-    if not project.template_version:
+    if not hasattr(project, "template_metadata") or not project.template_metadata.template_version:
         return False
 
     return bool(update_template(interactive=False, force=False, dry_run=False))

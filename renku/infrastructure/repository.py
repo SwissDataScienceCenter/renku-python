@@ -242,8 +242,8 @@ class BaseRepository:
         message: str,
         *,
         amend: bool = False,
-        author: "Actor" = None,
-        committer: "Actor" = None,
+        author: Optional["Actor"] = None,
+        committer: Optional["Actor"] = None,
         no_verify: bool = False,
         no_edit: bool = False,
         paths: Optional[List[Union[Path, str]]] = None,
@@ -280,12 +280,12 @@ class BaseRepository:
 
     def fetch(
         self,
-        remote: Union["Remote", str] = None,
-        refspec: Union["Branch", str] = None,
+        remote: Optional[Union["Remote", str]] = None,
+        refspec: Optional[Union["Branch", str]] = None,
         all: bool = False,
         tags: bool = False,
         unshallow: bool = False,
-        depth: int = None,
+        depth: Optional[int] = None,
     ):
         """Update a remote branches."""
         if all:
@@ -308,14 +308,14 @@ class BaseRepository:
         """Move source files to the destination."""
         self.run_git_command("mv", *sources, destination, force=force)
 
-    def pull(self, remote: Union["Remote", str] = None, refspec: Union["Branch", str] = None):
+    def pull(self, remote: Optional[Union["Remote", str]] = None, refspec: Optional[Union["Branch", str]] = None):
         """Update changes from remotes."""
         self.run_git_command("pull", _to_string(remote), _to_string(refspec))
 
     def push(
         self,
-        remote: Union["Remote", str] = None,
-        refspec: Union["Branch", str] = None,
+        remote: Optional[Union["Remote", str]] = None,
+        refspec: Optional[Union["Branch", str]] = None,
         *,
         no_verify: bool = False,
         set_upstream: bool = False,
@@ -344,7 +344,7 @@ class BaseRepository:
         """Remove paths from repository or index."""
         self.run_git_command("rm", "--", *paths, cached=index, ignore_unmatch=not_exists_ok, r=recursive, force=force)
 
-    def reset(self, reference: Union["Branch", "Commit", "Reference", str] = None, hard: bool = False):
+    def reset(self, reference: Optional[Union["Branch", "Commit", "Reference", str]] = None, hard: bool = False):
         """Reset a git repository to a given reference."""
         self.run_git_command("reset", _to_string(reference), hard=hard)
 
@@ -365,6 +365,7 @@ class BaseRepository:
         Args:
             path(Path): Target folder.
             reference(Union[Branch, Commit, Reference, str]): the reference to base the tree on.
+            branch(str, optional): Optional new branch to create in the worktree.
             checkout(bool, optional): Whether to perform a checkout of the reference (Default value = False).
             detach(bool, optional): Whether to detach HEAD in worktree (Default value = False).
         """
@@ -761,6 +762,7 @@ class BaseRepository:
         NOTE: path must be relative to the repo's root regardless if this function is called from a subdirectory or not.
         """
         absolute_path = get_absolute_path(path, self.path)
+        had_revision = bool(revision)
 
         # NOTE: If revision is not specified, we use hash-object to hash the (possibly) modified object
         if not revision:
@@ -774,11 +776,15 @@ class BaseRepository:
             if not os.path.isdir(absolute_path):
                 return None
 
-            stashed_revision = self.run_git_command("stash", "create")
-            if not stashed_revision:
-                return None
-
             try:
+                # NOTE: Stage the path. If the path is not staged then it won't be found in ``stashed_revision``
+                if not self.staged_changes:
+                    self.add(relative_path, force=True)
+
+                stashed_revision = self.run_git_command("stash", "create")
+                if not stashed_revision:
+                    return None
+
                 return self.run_git_command("rev-parse", f"{stashed_revision}:{relative_path}")
             except errors.GitCommandError:
                 return None
@@ -799,12 +805,14 @@ class BaseRepository:
         try:
             return self.run_git_command("rev-parse", f"{revision}:{relative_path}")
         except errors.GitCommandError:
-            # NOTE: The file can be in a submodule or it can be a directory which is staged but not committed yet.
-            # It's also possible that the file was not there when the command ran but was there when workflows were
-            # migrated (this can happen only for Usage); the project might be broken too.
-            staged_directory_hash = get_staged_directory_hash()
-            if staged_directory_hash:
-                return staged_directory_hash
+            # NOTE: If a revision was specified then don't look in the staging area
+            if not had_revision:
+                # NOTE: The file can be in a submodule or it can be a directory which is staged but not committed yet.
+                # It's also possible that the file was not there when the command ran but was there when workflows were
+                # migrated (this can happen only for Usage); the project might be broken too.
+                staged_directory_hash = get_staged_directory_hash()
+                if staged_directory_hash:
+                    return staged_directory_hash
 
             return get_object_hash_from_submodules()
 
@@ -855,7 +863,7 @@ class BaseRepository:
 
         return Actor(name=name, email=email)
 
-    def get_configuration(self, writable=False, scope: str = None) -> "Configuration":
+    def get_configuration(self, writable=False, scope: Optional[str] = None) -> "Configuration":
         """Return git configuration.
 
         NOTE: Scope can be "global" or "local".
@@ -868,7 +876,7 @@ class BaseRepository:
         return Configuration(repository=None, writable=writable)
 
     def get_existing_paths_in_revision(
-        self, paths: Union[List[Union[Path, str]], Set[Union[Path, str]]] = None, revision: str = "HEAD"
+        self, paths: Union[List[Union[Path, str]], Optional[Set[Union[Path, str]]]] = None, revision: str = "HEAD"
     ) -> List[str]:
         """List all paths that exist in a revision."""
 
@@ -943,14 +951,17 @@ class BaseRepository:
         """Calculate the object-hash for a blob with specified content."""
         content_bytes = content.encode("utf-8")
         data = f"blob {len(content_bytes)}\0".encode("utf-8") + content_bytes
-        return hashlib.sha1(data).hexdigest()
+        return hashlib.sha1(data).hexdigest()  # nosec
 
 
 class Repository(BaseRepository):
     """Abstract Base repository."""
 
     def __init__(
-        self, path: Union[Path, str] = ".", search_parent_directories: bool = False, repository: git.Repo = None
+        self,
+        path: Union[Path, str] = ".",
+        search_parent_directories: bool = False,
+        repository: Optional[git.Repo] = None,
     ):
         repo = repository or _create_repository(path, search_parent_directories)
 
@@ -995,7 +1006,7 @@ class Repository(BaseRepository):
             return cls(path=path, repository=repository)
 
     @classmethod
-    def initialize(cls, path: Union[Path, str], *, bare: bool = False, branch: str = None) -> "Repository":
+    def initialize(cls, path: Union[Path, str], *, bare: bool = False, branch: Optional[str] = None) -> "Repository":
         """Initialize a git repository."""
         try:
             Path(path).mkdir(parents=True, exist_ok=True)
@@ -1333,7 +1344,9 @@ class Commit:
         return {o.path: Object.from_object(o) for o in self._commit.tree.traverse()}
 
     def get_changes(
-        self, paths: Union[Path, str, List[Union[Path, str]], None] = None, commit: Union[str, "Commit"] = None
+        self,
+        paths: Union[Path, str, List[Union[Path, str]], None] = None,
+        commit: Optional[Union[str, "Commit"]] = None,
     ) -> List[Diff]:
         """Return list of changes in a commit.
 
@@ -1699,7 +1712,7 @@ class TagManager:
 class Configuration:
     """Git configuration manager."""
 
-    def __init__(self, repository: git.Repo = None, scope: str = None, writable: bool = True):
+    def __init__(self, repository: Optional[git.Repo] = None, scope: Optional[str] = None, writable: bool = True):
         assert scope is None or scope in ("global", "local"), f"Invalid scope: '{scope}'"
 
         self._read_only = not writable

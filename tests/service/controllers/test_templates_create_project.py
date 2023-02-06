@@ -66,7 +66,6 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         "ref",
         "new_project_url_with_auth",
         "url_with_auth",
-        "user_id",
     }
     assert expected_context.issubset(set(ctrl.context.keys()))
 
@@ -76,7 +75,6 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         "__template_ref__",
         "__template_id__",
         "__namespace__",
-        "__automated_update__",
         "__repository__",
         "__sanitized_project_name__",
         "__project_slug__",

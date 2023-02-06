@@ -33,13 +33,7 @@ from renku.ui.service.utils import make_project_path
 from tests.utils import assert_rpc_response, retry_failed
 
 
-@pytest.mark.parametrize(
-    "url",
-    [
-        "https://dev.renku.ch/datasets/428c36261c56463d8753336470cc6917/",
-        "https://dev.renku.ch/datasets/0d4630e56ee542b3bb3ab3222da811ec",
-    ],
-)
+@pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/428c36261c56463d8753336470cc6917/"])
 @pytest.mark.integration
 @pytest.mark.service
 @retry_failed

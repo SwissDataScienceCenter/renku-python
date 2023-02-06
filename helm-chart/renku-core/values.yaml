@@ -91,6 +91,15 @@ sentry:
 # versions is the list of different deployment that support different metadata versions.
 versions:
   latest:
+    name: v10
+    prefix: "10"
+    nameOverride: ""
+    fullnameOverride: ""
+    image:
+      repository: renku/renku-core
+      tag: "v2.1.0"
+      pullPolicy: IfNotPresent
+  v9:
     name: v9
     prefix: "9"
     nameOverride: ""

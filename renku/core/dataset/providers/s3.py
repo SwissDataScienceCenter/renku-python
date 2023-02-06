@@ -17,32 +17,24 @@
 # limitations under the License.
 """S3 dataset provider."""
 
-import re
 import urllib
-from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple, cast
 
 from renku.command.command_builder import inject
 from renku.core import errors
-from renku.core.dataset.providers.api import (
-    AddProviderInterface,
-    ProviderApi,
-    ProviderCredentials,
-    ProviderPriority,
-    StorageProviderInterface,
-)
-from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata, ProviderParameter
+from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials, ProviderPriority
+from renku.core.dataset.providers.cloud import CloudStorageAddProvider
+from renku.core.dataset.providers.models import ProviderParameter
 from renku.core.interface.storage import IStorage, IStorageFactory
 from renku.core.util.metadata import prompt_for_credentials
 from renku.core.util.urls import get_scheme
-from renku.domain_model.dataset import RemoteEntity
 from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset
 
 
-class S3Provider(ProviderApi, AddProviderInterface, StorageProviderInterface):
+class S3Provider(ProviderApi, CloudStorageAddProvider):
     """S3 provider."""
 
     priority = ProviderPriority.HIGHEST
@@ -77,6 +69,10 @@ class S3Provider(ProviderApi, AddProviderInterface, StorageProviderInterface):
             ),
         ]
 
+    def get_credentials(self) -> "S3Credentials":
+        """Return an instance of provider's credential class."""
+        return S3Credentials(provider=self)
+
     @inject.autoparams("storage_factory")
     def get_storage(
         self, storage_factory: "IStorageFactory", credentials: Optional["ProviderCredentials"] = None
@@ -95,7 +91,7 @@ class S3Provider(ProviderApi, AddProviderInterface, StorageProviderInterface):
             return f"s3://{bucket}/{path}"
 
         if not credentials:
-            credentials = S3Credentials(provider=self)
+            credentials = self.get_credentials()
             prompt_for_credentials(credentials)
 
         return storage_factory.get_storage(
@@ -105,29 +101,6 @@ class S3Provider(ProviderApi, AddProviderInterface, StorageProviderInterface):
             configuration=s3_configuration,
             uri_convertor=create_renku_storage_s3_uri,
         )
-
-    def add(self, uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
-        """Add files from a URI to a dataset."""
-        if re.search(r"[*?]", uri):
-            raise errors.ParameterError("Wildcards like '*' or '?' are not supported for S3 URIs.")
-
-        storage = self.get_storage()
-
-        destination_path_in_repo = Path(destination).relative_to(project_context.repository.path)
-        hashes = storage.get_hashes(uri=uri)
-        return [
-            DatasetAddMetadata(
-                entity_path=destination_path_in_repo / hash.path,
-                url=hash.base_uri,
-                action=DatasetAddAction.REMOTE_STORAGE,
-                # TODO: Store the original URI for use as source; based_on is not needed
-                based_on=RemoteEntity(checksum=hash.hash if hash.hash else "", url=hash.base_uri, path=hash.path),
-                source=Path(hash.base_uri),
-                destination=destination_path_in_repo,
-                provider=self,
-            )
-            for hash in hashes
-        ]
 
     @property
     def bucket(self) -> str:
@@ -141,7 +114,7 @@ class S3Provider(ProviderApi, AddProviderInterface, StorageProviderInterface):
 
     def on_create(self, dataset: "Dataset") -> None:
         """Hook to perform provider-specific actions on a newly-created dataset."""
-        credentials = S3Credentials(provider=self)
+        credentials = self.get_credentials()
         prompt_for_credentials(credentials)
         storage = self.get_storage(credentials=credentials)
 

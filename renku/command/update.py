@@ -32,8 +32,8 @@ from renku.core.workflow.activity import (
     is_activity_valid,
     sort_activities,
 )
-from renku.core.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.execute import execute_workflow_graph
+from renku.core.workflow.model.concrete_execution_graph import ExecutionGraph
 from renku.domain_model.project_context import project_context
 
 
@@ -64,7 +64,7 @@ def _update(
     paths = paths or []
     paths = get_relative_paths(base=project_context.path, paths=[Path.cwd() / p for p in paths])
 
-    modified, _ = get_all_modified_and_deleted_activities_and_entities(project_context.repository)
+    modified, _, _ = get_all_modified_and_deleted_activities_and_entities(project_context.repository)
     modified_activities = {a for a, _ in modified if not a.deleted and is_activity_valid(a)}
     modified_paths = {e.path for _, e in modified}
 

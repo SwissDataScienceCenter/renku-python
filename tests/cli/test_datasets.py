@@ -2726,22 +2726,23 @@ def test_update_with_no_dataset(runner, project):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_add_local_data_to_s3_datasets(runner, project, mocker, directory_tree):
-    """Test adding local data to a dataset with s3 storage backend."""
+@pytest.mark.parametrize("uri", ["s3://s3.endpoint/bucket/path", "azure://renkupythontest1/test-private-1"])
+def test_add_local_data_to_cloud_datasets(runner, project, mocker, directory_tree, uri):
+    """Test adding local data to a dataset with cloud storage backend."""
     storage_factory = mocker.patch("renku.infrastructure.storage.factory.StorageFactory.get_storage", autospec=True)
-    s3_storage = storage_factory.return_value
+    cloud_storage = storage_factory.return_value
 
-    s3_storage.upload.return_value = []
+    cloud_storage.upload.return_value = []
 
     uri = "s3://s3.endpoint/bucket/path"
-    result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", uri])
+    result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", uri])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["dataset", "add", "s3-data", "--copy", directory_tree], input="\n\n\n")
+    result = runner.invoke(cli, ["dataset", "add", "cloud-data", "--copy", directory_tree], input="\n\n\n")
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    dataset = get_dataset_with_injection("s3-data")
+    dataset = get_dataset_with_injection("cloud-data")
     files_uri = [f"{uri}/directory_tree/file1", f"{uri}/directory_tree/dir1/file2", f"{uri}/directory_tree/dir1/file3"]
 
     assert 3 == len(dataset.files)
@@ -2753,11 +2754,27 @@ def test_add_local_data_to_s3_datasets(runner, project, mocker, directory_tree):
         "dacb3fd4bbd9ab5a17e2f7686b90c1d2",
     } == {f.based_on.checksum for f in dataset.files}
 
-    source_base = project.path / "data" / "s3-data" / "directory_tree"
     calls = [
-        call(source=source_base / "file1", uri=files_uri[0]),
-        call(source=source_base / "dir1" / "file2", uri=files_uri[1]),
-        call(source=source_base / "dir1" / "file3", uri=files_uri[2]),
+        call(source=directory_tree / "file1", uri=files_uri[0]),
+        call(source=directory_tree / "dir1" / "file2", uri=files_uri[1]),
+        call(source=directory_tree / "dir1" / "file3", uri=files_uri[2]),
     ]
 
-    s3_storage.upload.assert_has_calls(calls=calls, any_order=True)
+    cloud_storage.upload.assert_has_calls(calls=calls, any_order=True)
+
+
+@pytest.mark.parametrize("storage", ["s3://s3.endpoint/bucket/path", "azure://renkupythontest1/test-private-1"])
+def test_unmounting_dataset(runner, project, mocker, storage):
+    """Test unmounting a not-mounted dataset doesn't raise errors."""
+    storage_factory = mocker.patch("renku.infrastructure.storage.factory.StorageFactory.get_storage", autospec=True)
+    cloud_storage = storage_factory.return_value
+
+    cloud_storage.upload.return_value = []
+
+    result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", storage])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "unmount", "cloud-data"])
+
+    assert 0 == result.exit_code, format_result_exception(result)

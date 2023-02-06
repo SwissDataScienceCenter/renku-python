@@ -265,7 +265,7 @@ def test_log_dataset_add_create(mocker):
     assert entry.details.created
     assert not entry.details.imported
     assert not entry.details.migrated
-    assert entry.details.modified
+    assert not entry.details.modified
 
 
 def test_log_dataset_import(mocker):
@@ -323,7 +323,7 @@ def test_log_dataset_import(mocker):
     assert not entry.details.created
     assert entry.details.imported
     assert not entry.details.migrated
-    assert entry.details.modified
+    assert not entry.details.modified
 
 
 def test_log_dataset_deleted(mocker):

@@ -52,11 +52,11 @@ class Plan:
         deleted: bool = False,
         description: Optional[str] = None,
         id: str,
-        inputs: List[Input] = None,
+        inputs: Optional[List[Input]] = None,
         keywords: Optional[List[str]] = None,
         name: Optional[str] = None,
-        outputs: List[Output] = None,
-        parameters: List[Parameter] = None,
+        outputs: Optional[List[Output]] = None,
+        parameters: Optional[List[Parameter]] = None,
         success_codes: Optional[List[int]] = None,
     ):
         self.command: str = command
@@ -84,7 +84,7 @@ class Plan:
         return cls(
             command=plan.command,
             date_created=plan.date_created,
-            deleted=plan.invalidated_at is not None,
+            deleted=plan.date_removed is not None,
             description=plan.description,
             id=plan.id,
             inputs=[Input.from_parameter(i) for i in plan.inputs],
@@ -133,10 +133,10 @@ class CompositePlan:
         description: Optional[str] = None,
         id: str,
         keywords: Optional[List[str]] = None,
-        links: List[Link] = None,
-        mappings: List[Mapping] = None,
+        links: Optional[List[Link]] = None,
+        mappings: Optional[List[Mapping]] = None,
         name: Optional[str] = None,
-        plans: List[Union["CompositePlan", "Plan"]] = None,
+        plans: Optional[List[Union["CompositePlan", "Plan"]]] = None,
     ):
         self.date_created: Optional[datetime] = date_created
         self.deleted: bool = deleted
@@ -160,7 +160,7 @@ class CompositePlan:
         """
         return cls(
             date_created=composite_plan.date_created,
-            deleted=composite_plan.invalidated_at is not None,
+            deleted=composite_plan.date_removed is not None,
             description=composite_plan.description,
             id=composite_plan.id,
             keywords=composite_plan.keywords,

@@ -20,12 +20,12 @@
 import re
 
 try:
-    from importlib.metadata import distribution
+    from importlib.metadata import distribution, version
 except ImportError:
-    from importlib_metadata import distribution  # type: ignore
+    from importlib_metadata import distribution, version  # type: ignore
 
-__version__ = "1.10.0"
-__template_version__ = "0.3.1"
+__version__ = version("renku")
+__template_version__ = "0.3.5"
 __minimum_project_version__ = "1.7.0"
 
 
@@ -38,10 +38,11 @@ def is_release():
 
 def _get_distribution_url():
     try:
-        d = distribution("renku")
-        return d.metadata["Home-page"]
+        url = distribution("renku").metadata["Home-page"]
     except Exception:
-        return "https://github.com/swissdatasciencecenter/renku-python"
+        url = None
+
+    return "https://github.com/swissdatasciencecenter/renku-python" if not url else url
 
 
 version_url = f"{_get_distribution_url()}/tree/v{__version__}"

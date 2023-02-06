@@ -29,7 +29,9 @@ from tests.fixtures.repository import RenkuProject
 from tests.utils import clone_compressed_repository
 
 
-@pytest.fixture(params=["old-datasets-v0.3.0.git", "old-datasets-v0.5.1.git", "test-renku-v0.3.0.git"])
+@pytest.fixture(
+    params=["old-datasets-v0.3.0.git", "old-datasets-v0.5.1.git", "test-renku-v0.3.0.git", "pre-2.0-project.git"]
+)
 def old_project(request, tmp_path) -> Generator[RenkuProject, None, None]:
     """Prepares a testing repo created by old version of renku."""
     from renku.core.util.contexts import chdir

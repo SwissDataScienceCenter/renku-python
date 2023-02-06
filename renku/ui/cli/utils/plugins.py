@@ -18,11 +18,11 @@
 """Utility functions for plugins."""
 
 
-def supported_formats():
+def get_supported_formats():
     """Deferred import as plugins are slow."""
-    from renku.core.plugin.workflow import supported_formats
+    from renku.core.plugin.workflow import get_supported_formats
 
-    return supported_formats()
+    return get_supported_formats()
 
 
 def available_workflow_providers():

@@ -127,7 +127,7 @@ class PlanFactory:
         self.annotations: List[Dict[str, Any]] = []
         self.existing_directories: Set[str] = set()
 
-        self.add_inputs_and_parameters(*detected_arguments)
+        self.add_inputs_and_parameters(detected_arguments)
 
     def split_command_and_args(self):
         """Return tuple with command and args from command line arguments."""
@@ -148,7 +148,7 @@ class PlanFactory:
         return cmd, args
 
     @staticmethod
-    def _is_ignored_path(candidate: Union[Path, str], ignored_list: Set[str] = None) -> bool:
+    def _is_ignored_path(candidate: Union[Path, str], ignored_list: Optional[Set[str]] = None) -> bool:
         """Return True if the path is in ignored list."""
         return ignored_list is not None and str(candidate) in ignored_list
 
@@ -168,10 +168,10 @@ class PlanFactory:
 
         return None
 
-    def add_inputs_and_parameters(self, *arguments):
+    def add_inputs_and_parameters(self, arguments: List[str]):
         """Yield command input parameters."""
         position = 0
-        prefix = None
+        prefix: Optional[str] = None
 
         output_streams = {getattr(self, stream_name) for stream_name in ("stdout", "stderr")}
 
@@ -185,9 +185,9 @@ class PlanFactory:
 
             if argument.startswith("--"):
                 if "=" in argument:
-                    prefix, default = argument.split("=", 1)
+                    prefix, value = argument.split("=", 1)
                     prefix += "="
-                    default, type = self.guess_type(default, ignore_filenames=output_streams)
+                    default, type = self.guess_type(value, ignore_filenames=output_streams)
 
                     position += 1
                     if type in PATH_OBJECTS:
@@ -207,9 +207,9 @@ class PlanFactory:
             elif argument.startswith("-"):
                 if len(argument) > 2:
                     if "=" in argument:
-                        prefix, default = argument.split("=", 1)
+                        prefix, value = argument.split("=", 1)
                         prefix += "="
-                        default, type = self.guess_type(default, ignore_filenames=output_streams)
+                        default, type = self.guess_type(value, ignore_filenames=output_streams)
                     else:
                         # possibly a flag with value
                         prefix = argument[0:2]
@@ -358,7 +358,7 @@ class PlanFactory:
         # TODO: specify the actual mime-type of the file
         return ["application/octet-stream"]
 
-    def guess_type(self, value: Union[Path, str], ignore_filenames: Set[str] = None) -> Tuple[Any, str]:
+    def guess_type(self, value: Union[Path, str], ignore_filenames: Optional[Set[str]] = None) -> Tuple[Any, str]:
         """Return new value and CWL parameter type."""
         if not self._is_ignored_path(value, ignore_filenames) and all(value != v for v, _ in self.explicit_parameters):
             candidate = self._resolve_existing_subpath(value)
@@ -417,9 +417,9 @@ class PlanFactory:
         prefix: Optional[str] = None,
         position: Optional[int] = None,
         postfix: Optional[str] = None,
-        encoding_format: List[str] = None,
+        encoding_format: Optional[List[str]] = None,
         name: Optional[str] = None,
-        id: str = None,
+        id: Optional[str] = None,
         mapped_to: Optional[MappedIOStream] = None,
     ):
         """Create a CommandOutput."""

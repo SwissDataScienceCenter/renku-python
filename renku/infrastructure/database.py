@@ -251,7 +251,9 @@ class Database:
             self._root._p_oid = Database.ROOT_OID
             self.register(self._root)
 
-    def add_index(self, name: str, object_type: type, attribute: str = None, key_type: type = None) -> "Index":
+    def add_index(
+        self, name: str, object_type: type, attribute: Optional[str] = None, key_type: Optional[type] = None
+    ) -> "Index":
         """Add an index.
 
         Args:
@@ -286,7 +288,7 @@ class Database:
 
         self._root[name] = obj
 
-    def add(self, object: persistent.Persistent, oid: OID_TYPE = None):
+    def add(self, object: persistent.Persistent, oid: OID_TYPE):
         """Add a new object to the database.
 
         NOTE: Normally, we add objects to indexes but this method adds objects directly to Dataset's root. Use it only
@@ -351,16 +353,25 @@ class Database:
 
         return object
 
-    def get_from_path(self, path: str, absolute: bool = False) -> persistent.Persistent:
+    def get_from_path(
+        self, path: str, absolute: bool = False, override_type: Optional[str] = None
+    ) -> persistent.Persistent:
         """Load a database object from a path.
 
         Args:
             path(str): Path of the database object.
-            absolute(bool): Whether the path is absolute or a filename inside the database (Default value: False).
+            absolute(bool): Whether the path is absolute or a filename inside the database (Default value = False).
+            override_type(Optional[str]): load object as a different type than what is set inside `renku_data_type`
+                (Default value = None).
         Returns:
             persistent.Persistent: The object.
         """
         data = self._storage.load(filename=path, absolute=absolute)
+        if override_type is not None:
+            if "@renku_data_type" not in data:
+                raise errors.IncompatibleParametersError("Cannot override type on found data.")
+
+            data["@renku_data_type"] = override_type
         object = self._reader.deserialize(data)
         object._p_changed = 0
         object._p_serial = PERSISTED
@@ -779,12 +790,12 @@ class Storage:
                 self.path.mkdir(parents=True, exist_ok=True)
 
         if compress:
-            with open(path, "wb") as f, self.zstd_compressor.stream_writer(f) as compressor:
+            with open(path, "wb") as fb, self.zstd_compressor.stream_writer(fb) as compressor:
                 with io.TextIOWrapper(compressor) as out:
                     json.dump(data, out, ensure_ascii=False)
         else:
-            with open(path, "wt") as f:  # type: ignore
-                json.dump(data, f, ensure_ascii=False, sort_keys=True, indent=2)  # type: ignore
+            with open(path, "wt") as ft:
+                json.dump(data, ft, ensure_ascii=False, sort_keys=True, indent=2)
 
     def load(self, filename: str, absolute: bool = False):
         """Load data for object with object id oid.

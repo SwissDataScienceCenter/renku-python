@@ -102,7 +102,7 @@ def set_template(
     """Set template for a project."""
     project = project_context.project
 
-    if project.template_source and not force:
+    if project.template_metadata.template_source and not force:
         raise errors.TemplateUpdateError("Project already has a template: To set a template use '-f/--force' flag")
 
     templates_source = fetch_templates_source(source=source, reference=reference)

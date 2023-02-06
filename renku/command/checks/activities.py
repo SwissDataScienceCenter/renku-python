@@ -48,7 +48,9 @@ def check_migrated_activity_ids(fix, activity_gateway: IActivityGateway, **_):
             activity._p_oid = current_database.hash_id(activity.id)
             activity.freeze()
 
-            for attribute in itertools.chain(activity.usages, activity.generations, activity.parameters):
+            for attribute in itertools.chain(
+                activity.usages, activity.hidden_usages, activity.generations, activity.parameters
+            ):
                 object.__setattr__(attribute, "id", f"/activities/{attribute.id}")  # type: ignore
 
             activity.association.id = f"/activities/{activity.association.id}"

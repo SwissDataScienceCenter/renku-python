@@ -92,10 +92,10 @@ def _template_migration_check():
 
     try:
         project = project_context.project
-        template_source = project.template_source
-        template_ref = project.template_ref
-        template_id = project.template_id
-    except ValueError:
+        template_source = project.template_metadata.template_source
+        template_ref = project.template_metadata.template_ref
+        template_id = project.template_metadata.template_id
+    except (ValueError, AttributeError):
         project = None
         template_source = None
         template_ref = None
@@ -188,6 +188,10 @@ def _check_project():
         _ = project_context.project
     except ValueError:
         return MIGRATION_REQUIRED
+    else:
+        if hasattr(project_context.project, "template_source"):
+            # NOTE: v10 migration not done
+            return MIGRATION_REQUIRED
 
     # NOTE: ``project.automated_update`` is deprecated and we always allow template update for a project
     status = AUTOMATED_TEMPLATE_UPDATE_SUPPORTED
@@ -213,7 +217,7 @@ def _check_immutable_template_files(paths: List[str]):
     Returns:
         List of immutable template files.
     """
-    immutable_template_files = project_context.project.immutable_template_files or []
+    immutable_template_files = project_context.project.template_metadata.immutable_template_files or []
 
     return [p for p in paths if str(p) in immutable_template_files]
 

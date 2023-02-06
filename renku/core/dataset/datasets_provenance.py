@@ -27,9 +27,9 @@ from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.util import communication
 
 try:
-    from typing import Literal
+    from typing_extensions import Literal  # NOTE: Required for Python 3.7 compatibility
 except ImportError:
-    from typing_extensions import Literal  # type: ignore
+    from typing import Literal  # type: ignore
 
 if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset, DatasetTag
@@ -63,13 +63,11 @@ class DatasetsProvenance:
         return None
 
     @overload
-    def get_by_name(
-        self, name: str, *, immutable: bool = False, strict: Literal[False] = False
-    ) -> Optional["Dataset"]:  # noqa: D102
+    def get_by_name(self, name: str, *, immutable: bool = False, strict: Literal[False] = False) -> Optional["Dataset"]:
         ...
 
     @overload
-    def get_by_name(self, name: str, *, immutable: bool = False, strict: Literal[True]) -> "Dataset":  # noqa: D102
+    def get_by_name(self, name: str, *, immutable: bool = False, strict: Literal[True]) -> "Dataset":
         ...
 
     def get_by_name(
@@ -136,7 +134,7 @@ class DatasetsProvenance:
 
         self.dataset_gateway.add_or_remove(dataset)
 
-    def remove(self, dataset, date: datetime = None, creator: "Person" = None):
+    def remove(self, dataset, date: Optional[datetime] = None, creator: Optional["Person"] = None):
         """Remove a dataset."""
         from renku.domain_model.dataset import Dataset
 
