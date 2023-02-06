@@ -17,7 +17,10 @@
 # limitations under the License.
 """Interactive session business logic."""
 
+import os
+import shutil
 import webbrowser
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 from pydantic import validate_arguments
@@ -25,9 +28,10 @@ from pydantic import validate_arguments
 from renku.core import errors
 from renku.core.config import get_value
 from renku.core.plugin.session import get_supported_session_providers
-from renku.core.session.utils import get_image_repository_host, get_renku_project_name
+from renku.core.session.utils import get_image_repository_host, get_renku_project_name, get_renku_url
 from renku.core.util import communication
 from renku.core.util.os import safe_read_yaml
+from renku.core.util.ssh import generate_ssh_keys
 from renku.domain_model.session import ISessionProvider, Session
 
 
@@ -40,7 +44,12 @@ def _safe_get_provider(provider: str) -> ISessionProvider:
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
 def session_list(config_path: Optional[str], provider: Optional[str] = None) -> Tuple[List[Session], bool, List[str]]:
-    """List interactive sessions."""
+    """List interactive sessions.
+
+    Args:
+        config_path(str, optional): Path to config YAML.
+        provider(str, optional): Name of the session provider to use.
+    """
 
     def list_sessions(session_provider: ISessionProvider) -> List[Session]:
         try:
@@ -73,15 +82,25 @@ def session_list(config_path: Optional[str], provider: Optional[str] = None) -> 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
 def session_start(
-    provider: str,
     config_path: Optional[str],
+    provider: str,
     image_name: Optional[str] = None,
     cpu_request: Optional[float] = None,
     mem_request: Optional[str] = None,
     disk_request: Optional[str] = None,
     gpu_request: Optional[str] = None,
 ):
-    """Start interactive session."""
+    """Start interactive session.
+
+    Args:
+        config_path(str, optional): Path to config YAML.
+        provider(str, optional): Name of the session provider to use.
+        image_name(str, optional): Image to start.
+        cpu_request(float, optional): Number of CPUs to request.
+        mem_request(str, optional): Size of memory to request.
+        disk_request(str, optional): Size of disk to request (if supported by provider).
+        gpu_request(str, optional): Number of GPUs to request.
+    """
     from renku.domain_model.project_context import project_context
 
     pinned_image = get_value("interactive", "image")
@@ -143,7 +162,13 @@ def session_start(
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
 def session_stop(session_name: Optional[str], stop_all: bool = False, provider: Optional[str] = None):
-    """Stop interactive session."""
+    """Stop interactive session.
+
+    Args:
+        session_name(str): Name of the session to open.
+        stop_all(bool): Whether to stop all sessions or just the specified one.
+        provider(str, optional): Name of the session provider to use.
+    """
 
     def stop_sessions(session_provider: ISessionProvider) -> bool:
         try:
@@ -184,7 +209,12 @@ def session_stop(session_name: Optional[str], stop_all: bool = False, provider: 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
 def session_open(session_name: str, provider: Optional[str] = None):
-    """Open interactive session in the browser."""
+    """Open interactive session in the browser.
+
+    Args:
+        session_name(str): Name of the session to open.
+        provider(str, optional): Name of the session provider to use.
+    """
 
     def open_sessions(session_provider: ISessionProvider) -> Optional[str]:
         try:
@@ -201,3 +231,82 @@ def session_open(session_name: str, provider: Optional[str] = None):
     if url is None:
         raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")
     webbrowser.open(url)
+
+
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def ssh_setup(existing_key: Optional[Path] = None, yes: bool = False):
+    """Setup SSH keys for SSH connections to sessions.
+
+    Args:
+        existing_key(Path, optional): Existing private key file to use instead of generating new ones.
+        yes(bool): Whether to prompt before overwriting keys or not
+    """
+
+    if not shutil.which("ssh"):
+        raise errors.SSHNotFoundError()
+
+    ssh_root = Path.home() / ".ssh"
+    ssh_config = ssh_root / "config"
+    renku_ssh_root = ssh_root / "renku"
+    renku_ssh_root.mkdir(exist_ok=True, parents=True)
+
+    renku_url = get_renku_url()
+
+    if not renku_url:
+        raise errors.AuthenticationError(
+            "Please use `renku login` to log in to the remote deployment before setting up ssh."
+        )
+
+    ssh_config.touch(mode=0o644, exist_ok=True)
+
+    include_string = f"Include {renku_ssh_root}"
+
+    if include_string not in ssh_config.read_text():
+        with ssh_config.open(mode="at") as f:
+            f.writelines(["", include_string])
+
+    jumphost_file = renku_ssh_root / f"{renku_url}-jumphost"
+    keyfile = renku_ssh_root / f"{renku_url}-key"
+    public_keyfile = renku_ssh_root / f"{renku_url}-key.pub"
+
+    if not existing_key and not yes and (jumphost_file.exists() or keyfile.exists() or public_keyfile.exists()):
+        communication.confirm(f"Keys already configured for host {renku_url}. Overwrite?", abort=True)
+
+    if existing_key:
+        communication.info("Linking existing keys")
+        existing_public_key = existing_key.parent / (existing_key.name + ".pub")
+
+        if not existing_key.exists() or not existing_public_key.exists():
+            raise errors.KeyNotFoundError(
+                f"Couldn't find private key '{existing_key}' or public key '{existing_public_key}'."
+            )
+
+        os.symlink(existing_key, keyfile)
+        os.symlink(existing_public_key, public_keyfile)
+    else:
+        communication.info("Generating keys")
+        keys = generate_ssh_keys()
+        keyfile.touch(mode=0o600)
+        public_keyfile.touch(mode=0o644)
+        with keyfile.open(
+            "wt",
+        ) as f:
+            f.write(keys.private_key)
+
+        with public_keyfile.open("wt") as f:
+            f.write(keys.public_key)
+
+    communication.info("Writing SSH config")
+    with jumphost_file.open(mode="wt") as f:
+        f.write(
+            f"""
+Host {renku_url}-jumphost
+  HostName {renku_url}
+  Port 2022
+
+Host {renku_url}-project
+  ProxyJump  {renku_url}-jumphost
+  IdentityFile {keyfile}
+  User jovyan
+  """
+        )

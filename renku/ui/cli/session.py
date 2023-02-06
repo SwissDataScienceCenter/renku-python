@@ -284,3 +284,20 @@ def open(session_name, provider):
     from renku.command.session import session_open_command
 
     session_open_command().build().execute(session_name=session_name, provider=provider)
+
+
+@session.command("setup-ssh")
+@click.option(
+    "existing_key",
+    "-k",
+    "--existing-key",
+    type=click.Path(exists=True, dir_okay=False),
+    metavar="<private key file>",
+    help="Existing private key to use.",
+)
+@click.option("--yes", is_flag=True, help="Do not prompt, overwrite existing keys.")
+def setup_ssh(existing_key, yes):
+    """Setup keys for SSH connections into sessions."""
+    from renku.command.session import setup_ssh_command
+
+    setup_ssh_command().build().execute(existing_key=existing_key, yes=yes)
