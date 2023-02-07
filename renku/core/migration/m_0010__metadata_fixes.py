@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Tuple, cast
 
 import zstandard as zstd
 
+from renku.command.checks.workflow import fix_plan_dates
 from renku.command.command_builder import inject
 from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.dataset_gateway import IDatasetGateway
@@ -257,25 +258,7 @@ def fix_plan_times(activity_gateway: IActivityGateway, plan_gateway: IPlanGatewa
             plan.date_created = activity_map[plan.id].started_at_time
         plan.freeze()
 
-    # NOTE: switch creation date for modification date
-    for tail in plan_gateway.get_newest_plans_by_names(include_deleted=True).values():
-        stack: List[AbstractPlan] = []
-        stack.append(tail)
-        creation_date = tail.date_created
-        plan = tail
-
-        while plan.is_derivation():
-            plan = cast(AbstractPlan, plan_gateway.get_by_id(plan.derived_from))
-            creation_date = plan.date_created
-            stack.append(plan)
-
-        while stack:
-            plan = stack.pop()
-            plan.unfreeze()
-            plan.date_modified = plan.date_created
-            plan.date_created = creation_date
-            plan.freeze
-
+    fix_plan_dates(plans=plans, plan_gateway=plan_gateway)
     database.commit()
 
 
