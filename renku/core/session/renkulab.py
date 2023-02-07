@@ -23,7 +23,6 @@ from time import monotonic, sleep
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from renku.core import errors
-from renku.core.config import get_value, set_value
 from renku.core.login import read_renku_token
 from renku.core.plugin import hookimpl
 from renku.core.session.utils import get_renku_project_name, get_renku_url
@@ -32,51 +31,6 @@ from renku.core.util.git import get_remote
 from renku.core.util.jwt import is_token_expired
 from renku.domain_model.project_context import project_context
 from renku.domain_model.session import ISessionProvider, Session
-
-
-def _get_token(renku_url: str) -> Tuple[str, bool]:
-    """Get a token for authenticating with renku.
-
-    If the user is logged in then the JWT token from renku login will be used.
-    Otherwise the anonymous user token will be used. Returns the token and a flag to
-    indicate if the user is registered (true) or anonymous(false).
-    """
-    registered_token = read_renku_token(renku_url)
-    if not registered_token:
-        return _get_anonymous_credentials(renku_url=renku_url), False
-    return registered_token, True
-
-
-def _get_anonymous_credentials(renku_url: str) -> str:
-    def _get_anonymous_token() -> Optional[str]:
-        import requests
-
-        with requests.Session() as session:
-            url = urllib.parse.urljoin(renku_url, "api/user")
-            try:
-                session.get(
-                    url,
-                    headers={
-                        "X-Requested-With": "XMLHttpRequest",
-                        "X-Forwarded-Uri": "/api/user",
-                    },
-                )
-            except (requests.exceptions.RequestException, requests.exceptions.ConnectionError):
-                pass
-            return session.cookies.get("anon-id")
-
-    renku_host = urllib.parse.urlparse(renku_url).netloc
-    anon_token = get_value(section="anonymous_token", key=renku_host)
-    if not anon_token:
-        anon_token = _get_anonymous_token()
-        if not anon_token:
-            raise errors.AuthenticationError(
-                "Could not get anonymous user token from Renku. "
-                f"Ensure the Renku deployment at {renku_url} supports anonymous sessions or use "
-                f"'renku login {renku_host}' to log in."
-            )
-        set_value(section="anonymous_token", key=renku_host, value=anon_token, global_only=True)
-    return anon_token
 
 
 class RenkulabSessionProvider(ISessionProvider):
@@ -104,9 +58,9 @@ class RenkulabSessionProvider(ISessionProvider):
             self.__notebooks_url = url
         return self.__notebooks_url
 
-    def _token(self) -> str:
+    def _get_token(self) -> str:
         """Get the JWT token used to authenticate against Renku."""
-        token, _ = _get_token(renku_url=self._renku_url())
+        token = read_renku_token(endpoint=self._renku_url())
         if token is None:
             raise errors.AuthenticationError("Please run the renku login command to authenticate with Renku.")
         elif is_token_expired(token):
@@ -115,17 +69,12 @@ class RenkulabSessionProvider(ISessionProvider):
             )
         return token
 
-    def _is_user_registered(self) -> bool:
-        _, is_user_registered = _get_token(renku_url=self._renku_url())
-        return is_user_registered
-
     def _auth_header(self) -> Dict[str, str]:
         """Get the authentication header with the JWT token or cookie needed to authenticate with Renku."""
-        if self._is_user_registered():
-            return {"Authorization": f"Bearer {self._token()}"}
-        return {"Cookie": f"anon-id={self._token()}"}
+        return {"Authorization": f"Bearer {self._get_token()}"}
 
-    def _get_renku_project_name_parts(self):
+    @staticmethod
+    def _get_renku_project_name_parts():
         repository = project_context.repository
         if project_context.remote.name and project_context.remote.owner:
             if get_remote(repository, name="renku-backup-origin") and project_context.remote.owner.startswith("repos/"):
@@ -187,8 +136,6 @@ class RenkulabSessionProvider(ISessionProvider):
 
     def pre_start_checks(self):
         """Check if the state of the repository is as expected before starting a session."""
-        if not self._is_user_registered():
-            return
         repository = project_context.repository
 
         if repository.is_dirty(untracked_files=True):
@@ -201,7 +148,8 @@ class RenkulabSessionProvider(ISessionProvider):
             repository.add(all=True)
             repository.commit("Automated commit by Renku CLI.")
 
-    def _remote_head_hexsha(self):
+    @staticmethod
+    def _remote_head_hexsha():
         remote = get_remote(repository=project_context.repository)
 
         if remote is None:
@@ -231,10 +179,6 @@ class RenkulabSessionProvider(ISessionProvider):
         """Builds the container image."""
         if self.find_image(image_name, config=config):
             return
-        if not self._is_user_registered():
-            raise errors.NotebookSessionImageNotExistError(
-                f"Renku cannot find the image {image_name} and use it in an anonymous session."
-            )
         repository = project_context.repository
         if repository.head.commit.hexsha != self._remote_head_hexsha():
             repository.push()
@@ -302,24 +246,17 @@ class RenkulabSessionProvider(ISessionProvider):
         repository = project_context.repository
 
         session_commit = repository.head.commit.hexsha
-        if not self._is_user_registered():
-            communication.warn(
-                "You are starting a session as an anonymous user. "
-                "None of the local changes in this project will be reflected in your session. "
-                "In addition, any changes you make in the new session will be lost when "
-                "the session is shut down."
+        if repository.head.commit.hexsha != self._remote_head_hexsha():
+            # INFO: The user is registered, the image is pinned or already available
+            # but the local repository is not fully in sync with the remote
+            communication.confirm(
+                "You have unpushed commits that will not be present in your session. "
+                "Renku can automatically push these commits so that they are present "
+                "in the session you are launching. Do you wish to proceed?",
+                abort=True,
             )
-        else:
-            if repository.head.commit.hexsha != self._remote_head_hexsha():
-                # INFO: The user is registered, the image is pinned or already available
-                # but the local repository is not fully in sync with the remote
-                communication.confirm(
-                    "You have unpushed commits that will not be present in your session. "
-                    "Renku can automatically push these commits so that they are present "
-                    "in the session you are launching. Do you wish to proceed?",
-                    abort=True,
-                )
-                repository.push()
+            repository.push()
+
         server_options: Dict[str, Union[str, float]] = {}
         if cpu_request:
             server_options["cpu_request"] = cpu_request
@@ -370,20 +307,12 @@ class RenkulabSessionProvider(ISessionProvider):
 
     def session_url(self, session_name: str) -> str:
         """Get the URL of the interactive session."""
-        if self._is_user_registered():
-            project_name_parts = self._get_renku_project_name_parts()
-            session_url_parts = [
-                "projects",
-                project_name_parts["namespace"],
-                project_name_parts["project"],
-                "sessions/show",
-                session_name,
-            ]
-            return urllib.parse.urljoin(self._renku_url(), "/".join(session_url_parts))
-        else:
-            # NOTE: The sessions/show logic of the UI expects a cookie to already be present
-            # with the anonymous user ID, but in this case we need to open a new browser window
-            # and need to pass the token in the URL, that is why anonymous sessions will be shown
-            # and opened in the full session view not in the i-frame view like registered sessions
-            session_url_parts = ["sessions", f"{session_name}?token={self._token()}"]
-            return urllib.parse.urljoin(self._renku_url(), "/".join(session_url_parts))
+        project_name_parts = self._get_renku_project_name_parts()
+        session_url_parts = [
+            "projects",
+            project_name_parts["namespace"],
+            project_name_parts["project"],
+            "sessions/show",
+            session_name,
+        ]
+        return urllib.parse.urljoin(self._renku_url(), "/".join(session_url_parts))
