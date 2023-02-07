@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,10 +15,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Terminal Color definitions."""
+"""JWT utilities."""
 
-YELLOW = "yellow"
-MAGENTA = "magenta"
-GREEN = "green"
-RED = "red"
-BLUE = "blue"
+from datetime import datetime, timezone
+
+import jwt
+
+
+def is_token_expired(token: str) -> bool:
+    """Return True if the given token is expired."""
+    try:
+        decoded_token = jwt.decode(token, options={"verify_signature": False})
+    except jwt.DecodeError:
+        return True
+
+    expiration_date = decoded_token.get("exp", 0)
+
+    # NOTE: ``datetime.utcnow`` doesn't have timezone info, so we use ``datetime.now``
+    return expiration_date < datetime.now(tz=timezone.utc).timestamp()

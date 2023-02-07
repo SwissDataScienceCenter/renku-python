@@ -151,6 +151,7 @@ import click
 from lazy_object_proxy import Proxy
 
 from renku.command.format.session import SESSION_FORMATS
+from renku.command.util import WARNING
 from renku.core import errors
 from renku.ui.cli.utils.callback import ClickCallback
 from renku.ui.cli.utils.plugins import get_supported_session_providers_names
@@ -187,7 +188,16 @@ def list_sessions(provider, config, format):
     from renku.command.session import session_list_command
 
     result = session_list_command().build().execute(provider=provider, config_path=config)
-    click.echo(SESSION_FORMATS[format](result.output))
+    sessions, all_local, warning_messages = result.output
+
+    click.echo(SESSION_FORMATS[format](sessions))
+
+    if warning_messages:
+        click.echo()
+        if all_local and sessions:
+            click.echo(WARNING + "Only showing sessions from local provider")
+        for message in warning_messages:
+            click.echo(WARNING + message)
 
 
 @session.command("start")
@@ -218,21 +228,15 @@ def start(provider, config, image, cpu, disk, gpu, memory):
     from renku.command.session import session_start_command
 
     communicator = ClickCallback()
-    result = (
-        session_start_command()
-        .with_communicator(communicator)
-        .build()
-        .execute(
-            provider=provider,
-            config_path=config,
-            image_name=image,
-            cpu_request=cpu,
-            mem_request=memory,
-            disk_request=disk,
-            gpu_request=gpu,
-        )
+    session_start_command().with_communicator(communicator).build().execute(
+        provider=provider,
+        config_path=config,
+        image_name=image,
+        cpu_request=cpu,
+        mem_request=memory,
+        disk_request=disk,
+        gpu_request=gpu,
     )
-    click.echo(result.output)
 
 
 @session.command("stop")

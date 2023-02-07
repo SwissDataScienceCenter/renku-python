@@ -21,7 +21,9 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
+
+from renku.core.constant import ProviderPriority
 
 
 class Session:
@@ -36,10 +38,17 @@ class Session:
 class ISessionProvider(metaclass=ABCMeta):
     """Abstract class for a interactive session provider."""
 
+    priority: ProviderPriority = ProviderPriority.NORMAL
+
     @abstractmethod
     def get_name(self) -> str:
         """Return session provider's name."""
         pass
+
+    @abstractmethod
+    def is_remote_provider(self) -> bool:
+        """Return True for remote providers (i.e. not local Docker)."""
+        raise NotImplementedError
 
     @abstractmethod
     def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]):
@@ -97,7 +106,7 @@ class ISessionProvider(metaclass=ABCMeta):
         mem_request: Optional[str] = None,
         disk_request: Optional[str] = None,
         gpu_request: Optional[str] = None,
-    ) -> str:
+    ) -> Tuple[str, str]:
         """Creates an interactive session.
 
         Args:
@@ -110,7 +119,7 @@ class ISessionProvider(metaclass=ABCMeta):
             gpu_request(Optional[str]): GPU device request for the session.
 
         Returns:
-            str: a unique id for the created interactive session.
+            Tuple[str, str]: Provider message and a possible warning message.
         """
         pass
 

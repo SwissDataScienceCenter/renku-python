@@ -46,7 +46,7 @@ def test_template_list(isolated_runner):
         result = isolated_runner.invoke(cli, command, replace_argv=False)
 
         assert 0 == result.exit_code, format_result_exception(result)
-        assert "python-minimal" in result.output
+        assert "python" in result.output
     finally:
         sys.argv = argv
 
@@ -62,14 +62,14 @@ def test_template_list_from_source(isolated_runner):
         result = isolated_runner.invoke(cli, command + ["--source", TEMPLATES_URL])
 
         assert 0 == result.exit_code, format_result_exception(result)
-        assert "python-minimal" in result.output
-        assert "julia-minimal" in result.output
+        assert "python" in result.output
+        assert "julia" in result.output
 
         result = isolated_runner.invoke(cli, command + ["-s", TEMPLATES_URL, "--reference", "0.3.2"])
 
         assert 0 == result.exit_code, format_result_exception(result)
-        assert "python-minimal" in result.output
-        assert "julia-minimal" in result.output
+        assert "python" in result.output
+        assert "julia" in result.output
     finally:
         sys.argv = argv
 
@@ -81,7 +81,7 @@ def test_template_show(isolated_runner):
     sys.argv = command
 
     try:
-        result = isolated_runner.invoke(cli, command + ["R-minimal"])
+        result = isolated_runner.invoke(cli, command + ["R"])
 
         assert 0 == result.exit_code, format_result_exception(result)
         assert re.search("^Name: Basic R (.*) Project$", result.output, re.MULTILINE) is not None
@@ -135,18 +135,18 @@ def test_template_set_failure(runner, project, with_injection):
     assert 1 == result.exit_code, format_result_exception(result)
     assert "Project already has a template" in result.output
     with with_injection():
-        assert "python-minimal" == project_context.project.template_metadata.template_id
+        assert "python" == project_context.project.template_metadata.template_id
 
 
 def test_template_set(runner, project, with_injection):
     """Test setting a new template in a project."""
     from renku.version import __template_version__
 
-    result = runner.invoke(cli, ["template", "set", "--force", "R-minimal"])
+    result = runner.invoke(cli, ["template", "set", "--force", "R"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     with with_injection():
-        assert "R-minimal" == project_context.project.template_metadata.template_id
+        assert "R" == project_context.project.template_metadata.template_id
         assert __template_version__ == project_context.project.template_metadata.template_version
         assert __template_version__ == project_context.project.template_metadata.template_ref
 
@@ -158,11 +158,11 @@ def test_template_set_overwrites_modified(runner, project, with_injection):
     """Test setting a new template in a project overwrite modified files."""
     write_and_commit_file(project.repository, "Dockerfile", "my-modifications")
 
-    result = runner.invoke(cli, ["template", "set", "--force", "R-minimal"])
+    result = runner.invoke(cli, ["template", "set", "--force", "R"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     with with_injection():
-        assert "R-minimal" == project_context.project.template_metadata.template_id
+        assert "R" == project_context.project.template_metadata.template_id
     assert "my-modifications" not in (project.path / "Dockerfile").read_text()
     assert not project.repository.is_dirty(untracked_files=True)
 
@@ -172,11 +172,11 @@ def test_template_set_interactive(runner, project, with_injection, overwrite, fo
     """Test setting a template in interactive mode."""
     write_and_commit_file(project.repository, "Dockerfile", "my-modifications")
 
-    result = runner.invoke(cli, ["template", "set", "-f", "R-minimal", "-i"], input=f"{overwrite}\n" * 420)
+    result = runner.invoke(cli, ["template", "set", "-f", "R", "-i"], input=f"{overwrite}\n" * 420)
 
     assert 0 == result.exit_code, format_result_exception(result)
     with with_injection():
-        assert "R-minimal" == project_context.project.template_metadata.template_id
+        assert "R" == project_context.project.template_metadata.template_id
     assert ("my-modifications" in (project.path / "Dockerfile").read_text()) is found
     assert not project.repository.is_dirty(untracked_files=True)
 
@@ -187,7 +187,7 @@ def test_template_set_preserve_renku_version(runner, project):
     new_content = re.sub(r"^\s*ARG RENKU_VERSION=(.+)$", "ARG RENKU_VERSION=0.0.42", content, flags=re.MULTILINE)
     write_and_commit_file(project.repository, "Dockerfile", new_content)
 
-    result = runner.invoke(cli, ["template", "set", "-f", "R-minimal", "--interactive"], input="y\n" * 420)
+    result = runner.invoke(cli, ["template", "set", "-f", "R", "--interactive"], input="y\n" * 420)
 
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -212,7 +212,7 @@ def test_template_set_uses_renku_version_when_non_existing(tmpdir, runner):
 
         assert "RENKU_VERSION" not in project_context.docker_path.read_text()
 
-        assert 0 == runner.invoke(cli, ["template", "set", "python-minimal"]).exit_code
+        assert 0 == runner.invoke(cli, ["template", "set", "python"]).exit_code
 
         assert f"RENKU_VERSION={__version__}" in project_context.docker_path.read_text()
 
@@ -221,7 +221,7 @@ def test_template_set_dry_run(runner, project):
     """Test set dry-run doesn't make any changes."""
     commit_sha_before = project.repository.head.commit.hexsha
 
-    result = runner.invoke(cli, ["template", "set", "-f", "R-minimal", "--dry-run"])
+    result = runner.invoke(cli, ["template", "set", "-f", "R", "--dry-run"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert not project.repository.is_dirty()
@@ -232,25 +232,23 @@ def test_template_set_dry_run(runner, project):
 def test_template_update(runner, project, with_injection):
     """Test updating a template."""
     result = runner.invoke(
-        cli,
-        ["template", "set", "-f", "python-minimal", "-s", TEMPLATES_URL, "-r", "0.3.2"]
-        + ["-p", "description=fixed-version"],
+        cli, ["template", "set", "-f", "python", "-s", TEMPLATES_URL, "-r", "0.4.0", "-p", "description=fixed-version"]
     )
 
     assert 0 == result.exit_code, format_result_exception(result)
     with with_injection():
-        assert "python-minimal" == project_context.project.template_metadata.template_id
-        assert "0.3.2" == project_context.project.template_metadata.template_ref
-        assert "b9ab266fba136bdecfa91dc8d7b6d36b9d427012" == project_context.project.template_metadata.template_version
+        assert "python" == project_context.project.template_metadata.template_id
+        assert "0.4.0" == project_context.project.template_metadata.template_ref
+        assert "5df0ae30086e6ac46ff2b1cc038f3e2dfcf74962" == project_context.project.template_metadata.template_version
 
     result = runner.invoke(cli, ["template", "update"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Template is up-to-date" not in result.output
     with with_injection():
-        assert "python-minimal" == project_context.project.template_metadata.template_id
-        assert Version(project_context.project.template_metadata.template_ref) > Version("0.3.2")
-        assert "6c59d8863841baeca8f30062fd16c650cf67da3b" != project_context.project.template_metadata.template_version
+        assert "python" == project_context.project.template_metadata.template_id
+        assert Version(project_context.project.template_metadata.template_ref) > Version("0.4.0")
+        assert "5df0ae30086e6ac46ff2b1cc038f3e2dfcf74962" != project_context.project.template_metadata.template_version
 
     result = runner.invoke(cli, ["template", "update"])
 
@@ -284,8 +282,7 @@ def test_template_update_dry_run(runner, project):
     """Test update dry-run doesn't make any changes."""
     result = runner.invoke(
         cli,
-        ["template", "set", "-f", "python-minimal", "-s", TEMPLATES_URL, "-r", "0.3.2"]
-        + ["-p", "description=fixed-version"],
+        ["template", "set", "-f", "python", "-s", TEMPLATES_URL, "-r", "0.4.0", "-p", "description=fixed-version"],
     )
 
     assert 0 == result.exit_code, format_result_exception(result)
