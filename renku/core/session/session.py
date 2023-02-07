@@ -39,7 +39,7 @@ def _safe_get_provider(provider: str) -> ISessionProvider:
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
-def session_list(config_path: Optional[str], provider: Optional[str] = None) -> Tuple[List[Session], List[str]]:
+def session_list(config_path: Optional[str], provider: Optional[str] = None) -> Tuple[List[Session], bool, List[str]]:
     """List interactive sessions."""
 
     def list_sessions(session_provider: ISessionProvider) -> List[Session]:
@@ -56,16 +56,19 @@ def session_list(config_path: Optional[str], provider: Optional[str] = None) -> 
     providers = [_safe_get_provider(provider)] if provider else get_supported_session_providers()
 
     all_sessions = []
-    error_messages = []
+    warning_messages = []
+    all_local = True
     for session_provider in sorted(providers, key=lambda p: p.priority):
         try:
             sessions = list_sessions(session_provider)
         except errors.RenkuException as e:
-            error_messages.append(f"Cannot get sessions list from '{session_provider.get_name()}': {e}")
+            warning_messages.append(f"Cannot get sessions list from '{session_provider.get_name()}': {e}")
         else:
+            if session_provider.is_remote_provider():
+                all_local = False
             all_sessions.extend(sessions)
 
-    return all_sessions, error_messages
+    return all_sessions, all_local, warning_messages
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
@@ -158,20 +161,20 @@ def session_stop(session_name: Optional[str], stop_all: bool = False, provider: 
     providers = [_safe_get_provider(provider)] if provider else get_supported_session_providers()
 
     is_stopped = False
-    error_messages = []
+    warning_messages = []
     with communication.busy(msg=f"Waiting for {session_detail} to stop..."):
         for session_provider in sorted(providers, key=lambda p: p.priority):
             try:
                 is_stopped = stop_sessions(session_provider)
             except errors.RenkuException as e:
-                error_messages.append(f"Cannot stop sessions in provider '{session_provider.get_name()}': {e}")
+                warning_messages.append(f"Cannot stop sessions in provider '{session_provider.get_name()}': {e}")
 
             if is_stopped and session_name:
                 break
 
-    if error_messages:
-        for message in error_messages:
-            communication.error(message)
+    if warning_messages:
+        for message in warning_messages:
+            communication.warn(message)
 
     if not is_stopped:
         if not session_name:

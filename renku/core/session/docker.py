@@ -75,6 +75,10 @@ class DockerSessionProvider(ISessionProvider):
         """Return session provider's name."""
         return "docker"
 
+    def is_remote_provider(self) -> bool:
+        """Return True for remote providers (i.e. not local Docker)."""
+        return False
+
     def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]):
         """Builds the container image."""
         self.docker_client().images.build(path=str(image_descriptor), tag=image_name)

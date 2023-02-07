@@ -151,7 +151,7 @@ import click
 from lazy_object_proxy import Proxy
 
 from renku.command.format.session import SESSION_FORMATS
-from renku.command.util import ERROR
+from renku.command.util import WARNING
 from renku.core import errors
 from renku.ui.cli.utils.callback import ClickCallback
 from renku.ui.cli.utils.plugins import get_supported_session_providers_names
@@ -187,12 +187,17 @@ def list_sessions(provider, config, format):
     """List interactive sessions."""
     from renku.command.session import session_list_command
 
-    sessions, error_messages = session_list_command().build().execute(provider=provider, config_path=config).output
+    result = session_list_command().build().execute(provider=provider, config_path=config)
+    sessions, all_local, warning_messages = result.output
+
     click.echo(SESSION_FORMATS[format](sessions))
-    if error_messages:
+
+    if warning_messages:
         click.echo()
-        for message in error_messages:
-            click.echo(ERROR + message)
+        if all_local and sessions:
+            click.echo(WARNING + "Only showing sessions from local provider")
+        for message in warning_messages:
+            click.echo(WARNING + message)
 
 
 @session.command("start")

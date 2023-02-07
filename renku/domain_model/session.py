@@ -46,6 +46,11 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def is_remote_provider(self) -> bool:
+        """Return True for remote providers (i.e. not local Docker)."""
+        raise NotImplementedError
+
+    @abstractmethod
     def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]):
         """Builds the container image.
 

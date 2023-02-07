@@ -38,6 +38,9 @@ def dummy_session_provider():
         def get_name(self):
             return "dummy"
 
+        def is_remote_provider(self):
+            return False
+
         def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]):
             pass
 

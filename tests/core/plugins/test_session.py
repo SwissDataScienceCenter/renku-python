@@ -178,5 +178,5 @@ def test_session_list(
                 with pytest.raises(result):
                     session_list(provider=provider, config_path=None)
             else:
-                sessions, _ = session_list(provider=provider, config_path=None)
+                sessions, _, _ = session_list(provider=provider, config_path=None)
                 assert sessions == result

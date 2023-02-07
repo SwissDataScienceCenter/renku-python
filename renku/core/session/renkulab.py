@@ -175,6 +175,10 @@ class RenkulabSessionProvider(ISessionProvider):
         """Return session provider's name."""
         return "renkulab"
 
+    def is_remote_provider(self) -> bool:
+        """Return True for remote providers (i.e. not local Docker)."""
+        return True
+
     def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]):
         """Builds the container image."""
         if self.find_image(image_name, config=config):
