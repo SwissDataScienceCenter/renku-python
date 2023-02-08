@@ -28,16 +28,16 @@ from pydantic import validate_arguments
 from renku.core import errors
 from renku.core.config import get_value
 from renku.core.plugin.session import get_supported_session_providers
-from renku.core.session.utils import get_image_repository_host, get_renku_project_name, get_renku_url
+from renku.core.session.utils import get_image_repository_host, get_renku_project_name
 from renku.core.util import communication
 from renku.core.util.os import safe_read_yaml
-from renku.core.util.ssh import generate_ssh_keys
+from renku.core.util.ssh import SystemSSHConfig, generate_ssh_keys
 from renku.domain_model.session import ISessionProvider, Session
 
 
 def _safe_get_provider(provider: str) -> ISessionProvider:
     try:
-        return next(p for p in get_supported_session_providers() if p.get_name() == provider)
+        return next(p for p in get_supported_session_providers() if p.name == provider)
     except StopIteration:
         raise errors.ParameterError(f"Session provider '{provider}' is not available!")
 
@@ -89,6 +89,7 @@ def session_start(
     mem_request: Optional[str] = None,
     disk_request: Optional[str] = None,
     gpu_request: Optional[str] = None,
+    **kwargs,
 ):
     """Start interactive session.
 
@@ -110,7 +111,7 @@ def session_start(
     provider_api = _safe_get_provider(provider)
     config = safe_read_yaml(config_path) if config_path else dict()
 
-    provider_api.pre_start_checks()
+    provider_api.pre_start_checks(**kwargs)
 
     project_name = get_renku_project_name()
     if image_name is None:
@@ -153,6 +154,7 @@ def session_start(
             mem_request=mem_limit,
             disk_request=disk_limit,
             gpu_request=gpu,
+            **kwargs,
         )
 
     if warning_message:
@@ -234,43 +236,33 @@ def session_open(session_name: str, provider: Optional[str] = None):
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
-def ssh_setup(existing_key: Optional[Path] = None, yes: bool = False):
+def ssh_setup(existing_key: Optional[Path] = None, force: bool = False):
     """Setup SSH keys for SSH connections to sessions.
 
     Args:
         existing_key(Path, optional): Existing private key file to use instead of generating new ones.
-        yes(bool): Whether to prompt before overwriting keys or not
+        force(bool): Whether to prompt before overwriting keys or not
     """
 
     if not shutil.which("ssh"):
         raise errors.SSHNotFoundError()
 
-    ssh_root = Path.home() / ".ssh"
-    ssh_config = ssh_root / "config"
-    renku_ssh_root = ssh_root / "renku"
-    renku_ssh_root.mkdir(exist_ok=True, parents=True)
+    system_config = SystemSSHConfig()
 
-    renku_url = get_renku_url()
+    system_config.ssh_config.touch(mode=0o644, exist_ok=True)
 
-    if not renku_url:
-        raise errors.AuthenticationError(
-            "Please use `renku login` to log in to the remote deployment before setting up ssh."
-        )
+    include_string = f"Include {system_config.renku_ssh_root}/*.conf\n\n"
 
-    ssh_config.touch(mode=0o644, exist_ok=True)
+    if include_string not in system_config.ssh_config.read_text():
+        with system_config.ssh_config.open(mode="r+") as f:
+            content = f.read()
+            f.seek(
+                0, 0
+            )  # NOTE: We need to add 'Include' before any 'Host' entry, otherwise it is included as part of a host
+            f.write(include_string + content)
 
-    include_string = f"Include {renku_ssh_root}"
-
-    if include_string not in ssh_config.read_text():
-        with ssh_config.open(mode="at") as f:
-            f.writelines(["", include_string])
-
-    jumphost_file = renku_ssh_root / f"{renku_url}-jumphost"
-    keyfile = renku_ssh_root / f"{renku_url}-key"
-    public_keyfile = renku_ssh_root / f"{renku_url}-key.pub"
-
-    if not existing_key and not yes and (jumphost_file.exists() or keyfile.exists() or public_keyfile.exists()):
-        communication.confirm(f"Keys already configured for host {renku_url}. Overwrite?", abort=True)
+    if not existing_key and not force and system_config.is_configured:
+        communication.confirm(f"Keys already configured for host {system_config.renku_host}. Overwrite?", abort=True)
 
     if existing_key:
         communication.info("Linking existing keys")
@@ -281,32 +273,35 @@ def ssh_setup(existing_key: Optional[Path] = None, yes: bool = False):
                 f"Couldn't find private key '{existing_key}' or public key '{existing_public_key}'."
             )
 
-        os.symlink(existing_key, keyfile)
-        os.symlink(existing_public_key, public_keyfile)
+        system_config.keyfile.unlink(missing_ok=True)
+        system_config.public_keyfile.unlink(missing_ok=True)
+
+        os.symlink(existing_key, system_config.keyfile)
+        os.symlink(existing_public_key, system_config.public_keyfile)
     else:
         communication.info("Generating keys")
         keys = generate_ssh_keys()
-        keyfile.touch(mode=0o600)
-        public_keyfile.touch(mode=0o644)
-        with keyfile.open(
+        system_config.keyfile.touch(mode=0o600)
+        system_config.public_keyfile.touch(mode=0o644)
+        with system_config.keyfile.open(
             "wt",
         ) as f:
             f.write(keys.private_key)
 
-        with public_keyfile.open("wt") as f:
+        with system_config.public_keyfile.open("wt") as f:
             f.write(keys.public_key)
 
     communication.info("Writing SSH config")
-    with jumphost_file.open(mode="wt") as f:
+    with system_config.jumphost_file.open(mode="wt") as f:
         f.write(
             f"""
-Host {renku_url}-jumphost
-  HostName {renku_url}
+Host jumphost-{system_config.renku_host}
+  HostName {system_config.renku_host}
   Port 2022
 
-Host {renku_url}-project
-  ProxyJump  {renku_url}-jumphost
-  IdentityFile {keyfile}
+Host {system_config.renku_host}-*
+  ProxyJump  jumphost-{system_config.renku_host}
+  IdentityFile {system_config.keyfile}
   User jovyan
   """
         )

@@ -17,11 +17,16 @@
 # limitations under the License.
 """SSH utility functions."""
 
+import urllib.parse
+from pathlib import Path
 from typing import NamedTuple
 
 from cryptography.hazmat.backends import default_backend as crypto_default_backend
 from cryptography.hazmat.primitives import serialization as crypto_serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+
+from renku.core import errors
+from renku.core.session.utils import get_renku_url
 
 SSHKeyPair = NamedTuple("SSHKeyPair", [("private_key", str), ("public_key", str)])
 
@@ -43,3 +48,60 @@ def generate_ssh_keys() -> SSHKeyPair:
     )
 
     return SSHKeyPair(private_key.decode("utf-8"), public_key.decode("utf-8"))
+
+
+class SystemSSHConfig:
+    """Class to manage system SSH config."""
+
+    def __init__(self) -> None:
+        """Initialize class ans calculate paths."""
+        self.ssh_root: Path = Path.home() / ".ssh"
+        self.ssh_config: Path = self.ssh_root / "config"
+        self.renku_ssh_root: Path = self.ssh_root / "renku"
+
+        self.renku_ssh_root.mkdir(exist_ok=True, parents=True)
+        self.ssh_config.touch(mode=0o644, exist_ok=True)
+
+        self.renku_host: str = str(urllib.parse.urlparse(get_renku_url()).hostname)
+
+        if not self.renku_host:
+            raise errors.AuthenticationError(
+                "Please use `renku login` to log in to the remote deployment before setting up ssh."
+            )
+
+        self.jumphost_file = self.renku_ssh_root / f"99-{self.renku_host}-jumphost.conf"
+        self.keyfile = self.renku_ssh_root / f"{self.renku_host}-key"
+        self.public_keyfile = self.renku_ssh_root / f"{self.renku_host}-key.pub"
+
+    @property
+    def is_configured(self) -> bool:
+        """Check if the system is already configured correctly."""
+        return self.jumphost_file.exists() and self.keyfile.exists() and self.public_keyfile.exists()
+
+    def session_config_path(self, project_name: str, session_name: str) -> Path:
+        """Get path to a session config."""
+        project_name = project_name.rsplit("/", 1)[1]
+        return self.renku_ssh_root / f"00-{project_name}-{session_name}.conf"
+
+    def setup_session_config(self, project_name: str, session_name: str) -> str:
+        """Setup local SSH config for connecting to a session.
+
+        Args:
+            session_name(str): The name of the session to setup a connection to.
+        Returns:
+            The name of the created SSH host config.
+        """
+        project_name = project_name.rsplit("/", 1)[1]
+        connection_name = f"{self.renku_host}-{project_name}-{session_name}"
+
+        path = self.session_config_path(project_name, session_name)
+        path.touch(mode=0o644, exist_ok=True)
+
+        path.write_text(
+            f"""
+Host {connection_name}
+    HostName {session_name}
+"""
+        )
+
+        return connection_name
