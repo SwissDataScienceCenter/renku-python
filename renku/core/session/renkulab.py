@@ -20,7 +20,7 @@
 import urllib
 from pathlib import Path
 from time import monotonic, sleep
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from renku.core import errors
 from renku.core.login import read_renku_token
@@ -29,8 +29,12 @@ from renku.core.session.utils import get_renku_project_name, get_renku_url
 from renku.core.util import communication, requests
 from renku.core.util.git import get_remote
 from renku.core.util.jwt import is_token_expired
+from renku.core.util.ssh import SystemSSHConfig
 from renku.domain_model.project_context import project_context
 from renku.domain_model.session import ISessionProvider, Session
+
+if TYPE_CHECKING:
+    from renku.core.dataset.providers.models import ProviderParameter
 
 
 class RenkulabSessionProvider(ISessionProvider):
@@ -134,8 +138,10 @@ class RenkulabSessionProvider(ISessionProvider):
             "of problems with your Dockerfile."
         )
 
-    def pre_start_checks(self):
+    def pre_start_checks(self, ssh: bool = False, **kwargs):
         """Check if the state of the repository is as expected before starting a session."""
+        from renku.core.session.session import ssh_setup
+
         repository = project_context.repository
 
         if repository.is_dirty(untracked_files=True):
@@ -148,8 +154,50 @@ class RenkulabSessionProvider(ISessionProvider):
             repository.add(all=True)
             repository.commit("Automated commit by Renku CLI.")
 
-    @staticmethod
-    def _remote_head_hexsha():
+        if ssh:
+            system_config = SystemSSHConfig()
+
+            if not system_config.is_configured:
+                if communication.confirm(
+                    "Your system is not set up for SSH connections to Renku. Would you like to set it up?"
+                ):
+                    ssh_setup()
+                else:
+                    raise errors.RenkulabSessionError(
+                        "Can't run ssh session without setting up Renku SSH support. Run without '--ssh' or "
+                        "run 'renku session setup-ssh'."
+                    )
+
+            project_context.ssh_authorized_keys_path.touch(mode=0o644, exist_ok=True)
+
+            key = system_config.public_keyfile.read_text()
+            key = f"{key} {project_context.repository.get_user().name}"
+
+            if key in project_context.ssh_authorized_keys_path.read_text():
+                return
+
+            communication.info("Adding SSH public key to project.")
+            with project_context.ssh_authorized_keys_path.open("at") as f:
+                f.writelines(key)
+
+            repository.add(project_context.ssh_authorized_keys_path)
+            repository.commit("Add SSH public key.")
+
+    def _cleanup_ssh_connection_configs(self, project_name: str):
+        """Cleanup leftover SSH connections that aren't valid anymore."""
+        sessions = self.session_list("", None)
+
+        system_config = SystemSSHConfig()
+
+        project_name = project_name.rsplit("/", 1)[1]
+
+        session_config_paths = [system_config.session_config_path(project_name, s.id) for s in sessions]
+
+        for path in system_config.renku_ssh_root.glob(f"00-{project_name}*.conf"):
+            if path not in session_config_paths:
+                path.unlink()
+
+    def _remote_head_hexsha(self):
         remote = get_remote(repository=project_context.repository)
 
         if remote is None:
@@ -171,7 +219,8 @@ class RenkulabSessionProvider(ISessionProvider):
             )
         return res
 
-    def get_name(self) -> str:
+    @property
+    def name(self) -> str:
         """Return session provider's name."""
         return "renkulab"
 
@@ -209,6 +258,14 @@ class RenkulabSessionProvider(ISessionProvider):
         """
         return self
 
+    def get_start_parameters(self) -> List["ProviderParameter"]:
+        """Returns parameters that can be set for session start."""
+        from renku.core.dataset.providers.models import ProviderParameter
+
+        return [
+            ProviderParameter("ssh", help="Enable ssh connections to the session.", is_flag=True),
+        ]
+
     def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
 
@@ -241,6 +298,8 @@ class RenkulabSessionProvider(ISessionProvider):
         mem_request: Optional[str] = None,
         disk_request: Optional[str] = None,
         gpu_request: Optional[str] = None,
+        ssh: bool = False,
+        **kwargs,
     ) -> Tuple[str, str]:
         """Creates an interactive session.
 
@@ -260,6 +319,8 @@ class RenkulabSessionProvider(ISessionProvider):
                 abort=True,
             )
             repository.push()
+        if ssh:
+            self._cleanup_ssh_connection_configs(project_name)
 
         server_options: Dict[str, Union[str, float]] = {}
         if cpu_request:
@@ -285,6 +346,9 @@ class RenkulabSessionProvider(ISessionProvider):
         if res.status_code in [200, 201]:
             session_name = res.json()["name"]
             self._wait_for_session_status(session_name, "running")
+            if ssh:
+                connection = SystemSSHConfig().setup_session_config(project_name, session_name)
+                communication.echo(f"SSH connection successfully configured, use 'ssh {connection}' to connect.")
             return f"Session {session_name} successfully started", ""
         raise errors.RenkulabSessionError("Cannot start session via the notebook service because " + res.text)
 
@@ -307,6 +371,9 @@ class RenkulabSessionProvider(ISessionProvider):
                 )
             )
             self._wait_for_session_status(session_name, "stopping")
+
+        self._cleanup_ssh_connection_configs(project_name)
+
         return all([response.status_code == 204 for response in responses]) if responses else False
 
     def session_url(self, session_name: str) -> str:

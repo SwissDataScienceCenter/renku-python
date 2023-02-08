@@ -35,7 +35,8 @@ def dummy_session_provider():
     class _DummySessionProvider(ISessionProvider):
         sessions = list()
 
-        def get_name(self):
+        @property
+        def name(self):
             return "dummy"
 
         def is_remote_provider(self):
@@ -63,6 +64,7 @@ def dummy_session_provider():
             mem_request: Optional[str] = None,
             disk_request: Optional[str] = None,
             gpu_request: Optional[str] = None,
+            **kwargs,
         ) -> Tuple[str, str]:
             name = f"session-random-{uuid4().hex}-name"
             self.sessions.append(name)
@@ -81,6 +83,9 @@ def dummy_session_provider():
 
         def pre_start_checks(self):
             pass
+
+        def get_start_parameters(self):
+            return []
 
     plugin = _DummySessionProvider()
     pm = plugin_manager.get_plugin_manager()

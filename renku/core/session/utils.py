@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Utility functions used for sessions."""
+import os
 import urllib
 from typing import Optional
 
@@ -48,6 +49,10 @@ def get_renku_url() -> Optional[str]:
 
 def get_image_repository_host() -> Optional[str]:
     """Derive the hostname for the gitlab container registry."""
+    # NOTE: Used to circumvent cases where the registry URL is not guessed correctly
+    # remove once #3301 is done
+    if "RENKU_IMAGE_REGISTRY" in os.environ:
+        return os.environ["RENKU_IMAGE_REGISTRY"]
     renku_url = get_renku_url()
     if not renku_url:
         return None

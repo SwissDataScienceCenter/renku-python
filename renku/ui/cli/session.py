@@ -200,6 +200,15 @@ def list_sessions(provider, config, format):
             click.echo(WARNING + message)
 
 
+def session_start_provider_options(*param_decls, **attrs):
+    """Sets dataset export provider option groups on the dataset export command."""
+    from renku.core.plugin.session import get_supported_session_providers
+    from renku.ui.cli.utils.click import create_options
+
+    providers = [p for p in get_supported_session_providers() if p.get_start_parameters()]  # type: ignore
+    return create_options(providers=providers, parameter_function="get_start_parameters")
+
+
 @session.command("start")
 @click.option(
     "provider",
@@ -223,7 +232,8 @@ def list_sessions(provider, config, format):
 @click.option("--disk", type=click.STRING, metavar="<disk size>", help="Amount of disk space required for the session.")
 @click.option("--gpu", type=click.STRING, metavar="<GPU quota>", help="GPU quota for the session.")
 @click.option("--memory", type=click.STRING, metavar="<memory size>", help="Amount of memory required for the session.")
-def start(provider, config, image, cpu, disk, gpu, memory):
+@session_start_provider_options()
+def start(provider, config, image, cpu, disk, gpu, memory, **kwargs):
     """Start an interactive session."""
     from renku.command.session import session_start_command
 
@@ -236,6 +246,7 @@ def start(provider, config, image, cpu, disk, gpu, memory):
         mem_request=memory,
         disk_request=disk,
         gpu_request=gpu,
+        **kwargs,
     )
 
 
@@ -295,9 +306,9 @@ def open(session_name, provider):
     metavar="<private key file>",
     help="Existing private key to use.",
 )
-@click.option("--yes", is_flag=True, help="Do not prompt, overwrite existing keys.")
-def setup_ssh(existing_key, yes):
+@click.option("--force", is_flag=True, help="Overwrite existing keys/config.")
+def setup_ssh(existing_key, force):
     """Setup keys for SSH connections into sessions."""
     from renku.command.session import setup_ssh_command
 
-    setup_ssh_command().build().execute(existing_key=existing_key, yes=yes)
+    setup_ssh_command().build().execute(existing_key=existing_key, force=force)
