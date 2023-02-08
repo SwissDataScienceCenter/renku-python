@@ -171,17 +171,25 @@ def migrate_remote_entity_ids():
     """Change `remote-entity` to `remote-entities` in ids."""
     database = project_context.database
 
-    datasets: List[Dataset] = list(database["datasets"].values())
-
-    for dataset in datasets:
+    def fix_dataset_files_based_on(dataset):
         changed = False
-        for file in dataset.files:
+        for file in dataset.dataset_files:
             if file.based_on is not None:
+                file.based_on.id = file.based_on.id.replace("/remote-entity//", "/remote-entities/")
                 file.based_on.id = file.based_on.id.replace("/remote-entity/", "/remote-entities/")
                 changed = True
 
         if changed:
             dataset._p_changed = True
+
+    datasets: List[Dataset] = list(database["datasets-provenance-tails"].values())
+
+    for dataset in datasets:
+        fix_dataset_files_based_on(dataset)
+
+        while dataset.derived_from is not None:
+            dataset = database.get_by_id(id=dataset.derived_from.url_id)
+            fix_dataset_files_based_on(dataset)
 
     database.commit()
 
@@ -276,7 +284,9 @@ def fix_dataset_date_modified(dataset_gateway: IDatasetGateway):
             modification_date = dataset.date_removed or dataset.date_created
 
             if modification_date is not None:
-                assert modification_date <= previous_modification_date
+                # NOTE: This happened in a project due to a timezone change
+                if modification_date > previous_modification_date:
+                    modification_date = previous_modification_date
                 dataset.unfreeze()
                 dataset.date_modified = modification_date
                 dataset.freeze()
