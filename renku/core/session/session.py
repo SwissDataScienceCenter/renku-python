@@ -19,7 +19,6 @@
 
 import os
 import shutil
-import webbrowser
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -71,7 +70,7 @@ def session_list(config_path: Optional[str], provider: Optional[str] = None) -> 
         try:
             sessions = list_sessions(session_provider)
         except errors.RenkuException as e:
-            warning_messages.append(f"Cannot get sessions list from '{session_provider.get_name()}': {e}")
+            warning_messages.append(f"Cannot get sessions list from '{session_provider.name}': {e}")
         else:
             if session_provider.is_remote_provider():
                 all_local = False
@@ -194,7 +193,7 @@ def session_stop(session_name: Optional[str], stop_all: bool = False, provider: 
             try:
                 is_stopped = stop_sessions(session_provider)
             except errors.RenkuException as e:
-                warning_messages.append(f"Cannot stop sessions in provider '{session_provider.get_name()}': {e}")
+                warning_messages.append(f"Cannot stop sessions in provider '{session_provider.name}': {e}")
 
             if is_stopped and session_name:
                 break
@@ -210,7 +209,7 @@ def session_stop(session_name: Optional[str], stop_all: bool = False, provider: 
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
-def session_open(session_name: str, provider: Optional[str] = None):
+def session_open(session_name: str, provider: Optional[str] = None, **kwargs):
     """Open interactive session in the browser.
 
     Args:
@@ -218,21 +217,17 @@ def session_open(session_name: str, provider: Optional[str] = None):
         provider(str, optional): Name of the session provider to use.
     """
 
-    def open_sessions(session_provider: ISessionProvider) -> Optional[str]:
-        try:
-            return session_provider.session_url(session_name=session_name)
-        except errors.RenkulabSessionGetUrlError:
-            if provider:
-                raise
-            return None
-
     providers = [_safe_get_provider(provider)] if provider else get_supported_session_providers()
+    project_name = get_renku_project_name()
 
-    url = next(filter(lambda u: u is not None, map(open_sessions, providers)), None)
+    found = False
+    for session_provider in providers:
+        if session_provider.session_open(project_name, session_name, **kwargs):
+            found = True
+            break
 
-    if url is None:
+    if not found:
         raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")
-    webbrowser.open(url)
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
@@ -298,6 +293,7 @@ def ssh_setup(existing_key: Optional[Path] = None, force: bool = False):
 Host jumphost-{system_config.renku_host}
   HostName {system_config.renku_host}
   Port 2022
+  User jovyan
 
 Host {system_config.renku_host}-*
   ProxyJump  jumphost-{system_config.renku_host}

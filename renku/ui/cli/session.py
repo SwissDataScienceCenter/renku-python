@@ -205,7 +205,7 @@ def session_start_provider_options(*param_decls, **attrs):
     from renku.core.plugin.session import get_supported_session_providers
     from renku.ui.cli.utils.click import create_options
 
-    providers = [p for p in get_supported_session_providers() if p.get_start_parameters()]  # type: ignore
+    providers = [p for p in get_supported_session_providers() if p.get_start_parameters()]
     return create_options(providers=providers, parameter_function="get_start_parameters")
 
 
@@ -280,6 +280,15 @@ def stop(session_name, stop_all, provider):
         click.echo(f"Interactive session '{session_name}' has been successfully stopped.")
 
 
+def session_open_provider_options(*param_decls, **attrs):
+    """Sets dataset export provider option groups on the dataset export command."""
+    from renku.core.plugin.session import get_supported_session_providers
+    from renku.ui.cli.utils.click import create_options
+
+    providers = [p for p in get_supported_session_providers() if p.get_open_parameters()]  # type: ignore
+    return create_options(providers=providers, parameter_function="get_open_parameters")
+
+
 @session.command("open")
 @click.argument("session_name", metavar="<name>", required=True)
 @click.option(
@@ -290,11 +299,12 @@ def stop(session_name, stop_all, provider):
     default=None,
     help="Session provider to use.",
 )
-def open(session_name, provider):
+@session_open_provider_options()
+def open(session_name, provider, **kwargs):
     """Open an interactive session."""
     from renku.command.session import session_open_command
 
-    session_open_command().build().execute(session_name=session_name, provider=provider)
+    session_open_command().build().execute(session_name=session_name, provider=provider, **kwargs)
 
 
 @session.command("setup-ssh")
