@@ -17,6 +17,7 @@
 # limitations under the License.
 """Docker based interactive session provider."""
 
+import webbrowser
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, cast
 from uuid import uuid4
@@ -113,12 +114,16 @@ class DockerSessionProvider(ISessionProvider):
         """Supported session provider.
 
         Returns:
-            a reference to ``self``.
+            A reference to ``self``.
         """
         return self
 
     def get_start_parameters(self) -> List["ProviderParameter"]:
         """Returns parameters that can be set for session start."""
+        return []
+
+    def get_open_parameters(self) -> List["ProviderParameter"]:
+        """Returns parameters that can be set for session open."""
         return []
 
     def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
@@ -267,6 +272,21 @@ class DockerSessionProvider(ISessionProvider):
             return True
         except docker.errors.APIError as error:
             raise errors.DockerError(error.msg)
+
+    def session_open(self, project_name: str, session_name: str, **kwargs) -> bool:
+        """Opena given interactive session.
+
+        Args:
+            project_name(str): Renku project name.
+            session_name(str): The unique id of the interactive session.
+        """
+        url = self.session_url(session_name)
+
+        if not url:
+            return False
+
+        webbrowser.open(url)
+        return True
 
     def session_url(self, session_name: str) -> Optional[str]:
         """Get the URL of the interactive session."""

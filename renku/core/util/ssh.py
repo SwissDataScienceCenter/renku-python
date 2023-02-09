@@ -37,7 +37,7 @@ def generate_ssh_keys() -> SSHKeyPair:
     Returns:
         Private Public key pair.
     """
-    key = rsa.generate_private_key(backend=crypto_default_backend(), public_exponent=65537, key_size=2048)
+    key = rsa.generate_private_key(backend=crypto_default_backend(), public_exponent=65537, key_size=4096)
 
     private_key = key.private_bytes(
         crypto_serialization.Encoding.PEM, crypto_serialization.PrivateFormat.PKCS8, crypto_serialization.NoEncryption()
@@ -79,20 +79,37 @@ class SystemSSHConfig:
         return self.jumphost_file.exists() and self.keyfile.exists() and self.public_keyfile.exists()
 
     def session_config_path(self, project_name: str, session_name: str) -> Path:
-        """Get path to a session config."""
-        project_name = project_name.rsplit("/", 1)[1]
+        """Get path to a session config.
+
+        Args:
+            project_name(str): The name of the project, potentially with the owner name.
+            session_name(str): The name of the session to setup a connection to.
+        Returns:
+            The path to the SSH connection file.
+        """
         return self.renku_ssh_root / f"00-{project_name}-{session_name}.conf"
+
+    def connection_name(self, project_name: str, session_name: str) -> str:
+        """Get the connection name for an ssh connection.
+
+        Args:
+            project_name(str): The name of the project, potentially with the owner name.
+            session_name(str): The name of the session to setup a connection to.
+        Returns:
+            The name of the SSH connection.
+        """
+        return f"{self.renku_host}-{project_name}-{session_name}"
 
     def setup_session_config(self, project_name: str, session_name: str) -> str:
         """Setup local SSH config for connecting to a session.
 
         Args:
+            project_name(str): The name of the project, potentially with the owner name.
             session_name(str): The name of the session to setup a connection to.
         Returns:
             The name of the created SSH host config.
         """
-        project_name = project_name.rsplit("/", 1)[1]
-        connection_name = f"{self.renku_host}-{project_name}-{session_name}"
+        connection_name = self.connection_name(project_name, session_name)
 
         path = self.session_config_path(project_name, session_name)
         path.touch(mode=0o644, exist_ok=True)

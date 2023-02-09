@@ -70,7 +70,7 @@ class ISessionProvider(metaclass=ABCMeta):
         """Search for the given container image.
 
         Args:
-            image_name: Container image name.
+            image_name(str): Container image name.
             config: Path to the session provider specific configuration YAML.
 
         Returns:
@@ -93,12 +93,17 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def get_open_parameters(self) -> List["ProviderParameter"]:
+        """Returns parameters that can be set for session open."""
+        pass
+
+    @abstractmethod
     def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
 
         Args:
-            project_name: Renku project name.
-            config: Path to the session provider specific configuration YAML.
+            project_name(str): Renku project name.
+            config(Dict[str, Any], optional): Path to the session provider specific configuration YAML.
 
         Returns:
             a list of sessions.
@@ -138,9 +143,9 @@ class ISessionProvider(metaclass=ABCMeta):
         """Stops all or a given interactive session.
 
         Args:
-            project_name: Project's name.
-            session_name: The unique id of the interactive session.
-            stop_all: Specifies whether or not to stop all the running interactive sessions.
+            project_name(str): Project's name.
+            session_name(str, optional): The unique id of the interactive session.
+            stop_all(bool): Specifies whether or not to stop all the running interactive sessions.
 
 
         Returns:
@@ -149,11 +154,21 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def session_open(self, project_name: str, session_name: str, **kwargs) -> bool:
+        """Opena given interactive session.
+
+        Args:
+            project_name(str): Renku project name.
+            session_name(str): The unique id of the interactive session.
+        """
+        pass
+
+    @abstractmethod
     def session_url(self, session_name: str) -> Optional[str]:
         """Get the given session's URL.
 
         Args:
-            session_name: The unique id of the interactive session.
+            session_name(str): The unique id of the interactive session.
 
         Returns:
             URL of the interactive session.
