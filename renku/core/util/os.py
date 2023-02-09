@@ -38,11 +38,30 @@ def get_relative_path_to_cwd(path: Union[Path, str]) -> str:
     return os.path.relpath(absolute_path, os.getcwd())
 
 
+def get_expanded_user_path(path: Union[Path, str]) -> str:
+    """Expand the path if it starts with ``~``."""
+    return "" if not path else os.path.expanduser(path)
+
+
 def get_absolute_path(
-    path: Union[Path, str], base: Optional[Union[Path, str]] = None, resolve_symlinks: bool = False
+    path: Union[Path, str], base: Optional[Union[Path, str]] = None, resolve_symlinks: bool = False, expand: bool = True
 ) -> str:
-    """Return absolute normalized path."""
+    """Return absolute normalized path.
+
+    Args:
+        path(Union[Path, str]): Path to get its absolute.
+        base(Union[Path, str]): Base path to get absolute path from it.
+        resolve_symlinks(bool): Whether to keep or resolve symlinks.
+        expand(bool): Whether to expand ``~`` or not (Default value = True)
+
+    Returns:
+        str: Absolute path.
+    """
+    if expand:
+        path = get_expanded_user_path(path)
     if base is not None:
+        if expand:
+            base = get_expanded_user_path(base)
         base = Path(base).resolve() if resolve_symlinks else os.path.abspath(base)
         path = os.path.join(base, path)
 
@@ -67,7 +86,7 @@ def get_safe_relative_path(path: Union[Path, str], base: Union[Path, str]) -> Pa
 
 
 def get_relative_path(path: Union[Path, str], base: Union[Path, str], strict: bool = False) -> Optional[str]:
-    """Return a relative path to the base if path is within base with/without resolving symlinks."""
+    """Return a relative path to the base if path is within base without resolving symlinks."""
     try:
         absolute_path = get_absolute_path(path=path, base=base)
         return str(Path(absolute_path).relative_to(base))
@@ -192,6 +211,15 @@ def unmount_path(path: Union[Path, str]) -> None:
 def is_ascii(data):
     """Check if provided string contains only ascii characters."""
     return len(data) == len(data.encode())
+
+
+def get_size(path: Union[Path, str], follow_symlinks: bool = True) -> Optional[int]:
+    """Return size of a file in bytes."""
+    path = Path(path).resolve() if follow_symlinks else Path(path)
+    try:
+        return path.stat().st_size
+    except OSError:
+        return None
 
 
 def normalize_to_ascii(input_string, sep="-"):

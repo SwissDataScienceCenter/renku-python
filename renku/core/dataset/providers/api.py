@@ -26,6 +26,11 @@ from renku.core.plugin import hookimpl
 from renku.core.util.util import NO_VALUE, NoValueType
 from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
+try:
+    from typing_extensions import Protocol  # NOTE: Required for Python 3.7 compatibility
+except ImportError:
+    from typing import Protocol  # type: ignore
+
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import (
         DatasetAddMetadata,
@@ -43,7 +48,7 @@ class ProviderApi(IDatasetProviderPlugin):
     priority: Optional[ProviderPriority] = None
     name: Optional[str] = None
 
-    def __init__(self, uri: Optional[str], **kwargs):
+    def __init__(self, uri: str, **kwargs):
         self._uri: str = uri or ""
 
     def __init_subclass__(cls, **kwargs):
@@ -81,8 +86,8 @@ class AddProviderInterface(abc.ABC):
         return []
 
     @abc.abstractmethod
-    def add(self, uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
-        """Add files from a URI to a dataset."""
+    def get_metadata(self, uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
+        """Get metadata of files that will be added to a dataset."""
         raise NotImplementedError
 
 
@@ -123,6 +128,11 @@ class StorageProviderInterface(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
+    def convert_to_storage_uri(self, uri: str) -> str:
+        """Convert backend-specific URI to a URI that is usable by the IStorage implementation."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def get_storage(self, credentials: Optional["ProviderCredentials"] = None) -> "IStorage":
         """Return the storage manager for the provider."""
         raise NotImplementedError
@@ -130,6 +140,26 @@ class StorageProviderInterface(abc.ABC):
     @abc.abstractmethod
     def on_create(self, dataset: "Dataset") -> None:
         """Hook to perform provider-specific actions on a newly-created dataset."""
+        raise NotImplementedError
+
+    @staticmethod
+    @abc.abstractmethod
+    def supports_storage(uri: str) -> bool:
+        """Whether or not this provider supports a given URI storage."""
+        raise NotImplementedError
+
+
+class CloudStorageProviderType(Protocol):
+    """Intersection type for ``mypy`` hinting in storage classes."""
+
+    @property
+    def uri(self) -> str:
+        """Return provider's URI."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def convert_to_storage_uri(self, uri: str) -> str:
+        """Convert backend-specific URI to a URI that is usable by the IStorage implementation."""
         raise NotImplementedError
 
 

@@ -20,8 +20,9 @@ from typing import TYPE_CHECKING, List, Type
 
 from renku.core.dataset.providers.azure import AzureProvider
 from renku.core.dataset.providers.dataverse import DataverseProvider
+from renku.core.dataset.providers.external import ExternalProvider
 from renku.core.dataset.providers.git import GitProvider
-from renku.core.dataset.providers.local import FilesystemProvider
+from renku.core.dataset.providers.local import LocalProvider
 from renku.core.dataset.providers.olos import OLOSProvider
 from renku.core.dataset.providers.renku import RenkuProvider
 from renku.core.dataset.providers.s3 import S3Provider
@@ -50,8 +51,9 @@ workflow_providers: "List[Type[IWorkflowProvider]]" = [CWLToolProvider, LocalWor
 dataset_providers: "List[Type[ProviderApi]]" = [
     AzureProvider,
     DataverseProvider,
+    ExternalProvider,
+    LocalProvider,
     GitProvider,
-    FilesystemProvider,
     OLOSProvider,
     RenkuProvider,
     S3Provider,

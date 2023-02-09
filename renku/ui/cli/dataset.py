@@ -209,19 +209,6 @@ To add a specific version of files, use ``--ref`` option for selecting a
 branch, commit, or tag. The value passed to this option must be a valid
 reference in the remote Git repository.
 
-Adding external data to the dataset:
-
-Sometimes you might want to add data to your dataset without copying the
-actual files to your repository. This is useful for example when external data
-is too large to store locally. The external data must exist (i.e. be mounted)
-on your filesystem. Renku creates a symbolic to your data and you can use this
-symbolic link in renku commands as a normal file. To add an external file pass
-``--external`` or ``-e`` when adding local data to a dataset:
-
-.. code-block:: console
-
-    $ renku dataset add my-dataset -e /path/to/external/file
-
 Updating a dataset:
 
 After adding files from a remote Git repository or importing a dataset from a
@@ -259,14 +246,6 @@ updates only CSV files from ``my-dataset``:
 
 Note that putting glob patterns in quotes is needed to tell Unix shell not
 to expand them.
-
-External data are also updated automatically. Since they require a checksum
-calculation which can take a long time when data is large, you can exclude them
-from an update by passing ``--no-external`` flag to the update command:
-
-.. code-block:: console
-
-    $ renku dataset update --all --no-external
 
 You can use ``--dry-run`` flag to get a preview of what files/datasets will be
 updated by an update operation.
@@ -557,7 +536,7 @@ def dataset():
     "-c",
     "--columns",
     type=click.STRING,
-    default="id,name,title,version,datadir",
+    default="id,name,title,version,datadir,storage",
     metavar="<columns>",
     help="Comma-separated list of column to display: {}.".format(", ".join(DATASETS_COLUMNS.keys())),
     show_default=True,
@@ -813,6 +792,7 @@ def add_provider_options(*param_decls, **attrs):
 @click.option("-o", "--overwrite", is_flag=True, help="Overwrite existing files.")
 @click.option("-c", "--create", is_flag=True, help="Create dataset if it does not exist.")
 @click.option("-d", "--destination", default="", help="Destination directory within the dataset path")
+@click.option("--storage", default=None, type=click.STRING, help="URI of the cloud storage backend.")
 @click.option(
     "--datadir",
     default=None,
@@ -868,7 +848,7 @@ def add(name, urls, force, overwrite, create, destination, datadir, **kwargs):
     "-c",
     "--columns",
     type=click.STRING,
-    default="dataset_name,added,size,path,lfs",
+    default="dataset_name,path,size,added,lfs",
     metavar="<columns>",
     help="Comma-separated list of column to display: {}.".format(", ".join(DATASET_FILES_COLUMNS.keys())),
     show_default=True,
@@ -1120,7 +1100,6 @@ def update(
             exclude=exclude,
             ref=ref,
             delete=delete,
-            no_external=no_external,
             no_local=no_local,
             no_remote=no_remote,
             check_data_directory=check_data_directory,
@@ -1189,11 +1168,11 @@ def update(
 )
 def pull(name, location):
     """Pull data from a cloud storage."""
-    from renku.command.dataset import pull_external_data_command
+    from renku.command.dataset import pull_cloud_storage_command
     from renku.ui.cli.utils.callback import ClickCallback
 
     communicator = ClickCallback()
-    pull_external_data_command().with_communicator(communicator).build().execute(name=name, location=location)
+    pull_cloud_storage_command().with_communicator(communicator).build().execute(name=name, location=location)
 
 
 @dataset.command(hidden=True)
@@ -1205,14 +1184,14 @@ def pull(name, location):
     type=click.Path(exists=True, file_okay=False),
     help="Use an existing mount point instead of mounting the remote storage.",
 )
-@click.option("-u", "--unmount", is_flag=True, help="Unmount dataset's external storage.")
+@click.option("-u", "--unmount", is_flag=True, help="Unmount dataset's backend storage.")
 @click.option("-y", "--yes", is_flag=True, help="No prompt when removing non-empty dataset's data directory.")
 def mount(name, existing, unmount, yes):
     """Mount a cloud storage in the dataset's data directory."""
-    from renku.command.dataset import mount_external_storage_command
+    from renku.command.dataset import mount_cloud_storage_command
     from renku.ui.cli.utils.callback import ClickCallback
 
-    command = mount_external_storage_command(unmount=unmount).with_communicator(ClickCallback()).build()
+    command = mount_cloud_storage_command(unmount=unmount).with_communicator(ClickCallback()).build()
 
     if unmount:
         command.execute(name=name)
@@ -1223,8 +1202,8 @@ def mount(name, existing, unmount, yes):
 @dataset.command(hidden=True)
 @click.argument("name", shell_complete=_complete_datasets)
 def unmount(name):
-    """Unmount an external storage in the dataset's data directory."""
-    from renku.command.dataset import unmount_external_storage_command
+    """Unmount a backend storage in the dataset's data directory."""
+    from renku.command.dataset import unmount_cloud_storage_command
     from renku.ui.cli.utils.callback import ClickCallback
 
-    unmount_external_storage_command().with_communicator(ClickCallback()).build().execute(name=name)
+    unmount_cloud_storage_command().with_communicator(ClickCallback()).build().execute(name=name)

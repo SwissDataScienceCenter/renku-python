@@ -67,10 +67,12 @@ class ProviderFactory:
         """Get an add provider based on uri."""
         for provider in ProviderFactory.get_add_providers():
             try:
-                if provider.supports(uri):  # type: ignore[union-attr]
-                    return provider(uri=uri)  # type: ignore[call-arg]
+                supports = provider.supports(uri)  # type: ignore[union-attr]
             except BaseException as e:
-                communication.warn(f"Couldn't test provider {provider}: {e}")
+                communication.warn(f"Couldn't test add provider {provider.__class__.__name__}: {e}")
+            else:
+                if supports:
+                    return provider(uri=uri)  # type: ignore[call-arg]
 
         raise errors.DatasetProviderNotFound(uri=uri)
 
@@ -100,10 +102,12 @@ class ProviderFactory:
 
         for provider in import_providers:
             try:
-                if provider.supports(uri):  # type: ignore[union-attr]
-                    return provider(uri=uri, is_doi=is_doi_)  # type: ignore[call-arg]
+                supports = provider.supports(uri)  # type: ignore[union-attr]
             except BaseException as e:
                 warning += f"Couldn't test provider {provider}: {e}\n"
+            else:
+                if supports:
+                    return provider(uri=uri, is_doi=is_doi_)  # type: ignore[call-arg]
 
         url = uri.split("/")[1].split(".")[0] if is_doi_ else uri  # NOTE: Get DOI provider name if uri is a DOI
         supported_providers = ", ".join(p.name for p in import_providers)  # type: ignore
@@ -115,10 +119,12 @@ class ProviderFactory:
         """Get a backend storage provider based on uri."""
         for provider in ProviderFactory.get_storage_providers():
             try:
-                if provider.supports(uri):  # type: ignore[union-attr]
-                    return provider(uri=uri)  # type: ignore[call-arg]
+                supports = provider.supports_storage(uri)  # type: ignore[union-attr]
             except BaseException as e:
                 communication.warn(f"Couldn't test provider {provider}: {e}")
+            else:
+                if supports:
+                    return provider(uri=uri)  # type: ignore[call-arg]
 
         raise errors.DatasetProviderNotFound(uri=uri)
 

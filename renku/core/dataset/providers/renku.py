@@ -45,7 +45,7 @@ class RenkuProvider(ProviderApi, ImportProviderInterface):
     priority = ProviderPriority.HIGH
     name = "Renku"
 
-    def __init__(self, uri: Optional[str], **_):
+    def __init__(self, uri: str, **_):
         super().__init__(uri=uri)
 
         self._accept = "application/json"

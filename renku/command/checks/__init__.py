@@ -20,10 +20,10 @@ from .activities import check_activity_dates, check_migrated_activity_ids
 from .datasets import (
     check_dataset_files_outside_datadir,
     check_dataset_old_metadata_location,
+    check_external_files,
     check_invalid_datasets_derivation,
     check_missing_files,
 )
-from .external import check_missing_external_files
 from .githooks import check_git_hooks_installed
 from .migration import check_migration
 from .project import check_project_id_group
@@ -43,7 +43,7 @@ __all__ = (
     "check_lfs_info",
     "check_migrated_activity_ids",
     "check_migration",
-    "check_missing_external_files",
+    "check_external_files",
     "check_missing_files",
     "check_project_id_group",
     "check_project_structure",

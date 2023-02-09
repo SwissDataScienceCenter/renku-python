@@ -1,5 +1,5 @@
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2020-2022 -Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -14,18 +14,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helper utilities for datasets."""
+"""Test constants."""
 
-import urllib
-from typing import Tuple
+import os
+import tempfile
 
-
-def check_url(url: str) -> Tuple[bool, bool]:
-    """Check if a url is local/remote and if it contains a git repository."""
-    # NOTE: Supported scheme before refactoring were: "", "file", "http", "https", "git+https", "git+ssh"
-    u = urllib.parse.urlparse(url)
-
-    is_remote = u.scheme not in ("", "file") or url.lower().startswith("git@")
-    is_git = is_remote and (u.path.endswith(".git") or u.scheme in ("git+https", "git+ssh") or url.startswith("git@"))
-
-    return is_remote, is_git
+SHARED_EXTERNAL_CLOUD_STORAGE: str = os.path.join(tempfile.gettempdir(), "cloud-storage", "external")

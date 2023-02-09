@@ -39,6 +39,7 @@ from renku.domain_model.dataset import Url
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
+from tests.constant import SHARED_EXTERNAL_CLOUD_STORAGE
 from tests.utils import (
     assert_dataset_is_mutated,
     format_result_exception,
@@ -1362,7 +1363,7 @@ def test_dataset_invalid_update(project, runner, params):
 @pytest.mark.parametrize("params", [["--all"], ["-I", "CHANGES.rst"], ["-I", "CH*"], ["dataset-1", "dataset-2"]])
 @retry_failed
 @pytest.mark.vcr
-def test_dataset_update_multiple_datasets(project, runner, data_repository, params):
+def test_dataset_update_multiple_datasets(project, runner, params):
     """Test update with multiple datasets."""
     path1 = project.path / DATA_DIR / "dataset-1" / "CHANGES.rst"
     path2 = project.path / DATA_DIR / "dataset-2" / "CHANGES.rst"
@@ -1412,7 +1413,7 @@ def test_dataset_update_multiple_datasets(project, runner, data_repository, para
 
 @pytest.mark.integration
 @retry_failed
-def test_empty_update(project, runner, data_repository):
+def test_empty_update(project, runner):
     """Test update when nothing changed does not create a commit."""
     # Add dataset to project
     result = runner.invoke(
@@ -1981,6 +1982,7 @@ def test_dataset_ls_with_tag(runner, tmp_path):
 
 
 @pytest.mark.integration
+@pytest.mark.serial
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
@@ -1990,9 +1992,10 @@ def test_dataset_ls_with_tag(runner, tmp_path):
         "s3://os.zhdk.cloud.switch.ch/renku-python-test-public/",
         "azure://renkupythontest1.blob.core.windows.net/test-private-1/path",
         "azure://renkupythontest1/test-private-1/path",
+        SHARED_EXTERNAL_CLOUD_STORAGE,
     ],
 )
-def test_create_with_could_storage(runner, project, cloud_storage_credentials, storage):
+def test_create_with_could_storage(runner, project, cloud_storage_credentials, shared_external_cloud_storage, storage):
     """Test creating a dataset with a valid backend cloud storage."""
     result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", storage], input="\n\n\n")
 
@@ -2034,6 +2037,15 @@ def test_create_with_non_existing_azure_backend(runner, project, cloud_storage_c
 
 
 @pytest.mark.integration
+def test_create_with_non_existing_local_backend(runner, project):
+    """Test creating a dataset with a non-existing local backend storage."""
+    result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", "/non-existing/path"])
+
+    assert 2 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+    assert "External path '/non-existing/path' doesn't exists." in result.output
+
+
+@pytest.mark.integration
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
@@ -2052,6 +2064,7 @@ def test_create_with_unauthorized_cloud_storage(runner, project, storage):
 
 
 @pytest.mark.integration
+@pytest.mark.serial
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
@@ -2074,9 +2087,18 @@ def test_create_with_unauthorized_cloud_storage(runner, project, storage):
                 ("azure://renkupythontest1/test-private-1/directory-1/file-2", "e984bdba4a20181ef40f1bdc9ca82865"),
             ],
         ],
+        [
+            SHARED_EXTERNAL_CLOUD_STORAGE,
+            [
+                (f"{SHARED_EXTERNAL_CLOUD_STORAGE}/file1", "9d98eede4ccb193e379d6dbd7cc1eb86"),
+                (f"{SHARED_EXTERNAL_CLOUD_STORAGE}/dir1/file2", "7bec9352114f8139c2640b2554563508"),
+            ],
+        ],
     ],
 )
-def test_pull_data_from_cloud_storage(runner, project, cloud_storage_credentials, storage, files):
+def test_pull_data_from_cloud_storage(
+    runner, project, cloud_storage_credentials, shared_external_cloud_storage, storage, files
+):
     """Test pulling data for a dataset with cloud storage backend."""
     result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", storage], input="\n\n\n")
 
@@ -2085,7 +2107,7 @@ def test_pull_data_from_cloud_storage(runner, project, cloud_storage_credentials
     file_1, hash_1 = files[0]
     file_2, hash_2 = files[1]
 
-    result = runner.invoke(cli, ["dataset", "add", "cloud-data", file_1, file_2])
+    result = runner.invoke(cli, ["dataset", "add", "cloud-data", "--copy", file_1, file_2])
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
@@ -2108,6 +2130,7 @@ def test_pull_data_from_cloud_storage(runner, project, cloud_storage_credentials
 
 
 @pytest.mark.integration
+@pytest.mark.serial
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
@@ -2130,10 +2153,17 @@ def test_pull_data_from_cloud_storage(runner, project, cloud_storage_credentials
                 ("azure://renkupythontest1/test-private-1/directory-1/file-2", "e984bdba4a20181ef40f1bdc9ca82865"),
             ],
         ],
+        [
+            SHARED_EXTERNAL_CLOUD_STORAGE,
+            [
+                (f"{SHARED_EXTERNAL_CLOUD_STORAGE}/file1", "9d98eede4ccb193e379d6dbd7cc1eb86"),
+                (f"{SHARED_EXTERNAL_CLOUD_STORAGE}/dir1/file2", "7bec9352114f8139c2640b2554563508"),
+            ],
+        ],
     ],
 )
 def test_pull_data_from_cloud_storage_to_a_location(
-    runner, project, cloud_storage_credentials, tmp_path, storage, files
+    runner, project, cloud_storage_credentials, tmp_path, shared_external_cloud_storage, storage, files
 ):
     """Test pulling data for a dataset with cloud storage to a location other than dataset's data directory."""
     result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", storage], input="\n\n\n")
@@ -2143,7 +2173,7 @@ def test_pull_data_from_cloud_storage_to_a_location(
     file_1, hash_1 = files[0]
     file_2, hash_2 = files[1]
 
-    result = runner.invoke(cli, ["dataset", "add", "cloud-data", file_1, file_2])
+    result = runner.invoke(cli, ["dataset", "add", "cloud-data", "--copy", file_1, file_2])
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
@@ -2170,6 +2200,7 @@ def test_pull_data_from_cloud_storage_to_a_location(
 
 
 @pytest.mark.integration
+@pytest.mark.serial
 @pytest.mark.parametrize(
     "args, uris, storage_uri",
     [
@@ -2204,26 +2235,42 @@ def test_pull_data_from_cloud_storage_to_a_location(
             ],
             "azure://renkupythontest1/test-private-1",
         ),
+        (
+            ["--copy"],
+            [
+                f"{SHARED_EXTERNAL_CLOUD_STORAGE}/file1",
+                f"{SHARED_EXTERNAL_CLOUD_STORAGE}/dir1/file2",
+            ],
+            SHARED_EXTERNAL_CLOUD_STORAGE,
+        ),
     ],
 )
-def test_adding_data_from_cloud_storage(runner, project, create_cloud_storage_dataset, mocker, args, uris, storage_uri):
+def test_adding_data_from_cloud_storage(
+    runner, project, create_cloud_storage_dataset, mocker, shared_external_cloud_storage, args, uris, storage_uri
+):
     """Ensure metadata from a bucket can be added."""
+
+    def get_path(uri):
+        return re.sub(r".*://", "", uri).lstrip("/")  # Remove scheme and make sure path isn't absolute
+
     mock_cloud_storage = mocker.patch("renku.infrastructure.storage.factory.StorageFactory.get_storage", autospec=True)
     instance_cloud_storage = mock_cloud_storage.return_value
-    dataset_name = "test-s3-dataset"
+    dataset_name = "cloud-data"
     instance_cloud_storage.get_hashes.return_value = [
-        FileHash(base_uri=uri, path=re.sub(r".*://", "", uri), hash=uri, hash_type="md5")  # remove scheme from URI
-        for uri in uris
+        FileHash(uri=uri, path=get_path(uri), size=42, hash=uri) for uri in uris
     ]
     if storage_uri:
-        res = create_cloud_storage_dataset(dataset_name, storage_uri)
-        assert res.exit_code == 0
-    res = runner.invoke(cli, ["dataset", "add", dataset_name, *args, *uris], input="\n\nn\n")
-    assert res.exit_code == 0
+        result = create_cloud_storage_dataset(dataset_name, storage_uri)
+        assert result.exit_code == 0, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "add", dataset_name, *args, *uris], input="\n\nn\n")
+    assert result.exit_code == 0, format_result_exception(result)
+
     assert instance_cloud_storage.get_hashes.call_count == len(uris)
-    res = runner.invoke(cli, ["dataset", "ls-files"])
-    assert res.exit_code == 0
-    assert all([re.sub(r".*://", "", uri) in res.stdout for uri in uris])
+    result = runner.invoke(cli, ["dataset", "ls-files"])
+
+    assert result.exit_code == 0, format_result_exception(result)
+    assert all([re.sub(r".*://", "", uri) in result.stdout for uri in uris])
 
 
 @pytest.mark.integration
@@ -2303,15 +2350,19 @@ def test_invalid_cloud_storage_args(
 
 
 @pytest.mark.integration
+@pytest.mark.serial
 @retry_failed
 @pytest.mark.parametrize(
     "storage, path",
     [
         ("s3://s3.amazonaws.com/giab/", "Aspera_download_from_ftp.README"),
         ("azure://renkupythontest1/test-private-1", "file-1"),
+        (SHARED_EXTERNAL_CLOUD_STORAGE, "file1"),
     ],
 )
-def test_mount_unmount_data_from_cloud_storage(runner, project, cloud_storage_credentials, storage, path):
+def test_mount_unmount_data_from_cloud_storage(
+    runner, project, cloud_storage_credentials, shared_external_cloud_storage, storage, path
+):
     """Test mounting/unmounting data for a dataset with cloud storage backend."""
     result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", storage], input="\n\n\n")
 
@@ -2340,6 +2391,7 @@ def test_mount_unmount_data_from_cloud_storage(runner, project, cloud_storage_cr
 
 
 @pytest.mark.integration
+@pytest.mark.serial
 @retry_failed
 @pytest.mark.parametrize(
     "storage, path, rclone_uri, env",
@@ -2360,10 +2412,16 @@ def test_mount_unmount_data_from_cloud_storage(runner, project, cloud_storage_cr
                 "RCLONE_CONFIG_AZURE_KEY": os.getenv("CLOUD_STORAGE_AZURE_KEY", ""),
             },
         ),
+        (
+            SHARED_EXTERNAL_CLOUD_STORAGE,
+            "file1",
+            f"file://{SHARED_EXTERNAL_CLOUD_STORAGE}",
+            {"RCLONE_CONFIG_FILE_TYPE": "local"},
+        ),
     ],
 )
 def test_mount_data_from_an_existing_mount_point(
-    runner, project, tmp_path, cloud_storage_credentials, storage, path, rclone_uri, env
+    runner, project, tmp_path, cloud_storage_credentials, shared_external_cloud_storage, storage, path, rclone_uri, env
 ):
     """Test get data for a dataset with cloud storage backend from an existing mount-point."""
     result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", storage], input="\n\n\n")
@@ -2410,15 +2468,19 @@ def test_mount_data_from_an_existing_mount_point(
 
 
 @pytest.mark.integration
+@pytest.mark.serial
 @retry_failed
 @pytest.mark.parametrize(
     "storage",
     [
         "s3://os.zhdk.cloud.switch.ch/renku-python-integration-test",
         "azure://renkupythontest1/test-private-1/renku-python-test",
+        SHARED_EXTERNAL_CLOUD_STORAGE,
     ],
 )
-def test_add_data_to_mounted_cloud_storage(runner, project, tmp_path, cloud_storage_credentials, storage):
+def test_add_data_to_mounted_cloud_storage(
+    runner, project, tmp_path, cloud_storage_credentials, shared_external_cloud_storage, storage
+):
     """Test add data to datasets with read-only mounted cloud storage."""
     result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", storage], input="\n\n\n")
 
@@ -2426,9 +2488,9 @@ def test_add_data_to_mounted_cloud_storage(runner, project, tmp_path, cloud_stor
 
     cloud_data = project.path / "data" / "cloud-data"
 
-    local_data = tmp_path / "local-data"
+    local_file = tmp_path / "local-file.txt"
     random_data = str(random.random())
-    local_data.write_text(random_data)
+    local_file.write_text(random_data)
 
     try:
         assert not cloud_data.exists()
@@ -2438,19 +2500,40 @@ def test_add_data_to_mounted_cloud_storage(runner, project, tmp_path, cloud_stor
         assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
         assert cloud_data.exists()
 
-        result = runner.invoke(cli, ["dataset", "add", "--copy", "cloud-data", local_data])
+        result = runner.invoke(cli, ["dataset", "add", "--copy", "cloud-data", local_file])
 
         assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-        # NOTE: It takes a while to sync for S3; we unmount/mount to make changes visible
-        if storage.startswith("s3"):
-            runner.invoke(cli, ["dataset", "mount", "cloud-data", "--unmount"])
-            runner.invoke(cli, ["dataset", "pull", "cloud-data"])
+        # NOTE: It takes a while to sync; we unmount/mount to make changes visible
+        runner.invoke(cli, ["dataset", "mount", "cloud-data", "--unmount"])
+        runner.invoke(cli, ["dataset", "pull", "cloud-data"])
 
-        copied_data = cloud_data / "local-data"
+        copied_data = cloud_data / "local-file.txt"
         assert copied_data.exists()
         assert random_data == copied_data.read_text()
     finally:
         result = runner.invoke(cli, ["dataset", "mount", "cloud-data", "--unmount"])
 
         assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+
+@pytest.mark.integration
+@pytest.mark.serial
+def test_add_data_from_local_cloud_storage(runner, project, shared_external_cloud_storage):
+    """Test adding data from local cloud storage copies data to correct destination."""
+    result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", SHARED_EXTERNAL_CLOUD_STORAGE])
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    file_1 = f"{SHARED_EXTERNAL_CLOUD_STORAGE}/file1"
+    file_2 = f"{SHARED_EXTERNAL_CLOUD_STORAGE}/dir1/file2"
+
+    result = runner.invoke(cli, ["dataset", "add", "cloud-data", "--copy", file_1, file_2])
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    file_1_destination = file_1
+    file_2_destination = f"{SHARED_EXTERNAL_CLOUD_STORAGE}/file2"
+
+    assert Path(file_1_destination).exists()
+    assert Path(file_2_destination).exists()

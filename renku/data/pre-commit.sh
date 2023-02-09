@@ -96,7 +96,7 @@ if [ ${#MODIFIED_FILES[@]} -ne 0 ] || [ ${#ADDED_FILES[@]} -ne 0 ]; then
       ARGS+=("-I" "$file")
     done
     IFS=$'\n' read -r -d '' -a DATASET_FILES \
-      <<< "$(renku dataset update -n --no-external --no-remote -c --plain "${ARGS[@]}")"
+      <<< "$(renku dataset update -n --no-remote -c --plain "${ARGS[@]}")"
 
     if [ ${#DATASET_FILES[@]} -ne 0 ]; then
       echo "Files in datasets data directory that aren't up to date:"
@@ -111,7 +111,7 @@ if [ ${#MODIFIED_FILES[@]} -ne 0 ] || [ ${#ADDED_FILES[@]} -ne 0 ]; then
         fi
       done
       echo
-      echo 'Run "renku dataset update -c --all --no-remote --no-external" to update the datasets.'
+      echo 'Run "renku dataset update -c --all --no-remote" to update the datasets.'
       echo
       echo 'To disable this check, run "renku config set check_datadir_files false".'
       exit 1

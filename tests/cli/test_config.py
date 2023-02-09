@@ -122,7 +122,7 @@ def test_config_remove_value_locally(runner, project, global_only):
     assert "some-value" not in result.output
 
 
-def test_local_config_committed(project, runner, data_repository):
+def test_local_config_committed(project, runner):
     """Test local configuration update is committed only when it is changed."""
     commit_sha_before = project.repository.head.commit.hexsha
 
@@ -272,7 +272,7 @@ def test_config_interpolation_is_disabled(project, runner, value):
     assert f"{value}\n" == result.output
 
 
-def test_config_commit(project, runner, data_repository):
+def test_config_commit(project, runner):
     """Test config changes only commits the renku config file."""
     commit_sha_before = project.repository.head.commit.hexsha
 

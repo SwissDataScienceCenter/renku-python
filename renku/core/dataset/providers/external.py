@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -14,7 +15,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""S3 dataset provider."""
+"""External dataset provider."""
+
+from __future__ import annotations
 
 import urllib
 from pathlib import Path
@@ -32,7 +35,7 @@ from renku.core.dataset.providers.api import (
 from renku.core.dataset.providers.common import get_metadata
 from renku.core.dataset.providers.models import DatasetAddAction
 from renku.core.interface.storage import IStorage, IStorageFactory
-from renku.core.util.metadata import prompt_for_credentials
+from renku.core.util.os import get_absolute_path
 from renku.core.util.urls import get_scheme
 from renku.domain_model.project_context import project_context
 
@@ -41,138 +44,113 @@ if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset
 
 
-class S3Provider(ProviderApi, StorageProviderInterface, AddProviderInterface):
-    """S3 provider."""
+class ExternalProvider(ProviderApi, StorageProviderInterface, AddProviderInterface):
+    """External provider for remote filesystem."""
 
     priority = ProviderPriority.HIGHEST
-    name = "S3"
+    name = "External"
 
     def __init__(self, uri: str):
-        super().__init__(uri=uri)
-
-        endpoint, bucket, _ = parse_s3_uri(uri=self.uri)
-
-        self._bucket: str = bucket
-        self._endpoint: str = endpoint
+        super().__init__(uri=get_uri_absolute_path(uri).rstrip("/"))
 
     @staticmethod
     def supports(uri: str) -> bool:
-        """Whether or not this provider supports a given URI."""
-        return get_scheme(uri) == "s3"
+        """External doesn't support any URI for addition. It's only for storage backends."""
+        return False
 
     @staticmethod
     def supports_storage(uri: str) -> bool:
         """Whether or not this provider supports a given URI storage."""
-        return S3Provider.supports(uri=uri)
+        return get_scheme(uri) in ("file", "")
+
+    @property
+    def path(self) -> str:
+        """Return External path."""
+        return self.uri
 
     def get_metadata(
         self, uri: str, destination: Path, dataset_add_action: DatasetAddAction = DatasetAddAction.NONE, **_
     ) -> List["DatasetAddMetadata"]:
         """Get metadata of files that will be added to a dataset."""
-        return get_metadata(provider=self, uri=uri, destination=destination, dataset_add_action=dataset_add_action)
+        files = get_metadata(provider=self, uri=uri, destination=destination, dataset_add_action=dataset_add_action)
+        for file in files:
+            if file.url and not file.url.startswith("file:"):
+                file.url = f"file://{file.url}"
+                if file.based_on:
+                    file.based_on.url = file.url
+        return files
 
     def convert_to_storage_uri(self, uri: str) -> str:
         """Convert backend-specific URI to a URI that is usable by the IStorage implementation."""
-        _, bucket, path = parse_s3_uri(uri=uri)
-        return f"s3://{bucket}/{path}"
+        return f"file://{get_uri_absolute_path(uri=uri)}"
 
-    def get_credentials(self) -> "S3Credentials":
+    def get_credentials(self) -> "ExternalCredentials":
         """Return an instance of provider's credential class."""
-        return S3Credentials(provider=self)
+        return ExternalCredentials(provider=self)
 
     @inject.autoparams("storage_factory")
     def get_storage(
         self, storage_factory: "IStorageFactory", credentials: Optional["ProviderCredentials"] = None
     ) -> "IStorage":
         """Return the storage manager for the provider."""
-        s3_configuration = {
-            "type": "s3",
-            "provider": "AWS",
-            "endpoint": self.endpoint,
+        external_configuration = {
+            "type": "local",
         }
 
         if not credentials:
             credentials = self.get_credentials()
-            prompt_for_credentials(credentials)
 
         return storage_factory.get_storage(
-            storage_scheme="s3",
+            storage_scheme="file",
             provider=self,
             credentials=credentials,
-            configuration=s3_configuration,
+            configuration=external_configuration,
         )
 
-    @property
-    def bucket(self) -> str:
-        """Return S3 bucket name."""
-        return self._bucket
-
-    @property
-    def endpoint(self) -> str:
-        """Return S3 bucket endpoint."""
-        return self._endpoint
-
     def on_create(self, dataset: "Dataset") -> None:
-        """Hook to perform provider-specific actions on a newly-created dataset."""
-        credentials = self.get_credentials()
-        prompt_for_credentials(credentials)
-        storage = self.get_storage(credentials=credentials)
+        """Hook to perform provider-specific actions when creating a dataset."""
+        storage = self.get_storage(credentials=None)
 
-        # NOTE: The underlying rclone tool cannot tell if a directory within a S3 bucket exists or not
+        # NOTE: The underlying rclone tool cannot tell if a directory within a External bucket exists or not
         if not storage.exists(self.uri):
-            raise errors.ParameterError(f"S3 bucket '{self.bucket}' doesn't exists.")
+            raise errors.ParameterError(f"External path '{self.path}' doesn't exists.")
 
         project_context.repository.add_ignored_pattern(pattern=str(dataset.get_datadir()))
 
 
-class S3Credentials(ProviderCredentials):
-    """S3-specific credentials."""
+class ExternalCredentials(ProviderCredentials):
+    """External-specific credentials."""
 
-    def __init__(self, provider: S3Provider):
+    def __init__(self, provider: ExternalProvider):
         super().__init__(provider=provider)
 
     @staticmethod
     def get_credentials_names() -> Tuple[str, ...]:
         """Return a tuple of the required credentials for a provider."""
-        return "Access Key ID", "Secret Access Key"
+        return tuple()
 
     @property
-    def provider(self) -> S3Provider:
+    def provider(self) -> ExternalProvider:
         """Return the associated provider instance."""
-        return cast(S3Provider, self._provider)
+        return cast(ExternalProvider, self._provider)
 
     def get_credentials_section_name(self) -> str:
         """Get section name for storing credentials.
 
         NOTE: This methods should be overridden by subclasses to allow multiple credentials per providers if needed.
         """
-        return f"{self.provider.bucket}.{self.provider.endpoint.lower()}"
+        return self.provider.uri
 
 
-def parse_s3_uri(uri: str) -> Tuple[str, str, str]:
-    """Extract endpoint, bucket name, and path within the bucket from a given URI.
+def get_uri_absolute_path(uri: str) -> str:
+    """Return absolute path to the external directory without resolving symlinks.
 
-    NOTE: We only support s3://<hostname>/<bucket-name>/<path> at the moment.
+    Support formats are ``file://<path>``, file:<path> or just ``<path>``.
+
+    Args:
+        uri(str): URI to get path from.
+
+    Returns:
+        str: Expanded/non-expanded URI's absolute path.
     """
-    parsed_uri = urllib.parse.urlparse(uri)
-
-    hostname = parsed_uri.netloc
-    path = parsed_uri.path.strip("/")
-    bucket, _, path = path.partition("/")
-
-    if parsed_uri.scheme.lower() != "s3":
-        raise errors.ParameterError(
-            f"Invalid S3 scheme: {uri}.\nValid format is 's3://<hostname>/<bucket-name>/<path>'", show_prefix=False
-        )
-    if not hostname:
-        raise errors.ParameterError(
-            f"Hostname is missing in S3 URI: {uri}.\nValid format is 's3://<hostname>/<bucket-name>/<path>'",
-            show_prefix=False,
-        )
-    if not bucket:
-        raise errors.ParameterError(
-            f"Bucket name is missing in S3 URI: {uri}.\nValid format is 's3://<hostname>/<bucket-name>/<path>'",
-            show_prefix=False,
-        )
-
-    return hostname, bucket, path.strip("/")
+    return get_absolute_path(urllib.parse.urlparse(uri).path, expand=True)

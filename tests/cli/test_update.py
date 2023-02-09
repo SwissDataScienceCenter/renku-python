@@ -32,6 +32,7 @@ from renku.ui.cli import cli
 from tests.utils import delete_and_commit_file, format_result_exception, write_and_commit_file
 
 
+@pytest.mark.serial
 @pytest.mark.parametrize("provider", available_workflow_providers())
 @pytest.mark.parametrize("skip_metadata_update", [True, False])
 def test_update(runner, project, renku_cli, with_injection, provider, skip_metadata_update):
@@ -60,6 +61,7 @@ def test_update(runner, project, renku_cli, with_injection, provider, skip_metad
         plan = activity.association.plan
         assert previous_activity.association.plan.id == plan.id
         assert isinstance(plan, Plan)
+        assert not project.repository.is_dirty(untracked_files=True)
         result = runner.invoke(cli, ["status"])
         assert 0 == result.exit_code, format_result_exception(result)
 
@@ -79,10 +81,13 @@ def test_update(runner, project, renku_cli, with_injection, provider, skip_metad
     assert 0 == result.exit_code, format_result_exception(result)
 
 
+@pytest.mark.serial
 @pytest.mark.parametrize("provider", available_workflow_providers())
 @pytest.mark.parametrize("skip_metadata_update", [True, False])
 def test_update_multiple_steps(runner, project, renku_cli, with_injection, provider, skip_metadata_update):
     """Test update in a multi-step workflow."""
+    set_value(section="renku", key="check_datadir_files", value="true", global_only=True)
+
     source = os.path.join(project.path, "source.txt")
     intermediate = os.path.join(project.path, "intermediate.txt")
     output = os.path.join(project.path, "output.txt")
@@ -91,8 +96,10 @@ def test_update_multiple_steps(runner, project, renku_cli, with_injection, provi
 
     exit_code, activity1 = renku_cli("run", "cp", source, intermediate)
     assert 0 == exit_code
+    time.sleep(1)
     exit_code, activity2 = renku_cli("run", "cp", intermediate, output)
     assert 0 == exit_code
+    time.sleep(1)
 
     write_and_commit_file(project.repository, source, "changed content")
 
@@ -113,6 +120,7 @@ def test_update_multiple_steps(runner, project, renku_cli, with_injection, provi
         assert isinstance(plans[0], Plan)
         assert isinstance(plans[1], Plan)
         assert {p.id for p in plans} == {activity1.association.plan.id, activity2.association.plan.id}
+        assert not project.repository.is_dirty(untracked_files=True)
         result = runner.invoke(cli, ["status"])
         assert 0 == result.exit_code, format_result_exception(result)
 
@@ -195,13 +203,16 @@ def test_multiple_updates(runner, project, renku_cli, provider):
 
     exit_code, activity1 = renku_cli("run", "cp", source, intermediate)
     assert 0 == exit_code
+    time.sleep(1)
     exit_code, activity2 = renku_cli("run", "cp", intermediate, output)
     assert 0 == exit_code
+    time.sleep(1)
 
     write_and_commit_file(project.repository, source, "changed content")
 
     exit_code, _ = renku_cli("update", "-p", provider, "--all")
     assert 0 == exit_code
+    time.sleep(1)
     assert "changed content" == Path(intermediate).read_text()
 
     write_and_commit_file(project.repository, source, "more changed content")
@@ -454,6 +465,7 @@ def test_update_multiple_paths_common_output(project, renku_cli, runner):
     assert "r4" in result.output
 
 
+@pytest.mark.serial
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_update_with_execute(runner, project, renku_cli, provider):
     """Test output is updated when source changes."""
@@ -469,6 +481,7 @@ def test_update_with_execute(runner, project, renku_cli, provider):
 
     result = runner.invoke(cli, ["run", "--name", "test", "bash", str(script), str(source1), str(output1)])
     assert 0 == result.exit_code, format_result_exception(result)
+    time.sleep(1)
 
     assert (
         0
@@ -491,7 +504,7 @@ def test_update_with_execute(runner, project, renku_cli, provider):
     assert 0 == renku_cli("update", "-p", provider, "--all").exit_code
 
     result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code
+    assert 0 == result.exit_code, format_result_exception(result)
 
     assert "content_a_modified\n" == (project.path / output1).read_text()
     assert "content_b_modified\n" == (project.path / output2).read_text()
@@ -508,27 +521,6 @@ def test_update_with_execute(runner, project, renku_cli, provider):
 
     assert "content_a_even more modified\n" == (project.path / output1).read_text()
     assert "content_b_even more modified\n" == (project.path / output2).read_text()
-
-
-def test_update_with_external_files(runner, project, directory_tree):
-    """Test update commands that use external files."""
-    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-dataset", directory_tree]).exit_code
-
-    path = project.path / "data" / "my-dataset" / "directory_tree" / "file1"
-
-    assert 0 == runner.invoke(cli, ["run", "tail", path], stdout="output").exit_code
-
-    (directory_tree / "file1").write_text("updated file1")
-
-    assert 0 == runner.invoke(cli, ["dataset", "update", "--all", "--no-external"]).exit_code
-    assert "updated file1" not in (project.path / "output").read_text()
-
-    assert 0 == runner.invoke(cli, ["dataset", "update", "--all"]).exit_code
-
-    result = runner.invoke(cli, ["update", "--all"])
-
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "updated file1" in (project.path / "output").read_text()
 
 
 def test_update_ignore_deleted_files(runner, project):

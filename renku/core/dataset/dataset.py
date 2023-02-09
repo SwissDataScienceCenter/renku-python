@@ -30,7 +30,12 @@ from renku.command.view_model.dataset import DatasetFileViewModel, DatasetViewMo
 from renku.core import errors
 from renku.core.config import get_value, remove_value, set_value
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.dataset.pointer_file import create_external_file, is_external_file_updated, update_external_file
+from renku.core.dataset.pointer_file import (
+    create_external_file,
+    delete_external_file,
+    is_linked_file_updated,
+    update_linked_file,
+)
 from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.models import ProviderDataset
 from renku.core.dataset.request_model import ImageRequestModel
@@ -40,7 +45,7 @@ from renku.core.storage import check_external_storage, pull_paths_from_storage, 
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository, get_git_user
-from renku.core.util.metadata import is_external_file, prompt_for_credentials, read_credentials, store_credentials
+from renku.core.util.metadata import is_linked_file, prompt_for_credentials, read_credentials, store_credentials
 from renku.core.util.os import (
     create_symlink,
     delete_dataset_file,
@@ -309,21 +314,29 @@ def list_dataset_files(
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
-def file_unlink(name: str, include: Optional[List[str]], exclude: Optional[List[str]], yes: bool = False):
+def file_unlink(
+    name: str,
+    include: Optional[List[str]] = None,
+    exclude: Optional[List[str]] = None,
+    yes: bool = False,
+    dataset_files: Optional[List[DatasetFile]] = None,
+):
     """Remove matching files from a dataset.
 
     Args:
         name(str): Dataset name.
-        include(Optional[List[str]]): Include filter for files.
-        exclude(Optional[List[str]]): Exclude filter for files.
+        include(Optional[List[str]]): Include filter for files (Default value = None).
+        exclude(Optional[List[str]]): Exclude filter for files (Default value = None).
         yes(bool): Whether to skip user confirmation or not (Default value = False).
+        dataset_files(Optional[List[DatasetFile]]): Files to remove; ignore include and exclude if passed (Default value
+            = None).
 
     Returns:
         List[DynamicProxy]: List of files that were removed.
     """
     repository = project_context.repository
 
-    if not include and not exclude:
+    if not include and not exclude and not dataset_files:
         raise errors.ParameterError("include or exclude filters not specified.")
 
     datasets_provenance = DatasetsProvenance()
@@ -333,41 +346,47 @@ def file_unlink(name: str, include: Optional[List[str]], exclude: Optional[List[
     if not dataset:
         raise errors.ParameterError("Dataset does not exist.")
 
-    records = filter_dataset_files(names=[name], include=include, exclude=exclude)
-    if not records:
-        raise errors.ParameterError("No records found.")
+    records = []
+    if not dataset_files:
+        records = filter_dataset_files(names=[name], include=include, exclude=exclude)
+        if not records:
+            raise errors.ParameterError("No records found.")
+        dataset_files = [cast(DatasetFile, r) for r in records]
 
     if not yes:
         prompt_text = (
             f'You are about to remove following from "{name}" dataset.'
             + "\n"
-            + "\n".join([str(record.entity.path) for record in records])
+            + "\n".join([str(record.entity.path) for record in dataset_files])
             + "\nDo you wish to continue?"
         )
         communication.confirm(prompt_text, abort=True, warning=True)
 
-    dataset_datadir = dataset.get_datadir()
-    for file in records:
+    for file in dataset_files:
         dataset.unlink_file(file.entity.path)
         path_file = Path(file.entity.path)
-        # INFO: Remove actual dataset file only if it is located within dataset directory
-        if str(path_file.absolute()).startswith(str(dataset_datadir.absolute())):
+
+        if file.is_external or file.linked:
+            try:
+                delete_external_file(file)
+            except errors.InvalidFileOperation as e:
+                communication.warn(f"Cannot delete dataset file {path_file}: {e}.")
+        elif dataset.is_within_datadir(path_file):  # NOTE: Remove dataset file only if it's inside dataset's datadir
+            datadir = dataset.get_datadir()
+
             if not path_file.exists():
-                communication.warn(
-                    f"Dataset file {path_file} could not be found, skipping the removal from {dataset_datadir}."
-                )
+                communication.warn(f"Dataset file {path_file} doesn't exist, skipping the removal from {datadir}.")
                 continue
+
             try:
                 if path_file.is_dir():
                     shutil.rmtree(str(path_file.absolute()), ignore_errors=False, onerror=None)
                 else:
                     path_file.unlink()
             except Exception as err:
-                communication.warn(
-                    f"Dataset file {path_file} could not be removed from {dataset_datadir} because of {err}."
-                )
-            else:
-                repository.add(path_file)
+                communication.warn(f"Dataset file {path_file} could not be removed from {datadir} because of {err}.")
+
+        repository.add(path_file)
 
     datasets_provenance.add_or_update(dataset, creator=get_git_user(repository))
 
@@ -572,7 +591,6 @@ def update_datasets(
     exclude: Optional[List[str]],
     ref: Optional[str],
     delete: bool,
-    no_external: bool,
     no_local: bool,
     no_remote: bool,
     check_data_directory: bool,
@@ -590,7 +608,6 @@ def update_datasets(
         exclude(Optional[List[str]]): Exclude filter for paths to update.
         ref(Optional[str]): Git reference to use for update.
         delete(bool): Whether to delete files that don't exist on remote anymore.
-        no_external(bool): Whether to exclude external files from the update.
         no_local(bool): Whether to exclude local files from the update.
         no_remote(bool): Whether to exclude remote files from the update.
         check_data_directory(bool): Whether to check the dataset's data directory for new files.
@@ -696,15 +713,15 @@ def update_datasets(
 
     git_files = []
     unique_remotes = set()
-    external_files = []
+    linked_files = []
     local_files = []
 
     for file in records:
         if file.based_on:
             git_files.append(file)
             unique_remotes.add(file.based_on.url)
-        elif file.is_external:
-            external_files.append(file)
+        elif file.linked:
+            linked_files.append(file)
         else:
             local_files.append(file)
 
@@ -717,8 +734,8 @@ def update_datasets(
     updated_files: List[DynamicProxy] = []
     deleted_files: List[DynamicProxy] = []
 
-    if external_files and not no_external:
-        updated = update_external_files(external_files, dry_run=dry_run)
+    if linked_files:
+        updated = update_linked_files(linked_files, dry_run=dry_run)
         updated_files.extend(updated)
 
     if git_files and not no_remote:
@@ -926,7 +943,7 @@ def move_files(dataset_gateway: IDatasetGateway, files: Dict[Path, Path], to_dat
                     new_dataset_file.source = removed.source
 
                     if not to_dataset and (
-                        new_dataset_file.is_external
+                        new_dataset_file.linked
                         or is_subpath(project_context.path / dst, project_context.path / dataset.get_datadir())
                     ):
                         dataset.add_or_update_files(new_dataset_file)
@@ -978,7 +995,7 @@ def update_dataset_local_files(
         for file in records:
             communication.update_progress(progress_text, 1)
 
-            if file.based_on or file.is_external:
+            if file.based_on or file.linked:
                 continue
 
             if not (project_context.path / file.entity.path).exists():
@@ -1083,7 +1100,7 @@ def update_dataset_git_files(
                 if not dry_run:
                     # Fetch file if it is tracked by Git LFS
                     pull_paths_from_storage(remote_repository, remote_repository.path / based_on.path)
-                    if is_external_file(path=src, project_path=remote_repository.path):
+                    if is_linked_file(path=src, project_path=remote_repository.path):
                         delete_dataset_file(dst, follow_symlinks=True)
                         create_external_file(target=src.resolve(), path=dst)
                     else:
@@ -1102,8 +1119,8 @@ def update_dataset_git_files(
     return updated_files, deleted_files
 
 
-def update_external_files(records: List[DynamicProxy], dry_run: bool) -> List[DynamicProxy]:
-    """Update files linked to external storage.
+def update_linked_files(records: List[DynamicProxy], dry_run: bool) -> List[DynamicProxy]:
+    """Update files linked to other files in the project.
 
     Args:
         records(List[DynamicProxy]): File records to update.
@@ -1112,9 +1129,9 @@ def update_external_files(records: List[DynamicProxy], dry_run: bool) -> List[Dy
     updated_files = []
 
     for file in records:
-        if file.is_external:
+        if file.linked:
             try:
-                updated, checksum = is_external_file_updated(project_path=project_context.path, path=file.entity.path)
+                updated, checksum = is_linked_file_updated(path=file.entity.path)
             except errors.ExternalFileNotFound as e:
                 if not dry_run:
                     raise
@@ -1123,7 +1140,7 @@ def update_external_files(records: List[DynamicProxy], dry_run: bool) -> List[Dy
 
             if updated:
                 if not dry_run:
-                    update_external_file(path=file.entity.path, checksum=checksum)
+                    update_linked_file(path=file.entity.path, checksum=checksum)
                 updated_files.append(file)
 
     return updated_files
@@ -1234,8 +1251,8 @@ def filter_dataset_files(
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
-def pull_external_data(name: str, location: Optional[Path] = None) -> None:
-    """Pull/copy data for an external storage to a dataset's data directory or a specified location.
+def pull_cloud_storage(name: str, location: Optional[Path] = None) -> None:
+    """Pull/copy data for a cloud storage to a dataset's data directory or a specified location.
 
     Args:
         name(str): Name of the dataset
@@ -1321,15 +1338,15 @@ def read_dataset_data_location(dataset: Dataset) -> Optional[str]:
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
-def mount_external_storage(name: str, existing: Optional[Path], yes: bool) -> None:
-    """Mount an external storage to a dataset's data directory.
+def mount_cloud_storage(name: str, existing: Optional[Path], yes: bool) -> None:
+    """Mount a cloud storage to a dataset's data directory.
 
     Args:
         name(str): Name of the dataset
-        existing(Optional[Path]): An existing mount point to use instead of actually mounting the external storage.
+        existing(Optional[Path]): An existing mount point to use instead of actually mounting the backend storage.
         yes(bool): Don't prompt when removing non-empty dataset's data directory.
     """
-    dataset, datadir = _get_dataset_with_external_storage(name=name)
+    dataset, datadir = _get_dataset_with_cloud_storage(name=name)
 
     # NOTE: Try to unmount the path in case it was mounted before
     unmount_path(datadir)
@@ -1358,17 +1375,17 @@ def mount_external_storage(name: str, existing: Optional[Path], yes: bool) -> No
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
-def unmount_external_storage(name: str) -> None:
-    """Mount an external storage to a dataset's data directory.
+def unmount_cloud_storage(name: str) -> None:
+    """Mount a cloud storage to a dataset's data directory.
 
     Args:
         name(str): Name of the dataset
     """
-    _, datadir = _get_dataset_with_external_storage(name=name)
+    _, datadir = _get_dataset_with_cloud_storage(name=name)
     unmount_path(datadir)
 
 
-def _get_dataset_with_external_storage(name: str) -> Tuple[Dataset, Path]:
+def _get_dataset_with_cloud_storage(name: str) -> Tuple[Dataset, Path]:
     datasets_provenance = DatasetsProvenance()
 
     dataset = datasets_provenance.get_by_name(name=name, strict=True)

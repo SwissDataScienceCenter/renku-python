@@ -40,7 +40,7 @@ class OLOSProvider(ProviderApi, ExportProviderInterface):
     priority = ProviderPriority.HIGH
     name = "OLOS"
 
-    def __init__(self, uri: Optional[str], is_doi: bool = False):
+    def __init__(self, uri: str, is_doi: bool = False):
         super().__init__(uri=uri)
 
         self.is_doi = is_doi

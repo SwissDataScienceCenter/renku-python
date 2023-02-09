@@ -26,12 +26,12 @@ from renku.core.dataset.dataset import (
     import_dataset,
     list_dataset_files,
     list_datasets,
-    mount_external_storage,
-    pull_external_data,
+    mount_cloud_storage,
+    pull_cloud_storage,
     remove_dataset,
     search_datasets,
     show_dataset,
-    unmount_external_storage,
+    unmount_cloud_storage,
     update_datasets,
 )
 from renku.core.dataset.dataset_add import add_to_dataset
@@ -127,18 +127,18 @@ def list_tags_command():
     return Command().command(list_dataset_tags).with_database().require_migration()
 
 
-def pull_external_data_command():
-    """Command for pulling/copying data from an external storage."""
-    command = Command().command(pull_external_data).lock_dataset().with_database(write=True)
+def pull_cloud_storage_command():
+    """Command for pulling/copying data from a cloud storage."""
+    command = Command().command(pull_cloud_storage).lock_dataset().with_database(write=True)
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS + [CONFIG_LOCAL_PATH])
 
 
-def mount_external_storage_command(unmount: bool):
-    """Command for mounting an external storage."""
-    command = unmount_external_storage if unmount else mount_external_storage
+def mount_cloud_storage_command(unmount: bool):
+    """Command for mounting a cloud storage."""
+    command = unmount_cloud_storage if unmount else mount_cloud_storage
     return Command().command(command).lock_dataset().with_database(write=False).require_migration()
 
 
-def unmount_external_storage_command():
-    """Command for unmounting an external storage."""
-    return Command().command(unmount_external_storage).lock_dataset().with_database(write=False).require_migration()
+def unmount_cloud_storage_command():
+    """Command for unmounting a cloud storage."""
+    return Command().command(unmount_cloud_storage).lock_dataset().with_database(write=False).require_migration()
