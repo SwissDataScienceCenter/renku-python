@@ -67,8 +67,8 @@ def test_template_selection_helpers(isolated_runner):
 
     assert "Please choose a template by typing its index:" in stripped_output
 
-    assert "1 python-minimal" in stripped_output
-    assert "2 R-minimal" in stripped_output
+    assert "1 python" in stripped_output
+    assert "2 R" in stripped_output
 
 
 def test_init(isolated_runner, project_init):

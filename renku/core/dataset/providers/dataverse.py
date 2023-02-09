@@ -145,8 +145,8 @@ class DataverseProvider(ProviderApi, ExportProviderInterface, ImportProviderInte
         dataset: "Dataset",
         *,
         tag: Optional["DatasetTag"],
-        dataverse_server: str = None,
-        dataverse_name: str = None,
+        dataverse_server: Optional[str] = None,
+        dataverse_name: Optional[str] = None,
         publish: bool = False,
         **kwargs,
     ) -> "ExporterApi":

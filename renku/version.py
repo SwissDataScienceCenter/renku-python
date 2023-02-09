@@ -25,7 +25,7 @@ except ImportError:
     from importlib_metadata import distribution, version  # type: ignore
 
 __version__ = version("renku")
-__template_version__ = "0.3.5"
+__template_version__ = "0.4.1"
 __minimum_project_version__ = "1.7.0"
 
 

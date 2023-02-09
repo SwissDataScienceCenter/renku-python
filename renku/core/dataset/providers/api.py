@@ -17,11 +17,11 @@
 
 import abc
 from collections import UserDict
-from enum import IntEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
 
 from renku.core import errors
+from renku.core.constant import ProviderPriority
 from renku.core.plugin import hookimpl
 from renku.core.util.util import NO_VALUE, NoValueType
 from renku.domain_model.dataset_provider import IDatasetProviderPlugin
@@ -35,21 +35,6 @@ if TYPE_CHECKING:
     )
     from renku.core.interface.storage import IStorage
     from renku.domain_model.dataset import Dataset, DatasetTag
-
-
-class ProviderPriority(IntEnum):
-    """Defines the order in which a provider is checked to see if it supports a URI.
-
-    Providers that support more specific URIs should have a higher priority so that they are checked first.
-    """
-
-    HIGHEST = 1
-    HIGHER = 2
-    HIGH = 3
-    NORMAL = 4
-    LOW = 5
-    LOWER = 6
-    LOWEST = 7
 
 
 class ProviderApi(IDatasetProviderPlugin):

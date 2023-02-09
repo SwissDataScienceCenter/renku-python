@@ -44,7 +44,7 @@ class PlanGateway(IPlanGateway):
             raise errors.WorkflowNotFoundError(name_or_id)
         return workflow
 
-    def list_by_name(self, starts_with: str, ends_with: str = None) -> List[str]:
+    def list_by_name(self, starts_with: str, ends_with: Optional[str] = None) -> List[str]:
         """Search plans by name."""
         return [
             name

@@ -17,7 +17,7 @@
 # limitations under the License.
 """Terminal Color definitions."""
 
-YELLOW = (196, 160, 0)
+YELLOW = "yellow"
 MAGENTA = "magenta"
 GREEN = "green"
 RED = "red"

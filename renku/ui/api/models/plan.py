@@ -52,11 +52,11 @@ class Plan:
         deleted: bool = False,
         description: Optional[str] = None,
         id: str,
-        inputs: List[Input] = None,
+        inputs: Optional[List[Input]] = None,
         keywords: Optional[List[str]] = None,
         name: Optional[str] = None,
-        outputs: List[Output] = None,
-        parameters: List[Parameter] = None,
+        outputs: Optional[List[Output]] = None,
+        parameters: Optional[List[Parameter]] = None,
         success_codes: Optional[List[int]] = None,
     ):
         self.command: str = command
@@ -133,10 +133,10 @@ class CompositePlan:
         description: Optional[str] = None,
         id: str,
         keywords: Optional[List[str]] = None,
-        links: List[Link] = None,
-        mappings: List[Mapping] = None,
+        links: Optional[List[Link]] = None,
+        mappings: Optional[List[Mapping]] = None,
         name: Optional[str] = None,
-        plans: List[Union["CompositePlan", "Plan"]] = None,
+        plans: Optional[List[Union["CompositePlan", "Plan"]]] = None,
     ):
         self.date_created: Optional[datetime] = date_created
         self.deleted: bool = deleted

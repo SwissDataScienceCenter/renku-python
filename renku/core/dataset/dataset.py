@@ -401,7 +401,7 @@ def export_dataset(name: str, provider_name: str, tag: Optional[str], **kwargs):
     provider_name = provider_name.lower()
 
     # TODO: all these callbacks are ugly, improve in #737
-    config_key_secret = "access_token"
+    config_key_secret = "access_token"  # nosec
 
     dataset: Optional[Dataset] = datasets_provenance.get_by_name(name, strict=True, immutable=True)
 
@@ -615,7 +615,7 @@ def update_datasets(
     elif (include or exclude) and update_all:
         raise errors.ParameterError("Cannot specify include and exclude filters when updating all datasets")
     elif (include or exclude) and names and any(d for d in imported_datasets if d.name in names):
-        raise errors.IncompatibleParametersError(a="--include/--exclude", b="imported datasets")
+        raise errors.IncompatibleParametersError(first_param="--include/--exclude", second_param="imported datasets")
 
     names = names or [d.name for d in all_datasets]
 
@@ -1166,12 +1166,11 @@ def filter_dataset_files(
 
         return True
 
+    creators_set = set()
     if isinstance(creators, str):
         creators_set = set(creators.split(","))
     elif isinstance(creators, list) or isinstance(creators, tuple):
         creators_set = set(creators)
-    else:
-        creators_set = set()
 
     records = []
     unused_names = set(names) if names is not None else set()

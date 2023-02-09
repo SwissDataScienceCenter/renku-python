@@ -35,7 +35,7 @@ def template_metadata():
     yield {
         "__template_source__": "renku",
         "__template_ref__": renku_version,
-        "__template_id__": "python-minimal",
+        "__template_id__": "python",
         "__namespace__": "",
         "__repository__": "",
         "__project_description__": "no description",
@@ -49,7 +49,7 @@ def template(template_metadata):
     """Yield template data."""
     template = {
         "url": "https://github.com/SwissDataScienceCenter/renku-project-template",
-        "id": "python-minimal",
+        "id": "python",
         "index": 1,
         "ref": "master",
         # TODO: Add template parameters here once parameters are added to the template.
