@@ -1,7 +1,9 @@
 ---
-name: Bug report
+name: "\U0001F41E Bug report"
 about: Create a report to help us improve
-
+title: ''
+labels: kind/bug, status/triage
+assignees: ''
 ---
 
 <!-- Note: for support questions, please use our discourse (https://renku.discourse.group/) -->
