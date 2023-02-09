@@ -144,7 +144,7 @@ class Activity(Persistent):
         project_gateway: IProjectGateway,
         started_at_time: datetime,
         ended_at_time: datetime,
-        annotations: List[Annotation] = None,
+        annotations: Optional[List[Annotation]] = None,
         id: Optional[str] = None,
     ):
         """Convert a ``Plan`` to a ``Activity``."""
@@ -284,7 +284,7 @@ class Activity(Persistent):
 class ActivityCollection(Persistent):
     """Represent a list of activities."""
 
-    def __init__(self, *, activities: List[Activity], id: str = None):
+    def __init__(self, *, activities: List[Activity], id: Optional[str] = None):
         self.activities: List[Activity] = activities or []
         self.id: str = id or self.generate_id()
 
@@ -304,7 +304,7 @@ class WorkflowFileActivityCollection(ActivityCollection):
         agents: List[Union[Person, SoftwareAgent]],
         association: Association,
         ended_at_time: datetime,
-        id: str = None,
+        id: Optional[str] = None,
         invalidated_at: Optional[datetime] = None,
         project_id: Optional[str] = None,
         started_at_time: datetime,

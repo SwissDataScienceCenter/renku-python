@@ -15,22 +15,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Login/logout commands."""
+"""JWT utilities."""
 
-from renku.command.command_builder import Command
-from renku.core.login import credentials, login, logout
+from datetime import datetime, timezone
 
-
-def login_command():
-    """Return a command for logging in to the platform."""
-    return Command().command(login)
+import jwt
 
 
-def logout_command():
-    """Return a command for logging out from the platform."""
-    return Command().command(logout)
+def is_token_expired(token: str) -> bool:
+    """Return True if the given token is expired."""
+    try:
+        decoded_token = jwt.decode(token, options={"verify_signature": False})
+    except jwt.DecodeError:
+        return True
 
+    expiration_date = decoded_token.get("exp", 0)
 
-def credentials_command():
-    """Return a command as git credential helper."""
-    return Command().command(credentials)
+    # NOTE: ``datetime.utcnow`` doesn't have timezone info, so we use ``datetime.now``
+    return expiration_date < datetime.now(tz=timezone.utc).timestamp()

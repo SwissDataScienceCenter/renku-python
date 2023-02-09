@@ -148,7 +148,7 @@ class PlanFactory:
         return cmd, args
 
     @staticmethod
-    def _is_ignored_path(candidate: Union[Path, str], ignored_list: Set[str] = None) -> bool:
+    def _is_ignored_path(candidate: Union[Path, str], ignored_list: Optional[Set[str]] = None) -> bool:
         """Return True if the path is in ignored list."""
         return ignored_list is not None and str(candidate) in ignored_list
 
@@ -358,7 +358,7 @@ class PlanFactory:
         # TODO: specify the actual mime-type of the file
         return ["application/octet-stream"]
 
-    def guess_type(self, value: Union[Path, str], ignore_filenames: Set[str] = None) -> Tuple[Any, str]:
+    def guess_type(self, value: Union[Path, str], ignore_filenames: Optional[Set[str]] = None) -> Tuple[Any, str]:
         """Return new value and CWL parameter type."""
         if not self._is_ignored_path(value, ignore_filenames) and all(value != v for v, _ in self.explicit_parameters):
             candidate = self._resolve_existing_subpath(value)
@@ -417,9 +417,9 @@ class PlanFactory:
         prefix: Optional[str] = None,
         position: Optional[int] = None,
         postfix: Optional[str] = None,
-        encoding_format: List[str] = None,
+        encoding_format: Optional[List[str]] = None,
         name: Optional[str] = None,
-        id: str = None,
+        id: Optional[str] = None,
         mapped_to: Optional[MappedIOStream] = None,
     ):
         """Create a CommandOutput."""

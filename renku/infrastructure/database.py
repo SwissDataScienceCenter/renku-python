@@ -251,7 +251,9 @@ class Database:
             self._root._p_oid = Database.ROOT_OID
             self.register(self._root)
 
-    def add_index(self, name: str, object_type: type, attribute: str = None, key_type: type = None) -> "Index":
+    def add_index(
+        self, name: str, object_type: type, attribute: Optional[str] = None, key_type: Optional[type] = None
+    ) -> "Index":
         """Add an index.
 
         Args:
@@ -286,7 +288,7 @@ class Database:
 
         self._root[name] = obj
 
-    def add(self, object: persistent.Persistent, oid: OID_TYPE = None):
+    def add(self, object: persistent.Persistent, oid: OID_TYPE):
         """Add a new object to the database.
 
         NOTE: Normally, we add objects to indexes but this method adds objects directly to Dataset's root. Use it only
