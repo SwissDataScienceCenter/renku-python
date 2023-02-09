@@ -142,7 +142,7 @@ def test_migrations_runs(isolated_runner, old_project):
     assert "Successfully applied" in result.output
     assert "OK" in result.output
 
-    result = isolated_runner.invoke(cli, ["migrate", "--skip-template-update"])
+    result = isolated_runner.invoke(cli, ["migrate"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "No migrations required." in result.output
 

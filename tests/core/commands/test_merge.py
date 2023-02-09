@@ -310,7 +310,7 @@ def test_merge_project_both_template_changed(mocker):
         creator=Person.from_string("John Doe <jd@example.com>"),
         name="my-project",
         template_metadata=ProjectTemplateMetadata(
-            template_id="python",
+            template_id="python-minimal",
             template_source="renku",
             template_ref="master",
             template_version="abcdef",
@@ -320,7 +320,7 @@ def test_merge_project_both_template_changed(mocker):
         creator=Person.from_string("John Doe <jd@example.com>"),
         name="my-project",
         template_metadata=ProjectTemplateMetadata(
-            template_id="python1",
+            template_id="python-minimal1",
             template_source="renku1",
             template_ref="master1",
             template_version="12345",
@@ -330,7 +330,7 @@ def test_merge_project_both_template_changed(mocker):
         creator=Person.from_string("John Doe <jd@example.com>"),
         name="my-project",
         template_metadata=ProjectTemplateMetadata(
-            template_id="python2",
+            template_id="python-minimal2",
             template_source="renku2",
             template_ref="master2",
             template_version="78910",
@@ -356,7 +356,7 @@ def test_merge_project_local_template_changed():
         creator=Person.from_string("John Doe <jd@example.com>"),
         name="my-project",
         template_metadata=ProjectTemplateMetadata(
-            template_id="python",
+            template_id="python-minimal",
             template_source="renku",
             template_ref="master",
             template_version="abcdef",
@@ -366,7 +366,7 @@ def test_merge_project_local_template_changed():
         creator=Person.from_string("John Doe <jd@example.com>"),
         name="my-project",
         template_metadata=ProjectTemplateMetadata(
-            template_id="python1",
+            template_id="python-minimal1",
             template_source="renku1",
             template_ref="master1",
             template_version="12345",
@@ -376,7 +376,7 @@ def test_merge_project_local_template_changed():
         creator=Person.from_string("John Doe <jd@example.com>"),
         name="my-project",
         template_metadata=ProjectTemplateMetadata(
-            template_id="python",
+            template_id="python-minimal",
             template_source="renku",
             template_ref="master",
             template_version="abcdef",
@@ -394,7 +394,7 @@ def test_merge_project_remote_template_changed():
         creator=Person.from_string("John Doe <jd@example.com>"),
         name="my-project",
         template_metadata=ProjectTemplateMetadata(
-            template_id="python",
+            template_id="python-minimal",
             template_source="renku",
             template_ref="master",
             template_version="abcdef",
@@ -404,7 +404,7 @@ def test_merge_project_remote_template_changed():
         creator=Person.from_string("John Doe <jd@example.com>"),
         name="my-project",
         template_metadata=ProjectTemplateMetadata(
-            template_id="python",
+            template_id="python-minimal",
             template_source="renku",
             template_ref="master",
             template_version="abcdef",
@@ -414,7 +414,7 @@ def test_merge_project_remote_template_changed():
         creator=Person.from_string("John Doe <jd@example.com>"),
         name="my-project",
         template_metadata=ProjectTemplateMetadata(
-            template_id="python1",
+            template_id="python-minimal1",
             template_source="renku1",
             template_ref="master1",
             template_version="12345",
