@@ -155,7 +155,7 @@ class ISessionProvider(metaclass=ABCMeta):
 
     @abstractmethod
     def session_open(self, project_name: str, session_name: str, **kwargs) -> bool:
-        """Opena given interactive session.
+        """Open a given interactive session.
 
         Args:
             project_name(str): Renku project name.

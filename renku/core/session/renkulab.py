@@ -170,6 +170,7 @@ class RenkulabSessionProvider(ISessionProvider):
                         "run 'renku session setup-ssh'."
                     )
 
+            project_context.ssh_authorized_keys_path.parent.mkdir(parents=True, exist_ok=True)
             project_context.ssh_authorized_keys_path.touch(mode=0o644, exist_ok=True)
 
             key = system_config.public_keyfile.read_text()
@@ -191,11 +192,11 @@ class RenkulabSessionProvider(ISessionProvider):
 
         system_config = SystemSSHConfig()
 
-        project_name = project_name.rsplit("/", 1)[1]
+        name = self._project_name_from_full_project_name(project_name)
 
-        session_config_paths = [system_config.session_config_path(project_name, s.id) for s in sessions]
+        session_config_paths = [system_config.session_config_path(name, s.id) for s in sessions]
 
-        for path in system_config.renku_ssh_root.glob(f"00-{project_name}*.conf"):
+        for path in system_config.renku_ssh_root.glob(f"00-{name}*.conf"):
             if path not in session_config_paths:
                 path.unlink()
 
@@ -220,6 +221,12 @@ class RenkulabSessionProvider(ISessionProvider):
                 "Please run the renku login command to authenticate with Renku or to refresh your expired credentials."
             )
         return res
+
+    def _project_name_from_full_project_name(self, project_name: str) -> str:
+        """Get just project name of project name if in owner/name form."""
+        if "/" not in project_name:
+            return project_name
+        return project_name.rsplit("/", 1)[1]
 
     @property
     def name(self) -> str:
@@ -357,8 +364,8 @@ class RenkulabSessionProvider(ISessionProvider):
             session_name = res.json()["name"]
             self._wait_for_session_status(session_name, "running")
             if ssh:
-                project_name = project_name.rsplit("/", 1)[1]
-                connection = SystemSSHConfig().setup_session_config(project_name, session_name)
+                name = self._project_name_from_full_project_name(project_name)
+                connection = SystemSSHConfig().setup_session_config(name, session_name)
                 communication.echo(f"SSH connection successfully configured, use 'ssh {connection}' to connect.")
             return f"Session {session_name} successfully started", ""
         raise errors.RenkulabSessionError("Cannot start session via the notebook service because " + res.text)
@@ -388,7 +395,7 @@ class RenkulabSessionProvider(ISessionProvider):
         return all([response.status_code == 204 for response in responses]) if responses else False
 
     def session_open(self, project_name: str, session_name: str, ssh: bool = False, **kwargs) -> bool:
-        """Open given interactive session.
+        """Open a given interactive session.
 
         Args:
             project_name(str): Renku project name.
@@ -401,17 +408,14 @@ class RenkulabSessionProvider(ISessionProvider):
             return False
 
         if ssh:
-            project_name = project_name.rsplit("/", 1)[1]
+            name = self._project_name_from_full_project_name(project_name)
             system_config = SystemSSHConfig()
-            if (
-                not system_config.is_configured
-                or not system_config.session_config_path(project_name, session_name).exists()
-            ):
+            if not system_config.is_configured or not system_config.session_config_path(name, session_name).exists():
                 raise errors.RenkulabSessionError(
                     "SSH not set up for session. Run without '--ssh' or "
                     "run 'renku session setup-ssh' and start the session again."
                 )
-            pty.spawn(["ssh", system_config.connection_name(project_name, session_name)])
+            pty.spawn(["ssh", system_config.connection_name(name, session_name)])
         else:
             url = self.session_url(session_name)
 
