@@ -23,9 +23,9 @@ jobs:
         run: |
           if [ "$REF" == "refs/heads/$DEFAULT_BRANCH" ] || [[ "$REF" =~ ^refs/tags/.* ]]
           then
-              echo "::set-output name=matrix::{\"python-version\": [\"3.7\", \"3.10\"]}"
+              echo "matrix={\"python-version\": [\"3.7\", \"3.10\"]}" >> $GITHUB_OUTPUT
           else
-              echo "::set-output name=matrix::{\"python-version\": [\"3.9\"]}"
+              echo "matrix={\"python-version\": [\"3.9\"]}" >> $GITHUB_OUTPUT
           fi
 
   cleanup-runs:
@@ -42,12 +42,12 @@ jobs:
       date: ${{ steps.year-week.outputs.date }}
     steps:
       - id: year-week
-        run: echo "::set-output name=date::$(date '+%Y-%V')"
+        run: echo "date=$(date '+%Y-%V')" >> $GITHUB_OUTPUT
 
   style-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -71,7 +71,7 @@ jobs:
           python -m pip install coveralls poetry poetry-dynamic-versioning[plugin] wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
           python -c "import pydocstyle;print(pydocstyle.__file__)"
           echo "${{ env.pythonLocation }}"
       - name: Install renku into cache
@@ -79,7 +79,7 @@ jobs:
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku Bot"
@@ -99,7 +99,7 @@ jobs:
   docs-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -123,14 +123,14 @@ jobs:
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
           poetry self add "poetry-dynamic-versioning[plugin]"
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku Bot"
@@ -144,7 +144,7 @@ jobs:
   mypy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -168,13 +168,13 @@ jobs:
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku Bot"
@@ -187,7 +187,7 @@ jobs:
   test-distro:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -209,13 +209,13 @@ jobs:
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Build Package
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -230,7 +230,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -258,13 +258,13 @@ jobs:
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku Bot"
@@ -301,7 +301,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -329,13 +329,13 @@ jobs:
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku Bot"
@@ -378,7 +378,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -406,13 +406,13 @@ jobs:
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku Bot"
@@ -455,7 +455,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -483,13 +483,13 @@ jobs:
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku Bot"
@@ -526,7 +526,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -546,7 +546,7 @@ jobs:
           python -m pip install wheel poetry
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
@@ -564,7 +564,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -584,7 +584,7 @@ jobs:
           python -m pip install wheel poetry
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
@@ -609,7 +609,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -629,7 +629,7 @@ jobs:
           python -m pip install wheel poetry
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
@@ -653,7 +653,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -673,7 +673,7 @@ jobs:
           python -m pip install wheel poetry
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Test with pytest
@@ -691,7 +691,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -719,13 +719,13 @@ jobs:
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku Bot"
@@ -788,7 +788,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -816,13 +816,13 @@ jobs:
           python -m pip install coveralls poetry wheel twine
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Install renku into cache
         if: steps.dependency-cache.outputs.cache-hit == 'true'
         env:
           POETRY_VIRTUALENVS_CREATE: false
         run: |
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
       - name: Set Git config
         run: |
           git config --global --add user.name "Renku Bot"
@@ -881,7 +881,7 @@ jobs:
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     if: "startsWith(github.ref, 'refs/tags/') || endsWith(github.ref, github.event.repository.default_branch)"
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -901,7 +901,7 @@ jobs:
           python -m pip install wheel poetry
           poetry self add "poetry-dynamic-versioning[plugin]"
           make download-templates
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
           brew install rclone osxfuse
@@ -937,7 +937,7 @@ jobs:
     runs-on: ubuntu-latest
     if: "startsWith(github.ref, 'refs/tags/')"
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -952,7 +952,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install poetry poetry-lock-package twine
           poetry self add "poetry-dynamic-versioning[plugin]"
-          poetry install -E toil -E service --with dev,tests,docs
+          poetry install -E service --with dev,tests,docs
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
       - name: Tag if necessary
@@ -976,7 +976,7 @@ jobs:
     runs-on: ubuntu-latest
     if: "startsWith(github.ref, 'refs/tags/')"
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
           ref: "develop"
@@ -1004,7 +1004,7 @@ jobs:
         test-macos-service,
       ]
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - name: build images
@@ -1034,7 +1034,7 @@ jobs:
       ]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - name: set up environment variables

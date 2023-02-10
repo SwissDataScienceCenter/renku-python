@@ -49,7 +49,7 @@ def is_dataset_name_valid(name: str) -> bool:
     return name is not None and name == get_slug(name, lowercase=False)
 
 
-def generate_default_name(title: str, version: str = None) -> str:
+def generate_default_name(title: str, version: Optional[str] = None) -> str:
     """Get dataset name."""
     max_length = 24
     # For compatibility with older versions use title as name if it is valid; otherwise, use encoded title
@@ -202,7 +202,7 @@ class RemoteEntity(Slots):
 
     __slots__ = ("checksum", "id", "path", "url")
 
-    def __init__(self, *, checksum: str, id: str = None, path: Union[Path, str], url: str):
+    def __init__(self, *, checksum: str, id: Optional[str] = None, path: Union[Path, str], url: str):
         super().__init__()
         self.checksum: str = checksum
         self.id: str = id or RemoteEntity.generate_id(checksum=checksum, path=path, url=url)
@@ -213,8 +213,8 @@ class RemoteEntity(Slots):
     def generate_id(checksum: str, path: Union[Path, str], url: str) -> str:
         """Generate an id."""
         parsed_url = urlparse(url)
-        prefix = quote(posixpath.join(parsed_url.netloc, parsed_url.path))
-        path = quote(str(path))
+        prefix = quote(posixpath.join(parsed_url.netloc.strip("/"), parsed_url.path.strip("/")))
+        path = quote(str(path).strip("/"))
         return f"/remote-entities/{prefix}/{checksum}/{path}"
 
     def __eq__(self, other):
@@ -309,7 +309,7 @@ class DatasetFile(Slots):
             and self.source == other.source
         )
 
-    def remove(self, date: datetime = None):
+    def remove(self, date: Optional[datetime] = None):
         """Create a new instance and mark it as removed."""
         date_removed = fix_datetime(date) or local_now()
         self.date_removed = date_removed
@@ -465,7 +465,7 @@ class Dataset(Persistent):
         dataset.keywords = list(dataset.keywords or [])
         return dataset
 
-    def replace_identifier(self, identifier: str = None):
+    def replace_identifier(self, identifier: Optional[str] = None):
         """Replace dataset's identifier and update relevant fields.
 
         NOTE: Call this only for newly-created/-imported datasets that don't have a mutability chain because it sets
@@ -480,7 +480,11 @@ class Dataset(Persistent):
         # NOTE: Do not unset `same_as` because it can be set for imported datasets
 
     def derive_from(
-        self, dataset: "Dataset", creator: Optional["Person"], identifier: str = None, date_created: datetime = None
+        self,
+        dataset: "Dataset",
+        creator: Optional["Person"],
+        identifier: Optional[str] = None,
+        date_created: Optional[datetime] = None,
     ):
         """Make `self` a derivative of `dataset` and update related fields."""
         assert dataset is not None, "Cannot derive from None"
@@ -507,7 +511,7 @@ class Dataset(Persistent):
         # NOTE: We also need to re-assign the _p_oid since identifier has changed
         self.reassign_oid()
 
-    def remove(self, date: datetime = None):
+    def remove(self, date: Optional[datetime] = None):
         """Mark the dataset as removed."""
         self.date_removed = fix_datetime(date) or local_now()
 

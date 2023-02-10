@@ -36,7 +36,7 @@ RUN if [ -n "${BUILD_CORE_SERVICE}" ]; then export EXT_BUILD="-E service" ; fi &
     /opt/poetry/bin/poetry config virtualenvs.options.no-setuptools true && \
     /opt/poetry/bin/poetry config virtualenvs.options.no-pip true  && \
     /opt/poetry/bin/poetry self add "poetry-dynamic-versioning[plugin]" && \
-    /opt/poetry/bin/poetry install ${EXT_BUILD} -E toil
+    /opt/poetry/bin/poetry install ${EXT_BUILD}
 
 FROM base
 ARG BUILD_CORE_SERVICE

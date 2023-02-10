@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Tuple, cast
 
 import zstandard as zstd
 
+from renku.command.checks.workflow import fix_plan_dates
 from renku.command.command_builder import inject
 from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.dataset_gateway import IDatasetGateway
@@ -170,17 +171,25 @@ def migrate_remote_entity_ids():
     """Change `remote-entity` to `remote-entities` in ids."""
     database = project_context.database
 
-    datasets: List[Dataset] = list(database["datasets"].values())
-
-    for dataset in datasets:
+    def fix_dataset_files_based_on(dataset):
         changed = False
-        for file in dataset.files:
+        for file in dataset.dataset_files:
             if file.based_on is not None:
+                file.based_on.id = file.based_on.id.replace("/remote-entity//", "/remote-entities/")
                 file.based_on.id = file.based_on.id.replace("/remote-entity/", "/remote-entities/")
                 changed = True
 
         if changed:
             dataset._p_changed = True
+
+    datasets: List[Dataset] = list(database["datasets-provenance-tails"].values())
+
+    for dataset in datasets:
+        fix_dataset_files_based_on(dataset)
+
+        while dataset.derived_from is not None:
+            dataset = database.get_by_id(id=dataset.derived_from.url_id)
+            fix_dataset_files_based_on(dataset)
 
     database.commit()
 
@@ -257,25 +266,7 @@ def fix_plan_times(activity_gateway: IActivityGateway, plan_gateway: IPlanGatewa
             plan.date_created = activity_map[plan.id].started_at_time
         plan.freeze()
 
-    # NOTE: switch creation date for modification date
-    for tail in plan_gateway.get_newest_plans_by_names(include_deleted=True).values():
-        stack: List[AbstractPlan] = []
-        stack.append(tail)
-        creation_date = tail.date_created
-        plan = tail
-
-        while plan.is_derivation():
-            plan = cast(AbstractPlan, plan_gateway.get_by_id(plan.derived_from))
-            creation_date = plan.date_created
-            stack.append(plan)
-
-        while stack:
-            plan = stack.pop()
-            plan.unfreeze()
-            plan.date_modified = plan.date_created
-            plan.date_created = creation_date
-            plan.freeze
-
+    fix_plan_dates(plans=plans, plan_gateway=plan_gateway)
     database.commit()
 
 
@@ -293,7 +284,9 @@ def fix_dataset_date_modified(dataset_gateway: IDatasetGateway):
             modification_date = dataset.date_removed or dataset.date_created
 
             if modification_date is not None:
-                assert modification_date <= previous_modification_date
+                # NOTE: This happened in a project due to a timezone change
+                if modification_date > previous_modification_date:
+                    modification_date = previous_modification_date
                 dataset.unfreeze()
                 dataset.date_modified = modification_date
                 dataset.freeze()

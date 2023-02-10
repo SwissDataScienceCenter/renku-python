@@ -38,7 +38,7 @@ def fake_start(
     disk_request,
     gpu_request,
 ):
-    return "0xdeadbeef"
+    return "0xdeadbeef", ""
 
 
 def fake_stop(self, project_name, session_name, stop_all):
@@ -89,6 +89,7 @@ def test_session_start(
     parameters,
     result,
     with_injection,
+    mock_communication,
 ):
     with patch.multiple(
         session_provider,
@@ -108,7 +109,8 @@ def test_session_start(
                 with pytest.raises(result):
                     session_start(provider=provider_name, config_path=None, **parameters)
             else:
-                assert session_start(provider=provider_name, config_path=None, **parameters) == result
+                session_start(provider=provider_name, config_path=None, **parameters)
+                assert result in mock_communication.stdout_lines
 
 
 @pytest.mark.parametrize(
@@ -170,11 +172,11 @@ def test_session_list(
 ):
     with patch.multiple(session_provider, session_list=fake_session_list, **provider_patches):
         with with_injection():
+            provider = provider_name if provider_exists else "no_provider"
+
             if not isinstance(result, list) and issubclass(result, Exception):
                 with pytest.raises(result):
-                    session_list(provider=provider_name if provider_exists else "no_provider", config_path=None)
+                    session_list(provider=provider, config_path=None)
             else:
-                assert (
-                    session_list(provider=provider_name if provider_exists else "no_provider", config_path=None)
-                    == result
-                )
+                sessions, _, _ = session_list(provider=provider, config_path=None)
+                assert sessions == result

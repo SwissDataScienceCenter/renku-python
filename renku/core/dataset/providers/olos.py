@@ -60,7 +60,7 @@ class OLOSProvider(ProviderApi, ExportProviderInterface):
         return [ProviderParameter("dlcm-server", help="DLCM server base url.", type=str)]
 
     def get_exporter(
-        self, dataset: "Dataset", *, tag: Optional["DatasetTag"], dlcm_server: str = None, **kwargs
+        self, dataset: "Dataset", *, tag: Optional["DatasetTag"], dlcm_server: Optional[str] = None, **kwargs
     ) -> "OLOSExporter":
         """Create export manager for given dataset."""
 

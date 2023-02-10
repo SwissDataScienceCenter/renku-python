@@ -39,7 +39,7 @@ class WorkflowFileCompositePlan(CompositePlan):
         self.path: str = str(path)
 
     @staticmethod
-    def generate_id(path: Union[Path, str] = None, sequence: Optional[int] = None, **_) -> str:
+    def generate_id(path: Optional[Union[Path, str]] = None, sequence: Optional[int] = None, **_) -> str:
         """Generate an identifier for Plan."""
         assert path, "Path is needed to generate id for WorkflowFileCompositePlan"
 
@@ -47,7 +47,7 @@ class WorkflowFileCompositePlan(CompositePlan):
         # changed later if the plan is a derivative
         key = f"{path}" if sequence is None else f"{path}::{sequence}"
         key_bytes = key.encode("utf-8")
-        return CompositePlan.generate_id(uuid=hashlib.md5(key_bytes).hexdigest()[:32])
+        return CompositePlan.generate_id(uuid=hashlib.md5(key_bytes).hexdigest()[:32])  # nosec
 
     def assign_new_id(self, *, sequence: Optional[int] = None, **_) -> str:
         """Assign a new UUID or a deterministic."""
@@ -68,14 +68,16 @@ class WorkflowFilePlan(Plan):
         self.path: str = str(path)
 
     @staticmethod
-    def generate_id(path: Union[Path, str] = None, name: str = None, sequence: Optional[int] = None, **_) -> str:
+    def generate_id(
+        path: Optional[Union[Path, str]] = None, name: Optional[str] = None, sequence: Optional[int] = None, **_
+    ) -> str:
         """Generate an identifier for Plan."""
         assert path, "Path is needed to generate id for WorkflowFilePlan"
         assert name, "Name is needed to generate id for WorkflowFilePlan"
 
         key = f"{path}::{name}" if sequence is None else f"{path}::{name}::{sequence}"
         key_bytes = key.encode("utf-8")
-        return Plan.generate_id(uuid=hashlib.md5(key_bytes).hexdigest()[:32])
+        return Plan.generate_id(uuid=hashlib.md5(key_bytes).hexdigest()[:32])  # nosec
 
     @staticmethod
     def validate_name(name: str):

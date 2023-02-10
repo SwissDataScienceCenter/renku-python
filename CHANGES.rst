@@ -18,6 +18,32 @@
 Changes
 =======
 
+`2.2.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.1.0...v2.2.0>`__ (2023-02-10)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** fix a bug in access token prompt for dataset export
+   (`#3256 <https://github.com/SwissDataScienceCenter/renku-python/issues/3256>`__)
+   (`d0701f5 <https://github.com/SwissDataScienceCenter/renku-python/commit/d0701f58b1946808d68938db23274864891733af>`__)
+-  **core:** bump minimum required version so that old projects properly fail
+   (`#3307 <https://github.com/SwissDataScienceCenter/renku-python/issues/3307>`__)
+   (`6667779 <https://github.com/SwissDataScienceCenter/renku-python/commit/66677798ce769a3c3ddc69fd8d0753d2de9a6468>`__)
+-  **core:** various metadata v10 migration fixes
+   (`#3304 <https://github.com/SwissDataScienceCenter/renku-python/issues/3304>`__)
+   (`f4c37dd <https://github.com/SwissDataScienceCenter/renku-python/commit/f4c37dda4116df95695b2865b329874e993d8784>`__)
+
+Features
+~~~~~~~~
+
+-  **cli:** ``renku login`` by default logs into remote gitlab
+   (`#3287 <https://github.com/SwissDataScienceCenter/renku-python/issues/3287>`__)
+   (`58bd96c <https://github.com/SwissDataScienceCenter/renku-python/commit/58bd96cbd82d4ea4caabb643d0e594943caabb44>`__)
+-  **cli:** various ``renku session`` improvements and fixes
+   (`#3292 <https://github.com/SwissDataScienceCenter/renku-python/issues/3292>`__)
+   (`7b05493 <https://github.com/SwissDataScienceCenter/renku-python/commit/7b05493e4e55c89ccbe6ba378ea705e5ee53a09b>`__)
+
 `2.1.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.0.1...v2.1.0>`__ (2023-01-18)
 -------------------------------------------------------------------------------------------------------
 
