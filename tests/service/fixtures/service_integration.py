@@ -239,7 +239,7 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
             with chdir(remote_repo_checkout_path):
 
                 result = runner.invoke(
-                    cli, ["init", ".", "--template-id", "python", "--force"], "\n", catch_exceptions=False
+                    cli, ["init", ".", "--template-id", "python-minimal", "--force"], "\n", catch_exceptions=False
                 )
                 assert 0 == result.exit_code, format_result_exception(result)
 

@@ -317,7 +317,7 @@ class Plan(AbstractPlan):
         """Create a new ``Plan`` that is derived from self."""
         derived = copy.copy(self)
         derived.derived_from = self.id
-        derived.date_created = local_now()
+        derived.date_modified = local_now()
         derived.parameters = self.parameters.copy()
         derived.inputs = self.inputs.copy()
         derived.keywords = copy.deepcopy(self.keywords)
