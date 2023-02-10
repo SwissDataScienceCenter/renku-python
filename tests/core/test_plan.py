@@ -16,9 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku plan management tests."""
+from datetime import datetime
 
 import pytest
 
+from renku.command.checks import check_modification_date
 from renku.core import errors
 from renku.core.workflow.plan import (
     get_activities,
@@ -160,3 +162,22 @@ def test_get_activities(project_with_injection):
     plan_activities = set(get_activities(plan))
 
     assert set(activities[0:5]) == plan_activities
+
+
+def test_modification_date_fix(project_with_injection):
+    """Check that plans without modification date are fixed."""
+    _, _, plan, _, _, unrelated = create_dummy_plans()
+
+    date_created = plan.date_created
+    dummy_date = datetime(2023, 2, 8, 0, 42, 0)
+
+    # Remove change modification and creation dates on some plans
+    plan.date_created = dummy_date
+    del plan.date_modified
+    unrelated.date_modified = None
+
+    check_modification_date(fix=True)
+
+    assert dummy_date == plan.date_modified
+    assert unrelated.date_created == unrelated.date_modified
+    assert date_created == plan.date_created
