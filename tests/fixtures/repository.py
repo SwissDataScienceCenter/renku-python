@@ -104,7 +104,7 @@ def project(fake_home) -> Generator[RenkuProject, None, None]:
     with isolated_filesystem(fake_home.parent, delete=True) as project_path:
         with project_context.with_path(project_path):
             communication.disable()
-            result = RenkuRunner().invoke(init, [".", "--template-id", "python"], "\n", catch_exceptions=False)
+            result = RenkuRunner().invoke(init, [".", "--template-id", "python-minimal"], "\n", catch_exceptions=False)
             communication.enable()
             assert 0 == result.exit_code, format_result_exception(result)
 

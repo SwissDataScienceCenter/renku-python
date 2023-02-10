@@ -213,8 +213,8 @@ class RemoteEntity(Slots):
     def generate_id(checksum: str, path: Union[Path, str], url: str) -> str:
         """Generate an id."""
         parsed_url = urlparse(url)
-        prefix = quote(posixpath.join(parsed_url.netloc, parsed_url.path))
-        path = quote(str(path))
+        prefix = quote(posixpath.join(parsed_url.netloc.strip("/"), parsed_url.path.strip("/")))
+        path = quote(str(path).strip("/"))
         return f"/remote-entities/{prefix}/{checksum}/{path}"
 
     def __eq__(self, other):

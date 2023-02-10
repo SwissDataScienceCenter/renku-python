@@ -69,9 +69,9 @@ You can take inspiration from the
     ... OK
 
     INDEX ID             DESCRIPTION                PARAMETERS
-    ----- ------ -------------------------- ----------------------
-    1     python Basic Python Project:[...] description: proj[...]
-    2     R      Basic R Project: The [...] description: proj[...]
+    ----- -------------- -------------------------- ----------------------
+    1     python-minimal Basic Python Project:[...] description: proj[...]
+    2     R-minimal      Basic R Project: The [...] description: proj[...]
 
     Please choose a template by typing the index:
 
@@ -86,7 +86,7 @@ parameter using ``--parameter "param1"="value1"``.
 
 .. code-block:: console
 
-    $ renku init --template-id python --parameter \
+    $ renku init --template-id python-minimal --parameter \
     "description"="my new shiny project"
 
     Initializing new Renku repository... OK
@@ -113,7 +113,7 @@ it to a json file and passing that via the `--metadata` option.
         "@type": "https://schema.org/Organization", \
         "https://schema.org/legalName": "ETHZ"}' > metadata.json
 
-    $ renku init --template-id python --parameter \
+    $ renku init --template-id python-minimal --parameter \
     "description"="my new shiny project" --metadata metadata.json
 
     Initializing new Renku repository... OK
@@ -136,13 +136,13 @@ in the template will be left untouched by the command.
     $ echo "FROM python:3.7-alpine" > Dockerfile
     $ renku init
 
-    INDEX    ID         PARAMETERS
-    -------  ---------  ------------
-        1    python     description
-        2    R          description
-        3    bioc       description
-        4    julia      description
-        5    minimal
+    INDEX  ID              PARAMETERS
+    -------  --------------  ------------
+        1  python-minimal  description
+        2  R-minimal       description
+        3  bioc-minimal    description
+        4  julia-minimal   description
+        5  minimal
     Please choose a template by typing the index: 1
     The template requires a value for "description": Test Project
     Initializing Git repository...
