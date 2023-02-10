@@ -18,6 +18,7 @@
 """Renku session fixtures."""
 
 from typing import Any, Dict, List, Optional, Tuple
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -81,16 +82,25 @@ def dummy_session_provider():
         def session_url(self, session_name: str) -> Optional[str]:
             return "http://localhost/"
 
-        def pre_start_checks(self):
+        def pre_start_checks(self, **kwargs):
             pass
 
         def get_start_parameters(self):
             return []
 
+        def get_open_parameters(self):
+            return []
+
+        def session_open(self, project_name: str, session_name: str, **kwargs) -> bool:
+            browser.open(self.session_url(session_name))
+            return True
+
     plugin = _DummySessionProvider()
     pm = plugin_manager.get_plugin_manager()
     pm.register(plugin)
 
-    yield
+    browser = MagicMock()
+
+    yield browser
 
     pm.unregister(plugin)
