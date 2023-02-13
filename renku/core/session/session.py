@@ -20,7 +20,7 @@
 import os
 import shutil
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, NamedTuple, Optional
 
 from pydantic import validate_arguments
 
@@ -41,13 +41,20 @@ def _safe_get_provider(provider: str) -> ISessionProvider:
         raise errors.ParameterError(f"Session provider '{provider}' is not available!")
 
 
+SessionList = NamedTuple(
+    "SessionList", [("sessions", List[Session]), ("all_local", bool), ("warning_messages", List[str])]
+)
+
+
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
-def session_list(config_path: Optional[str], provider: Optional[str] = None) -> Tuple[List[Session], bool, List[str]]:
+def session_list(config_path: Optional[str], provider: Optional[str] = None) -> SessionList:
     """List interactive sessions.
 
     Args:
         config_path(str, optional): Path to config YAML.
         provider(str, optional): Name of the session provider to use.
+    Returns:
+        The list of sessions, whether they're all local sessions and potential warnings raised.
     """
 
     def list_sessions(session_provider: ISessionProvider) -> List[Session]:
@@ -76,7 +83,7 @@ def session_list(config_path: Optional[str], provider: Optional[str] = None) -> 
                 all_local = False
             all_sessions.extend(sessions)
 
-    return all_sessions, all_local, warning_messages
+    return SessionList(all_sessions, all_local, warning_messages)
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))

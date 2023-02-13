@@ -180,8 +180,8 @@ def test_session_list(
                 with pytest.raises(result):
                     session_list(provider=provider, config_path=None)
             else:
-                sessions, _, _ = session_list(provider=provider, config_path=None)
-                assert sessions == result
+                result = session_list(provider=provider, config_path=None)
+                assert result.sessions == result
 
 
 def test_session_setup_ssh(project, with_injection, fake_home, mock_communication):
