@@ -1,7 +1,9 @@
 ---
-name: Feature request
+name: "\U0001F381 Feature request"
 about: Suggest an idea for this project
-
+title: ''
+labels: kind/enhancement, status/triage
+assignees: ''
 ---
 
 <!-- Note: for support questions, please use our discourse (https://renku.discourse.group/) -->
