@@ -17,15 +17,17 @@
 # limitations under the License.
 """Test ``session`` commands."""
 
+import re
 from unittest.mock import patch
 
+import click
 import pytest
 
 from renku.core.errors import ParameterError
 from renku.core.plugin.session import get_supported_session_providers
 from renku.core.session.docker import DockerSessionProvider
 from renku.core.session.renkulab import RenkulabSessionProvider
-from renku.core.session.session import session_list, session_start, session_stop
+from renku.core.session.session import session_list, session_start, session_stop, ssh_setup
 
 
 def fake_start(
@@ -37,6 +39,7 @@ def fake_start(
     mem_request,
     disk_request,
     gpu_request,
+    **kwargs,
 ):
     return "0xdeadbeef", ""
 
@@ -61,7 +64,7 @@ def fake_session_list(self, project_name, config):
     return ["0xdeadbeef"]
 
 
-def fake_pre_start_checks(self):
+def fake_pre_start_checks(self, **kwargs):
     pass
 
 
@@ -100,7 +103,7 @@ def test_session_start(
         **provider_patches,
     ):
         provider_implementation = next(
-            filter(lambda x: x.get_name() == provider_name, get_supported_session_providers()), None
+            filter(lambda x: x.name == provider_name, get_supported_session_providers()), None
         )
         assert provider_implementation is not None
 
@@ -140,7 +143,7 @@ def test_session_stop(
 ):
     with patch.multiple(session_provider, session_stop=fake_stop, **provider_patches):
         provider_implementation = next(
-            filter(lambda x: x.get_name() == provider_name, get_supported_session_providers()), None
+            filter(lambda x: x.name == provider_name, get_supported_session_providers()), None
         )
         assert provider_implementation is not None
 
@@ -161,7 +164,6 @@ def test_session_stop(
 )
 @pytest.mark.parametrize("provider_exists,result", [(True, ["0xdeadbeef"]), (False, ParameterError)])
 def test_session_list(
-    run_shell,
     project,
     provider_name,
     session_provider,
@@ -178,5 +180,70 @@ def test_session_list(
                 with pytest.raises(result):
                     session_list(provider=provider, config_path=None)
             else:
-                sessions, _, _ = session_list(provider=provider, config_path=None)
-                assert sessions == result
+                result = session_list(provider=provider, config_path=None)
+                assert result.sessions == result
+
+
+def test_session_setup_ssh(project, with_injection, fake_home, mock_communication):
+    """Test setting up SSH config for a deployment."""
+    with with_injection():
+        ssh_setup()
+
+    ssh_home = fake_home / ".ssh"
+    renku_ssh_path = ssh_home / "renku"
+    assert renku_ssh_path.exists()
+    assert re.search(r"Include .*/\.ssh/renku/\*\.conf", (ssh_home / "config").read_text())
+    assert (renku_ssh_path / "99-None-jumphost.conf").exists()
+    assert (renku_ssh_path / "None-key").exists()
+    assert (renku_ssh_path / "None-key.pub").exists()
+    assert len(mock_communication.confirm_calls) == 0
+
+    key = (renku_ssh_path / "None-key").read_text()
+
+    with with_injection():
+        with pytest.raises(click.Abort):
+            ssh_setup()
+
+    assert len(mock_communication.confirm_calls) == 1
+    assert key == (renku_ssh_path / "None-key").read_text()
+
+    with with_injection():
+        ssh_setup(force=True)
+
+    assert key != (renku_ssh_path / "None-key").read_text()
+
+
+def test_session_start_ssh(project, with_injection, mock_communication, fake_home):
+    def _fake_send_request(self, req_type: str, *args, **kwargs):
+        class _FakeResponse:
+            status_code = 200
+
+            def json(self):
+                return {"name": "0xdeadbeef"}
+
+        return _FakeResponse()
+
+    with patch.multiple(
+        RenkulabSessionProvider,
+        find_image=fake_find_image,
+        build_image=fake_build_image,
+        _wait_for_session_status=lambda _, __, ___: None,
+        _send_renku_request=_fake_send_request,
+        _remote_head_hexsha=lambda _: project.repository.head.commit.hexsha,
+        _renku_url=lambda _: "example.com",
+        _cleanup_ssh_connection_configs=lambda _, __: None,
+        _auth_header=lambda _: None,
+    ):
+        provider_implementation = next(filter(lambda x: x.name == "renkulab", get_supported_session_providers()), None)
+        assert provider_implementation is not None
+
+        with with_injection():
+            ssh_setup()
+            session_start(provider="renkulab", config_path=None, ssh=True)
+
+        assert any("0xdeadbeef" in line for line in mock_communication.stdout_lines)
+        ssh_home = fake_home / ".ssh"
+        renku_ssh_path = ssh_home / "renku"
+        assert (renku_ssh_path / "99-None-jumphost.conf").exists()
+        assert (project.path / ".ssh" / "authorized_keys").exists()
+        assert len(list(renku_ssh_path.glob("00-*-0xdeadbeef.conf"))) == 1

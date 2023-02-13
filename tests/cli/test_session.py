@@ -26,7 +26,7 @@ from tests.utils import format_result_exception
 
 def test_session_up_down(runner, project, dummy_session_provider, monkeypatch):
     """Test starting a session."""
-    import renku.core.session.session
+    browser = dummy_session_provider
 
     result = runner.invoke(cli, ["session", "ls", "-p", "dummy"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -43,12 +43,9 @@ def test_session_up_down(runner, project, dummy_session_provider, monkeypatch):
     assert 0 == result.exit_code, format_result_exception(result)
     assert 5 == len(result.output.splitlines())
 
-    with monkeypatch.context() as monkey:
-        browser = MagicMock()
-        monkey.setattr(renku.core.session.session, "webbrowser", browser)
-        result = runner.invoke(cli, ["session", "open", "-p", "dummy", session_id])
-        assert 0 == result.exit_code, format_result_exception(result)
-        browser.open.assert_called_once_with("http://localhost/")
+    result = runner.invoke(cli, ["session", "open", "-p", "dummy", session_id])
+    assert 0 == result.exit_code, format_result_exception(result)
+    browser.open.assert_called_once_with("http://localhost/")
 
     result = runner.invoke(cli, ["session", "stop", "-p", "dummy", session_id])
     assert 0 == result.exit_code, format_result_exception(result)

@@ -19,7 +19,7 @@
 
 
 from renku.command.command_builder.command import Command
-from renku.core.session.session import session_list, session_open, session_start, session_stop
+from renku.core.session.session import session_list, session_open, session_start, session_stop, ssh_setup
 
 
 def session_list_command():
@@ -29,7 +29,7 @@ def session_list_command():
 
 def session_start_command():
     """Start an interactive session."""
-    return Command().command(session_start)
+    return Command().command(session_start).with_database()
 
 
 def session_stop_command():
@@ -40,3 +40,8 @@ def session_stop_command():
 def session_open_command():
     """Open a running interactive session."""
     return Command().command(session_open)
+
+
+def setup_ssh_command():
+    """Setup SSH keys for SSH connections to sessions."""
+    return Command().command(ssh_setup)

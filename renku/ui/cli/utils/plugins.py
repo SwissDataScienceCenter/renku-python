@@ -36,4 +36,4 @@ def get_supported_session_providers_names():
     """Deferred import as plugins are slow."""
     from renku.core.plugin.session import get_supported_session_providers
 
-    return [p.get_name() for p in get_supported_session_providers()]
+    return [p.name for p in get_supported_session_providers()]

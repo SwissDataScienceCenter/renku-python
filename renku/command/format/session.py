@@ -25,6 +25,9 @@ def tabular(sessions, *, columns=None):
     if not columns:
         columns = "id,status,url"
 
+        if any(s.ssh_enabled for s in sessions):
+            columns += ",ssh"
+
     return tabulate(collection=sessions, columns=columns, columns_mapping=SESSION_COLUMNS)
 
 
@@ -35,4 +38,5 @@ SESSION_COLUMNS = {
     "id": ("id", "id"),
     "status": ("status", "status"),
     "url": ("url", "url"),
+    "ssh": ("ssh_connection", "SSH connection"),
 }
