@@ -39,6 +39,7 @@ class ProjectViewModel:
         annotations: Optional[str],
         template_info: str,
         keywords: Optional[List[str]],
+        ssh_supported: bool = False,
     ):
         self.id = id
         self.name = name
@@ -52,6 +53,7 @@ class ProjectViewModel:
         self.template_info = template_info
         self.keywords = keywords
         self.keywords_str = ", ".join(keywords) if keywords else ""
+        self.ssh_supported = ssh_supported
 
     @classmethod
     def from_project(cls, project: Project):
@@ -88,4 +90,5 @@ class ProjectViewModel:
             else None,
             template_info=template_info,
             keywords=project.keywords,
+            ssh_supported=project.template_metadata.ssh_supported,
         )

@@ -330,6 +330,11 @@ class RenkulabSessionProvider(ISessionProvider):
         Returns:
             Tuple[str, str]: Provider message and a possible warning message.
         """
+        if ssh and not project_context.project.template_metadata.ssh_supported:
+            raise errors.RenkulabSessionError(
+                "Cannot start session with SSH support because this project doesn't support SSH."
+            )
+
         repository = project_context.repository
 
         session_commit = repository.head.commit.hexsha
@@ -375,7 +380,7 @@ class RenkulabSessionProvider(ISessionProvider):
                 connection = SystemSSHConfig().setup_session_config(name, session_name)
                 communication.echo(f"SSH connection successfully configured, use 'ssh {connection}' to connect.")
             return f"Session {session_name} successfully started", ""
-        raise errors.RenkulabSessionError("Cannot start session via the notebook service because " + res.text)
+        raise errors.RenkulabSessionError(f"Cannot start session via the notebook service because {res.text}")
 
     def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> bool:
         """Stops all sessions (for the given project) or a specific interactive session."""
