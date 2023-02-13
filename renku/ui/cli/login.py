@@ -60,11 +60,11 @@ repository. You can use this method instead of creating an SSH key. This will
 change the repository's remote URL to an endpoint in the deployment that adds
 authentication to gitlab requests. Renku warns you each time that the remote
 URL will change. To disable this warning, either pass ``--yes`` to the command
-or set ``show_login_warning`` to ``False`` for the project or globally:
+or set ``show_login_warning`` to ``false`` for the project or globally:
 
 .. code-block:: console
 
-    $ renku config set [--global] show_login_warning False
+    $ renku config set [--global] show_login_warning false
 
 You can avoid the remote from being changed by passing ``--no-git`` option to
 the login command.
