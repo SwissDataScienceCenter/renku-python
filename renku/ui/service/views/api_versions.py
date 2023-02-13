@@ -65,7 +65,8 @@ V1_4 = ApiVersion("1.4")
 V1_5 = ApiVersion("1.5")
 V2_0 = ApiVersion("2.0", is_base_version=True)
 
-VERSIONS_FROM_V1_4 = [V1_4, V1_5, V2_0]
+VERSIONS_FROM_V1_5 = [V1_5, V2_0]
+VERSIONS_FROM_V1_4 = [V1_4] + VERSIONS_FROM_V1_5
 VERSIONS_FROM_V1_1 = [V1_1, V1_2, V1_3] + VERSIONS_FROM_V1_4
 ALL_VERSIONS = [V1_0] + VERSIONS_FROM_V1_1
 
