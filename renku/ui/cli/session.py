@@ -92,6 +92,41 @@ Please note that there are a few limitations with the ``renkulab`` provider:
 
     $ renku session start -p renkulab
 
+SSH connections to remote sessions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can connect via SSH to remote (Renkulab) sessions, if your project supports it.
+
+To see if your project supports SSH, you can run ``renku project show`` and check the
+``SSH Supported`` flag. If your project doesn't support SSH, update the project template
+or contact the template maintainer to enable SSH support on the template.
+
+On a project that supports SSH, you need to first set up SSH keys for the deployment
+you want to connect to, e.g. for renkulab.io:
+
+.. code-block:: console
+
+    $ renku login renkulab.io
+    $ renku session setup-ssh
+
+Your system is now ready for starting sessions with SSH connections:
+
+.. code-block:: console
+
+    $ renku session start -p renkulab --ssh
+    [...]
+    SSH connection successfully configured, use 'ssh renkulab.io-myproject-sessionid' to connect.
+
+You can then use the SSH connection name (``ssh renkulab.io-myproject-sessionid`` in the example)
+to connect to the session or in tools such as VSCode.
+
+Alternatively, you can use ``renku session open --ssh <session_id>`` to directly open an SSH
+connection to the session.
+
+You can see the SSH connection name using ``renku session ls``.
+
+SSH config for specific sessions is removed when the session is stopped.
+
 Managing active sessions
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -188,15 +223,14 @@ def list_sessions(provider, config, format):
     from renku.command.session import session_list_command
 
     result = session_list_command().build().execute(provider=provider, config_path=config)
-    sessions, all_local, warning_messages = result.output
 
-    click.echo(SESSION_FORMATS[format](sessions))
+    click.echo(SESSION_FORMATS[format](result.output.sessions))
 
-    if warning_messages:
+    if result.output.warning_messages:
         click.echo()
-        if all_local and sessions:
+        if result.output.all_local and result.output.sessions:
             click.echo(WARNING + "Only showing sessions from local provider")
-        for message in warning_messages:
+        for message in result.output.warning_messages:
             click.echo(WARNING + message)
 
 

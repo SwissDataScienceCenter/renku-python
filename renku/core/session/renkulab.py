@@ -296,11 +296,18 @@ class RenkulabSessionProvider(ISessionProvider):
             params=self._get_renku_project_name_parts(),
         )
         if sessions_res.status_code == 200:
+            system_config = SystemSSHConfig()
+            name = self._project_name_from_full_project_name(project_name)
+
             return [
                 Session(
                     session["name"],
                     session.get("status", {}).get("state", "unknown"),
                     self.session_url(session["name"]),
+                    ssh_enabled=system_config.session_config_path(name, session["name"]).exists(),
+                    ssh_connection=system_config.connection_name(name, session["name"])
+                    if system_config.session_config_path(name, session["name"]).exists()
+                    else None,
                 )
                 for session in sessions_res.json().get("servers", {}).values()
             ]
