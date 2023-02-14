@@ -16,22 +16,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service fixtures for project management."""
+
 import os
 import tempfile
 import uuid
-from pathlib import Path
+from typing import Any, Dict, Generator, Tuple
 from urllib.parse import urlparse
 
 import pytest
 
 from renku.core.util.os import normalize_to_ascii
 from renku.infrastructure.repository import Repository
+from tests.fixtures.repository import RenkuProject
 
 
 @pytest.fixture
-def project_metadata(project):
+def project_metadata(project) -> Generator[Tuple["RenkuProject", Dict[str, Any]], None, None]:
     """Create project with metadata."""
-    name = Path(project).name
+    name = project.path.name
     metadata = {
         "project_id": uuid.uuid4().hex,
         "name": name,
@@ -45,14 +47,6 @@ def project_metadata(project):
     }
 
     yield project, metadata
-
-
-@pytest.fixture(scope="module")
-def it_git_access_token():
-    """Returns a git access token for a testing run."""
-    from tests.fixtures.config import IT_GIT_ACCESS_TOKEN
-
-    return IT_GIT_ACCESS_TOKEN
 
 
 @pytest.fixture(scope="module")
@@ -74,7 +68,7 @@ def it_remote_public_renku_repo_url():
 @pytest.fixture(scope="module")
 def it_remote_public_repo_url():
     """Returns a remote path to a public integration test repository."""
-    return "https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku"
+    return "https://gitlab.dev.renku.ch/renku-python-integration-tests/no-renku"
 
 
 @pytest.fixture(scope="function")
@@ -122,3 +116,11 @@ def it_protected_repo_url():
     from tests.fixtures.config import IT_PROTECTED_REMOTE_REPO_URL
 
     return IT_PROTECTED_REMOTE_REPO_URL
+
+
+@pytest.fixture(scope="module")
+def it_workflow_repo_url():
+    """Returns a repository url containing workflows."""
+    from tests.fixtures.config import IT_WORKFLOW_REPO_URL
+
+    return IT_WORKFLOW_REPO_URL

@@ -18,9 +18,11 @@
 """Communicator class for printing click output."""
 
 import sys
+from contextlib import contextmanager
 
 import click
 from tqdm import tqdm
+from yaspin import yaspin
 
 import renku.ui.cli.utils.color as color
 from renku.core.util.communication import CommunicationCallback
@@ -33,25 +35,37 @@ class StandardOutput(CommunicationCallback):
         super().__init__()
         self._progress_bars = {}
         self._progress_types = ["download"]
+        self._spinner = None
+
+    @contextmanager
+    def pause_spinner(self):
+        """Pause Spinner so output gets actually written."""
+        if self._spinner:
+            self._spinner.hide()
+
+        yield
+
+        if self._spinner:
+            self._spinner.show()
 
     def echo(self, msg, end="\n"):
         """Write a message."""
-        with CommunicationCallback.lock:
+        with CommunicationCallback.lock, self.pause_spinner():
             print(msg, end=end)
 
     def info(self, msg):
         """Write an info message."""
-        with CommunicationCallback.lock:
+        with CommunicationCallback.lock, self.pause_spinner():
             print(msg)
 
     def warn(self, msg):
         """Write a warning message."""
-        with CommunicationCallback.lock:
+        with CommunicationCallback.lock, self.pause_spinner():
             print(msg)
 
     def error(self, msg):
         """Write an error message."""
-        with CommunicationCallback.lock:
+        with CommunicationCallback.lock, self.pause_spinner():
             print(msg, file=sys.stderr)
 
     def confirm(self, msg, abort=False, warning=False, default=False):
@@ -93,6 +107,17 @@ class StandardOutput(CommunicationCallback):
         self._progress_bars[name].close()
         del self._progress_bars[name]
 
+    @contextmanager
+    def busy(self, msg):
+        """Indicate busy status using a spinner."""
+        self._spinner = yaspin(text=msg)
+        try:
+            self._spinner.start()
+            yield
+        finally:
+            self._spinner.stop()
+            self._spinner = None
+
 
 class ClickCallback(StandardOutput):
     """CommunicationCallback implementation for ``click`` messages."""
@@ -107,19 +132,23 @@ class ClickCallback(StandardOutput):
         if end != "\n":
             msg = msg + end
             new_line = False
-        click.echo(msg, nl=new_line)
+        with self.pause_spinner():
+            click.echo(msg, nl=new_line)
 
     def info(self, msg):
         """Write an info message."""
-        click.echo(self.INFO + msg)
+        with self.pause_spinner():
+            click.echo(self.INFO + msg)
 
     def warn(self, msg):
         """Write a warning message."""
-        click.echo(self.WARNING + msg)
+        with self.pause_spinner():
+            click.echo(self.WARNING + msg)
 
     def error(self, msg):
         """Write an error message."""
-        click.echo(self.ERROR + msg, err=True)
+        with self.pause_spinner():
+            click.echo(self.ERROR + msg, err=True)
 
     def has_prompt(self):
         """Return True if communicator provides a direct prompt to users."""
@@ -128,8 +157,10 @@ class ClickCallback(StandardOutput):
     def confirm(self, msg, abort=False, warning=False, default=False):
         """Get confirmation for an action using a prompt."""
         prefix = self.WARNING if warning else ""
-        return click.confirm(prefix + msg, abort=abort, default=default)
+        with self.pause_spinner():
+            return click.confirm(prefix + msg, abort=abort, default=default)
 
     def prompt(self, msg, type=None, default=None, **kwargs):
         """Show a message prompt from the first callback that has a prompt."""
-        return click.prompt(msg, type=type, default=default, **kwargs)
+        with self.pause_spinner():
+            return click.prompt(msg, type=type, default=default, **kwargs)

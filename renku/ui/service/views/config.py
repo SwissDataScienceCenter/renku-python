@@ -21,7 +21,7 @@ from flask import request
 from renku.ui.service.config import SERVICE_PREFIX
 from renku.ui.service.controllers.config_set import SetConfigCtrl
 from renku.ui.service.controllers.config_show import ShowConfigCtrl
-from renku.ui.service.views.api_versions import V0_9, V1_0, V1_1, VersionedBlueprint
+from renku.ui.service.views.api_versions import ALL_VERSIONS, VersionedBlueprint
 from renku.ui.service.views.decorators import accepts_json, optional_identity, requires_cache, requires_identity
 from renku.ui.service.views.error_handlers import (
     handle_common_except,
@@ -33,7 +33,7 @@ CONFIG_BLUEPRINT_TAG = "config"
 config_blueprint = VersionedBlueprint("config", __name__, url_prefix=SERVICE_PREFIX)
 
 
-@config_blueprint.route("/config.show", methods=["GET"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1])
+@config_blueprint.route("/config.show", methods=["GET"], provide_automatic_options=False, versions=ALL_VERSIONS)
 @handle_common_except
 @handle_config_read_errors
 @requires_cache
@@ -60,7 +60,7 @@ def show_config(user_data, cache):
     return ShowConfigCtrl(cache, user_data, dict(request.args)).to_response()
 
 
-@config_blueprint.route("/config.set", methods=["POST"], provide_automatic_options=False, versions=[V0_9, V1_0, V1_1])
+@config_blueprint.route("/config.set", methods=["POST"], provide_automatic_options=False, versions=ALL_VERSIONS)
 @handle_common_except
 @handle_config_write_errors
 @accepts_json
@@ -86,4 +86,4 @@ def set_config(user_data, cache):
       tags:
         - config
     """
-    return SetConfigCtrl(cache, user_data, dict(request.json)).to_response()
+    return SetConfigCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore

@@ -17,44 +17,53 @@
 # limitations under the License.
 """Template use cases."""
 
-from typing import Dict, List, NamedTuple, Optional, Tuple
+import os
+import tempfile
+from pathlib import Path
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
 
 import click
+from pydantic import validate_arguments
 
 from renku.command.command_builder.command import inject
 from renku.command.view_model.template import TemplateChangeViewModel, TemplateViewModel
 from renku.core import errors
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
-from renku.core.management.migrate import is_renku_project
+from renku.core.migration.migrate import is_renku_project
 from renku.core.template.template import (
     FileAction,
+    RepositoryTemplates,
     TemplateAction,
-    copy_template_to_client,
+    copy_template_to_project,
     fetch_templates_source,
     get_file_actions,
+    has_template_checksum,
     set_template_parameters,
 )
 from renku.core.util import communication
-from renku.domain_model.tabulate import tabulate
+from renku.core.util.tabulate import tabulate
+from renku.domain_model.project import Project
+from renku.domain_model.project_context import project_context
 from renku.domain_model.template import RenderedTemplate, Template, TemplateMetadata, TemplatesSource
+from renku.infrastructure.repository import Repository
 
 
-def list_templates(source, reference) -> List[TemplateViewModel]:
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def list_templates(source: Optional[str], reference: Optional[str]) -> List[TemplateViewModel]:
     """Return available templates from a source."""
     templates_source = fetch_templates_source(source=source, reference=reference)
 
     return [TemplateViewModel.from_template(t) for t in templates_source.templates]
 
 
-@inject.autoparams("client_dispatcher")
-def show_template(source, reference, id, client_dispatcher: IClientDispatcher) -> TemplateViewModel:
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def show_template(source: Optional[str], reference: Optional[str], id: Optional[str]) -> TemplateViewModel:
     """Show template details."""
     if source or id:
         templates_source = fetch_templates_source(source=source, reference=reference)
         template = templates_source.get_template(id=id, reference=None)
     elif is_renku_project():
-        metadata = TemplateMetadata.from_client(client=client_dispatcher.current_client)
+        metadata = TemplateMetadata.from_project(project=project_context.project)
 
         templates_source = fetch_templates_source(source=metadata.source, reference=metadata.reference)
         id = metadata.id
@@ -68,9 +77,9 @@ def show_template(source, reference, id, client_dispatcher: IClientDispatcher) -
     return TemplateViewModel.from_template(template)
 
 
-def check_for_template_update(client) -> Tuple[bool, bool, Optional[str], Optional[str]]:
+def check_for_template_update(project: Optional[Project]) -> Tuple[bool, bool, Optional[str], Optional[str]]:
     """Check if the project can be updated to a newer version of the project template."""
-    metadata = TemplateMetadata.from_client(client=client)
+    metadata = TemplateMetadata.from_project(project=project)
 
     templates_source = fetch_templates_source(source=metadata.source, reference=metadata.reference)
     update_available, latest_reference = templates_source.is_update_available(
@@ -80,15 +89,20 @@ def check_for_template_update(client) -> Tuple[bool, bool, Optional[str], Option
     return update_available, metadata.allow_update, metadata.reference, latest_reference
 
 
-@inject.autoparams("client_dispatcher")
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def set_template(
-    source, reference, id, force, interactive, input_parameters, dry_run, client_dispatcher: IClientDispatcher
+    source: Optional[str],
+    reference: Optional[str],
+    id: Optional[str],
+    force: bool,
+    interactive: bool,
+    input_parameters: Optional[Dict[str, str]],
+    dry_run: bool,
 ) -> TemplateChangeViewModel:
     """Set template for a project."""
-    client = client_dispatcher.current_client
-    project = client.project
+    project = project_context.project
 
-    if project.template_source and not force:
+    if project.template_metadata.template_source and not force:
         raise errors.TemplateUpdateError("Project already has a template: To set a template use '-f/--force' flag")
 
     templates_source = fetch_templates_source(source=source, reference=reference)
@@ -106,24 +120,19 @@ def set_template(
         dry_run=dry_run,
         template_action=TemplateAction.SET,
         input_parameters=input_parameters,
-        client=client,
     )
 
     return TemplateChangeViewModel.from_template(template=rendered_template, actions=actions)
 
 
-@inject.autoparams("client_dispatcher")
-def update_template(
-    force, interactive, dry_run, client_dispatcher: IClientDispatcher
-) -> Optional[TemplateChangeViewModel]:
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def update_template(force: bool, interactive: bool, dry_run: bool) -> Optional[TemplateChangeViewModel]:
     """Update project's template if possible. Return True if updated."""
-    client = client_dispatcher.current_client
-
-    template_metadata = TemplateMetadata.from_client(client=client)
+    template_metadata = TemplateMetadata.from_project(project=project_context.project)
 
     if not template_metadata.source:
         raise errors.TemplateUpdateError("Project doesn't have a template: Use 'renku template set'")
-    if not client.has_template_checksum() and not interactive:
+    if not has_template_checksum() and not interactive:
         raise errors.TemplateUpdateError("Required template metadata doesn't exist: Use '-i/--interactive' flag")
 
     if not template_metadata.allow_update and not force:
@@ -157,7 +166,6 @@ def update_template(
         dry_run=dry_run,
         template_action=TemplateAction.UPDATE,
         input_parameters=None,
-        client=client,
     )
 
     return TemplateChangeViewModel.from_template(template=rendered_template, actions=actions)
@@ -172,7 +180,6 @@ def _set_or_update_project_from_template(
     dry_run: bool,
     template_action: TemplateAction,
     input_parameters,
-    client,
     project_gateway: IProjectGateway,
 ) -> Tuple[RenderedTemplate, Dict[str, FileAction]]:
     """Update project files and metadata from a template."""
@@ -188,7 +195,7 @@ def _set_or_update_project_from_template(
     if template is None:
         raise errors.TemplateNotFoundError(f"The template with id '{id}' is not available")
 
-    template_metadata = TemplateMetadata.from_client(client=client)
+    template_metadata = TemplateMetadata.from_project(project=project_context.project)
     template_metadata.update(template=template)
 
     if not dry_run:
@@ -201,20 +208,17 @@ def _set_or_update_project_from_template(
 
     rendered_template = template.render(metadata=template_metadata)
     actions = get_file_actions(
-        rendered_template=rendered_template,
-        template_action=template_action,
-        client=client,
-        interactive=interactive and not dry_run,
+        rendered_template=rendered_template, template_action=template_action, interactive=interactive and not dry_run
     )
 
     if not dry_run:
-        copy_template_to_client(rendered_template=rendered_template, client=client, project=project, actions=actions)
+        copy_template_to_project(rendered_template=rendered_template, project=project, actions=actions)
         project_gateway.update_project(project)
 
     return rendered_template, actions
 
 
-def select_template(templates_source: TemplatesSource, id=None) -> Optional[Template]:
+def select_template(templates_source: TemplatesSource, id: Optional[str] = None) -> Optional[Template]:
     """Select a template from a template source."""
 
     def prompt_to_select_template():
@@ -242,3 +246,54 @@ def select_template(templates_source: TemplatesSource, id=None) -> Optional[Temp
         return templates_source.templates[0]
 
     return prompt_to_select_template()
+
+
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def validate_templates(
+    source: Optional[str] = None, reference: Optional[str] = None
+) -> Dict[str, Union[str, Dict[str, List[str]]]]:
+    """Validate a template repository.
+
+    Args:
+        source(str, optional): Remote repository URL to clone and check (Default value = None).
+        reference(str, optional): Git commit/branch/tag to check (Default value = None).
+    Returns:
+        Dict[str, Union[str, Dict[str, List[str]]]]: Dictionary containing errors and warnings for manifest and
+            templates, along with a ``valid`` field telling if all checks passed.
+    """
+
+    if source is not None:
+        path = Path(tempfile.mkdtemp())
+        repo = Repository.clone_from(path=path, url=source)
+        repo.checkout(reference=reference)
+    else:
+        path = Path(os.getcwd())
+        repo = Repository(path=path)
+
+        if reference is not None:
+            path = Path(tempfile.mkdtemp())
+            repo.create_worktree(path, reference=reference)
+            repo = Repository(path=path)
+
+    version = repo.head.commit.hexsha
+
+    result: Dict[str, Any] = {"manifest": None, "templates": {}, "warnings": [], "valid": True}
+
+    try:
+        template_source = RepositoryTemplates(
+            path=path, source=path, reference="", version=version, repository=repo, skip_validation=True
+        )
+        result["warnings"] = template_source.manifest.validate(manifest_only=True)
+    except errors.InvalidTemplateError as e:
+        result["manifest"] = e.args[0] if e.args else str(e)
+        result["valid"] = False
+        return result
+
+    for template in template_source.manifest.templates:
+        template.templates_source = template_source
+        issues = template.validate(skip_files=False, raise_errors=False)
+        if issues:
+            result["templates"][template.id] = issues
+            result["valid"] = False
+
+    return result

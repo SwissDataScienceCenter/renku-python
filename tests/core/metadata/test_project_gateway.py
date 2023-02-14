@@ -24,9 +24,8 @@ from renku.domain_model.provenance.agent import Person
 from renku.infrastructure.gateway.project_gateway import ProjectGateway
 
 
-def test_project_gateway_update(dummy_database_injection_manager, monkeypatch):
+def test_project_gateway_update(project_with_injection, monkeypatch):
     """Test updating project metadata."""
-
     project = Project(
         id=Project.generate_id("namespace", "my_project"),
         name="my_project",
@@ -36,25 +35,24 @@ def test_project_gateway_update(dummy_database_injection_manager, monkeypatch):
         date_created=datetime.utcnow(),
     )
 
-    with dummy_database_injection_manager(None):
-        project_gateway = ProjectGateway()
+    project_gateway = ProjectGateway()
 
-        project_gateway.update_project(project)
+    project_gateway.update_project(project)
 
-        stored_project = project_gateway.get_project()
+    stored_project = project_gateway.get_project()
 
-        assert stored_project.id == project.id
-        assert stored_project.agent_version
-        assert stored_project.name == "my_project"
+    assert stored_project.id == project.id
+    assert stored_project.agent_version
+    assert stored_project.name == "my_project"
 
-        monkeypatch.setattr("renku.__version__", "999.999.999")
+    monkeypatch.setattr("renku.__version__", "999.999.999")
 
-        stored_project.name = "new name"
+    stored_project.name = "new name"
 
-        project_gateway.update_project(project)
+    project_gateway.update_project(project)
 
-        stored_project = project_gateway.get_project()
+    stored_project = project_gateway.get_project()
 
-        assert stored_project.id == project.id
-        assert stored_project.agent_version == "999.999.999"
-        assert stored_project.name == "new name"
+    assert stored_project.id == project.id
+    assert stored_project.agent_version == "999.999.999"
+    assert stored_project.name == "new name"

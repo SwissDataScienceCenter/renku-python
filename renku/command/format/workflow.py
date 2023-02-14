@@ -19,9 +19,8 @@
 import textwrap
 from typing import Callable, Dict
 
-from renku.domain_model.json import dumps
-
-from .tabulate import tabulate
+from renku.command.format.json import dumps
+from renku.command.format.tabulate import tabulate
 
 
 def tabular(workflows, *, columns=None):
@@ -91,4 +90,9 @@ WORKFLOW_COLUMNS = {
     "keywords": ("keywords_csv", "keywords"),
     "description": ("short_description", "description"),
     "command": ("full_command", "command"),
+}
+
+WORKFLOW_VISUALIZE_FORMATS = {
+    "console": "console",
+    "dot": "dot",
 }

@@ -24,15 +24,18 @@ import pytest
 from renku.ui.api import Dataset, Project
 
 
-def test_list_datasets(client_with_datasets):
+def test_list_datasets(project_with_datasets):
     """Test listing datasets within a project context."""
     with Project():
         datasets = Dataset.list()
 
         assert {"dataset-1", "dataset-2"} == {d.name for d in datasets}
 
+        dataset = next(d for d in Dataset.list() if d.name == "dataset-2")
+        assert {"P1", "P2"} == {c.name for c in dataset.creators}
 
-def test_list_datasets_outside_a_context(client_with_datasets):
+
+def test_list_datasets_outside_a_context(project_with_datasets):
     """Test listing datasets outside a project context."""
     datasets = Dataset.list()
 
@@ -53,7 +56,7 @@ def test_list_datasets_outside_a_renku_project(directory_tree):
         ("dataset-2", ["data/dataset-2/file1", "data/dataset-2/dir1/file2", "data/dataset-2/dir1/file3"]),
     ],
 )
-def test_list_dataset_files(client_with_datasets, dataset, files_paths):
+def test_list_dataset_files(project_with_datasets, dataset, files_paths):
     """Test listing datasets files."""
     with Project() as project:
         dataset = next(d for d in Dataset.list() if d.name == dataset)

@@ -16,21 +16,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Plugin hooks for renku workflow customization."""
+
 from pathlib import Path
 from typing import List, Optional, Tuple
 
 import pluggy
-from typing_extensions import Protocol
 
 from renku.core import errors
 from renku.domain_model.workflow.converters import IWorkflowConverter
 from renku.domain_model.workflow.plan import Plan
 
+try:
+    from typing_extensions import Protocol  # NOTE: Required for Python 3.7 compatibility
+except ImportError:
+    from typing import Protocol  # type: ignore
+
+
 hookspec = pluggy.HookspecMarker("renku")
 
 
 @hookspec
-def workflow_format() -> Tuple[IWorkflowConverter, List[str]]:  # type: ignore
+def workflow_format() -> Tuple[IWorkflowConverter, List[str]]:  # type: ignore[empty-body]
     """Plugin Hook for ``workflow export`` call.
 
     Can be used to export renku workflows in different formats.
@@ -44,9 +50,14 @@ def workflow_format() -> Tuple[IWorkflowConverter, List[str]]:  # type: ignore
 
 
 @hookspec(firstresult=True)
-def workflow_convert(
-    workflow: Plan, basedir: Path, output: Optional[Path], output_format: Optional[str]
-) -> str:  # type: ignore
+def workflow_convert(  # type: ignore[empty-body]
+    workflow: Plan,
+    basedir: Path,
+    output: Optional[Path],
+    output_format: Optional[str],
+    resolve_paths: bool,
+    nest_workflows: bool,
+) -> str:
     """Plugin Hook for ``workflow export`` call.
 
     Can be used to export renku workflows in different formats.
@@ -65,7 +76,7 @@ def workflow_convert(
     pass
 
 
-def supported_formats() -> List[str]:
+def get_supported_formats() -> List[str]:
     """Returns the currently available workflow language format types.
 
     Returns:
@@ -82,7 +93,13 @@ class WorkflowConverterProtocol(Protocol):
     """Typing protocol to specify type of the workflow converter hook."""
 
     def __call__(
-        self, workflow: Plan, basedir: Path, output: Optional[Path] = None, output_format: Optional[str] = None
+        self,
+        workflow: Plan,
+        basedir: Path,
+        output: Optional[Path] = None,
+        output_format: Optional[str] = None,
+        resolve_paths: Optional[bool] = None,
+        nest_workflows: Optional[bool] = None,
     ) -> str:
         """Dummy method to let mypy know the type of the hook implementation."""
         raise NotImplementedError()
@@ -110,4 +127,4 @@ def workflow_converter(format: str) -> WorkflowConverterProtocol:
             f"The specified format '{format}' is supported by more than one export plugins!"
         )
     export_plugins.remove(converter[0])
-    return pm.subset_hook_caller("workflow_convert", export_plugins)
+    return pm.subset_hook_caller(name="workflow_convert", remove_plugins=export_plugins)

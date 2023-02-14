@@ -18,139 +18,185 @@
 """Interactive session business logic."""
 
 import webbrowser
-from itertools import chain
-from typing import Optional
+from typing import List, Optional, Tuple
 
-from yaspin import yaspin
+from pydantic import validate_arguments
 
-from renku.command.command_builder import inject
 from renku.core import errors
-from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.plugin.session import supported_session_providers
+from renku.core.config import get_value
+from renku.core.plugin.session import get_supported_session_providers
+from renku.core.session.utils import get_image_repository_host, get_renku_project_name
 from renku.core.util import communication
 from renku.core.util.os import safe_read_yaml
-from renku.domain_model.session import ISessionProvider
-
-
-@inject.autoparams()
-def _get_renku_project_name(client_dispatcher: IClientDispatcher) -> str:
-    client = client_dispatcher.current_client
-    return f"{client.remote['owner']}/{client.remote['name']}" if client.remote["name"] else f"{client.path.name}"
+from renku.domain_model.session import ISessionProvider, Session
 
 
 def _safe_get_provider(provider: str) -> ISessionProvider:
-    providers = supported_session_providers()
-    p = next(filter(lambda x: x[1] == provider, providers), None)
-
-    if p is None:
+    try:
+        return next(p for p in get_supported_session_providers() if p.get_name() == provider)
+    except StopIteration:
         raise errors.ParameterError(f"Session provider '{provider}' is not available!")
-    return p[0]
 
 
-def session_list(config_path: str, provider: Optional[str] = None):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def session_list(config_path: Optional[str], provider: Optional[str] = None) -> Tuple[List[Session], bool, List[str]]:
     """List interactive sessions."""
-    project_name = _get_renku_project_name()
+
+    def list_sessions(session_provider: ISessionProvider) -> List[Session]:
+        try:
+            return session_provider.session_list(config=config, project_name=project_name)
+        except errors.RenkulabSessionGetUrlError:
+            if provider:
+                raise
+            return []
+
+    project_name = get_renku_project_name()
     config = safe_read_yaml(config_path) if config_path else dict()
 
-    providers = supported_session_providers()
-    if provider:
-        providers = list(filter(lambda x: x[1] == provider, providers))
+    providers = [_safe_get_provider(provider)] if provider else get_supported_session_providers()
 
-    if len(providers) == 0:
-        raise errors.ParameterError("No session provider is available!")
+    all_sessions = []
+    warning_messages = []
+    all_local = True
+    for session_provider in sorted(providers, key=lambda p: p.priority):
+        try:
+            sessions = list_sessions(session_provider)
+        except errors.RenkuException as e:
+            warning_messages.append(f"Cannot get sessions list from '{session_provider.get_name()}': {e}")
+        else:
+            if session_provider.is_remote_provider():
+                all_local = False
+            all_sessions.extend(sessions)
 
-    return list(chain(*map(lambda x: x[0].session_list(config=config, project_name=project_name), providers)))
+    return all_sessions, all_local, warning_messages
 
 
-@inject.autoparams("client_dispatcher")
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def session_start(
     provider: str,
-    config_path: str,
-    client_dispatcher: IClientDispatcher,
-    image_name: str = None,
+    config_path: Optional[str],
+    image_name: Optional[str] = None,
     cpu_request: Optional[float] = None,
     mem_request: Optional[str] = None,
     disk_request: Optional[str] = None,
     gpu_request: Optional[str] = None,
 ):
     """Start interactive session."""
-    client = client_dispatcher.current_client
+    from renku.domain_model.project_context import project_context
 
-    pinned_image = client.get_value("interactive", "image")
+    pinned_image = get_value("interactive", "image")
     if pinned_image and image_name is None:
         image_name = pinned_image
 
     provider_api = _safe_get_provider(provider)
     config = safe_read_yaml(config_path) if config_path else dict()
 
-    project_name = _get_renku_project_name()
+    provider_api.pre_start_checks()
+
+    project_name = get_renku_project_name()
     if image_name is None:
-        tag = client.repository.head.commit.hexsha[:7]
+        tag = project_context.repository.head.commit.hexsha[:7]
+        repo_host = get_image_repository_host()
         image_name = f"{project_name}:{tag}"
+        if repo_host:
+            image_name = f"{repo_host}/{image_name}"
 
         if not provider_api.find_image(image_name, config):
             communication.confirm(
-                f"The container image '{image_name}' does not exists. Would you like to build it?",
-                abort=True,
+                f"The container image '{image_name}' does not exists. Would you like to build it?", abort=True
             )
-
-            with yaspin(text="Building image"):
-                _ = provider_api.build_image(client.docker_path.parent, image_name, config)
+            with communication.busy(msg=f"Building image {image_name}"):
+                provider_api.build_image(project_context.docker_path.parent, image_name, config)
+            communication.echo(f"Image {image_name} built successfully.")
     else:
         if not provider_api.find_image(image_name, config):
             raise errors.ParameterError(f"Cannot find the provided container image '{image_name}'!")
 
     # set resource settings
-    cpu_limit = cpu_request or client.get_value("interactive", "cpu_request")
-    disk_limit = disk_request or client.get_value("interactive", "disk_request")
-    mem_limit = mem_request or client.get_value("interactive", "mem_request")
-    gpu = gpu_request or client.get_value("interactive", "gpu_request")
+    cpu_limit = cpu_request or get_value("interactive", "cpu_request")
 
-    return provider_api.session_start(
-        config=config,
-        project_name=project_name,
-        image_name=image_name,
-        client=client,
-        cpu_request=cpu_limit,
-        mem_request=mem_limit,
-        disk_request=disk_limit,
-        gpu_request=gpu,
-    )
+    if cpu_limit is not None:
+        try:
+            cpu_limit = float(cpu_limit)
+        except ValueError:
+            raise errors.SessionStartError(f"Invalid value for cpu_request (must be float): {cpu_limit}")
 
+    disk_limit = disk_request or get_value("interactive", "disk_request")
+    mem_limit = mem_request or get_value("interactive", "mem_request")
+    gpu = gpu_request or get_value("interactive", "gpu_request")
 
-def session_stop(session_name: str, stop_all: bool = False, provider: Optional[str] = None):
-    """Stop interactive session."""
-    project_name = _get_renku_project_name()
-    if provider:
-        p = _safe_get_provider(provider)
-        is_stopped = p.session_stop(project_name=project_name, session_name=session_name, stop_all=stop_all)
-    else:
-        providers = supported_session_providers()
-        is_stopped = any(
-            map(
-                lambda x: x[0].session_stop(project_name=project_name, session_name=session_name, stop_all=stop_all),
-                providers,
-            )
+    with communication.busy(msg="Waiting for session to start..."):
+        provider_message, warning_message = provider_api.session_start(
+            config=config,
+            project_name=project_name,
+            image_name=image_name,
+            cpu_request=cpu_limit,
+            mem_request=mem_limit,
+            disk_request=disk_limit,
+            gpu_request=gpu,
         )
 
+    if warning_message:
+        communication.warn(warning_message)
+    communication.echo(provider_message)
+
+
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def session_stop(session_name: Optional[str], stop_all: bool = False, provider: Optional[str] = None):
+    """Stop interactive session."""
+
+    def stop_sessions(session_provider: ISessionProvider) -> bool:
+        try:
+            return session_provider.session_stop(
+                project_name=project_name, session_name=session_name, stop_all=stop_all
+            )
+        except errors.RenkulabSessionGetUrlError:
+            if provider:
+                raise
+            return False
+
+    session_detail = "all sessions" if stop_all else f"session {session_name}"
+    project_name = get_renku_project_name()
+
+    providers = [_safe_get_provider(provider)] if provider else get_supported_session_providers()
+
+    is_stopped = False
+    warning_messages = []
+    with communication.busy(msg=f"Waiting for {session_detail} to stop..."):
+        for session_provider in sorted(providers, key=lambda p: p.priority):
+            try:
+                is_stopped = stop_sessions(session_provider)
+            except errors.RenkuException as e:
+                warning_messages.append(f"Cannot stop sessions in provider '{session_provider.get_name()}': {e}")
+
+            if is_stopped and session_name:
+                break
+
+    if warning_messages:
+        for message in warning_messages:
+            communication.warn(message)
+
     if not is_stopped:
+        if not session_name:
+            raise errors.ParameterError("There are no running sessions.")
         raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def session_open(session_name: str, provider: Optional[str] = None):
     """Open interactive session in the browser."""
-    if provider:
-        p = _safe_get_provider(provider)
-        url = p.session_url(session_name=session_name)
-    else:
-        providers = supported_session_providers()
-        url = next(
-            filter(
-                lambda x: x is not None,
-                map(lambda p: p[0].session_url(session_name=session_name), providers),
-            ),
-            None,
-        )
+
+    def open_sessions(session_provider: ISessionProvider) -> Optional[str]:
+        try:
+            return session_provider.session_url(session_name=session_name)
+        except errors.RenkulabSessionGetUrlError:
+            if provider:
+                raise
+            return None
+
+    providers = [_safe_get_provider(provider)] if provider else get_supported_session_providers()
+
+    url = next(filter(lambda u: u is not None, map(open_sessions, providers)), None)
 
     if url is None:
         raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")

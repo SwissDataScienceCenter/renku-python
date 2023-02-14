@@ -33,3 +33,4 @@ Models
    session
    template
    refs
+   dataset_provider

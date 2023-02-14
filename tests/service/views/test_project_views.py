@@ -17,6 +17,7 @@
 # limitations under the License.
 """Renku service project view tests."""
 import json
+import time
 
 import portalocker
 import pytest
@@ -54,8 +55,36 @@ def test_show_project_view(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@pytest.mark.parametrize(
+    "custom_metadata",
+    [
+        [
+            {
+                "@id": "http://example.com/metadata12",
+                "@type": "https://schema.org/myType",
+                "https://schema.org/property1": 1,
+                "https://schema.org/property2": "test",
+            },
+        ],
+        [
+            {
+                "@id": "http://example.com/metadata12",
+                "@type": "https://schema.org/myType",
+                "https://schema.org/property1": 1,
+                "https://schema.org/property2": "test",
+            },
+            {
+                "@id": "http://example.com/metadata1",
+                "@type": "https://schema.org/myType1",
+                "https://schema.org/property4": 3,
+                "https://schema.org/property5": "test1",
+            },
+        ],
+    ],
+)
+@pytest.mark.parametrize("custom_metadata_source", [None, "testSource"])
 @retry_failed
-def test_edit_project_view(svc_client_with_repo):
+def test_edit_project_view(svc_client_with_repo, custom_metadata, custom_metadata_source):
     """Test editing project metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
@@ -63,13 +92,10 @@ def test_edit_project_view(svc_client_with_repo):
         "project_id": project_id,
         "description": "my new title",
         "creator": {"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"},
-        "custom_metadata": {
-            "@id": "http://example.com/metadata12",
-            "@type": "https://schema.org/myType",
-            "https://schema.org/property1": 1,
-            "https://schema.org/property2": "test",
-        },
+        "custom_metadata": custom_metadata,
     }
+    if custom_metadata_source is not None:
+        edit_payload["custom_metadata_source"] = custom_metadata_source
     response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
 
     assert_rpc_response(response)
@@ -77,13 +103,50 @@ def test_edit_project_view(svc_client_with_repo):
     assert {
         "description": "my new title",
         "creator": {"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"},
-        "custom_metadata": {
-            "@id": "http://example.com/metadata12",
-            "@type": "https://schema.org/myType",
-            "https://schema.org/property1": 1,
-            "https://schema.org/property2": "test",
-        },
+        "custom_metadata": custom_metadata,
     } == response.json["result"]["edited"]
+
+    edit_payload = {
+        "project_id": project_id,
+    }
+    response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
+
+    assert_rpc_response(response)
+    assert {"warning", "edited", "remote_branch"} == set(response.json["result"])
+    assert 0 == len(response.json["result"]["edited"])
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+def test_edit_project_view_unset(svc_client_with_repo):
+    """Test editing project metadata by unsetting values."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    edit_payload = {
+        "project_id": project_id,
+        "description": "my new title",
+        "creator": {"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"},
+        "keywords": ["keyword1", "keyword2"],
+        "custom_metadata": [
+            {
+                "@id": "http://example.com/metadata12",
+                "@type": "https://schema.org/myType",
+                "https://schema.org/property1": 1,
+                "https://schema.org/property2": "test",
+            }
+        ],
+    }
+    response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
+
+    edit_payload = {"project_id": project_id, "custom_metadata": None, "keywords": None}
+    response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
+
+    assert_rpc_response(response)
+    assert {"warning", "edited", "remote_branch"} == set(response.json["result"])
+    assert {"keywords": None, "custom_metadata": None,} == response.json[
+        "result"
+    ]["edited"]
 
 
 @pytest.mark.service
@@ -97,12 +160,14 @@ def test_edit_project_view_failures(svc_client_with_repo):
         "project_id": project_id,
         "description": "my new title",
         "creator": {"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"},
-        "custom_metadata": {
-            "@id": "http://example.com/metadata12",
-            "@type": "https://schema.org/myType",
-            "https://schema.org/property1": 1,
-            "https://schema.org/property2": "test",
-        },
+        "custom_metadata": [
+            {
+                "@id": "http://example.com/metadata12",
+                "@type": "https://schema.org/myType",
+                "https://schema.org/property1": 1,
+                "https://schema.org/property2": "test",
+            }
+        ],
     }
     payload["FAKE_FIELD"] = "FAKE_VALUE"
     response = svc_client.post("/project.edit", data=json.dumps(payload), headers=headers)
@@ -134,7 +199,10 @@ def test_get_lock_status_unlocked(svc_client_setup):
     svc_client, headers, project_id, _, _ = svc_client_setup
 
     response = svc_client.get(
-        "/1.1/project.lock_status", query_string={"project_id": project_id}, headers=headers, content_type="text/xml"
+        "/1.1/project.lock_status",
+        query_string={"project_id": project_id, "timeout": 1.0},
+        headers=headers,
+        content_type="text/xml",
     )
 
     assert_rpc_response(response)
@@ -152,7 +220,11 @@ def test_get_lock_status_locked(svc_client_setup):
         return portalocker.Lock(f"{repository.path}.lock", flags=portalocker.LOCK_EX, timeout=0)
 
     with mock_lock():
-        response = svc_client.get("/1.1/project.lock_status", query_string={"project_id": project_id}, headers=headers)
+        start = time.monotonic()
+        response = svc_client.get(
+            "/1.1/project.lock_status", query_string={"project_id": project_id, "timeout": 1.0}, headers=headers
+        )
+        assert time.monotonic() - start >= 1.0
 
     assert_rpc_response(response)
     assert {"locked"} == set(response.json["result"].keys())

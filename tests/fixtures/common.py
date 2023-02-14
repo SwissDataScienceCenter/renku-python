@@ -19,9 +19,12 @@
 
 import os
 from pathlib import Path
-from typing import List
+from typing import Generator, List
 
 import pytest
+
+from renku.core.config import set_value
+from renku.core.storage import get_minimum_lfs_file_size
 
 
 @pytest.fixture
@@ -75,21 +78,39 @@ def data_repository(directory_tree):
 
 
 @pytest.fixture
-def no_lfs_size_limit(client):
-    """Configure environment track all files in LFS independent of size."""
-    client.set_value("renku", "lfs_threshold", "0b")
-    client.repository.add(".renku/renku.ini")
-    client.repository.commit("update renku.ini")
+def no_lfs_size_limit(project):
+    """Configure environment to track all files in LFS independent of size."""
+    set_value("renku", "lfs_threshold", "0b")
+    project.repository.add(".renku/renku.ini")
+    project.repository.commit("update renku.ini")
 
-    yield client
+    yield
 
 
 @pytest.fixture
-def large_file(tmp_path, client):
+def no_datadir_commit_warning(project):
+    """Configure pre-commit hook to ignore files added to a datasets data directory."""
+    set_value("renku", "check_datadir_files", "false")
+    project.repository.add(".renku/renku.ini")
+    project.repository.commit("update renku.ini")
+
+    yield
+
+
+@pytest.fixture
+def large_file(tmp_path):
     """A file larger than the minimum LFS file size."""
     path = tmp_path / "large-file"
-    with open(path, "w") as file_:
-        file_.seek(client.minimum_lfs_file_size)
-        file_.write("some data")
+    with open(path, "w") as file:
+        file.seek(get_minimum_lfs_file_size())
+        file.write("some data")
 
     yield path
+
+
+@pytest.fixture
+def transaction_id(project) -> Generator[str, None, None]:
+    """Return current transaction ID."""
+    from renku.domain_model.project_context import project_context
+
+    yield project_context.transaction_id

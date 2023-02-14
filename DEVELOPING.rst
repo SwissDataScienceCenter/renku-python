@@ -231,8 +231,38 @@ Branching Model
 We follow the git-flow_ model of branches for development, with ``master`` being
 the release branch and ``develop`` being the development branch.
 
-Release branches should be created off of master, have develop merged into them
-and then should be merged (not squash merged) back into master. A Github Action
-will then take care of merging master back into develop.
-
 .. _git-flow: https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
+
+Making a Release
+----------------
+This section uses `v1.2.3` as an example, replace it with the actual version
+number.
+
+- Create a new release branch off of **master**. **Do not** call this branch
+  e.g. `v1.2.3`, it cannot have the same name as the release version.
+- Merge changes from `develop` into the release branch (plain merge, **don't
+  squash**).
+- Run `conventional-changelog -r 1 -p angular | pandoc --from markdown --to rst`
+  to get the changelog and update `CHANGES:rst` with it. Make sure to fill in
+  the version number in the header and to replace the `=` underline with `-`.
+- Proof-read the changelog and adjust messages so they make sense to third
+  parties reading the changelog
+- Update the version in `helm-chart/renku-core/Chart.yaml`, `helm-chart/renku-core/values.yaml`
+  (for `versions.latest.image.tag`), and `renku/version.py`.
+- Commit the changes to the release branch, with a message like "chore: release
+  v1.2.3"
+- Push the release branch and create a PR **against master**. Wait for it to be
+  approved. **Do not squash merge this PR!** Use a regular merge.
+- Create a new `github release <https://github.com/SwissDataScienceCenter/renku-python/releases/new>`_.
+  Set to create a new tag like `v1.2.3` against master, title should be
+  `v1.2.3` as well. The description should be the output of
+  `conventional-changelog -r 1 -p angular` with the same adjustments done above
+  for the `CHANGES.rst` file.
+- Once the release PR has been merged, publish the github release. This creates
+  the tag on master that kicks off the publishing CI.
+- Keep an eye on CI, make sure that the `publish-pypi`, `build-images`,
+  `publish-chart` and `update-develop-branch` finish successfully.
+  * If any of them don't finish successfully, ask for help.
+- Go to the `Renku` repository and approve/merge the automatically created PR
+  there.
+- Announce that we have a new version through appropriate channels.

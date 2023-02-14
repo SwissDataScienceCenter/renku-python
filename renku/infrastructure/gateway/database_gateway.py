@@ -18,7 +18,7 @@
 """Renku generic database gateway implementation."""
 
 from pathlib import Path
-from typing import Generator
+from typing import Generator, List, Union
 
 import BTrees
 from persistent import Persistent
@@ -27,11 +27,9 @@ from zc.relation.catalog import Catalog
 from zc.relation.queryfactory import TransposingTransitive
 from zope.interface import Attribute, Interface, implementer
 
-from renku.command.command_builder.command import inject
-from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.domain_model.dataset import Dataset
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.activity import Activity, ActivityCollection
 from renku.domain_model.workflow.plan import AbstractPlan
 from renku.infrastructure.database import RenkuOOBTree
@@ -54,35 +52,33 @@ class ActivityDownstreamRelation:
 
         self.id = f"{upstream.id}:{downstream.id}"
 
+    def __repr__(self):
+        return f"<ActivityDownstreamRelation {self.id} at 0x{id(self):0x}>"
+
 
 def dump_activity(activity: Activity, catalog, cache) -> str:
     """Get storage token for an activity."""
     return activity.id
 
 
-@inject.autoparams()
-def load_activity(token: str, catalog, cache, database_dispatcher: IDatabaseDispatcher) -> Activity:
+def load_activity(token: str, catalog, cache) -> Activity:
     """Load activity from storage token."""
-    database = database_dispatcher.current_database
+    database = project_context.database
     return database["activities"].get(token)
 
 
-@inject.autoparams()
-def dump_downstream_relations(
-    relation: ActivityDownstreamRelation, catalog, cache, database_dispatcher: IDatabaseDispatcher
-):
+def dump_downstream_relations(relation: ActivityDownstreamRelation, catalog, cache):
     """Dump relation entry to database."""
-    btree = database_dispatcher.current_database["_downstream_relations"]
+    btree = project_context.database["_downstream_relations"]
 
     btree[relation.id] = relation
 
     return relation.id
 
 
-@inject.autoparams()
-def load_downstream_relations(token, catalog, cache, database_dispatcher: IDatabaseDispatcher):
+def load_downstream_relations(token, catalog, cache):
     """Load relation entry from database."""
-    btree = database_dispatcher.current_database["_downstream_relations"]
+    btree = project_context.database["_downstream_relations"]
 
     return btree[token]
 
@@ -99,10 +95,16 @@ def initialize_database(database):
 
     activity_catalog = Catalog(dump_downstream_relations, load_downstream_relations, btree=BTrees.family32.OO)
     activity_catalog.addValueIndex(
-        IActivityDownstreamRelation["downstream"], dump_activity, load_activity, btree=BTrees.family32.OO
+        IActivityDownstreamRelation["downstream"],  # type: ignore[misc]
+        dump_activity,
+        load_activity,
+        btree=BTrees.family32.OO,
     )
     activity_catalog.addValueIndex(
-        IActivityDownstreamRelation["upstream"], dump_activity, load_activity, btree=BTrees.family32.OO
+        IActivityDownstreamRelation["upstream"],  # type: ignore[misc]
+        dump_activity,
+        load_activity,
+        btree=BTrees.family32.OO,
     )
     # NOTE: Transitive query factory is needed for transitive (follow more than 1 edge) queries
     downstream_transitive_factory = TransposingTransitive("downstream", "upstream")
@@ -121,11 +123,9 @@ def initialize_database(database):
 class DatabaseGateway(IDatabaseGateway):
     """Gateway for base database operations."""
 
-    database_dispatcher = inject.attr(IDatabaseDispatcher)
-
     def initialize(self) -> None:
         """Initialize the database."""
-        database = self.database_dispatcher.current_database
+        database = project_context.database
 
         database.clear()
         initialize_database(database)
@@ -133,27 +133,24 @@ class DatabaseGateway(IDatabaseGateway):
 
     def commit(self) -> None:
         """Commit changes to database."""
-        database = self.database_dispatcher.current_database
+        database = project_context.database
 
         database.commit()
 
     def get_modified_objects_from_revision(self, revision_or_range: str) -> Generator[Persistent, None, None]:
         """Get all database objects modified in a revision."""
-        # TODO: use gateway once #renku-python/issues/2253 is done
-
-        client_dispatcher = inject.instance(IClientDispatcher)
-        client = client_dispatcher.current_client
+        repository = project_context.repository
 
         if ".." in revision_or_range:
-            commits = client.repository.iterate_commits(revision=revision_or_range)
+            commits: Union[Generator, List] = repository.iterate_commits(revision=revision_or_range)
         else:
-            commits = [client.repository.get_commit(revision_or_range)]
+            commits = [repository.get_commit(revision_or_range)]
 
         for commit in commits:
-            for file in commit.get_changes(paths=f"{client.database_path}/**"):
+            for file in commit.get_changes(paths=f"{project_context.database_path}/**"):
                 if file.deleted:
                     continue
 
                 oid = Path(file.a_path).name
 
-                yield self.database_dispatcher.current_database.get(oid)
+                yield project_context.database.get(oid)

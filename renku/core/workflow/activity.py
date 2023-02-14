@@ -15,32 +15,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku workflow commands."""
+"""Activity management."""
 
 import itertools
+import os
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, FrozenSet, List, Optional, Set, Tuple
+from typing import Dict, FrozenSet, Iterable, List, NamedTuple, Optional, Set, Tuple
 
 import networkx
+from pydantic import validate_arguments
 
 from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
-from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.util import communication
+from renku.core.workflow.plan import get_activities, is_plan_removed, remove_plan
 from renku.domain_model.entity import Entity
-from renku.domain_model.provenance.activity import Activity
-from renku.domain_model.workflow.plan import AbstractPlan
+from renku.domain_model.project_context import project_context
+from renku.domain_model.provenance.activity import Activity, Usage
 
 
 def get_activities_until_paths(
-    paths: List[str],
-    sources: List[str],
-    activity_gateway: IActivityGateway,
-    client_dispatcher: IClientDispatcher,
-    revision: Optional[str] = None,
+    paths: List[str], sources: List[str], activity_gateway: IActivityGateway, revision: Optional[str] = None
 ) -> Set[Activity]:
     """Get all current activities leading to `paths`, from `sources`."""
     all_activities: Dict[str, Set[Activity]] = defaultdict(set)
@@ -49,11 +46,11 @@ def get_activities_until_paths(
         existing_activities = all_activities[activity.association.plan.id]
         add_activity_if_recent(activity=activity, activities=existing_activities)
 
+    repository = project_context.repository
     commit = None
 
     if revision:
-        client = client_dispatcher.current_client
-        commit = client.repository.get_commit(revision)
+        commit = repository.get_commit(revision)
 
     for path in paths:
         checksum = None
@@ -94,7 +91,10 @@ def get_activities_until_paths(
 
 
 def create_activity_graph(
-    activities: List[Activity], remove_overridden_parents=True, with_inputs_outputs=False
+    activities: List[Activity],
+    remove_overridden_parents=True,
+    with_inputs_outputs=False,
+    with_hidden_dependencies: bool = False,
 ) -> networkx.Graph:
     """Create a dependency DAG from activities."""
     by_usage: Dict[str, Set[Activity]] = defaultdict(set)
@@ -110,7 +110,13 @@ def create_activity_graph(
             graph.add_node(activity)
             if with_inputs_outputs:
                 create_input_output_edges(activity)
-            for usage in activity.usages:
+
+            collection = (
+                itertools.chain(activity.usages, activity.hidden_usages)
+                if with_hidden_dependencies
+                else activity.usages
+            )
+            for usage in collection:
                 path = usage.entity.path
                 by_usage[path].add(activity)
                 parent_activities = by_generation[path]
@@ -131,7 +137,10 @@ def create_activity_graph(
                 graph.add_node(path)
             if not graph.has_edge(activity, path):
                 graph.add_edge(activity, path)
-        for usage in activity.usages:
+        collection = (
+            itertools.chain(activity.usages, activity.hidden_usages) if with_hidden_dependencies else activity.usages
+        )
+        for usage in collection:
             path = usage.entity.path
             if not graph.has_node(path):
                 graph.add_node(path)
@@ -176,7 +185,7 @@ def create_activity_graph(
                     graph.add_edge(b, a)
                 overridden_activities[b].add(path)
             else:
-                raise ValueError(f"Cannot create an order between activities {a.id} and {b.id}")
+                raise ValueError(f"Cannot create an order between activities that generate '{path}': {a.id} and {b.id}")
 
     def remove_overridden_activities():
         to_be_removed = set()
@@ -228,43 +237,23 @@ def sort_activities(activities: List[Activity], remove_overridden_parents=True) 
     return list(networkx.topological_sort(graph))
 
 
-@inject.autoparams()
-def is_activity_valid(activity: Activity, plan_gateway: IPlanGateway) -> bool:
-    """Return whether this plan is current and has not been deleted.
+class ModifiedActivitiesEntities(NamedTuple):
+    """A class containing sets of modified/deleted activities and entities for both normal and hidden entities."""
 
-    Args:
-        activity(Activity): The Activity whose Plan should be checked.
-        plan_gateway(IPlanGateway): The injected Plan gateway.
+    modified: Set[Tuple[Activity, Entity]]
+    """Set of modified activity and entity tuples."""
 
-    Returns:
-        bool: True if the activities' Plan is still valid, False otherwise.
+    deleted: Set[Tuple[Activity, Entity]]
+    """Set of deleted activity and entity tuples."""
 
-    """
-    plan = activity.association.plan
-
-    if plan.invalidated_at is not None:
-        return False
-
-    # get newest with same name
-    newest_plan = plan_gateway.get_by_name(plan.name)
-
-    if newest_plan is None or newest_plan.invalidated_at is not None:
-        return False
-
-    all_plans = plan_gateway.get_all_plans()
-
-    derived: Optional[AbstractPlan] = plan
-    while derived:
-        plan = derived
-        derived = next((p for p in all_plans if p.derived_from is not None and p.derived_from == plan.id), None)
-
-    return plan.invalidated_at is None
+    hidden_modified: Set[Tuple[Activity, Entity]]
+    """Set of modified activity and entity tuples for hidden entities."""
 
 
-@inject.autoparams()
+@inject.autoparams("activity_gateway")
 def get_all_modified_and_deleted_activities_and_entities(
-    repository, activity_gateway: IActivityGateway
-) -> Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]:
+    repository, activity_gateway: IActivityGateway, check_hidden_dependencies: bool = False
+) -> ModifiedActivitiesEntities:
     """
     Return latest activities with at least one modified or deleted input along with the modified/deleted input entity.
 
@@ -275,13 +264,14 @@ def get_all_modified_and_deleted_activities_and_entities(
         activity_gateway(IActivityGateway): The injected Activity gateway.
 
     Returns:
-        Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]: Tuple of modified and deleted
-            activities and entities.
+        ModifiedActivitiesEntities: Modified and deleted activities and entities.
 
     """
     all_activities = activity_gateway.get_all_activities()
     relevant_activities = filter_overridden_activities(all_activities)
-    return get_modified_activities(activities=relevant_activities, repository=repository)
+    return get_modified_activities(
+        activities=relevant_activities, repository=repository, check_hidden_dependencies=check_hidden_dependencies
+    )
 
 
 @inject.autoparams()
@@ -289,7 +279,7 @@ def get_downstream_generating_activities(
     starting_activities: Set[Activity],
     paths: List[str],
     ignore_deleted: bool,
-    client_path: Path,
+    project_path: Path,
     activity_gateway: IActivityGateway,
 ) -> List[Activity]:
     """Return activities downstream of passed activities that generate at least a path in ``paths``.
@@ -298,7 +288,7 @@ def get_downstream_generating_activities(
         starting_activities(Set[Activity]): Activities to use as starting/upstream nodes.
         paths(List[str]): Optional generated paths to end downstream chains at.
         ignore_deleted(bool): Whether to ignore deleted generations.
-        client_path(Path): Path to project's root directory.
+        project_path(Path): Path to project's root directory.
         activity_gateway(IActivityGateway): The injected Activity gateway.
 
     Returns:
@@ -319,7 +309,7 @@ def get_downstream_generating_activities(
 
     def has_an_existing_generation(activity) -> bool:
         for generation in activity.generations:
-            if (client_path / generation.entity.path).exists():
+            if (project_path / generation.entity.path).exists():
                 return True
 
         return False
@@ -356,30 +346,44 @@ def get_downstream_generating_activities(
 
 
 def get_modified_activities(
-    activities: FrozenSet[Activity], repository
-) -> Tuple[Set[Tuple[Activity, Entity]], Set[Tuple[Activity, Entity]]]:
+    activities: FrozenSet[Activity], repository, check_hidden_dependencies: bool
+) -> ModifiedActivitiesEntities:
     """Get lists of activities that have modified/deleted usage entities."""
-    modified = set()
-    deleted = set()
+
+    def get_modified_activities_helper(hashes, modified, deleted, hidden: bool):
+        for activity in activities:
+            collection: List[Usage] = activity.hidden_usages if hidden else activity.usages  # type: ignore
+            for usage in collection:
+                entity = usage.entity
+                current_checksum = hashes.get(entity.path, None)
+                usage_path = repository.path / usage.entity.path
+                if current_checksum is None or not usage_path.exists():
+                    deleted.add((activity, entity))
+                elif current_checksum != entity.checksum:
+                    modified.add((activity, entity))
+
+    modified: Set[Tuple[Activity, Entity]] = set()
+    deleted: Set[Tuple[Activity, Entity]] = set()
+    hidden_modified: Set[Tuple[Activity, Entity]] = set()
 
     paths = []
+    hidden_paths = []
 
     for activity in activities:
         for usage in activity.usages:
             paths.append(usage.entity.path)
+        if check_hidden_dependencies:
+            for usage in activity.hidden_usages:
+                hidden_paths.append(usage.entity.path)
 
     hashes = repository.get_object_hashes(paths=paths)
+    get_modified_activities_helper(hashes=hashes, modified=modified, deleted=deleted, hidden=False)
 
-    for activity in activities:
-        for usage in activity.usages:
-            entity = usage.entity
-            current_checksum = hashes.get(entity.path, None)
-            if current_checksum is None:
-                deleted.add((activity, entity))
-            elif current_checksum != entity.checksum:
-                modified.add((activity, entity))
+    if check_hidden_dependencies and hidden_paths:
+        hashes = repository.get_object_hashes(paths=hidden_paths)
+        get_modified_activities_helper(hashes=hashes, modified=hidden_modified, deleted=set(), hidden=True)
 
-    return modified, deleted
+    return ModifiedActivitiesEntities(modified=modified, deleted=deleted, hidden_modified=hidden_modified)
 
 
 def filter_overridden_activities(activities: List[Activity]) -> FrozenSet[Activity]:
@@ -434,3 +438,118 @@ def add_activity_if_recent(activity: Activity, activities: Set[Activity]):
 
     # NOTE: No similar activity was found
     activities.add(activity)
+
+
+def get_latest_activity(activities: Iterable[Activity]) -> Optional[Activity]:
+    """Return the activity that was executed after all other activities."""
+    return max(activities, key=lambda a: a.ended_at_time) if activities else None
+
+
+def get_latest_activity_before(activities: Iterable[Activity], activity: Activity) -> Optional[Activity]:
+    """Return the latest activity that was executed before the passed activity."""
+    activities_before = [a for a in activities if a.ended_at_time <= activity.ended_at_time and a.id != activity.id]
+    return get_latest_activity(activities_before)
+
+
+@inject.autoparams("activity_gateway")
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def revert_activity(
+    *, activity_gateway: IActivityGateway, activity_id: str, delete_plan: bool, force: bool, metadata_only: bool
+) -> Activity:
+    """Revert an activity.
+
+    Args:
+        activity_gateway(IActivityGateway): The injected activity gateway.
+        activity_id(str): ID of the activity to be reverted.
+        delete_plan(bool): Delete the plan if it's not used by any other activity.
+        force(bool): Revert the activity even if it has some downstream activities.
+        metadata_only(bool): Only revert the metadata and don't touch generated files.
+
+    Returns:
+        The deleted activity.
+    """
+    repository = project_context.repository
+
+    def delete_associated_plan(activity):
+        if not delete_plan:
+            return
+
+        plan = activity.association.plan
+
+        used_by_other_activities = any(a for a in get_activities(plan) if a.id != activity.id)
+        if used_by_other_activities:
+            return
+
+        remove_plan(name_or_id=plan.id, force=True)
+
+    def revert_generations(activity) -> Tuple[Set[str], Set[str]]:
+        """Either revert each generation to an older version (created by an earlier activity) or delete it."""
+        deleted_paths = set()
+        updated_paths: Dict[str, str] = {}
+
+        if metadata_only:
+            return set(), set()
+
+        for generation in activity.generations:
+            path = generation.entity.path
+
+            generator_activities = activity_gateway.get_activities_by_generation(path=path)
+            generator_activities = [a for a in generator_activities if is_activity_valid(a) and not a.deleted]
+            latest_generator = get_latest_activity(generator_activities)
+            if latest_generator != activity:  # NOTE: A newer activity already generated the same path
+                continue
+
+            previous_generator = get_latest_activity_before(generator_activities, activity)
+
+            if previous_generator is None:  # NOTE: The activity is the only generator
+                # NOTE: Delete the path if there are no downstreams otherwise keep it
+                downstream_activities = activity_gateway.get_activities_by_usage(path)
+                if not downstream_activities:
+                    deleted_paths.add(path)
+                elif not force:
+                    raise errors.ActivityDownstreamNotEmptyError(activity)
+            else:  # NOTE: There is a previous generation of that path, so, revert to it
+                previous_generation = next(g for g in previous_generator.generations if g.entity.path == path)
+                updated_paths[path] = previous_generation.entity.checksum
+
+        for path, previous_checksum in updated_paths.items():
+            try:
+                repository.copy_content_to_file(path, checksum=previous_checksum, output_path=path)
+            except errors.FileNotFound:
+                communication.warn(f"Cannot revert '{path}' to a previous version, will keep the current version")
+
+        for path in deleted_paths:
+            try:
+                os.unlink(project_context.path / path)
+            except OSError:
+                communication.warn(f"Cannot delete '{path}'")
+
+        return deleted_paths, set(updated_paths.keys())
+
+    activity = activity_gateway.get_by_id(activity_id)
+
+    if activity is None:
+        raise errors.ParameterError(f"Cannot find activity with ID '{activity}'")
+    if activity.deleted:
+        raise errors.ParameterError(f"Activity with ID '{activity}' is already deleted")
+
+    # NOTE: The order of removal is important here so don't change it
+    delete_associated_plan(activity)
+    revert_generations(activity)
+    activity_gateway.remove(activity, force=force)
+    # NOTE: Delete the activity after processing metadata or otherwise we won't see the activity as the latest generator
+    activity.delete()
+
+    return activity
+
+
+def is_activity_valid(activity: Activity) -> bool:
+    """Return whether this plan has not been deleted.
+
+    Args:
+        activity(Activity): The Activity whose Plan should be checked.
+
+    Returns:
+        bool: True if the activities' Plan is still valid, False otherwise.
+    """
+    return not is_plan_removed(plan=activity.association.plan)

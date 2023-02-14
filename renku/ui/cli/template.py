@@ -17,36 +17,21 @@
 # limitations under the License.
 r"""Manage project templates.
 
+Description
+~~~~~~~~~~~
+
 Renku projects are initialized using a project template. Renku has a set of
 built-in templates that you can use in your projects. These templates can be
 listed by using:
 
-.. code-block:: console
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
 
-    $ renku template ls
+.. rst-class:: cli-reference-commands
 
-    INDEX  ID
-    -----  --------------
-        1  python-minimal
-        2  R-minimal
-        3  julia-minimal
-
-You can use other sources of templates that reside inside a git repository:
-
-.. code-block:: console
-
-    $ renku template ls --source https://github.com/SwissDataScienceCenter/contributed-project-templates
-
-    INDEX  ID
-    -----  --------------
-        1  python-minimal
-        2  R-minimal
-        3  julia-minimal
-
-``renku template show <template-id>`` command can be used to see detailed
-information about a single template. If no template ID is passed, then it shows
-current project's template.
-
+.. click:: renku.ui.cli.template:template
+   :prog: renku template
+   :nested: full
 
 Set a template
 ~~~~~~~~~~~~~~
@@ -111,13 +96,62 @@ list of files that will be updated.
     won't work with a different Renku version. To update Renku version you need
     to use ``renku migrate`` command.
 
+
+Validating a template repository
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are developing your own templates in a template repository, there are
+some rules that templates have to follow. To assist in creating your own
+templates, you can check that everything is ok with:
+
+.. code-block:: console
+
+    $ renku template validate
+
+Running this inside a template repository (not in a Renku project) will
+check that the manifest and individual templates are correct and follow
+Renku template conventions, printing warnings or errors if something
+needs to be changed.
+
+.. cheatsheet::
+   :group: Project Templates
+   :command: $ renku template ls
+   :description: List available Renku templates.
+   :target: rp
+
+.. cheatsheet::
+   :group: Project Templates
+   :command: $ renku template show <template>
+   :description: Show detailed information for the given template.
+   :target: rp
+
+.. cheatsheet::
+   :group: Project Templates
+   :command: $ renku template update
+   :description: Update the project's template if a newer version is available.
+   :target: rp
+
+.. cheatsheet::
+   :group: Project Templates
+   :command: $ renku template set <template>
+   :description: Replace the project's template with the given template.
+   :target: rp
+
+.. cheatsheet::
+   :group: Misc
+   :command: $ renku template validate
+   :description: Check a template repository for possible errors (useful when creating Renku templates).
+   :target: rp
+
 """
 
 import functools
+import json
 from typing import TYPE_CHECKING, Any, Dict, List
 
 import click
 
+import renku.ui.cli.utils.color as color
 from renku.ui.cli.init import parse_parameters
 
 if TYPE_CHECKING:
@@ -238,6 +272,50 @@ def update_template(force, interactive, dry_run):
         _print_template_change(result.output)
 
 
+@template.command("validate")
+@click.pass_context
+@click.option("json_format", "--json", is_flag=True, help="Return result as JSON.")
+@click.option(
+    "-r",
+    "--reference",
+    type=click.STRING,
+    help="Git revision/branch/tag to validate the template at.",
+)
+@click.option(
+    "-s",
+    "--source",
+    type=click.STRING,
+    help="Remote template repository to clone and check.",
+)
+def validate_template(ctx, json_format, reference, source):
+    """Validate a template repository and check for common issues."""
+    from renku.command.template import validate_templates_command
+
+    result = validate_templates_command().build().execute(source=source, reference=reference).output
+
+    if json_format:
+        click.echo(json.dumps(result))
+    else:
+        if result["warnings"]:
+            click.secho("Manifest Warnings:", fg="yellow")
+            for warning in result["warnings"]:
+                click.secho(f"\t{warning}", fg="yellow")
+        if result["manifest"]:
+            click.secho(f"Manifest Errors:\n\t{result['manifest']}", fg="red")
+        if result["templates"]:
+            click.secho("Template Errors:", fg="red")
+
+            for template_id, messages in result["templates"].items():
+                click.secho(f"\t{template_id}:", fg="red")
+
+                for message in messages:
+                    click.secho(f"\t\t{message}", fg="red")
+        if result["valid"]:
+            click.secho("OK", fg=color.GREEN)
+    if not result["valid"]:
+        ctx.exit(1)
+
+
 def _print_template(template: "TemplateViewModel"):
     """Print detailed template info."""
     from renku.core.util.util import to_string
@@ -270,7 +348,7 @@ def _print_template(template: "TemplateViewModel"):
 
 def _print_template_list(templates: List["TemplateViewModel"], verbose: bool):
     """Print a list of templates."""
-    from renku.domain_model.tabulate import tabulate
+    from renku.core.util.tabulate import tabulate
 
     for index, template in enumerate(templates, start=1):
         setattr(template, "index", index)

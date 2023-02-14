@@ -22,30 +22,30 @@ from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
-def test_gc(runner, client):
+def test_gc(runner, project):
     """Test clean caches and temporary files."""
     # NOTE: Mock caches
-    tmp = client.path / RENKU_HOME / RENKU_TMP
+    tmp = project.path / RENKU_HOME / RENKU_TMP
     tmp.mkdir(parents=True, exist_ok=True)
     (tmp / "temp-file").touch()
-    cache = client.path / RENKU_HOME / CACHE
+    cache = project.path / RENKU_HOME / CACHE
     cache.mkdir(parents=True, exist_ok=True)
     (tmp / "cache").touch()
 
-    (client.path / "tracked").write_text("tracked file")
-    client.repository.add("tracked")
+    (project.path / "tracked").write_text("tracked file")
+    project.repository.add("tracked")
 
-    (client.path / "untracked").write_text("untracked file")
+    (project.path / "untracked").write_text("untracked file")
 
-    commit_sha_before = client.repository.head.commit.hexsha
+    commit_sha_before = project.repository.head.commit.hexsha
 
     result = runner.invoke(cli, ["gc"])
 
-    commit_sha_after = client.repository.head.commit.hexsha
+    commit_sha_after = project.repository.head.commit.hexsha
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert not tmp.exists()
     assert not cache.exists()
-    assert "tracked" in [f.a_path for f in client.repository.staged_changes]
-    assert "untracked" in client.repository.untracked_files
+    assert "tracked" in [f.a_path for f in project.repository.staged_changes]
+    assert "untracked" in project.repository.untracked_files
     assert commit_sha_after == commit_sha_before

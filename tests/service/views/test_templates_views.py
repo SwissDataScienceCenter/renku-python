@@ -26,6 +26,7 @@ import pytest
 
 from renku.core.template.template import fetch_templates_source
 from renku.core.util.os import normalize_to_ascii
+from renku.domain_model.project_context import project_context
 from renku.domain_model.template import TEMPLATE_MANIFEST, TemplatesManifest
 from renku.infrastructure.repository import Repository
 from renku.ui.service.errors import (
@@ -122,12 +123,14 @@ def test_read_manifest_from_wrong_template(svc_client_with_templates, template_u
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
-def test_create_project_from_template(svc_client_templates_creation):
+def test_create_project_from_template(svc_client_templates_creation, with_injection):
     """Check creating project from a valid template."""
     from renku.ui.service.serializers.headers import RenkuHeaders
     from renku.ui.service.utils import CACHE_PROJECTS_PATH
 
     svc_client, headers, payload, rm_remote = svc_client_templates_creation
+
+    payload["data_directory"] = "my-folder/"
 
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=headers)
 
@@ -135,21 +138,28 @@ def test_create_project_from_template(svc_client_templates_creation):
     assert {"result"} == set(response.json.keys()), response.json["error"]
     stripped_name = normalize_to_ascii(payload["project_name"])
     assert stripped_name == response.json["result"]["slug"]
-    expected_url = "{0}/{1}/{2}".format(payload["project_repository"], payload["project_namespace"], stripped_name)
+    expected_url = f"{payload['project_repository']}/{payload['project_namespace']}/{stripped_name}"
     assert expected_url == response.json["result"]["url"]
 
     # NOTE: assert correct git user is set on new project
     user_data = RenkuHeaders.decode_user(headers["Renku-User"])
-    project_path = (
-        CACHE_PROJECTS_PATH
-        / user_data["user_id"]
-        / response.json["result"]["project_id"]
-        / payload["project_namespace"]
-        / stripped_name
-    )
+    project_path = CACHE_PROJECTS_PATH / user_data["user_id"] / payload["project_namespace"] / stripped_name
     reader = Repository(project_path).get_configuration()
     assert reader.get_value("user", "email") == user_data["email"]
     assert reader.get_value("user", "name") == user_data["name"]
+
+    with project_context.with_path(project_path):
+        with with_injection():
+            project = project_context.project
+        assert project_context.datadir == "my-folder/"
+
+    expected_id = f"/projects/{payload['project_namespace']}/{stripped_name}"
+    assert expected_id == project.id
+
+    # NOTE: Assert backwards compatibility metadata.yml was created
+    old_metadata_path = project_path / ".renku/metadata.yml"
+    assert old_metadata_path.exists()
+    assert "'http://schema.org/schemaVersion': '9'" in old_metadata_path.read_text()
 
     # NOTE:  successfully re-use old name after cleanup
     assert rm_remote() is True
@@ -184,7 +194,7 @@ def test_create_project_from_template_failures(svc_client_templates_creation):
     response = svc_client.post("/templates.create_project", data=json.dumps(payload_missing_project), headers=headers)
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert UserProjectCreationError.code == response.json["error"]["code"]
+    assert UserProjectCreationError.code == response.json["error"]["code"], response.json
     assert "project name" in response.json["error"]["devMessage"].lower()
 
     # NOTE: fail on wrong git url - unexpected when invoked from the UI
@@ -194,7 +204,7 @@ def test_create_project_from_template_failures(svc_client_templates_creation):
     response = svc_client.post("/templates.create_project", data=json.dumps(payload_wrong_repo), headers=headers)
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert UserProjectCreationError.code == response.json["error"]["code"]
+    assert UserProjectCreationError.code == response.json["error"]["code"], response.json
     assert "git_url" in response.json["error"]["devMessage"]
 
     # NOTE: missing fields -- unlikely to happen. If that is the case, we should determine if it's a user error or not
@@ -215,7 +225,7 @@ def test_create_project_from_template_failures(svc_client_templates_creation):
     response = svc_client.post("/templates.create_project", data=json.dumps(payload_fake_id), headers=headers)
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert UserProjectCreationError.code == response.json["error"]["code"]
+    assert UserProjectCreationError.code == response.json["error"]["code"], response.json
     assert "does not exist" in response.json["error"]["devMessage"]
     assert fake_identifier in response.json["error"]["devMessage"]
 
@@ -229,6 +239,6 @@ def test_create_project_from_template_failures(svc_client_templates_creation):
 
         assert 200 == response.status_code
         assert {"error"} == set(response.json.keys())
-        assert UserProjectCreationError.code == response.json["error"]["code"]
+        assert UserProjectCreationError.code == response.json["error"]["code"], response.json
         assert "does not exist" in response.json["error"]["devMessage"]
         assert fake_identifier in response.json["error"]["devMessage"]

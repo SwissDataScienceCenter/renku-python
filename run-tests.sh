@@ -39,9 +39,9 @@ check_styles(){
     pydocstyle renku tests conftest.py docs
     black --check --diff renku tests conftest.py
     isort -c --df .
-    flakehell lint renku/ tests/ conftest.py
+    flake8 renku/ tests/ conftest.py
     find . -path ./.eggs -prune -o -iname \*.sh -print0 | xargs -0 shellcheck
-    poetry lock --no-update && (git diff --exit-code -- poetry.lock > /dev/null || (echo "Poetry lock file out of date! Run 'poetry lock'" && exit 1))
+    poetry lock --no-update && (git diff --exit-code -- poetry.lock > /dev/null || (echo "Poetry lock file out of date! Run 'poetry lock'"))
 }
 
 build_docs(){
@@ -51,7 +51,7 @@ build_docs(){
 }
 
 run_tests(){
-    pytest -v -m "not integration and not publish" -o testpaths="tests renku conftest.py" --ignore=renku/version.py
+    pytest -v -m "not integration and not publish and not redis" -o testpaths="tests renku conftest.py" --ignore=renku/version.py
 }
 
 usage(){

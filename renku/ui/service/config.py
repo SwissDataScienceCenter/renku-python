@@ -21,7 +21,7 @@ import tempfile
 from pathlib import Path
 
 try:
-    import importlib_resources
+    import importlib_resources  # type: ignore[import]
 except ImportError:
     import importlib.resources as importlib_resources  # type: ignore
 
@@ -41,6 +41,9 @@ API_VERSION = "v1"
 PROJECT_CLONE_NO_DEPTH = -1
 PROJECT_CLONE_DEPTH_DEFAULT = int(os.getenv("PROJECT_CLONE_DEPTH_DEFAULT", 1))
 TEMPLATE_CLONE_DEPTH_DEFAULT = int(os.getenv("TEMPLATE_CLONE_DEPTH_DEFAULT", 0))
+
+# NOTE: Defaults to 1GB
+MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", 1073741824))
 
 CACHE_DIR = os.getenv("CACHE_DIR", os.path.realpath(tempfile.TemporaryDirectory().name))
 CACHE_UPLOADS_PATH = Path(CACHE_DIR) / Path("uploads")

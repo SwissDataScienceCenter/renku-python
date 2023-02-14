@@ -20,6 +20,7 @@
 from __future__ import absolute_import, print_function
 
 import importlib
+import importlib.util
 import sys
 import warnings
 
@@ -55,9 +56,9 @@ class LoaderWrapper(importlib.abc.Loader):
         sys.modules[self.additional_namespace] = module
 
     def __getattr__(self, name):
-        """Forward all calls to wrapped loaded except for one implemented here."""
+        """Forward all calls to wrapped loader except for one implemented here."""
         if name in ["exec_module", "create_module", "get_code"]:
-            object.__getattr__(self, name)
+            object.__getattribute__(self, name)
 
         return getattr(self.wrapped_loader, name)
 
@@ -88,6 +89,9 @@ class DeprecatedImportInterceptor(importlib.abc.MetaPathFinder):
 
                 sys.meta_path = [x for x in sys.meta_path if x is not self]
                 spec = importlib.util.find_spec(target_name)
+                if spec is None:
+                    return None
+
                 spec.loader = LoaderWrapper(spec.loader, fullname, target_name)
             finally:
                 sys.meta_path.insert(0, self)
@@ -96,7 +100,7 @@ class DeprecatedImportInterceptor(importlib.abc.MetaPathFinder):
         return None
 
 
-# NOTE: Patch python impoprt machinery with custom loader
+# NOTE: Patch python import machinery with custom loader
 sys.meta_path.insert(
     0,
     DeprecatedImportInterceptor(
@@ -105,7 +109,7 @@ sys.meta_path.insert(
             "renku.core.metadata": ("renku.infrastructure", False),
             "renku.core.commands": ("renku.command", True),
             "renku.core.plugins": ("renku.core.plugin", True),
-            "renku.api": ("renku.ui.api", True),
+            "renku.api": ("renku.ui.api", False),
             "renku.cli": ("renku.ui.cli", True),
         }
     ),

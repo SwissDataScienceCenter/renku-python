@@ -22,8 +22,9 @@ from unittest.mock import patch
 import pytest
 
 from renku.core.errors import ParameterError
-from renku.core.plugin.session import supported_session_providers
+from renku.core.plugin.session import get_supported_session_providers
 from renku.core.session.docker import DockerSessionProvider
+from renku.core.session.renkulab import RenkulabSessionProvider
 from renku.core.session.session import session_list, session_start, session_stop
 
 
@@ -32,13 +33,12 @@ def fake_start(
     image_name,
     project_name,
     config,
-    client,
     cpu_request,
     mem_request,
     disk_request,
     gpu_request,
 ):
-    return "0xdeadbeef"
+    return "0xdeadbeef", ""
 
 
 def fake_stop(self, project_name, session_name, stop_all):
@@ -61,7 +61,17 @@ def fake_session_list(self, project_name, config):
     return ["0xdeadbeef"]
 
 
-@pytest.mark.parametrize("provider", ["docker"])
+def fake_pre_start_checks(self):
+    pass
+
+
+@pytest.mark.parametrize(
+    "provider_name,session_provider,provider_patches",
+    [
+        ("docker", DockerSessionProvider, {}),
+        ("renkulab", RenkulabSessionProvider, {}),
+    ],
+)
 @pytest.mark.parametrize(
     "parameters,result",
     [
@@ -70,22 +80,46 @@ def fake_session_list(self, project_name, config):
         ({"image_name": "missing_image"}, ParameterError),
     ],
 )
-@patch.multiple(
-    DockerSessionProvider, session_start=fake_start, find_image=fake_find_image, build_image=fake_build_image
+def test_session_start(
+    run_shell,
+    project,
+    provider_name,
+    session_provider,
+    provider_patches,
+    parameters,
+    result,
+    with_injection,
+    mock_communication,
+):
+    with patch.multiple(
+        session_provider,
+        session_start=fake_start,
+        find_image=fake_find_image,
+        build_image=fake_build_image,
+        pre_start_checks=fake_pre_start_checks,
+        **provider_patches,
+    ):
+        provider_implementation = next(
+            filter(lambda x: x.get_name() == provider_name, get_supported_session_providers()), None
+        )
+        assert provider_implementation is not None
+
+        with with_injection():
+            if not isinstance(result, str) and issubclass(result, Exception):
+                with pytest.raises(result):
+                    session_start(provider=provider_name, config_path=None, **parameters)
+            else:
+                session_start(provider=provider_name, config_path=None, **parameters)
+                assert result in mock_communication.stdout_lines
+
+
+@pytest.mark.parametrize(
+    "provider_name,session_provider,provider_patches",
+    [
+        ("docker", DockerSessionProvider, {}),
+        ("renkulab", RenkulabSessionProvider, {}),
+    ],
 )
-def test_session_start(run_shell, client, provider, parameters, result, client_database_injection_manager):
-    provider_implementation = next(filter(lambda x: x[1] == provider, supported_session_providers()), None)
-    assert provider_implementation is not None
-
-    with client_database_injection_manager(client):
-        if not isinstance(result, str) and issubclass(result, Exception):
-            with pytest.raises(result):
-                session_start(provider=provider, config_path=None, **parameters)
-        else:
-            assert session_start(provider=provider, config_path=None, **parameters) == result
-
-
-@pytest.mark.parametrize("provider", ["docker"])
 @pytest.mark.parametrize(
     "parameters,result",
     [
@@ -94,25 +128,55 @@ def test_session_start(run_shell, client, provider, parameters, result, client_d
         ({"session_name": "missing_session"}, ParameterError),
     ],
 )
-@patch.object(DockerSessionProvider, "session_stop", fake_stop)
-def test_session_stop(run_shell, client, provider, parameters, result, client_database_injection_manager):
-    provider_implementation = next(filter(lambda x: x[1] == provider, supported_session_providers()), None)
-    assert provider_implementation is not None
+def test_session_stop(
+    run_shell,
+    project,
+    session_provider,
+    provider_name,
+    parameters,
+    provider_patches,
+    result,
+    with_injection,
+):
+    with patch.multiple(session_provider, session_stop=fake_stop, **provider_patches):
+        provider_implementation = next(
+            filter(lambda x: x.get_name() == provider_name, get_supported_session_providers()), None
+        )
+        assert provider_implementation is not None
 
-    with client_database_injection_manager(client):
-        if result is not None and issubclass(result, Exception):
-            with pytest.raises(result):
-                session_stop(provider=provider, **parameters)
-        else:
-            session_stop(provider=provider, **parameters)
+        with with_injection():
+            if result is not None and issubclass(result, Exception):
+                with pytest.raises(result):
+                    session_stop(provider=provider_name, **parameters)
+            else:
+                session_stop(provider=provider_name, **parameters)
 
 
-@pytest.mark.parametrize("provider,result", [("docker", ["0xdeadbeef"]), ("no_provider", ParameterError)])
-@patch.object(DockerSessionProvider, "session_list", fake_session_list)
-def test_session_list(run_shell, client, provider, result, client_database_injection_manager):
-    with client_database_injection_manager(client):
-        if not isinstance(result, list) and issubclass(result, Exception):
-            with pytest.raises(result):
-                session_list(provider=provider, config_path=None)
-        else:
-            assert session_list(provider=provider, config_path=None) == result
+@pytest.mark.parametrize(
+    "provider_name,session_provider,provider_patches",
+    [
+        ("docker", DockerSessionProvider, {}),
+        ("renkulab", RenkulabSessionProvider, {}),
+    ],
+)
+@pytest.mark.parametrize("provider_exists,result", [(True, ["0xdeadbeef"]), (False, ParameterError)])
+def test_session_list(
+    run_shell,
+    project,
+    provider_name,
+    session_provider,
+    provider_patches,
+    provider_exists,
+    result,
+    with_injection,
+):
+    with patch.multiple(session_provider, session_list=fake_session_list, **provider_patches):
+        with with_injection():
+            provider = provider_name if provider_exists else "no_provider"
+
+            if not isinstance(result, list) and issubclass(result, Exception):
+                with pytest.raises(result):
+                    session_list(provider=provider, config_path=None)
+            else:
+                sessions, _, _ = session_list(provider=provider, config_path=None)
+                assert sessions == result

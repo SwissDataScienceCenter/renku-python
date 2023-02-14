@@ -4,7 +4,8 @@ __pycache__/
 *.py[cod]
 
 # VSCode
-.vscode/
+.vscode/*
+!.vscode/settings.json
 
 # Idea software family
 .idea/
@@ -67,6 +68,8 @@ renku.err
 docs/_build/
 docs/.doctrees/
 docs/_sidebar.rst.inc
+docs/latex/
+docs/json/
 _sidebar.rst.inc
 
 # PyBuilder
@@ -94,3 +97,6 @@ tmp/
 
 # pytest-recording cache
 cassettes
+
+# snyk
+.dccache

@@ -133,6 +133,10 @@ The implementation of this interface in detail:
 ```python
 class ISessionProvider:
 
+    def get_name(self) -> str:
+        """Return session provider's name."""
+        pass
+
     def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]) -> Optional[str]:
         """Builds the container image.
         :param image_descriptor: Path to the container image descriptor file.
@@ -150,9 +154,9 @@ class ISessionProvider:
         """
         pass
 
-    def session_provider(self) -> Tuple["ISessionProvider", str]:
+    def session_provider(self) -> "ISessionProvider":
         """Supported session provider.
-        :returns: a tuple of ``self`` and engine type name.
+        :returns: a reference to ``self``.
         """
         pass
 

@@ -19,6 +19,7 @@
 
 from marshmallow import EXCLUDE
 
+from renku.command.schema.agent import PersonSchema
 from renku.command.schema.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
 from renku.command.schema.parameter import ParameterLinkSchema, ParameterMappingSchema
 from renku.command.schema.plan import PlanSchema
@@ -35,14 +36,16 @@ class CompositePlanSchema(JsonLDSchema):
         model = CompositePlan
         unknown = EXCLUDE
 
-    description = fields.String(schema.description, missing=None)
+    description = fields.String(schema.description, load_default=None)
     id = fields.Id()
-    mappings = Nested(renku.hasMappings, [ParameterMappingSchema], many=True, missing=None)
+    creators = Nested(schema.creator, PersonSchema, many=True)
+    mappings = Nested(renku.hasMappings, [ParameterMappingSchema], many=True, load_default=None)
     date_created = fields.DateTime(schema.dateCreated, format="iso")
-    invalidated_at = fields.DateTime(prov.invalidatedAtTime, format="iso")
-    keywords = fields.List(schema.keywords, fields.String(), missing=None)
-    name = fields.String(schema.name, missing=None)
-    derived_from = fields.String(prov.wasDerivedFrom, missing=None)
+    date_modified = fields.DateTime(schema.dateModified, format="iso")
+    date_removed = fields.DateTime(prov.invalidatedAtTime, format="iso")
+    keywords = fields.List(schema.keywords, fields.String(), load_default=None)
+    name = fields.String(schema.name, load_default=None)
+    derived_from = fields.IRI(prov.wasDerivedFrom, load_default=None)
     project_id = fields.IRI(renku.hasPlan, reverse=True)
     plans = Nested(renku.hasSubprocess, [PlanSchema, "CompositePlanSchema"], many=True)
-    links = Nested(renku.workflowLinks, [ParameterLinkSchema], many=True, missing=None)
+    links = Nested(renku.workflowLinks, [ParameterLinkSchema], many=True, load_default=None)

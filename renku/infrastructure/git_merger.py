@@ -18,26 +18,24 @@
 """Merge strategies."""
 
 import os
+import shutil
 from json import JSONDecodeError
 from pathlib import Path
 from tempfile import mkdtemp
 from typing import List, NamedTuple, Optional, Union, cast
 
-from BTrees.OOBTree import BTree, TreeSet
+from BTrees.OOBTree import BTree, Bucket, TreeSet
 from deepdiff import DeepDiff
 from persistent import Persistent
 from persistent.list import PersistentList
 from zc.relation.catalog import Catalog
 
-from renku.command.command_builder.command import inject
 from renku.core import errors
-from renku.core.constant import RENKU_HOME
-from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
-from renku.core.management.client import LocalClient
+from renku.core.constant import DATABASE_PATH, RENKU_HOME
 from renku.core.util import communication
 from renku.domain_model.dataset import Dataset, Url
 from renku.domain_model.project import Project
+from renku.domain_model.project_context import project_context
 from renku.domain_model.workflow.plan import AbstractPlan
 from renku.infrastructure.database import Database, Index
 from renku.infrastructure.repository import Repository
@@ -51,23 +49,20 @@ RemoteEntry = NamedTuple(
 class GitMerger:
     """Git metadata merger."""
 
-    client_dispatcher = inject.attr(IClientDispatcher)
-    database_dispatcher = inject.attr(IDatabaseDispatcher)
-
     def merge(self, local: Path, remote: Path, base: Path) -> None:
         """Merge two renku metadata entries together."""
-        client = self.client_dispatcher.current_client
+        repository = project_context.repository
         self.remote_entries: List[RemoteEntry] = []
 
-        self._setup_worktrees(client)
+        self._setup_worktrees(repository)
 
         merged = False
-        self.local_database = self.database_dispatcher.current_database
+        self.local_database = project_context.database
 
         try:
-            local_object = self.local_database.get_from_path(str(client.path / local))
+            local_object = self.local_database.get_from_path(str(project_context.path / local))
             try:
-                base_object: Optional[Persistent] = self.local_database.get_from_path(str(client.path / base))
+                base_object: Optional[Persistent] = self.local_database.get_from_path(str(project_context.path / base))
             except (errors.ObjectNotFoundError, JSONDecodeError):
                 base_object = None
 
@@ -75,7 +70,7 @@ class GitMerger:
                 # NOTE: Loop through all remote merge branches (Octo merge) and try to merge them
                 try:
                     self.remote_database = entry.database
-                    remote_object = self.remote_database.get_from_path(str(client.path / remote))
+                    remote_object = self.remote_database.get_from_path(str(project_context.path / remote))
 
                     # NOTE: treat merge result as new local for subsequent merges
                     local_object = self.merge_objects(local_object, remote_object, base_object)
@@ -85,25 +80,26 @@ class GitMerger:
         finally:
             # NOTE: cleanup worktrees
             for entry in self.remote_entries:
-                client.repository.remove_worktree(entry.path)
+                repository.remove_worktree(entry.path)
+                shutil.rmtree(entry.path, ignore_errors=True)
 
         if not merged:
             raise errors.MetadataMergeError("Couldn't merge metadata: remote object not found in merge branches.")
 
         self.local_database.persist_to_path(local_object, local)
 
-    def _setup_worktrees(self, client):
+    def _setup_worktrees(self, repository):
         """Setup git worktrees for the remote branches."""
 
         # NOTE: Get remote branches
         remote_branches = [os.environ[k] for k in os.environ.keys() if k.startswith("GITHEAD")]
 
-        database_path = Path(RENKU_HOME) / LocalClient.DATABASE_PATH
+        database_path = Path(RENKU_HOME) / DATABASE_PATH
 
         for remote_branch in remote_branches:
             # NOTE: Create a new shallow worktree for each remote branch, could be several in case of an octo merge
             worktree_path = Path(mkdtemp())
-            client.repository.create_worktree(worktree_path, remote_branch, checkout=False)
+            repository.create_worktree(worktree_path, reference=remote_branch, checkout=False)
             try:
                 remote_repository = Repository(worktree_path)
                 remote_repository.checkout(sparse=[database_path])
@@ -119,8 +115,8 @@ class GitMerger:
             except Exception:
                 # NOTE: cleanup worktree
                 try:
-                    client.repository.remove_worktree(worktree_path)
-                except Exception:
+                    repository.remove_worktree(worktree_path)
+                except Exception:  # nosec
                     pass
                 raise
 
@@ -128,9 +124,9 @@ class GitMerger:
         """Merge two database objects."""
         if type(local) != type(remote):
             raise errors.MetadataMergeError(f"Cannot merge {local} and {remote}: disparate types.")
-        if isinstance(local, (BTree, Index)):
+        if isinstance(local, (BTree, Index, Bucket)):
             return self.merge_btrees(local, remote)
-        elif isinstance(local, TreeSet):
+        elif isinstance(local, TreeSet):  # type: ignore[unreachable]
             return self.merge_treesets(local, remote)
         elif isinstance(local, Catalog):
             return self.merge_catalogs(local, remote)
@@ -141,7 +137,9 @@ class GitMerger:
                 f"Cannot merge {local} and {remote}: type not supported for automated merge."
             )
 
-    def merge_btrees(self, local: Union[BTree, Index], remote: Union[BTree, Index]) -> Union[BTree, Index]:
+    def merge_btrees(
+        self, local: Union[BTree, Index, Bucket], remote: Union[BTree, Index, Bucket]
+    ) -> Union[BTree, Index, Bucket]:
         """Merge two BTrees."""
         local_key_ids = {k: getattr(v, "_p_oid", None) for k, v in local.items()}
         remote_key_ids = {k: getattr(v, "_p_oid", None) for k, v in remote.items()}
@@ -166,7 +164,7 @@ class GitMerger:
 
             local_object._p_activate()
             remote_object._p_activate()
-            diff = DeepDiff(local_object, remote_object)
+            diff = DeepDiff(local_object, remote_object, exclude_types=[Database])
             pretty_diff = diff.pretty().replace("Value of root.", "local.")
             pretty_diff = "\n".join(f"\t{line}" for line in pretty_diff.splitlines())
             entry_type = str(type(local_object)).split(".")[-1][:-2]
@@ -194,7 +192,7 @@ class GitMerger:
         return local
 
     def merge_indices(self, local: Index, remote: Index) -> Index:
-        """Merge two BTrees."""
+        """Merge two Indices."""
         local_key_ids = {k: getattr(v, "_p_oid", None) for k, v in local.items()}
         remote_key_ids = {k: getattr(v, "_p_oid", None) for k, v in remote.items()}
 
@@ -218,7 +216,7 @@ class GitMerger:
 
             local_object._p_activate()
             remote_object._p_activate()
-            diff = DeepDiff(local_object, remote_object)
+            diff = DeepDiff(local_object, remote_object, exclude_types=[Database])
             pretty_diff = diff.pretty().replace("Value of root.", "local.")
             pretty_diff = "\n".join(f"\t{line}" for line in pretty_diff.splitlines())
             entry_type = str(type(local.get(common_key))).split(".")[-1][:-2]
@@ -255,7 +253,7 @@ class GitMerger:
                 if subkey not in local._name_TO_mapping[key]:
                     local._name_TO_mapping[key][subkey] = subvalue
 
-        for key, value in remote._reltoken_name_TO_objtokenset:
+        for key, value in remote._reltoken_name_TO_objtokenset.items():
             if key not in local._reltoken_name_TO_objtokenset:
                 local._reltoken_name_TO_objtokenset[key] = value
 
@@ -270,26 +268,14 @@ class GitMerger:
             or local.description != base.description
             or local.annotations != base.annotations
         )
-        local_template_changed = (
-            base is None
-            or local.template_id != base.template_id
-            or local.template_ref != base.template_ref
-            or local.template_source != base.template_source
-            or local.template_version != base.template_version
-        )
+        local_template_changed = base is None or local.template_metadata != base.template_metadata
         remote_changed = (
             base is None
             or remote.keywords != base.keywords
             or remote.description != base.description
             or remote.annotations != base.annotations
         )
-        remote_template_changed = (
-            base is None
-            or remote.template_id != base.template_id
-            or remote.template_ref != base.template_ref
-            or remote.template_source != base.template_source
-            or remote.template_version != base.template_version
-        )
+        remote_template_changed = base is None or remote.template_metadata != base.template_metadata
 
         if (local_changed or local_template_changed) and not remote_changed and not remote_template_changed:
             return local
@@ -335,34 +321,24 @@ class GitMerger:
             # NOTE: Merge conflicts!
             action = communication.prompt(
                 "Merge conflict detected:\n Project template modified/update in both remote and local branch.\n"
-                f"local: {local.template_source}@{local.template_ref}:{local.template_id}, "
-                "version {local.template_version}\n"
-                f"remote: {remote.template_source}@{remote.template_ref}:{remote.template_id}, "
-                "version {remote.template_version}\n"
+                f"local: {local.template_metadata.template_source}@{local.template_metadata.template_ref}:"
+                f"{local.template_metadata.template_id}, "
+                "version {local.template_metadata.template_version}\n"
+                f"remote: {remote.template_metadata.template_source}@{remote.template_metadata.template_ref}:"
+                f"{remote.template_metadata.template_id}, "
+                "version {remote.template_metadata.template_version}\n"
                 "Which do you want to keep?\n[l]ocal, [r]emote, [a]bort:",
                 default="a",
             )
 
             if action == "r":
-                local.template_id = remote.template_id
-                local.template_ref = remote.template_ref
-                local.template_source = remote.template_source
-                local.template_version = remote.template_version
                 local.template_metadata = remote.template_metadata
-                local.immutable_template_files = remote.immutable_template_files
-                local.automated_update = remote.automated_update
             elif action == "a":
                 raise errors.MetadataMergeError("Merge aborted")
             elif action != "l":
                 raise errors.MetadataMergeError(f"Invalid merge option selected: {action}")
         elif remote_template_changed:
-            local.template_id = remote.template_id
-            local.template_ref = remote.template_ref
-            local.template_source = remote.template_source
-            local.template_version = remote.template_version
             local.template_metadata = remote.template_metadata
-            local.immutable_template_files = remote.immutable_template_files
-            local.automated_update = remote.automated_update
 
         return local
 

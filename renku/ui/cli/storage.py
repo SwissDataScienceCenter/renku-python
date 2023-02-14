@@ -17,6 +17,15 @@
 # limitations under the License.
 r"""Manage an external storage.
 
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. rst-class:: cli-reference-commands
+
+.. click:: renku.ui.cli.storage:storage
+   :prog: renku storage
+   :nested: full
+
 Pulling files from git LFS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -41,7 +50,7 @@ You can manually pull contents of file(s) you want with:
    :group: Misc
    :command: $ renku storage pull <path>...
    :description: Pull <path>'s from external storage (LFS).
-   :extended:
+   :target: rp
 
 Removing local content of files stored in git LFS
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -87,7 +96,7 @@ import os
 import click
 
 import renku.ui.cli.utils.color as color
-from renku.command.echo import WARNING
+from renku.command.util import WARNING
 from renku.ui.cli.utils.callback import ClickCallback
 
 
@@ -156,7 +165,7 @@ def migrate(migrate_all, paths):
             click.echo("Please specify paths to migrate or use the --all flag to migrate all large files.")
             exit(1)
 
-        lfs_paths = check_lfs_command().build().execute(everything=all).output
+        lfs_paths = check_lfs_command().build().execute(everything=migrate_all).output
 
         if not lfs_paths:
             click.echo("All files are already in LFS")

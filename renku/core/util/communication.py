@@ -17,6 +17,7 @@
 # limitations under the License.
 """Communicator classes for printing output."""
 
+from contextlib import ExitStack, contextmanager
 from functools import wraps
 from threading import RLock
 
@@ -55,6 +56,14 @@ class CommunicationCallback:
 
     def prompt(self, msg, type=None, default=None, **kwargs):
         """Show a message prompt."""
+
+    @contextmanager
+    def busy(self, msg):
+        """Indicate a busy status.
+
+        For instance, show a spinner in the CLI.
+        """
+        yield
 
 
 def lock_communication(method):
@@ -177,6 +186,14 @@ class _CommunicationManger(CommunicationCallback):
         for listener in self._listeners:
             listener.finalize_progress(name)
 
+    @contextmanager
+    def busy(self, msg):
+        """Show busy indicators."""
+        with ExitStack() as stack:
+            for listener in self._listeners:
+                stack.enter_context(listener.busy(msg))
+            yield
+
     @lock_communication
     def disable(self):
         """Disable all outputs; by default everything is enabled."""
@@ -214,37 +231,37 @@ def ensure_manager(f):
 @ensure_manager
 def subscribe(listener):
     """Subscribe a communication listener."""
-    _thread_local.communication_manager.subscribe(listener)
+    _thread_local.communication_manager.subscribe(listener)  # type: ignore[union-attr]
 
 
 @ensure_manager
 def unsubscribe(listener):
     """Unsubscribe a communication listener."""
-    _thread_local.communication_manager.unsubscribe(listener)
+    _thread_local.communication_manager.unsubscribe(listener)  # type: ignore[union-attr]
 
 
 @ensure_manager
 def echo(msg, end="\n"):
     """Write a message to all listeners."""
-    _thread_local.communication_manager.echo(msg, end=end)
+    _thread_local.communication_manager.echo(msg, end=end)  # type: ignore[union-attr]
 
 
 @ensure_manager
 def info(msg):
     """Write an info message to all listeners."""
-    _thread_local.communication_manager.info(msg)
+    _thread_local.communication_manager.info(msg)  # type: ignore[union-attr]
 
 
 @ensure_manager
 def warn(msg):
     """Write a warning message to all listeners."""
-    _thread_local.communication_manager.warn(msg)
+    _thread_local.communication_manager.warn(msg)  # type: ignore[union-attr]
 
 
 @ensure_manager
 def error(msg):
-    """Write an info message to all listeners."""
-    _thread_local.communication_manager.error(msg)
+    """Write an error message to all listeners."""
+    _thread_local.communication_manager.error(msg)  # type: ignore[union-attr]
 
 
 @ensure_manager
@@ -256,49 +273,76 @@ def has_prompt():
 @ensure_manager
 def confirm(msg, abort=False, warning=False, default=False):
     """Get confirmation for an action from all listeners."""
-    return _thread_local.communication_manager.confirm(msg, abort, warning, default)
+    return _thread_local.communication_manager.confirm(msg, abort, warning, default)  # type: ignore[union-attr]
 
 
 @ensure_manager
 def prompt(msg, type=None, default=None, **kwargs):
     """Show a message prompt."""
-    return _thread_local.communication_manager.prompt(msg, type, default, **kwargs)
+    return _thread_local.communication_manager.prompt(msg, type, default, **kwargs)  # type: ignore[union-attr]
 
 
 @ensure_manager
 def start_progress(name, total, **kwargs):
     """Start a progress tracker on all listeners."""
-    _thread_local.communication_manager.start_progress(name, total, **kwargs)
+    _thread_local.communication_manager.start_progress(name, total, **kwargs)  # type: ignore[union-attr]
 
 
 @ensure_manager
 def update_progress(name, amount):
     """Update a progress tracker on all listeners."""
-    _thread_local.communication_manager.update_progress(name, amount)
+    _thread_local.communication_manager.update_progress(name, amount)  # type: ignore[union-attr]
 
 
 @ensure_manager
 def finalize_progress(name):
     """End a progress tracker on all listeners."""
-    _thread_local.communication_manager.finalize_progress(name)
+    _thread_local.communication_manager.finalize_progress(name)  # type: ignore[union-attr]
+
+
+@ensure_manager
+@contextmanager
+def progress(message, total: int):
+    """Create a progress context manager."""
+
+    class Progressbar:
+        def __init__(self, name):
+            self.name = name
+
+        def update(self, amount: int = 1):
+            update_progress(name=self.name, amount=amount)
+
+    try:
+        start_progress(name=message, total=total)
+        yield Progressbar(message)
+    finally:
+        finalize_progress(message)
+
+
+@ensure_manager
+@contextmanager
+def busy(msg):
+    """Indicate busy status to all listeners."""
+    with _thread_local.communication_manager.busy(msg):  # type: ignore[union-attr]
+        yield
 
 
 @ensure_manager
 def get_listeners():
     """Return a list of subscribed listeners."""
-    return _thread_local.communication_manager.listeners
+    return _thread_local.communication_manager.listeners  # type: ignore[union-attr]
 
 
 @ensure_manager
 def disable():
     """Disable all outputs; by default everything is enabled."""
-    return _thread_local.communication_manager.disable()
+    return _thread_local.communication_manager.disable()  # type: ignore[union-attr]
 
 
 @ensure_manager
 def enable():
     """Enable all outputs."""
-    return _thread_local.communication_manager.enable()
+    return _thread_local.communication_manager.enable()  # type: ignore[union-attr]
 
 
 __all__ = [

@@ -21,8 +21,7 @@ import re
 from subprocess import PIPE, SubprocessError, run
 from typing import Callable, Dict
 
-from renku.command.command_builder import inject
-from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.domain_model.project_context import project_context
 
 
 def tabular(records, *, columns=None):
@@ -51,43 +50,35 @@ def tabular(records, *, columns=None):
     )
 
 
-@inject.autoparams()
-def get_lfs_tracking(records, client_dispatcher: IClientDispatcher):
-    """Check if files are tracked in git lfs.
-
-    Args:
-        records: File records to check.
-        client_dispatcher(IClientDispatcher):  Injected client dispatcher.
-    """
-    client = client_dispatcher.current_client
-
-    paths = (r.path for r in records)
-    attrs = client.repository.get_attributes(*paths)
-
-    for record in records:
-        if attrs.get(str(record.path), {}).get("filter") == "lfs":
-            record.is_lfs = True
-        else:
-            record.is_lfs = False
-
-
-@inject.autoparams()
-def get_lfs_file_sizes(records, client_dispatcher: IClientDispatcher):
-    """Try to get file size from Git LFS.
+def get_lfs_tracking_and_file_sizes(records, has_tag: bool):
+    """Try to get file size from Git LFS and check if files are tracked in git lfs.
 
     Args:
         records: File records tog et size for.
-        client_dispatcher(IClientDispatcher):  Injected client dispatcher.
+        has_tag(bool): Whether sizes are retrieved for a given tag instead of HEAD commit
     """
     from humanize import naturalsize  # Slow import
 
-    client = client_dispatcher.current_client
+    repository = project_context.repository
+
+    def get_lfs_tracking():
+        paths = (r.path for r in records)
+        attrs = repository.get_attributes(*paths)
+
+        for record in records:
+            if attrs.get(str(record.path), {}).get("filter") == "lfs":
+                record.is_lfs = True
+            else:
+                record.is_lfs = False
 
     lfs_files_sizes = {}
 
     try:
         lfs_run = run(
-            ("git", "lfs", "ls-files", "--name-only", "--size"), stdout=PIPE, cwd=client.path, universal_newlines=True
+            ("git", "lfs", "ls-files", "--name-only", "--size", "--deleted"),
+            stdout=PIPE,
+            cwd=project_context.path,
+            universal_newlines=True,
         )
     except SubprocessError:
         pass
@@ -106,14 +97,28 @@ def get_lfs_file_sizes(records, client_dispatcher: IClientDispatcher):
                 size = size.replace(" B", "  B")
             lfs_files_sizes[path] = size
 
-    non_lfs_files_sizes = {
-        o.path: o.size for o in client.repository.head.commit.traverse() if o.path not in lfs_files_sizes
-    }
-    non_lfs_files_sizes = {k: naturalsize(v).upper().replace("BYTES", " B") for k, v in non_lfs_files_sizes.items()}
+    if has_tag:
+        checksums = [r.entity.checksum for r in records]
+        sizes = repository.get_sizes(*checksums)
+        non_lfs_files_sizes = {
+            r.entity.path: naturalsize(s).upper().replace("BYTES", " B") for r, s in zip(records, sizes)
+        }
+    else:
+        non_lfs_files_sizes = {
+            o.path: o.size for o in repository.head.commit.traverse() if o.path not in lfs_files_sizes
+        }
+        non_lfs_files_sizes = {k: naturalsize(v).upper().replace("BYTES", " B") for k, v in non_lfs_files_sizes.items()}
+
+        # NOTE: Check .gitattributes file to see if a file is in LFS
+        get_lfs_tracking()
 
     for record in records:
         size = lfs_files_sizes.get(record.path) or non_lfs_files_sizes.get(record.path)
         record.size = size
+
+        # NOTE: When listing a tag we assume that the file is in LFS if it was in LFS at some point in time
+        if has_tag:
+            record.is_lfs = lfs_files_sizes.get(record.path) is not None
 
 
 def jsonld(records, **kwargs):
@@ -122,8 +127,8 @@ def jsonld(records, **kwargs):
     Args:
         records: Filtered collection.
     """
+    from renku.command.format.json import dumps
     from renku.command.schema.dataset import DatasetFileSchema
-    from renku.domain_model.json import dumps
 
     data = [DatasetFileSchema(flattened=True).dump(record) for record in records]
     return dumps(data, indent=2)
@@ -138,8 +143,8 @@ def json(records, **kwargs):
     Returns:
         String of records in JSON representation.
     """
+    from renku.command.format.json import dumps
     from renku.domain_model.dataset import DatasetFileDetailsJson
-    from renku.domain_model.json import dumps
 
     for record in records:
         record.creators = record.dataset.creators
@@ -157,7 +162,7 @@ DATASET_FILES_FORMATS: Dict[str, Callable] = {
 
 DATASET_FILES_COLUMNS = {
     "added": ("date_added", "added"),
-    "commit": ("entity.checksum", "commit"),
+    "checksum": ("entity.checksum", "checksum"),
     "creators": ("creators_csv", "creators"),
     "creators_full": ("creators_full_csv", "creators"),
     "dataset": ("title", "dataset"),
@@ -167,6 +172,7 @@ DATASET_FILES_COLUMNS = {
     "dataset_name": ("dataset_name", "dataset name"),
     "size": ("size", None),
     "lfs": ("is_lfs", "lfs"),
+    "source": ("source", None),
 }
 
 DATASET_FILES_COLUMNS_ALIGNMENTS = {"size": "right"}

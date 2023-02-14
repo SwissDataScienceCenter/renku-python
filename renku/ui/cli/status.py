@@ -17,12 +17,24 @@
 # limitations under the License.
 """Show status of data files created in the repository.
 
-Inspecting a repository
-~~~~~~~~~~~~~~~~~~~~~~~
+Description
+~~~~~~~~~~~
 
-``renku status`` command can be used to check if there are output files in
-a repository that are outdated and need to be re-generated. Output files get
-outdated due to changes in input data or source code (i.e. dependencies).
+Check if there are output files in a repository that are outdated and need
+to be re-generated. Output files get outdated due to changes in input data
+or source code (i.e. dependencies).
+
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. rst-class:: cli-reference-commands
+
+.. click:: renku.ui.cli.status:status
+   :prog: renku status
+   :nested: full
+
+Examples
+~~~~~~~~
 
 This command shows a list of output files that need to be updated along with
 a list of modified inputs for each file. It also display deleted inputs files
@@ -45,7 +57,7 @@ cutting and pasting to other commands).
    :group: Running
    :command: $ renku status
    :description: The the status of generated output files in the project.
-   :extended:
+   :target: rp
 """
 
 import click
@@ -65,53 +77,74 @@ def status(ctx, paths, ignore_deleted):
     communicator = ClickCallback()
     result = (
         get_status_command().with_communicator(communicator).build().execute(paths=paths, ignore_deleted=ignore_deleted)
-    )
+    ).output
 
-    stales, stale_activities, modified, deleted = result.output
-
-    if not stales and not deleted and not stale_activities:
+    if (
+        not result.outdated_outputs
+        and not result.deleted_inputs
+        and not result.outdated_activities
+        and not result.modified_hidden_inputs
+    ):
         click.secho("Everything is up-to-date.", fg=color.GREEN)
         return
 
-    if stales:
+    outdated = False
+
+    if result.outdated_outputs:
+        outdated = True
         click.echo(
-            f"Outdated outputs({len(stales)}):\n"
+            f"Outdated outputs({len(result.outdated_outputs)}):\n"
             "  (use `renku workflow visualize [<file>...]` to see the full lineage)\n"
             "  (use `renku update --all` to generate the file from its latest inputs)\n"
         )
-        for k in sorted(stales.keys()):
-            v = stales[k]
+        for k in sorted(result.outdated_outputs.keys()):
+            v = result.outdated_outputs[k]
             paths = click.style(", ".join(sorted(v)), fg=color.BLUE, bold=True)
             output = click.style(k, fg=color.RED, bold=True)
             click.echo(f"\t{output}: {paths}")
-    else:
-        click.secho("All files were generated from the latest inputs.", fg=color.GREEN)
+
+    if result.modified_hidden_inputs:
+        outdated = True
+        click.echo(
+            f"Outdated workflow files and their outputs({len(result.modified_hidden_inputs)}):\n"
+            "  (use `renku run [<workflow-file>]` to generate the outputs from the latest workflow file)\n"
+        )
+        for k in sorted(result.modified_hidden_inputs.keys()):
+            v = result.modified_hidden_inputs[k]
+            outputs = click.style(", ".join(sorted(v)), fg=color.RED, bold=True)
+            wff = click.style(k, fg=color.BLUE, bold=True)
+            click.echo(f"\t{wff}: {outputs}")
+
+        click.echo()
+
+    if not outdated:
+        click.secho("All files are generated from the latest inputs.", fg=color.GREEN)
 
     click.echo()
 
-    if modified:
+    if result.modified_inputs:
         click.echo(
-            f"Modified inputs({len(modified)}):\n"
+            f"Modified inputs({len(result.modified_inputs)}):\n"
             # TODO: Enable once renku workflow visualize is implemented
             # "  (use `renku workflow visualize [<file>...]` to see the full lineage)\n"
         )
-        for v in sorted(modified):
+        for v in sorted(result.modified_inputs):
             click.echo(click.style(f"\t{v}", fg=color.BLUE, bold=True))
         click.echo()
 
-    if deleted:
+    if result.deleted_inputs:
         click.echo("Deleted files used to generate outputs:\n")
-        for v in sorted(deleted):
+        for v in sorted(result.deleted_inputs):
             click.echo(click.style(f"\t{v}", fg=color.BLUE, bold=True))
         click.echo()
 
-    if stale_activities:
-        click.echo(f"Outdated activities that have no outputs({len(stale_activities)}):\n")
-        for k in sorted(stale_activities.keys()):
-            v = stale_activities[k]
+    if result.outdated_activities:
+        click.echo(f"Outdated activities that have no outputs({len(result.outdated_activities)}):\n")
+        for k in sorted(result.outdated_activities.keys()):
+            v = result.outdated_activities[k]
             paths = click.style(", ".join(sorted(v)), fg=color.BLUE, bold=True)
             activity = click.style(k, fg=color.RED, bold=True)
             click.echo(f"\t{activity}: {paths}")
         click.echo()
 
-    ctx.exit(1 if stales or stale_activities else 0)
+    ctx.exit(1 if result.outdated_outputs or result.outdated_activities else 0)

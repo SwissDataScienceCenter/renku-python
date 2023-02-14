@@ -20,14 +20,17 @@ import copy
 import io
 import json
 import uuid
+import zipfile
 from unittest.mock import MagicMock
 
 import jwt
 import pytest
 
 from renku.core.dataset.context import DatasetContext
+from renku.core.util.git import with_commit
 from renku.domain_model.git import GitURL
 from renku.domain_model.project import Project
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.agent import Person
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository
@@ -38,6 +41,7 @@ from renku.ui.service.errors import (
     UserProjectTemplateReferenceError,
     UserRepoUrlInvalidError,
 )
+from renku.ui.service.jobs.cleanup import cache_files_cleanup
 from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET
 from tests.utils import assert_rpc_response, retry_failed
 
@@ -96,6 +100,210 @@ def test_file_upload(svc_client, identity_headers):
 
     assert {"result"} == set(response.json.keys())
     assert isinstance(uuid.UUID(response.json["result"]["files"][0]["file_id"]), uuid.UUID)
+
+
+@pytest.mark.service
+def test_file_chunked_upload(svc_client, identity_headers, svc_cache_dir):
+    """Check successful file upload."""
+    headers = copy.deepcopy(identity_headers)
+    headers.pop("Content-Type")
+
+    upload_id = uuid.uuid4().hex
+    filename = uuid.uuid4().hex
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"chunk1"), filename),
+            dzuuid=upload_id,
+            dzchunkindex=0,
+            dztotalchunkcount=3,
+            dztotalfilesize=18,
+            chunked_content_type="application/text",
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert "files" not in response.json["result"]
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"chunk2"), filename),
+            dzuuid=upload_id,
+            dzchunkindex=1,
+            dztotalchunkcount=3,
+            dztotalfilesize=18,
+            chunked_content_type="application/text",
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert "files" not in response.json["result"]
+
+    # NOTE: force cleanup to ensure that chunks aren't prematurely cleaned up
+    cache_files_cleanup()
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"chunk3"), filename),
+            dzuuid=upload_id,
+            dzchunkindex=2,
+            dztotalchunkcount=3,
+            dztotalfilesize=18,
+            chunked_content_type="application/text",
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert 1 == len(response.json["result"]["files"])
+    assert isinstance(uuid.UUID(response.json["result"]["files"][0]["file_id"]), uuid.UUID)
+
+    file = next(svc_cache_dir[1].rglob("*")) / filename
+
+    assert "chunk1chunk2chunk3" == file.read_text()
+
+
+@pytest.mark.service
+def test_file_chunked_upload_zipped(svc_client, identity_headers, svc_cache_dir):
+    """Check successful file upload."""
+
+    input_str = "".join(f"chunk{i}" for i in range(1000))
+
+    with io.BytesIO() as f:
+        z = zipfile.ZipFile(f, "w", zipfile.ZIP_DEFLATED)
+        z.writestr("filename", input_str.encode("utf-8"))
+        z.close()
+
+        data = f.getvalue()
+
+    headers = copy.deepcopy(identity_headers)
+    headers.pop("Content-Type")
+
+    upload_id = uuid.uuid4().hex
+    filename = uuid.uuid4().hex
+
+    filesize = len(data)
+    chunksize = filesize // 2 + 1
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(data[:chunksize]), filename),
+            dzuuid=upload_id,
+            dzchunkindex=0,
+            dztotalchunkcount=2,
+            dztotalfilesize=filesize,
+            chunked_content_type="application/zip",
+            unpack_archive=True,
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert "files" not in response.json["result"]
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(data[chunksize:]), filename),
+            dzuuid=upload_id,
+            dzchunkindex=1,
+            dztotalchunkcount=2,
+            dztotalfilesize=filesize,
+            chunked_content_type="application/zip",
+            unpack_archive=True,
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert 1 == len(response.json["result"]["files"])
+    assert isinstance(uuid.UUID(response.json["result"]["files"][0]["file_id"]), uuid.UUID)
+
+    file = next(svc_cache_dir[1].rglob("*")) / response.json["result"]["files"][0]["relative_path"]
+
+    assert input_str == file.read_text()
+
+
+@pytest.mark.service
+def test_file_chunked_upload_delete(svc_client, identity_headers, svc_cache_dir):
+    """Test deleting uploaded file chunks."""
+    headers = copy.deepcopy(identity_headers)
+    content_type = headers.pop("Content-Type")
+
+    upload_id = uuid.uuid4().hex
+    filename = uuid.uuid4().hex
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"chunk1"), filename),
+            dzuuid=upload_id,
+            dzchunkindex=0,
+            dztotalchunkcount=3,
+            dztotalfilesize=18,
+            chunked_content_type="application/text",
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert "files" not in response.json["result"]
+
+    response = svc_client.post(
+        "/cache.files_upload",
+        data=dict(
+            file=(io.BytesIO(b"chunk2"), filename),
+            dzuuid=upload_id,
+            dzchunkindex=1,
+            dztotalchunkcount=3,
+            dztotalfilesize=18,
+            chunked_content_type="application/text",
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert "files" not in response.json["result"]
+    upload_path = next(svc_cache_dir[1].rglob("*")) / upload_id
+    assert upload_path.exists()
+
+    headers["Content-Type"] = content_type
+    response = svc_client.post(
+        "/cache.files_delete_chunks",
+        data=json.dumps(
+            dict(
+                dzuuid=upload_id,
+            )
+        ),
+        headers=headers,
+    )
+
+    assert response
+    assert 200 == response.status_code
+    assert {"result"} == set(response.json.keys())
+    assert f"Deleted chunks for {upload_id}" == response.json["result"]
+
+    assert not upload_path.exists()
 
 
 @pytest.mark.service
@@ -306,9 +514,10 @@ def test_clone_projects_multiple(svc_client, identity_headers, it_remote_repo_ur
 
     pids = [p["project_id"] for p in response.json["result"]["projects"]]
     assert last_pid in pids
+    assert 1 == len(pids)
 
     for inserted in project_ids:
-        assert inserted["project_id"] not in pids
+        assert inserted["project_id"] == last_pid
 
 
 @pytest.mark.service
@@ -815,21 +1024,21 @@ def test_migrating_protected_branch(svc_protected_old_repo):
 @pytest.mark.integration
 @pytest.mark.serial
 @retry_failed
-def test_cache_gets_synchronized(
-    local_remote_repository, directory_tree, quick_cache_synchronization, client_database_injection_manager
-):
+def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_cache_synchronization, with_injection):
     """Test that the cache stays synchronized with the remote repository."""
-    from renku.core.management.client import LocalClient
     from renku.domain_model.provenance.agent import Person
 
     svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout = local_remote_repository
 
-    client = LocalClient(remote_repo_checkout.path)
-
-    with client_database_injection_manager(client):
-        with client.commit(commit_message="Create dataset"):
-            with DatasetContext(name="my_dataset", create=True, commit_database=True) as dataset:
-                dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
+    with project_context.with_path(remote_repo_checkout.path):
+        with with_injection(remote_repo_checkout):
+            with with_commit(
+                repository=project_context.repository,
+                transaction_id=project_context.transaction_id,
+                commit_message="Create dataset",
+            ):
+                with DatasetContext(name="my_dataset", create=True, commit_database=True) as dataset:
+                    dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
 
     remote_repo_checkout.push()
     params = {
@@ -856,7 +1065,7 @@ def test_cache_gets_synchronized(
 
     remote_repo_checkout.pull()
 
-    with client_database_injection_manager(client):
+    with with_injection(remote_repo_checkout):
         datasets = DatasetGateway().get_all_active_datasets()
         assert 2 == len(datasets)
 
@@ -879,11 +1088,14 @@ def test_check_migrations_remote_anonymous(svc_client, it_remote_public_repo_url
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_check_migrations_local_minimum_version(svc_client_setup, mocker):
+@retry_failed
+def test_check_migrations_local_minimum_version(svc_client_setup, mocker, monkeypatch):
     """Check if migrations are required for a local project."""
+    monkeypatch.setenv("RENKU_SKIP_MIN_VERSION_CHECK", "0")
+
     svc_client, headers, project_id, _, _ = svc_client_setup
 
-    def _mock_database_project(project):
+    def mock_database_project(project):
         def mocked_getter(self, key):
             if key == "project":
                 return project
@@ -892,10 +1104,8 @@ def test_check_migrations_local_minimum_version(svc_client_setup, mocker):
         return mocked_getter
 
     mocker.patch("renku.domain_model.project.Project.minimum_renku_version", "2.0.0")
-    project = Project(creator=Person(name="John Doe", email="jd@example.com"), name="testproject")
-    mocker.patch(
-        "renku.command.command_builder.database_dispatcher.Database.__getitem__", _mock_database_project(project)
-    )
+    dummy_project = Project(creator=Person(name="John Doe", email="jd@example.com"), name="testproject")
+    mocker.patch("renku.infrastructure.database.Database.__getitem__", mock_database_project(dummy_project))
     mocker.patch("renku.version.__version__", "1.0.0")
 
     response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)

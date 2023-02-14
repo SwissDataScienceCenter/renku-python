@@ -18,7 +18,7 @@
 """Renku CLI fixtures for providers testing."""
 import json
 import os
-import pathlib
+import posixpath
 import re
 import urllib
 import warnings
@@ -26,27 +26,28 @@ import warnings
 import pytest
 
 from renku.core import errors
+from renku.core.config import set_value
 
 
 @pytest.fixture
-def zenodo_sandbox(client):
+def zenodo_sandbox(project):
     """Configure environment to use Zenodo sandbox environment."""
     os.environ["ZENODO_USE_SANDBOX"] = "true"
 
     access_token = os.getenv("ZENODO_ACCESS_TOKEN", "")
-    client.set_value("zenodo", "access_token", access_token)
+    set_value("zenodo", "access_token", access_token)
 
-    client.repository.add(".renku/renku.ini")
-    client.repository.commit("update renku.ini")
+    project.repository.add(".renku/renku.ini")
+    project.repository.commit("update renku.ini")
 
 
 @pytest.fixture
-def olos_sandbox(client):
+def olos_sandbox(project):
     """Configure environment to use Zenodo sandbox environment."""
     access_token = os.getenv("OLOS_ACCESS_TOKEN", "")
-    client.set_value("olos", "access_token", access_token)
-    client.repository.add(".renku/renku.ini")
-    client.repository.commit("update renku.ini")
+    set_value("olos", "access_token", access_token)
+    project.repository.add(".renku/renku.ini")
+    project.repository.commit("update renku.ini")
 
 
 @pytest.fixture(scope="module")
@@ -85,14 +86,32 @@ def dataverse_demo_cleanup(request):
 
 
 @pytest.fixture
-def dataverse_demo(client, dataverse_demo_cleanup):
+def dataverse_demo(project, dataverse_demo_cleanup):
     """Configure environment to use Dataverse demo environment."""
     access_token = os.getenv("DATAVERSE_ACCESS_TOKEN", "")
-    client.set_value("dataverse", "access_token", access_token)
-    client.set_value("dataverse", "server_url", "https://demo.dataverse.org")
+    set_value("dataverse", "access_token", access_token)
+    set_value("dataverse", "server_url", "https://demo.dataverse.org")
 
-    client.repository.add(".renku/renku.ini")
-    client.repository.commit("renku.ini")
+    project.repository.add(".renku/renku.ini")
+    project.repository.commit("renku.ini")
+
+
+@pytest.fixture
+def cloud_storage_credentials(project):
+    """Set credentials for all cloud storages."""
+    # S3
+    s3_access_key_id = os.getenv("CLOUD_STORAGE_S3_ACCESS_KEY_ID", "")
+    s3_secret_access_key = os.getenv("CLOUD_STORAGE_S3_SECRET_ACCESS_KEY", "")
+    s3_section = "os.zhdk.cloud.switch.ch"
+    set_value(section=s3_section, key="access-key-id", value=s3_access_key_id, global_only=True)
+    set_value(section=s3_section, key="secret-access-key", value=s3_secret_access_key, global_only=True)
+
+    # Azure
+    azure_account = "renkupythontest1"
+    azure_key = os.getenv("CLOUD_STORAGE_AZURE_KEY", "")
+    azure_section = f"{azure_account}.blob.core.windows.net"
+    set_value(section=azure_section, key="account", value=azure_account, global_only=True)
+    set_value(section=azure_section, key="key", value=azure_key, global_only=True)
 
 
 @pytest.fixture
@@ -106,7 +125,7 @@ def doi_responses():
     with responses.RequestsMock(assert_all_requests_are_fired=False) as response:
 
         def doi_callback(request):
-            response_url = "https://dataverse.harvard.edu/citation" "?persistentId=doi:10.11588/data/yyxx1122"
+            response_url = "https://dataverse.harvard.edu/citation" "?persistentId=doi:10.11588/data/xyz12345"
             if "zenodo" in request.url:
                 response_url = "https://zenodo.org/record/3363060"
             return (
@@ -120,7 +139,7 @@ def doi_responses():
                         "contributor": [{"contributorType": "ContactPerson", "family": "Doe", "given": "John"}],
                         "issued": {"date-parts": [[2019]]},
                         "abstract": "Test Dataset",
-                        "DOI": "10.11588/data/yyxx1122",
+                        "DOI": "10.11588/data/xyz12345",
                         "publisher": "heiDATA",
                         "title": "dataset",
                         "URL": response_url,
@@ -132,17 +151,17 @@ def doi_responses():
             method="GET", url=re.compile("{base_url}/.*".format(base_url=DOI_BASE_URL)), callback=doi_callback
         )
 
-        def version_callback(request):
+        def version_callback(_):
             return (
                 200,
                 {"Content-Type": "application/json"},
-                json.dumps({"status": "OK", "data": {"version": "4.1.3", "build": "abcdefg"}}),
+                json.dumps({"status": "OK", "data": {"version": "4.1.3", "build": "abc123"}}),
             )
 
         base_url = "https://dataverse.harvard.edu"
 
         url_parts = list(urllib.parse.urlparse(base_url))
-        url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSION_API)
+        url_parts[2] = posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSION_API)
         pattern = "{url}.*".format(url=urllib.parse.urlunparse(url_parts))
 
         response.add_callback(method="GET", url=re.compile(pattern), callback=version_callback)

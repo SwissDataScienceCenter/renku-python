@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2020-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -60,12 +60,10 @@ import traceback
 from urllib.parse import urlencode
 
 import click
-import filelock
-import portalocker
 
 import renku.ui.cli.utils.color as color
-from renku.command.echo import ERROR
-from renku.core.errors import MigrationRequired, ParameterError, ProjectNotSupported, RenkuException, UsageError
+from renku.command.util import ERROR
+from renku.core import errors
 from renku.ui.service.config import SENTRY_ENABLED, SENTRY_SAMPLERATE
 
 _BUG = click.style("Ahhhhhhhh! You have found a bug. 🐞\n\n", fg=color.RED, bold=True)
@@ -88,8 +86,15 @@ class RenkuExceptionsHandler(click.Group):
 
     def main(self, *args, **kwargs):
         """Catch and print all Renku exceptions."""
+        from renku.core.errors import MigrationRequired, ParameterError, ProjectNotSupported, RenkuException, UsageError
+
         try:
             return super().main(*args, **kwargs)
+        except errors.LockError:
+            click.echo(
+                click.style("Unable to acquire lock.\n", fg=color.RED)
+                + "Hint: Please wait for another renku process to finish and then try again."
+            )
         except RenkuException as e:
             click.echo(ERROR + str(e), err=True)
             if e.__cause__ is not None:
@@ -125,15 +130,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
     def main(self, *args, **kwargs):
         """Catch all exceptions."""
         try:
-            result = super().main(*args, **kwargs)
-            return result
-
-        except (filelock.Timeout, portalocker.LockException, portalocker.AlreadyLocked):
-            click.echo(
-                click.style("Unable to acquire lock.\n", fg=color.RED) + "Hint: Please wait for another renku "
-                "process to finish and then try again."
-            )
-
+            return super().main(*args, **kwargs)
         except Exception:
             if HAS_SENTRY:
                 self._handle_sentry()
@@ -150,10 +147,9 @@ class IssueFromTraceback(RenkuExceptionsHandler):
 
         with configure_scope() as scope:
             with capture_internal_exceptions():
-                from renku.command.git import get_git_home
-                from renku.infrastructure.repository import Repository
+                from renku.core.util.git import get_git_repository
 
-                user = Repository(get_git_home()).get_user()
+                user = get_git_repository().get_user()
 
                 scope.user = {"name": user.name, "email": user.email}
 

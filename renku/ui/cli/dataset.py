@@ -17,78 +17,43 @@
 # limitations under the License.
 r"""Renku CLI commands for handling of datasets.
 
-Manipulating datasets
-~~~~~~~~~~~~~~~~~~~~~
+Description
+~~~~~~~~~~~
 
-.. image:: ../_static/asciicasts/dataset-create.delay.gif
+Create, edit and manage the datasets in your Renku project.
+
+This is a core feature of Renku. You might want to go through the examples
+listed below to get an idea of how you can create, import, and edit datasets.
+
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. rst-class:: cli-reference-commands
+
+.. click:: renku.ui.cli.dataset:dataset
+   :prog: renku dataset
+   :nested: full
+
+Examples
+~~~~~~~~
+
+Create an empty dataset inside a Renku project:
+
+.. image:: ../../_static/asciicasts/dataset-create.delay.gif
    :width: 850
    :alt: Create a Dataset
 
-Creating an empty dataset inside a Renku project:
-
-.. code-block:: console
-
-    $ renku dataset create my-dataset
-    Creating a dataset ... OK
-
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset create <dataset>
-   :description: Create a new dataset.
-   :extended:
-
-You can pass the following options to this command to set various metadata for
-the dataset.
-
-+-------------------+------------------------------------------------------+
-| Option            | Description                                          |
-+===================+======================================================+
-| -t, --title       | A human-readable title for the dataset.              |
-+-------------------+------------------------------------------------------+
-| -d, --description | Dataset's description.                               |
-+-------------------+------------------------------------------------------+
-| -c, --creator     | Creator's name, email, and an optional affiliation.  |
-|                   | Accepted format is                                   |
-|                   | 'Forename Surname <email> [affiliation]'. Pass       |
-|                   | multiple times for a list of creators.               |
-+-------------------+------------------------------------------------------+
-| -k, --keyword     | Dataset's keywords. Pass multiple times for a list   |
-|                   | of keywords.                                         |
-+-------------------+------------------------------------------------------+
-| -m, --metadata    | Path to file containing custom JSON-LD metadata to   |
-|                   | be added to the dataset.                             |
-+-------------------+------------------------------------------------------+
-
-Editing a dataset's metadata:
-
-.. image:: ../_static/asciicasts/dataset-edit.delay.gif
-   :width: 850
-   :alt: Editing a Dataset
-
-Use the ``edit`` sub-command to change metadata of a dataset. You can edit the same
-set of metadata as the create command by passing the options described in the
-table above.
-
-.. code-block:: console
-
-    $ renku dataset edit my-dataset --title 'New title'
-    Successfully updated: title.
-
-Listing all datasets:
-
-.. code-block:: console
-
-    $ renku dataset ls
-    ID        NAME           TITLE          VERSION
-    --------  -------------  -------------  ---------
-    0ad1cb9a  some-dataset   Some Dataset
-    9436e36c  my-dataset     My Dataset
+   :description: Create a new dataset called <dataset>.
+   :target: rp,ui
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset ls
    :description: List all datasets in the project.
-   :extended:
+   :target: rp,ui
 
 You can select which columns to display by using ``--columns`` to pass a
 comma-separated list of column names:
@@ -105,16 +70,6 @@ Displayed results are sorted based on the value of the first column.
 
 You can specify output formats by passing ``--format`` with a value of ``tabular``,
 ``json-ld`` or ``json``.
-
-To inspect the state of the dataset on a given commit we can use ``--revision``
-flag for it:
-
-.. code-block:: console
-
-    $ renku dataset ls --revision=1103a42bd3006c94ef2af5d6a5e03a335f071215
-    ID        NAME                 TITLE               VERSION
-    a1fd8ce2  201901_us_flights_1  2019-01 US Flights  1
-    c2d80abe  ds1                  ds1
 
 Showing dataset details:
 
@@ -133,6 +88,8 @@ Showing dataset details:
     Description:
     Just some dataset
 
+You can also show details for a specific tag using the ``--tag`` option.
+
 Deleting a dataset:
 
 .. code-block:: console
@@ -142,31 +99,41 @@ Deleting a dataset:
 
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset rm <dataset>
    :description: Remove a dataset.
-   :extended:
+   :target: rp
 
+Creating a dataset with a storage backend:
+
+By passing a storage URI with the ``--storage`` option, you can tell Renku that
+the data for the dataset is stored in a remote storage. At the moment, Renku
+supports only S3 backends. For example:
+
+.. code-block:: console
+
+    $ renku dataset create s3-data --storage s3://bucket-name/path
+
+Renku prompts for your S3 credentials and can store them for future uses.
+
+.. note:: Data directory for datasets that have a storage backend is ignored by
+    Git. This is needed to avoid committing pulled data from a remote storage to Git.
 
 Working with data
 ~~~~~~~~~~~~~~~~~
 
-.. image:: ../_static/asciicasts/dataset-add.delay.gif
+Adding data to the dataset:
+
+.. image:: ../../_static/asciicasts/dataset-add.delay.gif
    :width: 850
    :alt: Add data to a Dataset
 
-Adding data to the dataset:
-
-.. code-block:: console
-
-    $ renku dataset add my-dataset http://data-url
-
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset add <dataset> <url>
    :description: Add data from <url> to a dataset. <url> can be a local
                  file path, an http(s) address or a Git git+http or git+ssh repository.
-   :extended:
+   :target: rp,ui
 
 This will copy the contents of ``data-url`` to the dataset and add it
 to the dataset metadata.
@@ -232,12 +199,12 @@ will yield:
             datafile
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset add <dataset> --source <path>
              [--destination <rel-path>] <git-url>
    :description: Add only data in <path> from Git. With --destination:
                  location the data is copied to.
-   :extended:
+   :target: rp
 
 To add a specific version of files, use ``--ref`` option for selecting a
 branch, commit, or tag. The value passed to this option must be a valid
@@ -268,17 +235,19 @@ specific branch, commit, or tag by passing ``--ref`` option.
 For datasets from providers like Dataverse or Zenodo, the whole dataset is
 updated to ensure consistency between the remote and local versions. Due to
 this limitation, the ``--include`` and ``--exclude`` flags are not compatible
-with those datasets. Modifying those datasets locally will prevent them from
-being updated.
+with those datasets. Moreover, deleted remote files are automatically deleted
+without requiring the ``--delete`` argument. Modifying those datasets locally
+will prevent them from being updated.
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset update <dataset>
    :description: Update files in a dataset based on their source.
-   :extended:
+   :target: rp
 
 The update command also checks for file changes in the project and updates
-datasets' metadata accordingly.
+datasets' metadata accordingly. You can automatically add new files from
+the dataset's data directory by using the ``--check-data-directory`` flag.
 
 You can limit the scope of updated files by specifying dataset names, using
 ``--include`` and ``--exclude`` to filter based on file names, or using
@@ -313,11 +282,11 @@ point in time. A tag can be added like this:
     $ renku dataset tag my-dataset 1.0 -d "Version 1.0 tag"
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset tag <dataset> <tag> [-d <desc>]
    :description: Add a tag to the current version of the dataset, with
                  description <desc>.
-   :extended:
+   :target: rp
 
 A list of all tags can be seen by running:
 
@@ -329,10 +298,10 @@ A list of all tags can be seen by running:
     2020-09-19 17:29:13  1.0     Version 1.0 tag  my-dataset  6c19a8d31545b...
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset ls-tags <dataset>
    :description: List all tags for a dataset.
-   :extended:
+   :target: rp
 
 
 A tag can be removed with:
@@ -342,10 +311,10 @@ A tag can be removed with:
     $ renku dataset rm-tags my-dataset 1.0
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset rm-tags <dataset> <tags...>
    :description: Remove tags from a dataset.
-   :extended:
+   :target: rp
 
 
 Importing data from other Renku projects:
@@ -362,15 +331,31 @@ or
 .. code-block:: console
 
     $ renku dataset import \
+        https://renkulab.io/projects/<username>/<project>/datasets/<dataset-name>
+
+or
+
+.. code-block:: console
+
+    $ renku dataset import \
         https://renkulab.io/datasets/<dataset-id>
 
 You can get the link to a dataset form the UI or you can construct it by
 knowing the dataset's ID.
 
+By default, Renku imports the latest version of a dataset from the other
+project. If you want to import another version, pass the dataset version's tag
+to the import command:
+
+.. code-block:: console
+
+    $ renku dataset import \
+        https://renkulab.io/datasets/<dataset-id> --tag <version>
+
 
 Importing data from an external provider:
 
-.. image:: ../_static/asciicasts/dataset-import.delay.gif
+.. image:: ../../_static/asciicasts/dataset-import.delay.gif
    :width: 850
    :alt: Import a Dataset
 
@@ -385,12 +370,15 @@ or ``doi:10.5281/zenodo.3352150``) and full URLs (e.g.
 ``http://zenodo.org/record/3352150``). A tag with the remote version of the
 dataset is automatically created.
 
+You can change the directory a dataset is imported to by using the
+``--datadir`` option.
+
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset import <uri>
    :description: Import a dataset. <uri> can be a Renku, Zenodo or Dataverse
                  URL or DOI.
-   :extended:
+   :target: rp
 
 Exporting data to an external provider:
 
@@ -405,11 +393,11 @@ exported. The remote version will be set to the local tag that is being
 exported.
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset export <dataset> <provider>
    :description: Export the dataset <dataset> to <provider>. Providers:
                  Zenodo, Dataverse.
-   :extended:
+   :target: rp
 
 To export to a Dataverse provider you must pass Dataverse server's URL and
 the name of the parent dataverse where the dataset will be exported to.
@@ -425,6 +413,26 @@ default to Primary/Derived. This has to adjusted manually in the OLOS
 interface after the export is done.
 
 
+Exporting data to a local directory:
+
+Renku provides a ``local`` provider that can be used to get a copy of a
+dataset. For example, the following command creates a copy of the dataset
+``my-dataset`` version ``v1`` in ``/tmp/my-dataset-v1``:
+
+.. code-block:: console
+
+    $ renku dataset export my-dataset local --tag v1 --path /tmp/my-dataset-v1
+
+This also creates a copy of dataset's metadata at the given version and puts it
+in ``<destination>/METADATA.yml``. If a destination path is not given to this
+command, it creates a directory in project's data directory using dataset's
+name and version: ``<data-dir>/<dataset-name>-<version>``. Export fails if the
+destination directory is not empty.
+
+.. note:: See our `dataset versioning tutorial
+   <https://renkulab.io/projects/learn-renku/dataset-crates/dataset-versioning>`_
+   for example recipes using tags for data management.
+
 Listing all files in the project associated with a dataset.
 
 .. code-block:: console
@@ -438,10 +446,10 @@ Listing all files in the project associated with a dataset.
     my-dataset           2020-02-28 16:49:02  data/my-dataset/weather/file3  *
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset ls-files
    :description: List all dataset files in project.
-   :extended:
+   :target: rp
 
 You can select which columns to display by using ``--columns`` to pass a
 comma-separated list of column names:
@@ -472,6 +480,11 @@ Sometimes you want to filter the files. For this we use ``--dataset``,
     my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file1  *
     my-dataset          2020-02-28 16:49:02  data/my-dataset/weather/file2  *
 
+Dataset files can be listed for a specific version (tag) of a dataset using the
+``--tag`` option. In this case, files from datasets which have that specific
+tag are displayed.
+
+
 Unlink a file from a dataset:
 
 .. code-block:: console
@@ -480,10 +493,10 @@ Unlink a file from a dataset:
     OK
 
 .. cheatsheet::
-   :group: Datasets
+   :group: Working with Renku Datasets
    :command: $ renku dataset unlink <dataset> [--include <path|pattern>]
    :description: Remove files from a dataset.
-   :extended:
+   :target: rp
 
 Unlink all files within a directory from a dataset:
 
@@ -508,15 +521,18 @@ Unlink all files from a dataset:
 """
 
 import json
+import os
 from pathlib import Path
+from typing import List, Union, cast
 
 import click
+from lazy_object_proxy import Proxy
 
 import renku.ui.cli.utils.color as color
 from renku.command.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.command.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.command.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
-from renku.ui.cli.utils.callback import ClickCallback
+from renku.core.util.util import NO_VALUE, NoValueType
 
 
 def _complete_datasets(ctx, param, incomplete):
@@ -542,7 +558,7 @@ def dataset():
     "-c",
     "--columns",
     type=click.STRING,
-    default="id,name,title,version",
+    default="id,name,title,version,datadir",
     metavar="<columns>",
     help="Comma-separated list of column to display: {}.".format(", ".join(DATASETS_COLUMNS.keys())),
     show_default=True,
@@ -579,13 +595,21 @@ def list_dataset(format, columns):
     help="Custom metadata to be associated with the dataset.",
 )
 @click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords.")
-def create(name, title, description, creators, metadata, keyword):
+@click.option("-s", "--storage", default=None, type=click.STRING, help="URI of the cloud storage backend.")
+@click.option(
+    "--datadir",
+    default=None,
+    type=click.Path(),
+    help="Dataset's data directory (defaults to 'data/<dataset name>').",
+)
+def create(name, title, description, creators, metadata, keyword, storage, datadir):
     """Create an empty dataset in the current repo."""
     from renku.command.dataset import create_dataset_command
     from renku.core.util.metadata import construct_creators
+    from renku.ui.cli.utils.callback import ClickCallback
 
     communicator = ClickCallback()
-    creators = creators or ()
+    creators = creators or []
 
     custom_metadata = None
 
@@ -606,6 +630,8 @@ def create(name, title, description, creators, metadata, keyword):
             creators=creators,
             keywords=keyword,
             custom_metadata=custom_metadata,
+            storage=storage,
+            datadir=datadir,
         )
     )
 
@@ -617,39 +643,91 @@ def create(name, title, description, creators, metadata, keyword):
 
 @dataset.command()
 @click.argument("name", shell_complete=_complete_datasets)
-@click.option("-t", "--title", default=None, type=click.STRING, help="Title of the dataset.")
-@click.option("-d", "--description", default=None, type=click.STRING, help="Dataset's description.")
+@click.option("-t", "--title", default=NO_VALUE, type=click.UNPROCESSED, help="Title of the dataset.")
+@click.option("-d", "--description", default=NO_VALUE, type=click.UNPROCESSED, help="Dataset's description.")
 @click.option(
     "-c",
     "--creator",
     "creators",
-    default=None,
+    default=[NO_VALUE],
     multiple=True,
-    help="Creator's name, email, and affiliation. " "Accepted format is 'Forename Surname <email> [affiliation]'.",
+    type=click.UNPROCESSED,
+    help="Creator's name, email, and affiliation. Accepted format is 'Forename Surname <email> [affiliation]'.",
 )
 @click.option(
     "-m",
     "--metadata",
-    default=None,
-    type=click.Path(exists=True, dir_okay=False),
+    default=NO_VALUE,
+    type=click.UNPROCESSED,
     help="Custom metadata to be associated with the dataset.",
 )
-@click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords or tags.")
-def edit(name, title, description, creators, metadata, keyword):
+@click.option(
+    "--metadata-source",
+    default=NO_VALUE,
+    type=click.UNPROCESSED,
+    help="Set the source field in the metadata when editing it if not provided, then the default is 'renku'.",
+)
+@click.option(
+    "-k",
+    "--keyword",
+    "keywords",
+    default=[NO_VALUE],
+    multiple=True,
+    type=click.UNPROCESSED,
+    help="List of keywords or tags.",
+)
+@click.option(
+    "-u",
+    "--unset",
+    default=[],
+    multiple=True,
+    type=click.Choice(["keywords", "k", "images", "i", "metadata", "m"]),
+    help="Remove keywords from dataset.",
+)
+def edit(name, title, description, creators, metadata, metadata_source, keywords, unset):
     """Edit dataset metadata."""
     from renku.command.dataset import edit_dataset_command
     from renku.core.util.metadata import construct_creators
+    from renku.ui.cli.utils.callback import ClickCallback
 
-    creators = creators or ()
-    keywords = keyword or ()
+    images: Union[None, NoValueType] = NO_VALUE
 
-    custom_metadata = None
+    if list(creators) == [NO_VALUE]:
+        creators = NO_VALUE
+
+    if list(keywords) == [NO_VALUE]:
+        keywords = NO_VALUE
+
+    if "k" in unset or "keywords" in unset:
+        if keywords is not NO_VALUE:
+            raise click.UsageError("Cant use '--keyword' together with unsetting keyword")
+        keywords = None
+
+    if "m" in unset or "metadata" in unset:
+        if metadata is not NO_VALUE:
+            raise click.UsageError("Cant use '--metadata' together with unsetting metadata")
+        metadata = None
+
+    if "i" in unset or "images" in unset:
+        images = None
+
+    if metadata_source is not NO_VALUE and metadata is NO_VALUE:
+        raise click.UsageError("The '--metadata-source' option can only be used with the '--metadata' flag")
+
+    if metadata_source is NO_VALUE and metadata is not NO_VALUE:
+        metadata_source = "renku"
+
+    custom_metadata = metadata
     no_email_warnings = False
 
-    if creators:
-        creators, no_email_warnings = construct_creators(creators, ignore_email=True)
+    if creators and creators is not NO_VALUE:
+        creators, no_email_warnings = construct_creators(creators, ignore_email=True)  # type: ignore
 
-    if metadata:
+    if metadata and metadata is not NO_VALUE:
+        path = Path(metadata)
+
+        if not path.exists():
+            raise click.UsageError(f"Path {path} does not exist.")
         custom_metadata = json.loads(Path(metadata).read_text())
 
     updated = (
@@ -661,8 +739,9 @@ def edit(name, title, description, creators, metadata, keyword):
             description=description,
             creators=creators,
             keywords=keywords,
-            skip_image_update=True,
+            images=images,
             custom_metadata=custom_metadata,
+            custom_metadata_source=metadata_source,
         )
     ).output
 
@@ -677,21 +756,25 @@ def edit(name, title, description, creators, metadata, keyword):
     else:
         click.echo("Successfully updated: {}.".format(", ".join(updated.keys())))
         if no_email_warnings:
-            click.echo(ClickCallback.WARNING + "No email or wrong format for: " + ", ".join(no_email_warnings))
+            click.echo(
+                ClickCallback.WARNING + "No email or wrong format for: " + ", ".join(cast(List[str], no_email_warnings))
+            )
 
 
 @dataset.command("show")
+@click.option("-t", "--tag", default=None, type=click.STRING, help="Tag for which to show dataset metadata.")
 @click.argument("name", shell_complete=_complete_datasets)
-def show(name):
+def show(tag, name):
     """Show metadata of a dataset."""
     from renku.command.dataset import show_dataset_command
     from renku.ui.cli.utils.terminal import print_markdown
 
-    result = show_dataset_command().build().execute(name=name)
+    result = show_dataset_command().build().execute(name=name, tag=tag)
     ds = result.output
 
     click.echo(click.style("Name: ", bold=True, fg=color.MAGENTA) + click.style(ds["name"], bold=True))
     click.echo(click.style("Created: ", bold=True, fg=color.MAGENTA) + (ds.get("created_at", "") or ""))
+    click.echo(click.style("Data Directory: ", bold=True, fg=color.MAGENTA) + str(ds.get("data_directory", "") or ""))
 
     creators = []
     for creator in ds.get("creators", []):
@@ -701,57 +784,77 @@ def show(name):
             creators.append(f"{creator['name']} <{creator['email']}>")
 
     click.echo(click.style("Creator(s): ", bold=True, fg=color.MAGENTA) + ", ".join(creators))
-    if ds["keywords"]:
-        click.echo(click.style("Keywords: ", bold=True, fg=color.MAGENTA) + ", ".join(ds.get("keywords", "")))
+    click.echo(click.style("Keywords: ", bold=True, fg=color.MAGENTA) + ", ".join(ds.get("keywords") or []))
 
-    if ds["version"]:
-        click.echo(click.style("Version: ", bold=True, fg=color.MAGENTA) + ds.get("version", ""))
+    click.echo(click.style("Version: ", bold=True, fg=color.MAGENTA) + (ds.get("version") or ""))
 
+    click.echo(click.style("Storage: ", bold=True, fg=color.MAGENTA) + (ds.get("storage") or ""))
+
+    click.echo(click.style("Annotations: ", bold=True, fg=color.MAGENTA))
     if ds["annotations"]:
-        click.echo(click.style("Annotations: ", bold=True, fg=color.MAGENTA))
         click.echo(json.dumps(ds.get("annotations", ""), indent=2))
 
     click.echo(click.style("Title: ", bold=True, fg=color.MAGENTA) + click.style(ds.get("title", ""), bold=True))
 
     click.echo(click.style("Description: ", bold=True, fg=color.MAGENTA))
-    print_markdown(ds.get("description", "") or "")
+    print_markdown(ds.get("description") or "")
+
+
+def add_provider_options(*param_decls, **attrs):
+    """Sets dataset export provider option groups on the dataset add command."""
+    from renku.core.dataset.providers.factory import ProviderFactory
+    from renku.ui.cli.utils.click import create_options
+
+    providers = [p for p in ProviderFactory.get_add_providers() if p.get_add_parameters()]  # type: ignore
+    return create_options(providers=providers, parameter_function="get_add_parameters")
 
 
 @dataset.command()
 @click.argument("name", shell_complete=_complete_datasets)
 @click.argument("urls", type=click.Path(), nargs=-1)
-@click.option("-e", "--external", is_flag=True, help="Creates a link to external data.")
-@click.option("--force", is_flag=True, help="Allow adding otherwise ignored files.")
+@click.option("-f", "--force", is_flag=True, help="Allow adding otherwise ignored files.")
 @click.option("-o", "--overwrite", is_flag=True, help="Overwrite existing files.")
 @click.option("-c", "--create", is_flag=True, help="Create dataset if it does not exist.")
+@click.option("-d", "--destination", default="", help="Destination directory within the dataset path")
 @click.option(
-    "-s", "--src", "--source", "sources", default=None, multiple=True, help="Path(s) within remote git repo to be added"
+    "--datadir",
+    default=None,
+    type=click.Path(),
+    help="Dataset's data directory (defaults to 'data/<dataset name>').",
 )
-@click.option(
-    "-d", "--dst", "--destination", "destination", default="", help="Destination directory within the dataset path"
-)
-@click.option("--ref", default=None, help="Add files from a specific commit/tag/branch.")
-def add(name, urls, external, force, overwrite, create, sources, destination, ref):
+@add_provider_options()
+def add(name, urls, force, overwrite, create, destination, datadir, **kwargs):
     """Add data to a dataset."""
     from renku.command.dataset import add_to_dataset_command
+    from renku.ui.cli.utils.callback import ClickCallback
 
     communicator = ClickCallback()
-    add_to_dataset_command().with_communicator(communicator).build().execute(
-        urls=urls,
-        dataset_name=name,
-        external=external,
-        force=force,
-        overwrite=overwrite,
-        create=create,
-        sources=sources,
-        destination=destination,
-        ref=ref,
+    result = (
+        add_to_dataset_command()
+        .with_communicator(communicator)
+        .build()
+        .execute(
+            urls=list(urls),
+            dataset_name=name,
+            force=force,
+            overwrite=overwrite,
+            create=create,
+            destination=destination,
+            datadir=datadir,
+            **kwargs,
+        )
     )
+
+    dataset = result.output
+    if dataset.storage:
+        communicator.info(f"To download files from the remote storage use 'renku dataset pull {dataset.name}'")
+
     click.secho("OK", fg=color.GREEN)
 
 
 @dataset.command("ls-files")
 @click.argument("names", nargs=-1, shell_complete=_complete_datasets)
+@click.option("-t", "--tag", default=None, type=click.STRING, help="Tag for which to show dataset files.")
 @click.option(
     "--creators",
     help="Filter files which where authored by specific creators. Multiple creators are specified by comma.",
@@ -773,7 +876,7 @@ def add(name, urls, external, force, overwrite, create, sources, destination, re
     help="Comma-separated list of column to display: {}.".format(", ".join(DATASET_FILES_COLUMNS.keys())),
     show_default=True,
 )
-def ls_files(names, creators, include, exclude, format, columns):
+def ls_files(names, tag, creators, include, exclude, format, columns):
     """List files in dataset."""
     from renku.command.dataset import list_files_command
 
@@ -784,7 +887,7 @@ def ls_files(names, creators, include, exclude, format, columns):
         list_files_command()
         .lock_dataset()
         .build()
-        .execute(datasets=names, creators=creators, include=include, exclude=exclude)
+        .execute(datasets=names, tag=tag, creators=creators, include=include, exclude=exclude)
     )
 
     click.echo(DATASET_FILES_FORMATS[format](result.output, columns=columns))
@@ -799,6 +902,7 @@ def unlink(name, include, exclude, yes):
     """Remove matching files from a dataset."""
     from renku.command.dataset import file_unlink_command
     from renku.core import errors
+    from renku.ui.cli.utils.callback import ClickCallback
 
     if not include and not exclude:
         raise errors.ParameterError(
@@ -830,7 +934,7 @@ def remove(name):
 @click.argument("name", shell_complete=_complete_datasets)
 @click.argument("tag")
 @click.option("-d", "--description", default="", help="A description for this tag")
-@click.option("--force", is_flag=True, help="Allow overwriting existing tags.")
+@click.option("-f", "--force", is_flag=True, help="Allow overwriting existing tags.")
 def tag(name, tag, description, force):
     """Create a tag for a dataset."""
     from renku.command.dataset import add_dataset_tag_command
@@ -869,66 +973,54 @@ def export_provider_argument(*param_decls, **attrs):
     def wrapper(f):
         from click import argument
 
-        from renku.core.dataset.providers import ProviderFactory
+        def get_providers_names():
+            from renku.core.dataset.providers.factory import ProviderFactory
 
-        providers = [k.lower() for k, p in ProviderFactory.providers().items() if p.supports_export]
-        f = argument("provider", type=click.Choice(providers))(f)
-        return f
+            return [p.name.lower() for p in ProviderFactory.get_export_providers()]  # type: ignore
+
+        return argument("provider", type=click.Choice(Proxy(get_providers_names)))(f)
 
     return wrapper
 
 
 def export_provider_options(*param_decls, **attrs):
     """Sets dataset export provider option groups on the dataset export command."""
+    from renku.core.dataset.providers.factory import ProviderFactory
+    from renku.ui.cli.utils.click import create_options
 
-    def wrapper(f):
-        from click_option_group import optgroup
-
-        from renku.core.dataset.providers import ProviderFactory
-
-        providers = [
-            (k, v) for k, v in ProviderFactory.providers().items() if v.supports_export and v.export_parameters()
-        ]
-
-        for i, (name, provider) in enumerate(providers):
-            params = provider.export_parameters()
-
-            for j, (param_name, (param_description, param_type)) in enumerate(params.items()):
-                if j == 0:
-                    param_description = f"\b\n{param_description}\n "  # NOTE: add newline after a group
-                f = optgroup.option(f"--{param_name}", type=param_type, help=param_description)(f)
-
-            name = f"{name} configuration"
-            if i == len(providers) - 1:
-                name = "\n  " + name  # NOTE: add newline before first group
-
-            f = optgroup.group(name=name)(f)
-
-        return f
-
-    return wrapper
+    providers = [p for p in ProviderFactory.get_export_providers() if p.get_export_parameters()]  # type: ignore
+    return create_options(providers=providers, parameter_function="get_export_parameters")
 
 
-@dataset.command("export")
+@dataset.command()
 @click.argument("name", shell_complete=_complete_datasets)
 @export_provider_argument()
-@click.option("-p", "--publish", is_flag=True, help="Automatically publish exported dataset.")
 @click.option("-t", "--tag", help="Dataset tag to export")
 @export_provider_options()
-def export_(name, provider, publish, tag, **kwargs):
+def export(name, provider, tag, **kwargs):
     """Export data to 3rd party provider."""
     from renku.command.dataset import export_dataset_command
     from renku.core import errors
+    from renku.ui.cli.utils.callback import ClickCallback
 
     try:
         communicator = ClickCallback()
         export_dataset_command().lock_dataset().with_communicator(communicator).build().execute(
-            name=name, provider_name=provider, publish=publish, tag=tag, **kwargs
+            name=name, provider_name=provider, tag=tag, **kwargs
         )
     except (ValueError, errors.InvalidAccessToken, errors.DatasetNotFound, errors.RequestError) as e:
-        raise click.BadParameter(e)
+        raise click.BadParameter(str(e))
 
     click.secho("OK", fg=color.GREEN)
+
+
+def import_provider_options(*param_decls, **attrs):
+    """Sets dataset import provider option groups on the dataset import command."""
+    from renku.core.dataset.providers.factory import ProviderFactory
+    from renku.ui.cli.utils.click import create_options
+
+    providers = [p for p in ProviderFactory.get_import_providers() if p.get_import_parameters()]  # type: ignore
+    return create_options(providers=providers, parameter_function="get_import_parameters")
 
 
 @dataset.command("import")
@@ -936,23 +1028,32 @@ def export_(name, provider, publish, tag, **kwargs):
 @click.option("--short-name", "--name", "name", default=None, help="A convenient name for dataset.")
 @click.option("-x", "--extract", is_flag=True, help="Extract files before importing to dataset.")
 @click.option("-y", "--yes", is_flag=True, help="Bypass download confirmation.")
-def import_(uri, name, extract, yes):
+@click.option(
+    "--datadir",
+    default=None,
+    type=click.Path(),
+    help="Dataset's data directory (defaults to 'data/<dataset name>').",
+)
+@import_provider_options()
+def import_(uri, name, extract, yes, datadir, **kwargs):
     """Import data from a 3rd party provider or another renku project.
 
     Supported providers: [Dataverse, Renku, Zenodo]
     """
     from renku.command.dataset import import_dataset_command
+    from renku.ui.cli.utils.callback import ClickCallback
 
     communicator = ClickCallback()
     import_dataset_command().with_communicator(communicator).build().execute(
-        uri=uri, name=name, extract=extract, yes=yes
+        uri=uri, name=name, extract=extract, yes=yes, datadir=datadir, **kwargs
     )
 
     click.secho(" " * 79 + "\r", nl=False)
     click.secho("OK", fg=color.GREEN)
 
 
-@dataset.command("update")
+@dataset.command()
+@click.pass_context
 @click.argument("names", nargs=-1, shell_complete=_complete_datasets)
 @click.option(
     "--creators",
@@ -964,12 +1065,39 @@ def import_(uri, name, extract, yes):
 @click.option("--delete", is_flag=True, help="Delete local files that are deleted from remote.")
 @click.option("-e", "--external", is_flag=True, help="Deprecated")
 @click.option("--no-external", is_flag=True, help="Skip updating external data.")
+@click.option("--no-local", is_flag=True, help="Skip updating local files.")
+@click.option("--no-remote", is_flag=True, help="Skip updating remote files.")
+@click.option("-c", "--check-data-directory", is_flag=True, help="Check datasets' data directories for new files.")
 @click.option("--all", "-a", "update_all", is_flag=True, default=False, help="Update all datasets.")
 @click.option("-n", "--dry-run", is_flag=True, help="Show what would have been changed")
-def update(names, creators, include, exclude, ref, delete, external, no_external, update_all, dry_run):
+@click.option(
+    "--plain",
+    is_flag=True,
+    default=False,
+    help="Show result as one entry per line for machine readability."
+    " 'd' = dataset update, 'f' = file update, 'r' = file removed.",
+)
+def update(
+    ctx,
+    names,
+    creators,
+    include,
+    exclude,
+    ref,
+    delete,
+    external,
+    no_external,
+    no_local,
+    no_remote,
+    check_data_directory,
+    update_all,
+    dry_run,
+    plain,
+):
     """Updates files in dataset from a remote Git repo."""
     from renku.command.dataset import update_datasets_command
     from renku.core import errors
+    from renku.ui.cli.utils.callback import ClickCallback
 
     communicator = ClickCallback()
 
@@ -987,7 +1115,7 @@ def update(names, creators, include, exclude, ref, delete, external, no_external
         raise errors.ParameterError("Cannot pass --include/--exclude with -a/--all")
 
     result = (
-        update_datasets_command()
+        update_datasets_command(dry_run=dry_run)
         .with_communicator(communicator)
         .build()
         .execute(
@@ -998,8 +1126,12 @@ def update(names, creators, include, exclude, ref, delete, external, no_external
             ref=ref,
             delete=delete,
             no_external=no_external,
+            no_local=no_local,
+            no_remote=no_remote,
+            check_data_directory=check_data_directory,
             update_all=update_all,
             dry_run=dry_run,
+            plain=plain,
         )
     )
 
@@ -1013,23 +1145,91 @@ def update(names, creators, include, exclude, ref, delete, external, no_external
             return tabulate(collection=records, columns="path,dataset,external", columns_mapping=columns)
 
         if not datasets and not dataset_files:
-            click.secho("Everything is up-to-date", fg=color.GREEN)
+            if not plain:
+                click.secho("Everything is up-to-date", fg=color.GREEN)
             return
 
         if datasets:
-            names = "\n\t".join(sorted([d.name for d in datasets]))
-            click.echo(f"The following imported datasets will be updated:\n\t{names}\n")
+            ds_names = sorted([d.name for d in datasets])
+            if plain:
+                ds_names = [f"d {n}" for n in ds_names]
+                click.echo(os.linesep.join(ds_names) + os.linesep)
+            else:
+                names = "\n\t".join(ds_names)
+                click.echo(f"The following imported datasets will be updated:\n\t{names}\n")
 
         if not dataset_files:
             return
 
         files = [f for f in dataset_files if not f.deleted]
         if files:
-            files = get_dataset_files(files)
-            click.echo(f"The following files will be updated:\n\n{files}\n")
+            if plain:
+                files = [f"f {f.path} {f.dataset.name}" for f in files]
+                click.echo(os.linesep.join(files) + os.linesep)
+            else:
+                files = get_dataset_files(files)
+                click.echo(f"The following files will be updated:\n\n{files}\n")
 
         deleted_files = [f for f in dataset_files if f.deleted]
         if deleted_files:
-            files = get_dataset_files(deleted_files)
-            message = " (pass '--delete' to remove them from datasets' metadata)" if not delete else ""
-            click.echo(f"The following files will be deleted{message}:\n\n{files}\n")
+            if plain:
+                files = [f"r {f.path} {f.dataset.name}" for f in deleted_files]
+                click.echo(os.linesep.join(files))
+            else:
+                files = get_dataset_files(deleted_files)
+                message = " (pass '--delete' to remove them from datasets' metadata)" if not delete else ""
+                click.echo(f"The following files will be deleted{message}:\n\n{files}\n")
+
+        ctx.exit(1)
+
+
+@dataset.command(hidden=True)
+@click.argument("name", shell_complete=_complete_datasets)
+@click.option(
+    "-l",
+    "--location",
+    default=None,
+    type=click.Path(exists=False, file_okay=False, writable=True),
+    help="A directory to copy data to, instead of the dataset's data directory.",
+)
+def pull(name, location):
+    """Pull data from a cloud storage."""
+    from renku.command.dataset import pull_external_data_command
+    from renku.ui.cli.utils.callback import ClickCallback
+
+    communicator = ClickCallback()
+    pull_external_data_command().with_communicator(communicator).build().execute(name=name, location=location)
+
+
+@dataset.command(hidden=True)
+@click.argument("name", shell_complete=_complete_datasets)
+@click.option(
+    "-e",
+    "--existing",
+    default=None,
+    type=click.Path(exists=True, file_okay=False),
+    help="Use an existing mount point instead of mounting the remote storage.",
+)
+@click.option("-u", "--unmount", is_flag=True, help="Unmount dataset's external storage.")
+@click.option("-y", "--yes", is_flag=True, help="No prompt when removing non-empty dataset's data directory.")
+def mount(name, existing, unmount, yes):
+    """Mount a cloud storage in the dataset's data directory."""
+    from renku.command.dataset import mount_external_storage_command
+    from renku.ui.cli.utils.callback import ClickCallback
+
+    command = mount_external_storage_command(unmount=unmount).with_communicator(ClickCallback()).build()
+
+    if unmount:
+        command.execute(name=name)
+    else:
+        command.execute(name=name, existing=existing, yes=yes)
+
+
+@dataset.command(hidden=True)
+@click.argument("name", shell_complete=_complete_datasets)
+def unmount(name):
+    """Unmount an external storage in the dataset's data directory."""
+    from renku.command.dataset import unmount_external_storage_command
+    from renku.ui.cli.utils.callback import ClickCallback
+
+    unmount_external_storage_command().with_communicator(ClickCallback()).build().execute(name=name)

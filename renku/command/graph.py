@@ -18,18 +18,20 @@
 """Knowledge graph building."""
 
 import json
-from typing import Dict, List, Set, Union
+from typing import Dict, List, Optional, Set, Union
+
+from pydantic import validate_arguments
 
 from renku.command.command_builder.command import Command, inject
-from renku.command.schema.activity import ActivitySchema
+from renku.command.schema.activity import ActivitySchema, WorkflowFileActivityCollectionSchema
 from renku.command.schema.composite_plan import CompositePlanSchema
 from renku.command.schema.dataset import DatasetSchema, DatasetTagSchema
 from renku.command.schema.plan import PlanSchema
 from renku.command.schema.project import ProjectSchema
+from renku.command.schema.workflow_file import WorkflowFileCompositePlanSchema, WorkflowFilePlanSchema
 from renku.command.view_model.graph import GraphViewModel
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.interface.plan_gateway import IPlanGateway
@@ -38,32 +40,29 @@ from renku.core.util.shacl import validate_graph
 from renku.core.util.urls import get_host
 from renku.domain_model.dataset import Dataset, DatasetTag
 from renku.domain_model.project import Project
-from renku.domain_model.provenance.activity import Activity
+from renku.domain_model.provenance.activity import Activity, WorkflowFileActivityCollection
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.plan import AbstractPlan, Plan
+from renku.domain_model.workflow.workflow_file import WorkflowFileCompositePlan, WorkflowFilePlan
 
 try:
-    import importlib_resources
+    import importlib_resources  # type: ignore[import]
 except ImportError:
     import importlib.resources as importlib_resources  # type: ignore
 
 
 def export_graph_command():
     """Return a command for exporting graph data."""
-    return Command().command(_export_graph).with_database(write=False).require_migration()
+    return Command().command(export_graph).with_database(write=False).require_migration()
 
 
-@inject.autoparams("client_dispatcher")
-def _export_graph(
-    client_dispatcher: IClientDispatcher,
-    format: str = "json-ld",
-    revision_or_range: str = None,
-    strict: bool = False,
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def export_graph(
+    format: str = "json-ld", revision_or_range: Optional[str] = None, strict: bool = False
 ) -> GraphViewModel:
     """Output graph in specific format.
 
     Args:
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         format(str, optional): Output format (Default value = "json-ld").
         revision_or_range(str, optional): Revision or range of revisions to export for (Default value = None).
         strict(bool, optional): Whether to check generated JSON-LD against the SHACL schema (Default value = False).
@@ -75,12 +74,12 @@ def _export_graph(
     format = format.lower()
 
     if revision_or_range:
-        graph = _get_graph_for_revision(revision_or_range=revision_or_range)
+        graph = get_graph_for_revision(revision_or_range=revision_or_range)
     else:
-        graph = _get_graph_for_all_objects()
+        graph = get_graph_for_all_objects()
 
     # NOTE: rewrite ids for current environment
-    host = get_host(client_dispatcher.current_client)
+    host = get_host()
 
     for node in graph:
         update_nested_node_host(node, host)
@@ -111,7 +110,7 @@ def update_nested_node_host(node: Dict, host: str) -> None:
 
 
 @inject.autoparams()
-def _get_graph_for_revision(
+def get_graph_for_revision(
     revision_or_range: str,
     database_gateway: IDatabaseGateway,
     project_gateway: IProjectGateway,
@@ -142,7 +141,7 @@ def _get_graph_for_revision(
 
 
 @inject.autoparams()
-def _get_graph_for_all_objects(
+def get_graph_for_all_objects(
     project_gateway: IProjectGateway,
     dataset_gateway: IDatasetGateway,
     activity_gateway: IActivityGateway,
@@ -160,7 +159,15 @@ def _get_graph_for_all_objects(
         List of JSON-LD metadata.
     """
     project = project_gateway.get_project()
-    objects: List[Union[Project, Dataset, DatasetTag, Activity, AbstractPlan]] = activity_gateway.get_all_activities()
+    # NOTE: Include deleted activities when exporting graph
+    objects: List[Union[Project, Dataset, DatasetTag, Activity, AbstractPlan, WorkflowFileActivityCollection]]
+
+    objects = activity_gateway.get_all_activities(include_deleted=True)
+
+    workflow_file_executions = [
+        a for a in activity_gateway.get_all_activity_collections() if isinstance(a, WorkflowFileActivityCollection)
+    ]
+    objects.extend(workflow_file_executions)
 
     processed_plans = set()
 
@@ -189,7 +196,8 @@ def _get_graph_for_all_objects(
 
 
 def _convert_entities_to_graph(
-    entities: List[Union[Project, Dataset, DatasetTag, Activity, AbstractPlan]], project: Project
+    entities: List[Union[Project, Dataset, DatasetTag, Activity, AbstractPlan, WorkflowFileActivityCollection]],
+    project: Project,
 ) -> List[Dict]:
     """Convert entities to JSON-LD graph.
 
@@ -206,8 +214,11 @@ def _convert_entities_to_graph(
         Dataset: DatasetSchema,
         DatasetTag: DatasetTagSchema,
         Activity: ActivitySchema,
+        WorkflowFilePlan: WorkflowFilePlanSchema,
         Plan: PlanSchema,
+        WorkflowFileCompositePlan: WorkflowFileCompositePlanSchema,
         CompositePlan: CompositePlanSchema,
+        WorkflowFileActivityCollection: WorkflowFileActivityCollectionSchema,
     }
 
     processed_plans = set()
@@ -216,14 +227,18 @@ def _convert_entities_to_graph(
     for entity in entities:
         if entity.id in processed_plans:
             continue
-        if isinstance(entity, (Dataset, Activity, AbstractPlan)):
+        if isinstance(entity, (Dataset, Activity, AbstractPlan, WorkflowFileActivityCollection)):
             # NOTE: Since the database is read-only, it's OK to modify objects; they won't be written back
             entity.unfreeze()
             entity.project_id = project_id
+
+            if isinstance(entity, (Activity, WorkflowFileActivityCollection)):
+                entity.association.plan.unfreeze()
+                entity.association.plan.project_id = project_id
         schema = next(s for t, s in schemas.items() if isinstance(entity, t))
         graph.extend(schema(flattened=True).dump(entity))
 
-        if not isinstance(entity, Activity):
+        if not isinstance(entity, (Activity, WorkflowFileActivityCollection)):
             continue
 
         # NOTE: mark activity plans as processed

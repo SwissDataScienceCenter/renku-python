@@ -22,7 +22,7 @@ from urllib3.exceptions import HTTPError
 
 from renku.command.dataset import add_to_dataset_command, import_dataset_command
 from renku.core import errors
-from renku.core.util.contexts import click_context
+from renku.core.util.contexts import renku_project_context
 from renku.core.util.git import push_changes
 from renku.domain_model.git import GitURL
 from renku.infrastructure.repository import Repository
@@ -33,7 +33,17 @@ from renku.ui.service.views.decorators import requires_cache
 
 @requires_cache
 def dataset_import(
-    cache, user, user_job_id, project_id, dataset_uri, name=None, extract=False, timeout=None, commit_message=None
+    cache,
+    user,
+    user_job_id,
+    project_id,
+    dataset_uri,
+    name=None,
+    extract=False,
+    tag=None,
+    timeout=None,
+    commit_message=None,
+    data_directory=None,
 ):
     """Job for dataset import."""
     user = cache.ensure_user(user)
@@ -45,7 +55,7 @@ def dataset_import(
     try:
         worker_log.debug(f"retrieving metadata for project {project_id}")
         project = cache.get_project(user, project_id)
-        with click_context(project.abs_path, "dataset_import"):
+        with renku_project_context(project.abs_path):
             worker_log.debug(f"project found in cache - importing dataset {dataset_uri}")
             communicator = ServiceCallback(user_job=user_job)
 
@@ -53,7 +63,13 @@ def dataset_import(
 
             command = import_dataset_command().with_commit_message(commit_message)
             command.with_communicator(communicator).build().execute(
-                uri=dataset_uri, name=name, extract=extract, yes=True, gitlab_token=gitlab_token
+                uri=dataset_uri,
+                name=name,
+                extract=extract,
+                tag=tag,
+                yes=True,
+                gitlab_token=gitlab_token,
+                datadir=data_directory,
             )
 
             worker_log.debug("operation successful - syncing with remote")
@@ -75,6 +91,10 @@ def _is_safe_to_pass_gitlab_token(project_git_url, dataset_uri):
     project_host = GitURL.parse(project_git_url).hostname
     dataset_host = urllib.parse.urlparse(dataset_uri).netloc
 
+    # NOTE: URLs changed from domain/gitlab to gitlab.domain when moving to cloud native gitlab
+    if project_host.startswith("gitlab.") and not dataset_host.startswith("gitlab."):
+        project_host = project_host.replace("gitlab.", "", 1)
+
     return project_host == dataset_host
 
 
@@ -91,7 +111,7 @@ def dataset_add_remote_file(cache, user, user_job_id, project_id, create_dataset
         worker_log.debug(f"checking metadata for project {project_id}")
         project = cache.get_project(user, project_id)
 
-        with click_context(project.abs_path, "dataset_add_remote_file"):
+        with renku_project_context(project.abs_path):
             urls = url if isinstance(url, list) else [url]
 
             worker_log.debug(f"adding files {urls} to dataset {name}")

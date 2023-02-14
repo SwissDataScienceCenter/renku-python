@@ -117,7 +117,7 @@ services:
     image: traefik:v2.4
     command: --api.insecure=true --providers.docker
     ports:
-      - "80:80"
+      - "81:81"
       # set the UI port to something other than 8080 since that's our service already
       - "8088:8080"
     volumes:

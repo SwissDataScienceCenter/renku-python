@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,33 +18,38 @@
 """Dataverse API integration."""
 
 import json
-import pathlib
+import posixpath
 import re
 import urllib
 from pathlib import Path
 from string import Template
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from urllib import parse as urlparse
 
-import attr
-from tqdm import tqdm
-
-from renku.command.command_builder import inject
 from renku.core import errors
-from renku.core.dataset.providers.api import ExporterApi, ProviderApi, ProviderRecordSerializerApi
+from renku.core.config import get_value, set_value
+from renku.core.dataset.providers.api import (
+    ExporterApi,
+    ExportProviderInterface,
+    ImportProviderInterface,
+    ProviderApi,
+    ProviderPriority,
+)
 from renku.core.dataset.providers.dataverse_metadata_templates import (
     AUTHOR_METADATA_TEMPLATE,
     CONTACT_METADATA_TEMPLATE,
     DATASET_METADATA_TEMPLATE,
 )
 from renku.core.dataset.providers.doi import DOIProvider
-from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.dataset.providers.repository import RepositoryImporter, make_request
 from renku.core.util import communication
-from renku.core.util.doi import extract_doi, is_doi
-from renku.core.util.file_size import bytes_to_unit
+from renku.core.util.doi import extract_doi, get_doi_url, is_doi
+from renku.core.util.urls import remove_credentials
+from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
-    from renku.core.dataset.providers.models import ProviderDataset
+    from renku.core.dataset.providers.models import ProviderDataset, ProviderParameter
+    from renku.domain_model.dataset import Dataset, DatasetTag
 
 DATAVERSE_API_PATH = "api/v1"
 
@@ -72,80 +77,19 @@ DATAVERSE_SUBJECTS = [
 ]
 
 
-def check_dataverse_uri(url):
-    """Check if an URL points to a dataverse instance."""
-    from renku.core.util import requests
-
-    url_parts = list(urlparse.urlparse(url))
-    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSION_API)
-
-    url_parts[3:6] = [""] * 3
-    version_url = urlparse.urlunparse(url_parts)
-
-    response = requests.get(version_url)
-
-    if response.status_code != 200:
-        return False
-
-    version_data = response.json()
-
-    if "status" not in version_data or "data" not in version_data:
-        return False
-
-    version_info = version_data["data"]
-
-    if "version" not in version_info or "build" not in version_info:
-        return False
-
-    return True
-
-
-def check_dataverse_doi(doi):
-    """Check if a DOI points to a dataverse dataset."""
-    try:
-        doi = DOIProvider().find_record(doi)
-    except LookupError:
-        return False
-
-    return check_dataverse_uri(doi.url)
-
-
-def make_records_url(record_id, base_url):
-    """Create URL to access record by ID."""
-    url_parts = list(urlparse.urlparse(base_url))
-    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_METADATA_API)
-    args_dict = {"exporter": DATAVERSE_EXPORTER, "persistentId": record_id}
-    url_parts[4] = urllib.parse.urlencode(args_dict)
-    return urllib.parse.urlunparse(url_parts)
-
-
-def make_versions_url(record_id, base_url):
-    """Create URL to access the versions of a record."""
-    url_parts = list(urlparse.urlparse(base_url))
-    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSIONS_API)
-    args_dict = {"exporter": DATAVERSE_EXPORTER, "persistentId": record_id}
-    url_parts[4] = urllib.parse.urlencode(args_dict)
-    return urllib.parse.urlunparse(url_parts)
-
-
-def make_file_url(file_id, base_url):
-    """Create URL to access record by ID."""
-    url_parts = list(urlparse.urlparse(base_url))
-    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_FILE_API)
-    args_dict = {"persistentId": file_id}
-    url_parts[4] = urllib.parse.urlencode(args_dict)
-    return urllib.parse.urlunparse(url_parts)
-
-
-@attr.s
-class DataverseProvider(ProviderApi):
+class DataverseProvider(ProviderApi, ExportProviderInterface, ImportProviderInterface):
     """Dataverse API provider."""
 
-    is_doi = attr.ib(default=False)
+    priority = ProviderPriority.HIGH
+    name = "Dataverse"
 
-    _server_url = attr.ib(default=None)
+    def __init__(self, uri: Optional[str], is_doi: bool = False):
+        super().__init__(uri=uri)
 
-    _dataverse_name = attr.ib(default=None)
+        self.is_doi = is_doi
+        self._server_url = None
+        self._dataverse_name = None
+        self._publish: bool = False
 
     @staticmethod
     def supports(uri):
@@ -158,22 +102,15 @@ class DataverseProvider(ProviderApi):
         return is_dataverse_uri or is_dataverse_doi
 
     @staticmethod
-    def supports_export():
-        """Whether this provider supports dataset export."""
-        return True
-
-    @staticmethod
-    def supports_import():
-        """Whether this provider supports dataset import."""
-        return True
-
-    @staticmethod
-    def export_parameters():
+    def get_export_parameters() -> List["ProviderParameter"]:
         """Returns parameters that can be set for export."""
-        return {
-            "dataverse-server": ("Dataverse server URL.", str),
-            "dataverse-name": ("Dataverse name to export to.", str),
-        }
+        from renku.core.dataset.providers.models import ProviderParameter
+
+        return [
+            ProviderParameter("dataverse-server", help="Dataverse server URL.", type=str),
+            ProviderParameter("dataverse-name", help="Dataverse name to export to.", type=str),
+            ProviderParameter("publish", help="Publish the exported dataset.", is_flag=True),
+        ]
 
     @staticmethod
     def record_id(uri):
@@ -181,68 +118,72 @@ class DataverseProvider(ProviderApi):
         parsed = urlparse.urlparse(uri)
         return urlparse.parse_qs(parsed.query)["persistentId"][0]
 
-    def find_record(self, uri, **kwargs) -> "DataverseRecordSerializer":
-        """Retrieves a record from Dataverse.
-
-        Args:
-            uri: DOI or URL.
+    def get_importer(self, **kwargs) -> "DataverseImporter":
+        """Get importer for a record from Dataverse.
 
         Returns:
-            DataverseRecordSerializer: The found record
-
+            DataverseImporter: The found record
         """
+
+        def get_export_uri(uri):
+            """Gets a dataverse api export URI from a dataverse entry."""
+            record_id = DataverseProvider.record_id(uri)
+            return make_records_url(record_id, uri)
+
+        uri = self.uri
         if self.is_doi:
-            doi = DOIProvider().find_record(uri)
-            uri = doi.url
+            doi = DOIProvider(uri=uri).get_importer()
+            uri = doi.uri
 
-        uri = self._get_export_uri(uri)
-        response = _make_request(uri)
+        uri = get_export_uri(uri)
+        response = make_request(uri)
 
-        return DataverseRecordSerializer(json=response.json(), uri=uri)
+        return DataverseImporter(json=response.json(), uri=uri, original_uri=self.uri)
 
-    @staticmethod
-    def _get_export_uri(uri):
-        """Gets a dataverse api export URI from a dataverse entry."""
-        record_id = DataverseProvider.record_id(uri)
-        uri = make_records_url(record_id, uri)
-        return uri
-
-    def get_exporter(self, dataset, access_token):
+    def get_exporter(
+        self,
+        dataset: "Dataset",
+        *,
+        tag: Optional["DatasetTag"],
+        dataverse_server: Optional[str] = None,
+        dataverse_name: Optional[str] = None,
+        publish: bool = False,
+        **kwargs,
+    ) -> "ExporterApi":
         """Create export manager for given dataset."""
-        return DataverseExporter(
-            dataset=dataset, access_token=access_token, server_url=self._server_url, dataverse_name=self._dataverse_name
-        )
 
-    @inject.autoparams()
-    def set_parameters(self, client_dispatcher: IClientDispatcher, *, dataverse_server, dataverse_name, **kwargs):
-        """Set and validate required parameters for a provider."""
-        config_base_url = "server_url"
+        def set_export_parameters():
+            """Set and validate required parameters for exporting for a provider."""
 
-        client = client_dispatcher.current_client
+            server = dataverse_server
+            config_base_url = "server_url"
+            if not server:
+                server = get_value("dataverse", config_base_url)
+            else:
+                set_value("dataverse", config_base_url, server, global_only=True)
 
-        if not dataverse_server:
-            dataverse_server = client.get_value("dataverse", config_base_url)
-        else:
-            client.set_value("dataverse", config_base_url, dataverse_server, global_only=True)
+            if not server:
+                raise errors.ParameterError("Dataverse server URL is required.")
 
-        if not dataverse_server:
-            raise errors.ParameterError("Dataverse server URL is required.")
+            if not dataverse_name:
+                raise errors.ParameterError("Dataverse name is required.")
 
-        if not dataverse_name:
-            raise errors.ParameterError("Dataverse name is required.")
+            self._server_url = server  # type: ignore
+            self._dataverse_name = dataverse_name  # type: ignore
+            self._publish = publish
 
-        self._server_url = dataverse_server
-        self._dataverse_name = dataverse_name
+        set_export_parameters()
+        return DataverseExporter(dataset=dataset, server_url=self._server_url, dataverse_name=self._dataverse_name)
 
 
-class DataverseRecordSerializer(ProviderRecordSerializerApi):
+class DataverseImporter(RepositoryImporter):
     """Dataverse record serializer."""
 
-    def __init__(self, uri: str, json: Dict[str, Any]):
-        super().__init__(uri=uri)
+    def __init__(self, uri: str, original_uri: str, json: Dict[str, Any]):
+        super().__init__(uri=uri, original_uri=original_uri)
         self._json: Dict[str, Any] = json
 
-    def is_last_version(self, uri):
+    def is_latest_version(self):
         """Check if record is at last possible version."""
         return True
 
@@ -254,21 +195,10 @@ class DataverseRecordSerializer(ProviderRecordSerializerApi):
         return re.sub("([a-z0-9])([A-Z])", r"\1_\2", property_name).lower()
 
     @property
-    def files(self):
-        """Get all file metadata entries."""
-        file_list = []
-
-        for f in self._json["distribution"]:
-            mapped_file = {self._convert_json_property_name(k): v for k, v in f.items()}
-            mapped_file["parent_url"] = self._uri
-            file_list.append(mapped_file)
-        return file_list
-
-    @property
     def version(self):
         """Get the major and minor version of this dataset."""
         uri = make_versions_url(DataverseProvider.record_id(self._uri), self._uri)
-        response = _make_request(uri).json()
+        response = make_request(uri).json()
         newest_version = response["data"][0]
         return "{}.{}".format(newest_version["versionNumber"], newest_version["versionMinorNumber"])
 
@@ -279,21 +209,27 @@ class DataverseRecordSerializer(ProviderRecordSerializerApi):
 
     def get_files(self):
         """Get Dataverse files metadata as ``DataverseFileSerializer``."""
-        files = self.files
+        files = []
+
+        for f in self._json["distribution"]:
+            mapped_file = {self._convert_json_property_name(k): v for k, v in f.items()}
+            mapped_file["parent_url"] = self._uri
+            files.append(mapped_file)
+
         if not files:
             raise LookupError("no files have been found - deposit is empty or protected")
 
-        return [DataverseFileSerializer(**file_) for file_ in files]
+        return [DataverseFileSerializer(**file) for file in files]
 
-    def as_dataset(self, client) -> "ProviderDataset":
-        """Deserialize ``DataverseRecordSerializer`` to ``Dataset``."""
-
+    def fetch_provider_dataset(self) -> "ProviderDataset":
+        """Deserialize a ``Dataset``."""
         from marshmallow import pre_load
 
         from renku.command.schema.agent import PersonSchema
         from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile, ProviderDatasetSchema
+        from renku.domain_model.dataset import Url, generate_default_name
 
-        class _DataverseDatasetSchema(ProviderDatasetSchema):
+        class DataverseDatasetSchema(ProviderDatasetSchema):
             """Schema for Dataverse datasets."""
 
             @pre_load
@@ -319,9 +255,14 @@ class DataverseRecordSerializer(ProviderRecordSerializerApi):
                 return data
 
         files = self.get_files()
-        dataset = ProviderDataset.from_jsonld(data=self._json, schema_class=_DataverseDatasetSchema)
-
+        dataset = ProviderDataset.from_jsonld(data=self._json, schema_class=DataverseDatasetSchema)
         dataset.version = self.version
+        dataset.name = generate_default_name(title=dataset.title or "", version=dataset.version)
+        dataset.same_as = (
+            Url(url_str=get_doi_url(dataset.identifier))
+            if is_doi(dataset.identifier)
+            else Url(url_id=remove_credentials(self.original_uri))
+        )
 
         if dataset.description and not dataset.description.strip():
             dataset.description = None
@@ -330,42 +271,47 @@ class DataverseRecordSerializer(ProviderRecordSerializerApi):
             if creator.affiliation == "":
                 creator.affiliation = None
 
-        self._files_info = [
+        self._provider_dataset_files = [
             ProviderDatasetFile(
                 source=file.remote_url.geturl(),
                 filename=Path(file.name).name,
                 checksum="",
-                size_in_mb=bytes_to_unit(file.content_size, "mi"),
+                filesize=file.content_size,
                 filetype=file.file_format,
                 path="",
             )
             for file in files
         ]
 
-        return dataset
+        self._provider_dataset = dataset
+        return self._provider_dataset
 
 
-@attr.s
 class DataverseFileSerializer:
     """Dataverse record file."""
 
-    _id = attr.ib(default=None, kw_only=True)
-
-    identifier = attr.ib(default=None, kw_only=True)
-
-    name = attr.ib(default=None, kw_only=True)
-
-    file_format = attr.ib(default=None, kw_only=True)
-
-    content_size = attr.ib(default=None, kw_only=True)
-
-    description = attr.ib(default=None, kw_only=True)
-
-    content_url = attr.ib(default=None, kw_only=True)
-
-    parent_url = attr.ib(default=None, kw_only=True)
-
-    _type = attr.ib(default=None, kw_only=True)
+    def __init__(
+        self,
+        *,
+        content_size=None,
+        content_url=None,
+        description=None,
+        file_format=None,
+        id=None,
+        identifier=None,
+        name=None,
+        parent_url=None,
+        type=None,
+    ):
+        self.content_size = content_size
+        self.content_url = content_url
+        self.description = description
+        self.file_format = file_format
+        self.id = id
+        self.identifier = identifier
+        self.name = name
+        self.parent_url = parent_url
+        self.type = type
 
     @property
     def remote_url(self):
@@ -386,44 +332,42 @@ class DataverseFileSerializer:
         return urllib.parse.urlparse(file_url)
 
 
-@attr.s
 class DataverseExporter(ExporterApi):
     """Dataverse export manager."""
 
-    dataset = attr.ib(kw_only=True)
-
-    access_token = attr.ib(kw_only=True)
-
-    _server_url = attr.ib(kw_only=True, default=None)
-
-    _dataverse_name = attr.ib(kw_only=True, default=None)
+    def __init__(self, *, dataset, server_url=None, dataverse_name=None, publish=False):
+        super().__init__(dataset)
+        self._access_token = None
+        self._server_url = server_url
+        self._dataverse_name = dataverse_name
+        self._publish = publish
 
     def set_access_token(self, access_token):
         """Set access token."""
-        self.access_token = access_token
+        self._access_token = access_token
 
-    def access_token_url(self):
+    def get_access_token_url(self):
         """Endpoint for creation of access token."""
         return urllib.parse.urljoin(self._server_url, "/dataverseuser.xhtml?selectTab=apiTokenTab")
 
-    def export(self, publish, client=None, **kwargs):
+    def export(self, **kwargs):
         """Execute export process."""
-        deposition = _DataverseDeposition(server_url=self._server_url, access_token=self.access_token)
+        from renku.domain_model.dataset import get_file_path_in_dataset
+
+        deposition = _DataverseDeposition(server_url=self._server_url, access_token=self._access_token)
         metadata = self._get_dataset_metadata()
         response = deposition.create_dataset(dataverse_name=self._dataverse_name, metadata=metadata)
         dataset_pid = response.json()["data"]["persistentId"]
+        repository = project_context.repository
 
-        with tqdm(total=len(self.dataset.files)) as progressbar:
+        with communication.progress("Uploading files ...", total=len(self.dataset.files)) as progressbar:
             for file in self.dataset.files:
-                try:
-                    path = (client.path / file.entity.path).relative_to(self.dataset.data_dir)
-                except ValueError:
-                    path = Path(file.entity.path)
-                filepath = client.repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
-                deposition.upload_file(full_path=filepath, path_in_dataset=path)
-                progressbar.update(1)
+                filepath = repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
+                path_in_dataset = get_file_path_in_dataset(dataset=self.dataset, dataset_file=file)
+                deposition.upload_file(full_path=filepath, path_in_dataset=path_in_dataset)
+                progressbar.update()
 
-        if publish:
+        if self._publish:
             deposition.publish_dataset()
 
         return dataset_pid
@@ -473,13 +417,13 @@ class DataverseExporter(ExporterApi):
         return authors, contacts
 
 
-@attr.s
 class _DataverseDeposition:
     """Dataverse record for deposit."""
 
-    access_token = attr.ib(kw_only=True)
-    server_url = attr.ib(kw_only=True)
-    dataset_pid = attr.ib(kw_only=True, default=None)
+    def __init__(self, *, access_token, server_url, dataset_pid=None):
+        self.access_token = access_token
+        self.server_url = server_url
+        self.dataset_pid = dataset_pid
 
     DATASET_CREATE_PATH = "dataverses/{dataverseName}/datasets"
     FILE_UPLOAD_PATH = "datasets/:persistentId/add"
@@ -529,10 +473,10 @@ class _DataverseDeposition:
     def _make_url(self, api_path, **query_params):
         """Create URL for creating a dataset."""
         url_parts = urlparse.urlparse(self.server_url)
-        path = pathlib.posixpath.join(DATAVERSE_API_PATH, api_path)
+        path = posixpath.join(DATAVERSE_API_PATH, api_path)
 
-        query_params = urllib.parse.urlencode(query_params)
-        url_parts = url_parts._replace(path=path, query=query_params)
+        query_params_str = urllib.parse.urlencode(query_params)
+        url_parts = url_parts._replace(path=path, query=query_params_str)
         return urllib.parse.urlunparse(url_parts)
 
     def _post(self, url, json=None, data=None, files=None):
@@ -546,9 +490,11 @@ class _DataverseDeposition:
 
     @staticmethod
     def _check_response(response):
-        if response.status_code not in [200, 201, 202]:
-            if response.status_code == 401:
-                raise errors.AuthenticationError("Access unauthorized - update access token.")
+        from renku.core.util import requests
+
+        try:
+            requests.check_response(response=response)
+        except errors.RequestError:
             json_res = response.json()
             raise errors.ExportError(
                 "HTTP {} - Cannot export dataset: {}".format(
@@ -564,11 +510,66 @@ def _escape_json_string(value):
     return value
 
 
-def _make_request(uri):
-    """Execute network request."""
+def check_dataverse_uri(url):
+    """Check if an URL points to a dataverse instance."""
     from renku.core.util import requests
 
-    response = requests.get(uri, headers={"Accept": "application/json"})
+    url_parts = list(urlparse.urlparse(url))
+    url_parts[2] = posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSION_API)
+
+    url_parts[3:6] = [""] * 3
+    version_url = urlparse.urlunparse(url_parts)
+
+    response = requests.get(version_url)
+
     if response.status_code != 200:
-        raise LookupError("record not found. Status: {}".format(response.status_code))
-    return response
+        return False
+
+    version_data = response.json()
+
+    if "status" not in version_data or "data" not in version_data:
+        return False
+
+    version_info = version_data["data"]
+
+    if "version" not in version_info or "build" not in version_info:
+        return False
+
+    return True
+
+
+def check_dataverse_doi(doi):
+    """Check if a DOI points to a dataverse dataset."""
+    try:
+        doi = DOIProvider(uri=doi).get_importer()
+    except LookupError:
+        return False
+
+    return check_dataverse_uri(doi.uri)
+
+
+def make_records_url(record_id, base_url):
+    """Create URL to access record by ID."""
+    url_parts = list(urlparse.urlparse(base_url))
+    url_parts[2] = posixpath.join(DATAVERSE_API_PATH, DATAVERSE_METADATA_API)
+    args_dict = {"exporter": DATAVERSE_EXPORTER, "persistentId": record_id}
+    url_parts[4] = urllib.parse.urlencode(args_dict)
+    return urllib.parse.urlunparse(url_parts)
+
+
+def make_versions_url(record_id, base_url):
+    """Create URL to access the versions of a record."""
+    url_parts = list(urlparse.urlparse(base_url))
+    url_parts[2] = posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSIONS_API)
+    args_dict = {"exporter": DATAVERSE_EXPORTER, "persistentId": record_id}
+    url_parts[4] = urllib.parse.urlencode(args_dict)
+    return urllib.parse.urlunparse(url_parts)
+
+
+def make_file_url(file_id, base_url):
+    """Create URL to access record by ID."""
+    url_parts = list(urlparse.urlparse(base_url))
+    url_parts[2] = posixpath.join(DATAVERSE_API_PATH, DATAVERSE_FILE_API)
+    args_dict = {"persistentId": file_id}
+    url_parts[4] = urllib.parse.urlencode(args_dict)
+    return urllib.parse.urlunparse(url_parts)

@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test ``migrate`` command."""
+
 import json
 import os
 import sys
@@ -25,13 +26,13 @@ import pytest
 
 from renku.core.constant import RENKU_HOME, RENKU_TMP
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
-from renku.core.management.client import LocalClient
-from renku.core.management.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
+from renku.core.migration.migrate import SUPPORTED_PROJECT_VERSION, get_migrations
 from renku.domain_model.dataset import RemoteEntity
+from renku.domain_model.project_context import project_context
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
-from tests.utils import format_result_exception
+from tests.utils import format_result_exception, get_dataset_with_injection, get_datasets_provenance_with_injection
 
 
 @pytest.mark.migration
@@ -39,20 +40,19 @@ def test_migrate_datasets_with_old_repository(isolated_runner, old_project):
     """Test migrate on old repository."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not old_project.is_dirty(untracked_files=True)
+    assert not old_project.repository.is_dirty(untracked_files=True)
 
 
 @pytest.mark.migration
-def test_migrate_project(isolated_runner, old_project, client_database_injection_manager):
+def test_migrate_project(isolated_runner, old_project, with_injection):
     """Test migrate on old repository."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not old_project.is_dirty(untracked_files=True)
+    assert not old_project.repository.is_dirty(untracked_files=True)
 
-    client = LocalClient(path=old_project.path)
-    with client_database_injection_manager(client):
-        assert client.project
-        assert client.project.name
+    with project_context.with_path(old_project.path), with_injection():
+        assert project_context.project
+        assert project_context.project.name
 
 
 @pytest.mark.migration
@@ -93,57 +93,35 @@ def test_migration_check(isolated_runner, project):
 
 
 @pytest.mark.migration
-def test_correct_path_migrated(isolated_runner, old_project, client_database_injection_manager):
+def test_correct_path_migrated(isolated_runner, old_project, with_injection):
     """Check if path on dataset files has been correctly migrated."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    client = LocalClient(path=old_project.path)
-    with client_database_injection_manager(client):
-        datasets = DatasetGateway().get_all_active_datasets()
-        assert datasets
+    with project_context.with_path(old_project.path):
+        with with_injection():
+            datasets = DatasetGateway().get_all_active_datasets()
+            assert datasets
 
-        for ds in datasets:
-            for file in ds.files:
-                path = Path(file.entity.path)
-                assert path.exists()
-                assert not path.is_absolute()
-                assert file.id
+            for ds in datasets:
+                for file in ds.files:
+                    path = Path(file.entity.path)
+                    assert path.exists()
+                    assert not path.is_absolute()
+                    assert file.id
 
 
 @pytest.mark.migration
-def test_correct_relative_path(isolated_runner, old_project, client_database_injection_manager):
+def test_correct_relative_path(isolated_runner, old_project, with_injection):
     """Check if path on dataset has been correctly migrated."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    client = LocalClient(path=old_project.path)
+    with project_context.with_path(path=old_project.path):
+        with with_injection():
+            datasets_provenance = DatasetsProvenance()
 
-    with client_database_injection_manager(client):
-        datasets_provenance = DatasetsProvenance()
-
-        assert len(list(datasets_provenance.datasets)) > 0
-
-
-@pytest.mark.migration
-def test_remove_committed_lock_file(isolated_runner, old_project):
-    """Check that renku lock file has been successfully removed from git."""
-    repo = old_project
-    repo_path = Path(old_project.path)
-    with open(str(repo_path / ".renku.lock"), "w") as f:
-        f.write("lock")
-
-    repo.add(".renku.lock", force=True)
-    repo.commit("locked")
-
-    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    assert not (repo_path / ".renku.lock").exists()
-    assert not repo.is_dirty(untracked_files=True)
-
-    ignored = (repo_path / ".gitignore").read_text()
-    assert ".renku.lock" in ignored
+            assert len(list(datasets_provenance.datasets)) > 0
 
 
 @pytest.mark.migration
@@ -169,7 +147,7 @@ def test_migrations_runs(isolated_runner, old_project):
     assert "No migrations required." in result.output
 
     tmp_path = os.path.join(RENKU_HOME, RENKU_TMP)
-    paths = [c.b_path for c in old_project.head.commit.get_changes() if tmp_path in c.b_path]
+    paths = [c.b_path for c in old_project.repository.head.commit.get_changes() if tmp_path in c.b_path]
 
     assert 0 == len(paths), ", ".join(paths)
 
@@ -186,6 +164,7 @@ def test_migration_version():
 @pytest.mark.migration
 def test_workflow_migration(isolated_runner, old_workflow_project):
     """Check that *.cwl workflows can be migrated."""
+    _, expected_strings = old_workflow_project
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
 
     assert 0 == result.exit_code, format_result_exception(result)
@@ -194,22 +173,19 @@ def test_workflow_migration(isolated_runner, old_workflow_project):
     result = isolated_runner.invoke(cli, ["graph", "export", "--full"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    for expected in old_workflow_project["expected_strings"]:
+    for expected in expected_strings:
         assert expected in result.output
 
 
 @pytest.mark.migration
-def test_comprehensive_dataset_migration(
-    isolated_runner, old_dataset_project, load_dataset_with_injection, get_datasets_provenance_with_injection
-):
+def test_comprehensive_dataset_migration(isolated_runner, old_dataset_project):
     """Test migration of old project with all dataset variations."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
-    client = old_dataset_project
-    dataset = load_dataset_with_injection("dataverse", client)
-    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+    dataset = get_dataset_with_injection("dataverse")
+    with get_datasets_provenance_with_injection() as datasets_provenance:
         tags = datasets_provenance.get_all_tags(dataset)
 
     assert "/datasets/1d2ed1e43aeb4f2590b238084ee3d86c" == dataset.id
@@ -231,8 +207,8 @@ def test_comprehensive_dataset_migration(
     assert file_.based_on is None
     assert not hasattr(file_, "creators")
 
-    dataset = load_dataset_with_injection("mixed", client)
-    with get_datasets_provenance_with_injection(client) as datasets_provenance:
+    dataset = get_dataset_with_injection("mixed")
+    with get_datasets_provenance_with_injection() as datasets_provenance:
         tags = datasets_provenance.get_all_tags(dataset)
     assert "v1" == tags[0].name
 
@@ -264,14 +240,12 @@ def test_comprehensive_dataset_migration(
     ],
     indirect=["old_dataset_project"],
 )
-def test_migrate_renku_dataset_same_as(
-    isolated_runner, old_dataset_project, load_dataset_with_injection, name, same_as
-):
+def test_migrate_renku_dataset_same_as(isolated_runner, old_dataset_project, name, same_as):
     """Test migration of imported renku datasets remove dashes from the same_as field."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    dataset = load_dataset_with_injection(name, old_dataset_project)
+    dataset = get_dataset_with_injection(name)
 
     assert same_as == dataset.same_as.value
 
@@ -285,24 +259,22 @@ def test_migrate_renku_dataset_same_as(
     ],
     indirect=["old_dataset_project"],
 )
-def test_migrate_renku_dataset_derived_from(
-    isolated_runner, old_dataset_project, load_dataset_with_injection, name, derived_from
-):
+def test_migrate_renku_dataset_derived_from(isolated_runner, old_dataset_project, name, derived_from):
     """Test migration of datasets remove dashes from the derived_from field."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    dataset = load_dataset_with_injection(name, old_dataset_project)
+    dataset = get_dataset_with_injection(name)
 
     assert derived_from == dataset.derived_from.url_id
 
 
 @pytest.mark.migration
-def test_no_blank_node_after_dataset_migration(isolated_runner, old_dataset_project, load_dataset_with_injection):
+def test_no_blank_node_after_dataset_migration(isolated_runner, old_dataset_project):
     """Test migration of datasets with blank nodes creates IRI identifiers."""
     assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict"]).exit_code
 
-    dataset = load_dataset_with_injection("2019-01_us_fligh_1", old_dataset_project)
+    dataset = get_dataset_with_injection("2019-01_us_fligh_1")
 
     assert not dataset.creators[0].id.startswith("_:")
     assert not dataset.same_as.id.startswith("_:")
@@ -358,7 +330,7 @@ def test_migrate_check_on_non_renku_repository(isolated_runner):
     "command",
     [
         ["config", "set", "key", "value"],
-        ["dataset", "add", "new", "README.md"],
+        ["dataset", "add", "--copy", "new", "README.md"],
         ["dataset", "create", "new"],
         ["dataset", "edit", "new"],
         ["dataset", "export", "new", "zenodo"],
@@ -411,12 +383,12 @@ def test_commands_work_on_old_repository(isolated_runner, old_repository_with_su
 
 @pytest.mark.migration
 @pytest.mark.parametrize("name", ["mixed", "dataverse"])
-def test_migrate_can_preserve_dataset_ids(isolated_runner, old_dataset_project, load_dataset_with_injection, name):
+def test_migrate_can_preserve_dataset_ids(isolated_runner, old_dataset_project, name):
     """Test migrate can preserve old datasets' ids."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict", "--preserve-identifiers"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    dataset = load_dataset_with_injection(name, old_dataset_project)
+    dataset = get_dataset_with_injection(name)
 
     assert dataset.identifier == dataset.initial_identifier
     assert dataset.derived_from is None
@@ -427,37 +399,34 @@ def test_migrate_can_preserve_dataset_ids(isolated_runner, old_dataset_project, 
 
 
 @pytest.mark.migration
-def test_migrate_preserves_creation_date_when_preserving_ids(
-    isolated_runner, old_dataset_project, load_dataset_with_injection
-):
-    """Test migrate doesn't change dataset's dateCreated when --preserve-identifiers is passed."""
+def test_migrate_preserves_date_when_preserving_ids(isolated_runner, old_dataset_project):
+    """Test migrate doesn't change dataset's dateCreated/Modified when --preserve-identifiers is passed."""
     assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict", "--preserve-identifiers"]).exit_code
 
-    dataset = load_dataset_with_injection("mixed", old_dataset_project)
+    dataset = get_dataset_with_injection("mixed")
 
     assert "2020-08-10 21:35:20+00:00" == dataset.date_created.isoformat(" ")
+    assert "2020-08-10 21:35:20+00:00" == dataset.date_modified.isoformat(" ")
 
 
 @pytest.mark.migration
 @pytest.mark.parametrize("old_dataset_project", ["old-datasets-v0.16.0.git"], indirect=True)
-def test_migrate_preserves_creation_date_for_mutated_datasets(
-    isolated_runner, old_dataset_project, load_dataset_with_injection
-):
-    """Test migration of datasets that were mutated keeps original dateCreated."""
+def test_migrate_preserves_date_for_mutated_datasets(isolated_runner, old_dataset_project):
+    """Test migration of datasets that were mutated keeps original dateCreated/Modified."""
     assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict"]).exit_code
 
-    dataset = load_dataset_with_injection("local", old_dataset_project)
+    dataset = get_dataset_with_injection("local")
 
-    assert "2021-07-23 14:34:58+00:00" == dataset.date_created.isoformat(" ")
+    assert "2021-07-23 14:34:24+00:00" == dataset.date_created.isoformat(" ")
+    assert "2021-07-23 14:34:58+00:00" == dataset.date_modified.isoformat(" ")
 
 
 @pytest.mark.migration
-def test_migrate_sets_correct_creation_date_for_non_mutated_datasets(
-    isolated_runner, old_dataset_project, load_dataset_with_injection
-):
-    """Test migration of datasets that weren't mutated uses commit date as dateCreated."""
+def test_migrate_sets_correct_date_for_non_mutated_datasets(isolated_runner, old_dataset_project):
+    """Test migration of datasets that weren't mutated uses commit date as dateCreated/Modified."""
     assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict"]).exit_code
 
-    dataset = load_dataset_with_injection("mixed", old_dataset_project)
+    dataset = get_dataset_with_injection("mixed")
 
-    assert "2020-08-10 23:35:56+02:00" == dataset.date_created.isoformat(" ")
+    assert "2020-08-10 21:35:20+00:00" == dataset.date_created.isoformat(" ")
+    assert "2020-08-10 23:35:56+02:00" == dataset.date_modified.isoformat(" ")

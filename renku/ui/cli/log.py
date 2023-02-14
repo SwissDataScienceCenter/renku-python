@@ -17,8 +17,23 @@
 # limitations under the License.
 """Renku cli for history of renku commands.
 
-You can use ``renku log`` to get a history of renku commands.
+Description
+~~~~~~~~~~~
+
+Get the history of renku commands.
 At the moment, it shows workflow executions and dataset changes.
+
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. rst-class:: cli-reference-commands
+
+.. click:: renku.ui.cli.log:log
+   :prog: renku log
+   :nested: full
+
+Examples
+~~~~~~~~~~~
 
 .. code-block:: console
 
@@ -52,7 +67,7 @@ You can select a format using the ``--format <format>`` argument.
    :group: Misc
    :command: $ renku log
    :description: Show a history of renku actions.
-   :extended:
+   :target: rp
 """
 
 import click
@@ -65,6 +80,7 @@ from renku.command.view_model.log import (
     DatasetLogViewModel,
     LogViewModel,
 )
+from renku.ui.cli.utils.terminal import show_text_with_pager, strip_ansi_codes
 
 
 def _print_log(log_entry: LogViewModel) -> str:
@@ -208,14 +224,23 @@ def _print_dataset_log(log_entry: DatasetLogViewModel) -> str:
 )
 @click.option("-w", "--workflows", is_flag=True, default=False, help="Show only workflow executions.")
 @click.option("-d", "--datasets", is_flag=True, default=False, help="Show only dataset modifications.")
-def log(columns, format, workflows, datasets):
+@click.option("--no-pager", is_flag=True, help="Don't use pager (less) for output.")
+@click.option("-c", "--no-color", is_flag=True, help="Do not colorize output.")
+def log(columns, format, workflows, datasets, no_pager, no_color):
     """Show a history of renku workflow and dataset commands."""
     from renku.command.log import log_command
 
     result = log_command().with_database().build().execute(workflows_only=workflows, datasets_only=datasets).output
     if format == "detailed":
         entries = sorted(result, key=lambda e: e.date, reverse=True)
-        texts = [_print_log(e) for e in entries]
-        click.echo("\n\n".join(texts))
+        text = "\n\n".join([_print_log(e) for e in entries])
+
+        if no_color:
+            text = strip_ansi_codes(text)
     else:
-        click.echo(LOG_FORMATS[format](result, columns))
+        text = LOG_FORMATS[format](result, columns)  # type: ignore
+
+    if no_pager:
+        click.echo(text)
+    else:
+        show_text_with_pager(text)

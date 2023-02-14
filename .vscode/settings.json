@@ -1,0 +1,29 @@
+{
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestArgs": ["--no-cov"],
+  "python.linting.flake8Path": "flake8helled",
+  "python.linting.flake8Enabled": true,
+  "python.linting.flake8Args": [
+    "--config",
+    "pyproject.toml",
+  ],
+  "python.formatting.provider": "black",
+  "python.formatting.blackArgs": [
+    "-l",
+    "120",
+    "-t",
+    "py36",
+    "-t",
+    "py37",
+    "-t",
+    "py38",
+    "--include",
+    "\\.pyi?$",
+    "--exclude",
+    "\\.eggs | \\.git | \\.hg | \\.mypy_cache | \\.tox | \\.venv | _build | buck-out | build | dist | docs/conf.py",
+  ],
+  "esbonio.sphinx.confDir": "",
+  "python.analysis.include": [
+    "renku/**"
+  ],
+}

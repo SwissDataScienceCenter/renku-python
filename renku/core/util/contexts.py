@@ -20,11 +20,14 @@
 import contextlib
 import os
 import sys
+import time
 from pathlib import Path
+from typing import Dict, List, Optional, Union
 
-import click
-
-from renku.core.util.git import default_path
+from renku.command.command_builder import inject
+from renku.core import errors
+from renku.core.interface.database_gateway import IDatabaseGateway
+from renku.core.interface.project_gateway import IProjectGateway
 
 
 @contextlib.contextmanager
@@ -55,7 +58,7 @@ class redirect_stdin(contextlib.ContextDecorator):
         setattr(sys, self._stream, self._new_target)
         return self._new_target
 
-    def __exit__(self, exctype, excinst, exctb):
+    def __exit__(self, exception_type, exception_value, traceback):
         """Restore the stream value."""
         setattr(sys, self._stream, self._old_targets.pop())
 
@@ -104,12 +107,96 @@ def measure(message="TOTAL"):
         print(f"{message}: {total_seconds} seconds")
 
 
-def click_context(path, command):
-    """Provide a click context with repo path injected."""
-    from renku.core.constant import RENKU_HOME
-    from renku.core.management.client import LocalClient
+@contextlib.contextmanager
+def renku_project_context(path, check_git_path=True):
+    """Provide a project context with repo path injected."""
+    from renku.core.util.git import get_git_path
+    from renku.domain_model.project_context import project_context
 
-    return click.Context(
-        click.Command(command),
-        obj=LocalClient(path=default_path(path), renku_home=RENKU_HOME, external_storage_requested=True),
-    ).scope()
+    if check_git_path:
+        path = get_git_path(path)
+
+    with project_context.with_path(path=path):
+        project_context.external_storage_requested = True
+        yield project_context.path
+
+
+@contextlib.contextmanager
+@inject.autoparams("project_gateway", "database_gateway")
+def with_project_metadata(
+    project_gateway: IProjectGateway,
+    database_gateway: IDatabaseGateway,
+    read_only: bool = False,
+    name: Optional[str] = None,
+    namespace: Optional[str] = None,
+    description: Optional[str] = None,
+    keywords: Optional[List[str]] = None,
+    custom_metadata: Optional[Dict] = None,
+):
+    """Yield an editable metadata object.
+
+    Args:
+        project_gateway(IProjectGateway): Injected project gateway.
+        database_gateway(IDatabaseGateway): Injected database gateway.
+        read_only(bool): Whether to save changes or not (Default value = False).
+        name(Optional[str]): Name of the project (when creating a new one) (Default value = None).
+        namespace(Optional[str]): Namespace of the project (when creating a new one) (Default value = None).
+        description(Optional[str]): Project description (when creating a new one) (Default value = None).
+        keywords(Optional[List[str]]): Keywords for the project (when creating a new one) (Default value = None).
+        custom_metadata(Optional[Dict]): Custom JSON-LD metadata (when creating a new project)
+            (Default value = None).
+    """
+    from renku.domain_model.project import Project
+    from renku.domain_model.project_context import project_context
+
+    try:
+        project = project_gateway.get_project()
+    except ValueError:
+        project = Project.from_project_context(
+            project_context=project_context,
+            name=name,
+            namespace=namespace,
+            description=description,
+            keywords=keywords,
+            custom_metadata=custom_metadata,
+        )
+
+    yield project
+
+    if not read_only:
+        project_gateway.update_project(project)
+        database_gateway.commit()
+
+
+@contextlib.contextmanager
+def Lock(filename: Union[Path, str], timeout: int = 0, mode: str = "shared", blocking: bool = False):
+    """A file-based lock context manager."""
+    import portalocker
+
+    if mode == "shared":
+        flags = portalocker.LOCK_SH
+    elif mode == "exclusive":
+        flags = portalocker.LOCK_EX
+    else:
+        raise errors.ParameterError(f"Mode can be 'shared' or 'exclusive' not '{mode}'")
+
+    if not blocking:
+        flags |= portalocker.LOCK_NB
+
+    try:
+        with portalocker.Lock(filename, timeout=timeout, flags=flags):
+            yield
+    except (portalocker.LockException, portalocker.AlreadyLocked) as e:
+        raise errors.LockError(f"Cannot lock {e.__class__.__name__}")
+
+
+@contextlib.contextmanager
+def wait_for(delay: float):
+    """Make sure that at least ``delay`` seconds are passed during the execution of the wrapped code block."""
+    start = time.time()
+
+    yield
+
+    exec_time = time.time() - start
+    if exec_time < delay:
+        time.sleep(delay - exec_time)

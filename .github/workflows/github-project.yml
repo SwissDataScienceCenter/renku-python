@@ -1,0 +1,23 @@
+name: Add PR and Issues to project
+on:
+  pull_request:
+    types:
+      - opened
+  issues:
+    types:
+      - opened
+jobs:
+  add_to_project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add to renku-python
+        uses: actions/add-to-project@main
+        with:
+          project-url: https://github.com/orgs/SwissDataScienceCenter/projects/45
+          github-token: ${{ secrets.RENKUBOT_GITHUB_TOKEN  }}
+      - name: Add to triage board
+        uses: actions/add-to-project@main
+        with:
+          project-url: https://github.com/orgs/SwissDataScienceCenter/projects/51
+          github-token: ${{ secrets.RENKUBOT_GITHUB_TOKEN  }}
+          labeled: status/triage

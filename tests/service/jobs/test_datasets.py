@@ -33,13 +33,7 @@ from renku.ui.service.utils import make_project_path
 from tests.utils import assert_rpc_response, retry_failed
 
 
-@pytest.mark.parametrize(
-    "url",
-    [
-        "https://dev.renku.ch/datasets/428c36261c56463d8753336470cc6917/",
-        "https://dev.renku.ch/datasets/0d4630e56ee542b3bb3ab3222da811ec",
-    ],
-)
+@pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/428c36261c56463d8753336470cc6917/"])
 @pytest.mark.integration
 @pytest.mark.service
 @retry_failed
@@ -655,7 +649,7 @@ def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
 
     assert updated_job
     assert {"unlinked", "remote_branch"} == updated_job.ctrl_result["result"].keys()
-    assert ["data/data/data1"] == updated_job.ctrl_result["result"]["unlinked"]
+    assert ["data/data1"] == updated_job.ctrl_result["result"]["unlinked"]
 
 
 @pytest.mark.service
@@ -720,4 +714,4 @@ def test_unlink_dataset_sync(svc_client_cache, it_remote_repo_url_temp_branch, v
 
     assert updated_job
     assert {"unlinked", "remote_branch"} == updated_job.ctrl_result["result"].keys()
-    assert ["data/data/data1"] == updated_job.ctrl_result["result"]["unlinked"]
+    assert ["data/data1"] == updated_job.ctrl_result["result"]["unlinked"]

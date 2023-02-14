@@ -29,13 +29,14 @@ from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.rq import RqIntegration
 
 from renku.ui.service.cache import cache
-from renku.ui.service.config import CACHE_DIR, SENTRY_ENABLED, SENTRY_SAMPLERATE, SERVICE_PREFIX
+from renku.ui.service.config import CACHE_DIR, MAX_CONTENT_LENGTH, SENTRY_ENABLED, SENTRY_SAMPLERATE, SERVICE_PREFIX
 from renku.ui.service.errors import (
     ProgramHttpMethodError,
     ProgramHttpMissingError,
     ProgramHttpRequestError,
     ProgramHttpServerError,
     ProgramHttpTimeoutError,
+    ServiceError,
 )
 from renku.ui.service.logger import service_log
 from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET
@@ -50,6 +51,7 @@ from renku.ui.service.views.jobs import jobs_blueprint
 from renku.ui.service.views.project import project_blueprint
 from renku.ui.service.views.templates import templates_blueprint
 from renku.ui.service.views.version import version_blueprint
+from renku.ui.service.views.workflow_plans import workflow_plans_blueprint
 
 logging.basicConfig(level=os.getenv("SERVICE_LOG_LEVEL", "WARNING"))
 
@@ -69,9 +71,7 @@ def create_app(custom_exceptions=True):
     app.json_encoder = SvcJSONEncoder
     app.config["UPLOAD_FOLDER"] = CACHE_DIR
 
-    max_content_size = os.getenv("MAX_CONTENT_LENGTH")
-    if max_content_size:
-        app.config["MAX_CONTENT_LENGTH"] = max_content_size
+    app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 
     app.config["cache"] = cache
 
@@ -102,7 +102,7 @@ def register_exceptions(app):
 
     @app.errorhandler(Exception)
     def exceptions(e):
-        """This exceptions handler manages Flask/Werkzeug exceptions.
+        """Exception handler that manages Flask/Werkzeug exceptions.
 
         For the other exception handlers check ``service/decorators.py``
         """
@@ -117,13 +117,14 @@ def register_exceptions(app):
 
         # NOTE: craft user messages
         if hasattr(e, "code"):
-            code = e.code
+            code = int(e.code)
 
             # NOTE: return an http error for methods with no body allowed. This prevents undesired exceptions.
             NO_PAYLOAD_METHODS = "HEAD"
             if request.method in NO_PAYLOAD_METHODS:
                 return Response(status=code)
 
+            error: ServiceError
             if code == 400:
                 error = ProgramHttpRequestError(e)
             elif code == 404:
@@ -144,6 +145,7 @@ def register_exceptions(app):
 
 def build_routes(app):
     """Register routes to given app instance."""
+    app.register_blueprint(workflow_plans_blueprint)
     app.register_blueprint(cache_blueprint)
     app.register_blueprint(config_blueprint)
     app.register_blueprint(dataset_blueprint)

@@ -17,7 +17,6 @@
 # limitations under the License.
 """Template tests."""
 
-import shutil
 import textwrap
 
 import pytest
@@ -25,21 +24,6 @@ import pytest
 from renku.core import errors
 from renku.core.util.metadata import read_renku_version_from_dockerfile
 from renku.domain_model.template import TemplateMetadata, TemplateParameter, TemplatesManifest
-
-try:
-    import importlib_resources
-except ImportError:
-    import importlib.resources as importlib_resources  # type: ignore
-
-
-@pytest.fixture()
-def dummy_source(tmp_path):
-    ref = importlib_resources.files("renku") / "templates"
-    with importlib_resources.as_file(ref) as embedded_templates:
-        shutil.copytree(str(embedded_templates), str(tmp_path))
-
-    yield tmp_path
-
 
 TEMPLATE_METADATA = {"__name__": "my-project", "__project_description__": "My Project", "__renku_version__": "42.0.0"}
 
@@ -96,7 +80,7 @@ def test_templates_manifest():
             - id: R
               name: R Project
               description: An R-based Renku project
-              parameters:
+              variables:
                 rate:
                   type: number
                   description: sample rate
@@ -150,14 +134,27 @@ def test_templates_manifest_invalid_yaml(tmp_path):
         ("id: python", "Invalid manifest content type: 'dict'"),
         ("-\n  - id: python", "Invalid template type: 'list'"),
         ("- no-id: python", "Template doesn't have an id:"),
-        ("- id: python\n  parameters: p1", "Invalid template variable type: 'str'"),
-        ("- id: python\n  parameters:\n    p1: 42", "Invalid parameter type 'int' for 'p1'"),
+        ("- id: python\n  variables: p1", "Invalid template variable type on template 'python': 'str'"),
+        ("- id: python\n  variables:\n    p1: 42", "Invalid parameter type 'int' for 'p1'"),
     ],
 )
 def test_templates_manifest_invalid_content(tmp_path, content, message):
     """Test creating a template manifest form invalid content."""
     with pytest.raises(errors.InvalidTemplateError, match=message):
         TemplatesManifest.from_string(content)
+
+
+def test_templates_manifest_warnings(tmp_path):
+    """Test creating a template manifest form invalid content."""
+    content = "- folder: python\n  name: python\n  variables:\n    p1: My parameter"
+    manifest = TemplatesManifest.from_string(content, skip_validation=True)
+    warnings = manifest.validate()
+
+    assert "Template 'python' should use 'id' attribute instead of 'folder'." in warnings
+    assert (
+        "Template 'python' variable 'p1' uses old string format in manifest and should be replaced"
+        " with the nested dictionary format."
+    ) in warnings
 
 
 @pytest.mark.parametrize("default, has_default", [(None, False), (42, True), ("", True), (False, True)])

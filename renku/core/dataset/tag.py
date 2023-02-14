@@ -18,13 +18,14 @@
 """Tag management for dataset."""
 
 import re
-from typing import List, Optional
+from typing import List, Optional, cast
 
 from renku.command.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core import errors
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.util import communication
-from renku.domain_model.dataset import DatasetTag, Url
+from renku.domain_model.dataset import Dataset, DatasetTag, Url
+from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.immutable import DynamicProxy
 
 
@@ -69,7 +70,7 @@ def list_dataset_tags(dataset_name, format):
 
     tags = datasets_provenance.get_all_tags(dataset)
     tags = sorted(tags, key=lambda t: t.date_created)
-    tags = [DynamicProxy(t) for t in tags]
+    tags = [cast(Dataset, DynamicProxy(t)) for t in tags]
     for tag in tags:
         tag.dataset = dataset.title
 
@@ -94,16 +95,32 @@ def remove_dataset_tags(dataset_name: str, tags: List[str]):
             datasets_provenance.remove_tag(dataset, tag)
 
 
+def get_dataset_by_tag(dataset: Dataset, tag: str) -> Optional[Dataset]:
+    """Return a version of dataset that has a specific tag.
+
+    Args:
+        dataset(Dataset): A dataset to return its tagged version.
+        tag(str): Tag name to search for.
+
+    Returns:
+        Optional[Dataset]: The dataset pointed to by the tag or None if nothing found.
+    """
+    dataset_gateway = DatasetGateway()
+
+    tags = dataset_gateway.get_all_tags(dataset)
+    selected_tag = next((t for t in tags if t.name == tag), None)
+    if selected_tag is None:
+        return None
+    return dataset_gateway.get_by_id(selected_tag.dataset_id.value)
+
+
 def prompt_access_token(exporter):
     """Prompt user for an access token for a provider.
 
     Returns:
         The new access token
     """
-    text_prompt = "You must configure an access token\n"
-    text_prompt += "Create one at: {0}\n".format(exporter.access_token_url())
-    text_prompt += "Access token"
-
+    text_prompt = f"You must configure an access token\nCreate one at: {exporter.get_access_token_url()}\nAccess token"
     return communication.prompt(text_prompt, type=str)
 
 
@@ -119,6 +136,6 @@ def prompt_tag_selection(tags) -> Optional[DatasetTag]:
 
         if selection == 1:
             return None
-        elif selection > 1 and selection <= len(tags) + 1:
+        elif 1 < selection <= len(tags) + 1:
             return tags[selection - 2]
         communication.warn(f"{selection} is not a valid choice. Selected value has to be between 1 and {len(tags) + 1}")

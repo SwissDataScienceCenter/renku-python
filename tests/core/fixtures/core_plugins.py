@@ -26,24 +26,6 @@ from renku.domain_model.workflow.plan import Plan
 
 
 @pytest.fixture
-def dummy_run_plugin_hook():
-    """A dummy hook to be used with the renku run plugin."""
-    from renku.core.plugin import hookimpl
-
-    class _CmdlineToolAnnotations(object):
-        """CmdlineTool Hook implementation namespace."""
-
-        @hookimpl
-        def cmdline_tool_annotations(self, tool):
-            """``cmdline_tool_annotations`` hook implementation."""
-            from renku.domain_model.provenance.annotation import Annotation
-
-            return [Annotation(id="_:annotation", source="Dummy Cmdline Hook", body="dummy cmdline hook body")]
-
-    return _CmdlineToolAnnotations()
-
-
-@pytest.fixture
 def dummy_pre_run_plugin_hook():
     """A dummy hook to be used with the renku run plugin."""
     from renku.core.plugin import hookimpl
@@ -55,14 +37,34 @@ def dummy_pre_run_plugin_hook():
 
         @hookimpl
         def pre_run(self, tool):
-            """``cmdline_tool_annotations`` hook implementation."""
+            """``pre_run`` hook implementation."""
             self.called = 1
 
     return _PreRun()
 
 
 @pytest.fixture
-def dummy_processrun_plugin_hook():
+def dummy_plan_plugin_hook():
+    """A dummy hook to be used with the renku run plugin for plans."""
+    from renku.core.plugin import hookimpl
+
+    class _PlanPlugin(object):
+        """CmdlineTool Hook implementation namespace."""
+
+        called = 0
+
+        @hookimpl
+        def plan_annotations(self, plan):
+            """``plan_annotations`` hook implementation."""
+            from renku.domain_model.provenance.annotation import Annotation
+
+            return [Annotation(id="_:annotation", source="Dummy Plan Hook", body="dummy Plan hook body")]
+
+    return _PlanPlugin()
+
+
+@pytest.fixture
+def dummy_activity_plugin_hook():
     """A dummy hook to be used with the renku run plugin."""
     from renku.core.plugin import hookimpl
 
@@ -70,8 +72,8 @@ def dummy_processrun_plugin_hook():
         """CmdlineTool Hook implementation namespace."""
 
         @hookimpl
-        def process_run_annotations(self, plan):
-            """``process_run_annotations`` hook implementation."""
+        def activity_annotations(self, activity):
+            """``activity_annotations`` hook implementation."""
             from renku.domain_model.provenance.annotation import Annotation
 
             return [Annotation(id="_:annotation", source="Dummy Activity Hook", body="dummy Activity hook body")]

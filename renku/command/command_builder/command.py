@@ -21,14 +21,15 @@ import contextlib
 import functools
 import threading
 from collections import defaultdict
-from typing import Any, Callable, Dict, List, Optional
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Type, Union
 
-import click
 import inject
 
 from renku.core import errors
 from renku.core.util.communication import CommunicationCallback
-from renku.core.util.git import default_path
+from renku.core.util.git import get_git_path
+from renku.domain_model.project_context import project_context
 
 _LOCAL = threading.local()
 
@@ -77,7 +78,7 @@ def _patched_configure(config: Optional[inject.BinderCallable] = None, bind_in_r
         bind_in_runtime(bool, optional): Whether to allow binding at runtime (Default value = True).
 
     Returns:
-        Injector: Threadsafe injector with bindings applied.
+        Injector: Thread-safe injector with bindings applied.
     """
 
     if getattr(_LOCAL, "injector", None):
@@ -99,7 +100,7 @@ def remove_injector():
 
 
 @contextlib.contextmanager
-def replace_injection(bindings, constructor_bindings=None):
+def replace_injection(bindings: Dict, constructor_bindings=None):
     """Temporarily inject various test objects.
 
     Args:
@@ -128,35 +129,10 @@ def replace_injection(bindings, constructor_bindings=None):
             _LOCAL.injector = old_injector
 
 
-def update_injected_client(new_client, update_database: bool = True):
-    """Update the injected client instance.
-
-    Necessary because we sometimes use attr.evolve to modify a client and this doesn't affect the injected instance.
-
-    Args:
-        new_client: New ``LocalClient`` to inject.
-        update_database(bool, optional): Whether to also update bound database (Default value = True).
-    """
-    from renku.core.management.client import LocalClient
-    from renku.infrastructure.database import Database
-
-    injector = getattr(_LOCAL, "injector", None)
-
-    if not injector:
-        raise inject.InjectorException("No injector is configured")
-
-    injector._bindings[LocalClient] = lambda: new_client
-    injector._bindings["LocalClient"] = lambda: new_client
-
-    if update_database and Database in injector._bindings:
-        database = Database.from_path(path=new_client.database_path)
-        injector._bindings[Database] = lambda: database
-
-
 class Command:
     """Base renku command builder."""
 
-    CLIENT_HOOK_ORDER = 1
+    HOOK_ORDER = 1
 
     def __init__(self) -> None:
         """__init__ of Command."""
@@ -167,6 +143,7 @@ class Command:
         self._finalized: bool = False
         self._track_std_streams: bool = False
         self._working_directory: Optional[str] = None
+        self._context_added: bool = False
 
     def __getattr__(self, name: str) -> Any:
         """Bubble up attributes of wrapped builders."""
@@ -189,27 +166,16 @@ class Command:
             builder("Command"): Current ``CommandBuilder``.
             context(dict): Current context dictionary.
         """
-        from renku.command.command_builder.client_dispatcher import ClientDispatcher
-        from renku.core.interface.client_dispatcher import IClientDispatcher
-        from renku.core.management.client import LocalClient
+        if not project_context.has_context():
+            path = get_git_path(self._working_directory or ".")
+            project_context.push_path(path)
+            self._context_added = True
 
-        dispatcher = ClientDispatcher()
-
-        ctx = click.get_current_context(silent=True)
-        if ctx is None:
-            dispatcher.push_client_to_stack(path=default_path(self._working_directory or "."))
-            ctx = click.Context(click.Command(builder._operation))  # type: ignore
-        else:
-            client = ctx.ensure_object(LocalClient)
-            dispatcher.push_created_client_to_stack(client)
-
-        context["bindings"] = {IClientDispatcher: dispatcher, "IClientDispatcher": dispatcher}
+        context["bindings"] = {}
         context["constructor_bindings"] = {}
-        context["client_dispatcher"] = dispatcher
-        context["click_context"] = ctx
 
     def _pre_hook(self, builder: "Command", context: dict, *args, **kwargs) -> None:
-        """Setup local client.
+        """Setup project.
 
         Args:
             builder("Command"): Current ``CommandBuilder``.
@@ -228,6 +194,9 @@ class Command:
             result("CommandResult"): Result of command execution.
         """
         remove_injector()
+
+        if self._context_added:
+            project_context.pop_context()
 
         if result.error:
             raise result.error
@@ -280,7 +249,7 @@ class Command:
 
         try:
             with context["stack"]:
-                output = context["click_context"].invoke(self._operation, *args, **kwargs)
+                output = self._operation(*args, **kwargs)  # type: ignore
         except errors.RenkuException as e:
             error = e
         except (Exception, BaseException):
@@ -304,6 +273,23 @@ class Command:
         if hasattr(self, "_builder"):
             return self._builder.finalized
         return self._finalized
+
+    def any_builder_is_instance_of(self, cls: Type) -> bool:
+        """Check if any 'chained' command builder is an instance of a specific command builder class."""
+        if isinstance(self, cls):
+            return True
+        elif "_builder" in self.__dict__:
+            return self._builder.any_builder_is_instance_of(cls)
+        else:
+            return False
+
+    @property
+    def will_write_to_database(self) -> bool:
+        """Will running the command write anything to the metadata store."""
+        try:
+            return self._write
+        except AttributeError:
+            return False
 
     @check_finalized
     def add_injection_pre_hook(self, order: int, hook: Callable):
@@ -353,9 +339,9 @@ class Command:
         """
         if not self._operation:
             raise errors.ConfigurationError("`Command` needs to have a wrapped `command` set")
-        self.add_injection_pre_hook(self.CLIENT_HOOK_ORDER, self._injection_pre_hook)
-        self.add_pre_hook(self.CLIENT_HOOK_ORDER, self._pre_hook)
-        self.add_post_hook(self.CLIENT_HOOK_ORDER, self._post_hook)
+        self.add_injection_pre_hook(self.HOOK_ORDER, self._injection_pre_hook)
+        self.add_pre_hook(self.HOOK_ORDER, self._pre_hook)
+        self.add_post_hook(self.HOOK_ORDER, self._post_hook)
 
         self._finalized = True
 
@@ -371,6 +357,7 @@ class Command:
         Returns:
             Command: This command.
         """
+
         self._operation = operation
 
         return self
@@ -378,6 +365,8 @@ class Command:
     @check_finalized
     def working_directory(self, directory: str) -> "Command":
         """Set the working directory for the command.
+
+        WARNING: Should not be used in the core service.
 
         Args:
             directory(str): The working directory to work in.
@@ -413,8 +402,9 @@ class Command:
         message: Optional[str] = None,
         commit_if_empty: bool = False,
         raise_if_empty: bool = False,
-        commit_only: Optional[bool] = None,
+        commit_only: Optional[Union[str, List[Union[str, Path]]]] = None,
         skip_staging: bool = False,
+        skip_dirty_checks: bool = False,
     ) -> "Command":
         """Create a commit.
 
@@ -424,10 +414,20 @@ class Command:
             raise_if_empty(bool, optional): Whether to raise an exception if there are no modified files
                 (Default value = False).
             commit_only(bool, optional): Only commit the supplied paths (Default value = None).
+            skip_staging(bool): Don't commit staged files.
+            skip_dirty_checks(bool): Don't check if paths are dirty or staged.
         """
         from renku.command.command_builder.repo import Commit
 
-        return Commit(self, message, commit_if_empty, raise_if_empty, commit_only, skip_staging)
+        return Commit(
+            self,
+            message=message,
+            commit_if_empty=commit_if_empty,
+            raise_if_empty=raise_if_empty,
+            commit_only=commit_only,
+            skip_staging=skip_staging,
+            skip_dirty_checks=skip_dirty_checks,
+        )
 
     @check_finalized
     def lock_project(self) -> "Command":
@@ -469,7 +469,7 @@ class Command:
         return Communicator(self, communicator)
 
     @check_finalized
-    def with_database(self, write: bool = False, path: str = None, create: bool = False) -> "Command":
+    def with_database(self, write: bool = False, path: Optional[str] = None, create: bool = False) -> "Command":
         """Provide an object database connection.
 
         Args:

@@ -22,20 +22,19 @@ import re
 import unicodedata
 import urllib
 from typing import List, Optional
-from urllib.parse import ParseResult
+from urllib.parse import ParseResult, urlparse
 
-from renku.command.command_builder.command import inject
 from renku.core import errors
-from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.config import get_value
 from renku.core.util.git import get_remote, parse_git_url
-
-SUPPORTED_SCHEMES = ("", "file", "http", "https", "git+https", "git+ssh")
+from renku.core.util.os import is_subpath
+from renku.domain_model.project_context import project_context
 
 
 def url_to_string(url):
     """Convert url from ``list`` or ``ParseResult`` to string."""
     if isinstance(url, list):
-        return ParseResult(scheme=url[0], netloc=url[1], path=url[2], params=None, query=None, fragment=None).geturl()
+        return ParseResult(scheme=url[0], netloc=url[1], path=url[2], params="", query="", fragment="").geturl()
 
     if isinstance(url, ParseResult):
         return url.geturl()
@@ -54,15 +53,15 @@ def remove_credentials(url):
     return parsed._replace(netloc=parsed.hostname).geturl()
 
 
-def get_host(client):
+def get_host(use_project_context: bool = True):
     """Return the hostname for the resource URIs.
 
     Default is localhost. If RENKU_DOMAIN is set, it overrides the host from remote.
     """
     host = "localhost"
 
-    if client:
-        host = client.remote.get("host") or host
+    if use_project_context:
+        host = project_context.remote.host or host
 
     return os.environ.get("RENKU_DOMAIN") or host
 
@@ -72,20 +71,23 @@ def get_path(url: str) -> str:
     return urllib.parse.urlparse(url).path
 
 
-@inject.autoparams()
-def parse_authentication_endpoint(endpoint, client_dispatcher: IClientDispatcher, use_remote=False):
+def get_scheme(uri: str) -> str:
+    """Return scheme of a URI."""
+    return urllib.parse.urlparse(uri).scheme.lower()
+
+
+def parse_authentication_endpoint(endpoint: Optional[str] = None, use_remote: bool = False):
     """Return a parsed url.
 
     If an endpoint is provided then use it, otherwise, look for a configured endpoint. If no configured endpoint exists
     then try to use project's remote url.
     """
-    client = client_dispatcher.current_client
     if not endpoint:
-        endpoint = client.get_value(section="renku", key="endpoint")
+        endpoint = get_value(section="renku", key="endpoint")
         if not endpoint:
             if not use_remote:
                 return
-            remote = get_remote(client.repository)
+            remote = get_remote(project_context.repository)
             if not remote or not remote.url:
                 return
             endpoint = f"https://{parse_git_url(remote.url).hostname}/"
@@ -119,57 +121,24 @@ def get_slug(name: str, invalid_chars: Optional[List[str]] = None, lowercase: bo
     return no_dot_lock_at_end
 
 
-def check_url(url):
-    """Check if a url is local/remote and if it contains a git repository."""
-    from renku.core.util import requests
-    from renku.infrastructure.repository import Repository
-
-    u = urllib.parse.urlparse(url)
-
-    if u.scheme not in SUPPORTED_SCHEMES:
-        raise errors.UrlSchemeNotSupported('Scheme "{}" not supported'.format(u.scheme))
-
-    is_remote = u.scheme not in ("", "file") or url.startswith("git@")
-    is_git = False
-
-    if is_remote:
-        is_git = u.path.endswith(".git")
-        if not is_git:
-            url = requests.get_redirect_url(url)
-    elif os.path.isdir(u.path) or os.path.isdir(os.path.realpath(u.path)):
-        try:
-            Repository(u.path, search_parent_directories=True)
-        except errors.GitError:
-            pass
-        else:
-            is_git = True
-
-    return is_remote, is_git, url
-
-
-def _ensure_dropbox(url):
-    """Ensure dropbox url is set for file download."""
-    if not isinstance(url, urllib.parse.ParseResult):
-        url = urllib.parse.urlparse(url)
-
-    query = url.query or ""
-    if "dl=0" in url.query:
-        query = query.replace("dl=0", "dl=1")
-    else:
-        query += "dl=1"
-
-    url = url._replace(query=query)
-    return url
-
-
-def provider_check(url):
-    """Check additional provider related operations."""
-    from renku.core.util import requests
-
-    url = requests.get_redirect_url(url)
-    url = urllib.parse.urlparse(url)
-
-    if "dropbox.com" in url.netloc:
-        url = _ensure_dropbox(url)
-
-    return urllib.parse.urlunparse(url)
+def is_uri_subfolder(uri: str, subfolder_uri: str) -> bool:
+    """Check if one uri is a 'subfolder' of another."""
+    parsed_uri = urlparse(uri)
+    parsed_subfolder_uri = urlparse(subfolder_uri)
+    parsed_uri_path = parsed_uri.path
+    parsed_subfolder_uri_path = parsed_subfolder_uri.path
+    if parsed_uri_path in ["", "."]:
+        # NOTE: s3://test has a path that equals "" and Path("") gets interpreted as Path(".")
+        # this becomes a problem then when s3://test/1 has an "absolute-like" path of Path("/1")
+        # and Path(".") is not considered a subpath of Path("/1") but from the uris we see that this
+        # is indeed a subpath
+        parsed_uri_path = "/"
+    if parsed_subfolder_uri_path in ["", "."]:
+        parsed_subfolder_uri_path = "/"
+    if parsed_uri.scheme != parsed_subfolder_uri.scheme:
+        # INFO: catch s3://test vs http://test
+        return False
+    if parsed_uri.netloc != parsed_subfolder_uri.netloc:
+        # INFO: catch s3://test1 vs s3://test2
+        return False
+    return is_subpath(parsed_subfolder_uri_path, parsed_uri_path)

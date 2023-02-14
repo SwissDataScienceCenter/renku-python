@@ -17,17 +17,29 @@
 # limitations under the License.
 """Custom git merge tool for renku metadata.
 
-Support merging Renku metadata
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Description
+~~~~~~~~~~~
 
 Renku stores all of its metadata in the repository, in compressed form.
-When working in multiple branches with Renku, this metadata needs to be merged when a git merge is made.
-To support users when doing this, Renku provides a custom merge tool that takes care of merging the metadata.
+When working in multiple branches with Renku, this metadata needs to be merged
+when a git merge is made. To support users when doing this, Renku provides a
+custom merge tool that takes care of merging the metadata.
 
-The merge tool is set up automatically when creating a new project or when using ``renku clone`` to clone a Renku
-project.
+The merge tool is set up automatically when creating a new project or when
+using ``renku clone`` to clone a Renku project.
+Keep in mind the merge tool configuration cannot be shared through remote
+repositories and has to be set up on each clone separately.
 
 You can manually set up the merge tool by running ``renku mergetool install``.
+
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. rst-class:: cli-reference-commands
+
+.. click:: renku.ui.cli.mergetool:mergetool
+   :prog: renku mergetool
+   :nested: full
 """
 
 import click
@@ -58,4 +70,4 @@ def install():
     """Setup mergetool locally."""
     from renku.command.mergetool import mergetool_install_command
 
-    mergetool_install_command().with_commit().build().execute()
+    mergetool_install_command().with_commit(commit_only=[".gitattributes"]).require_clean().build().execute()

@@ -23,7 +23,7 @@ from abc import ABCMeta, abstractmethod
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from renku.core.management.client import LocalClient
+from renku.core.constant import ProviderPriority
 
 
 class Session:
@@ -38,17 +38,26 @@ class Session:
 class ISessionProvider(metaclass=ABCMeta):
     """Abstract class for a interactive session provider."""
 
+    priority: ProviderPriority = ProviderPriority.NORMAL
+
     @abstractmethod
-    def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]) -> Optional[str]:
+    def get_name(self) -> str:
+        """Return session provider's name."""
+        pass
+
+    @abstractmethod
+    def is_remote_provider(self) -> bool:
+        """Return True for remote providers (i.e. not local Docker)."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]):
         """Builds the container image.
 
         Args:
             image_descriptor: Path to the container image descriptor file.
             image_name: Container image name.
             config: Path to the session provider specific configuration YAML.
-
-        Returns:
-            str: a unique id for the created interactive session.
         """
         pass
 
@@ -66,11 +75,11 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def session_provider(self) -> Tuple["ISessionProvider", str]:
+    def session_provider(self) -> "ISessionProvider":
         """Supported session provider.
 
         Returns:
-            a tuple of ``self`` and engine type name.
+            a reference to ``self``.
         """
         pass
 
@@ -93,26 +102,24 @@ class ISessionProvider(metaclass=ABCMeta):
         image_name: str,
         project_name: str,
         config: Optional[Dict[str, Any]],
-        client: LocalClient,
         cpu_request: Optional[float] = None,
         mem_request: Optional[str] = None,
         disk_request: Optional[str] = None,
         gpu_request: Optional[str] = None,
-    ) -> str:
+    ) -> Tuple[str, str]:
         """Creates an interactive session.
 
         Args:
-            image_name: Container image name to be used for the interactive session.
-            project_name: The project identifier.
-            config: Path to the session provider specific configuration YAML.
-            client: Renku client.
-            cpu_request: CPU request for the session.
-            mem_request: Memory size request for the session.
-            disk_request: Disk size request for the session.
-            gpu_request: GPU device request for the session.
+            image_name(str): Container image name to be used for the interactive session.
+            project_name(str): The project identifier.
+            config(Optional[Dict[str, Any]]): Path to the session provider specific configuration YAML.
+            cpu_request(Optional[float]): CPU request for the session.
+            mem_request(Optional[str]): Memory size request for the session.
+            disk_request(Optional[str]): Disk size request for the session.
+            gpu_request(Optional[str]): GPU device request for the session.
 
         Returns:
-            str: a unique id for the created interactive session.
+            Tuple[str, str]: Provider message and a possible warning message.
         """
         pass
 
@@ -121,7 +128,7 @@ class ISessionProvider(metaclass=ABCMeta):
         """Stops all or a given interactive session.
 
         Args:
-            client: Renku client.
+            project_name: Project's name.
             session_name: The unique id of the interactive session.
             stop_all: Specifies whether or not to stop all the running interactive sessions.
 
@@ -142,3 +149,12 @@ class ISessionProvider(metaclass=ABCMeta):
             URL of the interactive session.
         """
         pass
+
+    def pre_start_checks(self):
+        """Perform any required checks on the state of the repository prior to starting a session.
+
+        The expectation is that this method will abort the
+        session start if the checks are not successful or will take corrective actions to
+        make sure that the session launches successfully. By default this method does not do any checks.
+        """
+        return None

@@ -33,6 +33,8 @@ from renku.core.util.datetime8601 import fix_datetime, local_now, parse_date
 from renku.core.util.git import get_entity_from_revision
 from renku.core.util.metadata import is_external_file
 from renku.core.util.urls import get_path, get_slug
+from renku.core.util.util import NO_VALUE
+from renku.domain_model.project_context import project_context
 from renku.infrastructure.immutable import Immutable, Slots
 from renku.infrastructure.persistent import Persistent
 
@@ -47,19 +49,19 @@ def is_dataset_name_valid(name: str) -> bool:
     return name is not None and name == get_slug(name, lowercase=False)
 
 
-def generate_default_name(dataset_title, dataset_version=None) -> str:
+def generate_default_name(title: str, version: Optional[str] = None) -> str:
     """Get dataset name."""
     max_length = 24
     # For compatibility with older versions use title as name if it is valid; otherwise, use encoded title
-    if is_dataset_name_valid(dataset_title):
-        return dataset_title
+    if is_dataset_name_valid(title):
+        return title
 
-    slug = get_slug(dataset_title)
+    slug = get_slug(title)
     name = slug[:max_length]
 
-    if dataset_version:
+    if version:
         max_version_length = 10
-        version_slug = get_slug(dataset_version)[:max_version_length]
+        version_slug = get_slug(version)[:max_version_length]
         name = f"{name[:-(len(version_slug) + 1)]}_{version_slug}"
 
     return get_slug(name)
@@ -200,7 +202,7 @@ class RemoteEntity(Slots):
 
     __slots__ = ("checksum", "id", "path", "url")
 
-    def __init__(self, *, checksum: str, id: str = None, path: Union[Path, str], url: str):
+    def __init__(self, *, checksum: str, id: Optional[str] = None, path: Union[Path, str], url: str):
         super().__init__()
         self.checksum: str = checksum
         self.id: str = id or RemoteEntity.generate_id(checksum=checksum, path=path, url=url)
@@ -211,9 +213,9 @@ class RemoteEntity(Slots):
     def generate_id(checksum: str, path: Union[Path, str], url: str) -> str:
         """Generate an id."""
         parsed_url = urlparse(url)
-        prefix = quote(posixpath.join(parsed_url.netloc, parsed_url.path))
-        path = quote(str(path))
-        return f"/remote-entity/{prefix}/{checksum}/{path}"
+        prefix = quote(posixpath.join(parsed_url.netloc.strip("/"), parsed_url.path.strip("/")))
+        path = quote(str(path).strip("/"))
+        return f"/remote-entities/{prefix}/{checksum}/{path}"
 
     def __eq__(self, other):
         if self is other:
@@ -257,13 +259,19 @@ class DatasetFile(Slots):
         self.source: Optional[str] = str(source)
 
     @classmethod
-    def from_path(
-        cls, client, path: Union[str, Path], source=None, based_on: Optional[RemoteEntity] = None
-    ) -> "DatasetFile":
+    def from_path(cls, path: Union[str, Path], source=None, based_on: Optional[RemoteEntity] = None) -> "DatasetFile":
         """Return an instance from a path."""
-        entity = get_entity_from_revision(repository=client.repository, path=path, bypass_cache=True)
+        from renku.domain_model.entity import NON_EXISTING_ENTITY_CHECKSUM, Entity
 
-        is_external = is_external_file(path=path, client_path=client.path)
+        # NOTE: Data is added from an external storage and isn't pulled yet
+        if based_on and not (project_context.path / path).exists():
+            checksum = based_on.checksum if based_on.checksum else NON_EXISTING_ENTITY_CHECKSUM
+            id = Entity.generate_id(checksum=checksum, path=path)
+            entity = Entity(id=id, checksum=checksum, path=path)
+        else:
+            entity = get_entity_from_revision(repository=project_context.repository, path=path, bypass_cache=True)
+
+        is_external = is_external_file(path=path, project_path=project_context.path)
         return cls(entity=entity, is_external=is_external, source=source, based_on=based_on)
 
     @staticmethod
@@ -301,7 +309,7 @@ class DatasetFile(Slots):
             and self.source == other.source
         )
 
-    def remove(self, date: datetime = None):
+    def remove(self, date: Optional[datetime] = None):
         """Create a new instance and mark it as removed."""
         date_removed = fix_datetime(date) or local_now()
         self.date_removed = date_removed
@@ -315,16 +323,20 @@ class Dataset(Persistent):
     """Represent a dataset."""
 
     date_modified: Optional[datetime] = None  # type: ignore
+    storage: Optional[str] = None
+    datadir: Optional[str] = None
 
     def __init__(
         self,
         *,
         annotations: Optional[List["Annotation"]] = None,
         creators: Optional[List["Person"]] = None,
+        datadir: Optional[Path] = None,
         dataset_files: Optional[List[DatasetFile]] = None,
         date_created: Optional[datetime] = None,
         date_published: Optional[datetime] = None,
         date_removed: Optional[datetime] = None,
+        date_modified: Optional[datetime] = None,
         derived_from: Optional[Url] = None,
         description: Optional[str] = None,
         id: Optional[str] = None,
@@ -337,6 +349,7 @@ class Dataset(Persistent):
         name: Optional[str] = None,
         project_id: Optional[str] = None,
         same_as: Optional[Url] = None,
+        storage: Optional[str] = None,
         title: Optional[str] = None,
         version: Optional[str] = None,
     ):
@@ -364,7 +377,7 @@ class Dataset(Persistent):
         # `dataset_files` includes existing files and those that have been removed in the previous version
         self.dataset_files: List[DatasetFile] = dataset_files or []
         self.date_created: Optional[datetime] = date_created
-        self.date_modified: datetime = local_now()
+        self.date_modified: datetime = date_modified or local_now()
         self.date_published: Optional[datetime] = fix_datetime(date_published)
         self.date_removed: Optional[datetime] = fix_datetime(date_removed)
         self.derived_from: Optional[Url] = derived_from
@@ -376,9 +389,13 @@ class Dataset(Persistent):
         self.license: Optional[str] = license
         self.project_id: Optional[str] = project_id
         self.same_as: Optional[Url] = same_as
+        self.storage: Optional[str] = storage
         self.title: Optional[str] = title
         self.version: Optional[str] = version
         self.annotations: List["Annotation"] = annotations or []
+
+        if datadir:
+            self.datadir: Optional[str] = str(datadir)
 
     @staticmethod
     def generate_id(identifier: str) -> str:
@@ -400,7 +417,7 @@ class Dataset(Persistent):
                 raise ValueError(f"Invalid creator type: {creator}")
 
     @property
-    def files(self):
+    def files(self) -> List[DatasetFile]:
         """Return list of existing files."""
         return [f for f in self.dataset_files if not f.is_removed()]
 
@@ -418,6 +435,13 @@ class Dataset(Persistent):
     def keywords_csv(self):
         """Comma-separated list of keywords associated with dataset."""
         return ", ".join(self.keywords)
+
+    def get_datadir(self) -> Path:
+        """Return dataset's data directory."""
+        if self.datadir:
+            return Path(self.datadir)
+
+        return Path(os.path.join(project_context.datadir, self.name))
 
     def __repr__(self) -> str:
         return f"<Dataset {self.identifier} {self.name}>"
@@ -441,7 +465,7 @@ class Dataset(Persistent):
         dataset.keywords = list(dataset.keywords or [])
         return dataset
 
-    def replace_identifier(self, identifier: str = None):
+    def replace_identifier(self, identifier: Optional[str] = None):
         """Replace dataset's identifier and update relevant fields.
 
         NOTE: Call this only for newly-created/-imported datasets that don't have a mutability chain because it sets
@@ -456,7 +480,11 @@ class Dataset(Persistent):
         # NOTE: Do not unset `same_as` because it can be set for imported datasets
 
     def derive_from(
-        self, dataset: "Dataset", creator: Optional["Person"], identifier: str = None, date_created: datetime = None
+        self,
+        dataset: "Dataset",
+        creator: Optional["Person"],
+        identifier: Optional[str] = None,
+        date_created: Optional[datetime] = None,
     ):
         """Make `self` a derivative of `dataset` and update related fields."""
         assert dataset is not None, "Cannot derive from None"
@@ -468,9 +496,9 @@ class Dataset(Persistent):
         self.initial_identifier = dataset.initial_identifier
         self.derived_from = Url(url_id=dataset.id)
         self.same_as = None
-        self.date_created = date_created or local_now()
+        self.date_created = date_created or dataset.date_created
         self.date_modified = local_now()
-        self.date_published = None
+        self.date_published = dataset.date_published
 
         if creator and hasattr(creator, "email") and not any(c for c in self.creators if c.email == creator.email):
             self.creators.append(creator)
@@ -483,7 +511,7 @@ class Dataset(Persistent):
         # NOTE: We also need to re-assign the _p_oid since identifier has changed
         self.reassign_oid()
 
-    def remove(self, date: datetime = None):
+    def remove(self, date: Optional[datetime] = None):
         """Mark the dataset as removed."""
         self.date_removed = fix_datetime(date) or local_now()
 
@@ -525,7 +553,7 @@ class Dataset(Persistent):
 
     def update_metadata_from(self, other: "Dataset", exclude=None):
         """Update metadata from another dataset."""
-        editable_fields = [
+        updatable_fields = [
             "creators",
             "date_created",
             "date_published",
@@ -539,7 +567,7 @@ class Dataset(Persistent):
             "title",
             "version",
         ]
-        for name in editable_fields:
+        for name in updatable_fields:
             value = getattr(other, name)
             if exclude and name in exclude:
                 continue
@@ -554,7 +582,7 @@ class Dataset(Persistent):
         for name, value in kwargs.items():
             if name not in editable_attributes:
                 raise errors.ParameterError(f"Cannot edit field: '{name}'")
-            if value and value != getattr(self, name):
+            if value is not NO_VALUE and value != getattr(self, name):
                 setattr(self, name, value)
 
     def unlink_file(self, path, missing_ok=False) -> Optional[DatasetFile]:
@@ -627,8 +655,21 @@ class DatasetDetailsJson(marshmallow.Schema):
     description = marshmallow.fields.String()
     keywords = marshmallow.fields.List(marshmallow.fields.String())
     identifier = marshmallow.fields.String()
+    storage = marshmallow.fields.String()
 
     annotations = marshmallow.fields.List(marshmallow.fields.Nested(AnnotationJson))
+
+    data_directory = marshmallow.fields.Method("get_datadir")
+
+    @staticmethod
+    def get_datadir(obj):
+        """Get data directory."""
+        if isinstance(obj, dict):
+            return str(obj.get("datadir_path", obj.get("datadir", "")))
+        if hasattr(obj, "datadir_path"):
+            return obj.datadir_path
+
+        return str(obj.get_datadir())
 
 
 class DatasetFileDetailsJson(marshmallow.Schema):
@@ -660,9 +701,14 @@ class ImageObjectRequestJson(marshmallow.Schema):
     file_id = marshmallow.fields.String()
     content_url = marshmallow.fields.String()
     position = marshmallow.fields.Integer()
-    mirror_locally = marshmallow.fields.Bool(default=False)
+    mirror_locally = marshmallow.fields.Bool(dump_default=False)
 
 
-def get_dataset_data_dir(client, dataset: Dataset) -> str:
-    """Return default data directory for a dataset."""
-    return os.path.join(client.data_dir, dataset.name)
+def get_file_path_in_dataset(dataset: Dataset, dataset_file: DatasetFile) -> Path:
+    """Return path of a file relative to dataset's data dir."""
+    try:
+        return (project_context.path / dataset_file.entity.path).relative_to(
+            project_context.path / dataset.get_datadir()
+        )
+    except ValueError:  # NOTE: File is not in the dataset's data dir
+        return Path(dataset_file.entity.path)

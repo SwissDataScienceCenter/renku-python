@@ -17,45 +17,59 @@
 # limitations under the License.
 """Renku plan database gateway implementation."""
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, cast
 
-from renku.command.command_builder.command import inject
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
+from renku.core import errors
 from renku.core.interface.plan_gateway import IPlanGateway
+from renku.domain_model.project_context import project_context
 from renku.domain_model.workflow.plan import AbstractPlan
 
 
 class PlanGateway(IPlanGateway):
     """Gateway for plan database operations."""
 
-    database_dispatcher = inject.attr(IDatabaseDispatcher)
-
-    def get_by_id(self, id: str) -> Optional[AbstractPlan]:
+    def get_by_id(self, id: Optional[str]) -> Optional[AbstractPlan]:
         """Get a plan by id."""
-        return self.database_dispatcher.current_database["plans"].get(id)
+        return project_context.database["plans"].get(id)
 
     def get_by_name(self, name: str) -> Optional[AbstractPlan]:
         """Get a plan by name."""
-        return self.database_dispatcher.current_database["plans-by-name"].get(name)
+        return project_context.database["plans-by-name"].get(name)
 
-    def list_by_name(self, starts_with: str, ends_with: str = None) -> List[str]:
+    def get_by_name_or_id(self, name_or_id: str) -> AbstractPlan:
+        """Get a plan by name or id."""
+        workflow = self.get_by_id(name_or_id) or self.get_by_name(name_or_id)
+
+        if not workflow:
+            raise errors.WorkflowNotFoundError(name_or_id)
+        return workflow
+
+    def list_by_name(self, starts_with: str, ends_with: Optional[str] = None) -> List[str]:
         """Search plans by name."""
-        return self.database_dispatcher.current_database["plans-by-name"].keys(min=starts_with, max=ends_with)
+        return [
+            name
+            for name in project_context.database["plans-by-name"].keys(min=starts_with, max=ends_with)
+            if not cast(AbstractPlan, self.get_by_name(name)).deleted
+        ]
 
-    def get_newest_plans_by_names(self, with_invalidated: bool = False) -> Dict[str, AbstractPlan]:
-        """Return a list of all newest plans with their names."""
-        database = self.database_dispatcher.current_database
-        if with_invalidated:
+    def get_newest_plans_by_names(self, include_deleted: bool = False) -> Dict[str, AbstractPlan]:
+        """Return a mapping of all plan names to their newest plans."""
+        database = project_context.database
+        if include_deleted:
             return dict(database["plans-by-name"])
-        return {k: v for k, v in database["plans-by-name"].items() if v.invalidated_at is None}
+        return {k: v for k, v in database["plans-by-name"].items() if not v.deleted}
 
     def get_all_plans(self) -> List[AbstractPlan]:
         """Get all plans in project."""
-        return list(self.database_dispatcher.current_database["plans"].values())
+        return list(project_context.database["plans"].values())
 
     def add(self, plan: AbstractPlan) -> None:
         """Add a plan to the database."""
-        database = self.database_dispatcher.current_database
+        database = project_context.database
+
+        if database["plans"].get(plan.id) is not None:
+            return
+
         database["plans"].add(plan)
 
         if plan.derived_from is not None:

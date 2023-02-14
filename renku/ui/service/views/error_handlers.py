@@ -19,6 +19,7 @@
 
 import re
 from functools import wraps
+from typing import cast
 
 from jwt import ExpiredSignatureError, ImmatureSignatureError, InvalidIssuedAtError
 from marshmallow import ValidationError
@@ -42,6 +43,7 @@ from renku.core.errors import (
     TemplateMissingReferenceError,
     TemplateUpdateError,
     UninitializedProject,
+    WorkflowNotFoundError,
 )
 from renku.ui.service.errors import (
     IntermittentAuthenticationError,
@@ -52,6 +54,7 @@ from renku.ui.service.errors import (
     IntermittentRedisError,
     IntermittentSettingExistsError,
     IntermittentTimeoutError,
+    IntermittentWorkflowNotFound,
     ProgramGitError,
     ProgramGraphCorruptError,
     ProgramInternalError,
@@ -117,6 +120,7 @@ def handle_validation_except(f):
                 raise UserRepoUrlInvalidError(e, error_message)
             if "Unknown field" in error_message:
                 raise ProgramInvalidGenericFieldsError(e, error_message)
+
             raise UserInvalidGenericFieldsError(e, error_message)
 
     return decorated_function
@@ -194,9 +198,9 @@ def handle_base_except(f):
             return error_response(e)
         # NOTE: GitError here may not be necessary anymore
         except GitError as e:
-            return error_response(ProgramGitError(e, e.message if e.message else None))
+            return error_response(ProgramGitError(e, cast(str, e.message) if hasattr(e, "message") else ""))
         except (Exception, BaseException, OSError, IOError) as e:
-            if hasattr(e, "stderr"):
+            if hasattr(e, "stderr") and e.stderr:
                 error_message = " ".join(e.stderr.strip().split("\n"))
             else:
                 error_message = str(e)
@@ -327,7 +331,7 @@ def handle_config_write_errors(f):
             if "Invalid parameter value" in str(e):
                 parameter = None
                 match = re.search('Key "(.*)" not found', str(e))
-                if len(match.groups()) > 0:
+                if match is not None and len(match.groups()) > 0:
                     parameter = match.group(1)
                 raise IntermittentSettingExistsError(e, parameter)
             raise
@@ -361,6 +365,22 @@ def handle_datasets_write_errors(f):
         except RenkuException as e:
             if str(e).startswith("invalid file reference"):
                 raise IntermittentFileNotExistsError(e)
+            raise
+
+    return decorated_function
+
+
+def handle_workflow_errors(f):
+    """Wrapper which handles workflow errors."""
+    # noqa
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        """Represents decorated function."""
+        try:
+            return f(*args, **kwargs)
+        except WorkflowNotFoundError as e:
+            raise IntermittentWorkflowNotFound(e, name_or_id=e.name_or_id)
+        except RenkuException:
             raise
 
     return decorated_function

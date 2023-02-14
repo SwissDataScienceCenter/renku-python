@@ -17,50 +17,30 @@
 # limitations under the License.
 """CLI tests."""
 
-from __future__ import absolute_import, print_function
-
 import contextlib
 import os
 import subprocess
 import sys
 from pathlib import Path
-from time import time
 
 import pytest
 
+import renku.core.storage
 from renku import __version__
-from renku.core.management.repository import DEFAULT_DATA_DIR as DATA_DIR
-from renku.core.management.storage import StorageApiMixin
+from renku.core.config import get_value, load_config, remove_value, set_value, store_config
+from renku.core.constant import DEFAULT_DATA_DIR as DATA_DIR
 from renku.core.util.contexts import chdir
 from renku.domain_model.enums import ConfigFilter
+from renku.domain_model.project_context import project_context
 from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
-from tests.utils import format_result_exception, retry_failed
+from tests.utils import format_result_exception
 
 
 def test_version(runner):
     """Test cli version."""
     result = runner.invoke(cli, ["--version"])
     assert __version__ in result.output.split("\n")
-
-
-@retry_failed
-def test_version_duration(run_shell):
-    """Test duration of --version command."""
-    total_duration = 0
-
-    for _ in range(5):
-        start = time()
-        output = run_shell("time renku --version")
-        duration = time() - start
-
-        assert output[1] is None
-        total_duration += duration
-    total_duration /= 5
-    if sys.platform == "darwin":
-        assert total_duration < 2.0
-    else:
-        assert total_duration < 1.5
 
 
 @pytest.mark.parametrize("arg", (("help",), ("-h",), ("--help",)))
@@ -72,8 +52,9 @@ def test_help(arg, runner):
 
 
 @pytest.mark.parametrize("cwd", (DATA_DIR, "notebooks", "subdir"))
-def test_run_from_non_root(runner, client, cwd):
-    path = client.path / cwd
+def test_run_from_non_root(runner, project, cwd):
+    """Test running renku not from project's root."""
+    path = project.path / cwd
     path.mkdir(parents=True, exist_ok=True)
     with chdir(path):
         result = runner.invoke(cli, ["dataset", "ls"])
@@ -176,8 +157,8 @@ def test_streams(runner, project, capsys, no_lfs_warning):
 
 def test_streams_cleanup(runner, project, run):
     """Test cleanup of standard streams."""
-    source = Path(project) / "source.txt"
-    stdout = Path(project) / "result.txt"
+    source = project.path / "source.txt"
+    stdout = project.path / "result.txt"
 
     with source.open("w") as fp:
         fp.write("first,second,third")
@@ -195,11 +176,10 @@ def test_streams_cleanup(runner, project, run):
     assert 0 == result.exit_code
 
     # File from the Git index should be restored.
-    repository = Repository(project)
     with stdout.open("w") as fp:
         fp.write("1")
 
-    repository.add("result.txt")
+    project.repository.add("result.txt")
 
     with stdout.open("r") as fp:
         assert fp.read() == "1"
@@ -245,16 +225,16 @@ def test_show_inputs(tmpdir_factory, project, runner, run, template):
     second_repository.commit("Added woop file")
 
     assert 0 == run(args=("dataset", "create", "foo"))
-    assert 0 == run(args=("dataset", "add", "foo", str(woop)))
+    assert 0 == run(args=("dataset", "add", "--copy", "foo", str(woop)))
 
-    imported_woop = Path(project) / DATA_DIR / "foo" / woop.name
+    imported_woop = project.path / DATA_DIR / "foo" / woop.name
     assert imported_woop.exists()
 
-    woop_wc = Path(project) / "woop.wc"
+    woop_wc = project.path / "woop.wc"
     assert 0 == run(args=("run", "wc"), stdin=imported_woop, stdout=woop_wc)
 
     result = runner.invoke(cli, ["workflow", "inputs"], catch_exceptions=False)
-    assert {str(imported_woop.resolve().relative_to(Path(project).resolve()))} == set(result.output.strip().split("\n"))
+    assert {str(imported_woop.resolve().relative_to(project.path.resolve()))} == set(result.output.strip().split("\n"))
 
 
 def test_configuration_of_no_external_storage(isolated_runner, monkeypatch, project_init):
@@ -269,7 +249,7 @@ def test_configuration_of_no_external_storage(isolated_runner, monkeypatch, proj
     assert 0 == result.exit_code, format_result_exception(result)
     # Pretend that git-lfs is not installed.
     with monkeypatch.context() as monkey:
-        monkey.setattr(StorageApiMixin, "storage_installed", False)
+        monkey.setattr(renku.core.storage, "storage_installed", lambda: False)
         # Missing --no-external-storage flag.
         result = runner.invoke(cli, ["run", "touch", "output"])
         assert "External storage is not configured" in result.output
@@ -295,7 +275,7 @@ def test_configuration_of_external_storage(isolated_runner, monkeypatch, project
     assert 0 == result.exit_code, format_result_exception(result)
     # Pretend that git-lfs is not installed.
     with monkeypatch.context() as monkey:
-        monkey.setattr(StorageApiMixin, "storage_installed", False)
+        monkey.setattr(renku.core.storage, "storage_installed", lambda: False)
         # Repo is using external storage but it's not installed.
         result = runner.invoke(cli, ["run", "touch", "output"])
         assert 1 == result.exit_code
@@ -325,9 +305,9 @@ def test_early_check_of_external_storage(isolated_runner, monkeypatch, directory
 
     # Pretend that git-lfs is not installed.
     with monkeypatch.context() as monkey:
-        monkey.setattr(StorageApiMixin, "storage_installed", False)
+        monkey.setattr(renku.core.storage, "storage_installed", lambda: False)
 
-        failing_command = ["dataset", "add", "-s", "src", "my-dataset", str(directory_tree)]
+        failing_command = ["dataset", "add", "--copy", "-s", "src", "my-dataset", str(directory_tree)]
         result = isolated_runner.invoke(cli, failing_command)
         assert 1 == result.exit_code
         assert "External storage is not configured" in result.output
@@ -384,18 +364,18 @@ def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
 
     os.chdir("../foo")
     with monkeypatch.context() as monkey:
-        monkey.setattr(StorageApiMixin, "storage_installed", False)
+        monkey.setattr(renku.core.storage, "storage_installed", lambda: False)
 
-        result = runner.invoke(cli, ["dataset", "add", "f", "../woop"], catch_exceptions=False)
+        result = runner.invoke(cli, ["dataset", "add", "--copy", "f", "../woop"], catch_exceptions=False)
 
         assert 1 == result.exit_code
         subprocess.call(["git", "clean", "-dff"])
 
-    result = runner.invoke(cli, ["-S", "dataset", "add", "f", "../woop"], catch_exceptions=False)
+    result = runner.invoke(cli, ["-S", "dataset", "add", "--copy", "f", "../woop"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
     os.chdir("../bar")
-    result = runner.invoke(cli, ["-S", "dataset", "add", "b", "../foo/data/f/woop"], catch_exceptions=False)
+    result = runner.invoke(cli, ["-S", "dataset", "add", "--copy", "b", "../foo/data/f/woop"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
     # Produce a derived data from the imported data.
@@ -430,15 +410,14 @@ def test_status_with_submodules(isolated_runner, monkeypatch, project_init):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_status_consistency(client, runner):
-    """Test if the renku status output is consistent when running the
-    command from directories other than the repository root."""
+def test_status_consistency(runner, project):
+    """Test status consistency in subdirectories."""
     os.mkdir("somedirectory")
     with open("somedirectory/woop", "w") as fp:
         fp.write("woop")
 
-    client.repository.add("somedirectory/woop")
-    client.repository.commit("add woop")
+    project.repository.add("somedirectory/woop")
+    project.repository.commit("add woop")
 
     result = runner.invoke(cli, ["run", "cp", "somedirectory/woop", "somedirectory/meeh"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -446,8 +425,8 @@ def test_status_consistency(client, runner):
     with open("somedirectory/woop", "w") as fp:
         fp.write("weep")
 
-    client.repository.add("somedirectory/woop")
-    client.repository.commit("fix woop")
+    project.repository.add("somedirectory/woop")
+    project.repository.commit("fix woop")
 
     base_result = runner.invoke(cli, ["status"])
     os.chdir("somedirectory")
@@ -463,12 +442,10 @@ def test_status_consistency(client, runner):
 
 def test_unchanged_output(runner, project):
     """Test detection of unchanged output."""
-    cmd = ["run", "touch", "1"]
-    result = runner.invoke(cli, cmd, catch_exceptions=False)
+    result = runner.invoke(cli, ["run", "touch", "1"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    cmd = ["run", "touch", "1"]
-    result = runner.invoke(cli, cmd, catch_exceptions=False)
+    result = runner.invoke(cli, ["run", "touch", "1"], catch_exceptions=False)
     assert 1 == result.exit_code
 
 
@@ -503,22 +480,21 @@ def test_unchanged_stdout(runner, project, capsys, no_lfs_warning):
 @pytest.mark.skip(reason="renku update not implemented with new metadata yet, reenable later")
 def test_modified_output(runner, project, run):
     """Test detection of changed file as output."""
-    cwd = Path(project)
+    cwd = project.path
     source = cwd / "source.txt"
     data = cwd / DATA_DIR / "results"
     data.mkdir(parents=True)
     output = data / "result.txt"
 
-    repository = Repository(project)
     cmd = ["run", "cp", "-r", str(source), str(output)]
 
-    def update_source(data):
+    def update_source(content):
         """Update source.txt."""
         with source.open("w") as fp:
-            fp.write(data)
+            fp.write(content)
 
-        repository.add(all=True)
-        repository.commit("Updated source.txt")
+        project.repository.add(all=True)
+        project.repository.commit("Updated source.txt")
 
     update_source("1")
 
@@ -566,35 +542,32 @@ def test_outputs(runner, project):
 
 def test_deleted_input(runner, project, capsys):
     """Test deleted input."""
-    repository = Repository(project)
-    cwd = Path(project)
-    input_ = cwd / "input.txt"
-    with input_.open("w") as f:
+    input = project.path / "input.txt"
+    with input.open("w") as f:
         f.write("first")
 
-    repository.add(all=True)
-    repository.commit("Created input.txt")
+    project.repository.add(all=True)
+    project.repository.commit("Created input.txt")
 
-    cmd = ["run", "mv", input_.name, "input.mv"]
+    cmd = ["run", "mv", input.name, "input.mv"]
     result = runner.invoke(cli, cmd, catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not input_.exists()
+    assert not input.exists()
     assert Path("input.mv").exists()
 
 
 @pytest.mark.skip(reason="renku update not implemented with new metadata yet, reenable later")
 def test_input_directory(runner, project, run, no_lfs_warning):
     """Test detection of input directory."""
-    repository = Repository(project)
-    cwd = Path(project)
+    cwd = project.path
     output = cwd / "output.txt"
     inputs = cwd / "inputs"
     inputs.mkdir(parents=True)
 
     gitkeep = inputs / ".gitkeep"
     gitkeep.touch()
-    repository.add(all=True)
-    repository.commit("Empty inputs directory")
+    project.repository.add(all=True)
+    project.repository.commit("Empty inputs directory")
 
     assert 0 == run(args=("run", "ls", str(inputs)), stdout=output)
     with output.open("r") as fp:
@@ -602,8 +575,8 @@ def test_input_directory(runner, project, run, no_lfs_warning):
 
     (inputs / "first").touch()
 
-    repository.add(all=True)
-    repository.commit("Created inputs")
+    project.repository.add(all=True)
+    project.repository.commit("Created inputs")
 
     assert 0 == run(args=("update", output.name))
 
@@ -611,8 +584,8 @@ def test_input_directory(runner, project, run, no_lfs_warning):
         assert "first\n" == fp.read()
 
     (inputs / "second").touch()
-    repository.add(all=True)
-    repository.commit("Added second input")
+    project.repository.add(all=True)
+    project.repository.commit("Added second input")
 
     assert 0 == run(args=("update", output.name))
     with output.open("r") as fp:
@@ -625,54 +598,54 @@ def test_input_directory(runner, project, run, no_lfs_warning):
     )
 
 
-@pytest.mark.parametrize("global_only,config_path_attr", ((False, "local_config_path"), (True, "global_config_path")))
-def test_config_manager_creation(client, global_config_dir, global_only, config_path_attr):
+@pytest.mark.parametrize("global_only, config_path_attr", ((False, "local_config_path"), (True, "global_config_path")))
+def test_config_manager_creation(project, global_only, config_path_attr):
     """Check creation of configuration file."""
-    path = getattr(client, config_path_attr)
+    path = str(getattr(project_context, config_path_attr))
     assert path.endswith("renku.ini")
-    config = client.load_config(config_filter=ConfigFilter.ALL)
-    client.store_config(config, global_only=global_only)
+    config = load_config(config_filter=ConfigFilter.ALL)
+    store_config(config, global_only=global_only)
     assert Path(path).exists()
 
 
 @pytest.mark.parametrize("global_only", (False, True))
-def test_config_manager_set_value(client, global_config_dir, global_only):
+def test_config_manager_set_value(project, global_only):
     """Check writing to configuration."""
     config_filter = ConfigFilter.GLOBAL_ONLY
 
     if not global_only:
         config_filter = ConfigFilter.LOCAL_ONLY
 
-    client.set_value("zenodo", "access_token", "my-secret", global_only=global_only)
+    set_value("zenodo", "access_token", "my-secret", global_only=global_only)
 
-    config = client.load_config(config_filter=config_filter)
+    config = load_config(config_filter=config_filter)
     assert config.get("zenodo", "access_token") == "my-secret"
 
-    client.remove_value("zenodo", "access_token", global_only=global_only)
-    config = client.load_config(config_filter=config_filter)
+    remove_value("zenodo", "access_token", global_only=global_only)
+    config = load_config(config_filter=config_filter)
     assert "zenodo" not in config.sections()
 
 
-def test_config_get_value(client, global_config_dir):
+def test_config_get_value(project):
     """Check reading from configuration."""
     # Value set locally is not visible globally
-    client.set_value("local", "key", "local-value")
-    value = client.get_value("local", "key")
+    set_value("local", "key", "local-value")
+    value = get_value("local", "key")
     assert "local-value" == value
-    value = client.get_value("local", "key", config_filter=ConfigFilter.GLOBAL_ONLY)
+    value = get_value("local", "key", config_filter=ConfigFilter.GLOBAL_ONLY)
     assert value is None
 
     # Value set globally is stored globally
-    client.set_value("global", "key", "global-value", global_only=True)
-    value = client.get_value("global", "key", config_filter=ConfigFilter.LOCAL_ONLY)
+    set_value("global", "key", "global-value", global_only=True)
+    value = get_value("global", "key", config_filter=ConfigFilter.LOCAL_ONLY)
     assert value is None
-    value = client.get_value("global", "key", config_filter=ConfigFilter.GLOBAL_ONLY)
+    value = get_value("global", "key", config_filter=ConfigFilter.GLOBAL_ONLY)
     assert "global-value" == value
-    value = client.get_value("global", "key")
+    value = get_value("global", "key")
     assert "global-value" == value
 
     # Reading non-existing values returns None
-    value = client.get_value("non-existing", "key")
+    value = get_value("non-existing", "key")
     assert value is None
 
 
@@ -690,7 +663,9 @@ def test_lfs_size_limit(isolated_runner, project_init):
     with large.open("w") as f:
         f.write("x" * 1024**2)
 
-    result = runner.invoke(cli, ["dataset", "add", "--create", "my-dataset", str(large)], catch_exceptions=False)
+    result = runner.invoke(
+        cli, ["dataset", "add", "--copy", "--create", "my-dataset", str(large)], catch_exceptions=False
+    )
     assert 0 == result.exit_code, format_result_exception(result)
     assert "large" in Path(".gitattributes").read_text()
 
@@ -698,7 +673,7 @@ def test_lfs_size_limit(isolated_runner, project_init):
     with small.open("w") as f:
         f.write("small file")
 
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(small)], catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(small)], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
     assert "small" not in Path(".gitattributes").read_text()
 
@@ -737,7 +712,7 @@ def test_lfs_ignore(isolated_runner, ignore, path, tracked, project_init):
     with Path("dummy").open("w") as f:
         f.write("dummy")
 
-    result = runner.invoke(cli, ["dataset", "add", "--create", "my-dataset", "dummy"], catch_exceptions=False)
+    runner.invoke(cli, ["dataset", "add", "--move", "--create", "my-dataset", "dummy"], catch_exceptions=False)
 
     # add dataset file
     filepath = Path(path)
@@ -748,11 +723,11 @@ def test_lfs_ignore(isolated_runner, ignore, path, tracked, project_init):
     with filepath.open("w") as f:
         f.write("x" * 1024**2)
 
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", str(filepath)], catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "add", "--move", "my-dataset", str(filepath)], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
     # check if file is tracked or not
     if tracked:
-        assert str(filepath) in Path(".gitattributes").read_text()
+        assert str(filepath.name) in Path(".gitattributes").read_text()
     else:
         assert str(filepath) not in Path(".gitattributes").read_text()

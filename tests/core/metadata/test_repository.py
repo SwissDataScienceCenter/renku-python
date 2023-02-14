@@ -206,24 +206,22 @@ def test_hash_directories(git_repository):
     (git_repository.path / "X" / "A").write_text("modified")
 
     assert git_repository.get_object_hash("X", revision="HEAD") is None
-    assert git_repository.get_object_hash("X") is None
+    assert "676a99b0b045074417413e651294be8dcdcfdffd" == git_repository.get_object_hash("X")
 
     with pytest.raises(errors.GitCommandError):
         Repository.hash_object("X")
 
-    # NOTE: When staging a directory then the hash can be calculated
+    # NOTE: Staging a directory makes no difference in hash calculation
     git_repository.add("X")
 
-    directory_hash = git_repository.get_object_hash("X", revision="HEAD")
-
-    assert directory_hash is not None
-    assert directory_hash == git_repository.get_object_hash("X")
+    assert git_repository.get_object_hash("X", revision="HEAD") is None
+    assert "676a99b0b045074417413e651294be8dcdcfdffd" == git_repository.get_object_hash("X")
 
     # NOTE: Hash of the committed directory is the same as the staged hash
     git_repository.commit("Committed X")
 
-    assert directory_hash == git_repository.get_object_hash("X", revision="HEAD")
-    assert directory_hash == git_repository.get_object_hash("X")
+    assert "676a99b0b045074417413e651294be8dcdcfdffd" == git_repository.get_object_hash("X", revision="HEAD")
+    assert "676a99b0b045074417413e651294be8dcdcfdffd" == git_repository.get_object_hash("X")
 
     with pytest.raises(errors.GitCommandError):
         Repository.hash_object("X")
@@ -256,3 +254,77 @@ def test_contains_untracked_file(git_repository):
     path.write_text("untracked")
 
     assert git_repository.contains(path) is False
+
+
+@pytest.mark.integration
+def test_get_content_from_lfs(tmp_path):
+    """Test can get file content from LFS."""
+    url = "https://gitlab.dev.renku.ch/renku-python-integration-tests/lego-datasets.git"
+    repository = Repository.clone_from(url=url, path=tmp_path / "repo", env={"GIT_LFS_SKIP_SMUDGE": "1"})
+    # NOTE: Install LFS and disable LFS smudge filter to make sure that we can get valid content in that case
+    repository.lfs.install(skip_smudge=True)
+
+    output_path: Path = tmp_path / "output.csv"
+
+    valid_checksum = "451601edc010810d78bb93d9fef76dca3fc71a16"
+
+    # Getting a file that is in LFS
+    input = repository.path / "data" / "parts" / "parts.csv"
+    repository.copy_content_to_file(input, checksum=valid_checksum, output_path=output_path)
+
+    assert str(input.relative_to(repository.path)) in (repository.path / ".gitattributes").read_text()
+    assert repository.lfs.is_pointer_file(input)
+    assert "Updated on 01.06.2022" in output_path.read_text()
+
+    # Getting a file that was in LFS and is deleted
+    input = repository.path / "data" / "parts" / "part_relationships.csv"
+    repository.copy_content_to_file(input, checksum="d257eeb6693eb3b8a1e56f54766b39d67416b7ef", output_path=output_path)
+
+    assert str(input.relative_to(repository.path)) not in (repository.path / ".gitattributes").read_text()
+    assert not input.exists()
+    assert "rel_type,child_part_num,parent_part_num" in output_path.read_text()
+    assert "Updated on 01.06.2022" not in output_path.read_text()
+
+    # Getting a file that is not in LFS -> It returns the input as output
+    input = repository.path / "data" / "parts" / "part_categories.csv"
+    repository.copy_content_to_file(input, checksum="540169dea8638cc3c61f648d81736ddcd51506a6", output_path=output_path)
+
+    assert str(input.relative_to(repository.path)) not in (repository.path / ".gitattributes").read_text()
+    assert input.read_text().startswith("id,name")
+    assert output_path.read_text() == input.read_text()
+
+    # Getting a pointer file with invalid LFS object -> It returns the pointer file as output
+    input = repository.path / "data" / "parts" / "parts.csv"
+    input.write_text(input.read_text().replace("sha256:8cf145d1a", "sha256:000000000"))  # Make object checksum invalid
+    repository.add(all=True)
+    repository.commit("Make an invalid LFS pointer")
+
+    repository.copy_content_to_file(input, checksum=repository.hash_object(input), output_path=output_path)
+
+    assert str(input.relative_to(repository.path)) in (repository.path / ".gitattributes").read_text()
+    assert repository.lfs.is_pointer_file(input)
+    assert output_path.read_text() == input.read_text()
+
+    # Getting a non-existing path AND checksum raises a FileNotFound
+    with pytest.raises(errors.FileNotFound):
+        repository.copy_content_to_file("non-existing", checksum="0000000", output_path=output_path)
+
+    # Getting a non-existing path with a valid checksum return the object with the checksum
+    repository.copy_content_to_file("non-existing", checksum=valid_checksum, output_path=output_path)
+
+    assert "Updated on 01.06.2022" in output_path.read_text()
+
+
+@pytest.mark.parametrize(
+    "paths, ignored",
+    (
+        ([".renku.lock"], [".renku.lock"]),
+        (["not ignored", "lib/foo", "build/html"], ["lib/foo", "build/html"]),
+        (["not ignored"], []),
+    ),
+)
+def test_ignored_paths(paths, ignored, project):
+    """Test resolution of ignored paths."""
+    from renku.domain_model.project_context import project_context
+
+    assert project_context.repository.get_ignored_paths(*paths) == ignored

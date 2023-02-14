@@ -51,7 +51,7 @@ import cwltool.factory
 import networkx as nx
 from cwltool.context import LoadingContext, RuntimeContext
 
-from renku.command.echo import progressbar
+from renku.command.util import progressbar
 from renku.core.errors import NodeNotFoundError, WorkflowExecuteError
 from renku.core.plugin import hookimpl
 from renku.core.plugin.workflow import workflow_converter
@@ -65,7 +65,7 @@ class CWLToolProvider(IWorkflowProvider):
     @hookimpl
     def workflow_provider(self):
         """Workflow provider name."""
-        return (self, "cwltool")
+        return self, "cwltool"
 
     @hookimpl
     def workflow_execute(self, dag: nx.DiGraph, basedir: Path, config: Dict[str, Any]):
@@ -104,7 +104,14 @@ class CWLToolProvider(IWorkflowProvider):
         with tempfile.NamedTemporaryFile() as f:
             # export Plan to cwl
             converter = workflow_converter("cwl")
-            converter(workflow=workflow, basedir=basedir, output=Path(f.name), output_format=None)
+            converter(
+                workflow=workflow,
+                basedir=basedir,
+                output=Path(f.name),
+                output_format=None,
+                resolve_paths=True,
+                nest_workflows=False,
+            )
 
             process = factory.make(os.path.relpath(str(f.name)))
 
@@ -141,6 +148,9 @@ class CWLToolProvider(IWorkflowProvider):
                             if destination.is_dir():
                                 shutil.rmtree(str(destination))
                                 destination = destination.parent
+                                destination.mkdir(parents=True, exist_ok=True)
+                            else:
+                                destination.parent.mkdir(parents=True, exist_ok=True)
                             shutil.move(location, str(destination))
                             continue
 

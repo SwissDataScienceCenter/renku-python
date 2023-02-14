@@ -25,7 +25,7 @@ import uuid
 from abc import abstractmethod
 from pathlib import Path
 from subprocess import call
-from typing import Any, Callable, Dict, List, Union
+from typing import Any, Callable, Dict, List, Union, cast
 
 import networkx as nx
 from toil.common import Toil
@@ -35,7 +35,7 @@ from toil.job import Job, Promise
 from toil.leader import FailedJobsException
 from toil.lib.docker import apiDockerCall
 
-from renku.command.echo import progressbar
+from renku.command.util import progressbar
 from renku.core import errors
 from renku.core.constant import RENKU_HOME, RENKU_TMP
 from renku.core.errors import WorkflowExecuteError
@@ -122,10 +122,10 @@ class AbstractToilJob(Job):
 
         arguments = itertools.chain(self.workflow.inputs, self.workflow.outputs, self.workflow.parameters)
 
-        arguments = filter(lambda x: x.position and not getattr(x, "mapped_to", None), arguments)
-        arguments = sorted(arguments, key=lambda x: x.position)
+        arguments_filtered = filter(lambda x: x.position is not None and not getattr(x, "mapped_to", None), arguments)
+        arguments_sorted = sorted(arguments_filtered, key=lambda x: cast(int, x.position))
 
-        for a in arguments:
+        for a in arguments_sorted:
             v = str(a.actual_value) if not isinstance(a.actual_value, str) else a.actual_value
             if a.prefix:
                 if a.prefix.endswith(" "):
@@ -138,7 +138,9 @@ class AbstractToilJob(Job):
         if return_code not in (self.workflow.success_codes or {0}):
             raise errors.InvalidSuccessCode(return_code, success_codes=self.workflow.success_codes)
 
-        return _upload_files(storage.writeGlobalFile, self.workflow.outputs, Path.cwd())
+        return _upload_files(
+            storage.writeGlobalFile, cast(List[CommandParameterBase], self.workflow.outputs), Path.cwd()
+        )
 
 
 class SubprocessToilJob(AbstractToilJob):
@@ -322,10 +324,14 @@ class ToilProvider(IWorkflowProvider):
                                 directory.mkdir()
 
                                 for path, file_id in fid.items():
-                                    toil.exportFile(file_id, str((basedir / path).absolute()))
+                                    destination = (basedir / path).absolute()
+                                    destination.parent.mkdir(parents=True, exist_ok=True)
+                                    toil.exportFile(file_id, str(destination))
                                     outputs.append(path)
                             else:
-                                toil.exportFile(fid, str((basedir / name).absolute()))
+                                destination = (basedir / name).absolute()
+                                destination.parent.mkdir(parents=True, exist_ok=True)
+                                toil.exportFile(fid, str(destination))
                                 outputs.append(name)
                             bar.update(1)
         except FailedJobsException as e:

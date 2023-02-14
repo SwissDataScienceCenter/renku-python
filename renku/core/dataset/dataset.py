@@ -18,55 +18,57 @@
 """Dataset business logic."""
 
 import os
-import re
 import shutil
 import urllib
-from collections import OrderedDict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
 
 import patoolib
+from pydantic import validate_arguments
 
 from renku.command.command_builder.command import inject
 from renku.command.view_model.dataset import DatasetFileViewModel, DatasetViewModel
 from renku.core import errors
-from renku.core.dataset.constant import renku_dataset_images_path, renku_pointers_path
+from renku.core.config import get_value, remove_value, set_value
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.pointer_file import create_external_file, is_external_file_updated, update_external_file
-from renku.core.dataset.providers import ProviderFactory
-from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile
+from renku.core.dataset.providers.factory import ProviderFactory
+from renku.core.dataset.providers.models import ProviderDataset
 from renku.core.dataset.request_model import ImageRequestModel
-from renku.core.dataset.tag import add_dataset_tag, prompt_access_token, prompt_tag_selection
-from renku.core.interface.client_dispatcher import IClientDispatcher
-from renku.core.interface.database_dispatcher import IDatabaseDispatcher
+from renku.core.dataset.tag import get_dataset_by_tag, prompt_access_token, prompt_tag_selection
 from renku.core.interface.dataset_gateway import IDatasetGateway
+from renku.core.storage import check_external_storage, pull_paths_from_storage, track_paths_in_storage
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
-from renku.core.util.doi import is_doi
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository, get_git_user
-from renku.core.util.metadata import is_external_file
-from renku.core.util.os import delete_file
-from renku.core.util.urls import get_slug, remove_credentials
-from renku.domain_model.dataset import (
-    Dataset,
-    DatasetDetailsJson,
-    DatasetFile,
-    RemoteEntity,
-    Url,
-    generate_default_name,
-    get_dataset_data_dir,
-    is_dataset_name_valid,
+from renku.core.util.metadata import is_external_file, prompt_for_credentials, read_credentials, store_credentials
+from renku.core.util.os import (
+    create_symlink,
+    delete_dataset_file,
+    delete_path,
+    get_absolute_path,
+    get_files,
+    get_safe_relative_path,
+    hash_file,
+    is_path_empty,
+    is_subpath,
+    unmount_path,
 )
+from renku.core.util.tabulate import tabulate
+from renku.core.util.urls import get_slug
+from renku.core.util.util import NO_VALUE, NoValueType
+from renku.domain_model.dataset import Dataset, DatasetDetailsJson, DatasetFile, RemoteEntity, is_dataset_name_valid
+from renku.domain_model.enums import ConfigFilter
+from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.agent import Person
 from renku.domain_model.provenance.annotation import Annotation
-from renku.domain_model.tabulate import tabulate
 from renku.infrastructure.immutable import DynamicProxy
 
 if TYPE_CHECKING:
-    from renku.core.management.client import LocalClient
     from renku.infrastructure.repository import Repository
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def search_datasets(name: str) -> List[str]:
     """Get all the datasets whose name starts with the given string.
 
@@ -87,18 +89,18 @@ def list_datasets():
 
     for dataset in datasets_provenance.datasets:
         tags = datasets_provenance.get_all_tags(dataset)
-        dataset = DynamicProxy(dataset)
+        dataset = cast(Dataset, DynamicProxy(dataset))
         dataset.tags = tags
         dataset.tags_csv = ",".join(tag.name for tag in tags)
+        dataset.datadir_path = str(dataset.get_datadir())
         datasets.append(dataset)
 
     return list(datasets)
 
 
-@inject.autoparams("client_dispatcher")
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def create_dataset(
     name: str,
-    client_dispatcher: IClientDispatcher,
     title: Optional[str] = None,
     description: Optional[str] = None,
     creators: Optional[List[Person]] = None,
@@ -106,12 +108,13 @@ def create_dataset(
     images: Optional[List[ImageRequestModel]] = None,
     update_provenance: bool = True,
     custom_metadata: Optional[Dict[str, Any]] = None,
+    storage: Optional[str] = None,
+    datadir: Optional[Path] = None,
 ):
     """Create a dataset.
 
     Args:
         name(str): Name of the dataset
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         title(Optional[str], optional): Dataset title (Default value = None).
         description(Optional[str], optional): Dataset description (Default value = None).
         creators(Optional[List[Person]], optional): Dataset creators (Default value = None).
@@ -120,37 +123,42 @@ def create_dataset(
         update_provenance(bool, optional): Whether to add this dataset to dataset provenance
             (Default value = True).
         custom_metadata(Optional[Dict[str, Any]], optional): Custom JSON-LD metadata (Default value = None).
+        storage(Optional[str], optional): Backend storage's URI (Default value = None).
+        datadir(Optional[Path]): Dataset's data directory (Default value = None).
 
     Returns:
         Dataset: The created dataset.
     """
-    client = client_dispatcher.current_client
-
     if not creators:
         creators = []
-        user = get_git_user(client.repository)
+        user = get_git_user(repository=project_context.repository)
 
         if user:
             creators.append(user)
 
     if not is_dataset_name_valid(name):
         valid_name = get_slug(name, lowercase=False)
-        raise errors.ParameterError(f'Dataset name "{name}" is not valid (Hint: "{valid_name}" is valid).')
+        raise errors.ParameterError(f"Dataset name '{name}' is not valid (Hint: '{valid_name}' is valid).")
 
     datasets_provenance = DatasetsProvenance()
 
     if datasets_provenance.get_by_name(name=name):
-        raise errors.DatasetExistsError(f"Dataset exists: '{name}'")
+        raise errors.DatasetExistsError(name)
 
     if not title:
         title = name
 
     keywords = keywords or []
 
-    annotations = None
+    annotations = (
+        [Annotation(id=Annotation.generate_id(), source="renku", body=custom_metadata)] if custom_metadata else None
+    )
 
-    if custom_metadata:
-        annotations = [Annotation(id=Annotation.generate_id(), source="renku", body=custom_metadata)]
+    if datadir:
+        try:
+            datadir = get_safe_relative_path(datadir, project_context.path)
+        except ValueError as e:
+            raise errors.ParameterError("Datadir must be inside repository.") from e
 
     dataset = Dataset(
         identifier=None,
@@ -159,12 +167,20 @@ def create_dataset(
         description=description,
         creators=creators,
         keywords=keywords,
-        project_id=client.project.id,
+        project_id=project_context.project.id,
         annotations=annotations,
+        storage=storage,
+        datadir=datadir,
     )
 
     if images:
-        set_dataset_images(client, dataset, images)
+        set_dataset_images(dataset=dataset, images=images)
+
+    if storage:
+        provider = ProviderFactory.get_create_provider(uri=storage)
+        provider.on_create(dataset=dataset)
+    else:
+        add_datadir_files_to_dataset(dataset)
 
     if update_provenance:
         datasets_provenance.add_or_update(dataset)
@@ -172,35 +188,40 @@ def create_dataset(
     return dataset
 
 
-@inject.autoparams("client_dispatcher")
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def edit_dataset(
     name: str,
-    title: str,
-    description: str,
-    creators: List[Person],
-    client_dispatcher: IClientDispatcher,
-    keywords: Optional[List[str]] = None,
-    images: Optional[List[ImageRequestModel]] = None,
-    skip_image_update: bool = False,
-    custom_metadata: Optional[Dict] = None,
+    title: Optional[Union[str, NoValueType]],
+    description: Optional[Union[str, NoValueType]],
+    creators: Optional[Union[List[Person], NoValueType]],
+    keywords: Optional[Union[List[str], NoValueType]] = NO_VALUE,
+    images: Optional[Union[List[ImageRequestModel], NoValueType]] = NO_VALUE,
+    custom_metadata: Optional[Union[Dict, List[Dict], NoValueType]] = NO_VALUE,
+    custom_metadata_source: Optional[Union[str, NoValueType]] = NO_VALUE,
 ):
     """Edit dataset metadata.
 
     Args:
         name(str): Name of the dataset to edit
-        title(str): New title for the dataset.
-        description(str): New description for the dataset.
-        creators(List[Person]): New creators for the dataset.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
-        keywords(List[str], optional): New keywords for dataset (Default value = None).
-        images(List[ImageRequestModel], optional): New images for dataset (Default value = None).
-        skip_image_update(bool, optional): Whether or not to skip updating dataset images (Default value = False).
-        custom_metadata(Dict, optional): Custom JSON-LD metadata (Default value = None).
+        title(Optional[Union[str, NoValueType]]): New title for the dataset.
+        description(Optional[Union[str, NoValueType]]): New description for the dataset.
+        creators(Optional[Union[List[Person], NoValueType]]): New creators for the dataset.
+        keywords(Optional[Union[List[str], NoValueType]]): New keywords for dataset (Default value = ``NO_VALUE``).
+        images(Optional[Union[List[ImageRequestModel], NoValueType]]): New images for dataset
+            (Default value = ``NO_VALUE``).
+        custom_metadata(Optional[Union[Dict, List[Dict], NoValueType]]): Custom JSON-LD metadata
+            (Default value = ``NO_VALUE``).
+        custom_metadata_source(Optional[Union[str, NoValueType]]): The custom metadata source
+            (Default value = ``NO_VALUE``).
 
     Returns:
         bool: True if updates were performed.
     """
-    client = client_dispatcher.current_client
+    if isinstance(title, str):
+        title = title.strip()
+
+    if title is None:
+        title = ""
 
     possible_updates = {
         "creators": creators,
@@ -209,97 +230,99 @@ def edit_dataset(
         "title": title,
     }
 
-    title = title.strip() if isinstance(title, str) else ""
-
     dataset_provenance = DatasetsProvenance()
     dataset = dataset_provenance.get_by_name(name=name)
 
     if dataset is None:
         raise errors.ParameterError("Dataset does not exist.")
 
-    updated: Dict[str, Any] = {k: v for k, v in possible_updates.items() if v}
+    updated: Dict[str, Any] = {k: v for k, v in possible_updates.items() if v != NO_VALUE}
 
     if updated:
         dataset.update_metadata(creators=creators, description=description, keywords=keywords, title=title)
 
-    if skip_image_update:
+    if images == NO_VALUE:
         images_updated = False
     else:
-        images_updated = set_dataset_images(client, dataset, images)
+        images_updated = set_dataset_images(dataset=dataset, images=cast(Optional[List[ImageRequestModel]], images))
 
     if images_updated:
-        updated["images"] = [{"content_url": i.content_url, "position": i.position} for i in dataset.images]
+        updated["images"] = (
+            None if images is None else [{"content_url": i.content_url, "position": i.position} for i in dataset.images]
+        )
 
-    if custom_metadata:
-        update_dataset_custom_metadata(dataset, custom_metadata)
+    if custom_metadata is not NO_VALUE:
+        update_dataset_custom_metadata(
+            dataset,
+            cast(Optional[Union[Dict, List[Dict]]], custom_metadata),
+            cast(Optional[str], custom_metadata_source),
+        )
         updated["custom_metadata"] = custom_metadata
 
     if not updated:
         return []
 
     datasets_provenance = DatasetsProvenance()
-    datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
+    datasets_provenance.add_or_update(dataset, creator=get_git_user(project_context.repository))
 
     return updated
 
 
-@inject.autoparams()
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def list_dataset_files(
-    client_dispatcher: IClientDispatcher,
-    datasets=None,
-    creators=None,
-    include=None,
-    exclude=None,
+    datasets: Optional[List[str]] = None,
+    tag: Optional[str] = None,
+    creators: Optional[Union[str, List[str], Tuple[str]]] = None,
+    include: Optional[List[str]] = None,
+    exclude: Optional[List[str]] = None,
 ):
     """List dataset files.
 
     Args:
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
-        datasets: Datasets to list files for (Default value = None).
-        creators: Creators to filter by (Default value = None).
-        include: Include filters for file paths (Default value = None).
-        exclude: Exclude filters for file paths (Default value = None).
+        datasets(Optional[List[str]]): Datasets to list files for (Default value = None).
+        tag(str): Tag to filter by (Default value = None).
+        creators(Optional[Union[str, List[str], Tuple[str]]]): Creators to filter by (Default value = None).
+        include(Optional[List[str]]): Include filters for file paths (Default value = None).
+        exclude(Optional[List[str]]): Exclude filters for file paths (Default value = None).
 
     Returns:
         List[DynamicProxy]: Filtered dataset files.
     """
-    from renku.command.format.dataset_files import get_lfs_file_sizes, get_lfs_tracking
+    from renku.command.format.dataset_files import get_lfs_tracking_and_file_sizes
 
-    client = client_dispatcher.current_client
-
-    records = filter_dataset_files(names=datasets, creators=creators, include=include, exclude=exclude, immutable=True)
+    records = filter_dataset_files(
+        names=datasets, tag=tag, creators=creators, include=include, exclude=exclude, immutable=True
+    )
     for record in records:
         record.title = record.dataset.title
         record.dataset_name = record.dataset.name
         record.dataset_id = record.dataset.id
         record.creators_csv = record.dataset.creators_csv
         record.creators_full_csv = record.dataset.creators_full_csv
-        record.full_path = client.path / record.entity.path
+        record.full_path = project_context.path / record.entity.path
         record.path = record.entity.path
         record.name = Path(record.entity.path).name
         record.added = record.date_added
 
-    get_lfs_file_sizes(records)
-    get_lfs_tracking(records)
+    get_lfs_tracking_and_file_sizes(records, has_tag=bool(tag))
 
     return records
 
 
-@inject.autoparams()
-def file_unlink(name, include, exclude, client_dispatcher: IClientDispatcher, yes=False):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def file_unlink(name: str, include: Optional[List[str]], exclude: Optional[List[str]], yes: bool = False):
     """Remove matching files from a dataset.
 
     Args:
-        name: Dataset name.
-        include: Include filter for files.
-        exclude: Exclude filter for files.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
-        yes: Whether to skip user confirmation or not (Default value = False).
+        name(str): Dataset name.
+        include(Optional[List[str]]): Include filter for files.
+        exclude(Optional[List[str]]): Exclude filter for files.
+        yes(bool): Whether to skip user confirmation or not (Default value = False).
 
     Returns:
         List[DynamicProxy]: List of files that were removed.
     """
-    client = client_dispatcher.current_client
+    repository = project_context.repository
 
     if not include and not exclude:
         raise errors.ParameterError("include or exclude filters not specified.")
@@ -324,52 +347,65 @@ def file_unlink(name, include, exclude, client_dispatcher: IClientDispatcher, ye
         )
         communication.confirm(prompt_text, abort=True, warning=True)
 
+    dataset_datadir = dataset.get_datadir()
     for file in records:
         dataset.unlink_file(file.entity.path)
+        path_file = Path(file.entity.path)
+        # INFO: Remove actual dataset file only if it is located within dataset directory
+        if str(path_file.absolute()).startswith(str(dataset_datadir.absolute())):
+            if not path_file.exists():
+                communication.warn(
+                    f"Dataset file {path_file} could not be found, skipping the removal from {dataset_datadir}."
+                )
+                continue
+            try:
+                if path_file.is_dir():
+                    shutil.rmtree(str(path_file.absolute()), ignore_errors=False, onerror=None)
+                else:
+                    path_file.unlink()
+            except Exception as err:
+                communication.warn(
+                    f"Dataset file {path_file} could not be removed from {dataset_datadir} because of {err}."
+                )
+            else:
+                repository.add(path_file)
 
-    datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
+    datasets_provenance.add_or_update(dataset, creator=get_git_user(repository))
 
     return records
 
 
-def remove_dataset(name):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def remove_dataset(name: str):
     """Delete a dataset.
 
     Args:
-        name: Name of dataset to delete.
+        name(str): Name of dataset to delete.
     """
     datasets_provenance = DatasetsProvenance()
     dataset = datasets_provenance.get_by_name(name=name, strict=True)
     datasets_provenance.remove(dataset=dataset)
 
 
-@inject.autoparams()
-def export_dataset(name, provider_name, publish, tag, client_dispatcher: IClientDispatcher, **kwargs):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def export_dataset(name: str, provider_name: str, tag: Optional[str], **kwargs):
     """Export data to 3rd party provider.
 
     Args:
-        name: Name of dataset to export.
-        provider_name: Provider to use for export.
-        publish: Whether to export as proper version or draft.
-        tag: Dataset tag from which to export.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        name(str): Name of dataset to export.
+        provider_name(str): Provider to use for export.
+        tag(str): Dataset tag from which to export.
     """
-    client = client_dispatcher.current_client
     datasets_provenance = DatasetsProvenance()
 
     provider_name = provider_name.lower()
 
     # TODO: all these callbacks are ugly, improve in #737
-    config_key_secret = "access_token"
+    config_key_secret = "access_token"  # nosec
 
-    dataset = datasets_provenance.get_by_name(name, strict=True, immutable=True)
+    dataset: Optional[Dataset] = datasets_provenance.get_by_name(name, strict=True, immutable=True)
 
-    try:
-        provider = ProviderFactory.from_id(provider_name)
-    except KeyError:
-        raise errors.ParameterError("Unknown provider.")
-
-    provider.set_parameters(**kwargs)
+    provider = ProviderFactory.get_export_provider(provider_name=provider_name)
 
     selected_tag = None
     tags = datasets_provenance.get_all_tags(dataset)  # type: ignore
@@ -388,247 +424,230 @@ def export_dataset(name, provider_name, publish, tag, client_dispatcher: IClient
         if not dataset:
             raise errors.DatasetNotFound(message=f"Cannot find dataset with id: '{selected_tag.dataset_id.value}'")
 
-    data_dir = get_dataset_data_dir(client, dataset)  # type: ignore
     dataset = cast(Dataset, DynamicProxy(dataset))
-    dataset.data_dir = data_dir
 
-    access_token = client.get_value(provider_name, config_key_secret)
-    exporter = provider.get_exporter(dataset, access_token=access_token)
+    exporter = provider.get_exporter(dataset=dataset, tag=selected_tag, **kwargs)
 
-    if access_token is None:
-        access_token = prompt_access_token(exporter)
+    if exporter.requires_access_token():
+        access_token = read_credentials(section=provider_name, key=config_key_secret)
 
-        if access_token is None or len(access_token) == 0:
-            raise errors.InvalidAccessToken()
+        if access_token is None:
+            access_token = prompt_access_token(exporter)
 
-        client.set_value(provider_name, config_key_secret, access_token, global_only=True)
+            if access_token is None or len(access_token) == 0:
+                raise errors.InvalidAccessToken()
+
+            store_credentials(section=provider_name, key=config_key_secret, value=access_token)
+
         exporter.set_access_token(access_token)
 
     try:
-        destination = exporter.export(publish=publish, tag=selected_tag, client=client)
+        destination = exporter.export()
     except errors.AuthenticationError:
-        client.remove_value(provider_name, config_key_secret, global_only=True)
+        remove_value(provider_name, config_key_secret, global_only=True)
         raise
 
     communication.echo(f"Exported to: {destination}")
 
 
-@inject.autoparams()
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def import_dataset(
-    uri,
-    client_dispatcher: IClientDispatcher,
-    database_dispatcher: IDatabaseDispatcher,
-    name="",
-    extract=False,
-    yes=False,
-    previous_dataset=None,
-    delete=False,
-    gitlab_token=None,
+    uri: str,
+    name: Optional[str] = "",
+    extract: bool = False,
+    yes: bool = False,
+    datadir: Optional[Path] = None,
+    previous_dataset: Optional[Dataset] = None,
+    delete: bool = False,
+    gitlab_token: Optional[str] = None,
+    **kwargs,
 ):
     """Import data from a 3rd party provider or another renku project.
 
     Args:
-        uri: DOI or URL of dataset to import.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
-        database_dispatcher(IDatabaseDispatcher): Injected database dispatcher.
-        name: Name to give imported dataset (Default value = "").
-        extract: Whether to extract compressed dataset data (Default value = False).
-        yes: Whether to skip user confirmation (Default value = False).
-        previous_dataset: Previously imported dataset version (Default value = None).
-        delete: Whether to delete files that don't exist anymore (Default value = False).
-        gitlab_token: Gitlab OAuth2 token (Default value = None).
+        uri(str): DOI or URL of dataset to import.
+        name(str): Name to give imported dataset (Default value = "").
+        extract(bool): Whether to extract compressed dataset data (Default value = False).
+        yes(bool): Whether to skip user confirmation (Default value = False).
+        datadir(Optional[Path]): Dataset's data directory (Default value = None).
+        previous_dataset(Optional[Dataset]): Previously imported dataset version (Default value = None).
+        delete(bool): Whether to delete files that don't exist anymore (Default value = False).
+        gitlab_token(Optional[str]): Gitlab OAuth2 token (Default value = None).
     """
-    from renku.core.dataset.dataset_add import add_data_to_dataset
-    from renku.core.dataset.providers.renku import RenkuProvider, RenkuRecordSerializer
+    from renku.core.dataset.dataset_add import add_to_dataset
 
-    client = client_dispatcher.current_client
+    def confirm_download(files):
+        if yes:
+            return
 
-    provider, err = ProviderFactory.from_uri(uri)
-    if err and provider is None:
-        raise errors.ParameterError(f"Could not process '{uri}'.\n{err}")
+        headers = {"checksum": "checksum", "filename": "name", "filesize_str": "size", "filetype": "type"}
+        communication.echo(tabulate(files, headers=headers, floatfmt=".2f"))
+        communication.confirm("Do you wish to download this version?", abort=True, warning=True)
 
-    assert provider is not None
+    def calculate_total_size(files) -> int:
+        total_size = 0
+        for file in files:
+            if file.filesize is not None:
+                total_size += file.filesize
+
+        return total_size
+
+    def remove_files(dataset):
+        """Remove files that exist in ``previous_dataset`` but not in ``dataset``.
+
+        Args:
+            dataset(Dataset): Dataset to update.
+        """
+        if not delete or not previous_dataset:
+            return
+
+        current_paths = {str(f.entity.path) for f in dataset.files}
+        previous_paths = {str(f.entity.path) for f in previous_dataset.files}
+        deleted_paths = previous_paths - current_paths
+
+        for path in deleted_paths:
+            delete_dataset_file(project_context.path / path, follow_symlinks=True)
+
+    provider = ProviderFactory.get_import_provider(uri)
 
     try:
-        record = provider.find_record(uri, gitlab_token=gitlab_token)
-        provider_dataset: ProviderDataset = record.as_dataset(client)
-        files: List[ProviderDatasetFile] = record.files_info
-        total_size = 0
-
-        if not yes:
-            communication.echo(
-                tabulate(
-                    files,
-                    headers=OrderedDict(
-                        (
-                            ("checksum", "checksum"),
-                            ("filename", "name"),
-                            ("size_in_mb", "size (mb)"),
-                            ("filetype", "type"),
-                        )
-                    ),
-                    floatfmt=".2f",
-                )
-            )
-
-            text_prompt = "Do you wish to download this version?"
-            if not record.is_last_version(uri):
-                text_prompt = f"Newer version found at {record.latest_uri}\n{text_prompt}"
-
-            communication.confirm(text_prompt, abort=True, warning=True)
-
-            for file_ in files:
-                if file_.size_in_mb is not None:
-                    total_size += file_.size_in_mb
-
-            total_size *= 2**20
-
+        importer = provider.get_importer(gitlab_token=gitlab_token, **kwargs)
+        provider_dataset: ProviderDataset = importer.fetch_provider_dataset()
     except KeyError as e:
         raise errors.ParameterError(f"Could not process '{uri}'.\nUnable to fetch metadata: {e}")
     except LookupError as e:
         raise errors.ParameterError(f"Could not process '{uri}'.\nReason: {e}")
 
-    if not files:
+    if not importer.provider_dataset_files:
         raise errors.ParameterError(f"Dataset '{uri}' has no files.")
 
-    new_dataset: Dataset
+    confirm_download(importer.provider_dataset_files)
 
-    if not isinstance(provider, RenkuProvider):
-        if not name:
-            name = generate_default_name(provider_dataset.title, provider_dataset.version)
+    try:
+        if not importer.is_latest_version():
+            communication.warn(f"Newer version found at {importer.latest_uri}")
+    except (KeyError, LookupError):
+        pass
 
-        provider_dataset.same_as = Url(url_id=remove_credentials(uri))
-        if is_doi(provider_dataset.identifier):
-            provider_dataset.same_as = Url(url_str=urllib.parse.urljoin("https://doi.org", provider_dataset.identifier))
+    if datadir and previous_dataset:
+        raise errors.ParameterError("Can't specify datadir when updating a previously imported dataset.")
+    elif datadir:
+        try:
+            datadir = get_safe_relative_path(datadir, project_context.path)
+        except ValueError as e:
+            raise errors.ParameterError("Datadir must be inside repository.") from e
 
-        urls, names = zip(*[(f.source, f.filename) for f in files])
-        new_dataset = add_data_to_dataset(
-            urls=urls,
-            dataset_name=name,
-            create=not previous_dataset,
-            with_metadata=provider_dataset,
-            force=True,
-            extract=extract,
-            all_at_once=True,
-            destination_names=names,
-            total_size=total_size,
-            overwrite=True,
-            clear_files_before=True,
-        )
+    name = name or provider_dataset.name
 
-        if previous_dataset:
-            new_dataset = _update_datasets_metadata(new_dataset, previous_dataset, delete, new_dataset.same_as)
+    new_dataset = add_to_dataset(
+        dataset_name=name,
+        urls=[],
+        importer=importer,
+        create=not previous_dataset,
+        force=True,  # NOTE: Force-add to include any ignored files
+        extract=extract,
+        overwrite=True,
+        total_size=calculate_total_size(importer.provider_dataset_files),
+        clear_files_before=True,
+        datadir=datadir,
+    )
 
-        if provider_dataset.version:
-            tag_name = re.sub("[^a-zA-Z0-9.-_]", "_", provider_dataset.version)
-            add_dataset_tag(
-                dataset_name=new_dataset.name,
-                tag=tag_name,
-                description=f"Tag {provider_dataset.version} created by renku import",
-            )
-    else:
-        record = cast(RenkuRecordSerializer, record)
-        name = name or provider_dataset.name
+    new_dataset.update_metadata_from(provider_dataset)
+    # NOTE: Remove derived_from because this is an updated and imported dataset and won't be a derivative
+    new_dataset.derived_from = None
 
-        provider_dataset.same_as = Url(url_id=record.latest_uri)
+    remove_files(new_dataset)
 
-        if not provider_dataset.data_dir:
-            raise errors.OperationError(f"Data directory for dataset must be set: {provider_dataset.name}")
+    importer.tag_dataset(name)
+    importer.copy_extra_metadata(new_dataset)
 
-        sources = []
-
-        if record.datadir_exists:
-            sources = [f"{provider_dataset.data_dir}/*"]
-
-        for file in files:
-            try:
-                Path(file.path).relative_to(provider_dataset.data_dir)
-            except ValueError:  # Files that are not in dataset's data directory
-                sources.append(file.path)
-
-        new_dataset = add_data_to_dataset(
-            urls=[record.project_url],
-            dataset_name=name,
-            sources=sources,
-            with_metadata=provider_dataset,
-            create=not previous_dataset,
-            overwrite=True,
-            repository=record.repository,
-            clear_files_before=True,
-        )
-
-        if previous_dataset:
-            _update_datasets_metadata(new_dataset, previous_dataset, delete, provider_dataset.same_as)
-
-        record.import_images(new_dataset)
-
-    database_dispatcher.current_database.commit()
+    project_context.database.commit()
 
 
 @inject.autoparams()
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def update_datasets(
-    names,
-    creators,
-    include,
-    exclude,
-    ref,
-    delete,
-    no_external,
-    update_all,
-    dry_run,
-    client_dispatcher: IClientDispatcher,
+    names: List[str],
+    creators: Optional[str],
+    include: Optional[List[str]],
+    exclude: Optional[List[str]],
+    ref: Optional[str],
+    delete: bool,
+    no_external: bool,
+    no_local: bool,
+    no_remote: bool,
+    check_data_directory: bool,
+    update_all: bool,
+    dry_run: bool,
+    plain: bool,
     dataset_gateway: IDatasetGateway,
 ) -> Tuple[List[DatasetViewModel], List[DatasetFileViewModel]]:
     """Update dataset files.
 
     Args:
-        names: Names of datasets to update.
-        creators: Creators to filter dataset files by.
-        include: Include filter for paths to update.
-        exclude: Exclude filter for paths to update.
-        ref: Git reference to use for update.
-        delete: Whether to delete files that don't exist on remote anymore.
-        no_external: Whether to exclude external files from the update.
-        update_all: Whether to update all datasets.
-        dry_run: Whether to return a preview of what would be updated.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
+        names(List[str]): Names of datasets to update.
+        creators(Optional[str]): Creators to filter dataset files by.
+        include(Optional[List[str]]): Include filter for paths to update.
+        exclude(Optional[List[str]]): Exclude filter for paths to update.
+        ref(Optional[str]): Git reference to use for update.
+        delete(bool): Whether to delete files that don't exist on remote anymore.
+        no_external(bool): Whether to exclude external files from the update.
+        no_local(bool): Whether to exclude local files from the update.
+        no_remote(bool): Whether to exclude remote files from the update.
+        check_data_directory(bool): Whether to check the dataset's data directory for new files.
+        update_all(bool): Whether to update all datasets.
+        dry_run(bool): Whether to return a preview of what would be updated.
+        plain(bool): Whether plain output should be produced.
         dataset_gateway(IDatasetGateway): Injected dataset gateway.
     """
+    from renku.core.dataset.providers.renku import RenkuProvider
+
     if not update_all and not names and not include and not exclude and not dry_run:
         raise errors.ParameterError("No update criteria is specified")
 
-    client = client_dispatcher.current_client
-
-    imported_datasets: List[Dataset] = []
+    imported_dataset_updates: List[Dataset] = []
 
     all_datasets = dataset_gateway.get_all_active_datasets()
+    imported_datasets = [d for d in all_datasets if d.same_as]
 
     if names and update_all:
         raise errors.ParameterError("Cannot pass dataset names when updating all datasets")
     elif (include or exclude) and update_all:
         raise errors.ParameterError("Cannot specify include and exclude filters when updating all datasets")
-    elif (include or exclude) and names and any(d.same_as for d in all_datasets if d.name in names):
-        raise errors.IncompatibleParametersError(a="--include/--exclude", b="imported datasets")
+    elif (include or exclude) and names and any(d for d in imported_datasets if d.name in names):
+        raise errors.IncompatibleParametersError(first_param="--include/--exclude", second_param="imported datasets")
 
-    names_provided = bool(names)
+    names = names or [d.name for d in all_datasets]
 
     # NOTE: update imported datasets
-    if not include and not exclude:
-        for dataset in all_datasets:
-            if names and dataset.name not in names or not dataset.same_as:
+    if not include and not exclude and not no_remote:
+        must_match_records = False
+
+        for dataset in imported_datasets:
+            if dataset.name not in names:
                 continue
 
-            uri = dataset.same_as.url
-            if isinstance(uri, dict):
-                uri = cast(str, uri.get("@id"))
-            provider, _ = ProviderFactory.from_uri(uri)
-
-            if not provider:
+            uri = dataset.same_as.value  # type: ignore
+            try:
+                provider = ProviderFactory.get_import_provider(uri)
+            except errors.DatasetProviderNotFound:
                 continue
 
-            record = provider.find_record(uri)
+            record = provider.get_importer()
 
-            if record.is_last_version(uri) and record.version == dataset.version:
+            if isinstance(provider, RenkuProvider) and dataset.version is not None:
+                tags = dataset_gateway.get_all_tags(dataset=dataset)
+                tag = next((t for t in tags if t.name == dataset.version), None)
+                # NOTE: Do not update Renku dataset that are imported from a specific version
+                if tag is not None and tag.dataset_id.value == dataset.id:
+                    communication.echo(
+                        f"Skipped updating imported Renku dataset '{dataset.name}' with tag '{tag.name}'"
+                    )
+                    names.remove(dataset.name)
+                    continue
+
+            if record.is_latest_version() and record.is_version_equal_to(dataset):
+                names.remove(dataset.name)
                 continue
 
             if not dry_run:
@@ -651,25 +670,30 @@ def update_datasets(
 
                 communication.echo(f"Updated dataset '{dataset.name}' from remote provider")
 
-            if names:
-                names.remove(dataset.name)
-            imported_datasets.append(dataset)
+            names.remove(dataset.name)
+            imported_dataset_updates.append(dataset)
     else:
-        imported_datasets = [d for d in all_datasets if d.same_as]
+        must_match_records = True
 
-    imported_datasets_view_models = [DatasetViewModel.from_dataset(d) for d in imported_datasets]
+    imported_dataset_updates_view_models = [DatasetViewModel.from_dataset(d) for d in imported_dataset_updates]
 
-    if names_provided and not names:
-        return imported_datasets_view_models, []
+    if not names:
+        return imported_dataset_updates_view_models, []
 
+    # NOTE: Exclude all imported dataset from individual file filter
     records = filter_dataset_files(
-        names=names, creators=creators, include=include, exclude=exclude, ignore=[d.name for d in imported_datasets]
+        names=names,
+        creators=creators,
+        include=include,
+        exclude=exclude,
+        ignore=[d.name for d in imported_datasets],
+        check_data_directory=check_data_directory,
     )
 
     if not records:
-        if imported_datasets:
-            return imported_datasets_view_models, []
-        raise errors.ParameterError("No files matched the criteria.")
+        if must_match_records and not plain:
+            raise errors.ParameterError("No files matched the criteria.")
+        return imported_dataset_updates_view_models, []
 
     git_files = []
     unique_remotes = set()
@@ -695,29 +719,33 @@ def update_datasets(
     deleted_files: List[DynamicProxy] = []
 
     if external_files and not no_external:
-        updated = update_external_files(client, external_files, dry_run=dry_run)
+        updated = update_external_files(external_files, dry_run=dry_run)
         updated_files.extend(updated)
 
-    if git_files:
+    if git_files and not no_remote:
         updated, deleted = update_dataset_git_files(files=git_files, ref=ref, delete=delete, dry_run=dry_run)
         updated_files.extend(updated)
         deleted_files.extend(deleted)
 
-    if local_files:
-        updated, deleted = update_dataset_local_files(records=local_files)
+    if local_files and not no_local:
+        updated, deleted, new = update_dataset_local_files(
+            records=local_files, check_data_directory=check_data_directory
+        )
         updated_files.extend(updated)
         deleted_files.extend(deleted)
+        updated_files.extend(new)
 
     if not dry_run:
         if deleted_files and not delete:
             communication.echo("Some files are deleted: Pass '--delete' to remove them from datasets' metadata")
         if updated_files or (deleted_files and delete):
-            file_paths = {str(client.path / f.entity.path) for f in updated_files}
+            file_paths = {str(project_context.path / f.entity.path) for f in updated_files}
             # Force-add to include possible ignored files that are in datasets
-            client.repository.add(*file_paths, force=True)
-            client.repository.add(renku_pointers_path(client), force=True)
+            repository = project_context.repository
+            repository.add(*file_paths, force=True)
+            repository.add(project_context.pointers_path, force=True)
 
-            _update_datasets_files_metadata(client, updated_files, deleted_files, delete)
+            _update_datasets_files_metadata(updated_files, deleted_files, delete)
 
         message = f"Updated {len(updated_files)} files"
         if delete:
@@ -725,33 +753,73 @@ def update_datasets(
         communication.echo(message)
     else:
         for file in deleted_files:
-            file.date_removed = local_now()
+            if not file.date_removed:
+                file.date_removed = local_now()
 
     dataset_files_view_models = [
         DatasetFileViewModel.from_dataset_file(cast(DatasetFile, f), f.dataset) for f in updated_files + deleted_files
     ]
-    return imported_datasets_view_models, dataset_files_view_models
+    return imported_dataset_updates_view_models, dataset_files_view_models
 
 
-def show_dataset(name):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def show_dataset(name: str, tag: Optional[str] = None):
     """Show detailed dataset information.
 
     Args:
-        name: Name of dataset to show details for.
+        name(str): Name of dataset to show details for.
+        tag(str, optional): Tags for which to get the metadata (Default value = None).
 
     Returns:
         dict: JSON dictionary of dataset details.
     """
-    dataset = DatasetsProvenance().get_by_name(name, strict=True)
+    datasets_provenance = DatasetsProvenance()
+    dataset: Optional[Dataset] = datasets_provenance.get_by_name(name, strict=True)
 
+    if tag is None:
+        return DatasetDetailsJson().dump(dataset)
+
+    tags = datasets_provenance.get_all_tags(dataset=cast(Dataset, dataset))
+
+    selected_tag = next((t for t in tags if t.name == tag), None)
+
+    if selected_tag is None:
+        raise errors.DatasetTagNotFound(tag)
+
+    dataset = datasets_provenance.get_by_id(selected_tag.dataset_id.value)
     return DatasetDetailsJson().dump(dataset)
 
 
-def set_dataset_images(client: "LocalClient", dataset: Dataset, images: Optional[List[ImageRequestModel]]):
+def add_datadir_files_to_dataset(dataset: Dataset) -> None:
+    """Add all files in a datasets data directory to the dataset.
+
+    Args:
+        dataset(Dataset): The dataset to add data dir files to.
+    """
+    datadir = get_safe_relative_path(dataset.get_datadir(), project_context.path)
+
+    if datadir.exists():
+        # NOTE: Add existing files to dataset
+        dataset_files: List[DatasetFile] = []
+        files: List[Path] = []
+        for file in get_files(datadir):
+            files.append(file)
+            dataset_files.append(DatasetFile.from_path(path=file, source=file))
+
+        if not dataset_files:
+            return
+
+        if check_external_storage():
+            track_paths_in_storage(*files)
+        project_context.repository.add(*files)
+
+        dataset.add_or_update_files(dataset_files)
+
+
+def set_dataset_images(dataset: Dataset, images: Optional[List[ImageRequestModel]]):
     """Set a dataset's images.
 
     Args:
-        client("LocalClient"): The ``LocalClient``.
         dataset(Dataset): The dataset to set images on.
         images(List[ImageRequestModel]): The images to set.
 
@@ -761,7 +829,7 @@ def set_dataset_images(client: "LocalClient", dataset: Dataset, images: Optional
     if not images:
         images = []
 
-    image_folder = renku_dataset_images_path(client) / dataset.initial_identifier
+    image_folder = project_context.dataset_images_path / dataset.initial_identifier
     image_folder.mkdir(exist_ok=True, parents=True)
     previous_images = dataset.images or []
 
@@ -788,45 +856,46 @@ def set_dataset_images(client: "LocalClient", dataset: Dataset, images: Optional
 
         path = prev.content_url
         if not os.path.isabs(path):
-            path = os.path.normpath(os.path.join(client.path, path))
+            path = os.path.normpath(os.path.join(project_context.path, path))
 
         os.remove(path)
 
     return images_updated or dataset.images != previous_images
 
 
-def update_dataset_custom_metadata(dataset: Dataset, custom_metadata: Dict):
+def update_dataset_custom_metadata(
+    dataset: Dataset,
+    custom_metadata: Optional[Union[Dict, List[Dict]]],
+    custom_metadata_source: Optional[str],
+):
     """Update custom metadata on a dataset.
 
     Args:
         dataset(Dataset): The dataset to update.
         custom_metadata(Dict): Custom JSON-LD metadata to set.
+        custom_metadata_source(str): The source field for the custom metadata.
     """
 
-    existing_metadata = [a for a in dataset.annotations if a.source != "renku"]
+    existing_metadata = [a for a in dataset.annotations if a.source != custom_metadata_source]
 
-    existing_metadata.append(Annotation(id=Annotation.generate_id(), body=custom_metadata, source="renku"))
+    if custom_metadata is not None and custom_metadata_source is not None:
+        if isinstance(custom_metadata, dict):
+            custom_metadata = [custom_metadata]
+        for cm in custom_metadata:
+            existing_metadata.append(Annotation(id=Annotation.generate_id(), body=cm, source=custom_metadata_source))
 
     dataset.annotations = existing_metadata
 
 
-@inject.autoparams("client_dispatcher", "dataset_gateway")
-def move_files(
-    client_dispatcher: IClientDispatcher,
-    dataset_gateway: IDatasetGateway,
-    files: Dict[Path, Path],
-    to_dataset_name: Optional[str] = None,
-):
+@inject.autoparams("dataset_gateway")
+def move_files(dataset_gateway: IDatasetGateway, files: Dict[Path, Path], to_dataset_name: Optional[str] = None):
     """Move files and their metadata from one or more datasets to a target dataset.
 
     Args:
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         dataset_gateway(IDatasetGateway):Injected dataset gateway.
         files(Dict[Path, Path]): Files to move
         to_dataset_name(Optional[str], optional): Target dataset (Default value = None)
     """
-    client = client_dispatcher.current_client
-
     datasets = [d.copy() for d in dataset_gateway.get_all_active_datasets()]
 
     to_dataset: Optional[Dataset] = None
@@ -839,10 +908,10 @@ def move_files(
     communication.start_progress(progress_name, total=len(files))
     try:
         for src, dst in files.items():
-            src = src.relative_to(client.path)
-            dst = dst.relative_to(client.path)
-            # NOTE: Files are moved at this point, so, we use can use dst
-            new_dataset_file = DatasetFile.from_path(client, dst)
+            src = src.relative_to(project_context.path)
+            dst = dst.relative_to(project_context.path)
+            # NOTE: Files are moved at this point, so, we can use dst
+            new_dataset_file = DatasetFile.from_path(dst)
 
             for dataset in datasets:
                 removed = dataset.unlink_file(src, missing_ok=True)
@@ -850,12 +919,17 @@ def move_files(
                     modified_datasets[dataset.name] = dataset
                     new_dataset_file.based_on = removed.based_on
                     new_dataset_file.source = removed.source
-                    if not to_dataset:
+
+                    if not to_dataset and (
+                        new_dataset_file.is_external
+                        or is_subpath(project_context.path / dst, project_context.path / dataset.get_datadir())
+                    ):
                         dataset.add_or_update_files(new_dataset_file)
 
                 # NOTE: Update dataset if it contains a destination that is being overwritten
                 modified = dataset.find_file(dst)
-                if modified:
+                added = is_subpath(project_context.path / dst, project_context.path / dataset.get_datadir())
+                if modified or added:
                     modified_datasets[dataset.name] = dataset
                     dataset.add_or_update_files(new_dataset_file)
 
@@ -868,29 +942,27 @@ def move_files(
 
     datasets_provenance = DatasetsProvenance()
     modified_dataset_values = list(modified_datasets.values())
+    creator = get_git_user(repository=project_context.repository)
     for modified_dataset in modified_dataset_values:
-        datasets_provenance.add_or_update(modified_dataset, creator=get_git_user(client.repository))
+        datasets_provenance.add_or_update(modified_dataset, creator=creator)
     if to_dataset and to_dataset not in modified_dataset_values:
-        datasets_provenance.add_or_update(to_dataset, creator=get_git_user(client.repository))
+        datasets_provenance.add_or_update(to_dataset, creator=creator)
 
 
-@inject.autoparams("client_dispatcher")
 def update_dataset_local_files(
-    client_dispatcher: IClientDispatcher, records: List[DynamicProxy]
-) -> Tuple[List[DynamicProxy], List[DynamicProxy]]:
+    records: List[DynamicProxy], check_data_directory: bool
+) -> Tuple[List[DynamicProxy], List[DynamicProxy], List[DynamicProxy]]:
     """Update files metadata from the git history.
 
     Args:
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         records(List[DynamicProxy]): File records to update.
-
+        check_data_directory(bool): Whether to check the dataset's data directory for new files.
     Returns:
         Tuple[List[DynamicProxy], List[DynamicProxy]]: Tuple of updated and deleted file records.
     """
-    client = client_dispatcher.current_client
-
     updated_files: List[DynamicProxy] = []
     deleted_files: List[DynamicProxy] = []
+    new_files: List[DynamicProxy] = []
     progress_text = "Checking for local updates"
 
     try:
@@ -904,14 +976,14 @@ def update_dataset_local_files(
             if file.based_on or file.is_external:
                 continue
 
-            if not (client.path / file.entity.path).exists():
+            if not (project_context.path / file.entity.path).exists():
                 deleted_files.append(file)
                 continue
 
             check_paths.append(file.entity.path)
             records_to_check.append(file)
 
-        checksums = client.repository.get_object_hashes(check_paths)
+        checksums = project_context.repository.get_object_hashes(check_paths)
 
         for file in records_to_check:
             current_checksum = checksums.get(file.entity.path)
@@ -919,59 +991,25 @@ def update_dataset_local_files(
                 deleted_files.append(file)
             elif current_checksum != file.entity.checksum:
                 updated_files.append(file)
+            elif check_data_directory and not any(file.entity.path == f.entity.path for f in file.dataset.files):
+                datadir = file.dataset.get_datadir()
+                try:
+                    get_safe_relative_path(file.entity.path, datadir)
+                except ValueError:
+                    continue
+
+                new_files.append(file)
     finally:
         communication.finalize_progress(progress_text)
 
-    return updated_files, deleted_files
+    return updated_files, deleted_files, new_files
 
 
-@inject.autoparams()
-def _update_datasets_metadata(
-    new_dataset: Dataset, previous_dataset, delete, same_as, client_dispatcher: IClientDispatcher
-):
-    """Update metadata and remove files that exists in ``previous_dataset`` but not in ``new_dataset``.
-
-    Args:
-        new_dataset(Dataset): Dataset to update.
-        previous_dataset: Dataset to update from.
-        delete: Whether to delete non existing files.
-        same_as: Source of the dataset.
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
-
-    Returns:
-        Dataset: Dataset with updated values.
-    """
-    client = client_dispatcher.current_client
-
-    current_paths = set(str(f.entity.path) for f in new_dataset.files)
-
-    # NOTE: remove files not present in the dataset anymore
-    for file in previous_dataset.files:
-        if str(file.entity.path) in current_paths:
-            continue
-
-        if delete:
-            delete_file(client.path / file.entity.path, follow_symlinks=True)
-
-    new_dataset.same_as = same_as
-    # NOTE: Remove derived_from because this is an updated and imported dataset
-    new_dataset.derived_from = None
-
-    return new_dataset
-
-
-def _update_datasets_files_metadata(
-    client: "LocalClient",
-    updated_files: List[DynamicProxy],
-    deleted_files: List[DynamicProxy],
-    delete: bool,
-):
+def _update_datasets_files_metadata(updated_files: List[DynamicProxy], deleted_files: List[DynamicProxy], delete: bool):
     modified_datasets = {}
 
     for file in updated_files:
-        new_file = DatasetFile.from_path(
-            client=client, path=file.entity.path, based_on=file.based_on, source=file.source
-        )
+        new_file = DatasetFile.from_path(path=file.entity.path, based_on=file.based_on, source=file.source)
         modified_datasets[file.dataset.name] = file.dataset
         file.dataset.add_or_update_files(new_file)
 
@@ -982,30 +1020,24 @@ def _update_datasets_files_metadata(
 
     datasets_provenance = DatasetsProvenance()
     for dataset in modified_datasets.values():
-        datasets_provenance.add_or_update(dataset, creator=get_git_user(client.repository))
+        datasets_provenance.add_or_update(dataset, creator=get_git_user(repository=project_context.repository))
 
 
-@inject.autoparams("client_dispatcher")
 def update_dataset_git_files(
-    client_dispatcher: IClientDispatcher, files: List[DynamicProxy], ref: str, delete: bool, dry_run: bool
+    files: List[DynamicProxy], ref: Optional[str], delete: bool, dry_run: bool
 ) -> Tuple[List[DynamicProxy], List[DynamicProxy]]:
     """Update files and dataset metadata according to their remotes.
 
     Args:
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         files(List[DynamicProxy]): List of files to be updated.
-        ref(str): Reference to use for update.
+        ref(Optional[str]): Reference to use for update.
         delete(bool, optional): Indicates whether to delete files or not (Default value = False).
         dry_run(bool): Whether to perform update or only print changes.
 
     Returns:
         Tuple[List[DynamicProxy], List[DynamicProxy]]: Tuple of updated and deleted file records.
     """
-    from renku.core.management.client import LocalClient
-
-    client = client_dispatcher.current_client
-
-    visited_repos: Dict[str, Tuple["Repository", LocalClient]] = {}
+    visited_repos: Dict[str, "Repository"] = {}
     updated_files: List[DynamicProxy] = []
     deleted_files: List[DynamicProxy] = []
 
@@ -1021,33 +1053,32 @@ def update_dataset_git_files(
             based_on = file.based_on
             url = based_on.url
             if url in visited_repos:
-                remote_repository, remote_client = visited_repos[url]
+                remote_repository = visited_repos[url]
             else:
-                remote_repository = clone_repository(
-                    url=url, path=get_cache_directory_for_repository(client=client, url=url), checkout_revision=ref
-                )
-                remote_client = LocalClient(path=remote_repository.path)
-                visited_repos[url] = remote_repository, remote_client
+                communication.echo(msg="Cloning remote repository...")
+                path = get_cache_directory_for_repository(url=url)
+                remote_repository = clone_repository(url=url, path=path, checkout_revision=ref)
+                visited_repos[url] = remote_repository
 
             checksum = remote_repository.get_object_hash(path=based_on.path, revision="HEAD")
             found = checksum is not None
             changed = found and based_on.checksum != checksum
 
             src = remote_repository.path / based_on.path
-            dst = client.renku_path.parent / file.entity.path
+            dst = project_context.metadata_path.parent / file.entity.path
 
             if not found:
                 if not dry_run and delete:
-                    delete_file(dst, follow_symlinks=True)
-                    client.repository.add(dst, force=True)
+                    delete_dataset_file(dst, follow_symlinks=True)
+                    project_context.repository.add(dst, force=True)
                 deleted_files.append(file)
             elif changed:
                 if not dry_run:
                     # Fetch file if it is tracked by Git LFS
-                    remote_client.pull_paths_from_storage(remote_client.path / based_on.path)
-                    if is_external_file(path=src, client_path=remote_client.path):
-                        delete_file(dst, follow_symlinks=True)
-                        create_external_file(client=client, target=src.resolve(), path=dst)
+                    pull_paths_from_storage(remote_repository, remote_repository.path / based_on.path)
+                    if is_external_file(path=src, project_path=remote_repository.path):
+                        delete_dataset_file(dst, follow_symlinks=True)
+                        create_external_file(target=src.resolve(), path=dst)
                     else:
                         shutil.copy(src, dst)
                     file.based_on = RemoteEntity(
@@ -1064,11 +1095,10 @@ def update_dataset_git_files(
     return updated_files, deleted_files
 
 
-def update_external_files(client: "LocalClient", records: List[DynamicProxy], dry_run: bool) -> List[DynamicProxy]:
+def update_external_files(records: List[DynamicProxy], dry_run: bool) -> List[DynamicProxy]:
     """Update files linked to external storage.
 
     Args:
-        client("LocalClient"): The ``LocalClient``.
         records(List[DynamicProxy]): File records to update.
         dry_run(bool): Whether to return a preview of what would be updated.
     """
@@ -1077,7 +1107,7 @@ def update_external_files(client: "LocalClient", records: List[DynamicProxy], dr
     for file in records:
         if file.is_external:
             try:
-                updated, checksum = is_external_file_updated(client_path=client.path, path=file.entity.path)
+                updated, checksum = is_external_file_updated(project_path=project_context.path, path=file.entity.path)
             except errors.ExternalFileNotFound as e:
                 if not dry_run:
                     raise
@@ -1086,96 +1116,259 @@ def update_external_files(client: "LocalClient", records: List[DynamicProxy], dr
 
             if updated:
                 if not dry_run:
-                    update_external_file(client=client, path=file.entity.path, checksum=checksum)
+                    update_external_file(path=file.entity.path, checksum=checksum)
                 updated_files.append(file)
 
     return updated_files
 
 
-@inject.autoparams()
+@inject.autoparams("dataset_gateway")
 def filter_dataset_files(
-    client_dispatcher: IClientDispatcher,
     dataset_gateway: IDatasetGateway,
-    names=None,
-    creators=None,
-    include=None,
-    exclude=None,
-    ignore=None,
-    immutable=False,
+    names: Optional[List[str]] = None,
+    tag: Optional[str] = None,
+    creators: Optional[Union[str, List[str], Tuple[str]]] = None,
+    include: Optional[List[str]] = None,
+    exclude: Optional[List[str]] = None,
+    ignore: Optional[List[str]] = None,
+    immutable: bool = False,
+    check_data_directory: bool = False,
 ) -> List[DynamicProxy]:
     """Filter dataset files by specified filters.
 
     Args:
-        client_dispatcher(IClientDispatcher): Injected client dispatcher.
         dataset_gateway(IDatasetGateway):Injected dataset gateway.
-        names: Filter by specified dataset names. (Default value = None).
-        creators: Filter by creators. (Default value = None).
-        include: Include files matching file pattern. (Default value = None).
-        exclude: Exclude files matching file pattern. (Default value = None).
-        ignore: Ignored datasets. (Default value = None).
-        immutable: Return immutable copies of dataset objects. (Default value = False).
-
+        names(Optional[List[str]]): Filter by specified dataset names (Default value = None).
+        tag(Optional[str]): Filter by specified tag (Default value = None).
+        creators(Optional[Union[str, List[str], Tuple[str]]]): Filter by creators (Default value = None).
+        include(Optional[List[str]]): Tuple containing patterns to which include from result (Default value = None).
+        exclude(Optional[List[str]]): Tuple containing patterns to which exclude from result (Default value = None).
+        ignore(Optional[List[str]]): Ignored datasets (Default value = None).
+        immutable(bool): Return immutable copies of dataset objects (Default value = False).
+        check_data_directory(bool): Whether to check for new files in dataset's data directory that aren't in the
+            dataset yet (Default value = False).
     Returns:
         List[DynamicProxy]: List of filtered files sorted by date added.
     """
-    client = client_dispatcher.current_client
 
+    def should_include(filepath: Path) -> bool:
+        """Check if file matches one of include filters and not in exclude filter."""
+        if exclude:
+            for pattern in exclude:
+                if filepath.match(pattern):
+                    return False
+
+        if include:
+            for pattern in include:
+                if filepath.match(pattern):
+                    return True
+            return False
+
+        return True
+
+    creators_set = set()
     if isinstance(creators, str):
-        creators = set(creators.split(","))
-
-    if isinstance(creators, list) or isinstance(creators, tuple):
-        creators = set(creators)
+        creators_set = set(creators.split(","))
+    elif isinstance(creators, list) or isinstance(creators, tuple):
+        creators_set = set(creators)
 
     records = []
-    unused_names = set(names)
+    unused_names = set(names) if names is not None else set()
+
+    if ignore:
+        unused_names = unused_names - set(ignore)
+
     for dataset in dataset_gateway.get_all_active_datasets():
+        if (names and dataset.name not in names) or (ignore and dataset.name in ignore):
+            continue
+
+        if tag:
+            dataset = get_dataset_by_tag(dataset=dataset, tag=tag)  # type: ignore
+            if not dataset:
+                continue
+
         if not immutable:
             dataset = dataset.copy()
-        if (not names or dataset.name in names) and (not ignore or dataset.name not in ignore):
-            if unused_names:
-                unused_names.remove(dataset.name)
-            for file in dataset.files:
-                record = DynamicProxy(file)
-                record.dataset = dataset
-                record.client = client
-                path = Path(record.entity.path)
-                match = _include_exclude(path, include, exclude)
 
-                if creators:
-                    c: Person
-                    dataset_creators = {c.name for c in dataset.creators}
-                    match = match and creators.issubset(dataset_creators)
+        if unused_names:
+            unused_names.remove(dataset.name)
 
-                if match:
+        if creators_set:
+            dataset_creators = {creator.name for creator in dataset.creators}
+            if not creators_set.issubset(dataset_creators):
+                continue
+
+        for file in dataset.files:
+            if not should_include(Path(file.entity.path)):
+                continue
+
+            record = DynamicProxy(file)
+            record.dataset = dataset
+            records.append(record)
+
+        if not check_data_directory:
+            continue
+
+        for root, _, files in os.walk(project_context.path / dataset.get_datadir()):
+            current_folder = Path(root)
+            for current_file in files:
+                file_path = get_safe_relative_path(current_folder / current_file, project_context.path)
+                if should_include(file_path) and not dataset.find_file(file_path):
+                    # New file in dataset folder
+                    record = DynamicProxy(DatasetFile.from_path(file_path))
+                    record.dataset = dataset
                     records.append(record)
 
     if unused_names:
         unused_names_str = ", ".join(unused_names)
-        raise errors.ParameterError(f"Dataset does not exist: {unused_names_str}")
+        raise errors.ParameterError(f"These datasets don't exist: {unused_names_str}")
 
     return sorted(records, key=lambda r: r.date_added)
 
 
-def _include_exclude(file_path, include=None, exclude=None):
-    """Check if file matches one of include filters and not in exclude filter.
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def pull_external_data(name: str, location: Optional[Path] = None) -> None:
+    """Pull/copy data for an external storage to a dataset's data directory or a specified location.
 
     Args:
-        file_path: Path to the file.
-        include: Tuple containing patterns to which include from result (Default value = None).
-        exclude: Tuple containing patterns to which exclude from result (Default value = None).
-
-    Returns:
-        bool: True if a file should be included, False otherwise.
+        name(str): Name of the dataset
+        location(Optional[Path]): A directory to copy data to (Default value = None).
     """
-    if exclude is not None and exclude:
-        for pattern in exclude:
-            if file_path.match(pattern):
-                return False
+    datasets_provenance = DatasetsProvenance()
 
-    if include is not None and include:
-        for pattern in include:
-            if file_path.match(pattern):
-                return True
-        return False
+    dataset = datasets_provenance.get_by_name(name=name, strict=True)
 
-    return True
+    if not dataset.storage:
+        communication.warn(f"Dataset '{name}' doesn't have a storage backend")
+        return
+
+    # NOTE: Try to unmount the path in case it was mounted before
+    unmount_path(project_context.path / dataset.get_datadir())
+
+    create_symlinks = True
+    destination: Union[Path, str]
+
+    if location:
+        destination = get_absolute_path(location)
+    else:
+        stored_location = read_dataset_data_location(dataset=dataset)
+        if stored_location:
+            destination = stored_location
+        else:
+            destination = project_context.path
+            create_symlinks = False
+
+    provider = ProviderFactory.get_pull_provider(uri=dataset.storage)
+    storage = provider.get_storage()
+
+    updated_files = []
+
+    for file in dataset.files:
+        path = Path(destination) / file.entity.path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # NOTE: Don't check if destination exists. ``IStorage.copy`` won't copy a file if it exists and is not modified.
+
+        if not file.based_on:
+            raise errors.DatasetImportError(f"Dataset file doesn't have a URI: {file.entity.path}")
+
+        with communication.busy(f"Copying {file.entity.path} ..."):
+            storage.download(file.based_on.url, path)
+
+            # NOTE: Make files read-only since we don't support pushing data to the remote storage
+            os.chmod(path, 0o400)
+
+            if not file.based_on.checksum:
+                md5_hash = hash_file(path, hash_type="md5") or ""
+                file.based_on = RemoteEntity(checksum=md5_hash, url=file.based_on.url, path=file.based_on.path)
+
+            new_file = DynamicProxy(file)
+            new_file.dataset = dataset
+            updated_files.append(new_file)
+
+            if create_symlinks:
+                symlink_path = project_context.path / file.entity.path
+                symlink_path.parent.mkdir(parents=True, exist_ok=True)
+                create_symlink(path=path, symlink_path=symlink_path, overwrite=True)
+
+    # NOTE: Store location in metadata in case where we want to mount the external storage in the same location
+    store_dataset_data_location(dataset=dataset, location=location)
+
+    if updated_files:
+        _update_datasets_files_metadata(updated_files=updated_files, deleted_files=[], delete=False)
+
+
+def store_dataset_data_location(dataset: Dataset, location: Optional[Path]) -> None:
+    """Store data location for a dataset in the config file."""
+    section = "dataset-locations"
+    key = dataset.name
+
+    if not location:
+        remove_value(section=section, key=key)
+    else:
+        set_value(section=section, key=key, value=get_absolute_path(location))
+
+
+def read_dataset_data_location(dataset: Dataset) -> Optional[str]:
+    """Read data location for a dataset in the config file."""
+    return get_value(section="dataset-locations", key=dataset.name, config_filter=ConfigFilter.LOCAL_ONLY)
+
+
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def mount_external_storage(name: str, existing: Optional[Path], yes: bool) -> None:
+    """Mount an external storage to a dataset's data directory.
+
+    Args:
+        name(str): Name of the dataset
+        existing(Optional[Path]): An existing mount point to use instead of actually mounting the external storage.
+        yes(bool): Don't prompt when removing non-empty dataset's data directory.
+    """
+    dataset, datadir = _get_dataset_with_external_storage(name=name)
+
+    # NOTE: Try to unmount the path in case it was mounted before
+    unmount_path(datadir)
+
+    if not is_path_empty(datadir) and not yes:
+        communication.confirm(
+            f"Dataset's data directory will be removed: {dataset.get_datadir()}. Do you want to continue?",
+            abort=True,
+            warning=True,
+        )
+
+    if existing:
+        create_symlink(path=existing, symlink_path=datadir, overwrite=True)
+        return
+
+    delete_path(datadir)
+    datadir.mkdir(parents=True, exist_ok=True)
+
+    provider = ProviderFactory.get_mount_provider(uri=dataset.storage)
+    credentials = provider.get_credentials()
+    prompt_for_credentials(credentials)
+    storage = provider.get_storage(credentials=credentials)
+
+    with communication.busy(f"Mounting {provider.uri}"):
+        storage.mount(datadir)
+
+
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def unmount_external_storage(name: str) -> None:
+    """Mount an external storage to a dataset's data directory.
+
+    Args:
+        name(str): Name of the dataset
+    """
+    _, datadir = _get_dataset_with_external_storage(name=name)
+    unmount_path(datadir)
+
+
+def _get_dataset_with_external_storage(name: str) -> Tuple[Dataset, Path]:
+    datasets_provenance = DatasetsProvenance()
+
+    dataset = datasets_provenance.get_by_name(name=name, strict=True)
+
+    if not dataset.storage:
+        raise errors.ParameterError(f"Dataset '{name}' doesn't have a storage backend")
+
+    datadir = project_context.path / dataset.get_datadir()
+
+    return dataset, datadir

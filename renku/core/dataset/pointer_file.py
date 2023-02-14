@@ -20,18 +20,15 @@
 import os
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, Tuple, Union, cast
+from typing import Optional, Tuple, Union, cast
 
 from renku.core import errors
-from renku.core.dataset.constant import renku_pointers_path
 from renku.core.util.os import is_subpath
+from renku.domain_model.project_context import project_context
 from renku.infrastructure.repository import Repository
 
-if TYPE_CHECKING:
-    from renku.core.management.client import LocalClient
 
-
-def create_pointer_file(client: "LocalClient", target: Union[str, Path], checksum: str = None):
+def create_pointer_file(target: Union[str, Path], checksum: Optional[str] = None):
     """Create a new pointer file."""
     target = Path(target).resolve()
 
@@ -41,12 +38,12 @@ def create_pointer_file(client: "LocalClient", target: Union[str, Path], checksu
 
     while True:
         filename = f"{uuid.uuid4()}-{checksum}"
-        path = renku_pointers_path(client) / filename
+        path = project_context.pointers_path / filename
         if not path.exists():
             break
 
     # NOTE: If target is within the repo, add it as a relative symlink
-    is_within_repo = is_subpath(target, base=client.path)
+    is_within_repo = is_subpath(target, base=project_context.path)
     source = cast(Union[str, bytes, Path], os.path.relpath(target, path.parent) if is_within_repo else target)
 
     try:
@@ -57,9 +54,9 @@ def create_pointer_file(client: "LocalClient", target: Union[str, Path], checksu
     return path
 
 
-def is_external_file_updated(client_path: Path, path: Union[Path, str]) -> Tuple[bool, str]:
+def is_external_file_updated(project_path: Path, path: Union[Path, str]) -> Tuple[bool, str]:
     """Check if an update to an external file is available."""
-    pointer_file = get_pointer_file(client_path, path)
+    pointer_file = get_pointer_file(project_path=project_path, path=path)
 
     try:
         target = pointer_file.resolve(strict=True)
@@ -78,30 +75,30 @@ def is_external_file_updated(client_path: Path, path: Union[Path, str]) -> Tuple
     return updated, new_checksum
 
 
-def update_external_file(client: "LocalClient", path: Union[Path, str], checksum: Optional[str]):
+def update_external_file(path: Union[Path, str], checksum: Optional[str]):
     """Delete existing external file and create a new one."""
-    pointer_file = get_pointer_file(client.path, path)
+    pointer_file = get_pointer_file(project_path=project_context.path, path=path)
     target = pointer_file.resolve()
 
     os.remove(pointer_file)
-    absolute_path = client.path / path
+    absolute_path = project_context.path / path
     os.remove(absolute_path)
 
-    create_external_file(client=client, target=target, path=absolute_path, checksum=checksum)
+    create_external_file(target=target, path=absolute_path, checksum=checksum)
 
 
-def create_external_file(client: "LocalClient", target: Path, path: Union[Path, str], checksum: str = None):
+def create_external_file(target: Path, path: Union[Path, str], checksum: Optional[str] = None):
     """Create a new external file."""
     try:
-        pointer_file = create_pointer_file(client, target=target, checksum=checksum)
+        pointer_file = create_pointer_file(target=target, checksum=checksum)
         relative = os.path.relpath(pointer_file, Path(path).parent)
         os.symlink(relative, path)
     except OSError as e:
         raise errors.OperationError("Could not create symbolic link") from e
 
 
-def get_pointer_file(client_path: Path, path: Union[Path, str]) -> Path:
+def get_pointer_file(project_path: Path, path: Union[Path, str]) -> Path:
     """Return pointer file from an external file."""
-    absolute_path = client_path / path
+    absolute_path = project_path / path
     link = absolute_path.parent / os.readlink(absolute_path)
-    return client_path / link
+    return project_path / link

@@ -22,6 +22,6 @@ from renku.command.command_builder.command import Command
 
 def gc_command():
     """Command to clean up project's caches."""
-    from renku.core.misc.gc import remove_caches
+    from renku.core.gc import remove_caches
 
     return Command().command(remove_caches).lock_project()

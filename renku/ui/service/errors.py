@@ -354,7 +354,7 @@ class UserNewerRenkuProjectError(ServiceError):
 
     def __init__(self, exception=None, minimum_version=ERROR_NOT_AVAILABLE, current_version=ERROR_NOT_AVAILABLE):
         super().__init__(
-            devMessage=self.devMessage.format(minimum_version=minimum_version, current_version=current_version),
+            userMessage=self.userMessage.format(minimum_version=minimum_version, current_version=current_version),
             exception=exception,
         )
 
@@ -378,6 +378,25 @@ class UserProjectTemplateReferenceError(ServiceError):
         super().__init__(
             userMessage=self.userMessage.format(message=str(exception)),
             devMessage=self.devMessage.format(message=str(exception)),
+            exception=exception,
+        )
+
+
+class UserUploadTooLargeError(ServiceError):
+    """The user tried to upload a file that is too large.
+
+    Maximum upload size can be set with the ``maximumUploadSizeBytes`` chart value or ``MAX_CONTENT_LENGTH``
+    environment value.
+    """
+
+    code = SVC_ERROR_USER + 150
+    userMessage = "The file you are trying to upload is too large. Maximum allowed size is: {maximum_size}"
+    devMessage = "Uploaded file size was larger than ``MAX_CONTENT_LENGTH``."
+
+    def __init__(self, exception, maximum_size: str):
+        super().__init__(
+            userMessage=self.userMessage.format(maximum_size=maximum_size),
+            devMessage=self.devMessage.format(maximum_size=maximum_size),
             exception=exception,
         )
 
@@ -613,7 +632,7 @@ class IntermittentProjectIdError(ServiceError):
     """
 
     code = SVC_ERROR_INTERMITTENT + 1
-    userMessage = "An unexpcted error occurred. This may be a temporary problem. Please try again in a few minutes."
+    userMessage = "An unexpected error occurred. This may be a temporary problem. Please try again in a few minutes."
     devMessage = (
         "Project id cannot be found. It may be a temporary problem. Check the Sentry exception for further details."
     )
@@ -681,7 +700,7 @@ class IntermittentSettingExistsError(ServiceError):
     and one tries to work on content already deleted from another one.
     """
 
-    code = SVC_ERROR_INTERMITTENT + 111
+    code = SVC_ERROR_INTERMITTENT + 112
     userMessage = "There was an error with the setting '{setting_name}'. Please refresh the page and try again."
     devMessage = "Unexpected error on setting '{setting_name}', possibly caused by concurrent actions."
 
@@ -726,6 +745,25 @@ class IntermittentProjectTemplateUnavailable(ServiceError):
 
     def __init__(self, exception=None):
         super().__init__(exception=exception)
+
+
+class IntermittentWorkflowNotFound(ServiceError):
+    """An operation failed because a workflow could not be found.
+
+    It may be a synchronization error happening when two or more concurrent operations overlap
+    and one tries to read content not yet created.
+    """
+
+    code = SVC_ERROR_INTERMITTENT + 150
+    userMessage = "The workflow '{name_or_id}' could not be found. Check that the name/id is correct and try again."
+    devMessage = "Unexpected error on workflow '{name_or_id}', possibly caused by concurrent actions."
+
+    def __init__(self, exception=None, name_or_id=ERROR_NOT_AVAILABLE):
+        super().__init__(
+            userMessage=self.userMessage.format(name_or_id=name_or_id),
+            devMessage=self.devMessage.format(name_or_id=name_or_id),
+            exception=exception,
+        )
 
 
 class IntermittentTimeoutError(ServiceError):

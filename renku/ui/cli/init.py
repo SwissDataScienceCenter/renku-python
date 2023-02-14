@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017, 2018 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,32 +17,20 @@
 # limitations under the License.
 r"""Create an empty Renku project or reinitialize an existing one.
 
-Start a Renku project
-~~~~~~~~~~~~~~~~~~~~~
+Description
+~~~~~~~~~~~
 
-If you have an existing directory which you want to turn into a Renku project,
-you can type:
+Use existing renku templates, either official or from the community, to
+create a new Renku project or Renku-ize an existing one.
 
-.. code-block:: console
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
 
-    $ cd ~/my_project
-    $ renku init
+.. rst-class:: cli-reference-commands
 
-or:
-
-.. code-block:: console
-
-    $ renku init ~/my_project
-
-This creates a new subdirectory named ``.renku`` that contains all the
-necessary files for managing the project configuration.
-
-Every project requires a ``name`` that can either be provided using
-``--name`` or automatically taken from the target folder.
-
-You can also provide a description for a project using ``--description``.
-
-If provided directory does not exist, it will be created.
+.. click:: renku.ui.cli.init:init
+   :prog: renku init
+   :nested: full
 
 Use a different template
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -196,6 +184,7 @@ import click
 
 from renku.command.options import option_external_storage_requested
 from renku.core import errors
+from renku.ui.cli.utils import color
 
 INVALID_DATA_DIRS = [".", ".renku", ".git"]
 """Paths that cannot be used as data directory name."""
@@ -212,13 +201,6 @@ def parse_parameters(ctx, param, value):
             )
         parameters[splitted[0]] = splitted[1]
     return parameters
-
-
-def validate_name(ctx, param, value):
-    """Validate a project name."""
-    if not value:
-        value = os.path.basename(ctx.params["path"].rstrip(os.path.sep))
-    return value
 
 
 def resolve_data_directory(data_dir, path):
@@ -241,17 +223,16 @@ def resolve_data_directory(data_dir, path):
 
 @click.command()
 @click.argument("path", default=".", type=click.Path(writable=True, file_okay=False, resolve_path=True))
-@click.option("-n", "--name", callback=validate_name, help="Provide a custom project name.")
+@click.option("-n", "--name", default=None, help="Provide a custom project name.")
 @click.option("--description", help="Provide a description for the project.")
 @click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords.")
 @click.option(
-    "--data-dir",
+    "--datadir",
     default=None,
     type=click.Path(writable=True, file_okay=False),
     help="Data directory within the project",
 )
 @click.option("-t", "--template-id", help="Provide the id of the template to use.")
-@click.option("-i", "--template-index", help="Deprecated", type=int)
 @click.option("-s", "--template-source", help="Provide the templates repository url or path.")
 @click.option(
     "-r", "--template-ref", default=None, help="Specify the reference to checkout on remote template repository."
@@ -290,7 +271,6 @@ def init(
     description,
     keyword,
     template_id,
-    template_index,
     template_source,
     template_ref,
     parameters,
@@ -298,11 +278,11 @@ def init(
     list_templates,
     force,
     describe,
-    data_dir,
+    datadir,
     initial_branch,
 ):
     """Initialize a project in PATH. Default is the current path."""
-    from renku.command.init import init_command
+    from renku.command.init import init_project_command
     from renku.core.util.git import check_global_git_user_is_configured
     from renku.ui.cli.utils.callback import ClickCallback
 
@@ -312,12 +292,8 @@ def init(
         raise errors.ParameterError("'-d/--describe' is deprecated: Use 'renku template show' instead.")
     if list_templates:
         raise errors.ParameterError("'-l/--list-templates' is deprecated: Use 'renku template ls' instead.")
-    if template_index:
-        raise errors.ParameterError(
-            "'-i/--template-index' is deprecated: Use '-t/--template-id' to pass a template id."
-        )
 
-    data_dir = resolve_data_directory(data_dir, path)
+    datadir = resolve_data_directory(datadir, path)
 
     check_global_git_user_is_configured()
 
@@ -326,8 +302,7 @@ def init(
         custom_metadata = json.loads(Path(metadata).read_text())
 
     communicator = ClickCallback()
-    init_command().with_communicator(communicator).build().execute(
-        ctx=ctx,
+    init_project_command().with_communicator(communicator).build().execute(
         external_storage_requested=external_storage_requested,
         path=path,
         name=name,
@@ -339,12 +314,9 @@ def init(
         input_parameters=parameters,
         custom_metadata=custom_metadata,
         force=force,
-        data_dir=data_dir,
+        data_dir=datadir,
         initial_branch=initial_branch,
         install_mergetool=True,
     )
 
-    # Install git hooks
-    from .githooks import install
-
-    ctx.invoke(install, force=force)
+    click.secho("OK", fg=color.GREEN)

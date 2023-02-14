@@ -22,9 +22,10 @@ import re
 import shlex
 import time
 from contextlib import contextmanager
+from datetime import datetime
 from itertools import chain
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union, cast
 
 import click
 import yaml
@@ -32,13 +33,16 @@ import yaml
 from renku.command.command_builder.command import inject
 from renku.core import errors
 from renku.core.constant import RENKU_HOME, RENKU_TMP
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.core.interface.project_gateway import IProjectGateway
+from renku.core.plugin.pluginmanager import get_plugin_manager
+from renku.core.storage import check_external_storage, track_paths_in_storage
 from renku.core.util.git import is_path_safe
 from renku.core.util.metadata import is_external_file
 from renku.core.util.os import get_absolute_path, get_relative_path, is_subpath
 from renku.core.workflow.types import PATH_OBJECTS, Directory, File
 from renku.domain_model.datastructures import DirectoryTree
+from renku.domain_model.project_context import project_context
+from renku.domain_model.provenance.agent import Person
 from renku.domain_model.workflow.parameter import (
     DIRECTORY_MIME_TYPE,
     CommandInput,
@@ -60,12 +64,12 @@ class PlanFactory:
 
     def __init__(
         self,
-        command_line: str,
+        command_line: Union[str, List[str], Tuple[str, ...]],
         explicit_inputs: Optional[List[Tuple[str, str]]] = None,
         explicit_outputs: Optional[List[Tuple[str, str]]] = None,
         explicit_parameters: Optional[List[Tuple[str, Optional[str]]]] = None,
-        directory: Optional[str] = None,
-        working_dir: Optional[str] = None,
+        directory: Optional[Union[Path, str]] = None,
+        working_dir: Optional[Union[Path, str]] = None,
         no_input_detection: bool = False,
         no_output_detection: bool = False,
         success_codes: Optional[List[int]] = None,
@@ -79,19 +83,23 @@ class PlanFactory:
         self.no_output_detection = no_output_detection
 
         if not command_line:
-            raise errors.UsageError("Command line can not be empty.")
+            raise errors.UsageError("Command line can not be empty. Please specify a command to execute.")
 
         if not directory:
             directory = os.getcwd()
         self.directory = Path(directory)
         if not self.directory.exists():
-            raise errors.UsageError("Directory must exist.")
+            raise errors.UsageError(
+                f"Directory '{self.directory}' doesn't exist. Please make sure you are inside an existing directory."
+            )
 
         if not working_dir:
             working_dir = os.getcwd()
         self.working_dir = Path(working_dir)
         if not self.working_dir.exists():
-            raise errors.UsageError("Working Directory must exist.")
+            raise errors.UsageError(
+                f"Repository path '{self.working_dir}' doesn't exist. Make sure you are inside a Renku repository."
+            )
 
         if isinstance(command_line, (list, tuple)):
             self.command_line = list(command_line)
@@ -119,7 +127,7 @@ class PlanFactory:
         self.annotations: List[Dict[str, Any]] = []
         self.existing_directories: Set[str] = set()
 
-        self.add_inputs_and_parameters(*detected_arguments)
+        self.add_inputs_and_parameters(detected_arguments)
 
     def split_command_and_args(self):
         """Return tuple with command and args from command line arguments."""
@@ -140,7 +148,7 @@ class PlanFactory:
         return cmd, args
 
     @staticmethod
-    def _is_ignored_path(candidate: Union[Path, str], ignored_list: Set[str] = None) -> bool:
+    def _is_ignored_path(candidate: Union[Path, str], ignored_list: Optional[Set[str]] = None) -> bool:
         """Return True if the path is in ignored list."""
         return ignored_list is not None and str(candidate) in ignored_list
 
@@ -155,15 +163,15 @@ class PlanFactory:
             # (e.g. /bin/bash)
             if is_subpath(path, base=self.working_dir):
                 return path
-            elif is_external_file(path=candidate, client_path=self.working_dir):
+            elif is_external_file(path=candidate, project_path=self.working_dir):
                 return Path(os.path.abspath(candidate))
 
         return None
 
-    def add_inputs_and_parameters(self, *arguments):
+    def add_inputs_and_parameters(self, arguments: List[str]):
         """Yield command input parameters."""
         position = 0
-        prefix = None
+        prefix: Optional[str] = None
 
         output_streams = {getattr(self, stream_name) for stream_name in ("stdout", "stderr")}
 
@@ -177,9 +185,9 @@ class PlanFactory:
 
             if argument.startswith("--"):
                 if "=" in argument:
-                    prefix, default = argument.split("=", 1)
+                    prefix, value = argument.split("=", 1)
                     prefix += "="
-                    default, type = self.guess_type(default, ignore_filenames=output_streams)
+                    default, type = self.guess_type(value, ignore_filenames=output_streams)
 
                     position += 1
                     if type in PATH_OBJECTS:
@@ -199,9 +207,9 @@ class PlanFactory:
             elif argument.startswith("-"):
                 if len(argument) > 2:
                     if "=" in argument:
-                        prefix, default = argument.split("=", 1)
+                        prefix, value = argument.split("=", 1)
                         prefix += "="
-                        default, type = self.guess_type(default, ignore_filenames=output_streams)
+                        default, type = self.guess_type(value, ignore_filenames=output_streams)
                     else:
                         # possibly a flag with value
                         prefix = argument[0:2]
@@ -251,7 +259,7 @@ class PlanFactory:
             assert isinstance(default, File)
             self.add_command_input(default_value=str(default), encoding_format=default.mime_type, position=position)
 
-    def add_outputs(self, candidates: Set[Tuple[Union[Path, str], Optional[str]]]):
+    def add_outputs(self, candidates: Iterable[Tuple[Union[Path, str], Optional[str]]]):
         """Yield detected output and changed command input parameter."""
         # TODO what to do with duplicate paths & inputs with same defaults
         candidate_paths = list(map(lambda x: x[0], candidates))
@@ -298,7 +306,7 @@ class PlanFactory:
             candidate = self._resolve_existing_subpath(self.working_dir / candidate_path)
 
             if candidate is None:
-                raise errors.UsageError('Path "{0}" does not exist.'.format(candidate_path))
+                raise errors.UsageError('Path "{0}" does not exist inside the current project.'.format(candidate_path))
 
             glob = str(candidate.relative_to(self.working_dir))
 
@@ -324,17 +332,17 @@ class PlanFactory:
             preexisting_paths = content - subpaths
             if preexisting_paths:
                 raise errors.InvalidOutputPath(
-                    'The output directory "{0}" is not empty. \n\n'
-                    "Delete existing files before running the "
-                    "command:"
-                    '\n  (use "git rm <file>..." to remove them '
-                    "first)"
-                    "\n\n".format(input_path)
+                    f"The output directory '{input_path}' is not empty. \n\n"
+                    "As renku treats whole directory outputs as generated by renku,"
+                    "those directories have to be empty before being tracked by renku.\n\n"
+                    "You can solve this by:\n"
+                    f"- Deleting the existing files in the directory (use 'git rm -r {input_path}')\n"
+                    "- Using a different output folder\n"
+                    "- Using a new empty subfolder inside the output folder\n\n"
+                    "Output directories with existing files:\n\n"
                     + "\n".join("\t" + click.style(path, fg="yellow") for path in preexisting_paths)
                     + "\n\n"
-                    "Once you have removed files that should be used "
-                    "as outputs,\n"
-                    "you can safely rerun the previous command."
+                    "Once you have resolved the issues above, you can safely rerun the previous command."
                 )
 
         # Remove files from the input directory
@@ -350,7 +358,7 @@ class PlanFactory:
         # TODO: specify the actual mime-type of the file
         return ["application/octet-stream"]
 
-    def guess_type(self, value: Union[Path, str], ignore_filenames: Set[str] = None) -> Tuple[Any, str]:
+    def guess_type(self, value: Union[Path, str], ignore_filenames: Optional[Set[str]] = None) -> Tuple[Any, str]:
         """Return new value and CWL parameter type."""
         if not self._is_ignored_path(value, ignore_filenames) and all(value != v for v, _ in self.explicit_parameters):
             candidate = self._resolve_existing_subpath(value)
@@ -409,9 +417,9 @@ class PlanFactory:
         prefix: Optional[str] = None,
         position: Optional[int] = None,
         postfix: Optional[str] = None,
-        encoding_format: List[str] = None,
+        encoding_format: Optional[List[str]] = None,
         name: Optional[str] = None,
-        id: str = None,
+        id: Optional[str] = None,
         mapped_to: Optional[MappedIOStream] = None,
     ):
         """Create a CommandOutput."""
@@ -558,13 +566,11 @@ class PlanFactory:
                 self.add_command_parameter(explicit_parameter, name=name)
 
     @contextmanager
-    @inject.autoparams()
-    def watch(self, client_dispatcher: IClientDispatcher, no_output=False):
+    def watch(self, no_output=False):
         """Watch a Renku repository for changes to detect outputs."""
-        client = client_dispatcher.current_client
-        client.check_external_storage()
+        check_external_storage()
 
-        repository = client.repository
+        repository = project_context.repository
 
         # Remove indirect files list if any
         delete_indirect_files_list(self.working_dir)
@@ -573,7 +579,7 @@ class PlanFactory:
 
         pm = get_plugin_manager()
         pm.hook.pre_run(tool=self)
-        self.existing_directories = {str(p.relative_to(client.path)) for p in client.path.glob("**/")}
+        self.existing_directories = {str(p.relative_to(project_context.path)) for p in project_context.path.glob("**/")}
 
         yield self
 
@@ -589,8 +595,6 @@ class PlanFactory:
 
             # List of all output paths.
             output_paths = []
-
-            inputs = {input.id: input for input in self.inputs}
 
             # Keep track of unmodified output files.
             unmodified = set()
@@ -639,15 +643,12 @@ class PlanFactory:
                 raise errors.UnmodifiedOutputs(repository, unmodified)
 
             if not no_output and not output_paths:
-                raise errors.OutputsNotFound(repository, inputs.values())
+                raise errors.OutputsNotFound()
 
-            if client.check_external_storage():
-                client.track_paths_in_storage(*output_paths)
+            if check_external_storage():
+                track_paths_in_storage(*output_paths)
 
-            client.repository.add(*output_paths)
-
-        results = pm.hook.cmdline_tool_annotations(tool=self)
-        self.annotations = [a for r in results for a in r]
+            repository.add(*output_paths)
 
     def _path_relative_to_root(self, path) -> str:
         """Make a potentially relative path in a subdirectory relative to the root of the repository."""
@@ -700,11 +701,14 @@ class PlanFactory:
         name: Optional[str] = None,
         description: Optional[str] = None,
         keywords: Optional[List[str]] = None,
+        creators: Optional[List[Person]] = None,
+        date_created: Optional[datetime] = None,
     ) -> Plan:
         """Return an instance of ``Plan`` based on this factory."""
-        return Plan(
+        plan = Plan(
             id=self.plan_id,
             name=name,
+            date_created=date_created,
             description=description,
             keywords=keywords,
             command=" ".join(self.base_command),
@@ -713,7 +717,17 @@ class PlanFactory:
             parameters=self.parameters,
             project_id=project_gateway.get_project().id,
             success_codes=self.success_codes,
+            creators=creators,
         )
+
+        pm = get_plugin_manager()
+
+        plugin_annotations = list(chain.from_iterable(pm.hook.plan_annotations(plan=plan)))
+
+        if plugin_annotations:
+            plan.annotations.extend(plugin_annotations)
+
+        return plan
 
 
 def read_files_list(files_list: Path):
@@ -725,7 +739,7 @@ def read_files_list(files_list: Path):
     data = yaml.safe_load(files_list.read_text())
 
     if not isinstance(data, dict):
-        raise errors.OperationError("Inputs/outputs files list must be a YAML dictionary.")
+        raise errors.OperationError("Explicit Inputs/Outputs/Parameters files list must be a YAML dictionary.")
 
     return data
 
@@ -759,28 +773,28 @@ def delete_indirect_files_list(working_dir):
             pass
 
 
-def get_indirect_inputs_path(client_path):
+def get_indirect_inputs_path(project_path):
     """Return path to file that contains indirect inputs list."""
-    parent = _get_indirect_parent_path(client_path)
+    parent = _get_indirect_parent_path(project_path)
     return parent / "inputs.yml"
 
 
-def get_indirect_outputs_path(client_path):
+def get_indirect_outputs_path(project_path):
     """Return path to file that contains indirect outputs list."""
-    parent = _get_indirect_parent_path(client_path)
+    parent = _get_indirect_parent_path(project_path)
     return parent / "outputs.yml"
 
 
-def get_indirect_parameters_path(client_path):
+def get_indirect_parameters_path(project_path):
     """Return path to file that contains indirect parameters list."""
-    parent = _get_indirect_parent_path(client_path)
+    parent = _get_indirect_parent_path(project_path)
     return parent / "parameters.yml"
 
 
-def _get_indirect_parent_path(client_path):
+def _get_indirect_parent_path(project_path):
     renku_indirect_path = os.getenv("RENKU_INDIRECT_PATH") or ""
 
-    base = (Path(client_path) / RENKU_HOME / RENKU_TMP).resolve()
+    base = (Path(project_path) / RENKU_HOME / RENKU_TMP).resolve()
     parent = (base / renku_indirect_path).resolve()
 
     try:

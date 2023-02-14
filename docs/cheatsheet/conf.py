@@ -19,6 +19,7 @@
 
 from __future__ import print_function
 
+import os
 import sys
 from os.path import abspath, dirname, join
 
@@ -42,13 +43,26 @@ suppress_warnings = ["image.nonlocal_uri"]
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "plantweb.directive",
     "sphinx.ext.autodoc",
+    "sphinx_click",
     "sphinx_tabs.tabs",
     "sphinx.ext.napoleon",
     "cheatsheet",
 ]
-cheatsheet_extended = True
-cheatsheet_groups = ["Getting Started", "Datasets", "Running", "Workflows", "Config", "Misc"]
+cheatsheet_target = os.environ.get("CHEATSHEET_TARGET", None)
+cheatsheet_groups = [
+    "Typical Workflow",
+    "Getting Started",
+    "Project Templates",
+    "Working with Renku Datasets",
+    "Running",
+    "Workflows",
+    "Managing Interactive Sessions",
+    "Config",
+    "Misc",
+    "Undo Renku Command",
+]
 
 
 html_theme_options = {
@@ -157,7 +171,7 @@ latex_additional_files = [
 ]
 
 
-# Autodoc configuraton.
+# Autodoc configuration.
 autoclass_content = "both"
 autodoc_mock_imports = ["persistent", "ZODB"]
 autodoc_typehints = "none"
@@ -168,20 +182,30 @@ napoleon_google_docstring = True
 napoleon_numpy_docstring = False
 
 # sphinx type references only work for types that documentation is generated for
-# Suppress warnungs for these types that are referenced but not documented themselves.
+# Suppress warnings for these types that are referenced but not documented themselves.
 nitpick_ignore = [
-    ("py:class", "Path"),
-    ("py:class", "OID_TYPE"),
-    ("py:class", "optional"),
-    ("py:class", "persistent.Persistent"),
-    ("py:class", "DynamicProxy"),
-    ("py:class", "LocalClient"),
-    ("py:class", '"LocalClient"'),
-    ("py:class", "IClientDispatcher"),
-    ("py:class", "IDatasetGateway"),
     ("py:class", "CommandResult"),
     ("py:class", "CommunicationCallback"),
-    ("py:class", "IDatabaseDispatcher"),
-    ("py:exc", "errors.ParameterError"),
+    ("py:class", "datetime"),
+    ("py:class", "DiGraph"),
+    ("py:class", "DynamicProxy"),
+    ("py:class", "IActivityGateway"),
+    ("py:class", "IDatasetGateway"),
+    ("py:class", "IPlanGateway"),
+    ("py:class", "NoValueType"),
+    ("py:class", "OID_TYPE"),
+    ("py:class", "Path"),
+    ("py:class", "Persistent"),
+    ("py:class", "WorkflowFileCompositePlan"),
+    ("py:class", "optional"),
     ("py:class", '"ValueResolver"'),
+    ("py:exc", "errors.ParameterError"),
+]
+
+nitpick_ignore_regex = [
+    ("py:class", r"calamus.*"),
+    ("py:class", r"docker.*"),
+    ("py:class", r"marshmallow.*"),
+    ("py:class", r"persistent.*"),
+    ("py:class", r"yaml.*"),
 ]

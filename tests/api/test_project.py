@@ -22,20 +22,22 @@ import os
 import pytest
 
 from renku.ui.api import Project
+from renku.ui.cli import cli
+from tests.utils import format_result_exception, write_and_commit_file
 
 
 @pytest.mark.parametrize("sub_path", [".", "src", "src/notebooks"])
-def test_get_project(client, sub_path):
+def test_get_project(project, sub_path):
     """Test getting Project context within a repository."""
-    working_dir = client.path / sub_path
+    working_dir = project.path / sub_path
     working_dir.mkdir(exist_ok=True, parents=True)
     os.chdir(working_dir)
 
-    with Project() as project:
-        assert client.path == project.path
+    with Project() as project_object:
+        assert project.path == project_object.path
 
 
-def test_get_project_multiple(client):
+def test_get_project_multiple(project):
     """Test getting Project context multiple times within a repository."""
     with Project() as project_1:
         pass
@@ -46,8 +48,8 @@ def test_get_project_multiple(client):
     assert project_1.path == project_2.path
 
 
-def test_get_or_create_project(client):
-    """Test getting Project context or creating one yileds similar results."""
+def test_get_or_create_project(project):
+    """Test getting Project context or creating one yields similar results."""
     with Project() as project_1:
         pass
 
@@ -61,4 +63,28 @@ def test_get_project_outside_a_renku_project(directory_tree):
     os.chdir(directory_tree)
 
     with Project() as project:
-        assert project.client is not None
+        assert project.repository is None
+
+
+def test_status(runner, project):
+    """Test status check."""
+    source = project.path / "source.txt"
+    output = project.path / "data" / "output.txt"
+
+    write_and_commit_file(project.repository, source, "content")
+
+    result = runner.invoke(cli, ["run", "cp", source, output])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["run", "cat", "--no-output", source])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    write_and_commit_file(project.repository, source, "new content")
+
+    result = Project().status()
+
+    assert (os.path.relpath(output), {os.path.relpath(source)}) in result.outdated_outputs.items()
+    assert "source.txt" in result.modified_inputs
+    assert 1 == len(result.outdated_activities)
+    assert "/activities/" in list(result.outdated_activities.keys())[0]
+    assert 0 == len(result.deleted_inputs)

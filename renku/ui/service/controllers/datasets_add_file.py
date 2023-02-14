@@ -90,10 +90,11 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
             if "file_id" in _file:
                 file = self.cache.get_file(self.user, _file["file_id"])
                 local_path = file.abs_path
-
             elif "file_path" in _file:
-                local_path = self.project_path / Path(_file["file_path"])
+                if self.project_path is None:
+                    raise RenkuException("project_path not set.")
 
+                local_path = self.project_path / Path(_file["file_path"])
             if not local_path or not local_path.exists():
                 raise RenkuException(f"invalid file reference: {json.dumps(_file)}")
 
@@ -115,6 +116,7 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
                 urls=local_paths,
                 create=self.ctx["create_dataset"],
                 force=self.ctx["force"],
+                copy=True,
             )
 
         return local_paths, enqueued_paths

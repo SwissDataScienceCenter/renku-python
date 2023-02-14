@@ -20,7 +20,7 @@
 import os
 
 from renku.core.errors import ParameterError
-from renku.core.util.scm import shorten_message
+from renku.core.util.git import shorten_message
 from renku.core.util.urls import get_host
 from tests.utils import raises
 
@@ -31,7 +31,7 @@ def test_hostname():
     try:
         os.environ["RENKU_DOMAIN"] = "alternative-domain"
 
-        assert "alternative-domain" == get_host(None)
+        assert "alternative-domain" == get_host(False)
     finally:
         if renku_domain:
             os.environ["RENKU_DOMAIN"] = renku_domain

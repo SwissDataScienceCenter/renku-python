@@ -17,7 +17,6 @@
 # limitations under the License.
 """Test ``move`` command."""
 
-
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.infrastructure.gateway.plan_gateway import PlanGateway
@@ -26,7 +25,7 @@ from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
-def test_mergetool(runner, client, directory_tree, run_shell, client_database_injection_manager):
+def test_mergetool(runner, project, directory_tree, run_shell, with_injection):
     """Test that merge tool can merge renku metadata."""
     result = runner.invoke(cli, ["mergetool", "install"])
 
@@ -34,7 +33,7 @@ def test_mergetool(runner, client, directory_tree, run_shell, client_database_in
 
     # create a common dataset
     result = runner.invoke(
-        cli, ["dataset", "add", "--create", "shared-dataset", str(directory_tree)], catch_exceptions=False
+        cli, ["dataset", "add", "--copy", "--create", "shared-dataset", str(directory_tree)], catch_exceptions=False
     )
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -55,7 +54,7 @@ def test_mergetool(runner, client, directory_tree, run_shell, client_database_in
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(
-        cli, ["dataset", "add", "--create", "remote-dataset", str(directory_tree)], catch_exceptions=False
+        cli, ["dataset", "add", "--copy", "--create", "remote-dataset", str(directory_tree)], catch_exceptions=False
     )
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -90,7 +89,7 @@ def test_mergetool(runner, client, directory_tree, run_shell, client_database_in
 
     # Add a new dataset
     result = runner.invoke(
-        cli, ["dataset", "add", "--create", "local-dataset", str(directory_tree)], catch_exceptions=False
+        cli, ["dataset", "add", "--copy", "--create", "local-dataset", str(directory_tree)], catch_exceptions=False
     )
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -129,7 +128,7 @@ def test_mergetool(runner, client, directory_tree, run_shell, client_database_in
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    with client_database_injection_manager(client):
+    with with_injection():
         project_gateway = ProjectGateway()
         project = project_gateway.get_project()
         datasets_provenance = DatasetsProvenance()
@@ -148,7 +147,7 @@ def test_mergetool(runner, client, directory_tree, run_shell, client_database_in
     assert "remote description" == shared_dataset.description
 
 
-def test_mergetool_workflow_conflict(runner, client, run_shell, client_database_injection_manager):
+def test_mergetool_workflow_conflict(runner, project, run_shell, with_injection):
     """Test that merge tool can merge conflicting workflows."""
     result = runner.invoke(cli, ["mergetool", "install"])
 
@@ -175,7 +174,7 @@ def test_mergetool_workflow_conflict(runner, client, run_shell, client_database_
     assert b"" == output[0]
     assert output[1] is None
 
-    with client_database_injection_manager(client):
+    with with_injection():
         plan_gateway = PlanGateway()
         remote_plans = plan_gateway.get_newest_plans_by_names()
 
@@ -212,7 +211,7 @@ def test_mergetool_workflow_conflict(runner, client, run_shell, client_database_
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    with client_database_injection_manager(client):
+    with with_injection():
         activity_gateway = ActivityGateway()
         activities = activity_gateway.get_all_activities()
         plan_gateway = PlanGateway()
@@ -229,7 +228,7 @@ def test_mergetool_workflow_conflict(runner, client, run_shell, client_database_
     result = runner.invoke(cli, ["workflow", "execute", "common-name"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    with client_database_injection_manager(client):
+    with with_injection():
         activity_gateway = ActivityGateway()
         activities = activity_gateway.get_all_activities()
         plan_gateway = PlanGateway()
@@ -239,7 +238,7 @@ def test_mergetool_workflow_conflict(runner, client, run_shell, client_database_
     assert len(plans) == 4
 
 
-def test_mergetool_workflow_complex_conflict(runner, client, run_shell, client_database_injection_manager):
+def test_mergetool_workflow_complex_conflict(runner, project, run_shell, with_injection):
     """Test that merge tool can merge complex conflicts in workflows."""
     result = runner.invoke(cli, ["mergetool", "install"])
 
@@ -264,7 +263,7 @@ def test_mergetool_workflow_complex_conflict(runner, client, run_shell, client_d
 
     assert b"" == output[0]
 
-    with client_database_injection_manager(client):
+    with with_injection():
         plan_gateway = PlanGateway()
         remote_plans = plan_gateway.get_newest_plans_by_names()
 
@@ -282,7 +281,7 @@ def test_mergetool_workflow_complex_conflict(runner, client, run_shell, client_d
 
     assert b"" == output[0]
 
-    with client_database_injection_manager(client):
+    with with_injection():
         plan_gateway = PlanGateway()
         local_plans = plan_gateway.get_newest_plans_by_names()
 
@@ -303,7 +302,7 @@ def test_mergetool_workflow_complex_conflict(runner, client, run_shell, client_d
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    with client_database_injection_manager(client):
+    with with_injection():
         activity_gateway = ActivityGateway()
         activities = activity_gateway.get_all_activities()
         plan_gateway = PlanGateway()

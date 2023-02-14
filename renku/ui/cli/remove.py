@@ -17,16 +17,29 @@
 # limitations under the License.
 """Remove a file, a directory, or a symlink.
 
-Removing a file that belongs to a dataset will update its metadata. It also
-will attempt to update tracking information for files stored in an external
-storage (using Git LFS).
+Description
+~~~~~~~~~~~
+
+Remove a file from then project, updating:
+
+* its metadata, if the file belongs to a dataset
+* the tracking information, if the file is stored in an external storage
+  (using Git LFS).
+
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. rst-class:: cli-reference-commands
+
+.. click:: renku.ui.cli.remove:remove
+   :prog: renku rm
+   :nested: full
 
 .. cheatsheet::
    :group: Misc
    :command: $ renku rm <path>...
    :description: Safely delete files from a project.
-   :extended:
-
+   :target: rp
 """
 
 import click

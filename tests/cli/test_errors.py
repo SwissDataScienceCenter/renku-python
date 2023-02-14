@@ -20,8 +20,8 @@ import sys
 import tempfile
 
 import pytest
-from filelock import FileLock
 
+from renku.core.util.contexts import Lock
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
@@ -55,12 +55,8 @@ def test_cli_initialization_err(cmd, runner):
             result = runner.invoke(cli, ["--disable-version-check"] + cmd)
             assert 2 == result.exit_code
 
-            expected_output = (
-                "Error: `.` is not a renku repository.\n"
-                "To initialize this as a "
-                "renku repository use: `renku init`\n"
-            )
-            assert expected_output == result.output
+            assert "is not a renku repository.\n" in result.output
+            assert "To initialize this as a renku repository use: 'renku init'" in result.output
 
 
 @pytest.mark.parametrize(
@@ -93,13 +89,13 @@ def test_cli_initialization_no_err_help(cmd, runner):
     sys.argv = cmd
     with tempfile.TemporaryDirectory() as tmpdir:
         with chdir(tmpdir):
-            result = runner.invoke(cli, cmd)
+            result = runner.invoke(cli, cmd, replace_argv=False)
             assert 0 == result.exit_code, format_result_exception(result)
 
 
 def test_file_lock_timeout_error(project, runner):
     """Test file lock timeout."""
-    with FileLock(".renku.lock"):
+    with Lock(".renku.lock"):
         result = runner.invoke(cli, ["dataset", "import", "10.5281/zenodo.3715335"])
 
         assert "Unable to acquire lock." in result.output

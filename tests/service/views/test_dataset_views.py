@@ -16,12 +16,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service dataset view tests."""
+
 import io
 import json
 import os
 import shutil
 import uuid
-from pathlib import Path
 
 import pytest
 from werkzeug.utils import secure_filename
@@ -89,6 +89,31 @@ def test_create_dataset_view(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
+def test_create_dataset_view_with_datadir(svc_client_with_repo):
+    """Create a new dataset successfully."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+
+    payload = {"project_id": project_id, "name": uuid.uuid4().hex, "data_directory": "my-folder/"}
+
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
+    assert_rpc_response(response)
+
+    assert {"name", "remote_branch"} == set(response.json["result"].keys())
+    assert payload["name"] == response.json["result"]["name"]
+
+    params = {
+        "project_id": project_id,
+    }
+    response = svc_client.get("/datasets.list", query_string=params, headers=headers)
+
+    assert_rpc_response(response)
+    ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
+    assert ds["data_directory"] == "my-folder"
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
 def test_remote_create_dataset_view(svc_client_cache, it_remote_repo_url):
     """Create a new dataset successfully."""
     svc_client, headers, cache = svc_client_cache
@@ -135,7 +160,7 @@ def test_create_dataset_wrong_ref_view(svc_client_with_repo):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response, "error")
-    assert IntermittentProjectIdError.code == response.json["error"]["code"]
+    assert IntermittentProjectIdError.code == response.json["error"]["code"], response.json
 
 
 @pytest.mark.service
@@ -605,6 +630,8 @@ def test_list_datasets_view(svc_client_with_repo):
         "creators",
         "keywords",
         "annotations",
+        "storage",
+        "data_directory",
     } == set(response.json["result"]["datasets"][0].keys())
 
 
@@ -631,7 +658,7 @@ def test_list_datasets_anonymous(svc_client_with_repo, it_remote_repo_url):
     assert UserRepoNoAccessError.code == response.json["error"]["code"]
 
     params = {
-        "git_url": "https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku",
+        "git_url": "https://gitlab.dev.renku.ch/renku-python-integration-tests/no-renku",
     }
 
     response = svc_client.get("/datasets.list", query_string=params, headers={})
@@ -666,6 +693,8 @@ def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo_url):
         "creators",
         "keywords",
         "annotations",
+        "storage",
+        "data_directory",
     } == set(response.json["result"]["datasets"][0].keys())
 
 
@@ -704,7 +733,7 @@ def test_list_dataset_files_anonymous(svc_client_with_repo, it_remote_repo_url):
     assert_rpc_response(response, "error")
     assert UserRepoNoAccessError.code == response.json["error"]["code"]
 
-    params = {"git_url": "https://dev.renku.ch/gitlab/renku-python-integration-tests/no-renku", "name": "mydata"}
+    params = {"git_url": "https://gitlab.dev.renku.ch/renku-python-integration-tests/no-renku", "name": "mydata"}
 
     response = svc_client.get("/datasets.files_list", query_string=params, headers={})
     assert_rpc_response(response, "error")
@@ -782,6 +811,8 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
         "created_at",
         "keywords",
         "annotations",
+        "storage",
+        "data_directory",
     } == set(response.json["result"]["datasets"][0].keys())
 
     assert payload["name"] in [ds["name"] for ds in response.json["result"]["datasets"]]
@@ -791,7 +822,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
 @pytest.mark.integration
 @retry_failed
 def test_list_dataset_files(svc_client_with_repo):
-    """Check listing of dataset files"""
+    """Check listing of dataset files."""
     svc_client, headers, project_id, _ = svc_client_with_repo
 
     file_name = uuid.uuid4().hex
@@ -988,7 +1019,7 @@ def test_cached_import_dataset_job(doi, svc_client_cache, project):
     user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = cache.ensure_user({"user_id": user_id})
 
-    name = Path(project).name
+    name = project.path.name
 
     project_meta = {
         "project_id": uuid.uuid4().hex,
@@ -1006,8 +1037,8 @@ def test_cached_import_dataset_job(doi, svc_client_cache, project):
 
     dest = project_obj.abs_path
     os.makedirs(dest.parent, exist_ok=True)
-    if not (project / dest).exists():
-        shutil.copytree(project, dest)
+    if not (project.path / dest).exists():
+        shutil.copytree(project.path, dest)
 
     response = client.post(
         "/datasets.import",
@@ -1061,8 +1092,8 @@ def test_dataset_add_remote(url, svc_client_cache, project_metadata):
 
     dest = project_obj.abs_path
     os.makedirs(dest.parent, exist_ok=True)
-    if not (project / dest).exists():
-        shutil.copytree(project, dest)
+    if not (project.path / dest).exists():
+        shutil.copytree(project.path, dest)
 
     payload = make_dataset_add_payload(project_meta["project_id"], [url])
     response = client.post("/datasets.add", data=json.dumps(payload), headers=headers)
@@ -1097,8 +1128,8 @@ def test_dataset_add_multiple_remote(svc_client_cache, project_metadata):
 
     dest = project_obj.abs_path
     os.makedirs(dest.parent, exist_ok=True)
-    if not (project / dest).exists():
-        shutil.copytree(project, dest)
+    if not (project.path / dest).exists():
+        shutil.copytree(project.path, dest)
 
     payload = make_dataset_add_payload(project_meta["project_id"], [url_gist, url_dbox])
     response = client.post("/datasets.add", data=json.dumps(payload), headers=headers)
@@ -1141,8 +1172,36 @@ def test_add_remote_and_local_file(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@pytest.mark.parametrize(
+    "custom_metadata",
+    [
+        [
+            {
+                "@id": "http://example.com/metadata12",
+                "@type": "https://schema.org/myType",
+                "https://schema.org/property1": 1,
+                "https://schema.org/property2": "test",
+            },
+        ],
+        [
+            {
+                "@id": "http://example.com/metadata12",
+                "@type": "https://schema.org/myType",
+                "https://schema.org/property1": 1,
+                "https://schema.org/property2": "test",
+            },
+            {
+                "@id": "http://example.com/metadata1",
+                "@type": "https://schema.org/myType1",
+                "https://schema.org/property4": 3,
+                "https://schema.org/property5": "test1",
+            },
+        ],
+    ],
+)
+@pytest.mark.parametrize("custom_metadata_source", [None, "testSource"])
 @retry_failed
-def test_edit_datasets_view(svc_client_with_repo):
+def test_edit_datasets_view(svc_client_with_repo, custom_metadata, custom_metadata_source):
     """Test editing dataset metadata."""
     svc_client, headers, project_id, _ = svc_client_with_repo
     name = uuid.uuid4().hex
@@ -1171,27 +1230,18 @@ def test_edit_datasets_view(svc_client_with_repo):
         "title": "my new title",
         "keywords": ["keyword1"],
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
-        "custom_metadata": {
-            "@id": "http://example.com/metadata12",
-            "@type": "https://schema.org/myType",
-            "https://schema.org/property1": 1,
-            "https://schema.org/property2": "test",
-        },
+        "custom_metadata": custom_metadata,
     }
+    if custom_metadata_source is not None:
+        edit_payload["custom_metadata_source"] = custom_metadata_source
     response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
-
     assert_rpc_response(response)
     assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
     assert {
         "title": "my new title",
         "keywords": ["keyword1"],
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
-        "custom_metadata": {
-            "@id": "http://example.com/metadata12",
-            "@type": "https://schema.org/myType",
-            "https://schema.org/property1": 1,
-            "https://schema.org/property2": "test",
-        },
+        "custom_metadata": custom_metadata,
     } == response.json["result"]["edited"]
 
 
@@ -1248,6 +1298,68 @@ def test_edit_datasets_view_without_modification(svc_client_with_repo):
     assert payload["description"] == ds["description"]
     assert payload["creators"] == ds["creators"]
     assert payload["keywords"] == ds["keywords"]
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+def test_edit_datasets_view_unset_values(svc_client_with_repo):
+    """Test editing dataset metadata."""
+    svc_client, headers, project_id, _ = svc_client_with_repo
+    name = uuid.uuid4().hex
+
+    payload = {
+        "project_id": project_id,
+        "name": name,
+        "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
+        "title": "my-title",
+        "description": "my description",
+        "keywords": ["keywords"],
+        "images": [
+            {"content_url": "https://example.com/image1.jpg", "position": 1},
+        ],
+        "custom_metadata": {"test": "test"},
+    }
+
+    response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
+    assert_rpc_response(response)
+    assert {"name", "remote_branch"} == set(response.json["result"].keys())
+    assert payload["name"] == response.json["result"]["name"]
+
+    params_list = {
+        "project_id": project_id,
+    }
+
+    response = svc_client.get("/datasets.list", query_string=params_list, headers=headers)
+
+    assert_rpc_response(response)
+    edit_payload = {
+        "project_id": project_id,
+        "name": name,
+        "keywords": None,
+        "images": None,
+        "custom_metadata": None,
+    }
+    response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
+
+    assert_rpc_response(response)
+    assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
+    assert {"keywords": [], "custom_metadata": None, "images": [],} == response.json[
+        "result"
+    ]["edited"]
+
+    params_list = {
+        "project_id": project_id,
+    }
+
+    response = svc_client.get("/datasets.list", query_string=params_list, headers=headers)
+
+    assert_rpc_response(response)
+    ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
+    assert edit_payload["name"] == ds["name"]
+    assert 0 == len(ds["keywords"])
+    assert 0 == len(ds["annotations"])
+    assert 0 == len(ds["images"])
 
 
 @pytest.mark.service
@@ -1370,18 +1482,16 @@ def test_remote_edit_view(svc_client, it_remote_repo_url, identity_headers):
     assert response.json["result"]["job_id"]
 
 
+@pytest.mark.remote_repo("protected")
 @pytest.mark.integration
 @pytest.mark.service
 @retry_failed
-def test_protected_branch(svc_protected_repo):
+def test_protected_branch(svc_client_with_repo):
     """Test adding a file to protected branch."""
-    svc_client, headers, payload, response = svc_protected_repo
-
-    assert_rpc_response(response)
-    assert {"result"} == set(response.json.keys())
+    svc_client, headers, project_id, _ = svc_client_with_repo
 
     payload = {
-        "project_id": response.json["result"]["project_id"],
+        "project_id": project_id,
         "name": uuid.uuid4().hex,
     }
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
@@ -1401,7 +1511,7 @@ def test_unlink_file(unlink_file_setup):
 
     assert_rpc_response(response)
     assert {"unlinked", "remote_branch"} == set(response.json["result"].keys())
-    assert ["README.md"] == response.json["result"]["unlinked"]
+    assert any(p.endswith("README.md") for p in response.json["result"]["unlinked"])
 
 
 @pytest.mark.integration

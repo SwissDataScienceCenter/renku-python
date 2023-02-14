@@ -39,7 +39,7 @@ def test_config_view_show(svc_client_with_repo):
     response = svc_client.get("/config.show", query_string=params, headers=headers)
 
     assert {"result"} == set(response.json.keys())
-    keys = {"interactive.default_url", "renku.autocommit_lfs", "renku.lfs_threshold"}
+    keys = {"interactive.default_url", "renku.autocommit_lfs", "renku.check_datadir_files", "renku.lfs_threshold"}
     assert keys == set(response.json["result"]["config"].keys())
     assert keys == set(response.json["result"]["default"].keys())
     assert 200 == response.status_code
@@ -73,7 +73,7 @@ def test_config_view_show_remote(svc_client_with_repo, it_remote_repo_url):
 
     assert 200 == response.status_code
     assert {"result"} == set(response.json.keys())
-    keys = {"interactive.default_url", "renku.autocommit_lfs", "renku.lfs_threshold"}
+    keys = {"interactive.default_url", "renku.autocommit_lfs", "renku.check_datadir_files", "renku.lfs_threshold"}
     assert keys == set(response.json["result"]["config"].keys())
     assert keys == set(response.json["result"]["default"].keys())
 
@@ -96,6 +96,7 @@ def test_config_view_set(svc_client_with_repo):
     }
 
     response = svc_client.post("/config.set", data=json.dumps(payload), headers=headers)
+
     assert 200 == response.status_code
     assert {"error"} != set(response.json.keys())
 
@@ -118,6 +119,7 @@ def test_config_view_set(svc_client_with_repo):
     }
 
     response = svc_client.post("/config.set", data=json.dumps(payload), headers=headers)
+
     assert 200 == response.status_code
     assert {"error"} != set(response.json.keys())
 

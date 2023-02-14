@@ -16,39 +16,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku common configurations."""
+
 import os
 from pathlib import Path
 
 import pytest
 
 IT_REMOTE_REPO_URL = os.getenv(
-    "IT_REMOTE_REPOSITORY", "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-integration-test"
+    "IT_REMOTE_REPOSITORY", "https://gitlab.dev.renku.ch/renku-python-integration-tests/core-integration-test"
 )
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
-    "IT_PROTECTED_REMOTE_REPO", "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-it-protected.git"
+    "IT_PROTECTED_REMOTE_REPO", "https://gitlab.dev.renku.ch/renku-python-integration-tests/core-it-protected.git"
 )
 IT_PUBLIC_REMOTE_REPO_URL = os.getenv(
-    "IT_PUBLIC_REMOTE_REPO", "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-it-public"
+    "IT_PUBLIC_REMOTE_REPO", "https://gitlab.dev.renku.ch/renku-python-integration-tests/core-it-public"
 )
 IT_REMOTE_NON_RENKU_REPO_URL = os.getenv(
-    "IT_REMOTE_NON_RENKU_REPO_URL", "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-it-non-renku"
+    "IT_REMOTE_NON_RENKU_REPO_URL", "https://gitlab.dev.renku.ch/renku-python-integration-tests/core-it-non-renku"
 )
 IT_REMOTE_NO_COMMITS_REPO_URL = os.getenv(
-    "IT_REMOTE_NO_COMMITS_REPO_URL", "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-it-no-commits"
+    "IT_REMOTE_NO_COMMITS_REPO_URL", "https://gitlab.dev.renku.ch/renku-python-integration-tests/core-it-no-commits"
 )
-IT_GIT_ACCESS_TOKEN = os.getenv("IT_OAUTH_GIT_TOKEN")
-
-
-@pytest.fixture
-def global_config_dir(monkeypatch, tmpdir):
-    """Create a temporary renku config directory."""
-    from renku.core.management.config import ConfigManagerMixin
-
-    with monkeypatch.context() as m:
-        home_dir = tmpdir.mkdir("fake_home").strpath
-        m.setattr(ConfigManagerMixin, "global_config_dir", home_dir)
-
-        yield m
+IT_WORKFLOW_REPO_URL = os.getenv(
+    "IT_WORKFLOW_REPO_URL", "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-it-workflows"
+)
 
 
 @pytest.fixture(scope="session")

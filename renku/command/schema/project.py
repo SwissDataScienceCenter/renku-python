@@ -35,19 +35,27 @@ class ProjectSchema(JsonLDSchema):
         model = Project
         unknown = EXCLUDE
 
-    agent_version = StringList(schema.agent, missing="pre-0.11.0")
+    agent_version = StringList(schema.agent, load_default="pre-0.11.0")
     annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
-    automated_update = fields.Boolean(renku.automatedTemplateUpdate, missing=True)
-    creator = Nested(schema.creator, PersonSchema, missing=None)
-    date_created = DateTimeList(schema.dateCreated, missing=None, format="iso", extra_formats=("%Y-%m-%d",))
-    description = fields.String(schema.description, missing=None)
-    id = fields.Id(missing=None)
-    immutable_template_files = fields.List(renku.immutableTemplateFiles, fields.String(), missing=[])
-    name = fields.String(schema.name, missing=None)
-    template_id = fields.String(renku.templateId, missing=None)
-    template_metadata = fields.String(renku.templateMetadata, missing=None)
-    template_ref = fields.String(renku.templateReference, missing=None)
-    template_source = fields.String(renku.templateSource, missing=None)
-    template_version = fields.String(renku.templateVersion, missing=None)
-    version = StringList(schema.schemaVersion, missing="1")
-    keywords = fields.List(schema.keywords, fields.String(), missing=None)
+    creator = Nested(schema.creator, PersonSchema, load_default=None)
+    date_created = DateTimeList(schema.dateCreated, load_default=None, format="iso", extra_formats=("%Y-%m-%d",))
+    description = fields.String(schema.description, load_default=None)
+    id = fields.Id(load_default=None)
+    immutable_template_files = fields.List(
+        renku.immutableTemplateFiles,
+        fields.String(),
+        load_default=list(),
+        attribute="template_metadata.immutable_template_files",
+    )
+    name = fields.String(schema.name, load_default=None)
+    template_id = fields.String(renku.templateId, load_default=None, attribute="template_metadata.template_id")
+    template_metadata = fields.String(renku.templateMetadata, load_default=None, attribute="template_metadata.metadata")
+    template_ref = fields.String(renku.templateReference, load_default=None, attribute="template_metadata.template_ref")
+    template_source = fields.String(
+        renku.templateSource, load_default=None, attribute="template_metadata.template_source"
+    )
+    template_version = fields.String(
+        renku.templateVersion, load_default=None, attribute="template_metadata.template_version"
+    )
+    version = StringList(schema.schemaVersion, load_default="1")
+    keywords = fields.List(schema.keywords, fields.String(), load_default=None)

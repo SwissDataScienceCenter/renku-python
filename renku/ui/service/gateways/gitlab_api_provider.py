@@ -23,7 +23,7 @@ from typing import List, Optional, Union
 import gitlab
 
 from renku.core import errors
-from renku.core.util.os import delete_file
+from renku.core.util.os import delete_dataset_file
 from renku.domain_model.git import GitURL
 from renku.ui.service.interfaces.git_api_provider import IGitAPIProvider
 
@@ -87,5 +87,5 @@ class GitlabAPIProvider(IGitAPIProvider):
 
                 result_paths.append(full_path)
             except gitlab.GitlabGetError:
-                delete_file(full_path)
+                delete_dataset_file(full_path)
                 continue

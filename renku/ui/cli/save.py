@@ -17,6 +17,18 @@
 # limitations under the License.
 """Convenience method to save local changes and push them to a remote server.
 
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. rst-class:: cli-reference-commands
+
+.. click:: renku.ui.cli.save:save
+   :prog: renku save
+   :nested: full
+
+Examples
+~~~~~~~~
+
 If you have local modification to files, you can save them using
 
 .. code-block:: console
@@ -37,7 +49,7 @@ If you have local modification to files, you can save them using
    :command: $ renku save [-m <message>]
    :description: Save (commit) and push all local changes. with optional
                  message.
-   :extended:
+   :target: rp
 
 You can additionally supply a message that describes the changes that you
 made by using the ``-m`` or ``--message`` parameter followed by your
@@ -107,8 +119,9 @@ def save(message, destination, paths):
     )
 
     if saved_paths:
-        click.echo("Successfully saved to remote branch {}: \n\t{}".format(branch, "\n\t".join(saved_paths)))
+        paths_str = "\n\t".join(saved_paths)
+        click.echo(f"Successfully saved to remote branch {branch}: \n\t{paths_str}")
     else:
-        click.echo("There were no changes to save.")
+        click.echo(f"Successfully saved to remote branch {branch}.")
 
     click.secho("OK", fg=color.GREEN)

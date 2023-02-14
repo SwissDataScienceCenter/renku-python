@@ -17,7 +17,12 @@
 # limitations under the License.
 """Click utilities."""
 
+from typing import TYPE_CHECKING, List
+
 import click
+
+if TYPE_CHECKING:
+    from renku.core.dataset.providers.models import ProviderParameter
 
 
 class CaseInsensitiveChoice(click.Choice):
@@ -65,3 +70,40 @@ class MutuallyExclusiveOption(click.Option):
             )
 
         return super(MutuallyExclusiveOption, self).handle_parse_result(ctx, opts, args)
+
+
+def create_options(providers, parameter_function: str):
+    """Create options for a group of providers."""
+
+    def wrapper(f):
+        from click_option_group import optgroup
+
+        for i, provider in enumerate(sorted(providers, reverse=True, key=lambda p: p.name.lower())):
+            parameters: List["ProviderParameter"] = getattr(provider, parameter_function)()
+            for j, param in enumerate(parameters):
+                param_help = f"\b\n{param.help}\n " if j == 0 else param.help  # NOTE: add newline after a group
+
+                args = (
+                    [f"-{a}" if len(a) == 1 else f"--{a}" for a in param.flags if a] + [param.name]
+                    if param.flags
+                    else [f"--{param.name}"]
+                )
+
+                f = optgroup.option(
+                    *args,
+                    type=param.type,
+                    help=param_help,
+                    is_flag=param.is_flag,
+                    default=param.default,
+                    multiple=param.multiple,
+                )(f)
+
+            name = f"{provider.name} configuration"
+            if i == len(providers) - 1:
+                name = "\n  " + name  # NOTE: add newline before first group
+
+            f = optgroup.group(name=name)(f)
+
+        return f
+
+    return wrapper

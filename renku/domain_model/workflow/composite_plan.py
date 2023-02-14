@@ -25,6 +25,8 @@ from uuid import uuid4
 
 from renku.core import errors
 from renku.core.util.datetime8601 import local_now
+from renku.domain_model.provenance.agent import Person
+from renku.domain_model.provenance.annotation import Annotation
 from renku.domain_model.workflow.parameter import (
     CommandInput,
     CommandOutput,
@@ -39,6 +41,8 @@ from renku.domain_model.workflow.plan import MAX_GENERATED_NAME_LENGTH, Abstract
 class CompositePlan(AbstractPlan):
     """A plan containing child plans."""
 
+    annotations: List[Annotation] = list()
+
     def __init__(
         self,
         *,
@@ -46,24 +50,30 @@ class CompositePlan(AbstractPlan):
         description: Optional[str] = None,
         id: str,
         date_created: Optional[datetime] = None,
-        invalidated_at: Optional[datetime] = None,
+        date_modified: Optional[datetime] = None,
+        date_removed: Optional[datetime] = None,
         keywords: Optional[List[str]] = None,
         links: Optional[List[ParameterLink]] = None,
         mappings: Optional[List[ParameterMapping]] = None,
         name: str,
         plans: List[Union["CompositePlan", Plan]],
         project_id: Optional[str] = None,
+        annotations: Optional[List[Annotation]] = None,
+        creators: Optional[List[Person]] = None,
     ):
         super().__init__(
             derived_from=derived_from,
             description=description,
             id=id,
             date_created=date_created,
-            invalidated_at=invalidated_at,
+            date_modified=date_modified,
+            date_removed=date_removed,
             keywords=keywords,
             name=name,
             project_id=project_id,
+            creators=creators,
         )
+        self.annotations: List[Annotation] = annotations or []
 
         self.plans: List[Union["CompositePlan", Plan]] = plans
         self.mappings: List[ParameterMapping] = mappings or []
@@ -81,6 +91,25 @@ class CompositePlan(AbstractPlan):
                 existing[target].extend(found)
 
         return dict(existing)
+
+    def is_equal_to(self, other: "CompositePlan") -> bool:
+        """Return true if plan hasn't changed from the other plan."""
+
+        def are_equal_with_order(values, other_values):
+            return len(values) == len(other_values) and all(s.is_equal_to(o) for s, o in zip(values, other_values))
+
+        def are_equal(values, other_values):
+            return len(values) == len(other_values) and set(values) == set(other_values)
+
+        # TODO: Include ``annotations``, ``mappings``, and ``links`` if they are added to the workflow definition file
+        return (
+            self.name == other.name
+            and self.description == other.description
+            and self.project_id == other.project_id
+            and are_equal(self.keywords, other.keywords)
+            and are_equal(self.creators, other.creators)
+            and are_equal_with_order(self.plans, other.plans)
+        )
 
     def set_mappings_from_strings(self, mapping_strings: List[str]) -> None:
         """Set mappings by parsing mapping strings."""
@@ -365,15 +394,19 @@ class CompositePlan(AbstractPlan):
     def _get_default_name(self) -> str:
         return uuid4().hex[:MAX_GENERATED_NAME_LENGTH]
 
-    def derive(self) -> "CompositePlan":
+    def derive(self, creator: Optional[Person] = None) -> "CompositePlan":
         """Create a new ``CompositePlan`` that is derived from self."""
         derived = copy.copy(self)
         derived.derived_from = self.id
-        derived.date_created = local_now()
+        derived.date_modified = local_now()
         derived.plans = self.plans.copy()
         derived.mappings = self.mappings.copy()
         derived.links = self.links.copy()
         derived.assign_new_id()
+
+        if creator and hasattr(creator, "email") and not any(c for c in self.creators if c.email == creator.email):
+            self.creators.append(creator)
+
         return derived
 
     def is_derivation(self) -> bool:

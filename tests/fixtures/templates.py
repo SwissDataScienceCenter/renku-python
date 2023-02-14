@@ -19,12 +19,14 @@
 
 import shutil
 import textwrap
-from typing import List, Optional, Tuple
+from typing import Generator, List, Optional, Tuple
 
 import pytest
 from packaging.version import Version
 
+from renku.domain_model.project_context import project_context
 from renku.version import __version__ as renku_version
+from tests.fixtures.repository import RenkuProject
 
 
 @pytest.fixture
@@ -80,11 +82,10 @@ def project_init(template):
             data["test_project"],
         ],
         "init_custom_template": (
-            "https://dev.renku.ch/gitlab/renku-python-integration-tests/core-it-template-variable-test-project"
+            "https://gitlab.dev.renku.ch/renku-python-integration-tests/core-it-template-variable-test-project"
         ),
         "remote": ["--template-source", template["url"], "--template-ref", template["ref"]],
         "id": ["--template-id", template["id"]],
-        "index": ["--template-index", template["index"]],
         "force": ["--force"],
         "parameters": ["--parameter", "p1=v1", "--parameter", "p2=v2"],
         "parameters_equal_missing": ["--parameter", "p3:v3"],
@@ -190,7 +191,7 @@ def templates_source(tmp_path, monkeypatch):
             version = str(max(self._versions))
             return version, version
 
-        def get_template(self, id, reference: Optional[str]) -> Optional[Template]:
+        def get_template(self, id, reference: Optional[str]) -> Template:
             """Return a template at a specific reference."""
             if not reference:
                 reference = self.reference
@@ -229,7 +230,7 @@ def templates_source(tmp_path, monkeypatch):
     with monkeypatch.context() as monkey:
         import renku.core.template.usecase
 
-        def mocked_fetch_templates_source(source: Optional[str], reference: Optional[str]):
+        def mocked_fetch_templates_source(*_, **__):
             return dummy_templates_source
 
         monkey.setattr(renku.core.template.usecase, "fetch_templates_source", mocked_fetch_templates_source)
@@ -248,23 +249,22 @@ def rendered_template(source_template, template_metadata):
 
 
 @pytest.fixture
-def client_with_template(client, rendered_template, client_database_injection_manager):
-    """A client with a dummy template."""
-    from renku.core.template.template import FileAction, copy_template_to_client
+def project_with_template(project, rendered_template, with_injection) -> Generator[RenkuProject, None, None]:
+    """A project with a dummy template."""
+    from renku.core.template.template import FileAction, copy_template_to_project
 
-    with client_database_injection_manager(client):
+    with with_injection():
         actions = {f: FileAction.OVERWRITE for f in rendered_template.get_files()}
+        project_object = project_context.project
 
-        copy_template_to_client(
-            rendered_template=rendered_template, client=client, project=client.project, actions=actions
-        )
+        copy_template_to_project(rendered_template=rendered_template, project=project_object, actions=actions)
 
-        client.template_files = [client.path / f for f in rendered_template.get_files()]
+        project_object.template_files = [str(project_context.path / f) for f in rendered_template.get_files()]
 
-    client.repository.add(all=True)
-    client.repository.commit("Set a dummy template")
+    project.repository.add(all=True)
+    project.repository.commit("Set a dummy template")
 
-    yield client
+    yield project
 
 
 @pytest.fixture

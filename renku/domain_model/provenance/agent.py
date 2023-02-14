@@ -106,7 +106,10 @@ class Person(Agent):
     def from_string(cls, string):
         """Create an instance from a 'Name <email>' string."""
         regex_pattern = r"([^<>\[\]]*)" r"(?:<{1}\s*(\S+@\S+\.\S+){0,1}\s*>{1}){0,1}\s*" r"(?:\[{1}(.*)\]{1}){0,1}"
-        name, email, affiliation = re.search(regex_pattern, string).groups()
+        match = re.search(regex_pattern, string)
+        if match is None:
+            raise ValueError(f"Couldn't parse person from string: {string}")
+        name, email, affiliation = match.groups()
         if name:
             name = name.strip()
         if affiliation:

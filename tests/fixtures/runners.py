@@ -18,6 +18,7 @@
 """Renku common configurations."""
 
 import contextlib
+import os.path
 import subprocess
 import sys
 import time
@@ -105,6 +106,7 @@ class RenkuRunner(CliRunner):
         stdin: Optional[Union[str, Path, IO]] = None,
         stdout: Optional[Union[str, Path, IO]] = None,
         stderr: Optional[Union[str, Path, IO]] = None,
+        replace_argv: bool = True,
         **extra: Any,
     ) -> Result:  # type: ignore
         """See ``click.testing.CliRunner::invoke``."""
@@ -112,6 +114,13 @@ class RenkuRunner(CliRunner):
         from renku.core.util.util import to_string
 
         assert not input or not stdin, "Cannot set both ``stdin`` and ``input``"
+
+        # NOTE: Set correct argv when running tests to have a correct commit message
+        if replace_argv:
+            argv = [] if not args else [args] if isinstance(args, (Path, str)) else list(args)
+            if cli.name != "cli" and cli.name is not None:
+                argv.insert(0, cli.name)
+            set_argv(args=argv)
 
         if stderr is not None:
             self.mix_stderr = False
@@ -150,21 +159,46 @@ class RenkuRunner(CliRunner):
             )
 
 
+def set_argv(args: Optional[Union[Path, str, Sequence[Union[Path, str]]]]) -> None:
+    """Set proper argv to be used in the commit message in tests; also, make paths shorter by using relative paths."""
+
+    def to_relative(path):
+        if not path or not isinstance(path, (str, Path)) or not os.path.abspath(path):
+            return path
+
+        return os.path.relpath(path)
+
+    def convert_args():
+        """Create proper argv for commit message."""
+        if not args:
+            return []
+        elif isinstance(args, (str, Path)):
+            return [to_relative(args)]
+
+        return [to_relative(a) for a in args]
+
+    sys.argv[:] = convert_args()
+
+
 @pytest.fixture()
 def run_shell():
     """Create a shell cmd runner."""
 
-    def run_(cmd, return_ps=None, sleep_for=None):
+    def run_(cmd, return_ps=None, sleep_for=None, work_dir=None):
         """Spawn subprocess and execute shell command.
 
         Args:
             cmd(str): The command to run.
             return_ps: Return process object.
             sleep_for: After executing command sleep for n seconds.
+            work_dir: The directory where the command should be executed from
         Returns:
             Process object or tuple (stdout, stderr).
         """
-        ps = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        set_argv(args=cmd)
+        ps = subprocess.Popen(
+            cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, cwd=work_dir
+        )
 
         if return_ps:
             return ps
@@ -194,13 +228,15 @@ def run(runner, capsys):
     def generate(args=("update", "--all"), cwd=None, **streams):
         """Generate an output."""
         with capsys.disabled(), Isolation(cwd=cwd, **streams):
+            set_argv(args=args)
             try:
                 cli.main(args=args, prog_name=runner.get_default_prog_name(cli))
-                return 0
             except SystemExit as e:
                 return 0 if e.code is None else e.code
             except Exception:
                 raise
+            else:
+                return 0
 
     return generate
 
@@ -208,6 +244,6 @@ def run(runner, capsys):
 @pytest.fixture()
 def isolated_runner():
     """Create a runner on isolated filesystem."""
-    runner_ = RenkuRunner()
-    with runner_.isolated_filesystem():
-        yield runner_
+    runner = RenkuRunner()
+    with runner.isolated_filesystem():
+        yield runner

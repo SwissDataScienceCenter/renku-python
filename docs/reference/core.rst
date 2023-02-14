@@ -77,6 +77,10 @@ Schema classes used to serialize domain models to JSON-LD.
    :members:
    :show-inheritance:
 
+.. automodule:: renku.command.schema.workflow_file
+   :members:
+   :show-inheritance:
+
 
 Datasets
 --------
@@ -86,10 +90,6 @@ Datasets
    :show-inheritance:
 
 .. automodule:: renku.core.dataset.dataset_add
-   :members:
-   :show-inheritance:
-
-.. automodule:: renku.core.dataset.constant
    :members:
    :show-inheritance:
 
@@ -135,6 +135,14 @@ Providers for dataset import and export
    :members:
    :show-inheritance:
 
+.. automodule:: renku.core.dataset.providers.git
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.dataset.providers.local
+   :members:
+   :show-inheritance:
+
 .. automodule:: renku.core.dataset.providers.models
    :members:
    :show-inheritance:
@@ -144,6 +152,14 @@ Providers for dataset import and export
    :show-inheritance:
 
 .. automodule:: renku.core.dataset.providers.renku
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.dataset.providers.repository
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.dataset.providers.web
    :members:
    :show-inheritance:
 
@@ -158,7 +174,19 @@ Workflows
    :members:
    :show-inheritance:
 
-.. automodule:: renku.core.workflow.concrete_execution_graph
+.. automodule:: renku.core.workflow.plan
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.workflow.execute
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.workflow.model.concrete_execution_graph
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.workflow.model.workflow_file
    :members:
    :show-inheritance:
 
@@ -170,6 +198,10 @@ Workflows
    :members:
 
 .. automodule:: renku.core.workflow.value_resolution
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.workflow.workflow_file
    :members:
    :show-inheritance:
 
@@ -244,10 +276,6 @@ Utilities
    :members:
    :show-inheritance:
 
-.. automodule:: renku.core.util.scm
-   :members:
-   :show-inheritance:
-
 .. automodule:: renku.core.util.shacl
    :members:
    :show-inheritance:
@@ -268,16 +296,10 @@ Utilities
    :members:
    :show-inheritance:
 
-Repository
-----------
-
-.. automodule:: renku.core.management.repository
-   :members:
-
 Git Internals
 -------------
 
-.. automodule:: renku.core.management.git
+.. automodule:: renku.core.git
    :members:
 
 .. automodule:: renku.domain_model.git

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -20,23 +20,32 @@
 import datetime
 import urllib
 from pathlib import Path
+from typing import TYPE_CHECKING, List, Optional
 from urllib import parse as urlparse
 from uuid import UUID, uuid4
 
-import attr
-
-from renku.command.command_builder import inject
 from renku.core import errors
-from renku.core.dataset.providers.api import ExporterApi, ProviderApi
-from renku.core.interface.client_dispatcher import IClientDispatcher
+from renku.core.config import get_value, set_value
+from renku.core.dataset.providers.api import ExporterApi, ExportProviderInterface, ProviderApi, ProviderPriority
 from renku.core.util import communication
+from renku.domain_model.project_context import project_context
+
+if TYPE_CHECKING:
+    from renku.core.dataset.providers.models import ProviderParameter
+    from renku.domain_model.dataset import Dataset, DatasetTag
 
 
-@attr.s
-class OLOSProvider(ProviderApi):
+class OLOSProvider(ProviderApi, ExportProviderInterface):
     """Provider for OLOS integration."""
 
-    _server_url = attr.ib(default=None)
+    priority = ProviderPriority.HIGH
+    name = "OLOS"
+
+    def __init__(self, uri: Optional[str], is_doi: bool = False):
+        super().__init__(uri=uri)
+
+        self.is_doi = is_doi
+        self._server_url = None
 
     @staticmethod
     def supports(uri):
@@ -44,95 +53,81 @@ class OLOSProvider(ProviderApi):
         return False
 
     @staticmethod
-    def supports_export():
-        """Whether this provider supports dataset export."""
-        return True
-
-    @staticmethod
-    def export_parameters():
+    def get_export_parameters() -> List["ProviderParameter"]:
         """Returns parameters that can be set for export."""
-        return {
-            "dlcm-server": ("DLCM server base url.", str),
-        }
+        from renku.core.dataset.providers.models import ProviderParameter
 
-    def find_record(self, uri, client=None, **kwargs):
-        """Find record by URI."""
-        return None
+        return [ProviderParameter("dlcm-server", help="DLCM server base url.", type=str)]
 
-    def get_exporter(self, dataset, access_token):
+    def get_exporter(
+        self, dataset: "Dataset", *, tag: Optional["DatasetTag"], dlcm_server: Optional[str] = None, **kwargs
+    ) -> "OLOSExporter":
         """Create export manager for given dataset."""
-        return OLOSExporter(dataset=dataset, access_token=access_token, server_url=self._server_url)
 
-    @inject.autoparams()
-    def set_parameters(self, client_dispatcher: IClientDispatcher, *, dlcm_server=None, **kwargs):
-        """Set and validate required parameters for a provider."""
-        config_base_url = "server_url"
+        def set_export_parameters():
+            """Set and validate required parameters for exporting for a provider."""
+            server = dlcm_server
+            config_base_url = "server_url"
+            if not server:
+                server = get_value("olos", config_base_url)
+            else:
+                set_value("olos", config_base_url, server, global_only=True)
 
-        client = client_dispatcher.current_client
+            if not server:
+                raise errors.ParameterError("OLOS server URL is required.")
 
-        if not dlcm_server:
-            dlcm_server = client.get_value("olos", config_base_url)
-        else:
-            client.set_value("olos", config_base_url, dlcm_server, global_only=True)
+            self._server_url = server  # type: ignore
 
-        if not dlcm_server:
-            raise errors.ParameterError("OLOS server URL is required.")
-
-        self._server_url = dlcm_server
+        set_export_parameters()
+        return OLOSExporter(dataset=dataset, server_url=self._server_url)
 
 
-@attr.s
 class OLOSExporter(ExporterApi):
     """OLOS export manager."""
 
-    dataset = attr.ib(kw_only=True)
-
-    access_token = attr.ib(kw_only=True)
-
-    _server_url = attr.ib(kw_only=True, default=None)
+    def __init__(self, *, dataset, server_url=None):
+        super().__init__(dataset)
+        self._access_token = None
+        self._server_url = server_url
 
     def set_access_token(self, access_token):
         """Set access token."""
-        self.access_token = access_token
+        self._access_token = access_token
 
-    def access_token_url(self):
+    def get_access_token_url(self):
         """Endpoint for creation of access token."""
-        return urllib.parse.urljoin(self._server_url, "/portal by clicking on the top-right menu and selecting 'token'")
+        return urllib.parse.urljoin(self._server_url, "portal")
 
-    def export(self, publish, client=None, **kwargs):
+    def export(self, **kwargs):
         """Execute export process."""
-        deposition = _OLOSDeposition(server_url=self._server_url, access_token=self.access_token)
+        from renku.domain_model.dataset import get_file_path_in_dataset
+
+        deposition = _OLOSDeposition(server_url=self._server_url, access_token=self._access_token)
+        repository = project_context.repository
 
         metadata = self._get_dataset_metadata()
         metadata["organizationalUnitId"] = deposition.get_org_unit()
         deposition.create_dataset(metadata=metadata)
 
-        progress_text = "Uploading files"
-        communication.start_progress(progress_text, total=len(self.dataset.files))
-
-        try:
+        with communication.progress("Uploading files ...", total=len(self.dataset.files)) as progressbar:
             for file in self.dataset.files:
-                try:
-                    path = (client.path / file.entity.path).relative_to(self.dataset.data_dir)
-                except ValueError:
-                    path = Path(file.entity.path)
-                filepath = client.repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
-                deposition.upload_file(full_path=filepath, path_in_dataset=path)
-                communication.update_progress(progress_text, amount=1)
-        finally:
-            communication.finalize_progress(progress_text)
+                filepath = repository.copy_content_to_file(path=file.entity.path, checksum=file.entity.checksum)
+                path_in_dataset = get_file_path_in_dataset(dataset=self.dataset, dataset_file=file)
+                deposition.upload_file(full_path=filepath, path_in_dataset=path_in_dataset)
+                progressbar.update()
 
         return deposition.deposited_at
 
     def _get_dataset_metadata(self):
         try:
-            identifier = UUID(self.dataset.identifier, version=4)
+            identifier = str(UUID(self.dataset.identifier, version=4))
         except ValueError:
             identifier = uuid4().hex
+
         metadata = {
             "publicationDate": datetime.date.today().isoformat(),
             "description": self.dataset.description,
-            "identifier": str(identifier),
+            "identifier": identifier,
             "keywords": self.dataset.keywords,
             "title": self.dataset.title,
             "access": "CLOSED",
@@ -142,26 +137,32 @@ class OLOSExporter(ExporterApi):
         return metadata
 
 
-@attr.s
 class _OLOSDeposition:
     """OLOS record for deposit."""
 
-    access_token = attr.ib(kw_only=True)
-    server_url = attr.ib(kw_only=True)
-    dataset_pid = attr.ib(kw_only=True, default=None)
-    deposited_at = attr.ib(kw_only=True, default=None)
+    def __init__(
+        self,
+        *,
+        access_token,
+        server_url,
+        dataset_pid=None,
+        deposited_at=None,
+        deposition_base_url=None,
+        admin_base_url=None,
+    ):
+        self.access_token = access_token
+        self.server_url = server_url
+        self.dataset_pid = dataset_pid
+        self.deposited_at = deposited_at
+        self.deposition_base_url = deposition_base_url
+        self.admin_base_url = admin_base_url
 
-    deposition_base_url = attr.ib(kw_only=True, default=None)
-    admin_base_url = attr.ib(kw_only=True, default=None)
+        self._get_base_urls()
 
     ORGANIZATIONAL_UNIT_PATH = "/authorized-organizational-units"
     DATASET_CREATE_PATH = "/deposits"
     FILE_UPLOAD_PATH = "/deposits/{deposit_id}/upload"
     MODULES_PATH = "administration/preservation-planning/modules"
-
-    def __attrs_post_init__(self):
-        """Post init code."""
-        self._get_base_urls()
 
     def _get_base_urls(self):
         """Get base urls for different endpoints."""
@@ -210,7 +211,7 @@ class _OLOSDeposition:
 
         return response
 
-    def upload_file(self, full_path, path_in_dataset):
+    def upload_file(self, full_path, path_in_dataset: Path):
         """Upload a file to a previously-created dataset."""
         if self.dataset_pid is None:
             raise errors.ExportError("Dataset not created.")
@@ -231,12 +232,13 @@ class _OLOSDeposition:
 
         return response
 
-    def _make_url(self, server_url, api_path, **query_params):
+    @staticmethod
+    def _make_url(server_url, api_path, **query_params):
         """Create URL for creating a dataset."""
         url_parts = urlparse.urlparse(server_url)
 
-        query_params = urllib.parse.urlencode(query_params)
-        url_parts = url_parts._replace(path=api_path, query=query_params)
+        query_params_encoded = urllib.parse.urlencode(query_params)
+        url_parts = url_parts._replace(path=api_path, query=query_params_encoded)
         return urllib.parse.urlunparse(url_parts)
 
     def _get(self, url):
@@ -259,15 +261,17 @@ class _OLOSDeposition:
 
     @staticmethod
     def _check_response(response):
+        from renku.core.util import requests
+
         if len(response.history) > 0:
             raise errors.ExportError(
                 f"Couldn't execute request to {response.request.url}, got redirected to {response.url}."
                 "Maybe you mixed up http and https in the server url?"
             )
 
-        if response.status_code not in [200, 201, 202]:
-            if response.status_code == 401:
-                raise errors.AuthenticationError("Access unauthorized - update access token.")
+        try:
+            requests.check_response(response=response)
+        except errors.RequestError:
             json_res = response.json()
             raise errors.ExportError(
                 "HTTP {} - Cannot export dataset: {}".format(

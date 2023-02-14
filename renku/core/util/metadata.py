@@ -17,34 +17,37 @@
 # limitations under the License.
 """Helpers functions for metadata management/parsing."""
 
+import fnmatch
 import os
 import re
-from collections.abc import Iterable
+import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
 from packaging.version import Version
 
 from renku.core import errors
+from renku.core.config import get_value, set_value
+from renku.core.constant import RENKU_HOME, RENKU_PROTECTED_PATHS, RENKU_TMP
+from renku.core.util import communication
 from renku.core.util.os import is_subpath
 
 if TYPE_CHECKING:
+    from renku.core.dataset.providers.api import ProviderCredentials
     from renku.domain_model.provenance.agent import Person
 
 
-def construct_creators(creators: List[Union[dict, str]], ignore_email=False):
+def construct_creators(creators: List[Union[dict, str]], ignore_email=False) -> Tuple[List["Person"], List[str]]:
     """Parse input and return a list of Person."""
     creators = creators or []
-
-    if not isinstance(creators, Iterable) or isinstance(creators, str):
-        raise errors.ParameterError("Invalid creators type")
 
     people = []
     no_email_warnings = []
     for creator in creators:
         person, no_email_warning = construct_creator(creator, ignore_email=ignore_email)
 
-        people.append(person)
+        if person:
+            people.append(person)
 
         if no_email_warning:
             no_email_warnings.append(no_email_warning)
@@ -52,7 +55,7 @@ def construct_creators(creators: List[Union[dict, str]], ignore_email=False):
     return people, no_email_warnings
 
 
-def construct_creator(creator: Union[dict, str], ignore_email) -> Tuple[Optional["Person"], Optional[Union[dict, str]]]:
+def construct_creator(creator: Union[dict, str], ignore_email) -> Tuple[Optional["Person"], Optional[str]]:
     """Parse input and return an instance of Person."""
     from renku.domain_model.provenance.agent import Person
 
@@ -75,34 +78,30 @@ def construct_creator(creator: Union[dict, str], ignore_email) -> Tuple[Optional
         if not ignore_email:  # pragma: no cover
             raise errors.ParameterError(f'Email is invalid: "{creator}".\n{message}')
         else:
-            no_email_warning = creator
+            no_email_warning = str(creator)
     else:
         no_email_warning = None
 
     return person, no_email_warning
 
 
-def is_external_file(path: Union[Path, str], client_path: Path):
+def is_external_file(path: Union[Path, str], project_path: Path):
     """Checks if a path is an external file."""
-    from renku.core.constant import RENKU_HOME
-    from renku.core.dataset.constant import POINTERS
+    from renku.core.constant import POINTERS, RENKU_HOME
 
-    path = client_path / path
-    if not path.is_symlink() or not is_subpath(path=path, base=client_path):
+    path = project_path / path
+    if not path.is_symlink() or not is_subpath(path=path, base=project_path):
         return False
 
     pointer = os.readlink(path)
     return str(os.path.join(RENKU_HOME, POINTERS)) in pointer
 
 
-def get_renku_version(client) -> Optional[str]:
-    """Return project's Renku version from its Dockerfile."""
-    return read_renku_version_from_dockerfile(client.docker_path)
-
-
-def read_renku_version_from_dockerfile(path: Union[Path, str]) -> Optional[str]:
+def read_renku_version_from_dockerfile(path: Optional[Union[Path, str]] = None) -> Optional[str]:
     """Read RENKU_VERSION from the content of path if a valid version is available."""
-    path = Path(path)
+    from renku.domain_model.project_context import project_context
+
+    path = Path(path) if path else project_context.docker_path
     if not path.exists():
         return None
 
@@ -115,3 +114,69 @@ def read_renku_version_from_dockerfile(path: Union[Path, str]) -> Optional[str]:
         return str(Version(m.group(1)))
     except ValueError:
         return None
+
+
+def make_project_temp_dir(project_path: Path) -> Path:
+    """Create a temporary directory inside project's temp path."""
+    base = project_path / RENKU_HOME / RENKU_TMP
+    base.mkdir(parents=True, exist_ok=True)
+
+    return Path(tempfile.mkdtemp(dir=base))
+
+
+def store_credentials(section: str, key: str, value: str) -> None:
+    """Write provider's credentials."""
+    section, key = _get_section_and_key(section=section, key=key)
+    set_value(section=section, key=key, value=value, global_only=True)
+
+
+def read_credentials(section: str, key: str) -> Optional[str]:
+    """Read provider's credentials."""
+    section, key = _get_section_and_key(section=section, key=key)
+    return get_value(section=section, key=key)
+
+
+def get_canonical_key(key: str) -> str:
+    """Make a consistent configuration key."""
+    return key.replace(" ", "-").lower()
+
+
+def _get_section_and_key(section: str, key: str) -> Tuple[str, str]:
+    section = "http" if section.lower() == "renku" else section
+
+    return section, get_canonical_key(key)
+
+
+def prompt_for_credentials(provider_credentials: "ProviderCredentials") -> None:
+    """Prompt for provider credentials if needed and update and store them."""
+    if not provider_credentials:
+        return
+
+    provider_credentials.read()
+
+    prompt_to_store = False
+    for key in provider_credentials.get_credentials_names_with_no_value():
+        prompt_to_store = True
+        value = communication.prompt(f"Enter a value for '{key}'", type=str, default="")
+
+        provider_credentials[key] = value
+
+    if prompt_to_store:
+        if communication.confirm("Store credentials?", default=True):
+            provider_credentials.store()
+
+
+def is_protected_path(path: Path) -> bool:
+    """Checks if a path is a protected path."""
+    from renku.domain_model.project_context import project_context
+
+    try:
+        path_in_repo = str(path.relative_to(project_context.path))
+    except ValueError:
+        return False
+
+    for protected_path in RENKU_PROTECTED_PATHS:
+        if fnmatch.fnmatch(path_in_repo, protected_path):
+            return True
+
+    return False

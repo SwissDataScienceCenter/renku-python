@@ -18,7 +18,7 @@
 """Repository datasets management."""
 
 from renku.command.command_builder.command import Command
-from renku.core.dataset.constant import DATASET_METADATA_PATHS
+from renku.core.constant import CONFIG_LOCAL_PATH, DATASET_METADATA_PATHS
 from renku.core.dataset.dataset import (
     create_dataset,
     edit_dataset,
@@ -27,12 +27,15 @@ from renku.core.dataset.dataset import (
     import_dataset,
     list_dataset_files,
     list_datasets,
+    mount_external_storage,
+    pull_external_data,
     remove_dataset,
     search_datasets,
     show_dataset,
+    unmount_external_storage,
     update_datasets,
 )
-from renku.core.dataset.dataset_add import add_data_to_dataset
+from renku.core.dataset.dataset_add import add_to_dataset
 from renku.core.dataset.tag import add_dataset_tag, list_dataset_tags, remove_dataset_tags
 
 
@@ -65,7 +68,7 @@ def show_dataset_command():
 
 def add_to_dataset_command():
     """Create a command for adding data to datasets."""
-    command = Command().command(add_data_to_dataset).lock_dataset().with_database(write=True)
+    command = Command().command(add_to_dataset).lock_dataset().with_database(write=True)
     return command.require_migration().with_commit(raise_if_empty=True, commit_only=DATASET_METADATA_PATHS)
 
 
@@ -98,10 +101,14 @@ def import_dataset_command():
     return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
-def update_datasets_command():
+def update_datasets_command(dry_run=False):
     """Command for updating datasets."""
-    command = Command().command(update_datasets).lock_dataset().with_database(write=True)
-    return command.require_migration().require_clean().with_commit(commit_only=DATASET_METADATA_PATHS)
+    command = Command().command(update_datasets).lock_dataset().with_database(write=not dry_run).require_migration()
+
+    if not dry_run:
+        command = command.with_commit(commit_only=DATASET_METADATA_PATHS)
+
+    return command
 
 
 def add_dataset_tag_command():
@@ -119,3 +126,20 @@ def remove_dataset_tags_command():
 def list_tags_command():
     """Command for listing a dataset's tags."""
     return Command().command(list_dataset_tags).with_database().require_migration()
+
+
+def pull_external_data_command():
+    """Command for pulling/copying data from an external storage."""
+    command = Command().command(pull_external_data).lock_dataset().with_database(write=True)
+    return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS + [CONFIG_LOCAL_PATH])
+
+
+def mount_external_storage_command(unmount: bool):
+    """Command for mounting an external storage."""
+    command = unmount_external_storage if unmount else mount_external_storage
+    return Command().command(command).lock_dataset().with_database(write=False).require_migration()
+
+
+def unmount_external_storage_command():
+    """Command for unmounting an external storage."""
+    return Command().command(unmount_external_storage).lock_dataset().with_database(write=False).require_migration()

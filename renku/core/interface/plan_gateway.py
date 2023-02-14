@@ -26,7 +26,7 @@ from renku.domain_model.workflow.plan import AbstractPlan
 class IPlanGateway(ABC):
     """Interface for the PlanGateway."""
 
-    def get_by_id(self, id: str) -> Optional[AbstractPlan]:
+    def get_by_id(self, id: Optional[str]) -> Optional[AbstractPlan]:
         """Get a plan by id."""
         raise NotImplementedError
 
@@ -34,18 +34,22 @@ class IPlanGateway(ABC):
         """Get a plan by name."""
         raise NotImplementedError
 
-    def list_by_name(self, starts_with: str, ends_with: str = None) -> List[str]:
+    def get_by_name_or_id(self, name_or_id: str) -> AbstractPlan:
+        """Get a plan by name or id."""
+        raise NotImplementedError()
+
+    def list_by_name(self, starts_with: str, ends_with: Optional[str] = None) -> List[str]:
         """Search plans by name."""
         raise NotImplementedError
 
-    def get_newest_plans_by_names(self, with_invalidated: bool = False) -> Dict[str, AbstractPlan]:
-        """Return a list of all newest plans with their names."""
+    def get_newest_plans_by_names(self, include_deleted: bool = False) -> Dict[str, AbstractPlan]:
+        """Return a mapping of all plan names to their newest plans."""
         raise NotImplementedError
 
     def get_all_plans(self) -> List[AbstractPlan]:
         """Get all plans in project."""
         raise NotImplementedError
 
-    def add(self, plan: AbstractPlan):
+    def add(self, plan: AbstractPlan) -> None:
         """Add a plan to the database."""
         raise NotImplementedError

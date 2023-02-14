@@ -22,32 +22,59 @@ Inputs/Outputs. It provides access to internals of a Renku project for such
 entities.
 
 Normally, you do not need to create an instance of Project class directly
-unless you want to have access to Project metadata (e.g. path). To separate
+unless you want to have access to Project metadata (e.g. path) or get its status. To separate
 parts of your script that uses Renku entities, you can create a Project context
 manager and interact with Renku inside it:
 
 .. code-block:: python
 
-    from renku.ui.api import Project, Input
+    from renku.api import Project, Input
 
     with Project():
-        input_1 = Input("data_1")
+        input_1 = Input("input_1", "path_1")
+
+You can use Project's ``status`` method to get info about outdated outputs and
+activities, and modified or deleted inputs:
+
+.. code-block:: python
+
+    from renku.api import Project
+
+    outdated_generations, outdated_activities, modified_inputs, deleted_inputs = Project().status()
 
 """
-from functools import wraps
+
+from pathlib import Path
+from typing import TYPE_CHECKING, List, Optional, Union
 
 from werkzeug.local import LocalStack
 
-from renku.core import errors
+from renku.command.status import get_status_command
+from renku.core.util.git import get_git_repository
+from renku.core.workflow.run import StatusResult
+from renku.domain_model.project_context import project_context
+
+if TYPE_CHECKING:
+    from renku.infrastructure.repository import Repository
 
 
 class Project:
     """API Project context class."""
 
-    _project_contexts = LocalStack()
+    _project_contexts: LocalStack = LocalStack()
 
     def __init__(self):
-        self._client = _get_local_client()
+        try:
+            repository = get_git_repository()
+            path = repository.path
+        except ValueError:
+            repository = None
+            path = Path(".")
+
+        project_context.replace_path(path)
+        project_context.repository = repository  # type: ignore
+        self._path = project_context.path
+        self._repository = repository
 
     def __enter__(self):
         self._project_contexts.push(self)
@@ -55,57 +82,29 @@ class Project:
         return self
 
     def __exit__(self, type, value, traceback):
-        project_context = self._project_contexts.pop()
-        if project_context is not self:
+        context = self._project_contexts.pop()
+        if context is not self:
             raise RuntimeError("Project context was changed.")
 
     @property
-    def client(self):
-        """Return the LocalClient instance."""
-        return self._client
+    def repository(self) -> Optional["Repository"]:
+        """Return the Repository instance."""
+        return self._repository
 
     @property
-    def path(self):
+    def path(self) -> Path:
         """Absolute path to project's root directory."""
-        return self._client.path.resolve()
+        return self._path
 
+    def status(self, paths: Optional[List[Union[Path, str]]] = None, ignore_deleted: bool = False) -> StatusResult:
+        """Return status of a project.
 
-def ensure_project_context(fn):
-    """Check existence of a project context.
+        Args:
+            paths(Optional[List[Union[Path, str]]]): Limit the status to this list of paths (Default value = None).
+            ignore_deleted(bool): Whether to ignore deleted generations.
 
-    Args:
-        fn: The function to wrap.
+        Returns:
+            StatusResult: Status of the project.
 
-    Returns:
-        The function with the current project injected.
-    """
-
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        project = _get_current_project() or Project()
-        return fn(*args, **kwargs, project=project)
-
-    return wrapper
-
-
-def _get_current_project():
-    """Return current project context if any or a new project object.
-
-    Returns:
-        The current project context or None.
-    """
-    return Project._project_contexts.top if Project._project_contexts.top else None
-
-
-def _get_local_client():
-    from renku.core.management.client import LocalClient
-    from renku.infrastructure.repository import Repository
-
-    try:
-        repository = Repository(".", search_parent_directories=True)
-    except errors.GitError:
-        path = "."
-    else:
-        path = repository.path
-
-    return LocalClient(path)
+        """
+        return get_status_command().build().execute(paths=paths, ignore_deleted=ignore_deleted).output

@@ -58,8 +58,8 @@ def jsonld(datasets, **kwargs):
     Returns:
         String of datasets in JSON-LD format.
     """
+    from renku.command.format.json import dumps
     from renku.command.schema.dataset import dump_dataset_as_jsonld
-    from renku.domain_model.json import dumps
 
     data = [dump_dataset_as_jsonld(dataset) for dataset in datasets]
     return dumps(data, indent=2)
@@ -74,8 +74,8 @@ def json(datasets, **kwargs):
     Returns:
         String of datasets as JSON data.
     """
+    from renku.command.format.json import dumps
     from renku.domain_model.dataset import DatasetDetailsJson
-    from renku.domain_model.json import dumps
 
     data = [DatasetDetailsJson().dump(dataset) for dataset in datasets]
     return dumps(data, indent=2)
@@ -101,4 +101,6 @@ DATASETS_COLUMNS = {
     "title": ("title", "title"),
     "keywords": ("keywords_csv", "keywords"),
     "description": ("short_description", "description"),
+    "storage": ("storage", None),
+    "datadir": ("datadir_path", "datadir"),
 }

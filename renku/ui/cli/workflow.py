@@ -15,10 +15,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Manage the set of CWL files created by ``renku`` commands.
+"""Manage the set of execution templates created by the ``renku run`` command.
 
-Runs and Plans
-~~~~~~~~~~~~~~
+Commands and options
+~~~~~~~~~~~~~~~~~~~~
+
+.. rst-class:: cli-reference-commands
+
+.. click:: renku.ui.cli.workflow:workflow
+   :prog: renku workflow
+   :nested: full
+
+Description
+~~~~~~~~~~~
 
 Renku records two different kinds of metadata when a workflow is executed,
 ``Run`` and ``Plan``.
@@ -44,7 +53,7 @@ Working with Plans
 Listing Plans
 *************
 
-.. image:: ../_static/asciicasts/list_plans.delay.gif
+.. image:: ../../_static/asciicasts/list_plans.delay.gif
    :width: 850
    :alt: List Plans
 
@@ -66,12 +75,12 @@ combination of values from ``id``, ``name``, ``keywords`` and ``description``.
    :group: Workflows
    :command: $ renku workflow ls
    :description: List Plans (workflow templates).
-   :extended:
+   :target: rp
 
 Showing Plan Details
 ********************
 
-.. image:: ../_static/asciicasts/show_plan.delay.gif
+.. image:: ../../_static/asciicasts/show_plan.delay.gif
    :width: 850
    :alt: Show Plan
 
@@ -102,12 +111,12 @@ inputs, outputs and parameters.
    :group: Workflows
    :command: $ renku workflow show <name>
    :description: Show details for Plan <name>.
-   :extended:
+   :target: rp
 
 Executing Plans
 ***************
 
-.. image:: ../_static/asciicasts/execute_plan.delay.gif
+.. image:: ../../_static/asciicasts/execute_plan.delay.gif
    :width: 850
    :alt: Execute Plans
 
@@ -127,11 +136,11 @@ the YAML should follow the this structure:
 
     learning_rate: 0.9
     dataset_input: dataset.csv
-    chart_output: mychart.png
-    myworkflow:
+    chart_output: chart.png
+    my-workflow:
         lr: 0.8
-        lookuptable: lookup.xml
-        myotherworkflow:
+        lookup-table: lookup.xml
+        my-other-workflow:
             language: en
 
 In addition to being passed on the command line and being available to
@@ -147,12 +156,17 @@ Provider specific settings can be passed as file using the ``--config`` paramete
              <param-name>=<value>...] <name>
    :description: Execute a Plan using <provider> as a backend, overriding
                  parameter <param-name>'s value.
-   :extended:
+   :target: rp
+
+In some cases it may be desirable to avoid updating the renku metadata
+and to avoid committing this and any other change in the repository when a workflow
+is executed. If this is the case then you can pass the ``--skip-metadata-update``
+flag to ``renku workflow execute``.
 
 Iterate Plans
 *************
 
-.. image:: ../_static/asciicasts/iterate_plan.gif
+.. image:: ../../_static/asciicasts/iterate_plan.gif
    :width: 850
    :alt: Iterate Plans
 
@@ -181,7 +195,7 @@ should be:
              <name>
    :description: Repeatedly execute a Plan, taking values from the list
                  specified with --map.
-   :extended:
+   :target: rp
 
 By default ``renku workflow iterate`` will execute all the combination of the
 given parameters' list of possible values. Sometimes it is desired that instead
@@ -209,8 +223,13 @@ variable is going to be substituted with the iteration index (0, 1, 2, ...).
             --map output=output_{iter_index}.txt my-run
 
 This would execute ``my-run`` three times, where ``parameter-1`` values would be
-``10``, `20`` and ``30`` and the producing output files ``output_0.txt``,
+``10``, ``20`` and ``30`` and the producing output files ``output_0.txt``,
 ``output_1.txt`` and ``output_2.txt`` files in this order.
+
+In some cases it may be desirable to avoid updating the renku metadata
+and to avoid committing this and any other change in the repository when a workflow
+is iterated through. If this is the case then you can pass the ``--skip-metadata-update``
+flag to ``renku workflow iterate``.
 
 Exporting Plans
 ***************
@@ -273,24 +292,24 @@ You can export into a file directly with ``-o <path>``.
    :group: Workflows
    :command: $ renku workflow export --format <format> <plan>
    :description: Export a Plan in a given format (e.g. 'cwl').
-   :extended:
+   :target: rp
 
 
 Composing Plans into larger workflows
 *************************************
-.. image:: ../_static/asciicasts/compose_plan.delay.gif
+.. image:: ../../_static/asciicasts/compose_plan.delay.gif
    :width: 850
    :alt: Composing Plans
 
 For more complex workflows consisting of several steps, you can use the
 ``renku workflow compose`` command. This creates a new workflow that has
-substeps.
+sub-steps.
 
 The basic usage is:
 
 .. code-block:: console
 
-   $ renku run --name step1-- cp input intermediate
+   $ renku run --name step1 -- cp input intermediate
    $ renku run --name step2 -- cp intermediate output
    $ renku workflow compose my-composed-workflow step1 step2
 
@@ -303,7 +322,7 @@ or composed with other workflows.
    :group: Workflows
    :command: $ renku workflow compose <composed-name> <plan> <plan>
    :description: Create a new Plan composed of child Plans.
-   :extended:
+   :target: rp
 
 Workflows can also be composed based on past Runs and their
 inputs/outputs, using the ``--from`` and ``--to`` parameters. This finds
@@ -422,7 +441,7 @@ order of precedence (lower precedence first):
 Editing Plans
 *************
 
-.. image:: ../_static/asciicasts/edit_plan.delay.gif
+.. image:: ../../_static/asciicasts/edit_plan.delay.gif
    :width: 850
    :alt: Editing Plans
 
@@ -445,11 +464,35 @@ This would rename the Plan ``my-run`` to ``new-run``, change its description,
 rename its parameter ``input-1`` to ``my-input`` and set the default of this
 parameter to ``other-file.txt`` and set its description.
 
++-----------------------+------------------------------------------------------+
+| Option                | Description                                          |
++=======================+======================================================+
+| ``-n, --name``        | Plan's name                                          |
++-----------------------+------------------------------------------------------+
+| ``-d, --description`` | Plan's description.                                  |
++-----------------------+------------------------------------------------------+
+| ``-s, --set``         | Set default value for a parameter.                   |
+|                       | Accepted format is '<name>=<value>'                  |
++-----------------------+------------------------------------------------------+
+| ``-m, --map``         | Add a new mapping on the Plan.                       |
+|                       | Accepted format is '<name>=<name or expression>'     |
++-----------------------+------------------------------------------------------+
+| ``-r, --rename-param``| Rename a parameter.                                  |
+|                       | Accepted format is '<name>="new name"'               |
++-----------------------+------------------------------------------------------+
+| ``-d,``               | Add a description for a parameter.                   |
+| ``--describe-param``  | Accepted format is '<name>="description"'            |
++-----------------------+------------------------------------------------------+
+| ``-m, --metadata``    | Path to file containing custom JSON-LD metadata to   |
+|                       | be added to the dataset.                             |
++-----------------------+------------------------------------------------------+
+
+
 .. cheatsheet::
    :group: Workflows
    :command: $ renku workflow edit <plan>
    :description: Create a new Plan composed of child Plans.
-   :extended:
+   :target: rp
 
 Removing Plans
 **************
@@ -465,7 +508,7 @@ them if needed, to ensure reproducibility.
    :group: Workflows
    :command: $ renku workflow delete <plan>
    :description: Remove a Plan.
-   :extended:
+   :target: rp
 
 Working with Runs
 ~~~~~~~~~~~~~~~~~
@@ -489,7 +532,7 @@ Refer to the documentation of the :ref:`cli-log` command for more details.
 Visualizing Executions
 **********************
 
-.. image:: ../_static/asciicasts/visualize_runs.delay.gif
+.. image:: ../../_static/asciicasts/visualize_runs.delay.gif
    :width: 850
    :alt: Visualizing Runs
 
@@ -588,13 +631,63 @@ You can also run in interactive mode using the ``--interactive`` flag.
 This will allow you to navigate between workflow execution and see details
 by pressing the <Enter> key.
 
+If you prefer to elaborate the output graph further, or if you wish to export
+it for any reason, you can use the ``--format`` option to specify an output
+format.
+
+The following example generates the graph using the `dot` format. It can
+be stored in a file or piped directly to any compatible tool. Here we
+use the ``dot`` command line tool from graphviz to generate an SVG file.
+
+.. code-block:: console
+
+   $ renku workflow visualize --format dot <path> | dot -Tsvg > graph.svg
+
 Use ``renku workflow visualize -h`` to see all available options.
 
 .. cheatsheet::
    :group: Workflows
    :command: $ renku workflow visualize [--interactive]
    :description: Show linked workflows as a graph.
-   :extended:
+   :target: rp
+
+
+Removing Runs
+*************
+
+Renku allows you to undo a Run in a project by using ``renku workflow revert
+<activity ID>``. You can obtain <activity ID> from the ``renku log`` command.
+If the deleted run generated some files, Renku either deletes these files (in
+case there are no earlier versions of them and they are not used in other
+activities) or revert them to their earlier versions. You can ask Renku to keep the
+generated files and only delete the metadata by passing the ``--metadata-only``
+option.
+
+.. warning:: Renku only checks project's runs/plans to see if files are used.
+   It doesn't check if files, that are going to be deleted, are added to a
+   dataset for example. Make sure that the project doesn't use such files in
+   other places or always use ``--metadata-only`` option when reverting a run.
+
+If you want to delete a run along with its plan use the ``--plan`` option.
+This only deletes the plan if it's not used by any other activity.
+
+Renku won't remove a run if there are downstream runs that depend on it. The
+reason is that removing a run will break the link between its upstream and
+downstream runs. If this is not an issue for you or if you want to delete the
+downstream runs later, then pass the ``--force`` option to make Renku delete
+the run anyway.
+
+.. cheatsheet::
+   :group: Workflows
+   :command: $ renku workflow revert <activity ID>
+   :description: Undo a Run.
+   :target: rp
+
+.. cheatsheet::
+   :group: Undo Renku Command
+   :command: $ renku workflow revert <activity ID>
+   :description: Undo a Renku workflow execution.
+   :target: ui
 
 
 Input and output files
@@ -620,30 +713,28 @@ respectively.
    :group: Workflows
    :command: $ renku workflow inputs|||$ renku workflow outputs
    :description: Show input respectively output files used by workflows.
-   :extended:
+   :target: rp
 
 """
 
+import json
 import os
-import pydoc
 import shutil
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import click
 from lazy_object_proxy import Proxy
 
 import renku.ui.cli.utils.color as color
-from renku.command.echo import ERROR
-from renku.command.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS
+from renku.command.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS, WORKFLOW_VISUALIZE_FORMATS
+from renku.command.util import ERROR
 from renku.command.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
 from renku.core import errors
+from renku.core.util.util import NO_VALUE
 from renku.ui.cli.utils.callback import ClickCallback
-from renku.ui.cli.utils.plugins import available_workflow_providers, supported_formats
-
-if TYPE_CHECKING:
-    from renku.command.view_model.composite_plan import CompositePlanViewModel
+from renku.ui.cli.utils.plugins import available_workflow_providers, get_supported_formats
+from renku.ui.cli.utils.terminal import print_workflow_file, show_text_with_pager
 
 
 def _complete_workflows(ctx, param, incomplete):
@@ -654,46 +745,6 @@ def _complete_workflows(ctx, param, incomplete):
         return list(filter(lambda x: x.startswith(incomplete), result.output))
     except Exception:
         return []
-
-
-def _print_composite_plan(composite_plan: "CompositePlanViewModel"):
-    """Print a CompositePlan to stdout."""
-    from renku.ui.cli.utils.terminal import print_markdown
-
-    click.echo(click.style("Id: ", bold=True, fg=color.MAGENTA) + click.style(composite_plan.id, bold=True))
-    click.echo(click.style("Name: ", bold=True, fg=color.MAGENTA) + click.style(composite_plan.name, bold=True))
-
-    if composite_plan.description:
-        print_markdown(composite_plan.description)
-
-    click.echo(click.style("Steps: ", bold=True, fg=color.MAGENTA))
-    for step in composite_plan.steps:
-        click.echo(click.style(f"\t- {step.name}:", bold=True))
-        click.echo(click.style("\t\tId: ", bold=True, fg=color.MAGENTA) + click.style(f"{step.id}", bold=True))
-
-    if composite_plan.mappings:
-        click.echo(click.style("Mappings: ", bold=True, fg=color.MAGENTA))
-        for mapping in composite_plan.mappings:
-            click.echo(click.style(f"\t- {mapping.name}:", bold=True))
-
-            if mapping.description:
-                click.echo(click.style(f"\t\t{mapping.description}"))
-
-            click.echo(
-                click.style("\t\tDefault Value: ", bold=True, fg=color.MAGENTA)
-                + click.style(mapping.default_value, bold=True)
-            )
-            click.echo(click.style("\tMaps to: ", bold=True, fg=color.MAGENTA))
-            for maps_to in mapping.maps_to:
-                click.echo(click.style(f"\t\t{maps_to}", bold=True))
-
-    if composite_plan.links:
-        click.echo(click.style("Links: ", bold=True, fg=color.MAGENTA))
-        for link in composite_plan.links:
-            click.echo(click.style("\t- From: ", bold=True, fg=color.MAGENTA) + click.style(link.source, bold=True))
-            click.echo(click.style("\t\t To: ", bold=True, fg=color.MAGENTA))
-            for sink in link.sinks:
-                click.echo(click.style(f"\t\t- {sink}", bold=True))
 
 
 @click.group()
@@ -724,22 +775,33 @@ def list_workflows(format, columns):
 
 
 @workflow.command()
-@click.argument("name_or_id", metavar="<name_or_id>", shell_complete=_complete_workflows)
-def show(name_or_id):
-    """Show details for workflow <name_or_id>."""
+@click.argument("name_or_id_or_path", metavar="<name_or_id_or_path>", shell_complete=_complete_workflows)
+def show(name_or_id_or_path):
+    """Show details for workflow <name_or_id_or_path>."""
     from renku.command.view_model.plan import PlanViewModel
+    from renku.command.view_model.workflow_file import WorkflowFileViewModel
     from renku.command.workflow import show_workflow_command
-    from renku.ui.cli.utils.terminal import print_plan
+    from renku.ui.cli.utils.terminal import print_composite_plan, print_plan
 
-    plan = show_workflow_command().build().execute(name_or_id=name_or_id).output
+    communicator = ClickCallback()
+
+    plan = (
+        show_workflow_command()
+        .with_communicator(communicator)
+        .build()
+        .execute(name_or_id_or_path=name_or_id_or_path)
+        .output
+    )
 
     if plan:
-        if isinstance(plan, PlanViewModel):
+        if isinstance(plan, WorkflowFileViewModel):
+            print_workflow_file(plan)
+        elif isinstance(plan, PlanViewModel):
             print_plan(plan)
         else:
-            _print_composite_plan(plan)
+            print_composite_plan(plan)
     else:
-        click.secho(ERROR + f"Workflow '{name_or_id}' not found.")
+        click.secho(ERROR + f"Workflow '{name_or_id_or_path}' not found.")
 
 
 @workflow.command()
@@ -747,9 +809,11 @@ def show(name_or_id):
 @click.option("--force", is_flag=True, help="Override the existence check.")
 def remove(name, force):
     """Remove a workflow named <name>."""
-    from renku.command.workflow import remove_workflow_command
+    from renku.command.workflow import remove_plan_command
 
-    remove_workflow_command().build().execute(name=name, force=force)
+    communicator = ClickCallback()
+
+    remove_plan_command().with_communicator(communicator).build().execute(name_or_id=name, force=force)
 
 
 @workflow.command()
@@ -778,6 +842,14 @@ def remove(name, force):
     multiple=True,
     help="End a composite plan at this file as output.",
 )
+@click.option(
+    "--creator",
+    "creators",
+    default=None,
+    multiple=True,
+    type=click.UNPROCESSED,
+    help="Creator's name, email, and affiliation. Accepted format is 'Forename Surname <email> [affiliation]'.",
+)
 @click.argument("name", required=True)
 @click.argument("steps", nargs=-1, type=click.UNPROCESSED, shell_complete=_complete_workflows)
 def compose(
@@ -794,11 +866,14 @@ def compose(
     keyword,
     sources,
     sinks,
+    creators,
     name,
     steps,
 ):
     """Create a composite workflow consisting of multiple steps."""
     from renku.command.workflow import compose_workflow_command
+    from renku.core.util.metadata import construct_creators
+    from renku.ui.cli.utils.terminal import print_composite_plan
 
     if (sources or sinks) and steps:
         click.secho(ERROR + "--from/--to cannot be used at the same time as passing run/step names.")
@@ -806,6 +881,9 @@ def compose(
     elif not (sources or sinks or steps):
         click.secho(ERROR + "Either --from/--to passing run/step names is required.")
         exit(1)
+
+    if creators:
+        creators, _ = construct_creators(creators)
 
     if map_all:
         map_inputs = map_outputs = map_params = True
@@ -828,18 +906,20 @@ def compose(
             steps=steps,
             sources=sources,
             sinks=sinks,
+            creators=creators,
         )
     )
 
     if not result.error:
-        _print_composite_plan(result.output)
+        print_composite_plan(result.output)
 
 
 @workflow.command()
 @click.argument("workflow_name", metavar="<name or uuid>", shell_complete=_complete_workflows)
-@click.option("--name", metavar="<new name>", help="New name of the workflow")
-@click.option("--description", metavar="<new desc>", help="New description of the workflow")
+@click.option("-n", "--name", metavar="<new name>", help="New name of the workflow")
+@click.option("-d", "--description", metavar="<new desc>", help="New description of the workflow")
 @click.option(
+    "-s",
     "--set",
     "set_params",
     multiple=True,
@@ -847,6 +927,7 @@ def compose(
     help="Set default <value> for a <parameter>/add new parameter",
 )
 @click.option(
+    "-m",
     "--map",
     "map_params",
     multiple=True,
@@ -854,6 +935,7 @@ def compose(
     help="New mapping on the workflow",
 )
 @click.option(
+    "-r",
     "--rename-param",
     "rename_params",
     multiple=True,
@@ -867,11 +949,61 @@ def compose(
     metavar='<parameter>="description"',
     help="New description of the workflow",
 )
-def edit(workflow_name, name, description, set_params, map_params, rename_params, describe_params):
+@click.option(
+    "-m",
+    "--metadata",
+    default=None,
+    type=click.Path(exists=True, dir_okay=False),
+    help="Custom metadata to be associated with the workflow.",
+)
+@click.option(
+    "--creator",
+    "creators",
+    default=[NO_VALUE],
+    multiple=True,
+    type=click.UNPROCESSED,
+    help="Creator's name, email, and affiliation. Accepted format is 'Forename Surname <email> [affiliation]'.",
+)
+@click.option(
+    "--keyword",
+    "keywords",
+    default=[NO_VALUE],
+    type=click.UNPROCESSED,
+    multiple=True,
+    help="List of keywords for the workflow.",
+)
+def edit(
+    workflow_name,
+    name,
+    description,
+    set_params,
+    map_params,
+    rename_params,
+    describe_params,
+    metadata,
+    creators,
+    keywords,
+):
     """Edit workflow details."""
     from renku.command.view_model.plan import PlanViewModel
     from renku.command.workflow import edit_workflow_command
-    from renku.ui.cli.utils.terminal import print_plan
+    from renku.core.util.metadata import construct_creators
+    from renku.ui.cli.utils.terminal import print_composite_plan, print_plan
+
+    if list(creators) == [NO_VALUE]:
+        creators = NO_VALUE
+
+    keywords = list(keywords)
+    if keywords == [NO_VALUE]:
+        keywords = NO_VALUE
+
+    if creators and creators is not NO_VALUE:
+        creators, _ = construct_creators(creators, ignore_email=True)
+
+    custom_metadata = None
+
+    if metadata:
+        custom_metadata = json.loads(Path(metadata).read_text())
 
     result = (
         edit_workflow_command()
@@ -884,6 +1016,9 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
             map_params=map_params,
             rename_params=rename_params,
             describe_params=describe_params,
+            creators=creators,
+            keywords=keywords,
+            custom_metadata=custom_metadata,
         )
     )
     if not result.error:
@@ -891,15 +1026,16 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
         if isinstance(plan, PlanViewModel):
             print_plan(plan)
         else:
-            _print_composite_plan(plan)
+            print_composite_plan(plan)
 
 
 @workflow.command()
 @click.argument("workflow_name", metavar="<name or uuid>", shell_complete=_complete_workflows)
 @click.option(
+    "-f",
     "--format",
     default="cwl",
-    type=click.Choice(Proxy(supported_formats), case_sensitive=False),
+    type=click.Choice(Proxy(get_supported_formats), case_sensitive=False),
     show_default=True,
     help="Workflow language format.",
 )
@@ -921,14 +1057,27 @@ def edit(workflow_name, name, description, set_params, map_params, rename_params
 def export(workflow_name, format, output, values):
     """Export workflow."""
     from renku.command.workflow import export_workflow_command
+    from renku.core.util.os import safe_read_yaml
 
     communicator = ClickCallback()
+
+    values_dict = None
+    if values is not None:
+        values_dict = safe_read_yaml(values)
 
     result = (
         export_workflow_command()
         .with_communicator(communicator)
         .build()
-        .execute(name_or_id=workflow_name, format=format, output=output, values=values)
+        .execute(
+            name_or_id=workflow_name,
+            format=format,
+            output=output,
+            values=values_dict,
+            basedir=None,
+            resolve_paths=True,
+            nest_workflows=False,
+        )
     )
 
     if not output:
@@ -986,7 +1135,7 @@ def outputs(ctx, paths):
     "provider",
     "-p",
     "--provider",
-    default="cwltool",
+    default="toil",
     show_default=True,
     type=click.Choice(Proxy(available_workflow_providers), case_sensitive=False),
     help="The workflow engine to use.",
@@ -1004,16 +1153,18 @@ def outputs(ctx, paths):
 )
 @click.option(
     "--values",
-    metavar="<file>",
+    metavar="<values-file>",
     type=click.Path(exists=True, dir_okay=False),
     help="YAML file containing parameter mappings to be used.",
 )
+@click.option("--skip-metadata-update", is_flag=True, help="Do not update the metadata store for the execution.")
 @click.argument("name_or_id", required=True, shell_complete=_complete_workflows)
 def execute(
     provider,
     config,
     set_params,
     values,
+    skip_metadata_update,
     name_or_id,
 ):
     """Execute a given workflow."""
@@ -1022,7 +1173,7 @@ def execute(
     communicator = ClickCallback()
 
     result = (
-        execute_workflow_command()
+        execute_workflow_command(skip_metadata_update=skip_metadata_update)
         .with_communicator(communicator)
         .build()
         .execute(
@@ -1061,24 +1212,32 @@ def execute(
 )
 @click.option("-x", "--exclude-files", is_flag=True, help="Hide file nodes, only show Runs.")
 @click.option("-a", "--ascii", is_flag=True, help="Only use Ascii characters for formatting.")
-@click.option("-i", "--interactive", is_flag=True, help="Interactively explore run graph.")
-@click.option("--no-color", is_flag=True, help="Don't colorize output.")
-@click.option("--pager", is_flag=True, help="Force use pager (less) for output.")
-@click.option("--no-pager", is_flag=True, help="Don't use pager (less) for output.")
 @click.option(
     "--revision",
     type=click.STRING,
     help="Git revision to generate the graph for.",
 )
+@click.option(
+    "--format",
+    type=click.Choice(list(WORKFLOW_VISUALIZE_FORMATS.keys())),
+    default="console",
+    help="Choose an output format.",
+)
+@click.option(
+    "-i", "--interactive", is_flag=True, help="Interactively explore run graph. Only available for console output"
+)
+@click.option("--no-color", is_flag=True, help="Don't colorize console output.")
+@click.option("--pager", is_flag=True, help="Force use pager (less) for console output.")
+@click.option("--no-pager", is_flag=True, help="Don't use pager (less) for console output.")
 @click.argument("paths", type=click.Path(exists=False, dir_okay=True), nargs=-1)
-def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pager, no_pager, revision, paths):
+def visualize(sources, columns, exclude_files, ascii, revision, format, interactive, no_color, pager, no_pager, paths):
     """Visualization of workflows that produced outputs at the specified paths.
 
     Either PATHS or --from need to be set.
     """
     from renku.command.workflow import visualize_graph_command
 
-    if pager and no_pager:
+    if format == WORKFLOW_VISUALIZE_FORMATS["console"] and pager and no_pager:
         raise errors.ParameterError("Can't use both --pager and --no-pager.")
     if revision and not paths:
         raise errors.ParameterError("Can't use --revision without specifying PATHS.")
@@ -1088,39 +1247,51 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
         .build()
         .execute(sources=sources, targets=paths, show_files=not exclude_files, revision=revision)
     )
-    text_output, navigation_data = result.output.text_representation(columns=columns, color=not no_color, ascii=ascii)
+    if format == WORKFLOW_VISUALIZE_FORMATS["dot"]:
+        output = result.output.dot_representation(columns=columns)
 
-    if not text_output:
+        if not output:
+            return
+
+        click.echo(output)
         return
+    else:
+        text_output, navigation_data = result.output.text_representation(
+            columns=columns, color=not no_color, ascii=ascii
+        )
 
-    if not interactive:
-        max_width = max(node[1].x for layer in navigation_data for node in layer)
-        tty_size = shutil.get_terminal_size(fallback=(120, 120))
+        if not text_output:
+            return
 
-        if no_pager or not sys.stdout.isatty() or os.system(f"less 2>{os.devnull}") != 0:
-            use_pager = False
-        elif pager:
-            use_pager = True
-        elif max_width < tty_size.columns:
-            use_pager = False
-        else:
-            use_pager = True
+        if not interactive:
+            max_width = max(node[1].x for layer in navigation_data for node in layer)
+            tty_size = shutil.get_terminal_size(fallback=(120, 120))
 
-        if use_pager:
-            pydoc.tempfilepager(text_output, "less --chop-long-lines -R --tilde")
-        else:
-            click.echo(text_output)
-        return
+            if no_pager or not sys.stdout.isatty() or os.system(f"less 2>{os.devnull}") != 0:
+                use_pager = False
+            elif pager:
+                use_pager = True
+            elif max_width < tty_size.columns:
+                use_pager = False
+            else:
+                use_pager = True
 
-    from renku.ui.cli.utils.curses import CursesActivityGraphViewer
+            if use_pager:
+                show_text_with_pager(text_output)
+            else:
+                click.echo(text_output)
+            return
 
-    viewer = CursesActivityGraphViewer(
-        text_output, navigation_data, result.output.vertical_space, use_color=not no_color
-    )
-    viewer.run()
+        from renku.ui.cli.utils.curses import CursesActivityGraphViewer
+
+        viewer = CursesActivityGraphViewer(
+            text_output, navigation_data, result.output.vertical_space, use_color=not no_color
+        )
+        viewer.run()
 
 
 @workflow.command()
+@click.option("--skip-metadata-update", is_flag=True, help="Do not update the metadata store for the execution.")
 @click.option(
     "mapping_path",
     "--mapping",
@@ -1140,7 +1311,7 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
     "provider",
     "-p",
     "--provider",
-    default="cwltool",
+    default="toil",
     show_default=True,
     type=click.Choice(Proxy(available_workflow_providers), case_sensitive=False),
     help="The workflow engine to use.",
@@ -1148,25 +1319,25 @@ def visualize(sources, columns, exclude_files, ascii, interactive, no_color, pag
 @click.option("mappings", "-m", "--map", multiple=True, help="Mapping for a workflow parameter.")
 @click.option("config", "-c", "--config", metavar="<config file>", help="YAML file containing config for the provider.")
 @click.argument("name_or_id", required=True, shell_complete=_complete_workflows)
-def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config):
+def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config, skip_metadata_update):
     """Execute a workflow by iterating through a range of provided parameters."""
     from renku.command.view_model.plan import PlanViewModel
     from renku.command.workflow import iterate_workflow_command, show_workflow_command
-    from renku.ui.cli.utils.terminal import print_plan
+    from renku.ui.cli.utils.terminal import print_composite_plan, print_plan
 
     if len(mappings) == 0 and mapping_path is None:
         raise errors.UsageError("No mapping has been given for the iteration!")
 
-    plan = show_workflow_command().build().execute(name_or_id=name_or_id).output
+    plan = show_workflow_command().build().execute(name_or_id_or_path=name_or_id).output
 
     if plan:
         if isinstance(plan, PlanViewModel):
             print_plan(plan)
         else:
-            _print_composite_plan(plan)
+            print_composite_plan(plan)
 
     communicator = ClickCallback()
-    iterate_workflow_command().with_communicator(communicator).build().execute(
+    iterate_workflow_command(skip_metadata_update=skip_metadata_update).with_communicator(communicator).build().execute(
         name_or_id=name_or_id,
         mapping_path=mapping_path,
         mappings=mappings,
@@ -1174,3 +1345,44 @@ def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config):
         provider=provider,
         config=config,
     )
+
+
+@workflow.command()
+@click.option(
+    "-m",
+    "--metadata-only",
+    default=False,
+    help="Only undo metadata, leave generated outputs unchanged.",
+    is_flag=True,
+    show_default=True,
+)
+@click.option(
+    "-f",
+    "--force",
+    default=False,
+    help="Force-revert the activity, even if it breaks things.",
+    is_flag=True,
+    show_default=True,
+)
+@click.option(
+    "-p",
+    "--plan",
+    default=False,
+    help="Delete activity's plan if no other activity is using it.",
+    is_flag=True,
+    show_default=True,
+)
+@click.argument("activity_id", required=True)
+def revert(metadata_only, force, plan, activity_id):
+    """Revert activity metadata and generations."""
+    from renku.command.workflow import revert_activity_command
+
+    communicator = ClickCallback()
+    try:
+        revert_activity_command().with_communicator(communicator).build().execute(
+            metadata_only=metadata_only, force=force, delete_plan=plan, activity_id=activity_id
+        )
+    except errors.ActivityDownstreamNotEmptyError:
+        raise errors.ParameterError(
+            "Activity has downstream dependent activities: Pass '--force' if you want to revert the activity anyways."
+        )

@@ -17,7 +17,6 @@
 # limitations under the License.
 """Renku management dataset request models."""
 
-
 import imghdr
 import os
 import shutil
@@ -26,11 +25,9 @@ from pathlib import Path
 from typing import List, Optional, Union, cast
 from urllib.request import urlretrieve
 
-from renku.command.command_builder.command import inject
 from renku.core import errors
-from renku.core.dataset.constant import renku_dataset_images_path
-from renku.core.interface.client_dispatcher import IClientDispatcher
 from renku.domain_model.dataset import Dataset, ImageObject
+from renku.domain_model.project_context import project_context
 
 
 class ImageRequestModel:
@@ -48,14 +45,12 @@ class ImageRequestModel:
         self.mirror_locally = mirror_locally
         self.safe_image_paths: List[Union[str, Path]] = cast(List[Union[str, Path]], safe_image_paths) or []
 
-    @inject.autoparams()
-    def to_image_object(self, dataset: Dataset, client_dispatcher: IClientDispatcher) -> ImageObject:
+    def to_image_object(self, dataset: Dataset) -> ImageObject:
         """Convert request model to ``ImageObject``."""
-        client = client_dispatcher.current_client
         image_type = None
-        self.safe_image_paths.append(client.path)
+        self.safe_image_paths.append(project_context.path)
 
-        image_folder = renku_dataset_images_path(client) / dataset.initial_identifier
+        image_folder = project_context.dataset_images_path / dataset.initial_identifier
         image_folder.mkdir(exist_ok=True, parents=True)
 
         if urllib.parse.urlparse(self.content_url).netloc:
@@ -82,7 +77,7 @@ class ImageRequestModel:
 
         path = self.content_url
         if not os.path.isabs(path):
-            path = os.path.normpath(os.path.join(client.path, path))
+            path = os.path.normpath(os.path.join(project_context.path, path))
 
         if not os.path.exists(path) or not any(
             os.path.commonprefix([path, p]) == str(p) for p in self.safe_image_paths
@@ -100,10 +95,10 @@ class ImageRequestModel:
             img_path = image_folder / f"{self.position}{ext}"
             shutil.copy(path, img_path)
         else:
-            img_path = path
+            img_path = Path(path)
 
         return ImageObject(
-            content_url=str(img_path.relative_to(client.path)),
+            content_url=str(img_path.relative_to(project_context.path)),
             position=self.position,
             id=ImageObject.generate_id(dataset_id=dataset.id, position=self.position),
         )

@@ -17,14 +17,14 @@
 # limitations under the License.
 """DatasetFile metadata migrations."""
 
-from renku.core.migration.models.v3 import get_client_datasets
+from renku.core.migration.models.v3 import get_project_datasets
 
 
-def migrate(migration_context):
+def migrate(_):
     """Migration function."""
-    _fix_dataset_metadata(migration_context.client)
+    _fix_dataset_metadata()
 
 
-def _fix_dataset_metadata(client):
-    for dataset in get_client_datasets(client):
+def _fix_dataset_metadata():
+    for dataset in get_project_datasets():
         dataset.to_yaml()

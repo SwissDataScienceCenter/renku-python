@@ -42,6 +42,7 @@ suppress_warnings = ["image.nonlocal_uri"]
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "plantweb.directive",
     "sphinx.ext.autodoc",
     "sphinx.ext.coverage",
     "sphinx.ext.doctest",
@@ -49,6 +50,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinxcontrib.spelling",
+    "sphinx_click",
     "sphinx_tabs.tabs",
     "cheatsheet",
 ]
@@ -99,7 +101,7 @@ language = None
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ["_build", "CHANGES.rst", "cheatsheet.rst"]
+exclude_patterns = ["_build", "CHANGES.rst", "cheatsheet.rst", "cheatsheet_json.rst"]
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -176,7 +178,8 @@ html_favicon = "_static/icons/favicon.ico"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-# html_static_path = ['_static']
+html_static_path = ['_static']
+html_css_files = ['css/override-theme.css']
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
@@ -348,26 +351,30 @@ napoleon_numpy_docstring = False
 nitpick_ignore = [
     ("py:class", "CommandResult"),
     ("py:class", "CommunicationCallback"),
+    ("py:class", "datetime"),
+    ("py:class", "DiGraph"),
     ("py:class", "DynamicProxy"),
     ("py:class", "IActivityGateway"),
-    ("py:class", "IClientDispatcher"),
-    ("py:class", "IDatabaseDispatcher"),
     ("py:class", "IDatasetGateway"),
     ("py:class", "IPlanGateway"),
-    ("py:class", "LocalClient"),
+    ("py:class", "IStorage"),
+    ("py:class", "IStorageFactory"),
+    ("py:class", "NoValueType"),
     ("py:class", "OID_TYPE"),
     ("py:class", "Path"),
     ("py:class", "Persistent"),
+    ("py:class", "WorkflowFileCompositePlan"),
+    ("py:class", "itertools.count"),
     ("py:class", "optional"),
-    ("py:class", "persistent.Persistent"),
-    ("py:class", '"LocalClient"'),
     ("py:class", '"ValueResolver"'),
     ("py:exc", "errors.ParameterError"),
 ]
 
 nitpick_ignore_regex = [
+    ("py:class", r"bashlex.*"),
     ("py:class", r"calamus.*"),
     ("py:class", r"docker.*"),
     ("py:class", r"marshmallow.*"),
+    ("py:class", r"persistent.*"),
     ("py:class", r"yaml.*"),
 ]

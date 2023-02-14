@@ -17,11 +17,11 @@
 # limitations under the License.
 """Represent run templates."""
 
-from datetime import timezone
-
 import marshmallow
 
-from renku.command.schema.calamus import JsonLDSchema, Nested, fields, prov, renku, schema
+from renku.command.schema.agent import PersonSchema
+from renku.command.schema.annotation import AnnotationSchema
+from renku.command.schema.calamus import JsonLDSchema, Nested, fields, oa, prov, renku, schema
 from renku.command.schema.parameter import CommandInputSchema, CommandOutputSchema, CommandParameterSchema
 from renku.domain_model.workflow.plan import Plan
 
@@ -34,31 +34,23 @@ class PlanSchema(JsonLDSchema):
     class Meta:
         """Meta class."""
 
-        rdf_type = [prov.Plan, schema.Action, schema.CreativeWork]
+        rdf_type = [prov.Plan, schema.Action, schema.CreativeWork, renku.Plan]
         model = Plan
         unknown = marshmallow.EXCLUDE
 
-    command = fields.String(renku.command, missing=None)
-    description = fields.String(schema.description, missing=None)
+    command = fields.String(renku.command, load_default=None)
+    description = fields.String(schema.description, load_default=None)
+    creators = Nested(schema.creator, PersonSchema, many=True)
     id = fields.Id()
-    inputs = Nested(renku.hasInputs, CommandInputSchema, many=True, missing=None)
+    inputs = Nested(renku.hasInputs, CommandInputSchema, many=True, load_default=None)
     date_created = fields.DateTime(schema.dateCreated, format="iso")
-    invalidated_at = fields.DateTime(prov.invalidatedAtTime, format="iso")
-    keywords = fields.List(schema.keywords, fields.String(), missing=None)
-    name = fields.String(schema.name, missing=None)
-    derived_from = fields.String(prov.wasDerivedFrom, missing=None)
+    date_modified = fields.DateTime(schema.dateModified, format="iso")
+    date_removed = fields.DateTime(prov.invalidatedAtTime, format="iso")
+    keywords = fields.List(schema.keywords, fields.String(), load_default=None)
+    name = fields.String(schema.name, load_default=None)
+    derived_from = fields.IRI(prov.wasDerivedFrom, load_default=None)
     project_id = fields.IRI(renku.hasPlan, reverse=True)
-    outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, missing=None)
-    parameters = Nested(renku.hasArguments, CommandParameterSchema, many=True, missing=None)
-    success_codes = fields.List(renku.successCodes, fields.Integer(), missing=[0])
-
-    @marshmallow.pre_dump
-    def _pre_dump(self, in_data, **kwargs):
-        """Fix data on dumping."""
-        if in_data.invalidated_at is not None and in_data.invalidated_at.tzinfo is None:
-            # NOTE: There was a bug that caused invalidated_at to be set without timezone (as UTC time)
-            # so we patch in the timezone here
-            in_data.unfreeze()
-            in_data.invalidated_at = in_data.invalidated_at.replace(microsecond=0).astimezone(timezone.utc)
-            in_data.freeze()
-        return in_data
+    outputs = Nested(renku.hasOutputs, CommandOutputSchema, many=True, load_default=None)
+    parameters = Nested(renku.hasArguments, CommandParameterSchema, many=True, load_default=None)
+    success_codes = fields.List(renku.successCodes, fields.Integer(), load_default=[0])
+    annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)

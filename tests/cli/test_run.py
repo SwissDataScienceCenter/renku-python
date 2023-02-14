@@ -42,14 +42,14 @@ def test_run_simple(runner, project):
     assert "test" in result.output
 
 
-def test_run_many_args(client, run):
+def test_run_many_args(project, run):
     """Test a renku run command which implicitly relies on many inputs."""
     os.mkdir("files")
     output = "output.txt"
     for i in range(103):
         os.system("touch files/{}.txt".format(i))
-    client.repository.add("files/")
-    client.repository.commit("add many files")
+    project.repository.add("files/")
+    project.repository.commit("add many files")
 
     exit_code = run(args=("run", "ls", "files/"), stdout=output)
     assert 0 == exit_code
@@ -75,7 +75,7 @@ def test_run_clean(runner, project, run_shell):
 
 @pytest.mark.serial
 @pytest.mark.shelled
-def test_run_external_command_file(runner, client, project, run_shell, client_database_injection_manager):
+def test_run_external_command_file(runner, project, run_shell, with_injection):
     """Test tracking of run command in clean repo."""
     # Run a shell command with pipe.
     output = run_shell('renku run $(which echo) "a unique string" > my_output_file')
@@ -90,14 +90,14 @@ def test_run_external_command_file(runner, client, project, run_shell, client_da
     assert "my_output_file" in result.output
     assert "a unique string" in result.output
 
-    with client_database_injection_manager(client):
+    with with_injection():
         plan_gateway = PlanGateway()
         plan = plan_gateway.get_all_plans()[0]
         assert plan.command
         assert plan.command.endswith("/echo")
 
 
-def test_run_metadata(renku_cli, runner, client, client_database_injection_manager):
+def test_run_metadata(renku_cli, runner, project, with_injection):
     """Test run with workflow metadata."""
     exit_code, activity = renku_cli(
         "run", "--name", "run-1", "--description", "first run", "--keyword", "key1", "--keyword", "key2", "touch", "foo"
@@ -109,18 +109,20 @@ def test_run_metadata(renku_cli, runner, client, client_database_injection_manag
     assert "first run" == plan.description
     assert {"key1", "key2"} == set(plan.keywords)
 
-    with client_database_injection_manager(client):
+    with with_injection():
         plan_gateway = PlanGateway()
         plan = plan_gateway.get_by_id(plan.id)
         assert "run-1" == plan.name
         assert "first run" == plan.description
+        assert 1 == len(plan.creators)
+        assert "Renku Bot <renku@datascience.ch>" == plan.creators[0].full_identity
         assert {"key1", "key2"} == set(plan.keywords)
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_run_with_outside_files(renku_cli, runner, client, client_database_injection_manager, tmpdir):
+def test_run_with_outside_files(renku_cli, runner, project, with_injection, tmpdir):
     """Test run with files that are outside the project."""
 
     external_file = tmpdir.join("file_1")
@@ -132,7 +134,7 @@ def test_run_with_outside_files(renku_cli, runner, client, client_database_injec
     plan = activity.association.plan
     assert "run-1" == plan.name
 
-    with client_database_injection_manager(client):
+    with with_injection():
         plan_gateway = PlanGateway()
         plan = cast(Plan, plan_gateway.get_by_id(plan.id))
         assert "run-1" == plan.name
@@ -152,27 +154,55 @@ def test_run_with_outside_files(renku_cli, runner, client, client_database_injec
         (["echo", "-n", "some long value"], "echo--n-some_long_v-"),
     ],
 )
-def test_generated_run_name(runner, client, command, name, client_database_injection_manager):
+def test_generated_run_name(runner, project, command, name, with_injection):
     """Test generated run name."""
     result = runner.invoke(cli, ["run", "--no-output"] + command)
 
     assert 0 == result.exit_code, format_result_exception(result)
-    with client_database_injection_manager(client):
+    with with_injection():
         plan_gateway = PlanGateway()
         plan = plan_gateway.get_all_plans()[0]
         assert name == plan.name[:-5]
 
 
-def test_run_invalid_name(runner, client):
+def test_run_creator(runner, project, with_injection):
+    """Test generated run name."""
+    result = runner.invoke(
+        cli,
+        [
+            "run",
+            "--no-output",
+            "--creator",
+            "John Doe <john.doe@example.com>",
+            "--creator",
+            "Jane Doe <jane.doe@example.com>",
+            "echo",
+            "-n",
+            "value",
+        ],
+    )
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    with with_injection():
+        plan_gateway = PlanGateway()
+        plan = plan_gateway.get_all_plans()[0]
+        assert plan
+        assert 2 == len(plan.creators)
+        names = [c.full_identity for c in plan.creators]
+        assert "John Doe <john.doe@example.com>" in names
+        assert "Jane Doe <jane.doe@example.com>" in names
+
+
+def test_run_invalid_name(runner, project):
     """Test run with invalid name."""
     result = runner.invoke(cli, ["run", "--name", "invalid name", "touch", "foo"])
 
     assert 2 == result.exit_code
-    assert not (client.path / "foo").exists()
+    assert not (project.path / "foo").exists()
     assert "Invalid name: 'invalid name' (Hint: 'invalid_name' is valid)." in result.output
 
 
-def test_run_argument_parameters(runner, client, client_database_injection_manager):
+def test_run_argument_parameters(runner, project, with_injection):
     """Test names and values of workflow/provenance arguments and parameters."""
     result = runner.invoke(
         cli,
@@ -193,7 +223,7 @@ def test_run_argument_parameters(runner, client, client_database_injection_manag
     )
 
     assert 0 == result.exit_code, format_result_exception(result)
-    with client_database_injection_manager(client):
+    with with_injection():
         plan_gateway = PlanGateway()
         plans = plan_gateway.get_all_plans()
         assert 1 == len(plans)
@@ -231,7 +261,7 @@ def test_run_argument_parameters(runner, client, client_database_injection_manag
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_run_non_existing_command(runner, client):
+def test_run_non_existing_command(runner, project):
     """Test run with a non-existing command."""
     result = runner.invoke(cli, ["run", "non-existing_command"])
 
@@ -239,7 +269,7 @@ def test_run_non_existing_command(runner, client):
     assert "Cannot execute command 'non-existing_command'" in result.output
 
 
-def test_run_prints_plan(runner, client):
+def test_run_prints_plan(runner, project):
     """Test run shows the generated plan with --verbose."""
     result = runner.invoke(cli, ["run", "--verbose", "--name", "echo-command", "--no-output", "echo", "data"])
 
@@ -248,32 +278,32 @@ def test_run_prints_plan(runner, client):
     assert "Name:" not in result.stdout
 
 
-def test_run_prints_plan_when_stdout_redirected(runner, client):
+def test_run_prints_plan_when_stdout_redirected(runner, project):
     """Test run shows the generated plan in stderr if stdout is redirected to a file."""
     result = runner.invoke(cli, ["run", "--verbose", "--name", "echo-command", "echo", "data"], stdout="output")
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Name: echo-command" in result.stderr
     assert "Name:" not in result.stdout
-    assert "Name:" not in (client.path / "output").read_text()
+    assert "Name:" not in (project.path / "output").read_text()
 
 
-def test_run_prints_plan_when_stderr_redirected(runner, client):
+def test_run_prints_plan_when_stderr_redirected(runner, project):
     """Test run shows the generated plan in stdout if stderr is redirected to a file."""
     result = runner.invoke(cli, ["run", "--verbose", "--name", "echo-command", "echo", "data"], stderr="output")
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Name: echo-command" in (client.path / "output").read_text()
+    assert "Name: echo-command" in (project.path / "output").read_text()
     assert "Name:" not in result.output
 
 
-def test_run_with_external_files(runner, client, directory_tree):
+def test_run_with_external_files(runner, project, directory_tree):
     """Test run commands that use external files."""
     assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-dataset", directory_tree]).exit_code
 
-    path = client.path / "data" / "my-dataset" / "directory_tree" / "file1"
+    path = project.path / "data" / "my-dataset" / "directory_tree" / "file1"
 
     result = runner.invoke(cli, ["run", "tail", path], stdout="output")
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "file1" in (client.path / "output").read_text()
+    assert "file1" in (project.path / "output").read_text()
