@@ -42,6 +42,6 @@ def session_open_command():
     return Command().command(session_open)
 
 
-def setup_ssh_command():
+def ssh_setup_command():
     """Setup SSH keys for SSH connections to sessions."""
     return Command().command(ssh_setup)

@@ -19,6 +19,7 @@
 
 import os
 import shutil
+import textwrap
 from pathlib import Path
 from typing import List, NamedTuple, Optional
 
@@ -251,8 +252,6 @@ def ssh_setup(existing_key: Optional[Path] = None, force: bool = False):
 
     system_config = SystemSSHConfig()
 
-    system_config.ssh_config.touch(mode=0o644, exist_ok=True)
-
     include_string = f"Include {system_config.renku_ssh_root}/*.conf\n\n"
 
     if include_string not in system_config.ssh_config.read_text():
@@ -275,8 +274,10 @@ def ssh_setup(existing_key: Optional[Path] = None, force: bool = False):
                 f"Couldn't find private key '{existing_key}' or public key '{existing_public_key}'."
             )
 
-        system_config.keyfile.unlink(missing_ok=True)
-        system_config.public_keyfile.unlink(missing_ok=True)
+        if system_config.keyfile.exists():
+            system_config.keyfile.unlink()
+        if system_config.public_keyfile.exists():
+            system_config.public_keyfile.unlink()
 
         os.symlink(existing_key, system_config.keyfile)
         os.symlink(existing_public_key, system_config.public_keyfile)
@@ -295,16 +296,17 @@ def ssh_setup(existing_key: Optional[Path] = None, force: bool = False):
 
     communication.info("Writing SSH config")
     with system_config.jumphost_file.open(mode="wt") as f:
-        f.write(
+        content = textwrap.dedent(
             f"""
-Host jumphost-{system_config.renku_host}
-  HostName {system_config.renku_host}
-  Port 2022
-  User jovyan
+            Host jumphost-{system_config.renku_host}
+                HostName {system_config.renku_host}
+                Port 2022
+                User jovyan
 
-Host {system_config.renku_host}-*
-  ProxyJump  jumphost-{system_config.renku_host}
-  IdentityFile {system_config.keyfile}
-  User jovyan
-  """
+            Host {system_config.renku_host}-*
+                ProxyJump  jumphost-{system_config.renku_host}
+                IdentityFile {system_config.keyfile}
+                User jovyan
+            """
         )
+        f.write(content)

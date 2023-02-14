@@ -107,7 +107,7 @@ you want to connect to, e.g. for renkulab.io:
 .. code-block:: console
 
     $ renku login renkulab.io
-    $ renku session setup-ssh
+    $ renku session ssh-setup
 
 Your system is now ready for starting sessions with SSH connections:
 
@@ -341,7 +341,7 @@ def open(session_name, provider, **kwargs):
     session_open_command().build().execute(session_name=session_name, provider=provider, **kwargs)
 
 
-@session.command("setup-ssh")
+@session.command("ssh-setup")
 @click.option(
     "existing_key",
     "-k",
@@ -351,8 +351,8 @@ def open(session_name, provider, **kwargs):
     help="Existing private key to use.",
 )
 @click.option("--force", is_flag=True, help="Overwrite existing keys/config.")
-def setup_ssh(existing_key, force):
+def ssh_setup(existing_key, force):
     """Setup keys for SSH connections into sessions."""
-    from renku.command.session import setup_ssh_command
+    from renku.command.session import ssh_setup_command
 
-    setup_ssh_command().build().execute(existing_key=existing_key, force=force)
+    ssh_setup_command().build().execute(existing_key=existing_key, force=force)
