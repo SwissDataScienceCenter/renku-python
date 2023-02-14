@@ -20,7 +20,7 @@
 import textwrap
 import urllib.parse
 from pathlib import Path
-from typing import NamedTuple, cast
+from typing import NamedTuple, Optional, cast
 
 from cryptography.hazmat.backends import default_backend as crypto_default_backend
 from cryptography.hazmat.primitives import serialization as crypto_serialization
@@ -63,7 +63,7 @@ class SystemSSHConfig:
         self.renku_ssh_root.mkdir(mode=0o700, exist_ok=True, parents=True)
         self.ssh_config.touch(mode=0o600, exist_ok=True)
 
-        self.renku_host: str = cast(str, urllib.parse.urlparse(get_renku_url()).hostname)
+        self.renku_host: Optional[str] = cast(Optional[str], urllib.parse.urlparse(get_renku_url()).hostname)
 
         if not self.renku_host:
             raise errors.AuthenticationError(

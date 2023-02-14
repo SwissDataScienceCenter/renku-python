@@ -183,37 +183,40 @@ def test_session_list(
                 with pytest.raises(result):
                     session_list(provider=provider, config_path=None)
             else:
-                result = session_list(provider=provider, config_path=None)
-                assert result.sessions == result
+                output = session_list(provider=provider, config_path=None)
+                assert output.sessions == result
 
 
 def test_session_ssh_setup(project, with_injection, fake_home, mock_communication):
     """Test setting up SSH config for a deployment."""
-    with with_injection():
-        ssh_setup()
+    with patch("renku.core.util.ssh.get_renku_url", lambda: "https://renkulab.io/"):
+        with with_injection():
+            ssh_setup()
 
     ssh_home = fake_home / ".ssh"
     renku_ssh_path = ssh_home / "renku"
     assert renku_ssh_path.exists()
     assert re.search(r"Include .*/\.ssh/renku/\*\.conf", (ssh_home / "config").read_text())
-    assert (renku_ssh_path / "99-None-jumphost.conf").exists()
-    assert (renku_ssh_path / "None-key").exists()
-    assert (renku_ssh_path / "None-key.pub").exists()
+    assert (renku_ssh_path / "99-renkulab.io-jumphost.conf").exists()
+    assert (renku_ssh_path / "renkulab.io-key").exists()
+    assert (renku_ssh_path / "renkulab.io-key.pub").exists()
     assert len(mock_communication.confirm_calls) == 0
 
-    key = (renku_ssh_path / "None-key").read_text()
+    key = (renku_ssh_path / "renkulab.io-key").read_text()
 
-    with with_injection():
-        with pytest.raises(click.Abort):
-            ssh_setup()
+    with patch("renku.core.util.ssh.get_renku_url", lambda: "https://renkulab.io/"):
+        with with_injection():
+            with pytest.raises(click.Abort):
+                ssh_setup()
 
     assert len(mock_communication.confirm_calls) == 1
-    assert key == (renku_ssh_path / "None-key").read_text()
+    assert key == (renku_ssh_path / "renkulab.io-key").read_text()
 
-    with with_injection():
-        ssh_setup(force=True)
+    with patch("renku.core.util.ssh.get_renku_url", lambda: "https://renkulab.io/"):
+        with with_injection():
+            ssh_setup(force=True)
 
-    assert key != (renku_ssh_path / "None-key").read_text()
+    assert key != (renku_ssh_path / "renkulab.io-key").read_text()
 
 
 def test_session_start_ssh(project, with_injection, mock_communication, fake_home):
@@ -242,13 +245,14 @@ def test_session_start_ssh(project, with_injection, mock_communication, fake_hom
         provider_implementation = next(filter(lambda x: x.name == "renkulab", get_supported_session_providers()), None)
         assert provider_implementation is not None
 
-        with with_injection():
-            ssh_setup()
-            session_start(provider="renkulab", config_path=None, ssh=True)
+        with patch("renku.core.util.ssh.get_renku_url", lambda: "https://renkulab.io/"):
+            with with_injection():
+                ssh_setup()
+                session_start(provider="renkulab", config_path=None, ssh=True)
 
         assert any("0xdeadbeef" in line for line in mock_communication.stdout_lines)
         ssh_home = fake_home / ".ssh"
         renku_ssh_path = ssh_home / "renku"
-        assert (renku_ssh_path / "99-None-jumphost.conf").exists()
+        assert (renku_ssh_path / "99-renkulab.io-jumphost.conf").exists()
         assert (project.path / ".ssh" / "authorized_keys").exists()
         assert len(list(renku_ssh_path.glob("00-*-0xdeadbeef.conf"))) == 1
