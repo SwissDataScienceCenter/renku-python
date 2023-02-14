@@ -69,7 +69,7 @@ def isolated_filesystem(path: Path, name: str = None, delete: bool = True):
             if delete:
                 try:
                     shutil.rmtree(base_path)
-                except OSError:  # noqa: B014
+                except OSError:
                     pass
 
 
@@ -89,7 +89,7 @@ def fake_home(tmp_path, monkeypatch) -> Generator[Path, None, None]:
             global_config.set_value("user", "email", "renku@datascience.ch")
             global_config.set_value("pull", "rebase", "false")
 
-        set_value(section="renku", key="show_lfs_message", value="False", global_only=True)
+        set_value(section="renku", key="show_lfs_message", value="false", global_only=True)
 
         yield home
 
