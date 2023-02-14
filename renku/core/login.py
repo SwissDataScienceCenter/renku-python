@@ -64,7 +64,8 @@ def login(endpoint: Optional[str], git_login: bool, yes: bool):
                 remote_name, remote_url = remote.name, remote.url
 
             if remote_name and remote_url:
-                if not yes and not get_value("renku", "show_login_warning"):
+                show_login_warning = get_value("renku", "show_login_warning")
+                if not yes and (show_login_warning is None or show_login_warning.lower() == "true"):
                     message = (
                         "Remote URL will be changed. Do you want to continue "
                         "(to disable this warning, pass '--yes' or run 'renku config set show_login_warning False')?"

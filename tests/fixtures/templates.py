@@ -137,6 +137,7 @@ def source_template(tmp_path):
         path=dummy_template_root,
         icon="",
         templates_source=None,
+        ssh_supported=False,
     )
 
 
