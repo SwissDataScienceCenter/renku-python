@@ -19,6 +19,7 @@
 
 from typing import Generator, List
 
+import click
 import pytest
 
 from renku.core.util.communication import CommunicationCallback
@@ -31,6 +32,7 @@ class MockCommunication(CommunicationCallback):
         super().__init__()
         self._stdout: List[str] = []
         self._stderr: List[str] = []
+        self.confirm_calls: List[str] = []
 
     @property
     def stdout(self) -> str:
@@ -70,7 +72,14 @@ class MockCommunication(CommunicationCallback):
 
     def confirm(self, msg, abort=False, warning=False, default=False):
         """Get confirmation for an action."""
+        self.confirm_calls.append(msg)
+        if abort:
+            raise click.Abort()
         return False
+
+    def has_prompt(self):
+        """Prompt for user input."""
+        return True
 
     def _write_to(self, message: str, output=None):
         output = output or self._stdout

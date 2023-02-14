@@ -17,8 +17,11 @@
 # limitations under the License.
 """Interactive session business logic."""
 
-import webbrowser
-from typing import List, Optional, Tuple
+import os
+import shutil
+import textwrap
+from pathlib import Path
+from typing import List, NamedTuple, Optional
 
 from pydantic import validate_arguments
 
@@ -28,19 +31,32 @@ from renku.core.plugin.session import get_supported_session_providers
 from renku.core.session.utils import get_image_repository_host, get_renku_project_name
 from renku.core.util import communication
 from renku.core.util.os import safe_read_yaml
+from renku.core.util.ssh import SystemSSHConfig, generate_ssh_keys
 from renku.domain_model.session import ISessionProvider, Session
 
 
 def _safe_get_provider(provider: str) -> ISessionProvider:
     try:
-        return next(p for p in get_supported_session_providers() if p.get_name() == provider)
+        return next(p for p in get_supported_session_providers() if p.name == provider)
     except StopIteration:
         raise errors.ParameterError(f"Session provider '{provider}' is not available!")
 
 
+SessionList = NamedTuple(
+    "SessionList", [("sessions", List[Session]), ("all_local", bool), ("warning_messages", List[str])]
+)
+
+
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
-def session_list(config_path: Optional[str], provider: Optional[str] = None) -> Tuple[List[Session], bool, List[str]]:
-    """List interactive sessions."""
+def session_list(config_path: Optional[str], provider: Optional[str] = None) -> SessionList:
+    """List interactive sessions.
+
+    Args:
+        config_path(str, optional): Path to config YAML.
+        provider(str, optional): Name of the session provider to use.
+    Returns:
+        The list of sessions, whether they're all local sessions and potential warnings raised.
+    """
 
     def list_sessions(session_provider: ISessionProvider) -> List[Session]:
         try:
@@ -62,26 +78,37 @@ def session_list(config_path: Optional[str], provider: Optional[str] = None) -> 
         try:
             sessions = list_sessions(session_provider)
         except errors.RenkuException as e:
-            warning_messages.append(f"Cannot get sessions list from '{session_provider.get_name()}': {e}")
+            warning_messages.append(f"Cannot get sessions list from '{session_provider.name}': {e}")
         else:
             if session_provider.is_remote_provider():
                 all_local = False
             all_sessions.extend(sessions)
 
-    return all_sessions, all_local, warning_messages
+    return SessionList(all_sessions, all_local, warning_messages)
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
 def session_start(
-    provider: str,
     config_path: Optional[str],
+    provider: str,
     image_name: Optional[str] = None,
     cpu_request: Optional[float] = None,
     mem_request: Optional[str] = None,
     disk_request: Optional[str] = None,
     gpu_request: Optional[str] = None,
+    **kwargs,
 ):
-    """Start interactive session."""
+    """Start interactive session.
+
+    Args:
+        config_path(str, optional): Path to config YAML.
+        provider(str, optional): Name of the session provider to use.
+        image_name(str, optional): Image to start.
+        cpu_request(float, optional): Number of CPUs to request.
+        mem_request(str, optional): Size of memory to request.
+        disk_request(str, optional): Size of disk to request (if supported by provider).
+        gpu_request(str, optional): Number of GPUs to request.
+    """
     from renku.domain_model.project_context import project_context
 
     pinned_image = get_value("interactive", "image")
@@ -91,7 +118,7 @@ def session_start(
     provider_api = _safe_get_provider(provider)
     config = safe_read_yaml(config_path) if config_path else dict()
 
-    provider_api.pre_start_checks()
+    provider_api.pre_start_checks(**kwargs)
 
     project_name = get_renku_project_name()
     if image_name is None:
@@ -134,6 +161,7 @@ def session_start(
             mem_request=mem_limit,
             disk_request=disk_limit,
             gpu_request=gpu,
+            **kwargs,
         )
 
     if warning_message:
@@ -143,7 +171,13 @@ def session_start(
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
 def session_stop(session_name: Optional[str], stop_all: bool = False, provider: Optional[str] = None):
-    """Stop interactive session."""
+    """Stop interactive session.
+
+    Args:
+        session_name(str): Name of the session to open.
+        stop_all(bool): Whether to stop all sessions or just the specified one.
+        provider(str, optional): Name of the session provider to use.
+    """
 
     def stop_sessions(session_provider: ISessionProvider) -> bool:
         try:
@@ -167,7 +201,7 @@ def session_stop(session_name: Optional[str], stop_all: bool = False, provider: 
             try:
                 is_stopped = stop_sessions(session_provider)
             except errors.RenkuException as e:
-                warning_messages.append(f"Cannot stop sessions in provider '{session_provider.get_name()}': {e}")
+                warning_messages.append(f"Cannot stop sessions in provider '{session_provider.name}': {e}")
 
             if is_stopped and session_name:
                 break
@@ -183,21 +217,96 @@ def session_stop(session_name: Optional[str], stop_all: bool = False, provider: 
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
-def session_open(session_name: str, provider: Optional[str] = None):
-    """Open interactive session in the browser."""
+def session_open(session_name: str, provider: Optional[str] = None, **kwargs):
+    """Open interactive session in the browser.
 
-    def open_sessions(session_provider: ISessionProvider) -> Optional[str]:
-        try:
-            return session_provider.session_url(session_name=session_name)
-        except errors.RenkulabSessionGetUrlError:
-            if provider:
-                raise
-            return None
+    Args:
+        session_name(str): Name of the session to open.
+        provider(str, optional): Name of the session provider to use.
+    """
 
     providers = [_safe_get_provider(provider)] if provider else get_supported_session_providers()
+    project_name = get_renku_project_name()
 
-    url = next(filter(lambda u: u is not None, map(open_sessions, providers)), None)
+    found = False
+    for session_provider in providers:
+        if session_provider.session_open(project_name, session_name, **kwargs):
+            found = True
+            break
 
-    if url is None:
+    if not found:
         raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")
-    webbrowser.open(url)
+
+
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def ssh_setup(existing_key: Optional[Path] = None, force: bool = False):
+    """Setup SSH keys for SSH connections to sessions.
+
+    Args:
+        existing_key(Path, optional): Existing private key file to use instead of generating new ones.
+        force(bool): Whether to prompt before overwriting keys or not
+    """
+
+    if not shutil.which("ssh"):
+        raise errors.SSHNotFoundError()
+
+    system_config = SystemSSHConfig()
+
+    include_string = f"Include {system_config.renku_ssh_root}/*.conf\n\n"
+
+    if include_string not in system_config.ssh_config.read_text():
+        with system_config.ssh_config.open(mode="r+") as f:
+            content = f.read()
+            f.seek(
+                0, 0
+            )  # NOTE: We need to add 'Include' before any 'Host' entry, otherwise it is included as part of a host
+            f.write(include_string + content)
+
+    if not existing_key and not force and system_config.is_configured:
+        communication.confirm(f"Keys already configured for host {system_config.renku_host}. Overwrite?", abort=True)
+
+    if existing_key:
+        communication.info("Linking existing keys")
+        existing_public_key = existing_key.parent / (existing_key.name + ".pub")
+
+        if not existing_key.exists() or not existing_public_key.exists():
+            raise errors.KeyNotFoundError(
+                f"Couldn't find private key '{existing_key}' or public key '{existing_public_key}'."
+            )
+
+        if system_config.keyfile.exists():
+            system_config.keyfile.unlink()
+        if system_config.public_keyfile.exists():
+            system_config.public_keyfile.unlink()
+
+        os.symlink(existing_key, system_config.keyfile)
+        os.symlink(existing_public_key, system_config.public_keyfile)
+    else:
+        communication.info("Generating keys")
+        keys = generate_ssh_keys()
+        system_config.keyfile.touch(mode=0o600)
+        system_config.public_keyfile.touch(mode=0o644)
+        with system_config.keyfile.open(
+            "wt",
+        ) as f:
+            f.write(keys.private_key)
+
+        with system_config.public_keyfile.open("wt") as f:
+            f.write(keys.public_key)
+
+    communication.info("Writing SSH config")
+    with system_config.jumphost_file.open(mode="wt") as f:
+        content = textwrap.dedent(
+            f"""
+            Host jumphost-{system_config.renku_host}
+                HostName {system_config.renku_host}
+                Port 2022
+                User jovyan
+
+            Host {system_config.renku_host}-*
+                ProxyJump  jumphost-{system_config.renku_host}
+                IdentityFile {system_config.keyfile}
+                User jovyan
+            """
+        )
+        f.write(content)
