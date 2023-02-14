@@ -19,7 +19,6 @@ build:
       - poetry install --with docs --with tests
 
 python:
-  version: 3.9
   install:
     - method: pip
       path: .
