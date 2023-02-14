@@ -17,9 +17,10 @@
 # limitations under the License.
 """SSH utility functions."""
 
+import textwrap
 import urllib.parse
 from pathlib import Path
-from typing import NamedTuple
+from typing import NamedTuple, cast
 
 from cryptography.hazmat.backends import default_backend as crypto_default_backend
 from cryptography.hazmat.primitives import serialization as crypto_serialization
@@ -54,15 +55,15 @@ class SystemSSHConfig:
     """Class to manage system SSH config."""
 
     def __init__(self) -> None:
-        """Initialize class ans calculate paths."""
+        """Initialize class and calculate paths."""
         self.ssh_root: Path = Path.home() / ".ssh"
         self.ssh_config: Path = self.ssh_root / "config"
         self.renku_ssh_root: Path = self.ssh_root / "renku"
 
-        self.renku_ssh_root.mkdir(exist_ok=True, parents=True)
-        self.ssh_config.touch(mode=0o644, exist_ok=True)
+        self.renku_ssh_root.mkdir(mode=0o700, exist_ok=True, parents=True)
+        self.ssh_config.touch(mode=0o600, exist_ok=True)
 
-        self.renku_host: str = str(urllib.parse.urlparse(get_renku_url()).hostname)
+        self.renku_host: str = cast(str, urllib.parse.urlparse(get_renku_url()).hostname)
 
         if not self.renku_host:
             raise errors.AuthenticationError(
@@ -112,13 +113,15 @@ class SystemSSHConfig:
         connection_name = self.connection_name(project_name, session_name)
 
         path = self.session_config_path(project_name, session_name)
-        path.touch(mode=0o644, exist_ok=True)
+        path.touch(mode=0o600, exist_ok=True)
 
-        path.write_text(
+        config_content = textwrap.dedent(
             f"""
-Host {connection_name}
-    HostName {session_name}
-"""
+            Host {connection_name}
+                HostName {session_name}
+            """
         )
+
+        path.write_text(config_content)
 
         return connection_name

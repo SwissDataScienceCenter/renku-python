@@ -167,11 +167,11 @@ class RenkulabSessionProvider(ISessionProvider):
                 else:
                     raise errors.RenkulabSessionError(
                         "Can't run ssh session without setting up Renku SSH support. Run without '--ssh' or "
-                        "run 'renku session setup-ssh'."
+                        "run 'renku session ssh-setup'."
                     )
 
             project_context.ssh_authorized_keys_path.parent.mkdir(parents=True, exist_ok=True)
-            project_context.ssh_authorized_keys_path.touch(mode=0o644, exist_ok=True)
+            project_context.ssh_authorized_keys_path.touch(mode=0o600, exist_ok=True)
 
             key = system_config.public_keyfile.read_text()
             key = f"\n{key} {project_context.repository.get_user().name}"
@@ -420,7 +420,7 @@ class RenkulabSessionProvider(ISessionProvider):
             if not system_config.is_configured or not system_config.session_config_path(name, session_name).exists():
                 raise errors.RenkulabSessionError(
                     "SSH not set up for session. Run without '--ssh' or "
-                    "run 'renku session setup-ssh' and start the session again."
+                    "run 'renku session ssh-setup' and start the session again."
                 )
             pty.spawn(["ssh", system_config.connection_name(name, session_name)])
         else:

@@ -94,6 +94,7 @@ def test_session_start(
     with_injection,
     mock_communication,
 ):
+    """Test starting sessions."""
     with patch.multiple(
         session_provider,
         session_start=fake_start,
@@ -141,6 +142,7 @@ def test_session_stop(
     result,
     with_injection,
 ):
+    """Test stopping sessions."""
     with patch.multiple(session_provider, session_stop=fake_stop, **provider_patches):
         provider_implementation = next(
             filter(lambda x: x.name == provider_name, get_supported_session_providers()), None
@@ -172,6 +174,7 @@ def test_session_list(
     result,
     with_injection,
 ):
+    """Test listing sessions."""
     with patch.multiple(session_provider, session_list=fake_session_list, **provider_patches):
         with with_injection():
             provider = provider_name if provider_exists else "no_provider"
@@ -184,7 +187,7 @@ def test_session_list(
                 assert result.sessions == result
 
 
-def test_session_setup_ssh(project, with_injection, fake_home, mock_communication):
+def test_session_ssh_setup(project, with_injection, fake_home, mock_communication):
     """Test setting up SSH config for a deployment."""
     with with_injection():
         ssh_setup()
@@ -214,6 +217,8 @@ def test_session_setup_ssh(project, with_injection, fake_home, mock_communicatio
 
 
 def test_session_start_ssh(project, with_injection, mock_communication, fake_home):
+    """Test starting of a session with SSH support."""
+
     def _fake_send_request(self, req_type: str, *args, **kwargs):
         class _FakeResponse:
             status_code = 200
