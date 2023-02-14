@@ -27,11 +27,3 @@ REDIS_NAMESPACE = os.getenv("REDIS_NAMESPACE")
 
 REDIS_IS_SENTINEL = os.environ.get("REDIS_IS_SENTINEL", "") == "true"
 REDIS_MASTER_SET = os.environ.get("REDIS_MASTER_SET", "mymaster")
-if REDIS_IS_SENTINEL:
-    from redis.sentinel import Sentinel
-
-    sentinel = Sentinel(
-        [(REDIS_HOST, REDIS_PORT)],
-        sentinel_kwargs={"password": REDIS_PASSWORD},
-    )
-    REDIS_HOST, REDIS_PORT = sentinel.discover_master(REDIS_MASTER_SET)
