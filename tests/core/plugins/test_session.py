@@ -23,7 +23,7 @@ from unittest.mock import patch
 import click
 import pytest
 
-from renku.core.errors import ParameterError
+from renku.core.errors import ParameterError, RenkulabSessionError
 from renku.core.plugin.session import get_supported_session_providers
 from renku.core.session.docker import DockerSessionProvider
 from renku.core.session.renkulab import RenkulabSessionProvider
@@ -221,6 +221,7 @@ def test_session_ssh_setup(project, with_injection, fake_home, mock_communicatio
 
 def test_session_start_ssh(project, with_injection, mock_communication, fake_home):
     """Test starting of a session with SSH support."""
+    from renku.domain_model.project_context import project_context
 
     def _fake_send_request(self, req_type: str, *args, **kwargs):
         class _FakeResponse:
@@ -248,7 +249,24 @@ def test_session_start_ssh(project, with_injection, mock_communication, fake_hom
         with patch("renku.core.util.ssh.get_renku_url", lambda: "https://renkulab.io/"):
             with with_injection():
                 ssh_setup()
-                session_start(provider="renkulab", config_path=None, ssh=True)
+                supported = project_context.project.template_metadata.ssh_supported
+
+                try:
+                    project_context.project.template_metadata.ssh_supported = False
+                    with pytest.raises(expected_exception=RenkulabSessionError, match="project doesn't support SSH"):
+                        session_start(provider="renkulab", config_path=None, ssh=True)
+                finally:
+                    project_context.project.template_metadata.ssh_supported = supported
+
+        with patch("renku.core.util.ssh.get_renku_url", lambda: "https://renkulab.io/"):
+            with with_injection():
+                supported = project_context.project.template_metadata.ssh_supported
+
+                try:
+                    project_context.project.template_metadata.ssh_supported = True
+                    session_start(provider="renkulab", config_path=None, ssh=True)
+                finally:
+                    project_context.project.template_metadata.ssh_supported = supported
 
         assert any("0xdeadbeef" in line for line in mock_communication.stdout_lines)
         ssh_home = fake_home / ".ssh"
