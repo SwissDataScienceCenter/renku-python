@@ -330,6 +330,11 @@ class RenkulabSessionProvider(ISessionProvider):
         Returns:
             Tuple[str, str]: Provider message and a possible warning message.
         """
+        if ssh and not project_context.project.template_metadata.ssh_supported:
+            raise errors.RenkulabSessionError(
+                "Cannot start session with SSH support because this project doesn't support SSH."
+            )
+
         repository = project_context.repository
 
         session_commit = repository.head.commit.hexsha
