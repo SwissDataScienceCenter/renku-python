@@ -3,9 +3,13 @@ name: Test, Integration Tests and Deploy
 on:
   push:
     branches:
-      - "**"
+      - master
+      - develop
     tags:
       - "v*.*.*"
+  pull_request:
+    types: [opened, reopened, synchronize]
+
 env:
   DEPENDENCY_CACHE_PREFIX: "v2"
   NETWORK_CACHE_PREFIX: "v1"
