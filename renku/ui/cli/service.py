@@ -176,7 +176,7 @@ def read_logs(log_file, follow=True, output_all=False):
 @click.pass_context
 def service(ctx, env):
     """Manage service components."""
-    import redis  # noqa: F401
+    import redis
     import rq  # noqa: F401
     from dotenv import load_dotenv
 
@@ -196,10 +196,9 @@ def service(ctx, env):
 
         ctx.exit(1)
 
-    except redis.exceptions.ConnectionError:
+    except redis.exceptions.ConnectionError as e:
         # NOTE: Cannot connect to the service dependencies, ie. Redis.
-
-        click.echo(ERROR + "Cannot connect to Redis")
+        click.echo(ERROR + f"Cannot connect to Redis: {e}")
 
         ctx.exit(1)
 
