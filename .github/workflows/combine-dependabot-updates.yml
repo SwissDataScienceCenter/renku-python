@@ -6,7 +6,7 @@ jobs:
   combine-prs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
           token: "${{ secrets.RENKUBOT_GITHUB_TOKEN }}"

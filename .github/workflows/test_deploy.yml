@@ -3,9 +3,13 @@ name: Test, Integration Tests and Deploy
 on:
   push:
     branches:
-      - "**"
+      - master
+      - develop
     tags:
       - "v*.*.*"
+  pull_request:
+    types: [opened, reopened, synchronize]
+
 env:
   DEPENDENCY_CACHE_PREFIX: "v2"
   NETWORK_CACHE_PREFIX: "v1"
@@ -23,9 +27,9 @@ jobs:
         run: |
           if [ "$REF" == "refs/heads/$DEFAULT_BRANCH" ] || [[ "$REF" =~ ^refs/tags/.* ]]
           then
-              echo "::set-output name=matrix::{\"python-version\": [\"3.7\", \"3.10\"]}"
+              echo "matrix={\"python-version\": [\"3.7\", \"3.10\"]}" >> $GITHUB_OUTPUT
           else
-              echo "::set-output name=matrix::{\"python-version\": [\"3.9\"]}"
+              echo "matrix={\"python-version\": [\"3.9\"]}" >> $GITHUB_OUTPUT
           fi
 
   cleanup-runs:
@@ -42,12 +46,12 @@ jobs:
       date: ${{ steps.year-week.outputs.date }}
     steps:
       - id: year-week
-        run: echo "::set-output name=date::$(date '+%Y-%V')"
+        run: echo "date=$(date '+%Y-%V')" >> $GITHUB_OUTPUT
 
   style-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -99,7 +103,7 @@ jobs:
   docs-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -144,7 +148,7 @@ jobs:
   mypy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -187,7 +191,7 @@ jobs:
   test-distro:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -230,7 +234,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -301,7 +305,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -378,7 +382,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -455,7 +459,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -526,7 +530,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -564,7 +568,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -609,7 +613,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -653,7 +657,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -691,7 +695,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -788,7 +792,7 @@ jobs:
       max-parallel: 3
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -881,7 +885,7 @@ jobs:
       matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     if: "startsWith(github.ref, 'refs/tags/') || endsWith(github.ref, github.event.repository.default_branch)"
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -937,7 +941,7 @@ jobs:
     runs-on: ubuntu-latest
     if: "startsWith(github.ref, 'refs/tags/')"
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
@@ -976,7 +980,7 @@ jobs:
     runs-on: ubuntu-latest
     if: "startsWith(github.ref, 'refs/tags/')"
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
           ref: "develop"
@@ -1004,7 +1008,7 @@ jobs:
         test-macos-service,
       ]
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - name: build images
@@ -1034,7 +1038,7 @@ jobs:
       ]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - uses: actions/checkout@v3.2.0
+      - uses: actions/checkout@v3.3.0
         with:
           fetch-depth: 0
       - name: set up environment variables

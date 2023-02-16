@@ -25,6 +25,7 @@ import re
 import shutil
 import sys
 import tempfile
+import time
 import uuid
 from pathlib import Path
 
@@ -36,6 +37,7 @@ from cwl_utils.parser import cwl_v1_2 as cwlgen
 from renku.core.plugin.provider import available_workflow_providers
 from renku.core.util.git import with_commit
 from renku.core.util.yaml import write_yaml
+from renku.domain_model.workflow.plan import Plan
 from renku.infrastructure.database import Database
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.infrastructure.gateway.plan_gateway import PlanGateway
@@ -428,17 +430,21 @@ def test_workflow_edit(runner, project):
     database = Database.from_path(project.database_path)
     test_plan = database["plans-by-name"][workflow_name]
 
+    time.sleep(1)
+
     cmd = ["workflow", "edit", workflow_name, "--name", "first"]
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code, format_result_exception(result)
 
     workflow_name = "first"
     database = Database.from_path(project.database_path)
-    first_plan = database["plans-by-name"]["first"]
+    first_plan: Plan = database["plans-by-name"]["first"]
 
     assert first_plan
     assert first_plan.name == "first"
     assert first_plan.derived_from == test_plan.id
+    assert first_plan.date_created == test_plan.date_created
+    assert (first_plan.date_modified - first_plan.date_created).total_seconds() >= 1
 
     cmd = ["workflow", "edit", workflow_name, "--description", "Test workflow"]
     result = runner.invoke(cli, cmd)
