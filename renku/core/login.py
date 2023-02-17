@@ -141,7 +141,8 @@ def login(endpoint: Optional[str], git_login: bool, yes: bool):
         )
         if backup_exists:
             communication.echo(f"Backup remote '{backup_remote_name}' already exists.")
-        elif not remote:
+
+        if not remote and not backup_exists:
             communication.error(f"Cannot create backup remote '{backup_remote_name}' for '{remote_url}'")
         else:
             _set_renku_url_for_remote(
