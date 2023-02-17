@@ -196,7 +196,6 @@ def get_renku_repo_url(remote_url, deployment_hostname=None, access_token=None):
         remote_url: The repository URL.
         deployment_hostname: The host name used by this deployment (Default value = None).
         access_token: The OAuth2 access token (Default value = None).
-
     Returns:
         The Renku repository URL with credentials.
     """
@@ -204,7 +203,8 @@ def get_renku_repo_url(remote_url, deployment_hostname=None, access_token=None):
     path = parsed_remote.path.strip("/")
     if path.startswith("gitlab/"):
         path = path.replace("gitlab/", "")
-    path = posixpath.join(CLI_GITLAB_ENDPOINT, path)
+    if not path.startswith(f"{CLI_GITLAB_ENDPOINT}/"):
+        path = posixpath.join(CLI_GITLAB_ENDPOINT, path)
 
     credentials = f"renku:{access_token}@" if access_token else ""
     hostname = deployment_hostname or parsed_remote.hostname

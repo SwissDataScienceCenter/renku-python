@@ -21,6 +21,7 @@ import json
 from datetime import datetime
 from typing import List, Optional
 
+from renku.core.config import get_value
 from renku.domain_model.project import Project
 from renku.domain_model.provenance.agent import Person
 
@@ -90,5 +91,5 @@ class ProjectViewModel:
             else None,
             template_info=template_info,
             keywords=project.keywords,
-            ssh_supported=project.template_metadata.ssh_supported,
+            ssh_supported=get_value("renku", "ssh_supported") == "true" or project.template_metadata.ssh_supported,
         )

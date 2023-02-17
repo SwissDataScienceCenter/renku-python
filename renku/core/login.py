@@ -184,7 +184,6 @@ def _set_renku_url_for_remote(repository: "Repository", remote_name: str, remote
         remote_name(str): Name of the remote.
         remote_url(str): Url of the remote.
         hostname(str): Hostname.
-
     Raises:
         errors.GitCommandError: If remote doesn't exist.
     """

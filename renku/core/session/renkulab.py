@@ -25,6 +25,7 @@ from time import monotonic, sleep
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from renku.core import errors
+from renku.core.config import get_value
 from renku.core.login import read_renku_token
 from renku.core.plugin import hookimpl
 from renku.core.session.utils import get_renku_project_name, get_renku_url
@@ -330,7 +331,10 @@ class RenkulabSessionProvider(ISessionProvider):
         Returns:
             Tuple[str, str]: Provider message and a possible warning message.
         """
-        if ssh and not project_context.project.template_metadata.ssh_supported:
+        ssh_supported = (
+            get_value("renku", "ssh_supported") == "true" or project_context.project.template_metadata.ssh_supported
+        )
+        if ssh and not ssh_supported:
             raise errors.RenkulabSessionError(
                 "Cannot start session with SSH support because this project doesn't support SSH."
             )

@@ -158,7 +158,7 @@ def test_login_to_multiple_endpoints(runner, project_with_remote, mock_login, wi
     with with_injection():
         assert ACCESS_TOKEN == read_renku_token(ENDPOINT)
         assert second_token == read_renku_token(second_endpoint)
-        assert project_with_remote.repository.remotes["origin"].url.startswith(f"https://{ENDPOINT}/repo")
+        assert project_with_remote.repository.remotes["origin"].url.startswith(f"https://{second_endpoint}/repo")
 
 
 def test_logout_all(runner, project, mock_login, with_injection):
