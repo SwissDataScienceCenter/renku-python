@@ -23,6 +23,7 @@ from urllib.parse import urlparse
 from marshmallow import Schema, ValidationError, fields, post_load, pre_load, validates_schema
 from werkzeug.utils import secure_filename
 
+from renku.command.migrate import MigrationType
 from renku.core import errors
 from renku.core.util.os import normalize_to_ascii
 from renku.domain_model.git import GitURL
@@ -367,6 +368,11 @@ class ProjectMigrationCheckResponse(Schema):
     template_status = fields.Nested(
         TemplateStatusResponse,
         metadata={"description": "Fields detailing the status of the project template used by this project."},
+    )
+    errors = fields.Dict(
+        fields.Enum(MigrationType),
+        fields.Dict,
+        metadata={"description": "Errors if there were any (corresponding entry will be empty)."},
     )
 
 

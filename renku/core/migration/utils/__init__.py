@@ -21,6 +21,7 @@ import os
 import posixpath
 import threading
 import uuid
+from typing import Optional, cast
 from urllib.parse import ParseResult, quote, urljoin, urlparse
 
 from renku.core.util.yaml import read_yaml
@@ -164,7 +165,7 @@ def read_project_version() -> str:
         return read_project_version_from_yaml(yaml_data)
 
 
-def read_latest_agent():
+def read_latest_agent() -> Optional[str]:
     """Read project version from metadata file."""
     import pyld
 
@@ -178,16 +179,16 @@ def read_latest_agent():
         yaml_data = read_yaml(metadata_path)
         jsonld = pyld.jsonld.expand(yaml_data)[0]
         jsonld = normalize(jsonld)
-        return _get_jsonld_property(jsonld, "http://schema.org/agent", "pre-0.11.0")
+        return cast(str, _get_jsonld_property(jsonld, "http://schema.org/agent", "pre-0.11.0"))
 
 
-def read_project_version_from_yaml(yaml_data):
+def read_project_version_from_yaml(yaml_data) -> str:
     """Read project version from YAML data."""
     import pyld
 
     jsonld = pyld.jsonld.expand(yaml_data)[0]
     jsonld = normalize(jsonld)
-    return _get_jsonld_property(jsonld, "http://schema.org/schemaVersion", "1")
+    return cast(str, _get_jsonld_property(jsonld, "http://schema.org/schemaVersion", "1"))
 
 
 def _get_jsonld_property(jsonld, property_name, default=None):

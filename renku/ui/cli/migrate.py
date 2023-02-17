@@ -153,7 +153,12 @@ def migrationscheck():
     from renku.command.migrate import migrations_check
 
     result = migrations_check().lock_project().build().execute().output
-    click.echo(json.dumps(result))
+    result_dict = result.as_dict()
+
+    if result_dict.get("errors"):
+        for key, value in result_dict["errors"]:
+            result_dict["errors"][key] = str(value)
+    click.echo(json.dumps(result_dict))
 
 
 @click.command(hidden=True)

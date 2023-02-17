@@ -17,11 +17,15 @@
 # limitations under the License.
 """Migrate project to the latest Renku version."""
 
-from typing import List
+from dataclasses import dataclass
+from enum import Enum, auto
+from typing import Dict, List, Optional, Tuple
 
 from pydantic import validate_arguments
 
 from renku.command.command_builder.command import Command
+from renku.core.errors import MinimumVersionError
+from renku.core.migration.migrate import SUPPORTED_PROJECT_VERSION
 from renku.domain_model.project_context import project_context
 
 SUPPORTED_RENKU_PROJECT = 1
@@ -33,12 +37,98 @@ AUTOMATED_TEMPLATE_UPDATE_SUPPORTED = 32
 DOCKERFILE_UPDATE_POSSIBLE = 64
 
 
+class MigrationType(Enum):
+    """Enum for different migration types."""
+
+    CORE = auto()
+    DOCKERFILE = auto()
+    TEMPLATE = auto()
+
+
+@dataclass
+class CoreStatusResult:
+    """Core migration status."""
+
+    migration_required: bool
+    project_metadata_version: Optional[int]
+    current_metadata_version: int
+
+
+@dataclass
+class DockerfileStatusResult:
+    """Docker migration status."""
+
+    automated_dockerfile_update: bool
+    newer_renku_available: Optional[bool]
+    dockerfile_renku_version: Optional[str]
+    latest_renku_version: str
+
+
+@dataclass
+class TemplateStatusResult:
+    """Template migration status."""
+
+    automated_template_update: bool
+    newer_template_available: bool
+    project_template_version: Optional[str]
+    latest_template_version: Optional[str]
+    template_source: Optional[str]
+    template_ref: Optional[str]
+    template_id: Optional[str]
+    ssh_supported: bool
+
+
+@dataclass
+class MigrationCheckResult:
+    """Migration check output."""
+
+    project_supported: bool
+    core_renku_version: str
+    project_renku_version: Optional[str]
+    core_compatibility_status: Optional[CoreStatusResult]
+    dockerfile_renku_status: Optional[DockerfileStatusResult]
+    template_status: Optional[TemplateStatusResult]
+    errors: Optional[Dict[MigrationType, Exception]] = None
+
+    @staticmethod
+    def from_minimum_version_error(minimum_version_error: MinimumVersionError) -> "MigrationCheckResult":
+        """Create a migration check when the project isn't supported yet."""
+        from renku import __version__
+
+        return MigrationCheckResult(
+            project_supported=False,
+            core_renku_version=str(minimum_version_error.current_version),
+            project_renku_version=f">={minimum_version_error.minimum_version}",
+            core_compatibility_status=CoreStatusResult(
+                migration_required=False,
+                project_metadata_version=None,
+                current_metadata_version=SUPPORTED_PROJECT_VERSION,
+            ),
+            dockerfile_renku_status=DockerfileStatusResult(
+                dockerfile_renku_version="unknown",
+                latest_renku_version=__version__,
+                newer_renku_available=False,
+                automated_dockerfile_update=False,
+            ),
+            template_status=TemplateStatusResult(
+                automated_template_update=False,
+                newer_template_available=False,
+                template_source="unknown",
+                template_ref="unknown",
+                template_id="unknown",
+                project_template_version="unknown",
+                latest_template_version="unknown",
+                ssh_supported=False,
+            ),
+        )
+
+
 def migrations_check():
     """Return a command for a migrations check."""
     return Command().command(_migrations_check).with_database(write=False)
 
 
-def _migrations_check():
+def _migrations_check() -> MigrationCheckResult:
     """Check migration status of project.
 
     Returns:
@@ -48,14 +138,35 @@ def _migrations_check():
 
     core_version, latest_version = _migrations_versions()
 
-    return {
-        "project_supported": not is_project_unsupported(),
-        "core_renku_version": core_version,
-        "project_renku_version": latest_version,
-        "core_compatibility_status": _metadata_migration_check(),
-        "dockerfile_renku_status": _dockerfile_migration_check(),
-        "template_status": _template_migration_check(),
-    }
+    errors: Dict[MigrationType, Exception] = {}
+
+    try:
+        core_compatibility_status = _metadata_migration_check()
+    except Exception as e:
+        core_compatibility_status = None
+        errors[MigrationType.CORE] = e
+
+    try:
+        docker_status = _dockerfile_migration_check()
+    except Exception as e:
+        docker_status = None
+        errors[MigrationType.CORE] = e
+
+    try:
+        template_status = _template_migration_check()
+    except Exception as e:
+        template_status = None
+        errors[MigrationType.CORE] = e
+
+    return MigrationCheckResult(
+        project_supported=not is_project_unsupported(),
+        core_renku_version=core_version,
+        project_renku_version=latest_version,
+        core_compatibility_status=core_compatibility_status,
+        dockerfile_renku_status=docker_status,
+        template_status=template_status,
+        errors=errors,
+    )
 
 
 def migrations_versions():
@@ -63,7 +174,7 @@ def migrations_versions():
     return Command().command(_migrations_versions).lock_project().with_database()
 
 
-def _migrations_versions():
+def _migrations_versions() -> Tuple[str, Optional[str]]:
     """Return source and destination migration versions.
 
     Returns:
@@ -82,7 +193,7 @@ def _migrations_versions():
     return __version__, latest_agent
 
 
-def _template_migration_check():
+def _template_migration_check() -> TemplateStatusResult:
     """Return template migration status.
 
     Returns:
@@ -108,16 +219,16 @@ def _template_migration_check():
 
     update_available, update_allowed, current_version, new_version = check_for_template_update(project)
 
-    return {
-        "automated_template_update": update_allowed,
-        "newer_template_available": update_available,
-        "project_template_version": current_version,
-        "latest_template_version": new_version,
-        "template_source": template_source,
-        "template_ref": template_ref,
-        "template_id": template_id,
-        "ssh_supported": ssh_supported,
-    }
+    return TemplateStatusResult(
+        automated_template_update=update_allowed,
+        newer_template_available=update_available,
+        project_template_version=current_version,
+        latest_template_version=new_version,
+        template_source=template_source,
+        template_ref=template_ref,
+        template_id=template_id,
+        ssh_supported=ssh_supported,
+    )
 
 
 def dockerfile_migration_check():
@@ -125,7 +236,7 @@ def dockerfile_migration_check():
     return Command().command(_dockerfile_migration_check)
 
 
-def _dockerfile_migration_check():
+def _dockerfile_migration_check() -> DockerfileStatusResult:
     """Return Dockerfile migration status.
 
     Returns:
@@ -136,12 +247,12 @@ def _dockerfile_migration_check():
 
     automated_dockerfile_update, newer_renku_available, dockerfile_renku_version = is_docker_update_possible()
 
-    return {
-        "automated_dockerfile_update": automated_dockerfile_update,
-        "newer_renku_available": newer_renku_available,
-        "dockerfile_renku_version": dockerfile_renku_version,
-        "latest_renku_version": __version__,
-    }
+    return DockerfileStatusResult(
+        automated_dockerfile_update=automated_dockerfile_update,
+        newer_renku_available=newer_renku_available,
+        dockerfile_renku_version=dockerfile_renku_version,
+        latest_renku_version=__version__,
+    )
 
 
 def metadata_migration_check():
@@ -149,7 +260,7 @@ def metadata_migration_check():
     return Command().command(_metadata_migration_check)
 
 
-def _metadata_migration_check():
+def _metadata_migration_check() -> CoreStatusResult:
     """Return metadata migration status.
 
     Returns:
@@ -157,11 +268,11 @@ def _metadata_migration_check():
     """
     from renku.core.migration.migrate import SUPPORTED_PROJECT_VERSION, get_project_version, is_migration_required
 
-    return {
-        "migration_required": is_migration_required(),
-        "project_metadata_version": get_project_version(),
-        "current_metadata_version": SUPPORTED_PROJECT_VERSION,
-    }
+    return CoreStatusResult(
+        migration_required=is_migration_required(),
+        project_metadata_version=get_project_version(),
+        current_metadata_version=SUPPORTED_PROJECT_VERSION,
+    )
 
 
 def migrate_project_command():

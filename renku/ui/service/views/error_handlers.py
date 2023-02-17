@@ -86,7 +86,7 @@ from renku.ui.service.views import error_response
 
 def handle_redis_except(f):
     """Wrapper which handles Redis exceptions."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
@@ -101,7 +101,6 @@ def handle_redis_except(f):
 def handle_validation_except(f):
     """Wrapper which handles marshmallow `ValidationError`."""
 
-    # noqa
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
@@ -128,7 +127,7 @@ def handle_validation_except(f):
 
 def handle_jwt_except(f):
     """Wrapper which handles invalid JWT."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
@@ -142,7 +141,7 @@ def handle_jwt_except(f):
 
 def handle_renku_except(f):
     """Wrapper which handles `RenkuException`."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
@@ -162,7 +161,7 @@ def handle_renku_except(f):
 
 def handle_git_except(f):
     """Wrapper which handles `RenkuException`."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
@@ -186,7 +185,7 @@ def handle_git_except(f):
 
 def handle_base_except(f):
     """Wrapper which handles base exceptions."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
@@ -212,7 +211,7 @@ def handle_base_except(f):
 
 def handle_common_except(f):
     """Handle common exceptions."""
-    # noqa
+
     @wraps(f)
     def dec(*args, **kwargs):
         """Decorated function."""
@@ -232,7 +231,7 @@ def handle_common_except(f):
 
 def handle_templates_read_errors(f):
     """Wrapper which handles reading templates errors."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
@@ -256,7 +255,7 @@ def handle_templates_read_errors(f):
 @handle_templates_read_errors
 def handle_templates_create_errors(f):
     """Wrapper which handles template creating projects errors."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
@@ -288,7 +287,7 @@ def handle_templates_create_errors(f):
 
 def handle_project_write_errors(f):
     """Wrapper which handles writing project metadata errors."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
@@ -304,7 +303,7 @@ def handle_project_write_errors(f):
 
 def handle_config_read_errors(f):
     """Wrapper which handles reading config errors."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
@@ -321,7 +320,7 @@ def handle_config_read_errors(f):
 @handle_config_read_errors
 def handle_config_write_errors(f):
     """Wrapper which handles setting config errors."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
@@ -341,7 +340,7 @@ def handle_config_write_errors(f):
 
 def handle_datasets_write_errors(f):
     """Wrapper which handles datasets write errors."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
@@ -372,7 +371,7 @@ def handle_datasets_write_errors(f):
 
 def handle_workflow_errors(f):
     """Wrapper which handles workflow errors."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
@@ -388,7 +387,7 @@ def handle_workflow_errors(f):
 
 def handle_datasets_unlink_errors(f):
     """Wrapper which handles datasets unlink errors."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
@@ -408,7 +407,7 @@ def handle_datasets_unlink_errors(f):
 
 def handle_migration_read_errors(f):
     """Wrapper which handles migrations read exceptions."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
@@ -427,7 +426,7 @@ def handle_migration_read_errors(f):
 @handle_migration_read_errors
 def handle_migration_write_errors(f):
     """Wrapper which handles migrations write exceptions."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
@@ -441,7 +440,7 @@ def handle_migration_write_errors(f):
 
 def handle_graph_errors(f):
     """Wrapper which handles graph exceptions."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
@@ -452,3 +451,15 @@ def handle_graph_errors(f):
             raise ProgramGraphCorruptError(e)
 
     return decorated_function
+
+
+def pretty_print_error(error: Exception):
+    """Use error handlers to pretty print an exception."""
+
+    @handle_common_except
+    @handle_migration_read_errors
+    def _fake_error_source():
+        raise error
+
+    response = _fake_error_source()
+    return response.json["error"]
