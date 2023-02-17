@@ -153,14 +153,14 @@ class AbstractPlan(Persistent, ABC):
         """Return if an ``AbstractPlan`` has correct derived_from."""
         raise NotImplementedError()
 
-    def delete(self):
+    def delete(self, when: datetime = local_now()):
         """Mark a plan as deleted.
 
         NOTE: Don't call this function for deleting plans since it doesn't delete the whole plan derivatives chain. Use
         renku.core.workflow.plan::remove_plan instead.
         """
         self.unfreeze()
-        self.date_removed = local_now()
+        self.date_removed = when
         self.freeze()
 
 
@@ -323,6 +323,7 @@ class Plan(AbstractPlan):
         derived.keywords = copy.deepcopy(self.keywords)
         derived.outputs = self.outputs.copy()
         derived.success_codes = self.success_codes.copy()
+        derived.creators = self.creators.copy()
         derived.assign_new_id()
 
         if creator and hasattr(creator, "email") and not any(c for c in self.creators if c.email == creator.email):

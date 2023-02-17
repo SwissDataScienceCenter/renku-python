@@ -1635,7 +1635,6 @@
                "datatype": {
                   "@id": "xsd:string"
                },
-               "minCount": 1,
                "maxCount": 1
             },
             {
