@@ -119,6 +119,10 @@ class SystemSSHConfig:
             f"""
             Host {connection_name}
                 HostName {session_name}
+                RemoteCommand cd work/{project_name}/ || true && exec $SHELL --login
+                RequestTTY yes
+                ServerAliveInterval 15
+                ServerAliveCountMax 3
             """
         )
 

@@ -186,6 +186,9 @@ class RenkulabSessionProvider(ISessionProvider):
 
             repository.add(project_context.ssh_authorized_keys_path)
             repository.commit("Add SSH public key.")
+            communication.info(
+                "Added public key. Changes need to be pushed and remote image built for changes to take effect."
+            )
 
     def _cleanup_ssh_connection_configs(self, project_name: str):
         """Cleanup leftover SSH connections that aren't valid anymore."""
