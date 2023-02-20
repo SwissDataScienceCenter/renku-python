@@ -130,7 +130,8 @@ def session_start(
 
         if not provider_api.find_image(image_name, config):
             communication.confirm(
-                f"The container image '{image_name}' does not exists. Would you like to build it?", abort=True
+                f"The container image '{image_name}' does not exist. Would you like to build it using {provider}?",
+                abort=True,
             )
             with communication.busy(msg=f"Building image {image_name}"):
                 provider_api.build_image(project_context.docker_path.parent, image_name, config)
