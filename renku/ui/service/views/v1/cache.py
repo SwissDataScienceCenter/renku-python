@@ -90,7 +90,7 @@ def migration_check_project_view_1_5(user_data, cache):
 
 
 def add_v1_specific_endpoints(cache_blueprint):
-    """Add v1.0 only endpoints to blueprint."""
+    """Add v1 only endpoints to blueprint."""
     cache_blueprint.route("/cache.migrate", methods=["POST"], provide_automatic_options=False, versions=[V1_0])(
         migrate_project_view_1_0
     )
