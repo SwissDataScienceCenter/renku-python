@@ -355,4 +355,5 @@ def ssh_setup(existing_key, force):
     """Setup keys for SSH connections into sessions."""
     from renku.command.session import ssh_setup_command
 
-    ssh_setup_command().build().execute(existing_key=existing_key, force=force)
+    communicator = ClickCallback()
+    ssh_setup_command().with_communicator(communicator).build().execute(existing_key=existing_key, force=force)
