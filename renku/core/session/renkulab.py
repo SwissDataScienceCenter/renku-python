@@ -385,8 +385,16 @@ class RenkulabSessionProvider(ISessionProvider):
             if ssh:
                 name = self._project_name_from_full_project_name(project_name)
                 connection = SystemSSHConfig().setup_session_config(name, session_name)
-                communication.echo(f"SSH connection successfully configured, use 'ssh {connection}' to connect.")
-            return f"Session {session_name} successfully started", ""
+                return (
+                    f"Session {session_name} successfully started, use 'renku session open --ssh {session_name}'"
+                    f" or 'ssh {connection}' to connect to it",
+                    "",
+                )
+            return (
+                f"Session {session_name} successfully started, use 'renku session open {session_name}'"
+                " to connect to it",
+                "",
+            )
         raise errors.RenkulabSessionError("Cannot start session via the notebook service because " + res.text)
 
     def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> bool:
