@@ -101,24 +101,24 @@ To see if your project supports SSH, you can run ``renku project show`` and chec
 ``SSH Supported`` flag. If your project doesn't support SSH, update the project template
 or contact the template maintainer to enable SSH support on the template.
 
-On a project that supports SSH, you need to first set up SSH keys for the deployment
-you want to connect to, e.g. for renkulab.io:
-
-.. code-block:: console
-
-    $ renku login renkulab.io
-    $ renku session ssh-setup
-
-Your system is now ready for starting sessions with SSH connections:
+You can start a session with SSH support using:
 
 .. code-block:: console
 
     $ renku session start -p renkulab --ssh
+    Your system is not set up for SSH connections to Renku. Would you like to set it up? [y/N]: y
     [...]
     SSH connection successfully configured, use 'ssh renkulab.io-myproject-sessionid' to connect.
 
+This will create SSH keys for you and setup SSH configuration for connecting to the renku deployment.
 You can then use the SSH connection name (``ssh renkulab.io-myproject-sessionid`` in the example)
 to connect to the session or in tools such as VSCode.
+
+.. note::
+
+   If you need to recreate the generated SSH keys or you want to use existing keys instead,
+   you can use the ``renku session ssh-setup`` command to perform this step manually. See
+   the help of the command for more details.
 
 Alternatively, you can use ``renku session open --ssh <session_id>`` to directly open an SSH
 connection to the session.

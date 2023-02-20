@@ -422,13 +422,18 @@ class RenkulabSessionProvider(ISessionProvider):
             ssh(bool): Whether to open an SSH connection or a normal browser interface.
         """
         sessions = self.session_list("", None)
+        system_config = SystemSSHConfig()
+        name = self._project_name_from_full_project_name(project_name)
+        ssh_prefix = f"{system_config.renku_host}-{name}-"
+
+        if session_name.startswith(ssh_prefix):
+            # NOTE: use passed in ssh connection name instead of session id by accident
+            session_name = session_name.replace(ssh_prefix, "", 1)
 
         if not any(s.id == session_name for s in sessions):
             return False
 
         if ssh:
-            name = self._project_name_from_full_project_name(project_name)
-            system_config = SystemSSHConfig()
             if not system_config.is_configured or not system_config.session_config_path(name, session_name).exists():
                 raise errors.RenkulabSessionError(
                     "SSH not set up for session. Run without '--ssh' or "
