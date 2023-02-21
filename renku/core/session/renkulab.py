@@ -291,9 +291,6 @@ class RenkulabSessionProvider(ISessionProvider):
                     session.get("status", {}).get("state", "unknown"),
                     self.session_url(session["name"]),
                     ssh_enabled=system_config.session_config_path(name, session["name"]).exists(),
-                    ssh_connection=system_config.connection_name(name, session["name"])
-                    if system_config.session_config_path(name, session["name"]).exists()
-                    else None,
                 )
                 for session in sessions_res.json().get("servers", {}).values()
             ]
@@ -424,7 +421,6 @@ class RenkulabSessionProvider(ISessionProvider):
             return False
 
         if ssh:
-            connection = None
             ssh_setup = True
             if not system_config.is_configured:
                 raise errors.RenkulabSessionError(
@@ -439,11 +435,9 @@ class RenkulabSessionProvider(ISessionProvider):
                         "and is not configured for SSH access by you."
                     )
                 communication.info(f"Setting up SSH connection config for session {session_name}")
-                connection = SystemSSHConfig().setup_session_config(name, session_name)
-            else:
-                connection = system_config.connection_name(name, session_name)
+                SystemSSHConfig().setup_session_config(name, session_name)
 
-            exit_code = pty.spawn(["ssh", connection])
+            exit_code = pty.spawn(["ssh", session_name])
 
             if exit_code > 0 and not ssh_setup:
                 # NOTE: We tried to connect to SSH even though it wasn't started from CLI

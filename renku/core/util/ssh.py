@@ -123,17 +123,6 @@ class SystemSSHConfig:
         """
         return self.renku_ssh_root / f"00-{project_name}-{session_name}.conf"
 
-    def connection_name(self, project_name: str, session_name: str) -> str:
-        """Get the connection name for an ssh connection.
-
-        Args:
-            project_name(str): The name of the project, without the owner name.
-            session_name(str): The name of the session to setup a connection to.
-        Returns:
-            The name of the SSH connection.
-        """
-        return f"{self.renku_host}-{project_name}-{session_name}"
-
     def setup_session_keys(self):
         """Add a users key to a project."""
         project_context.ssh_authorized_keys_path.parent.mkdir(parents=True, exist_ok=True)
@@ -161,22 +150,23 @@ class SystemSSHConfig:
         Returns:
             The name of the created SSH host config.
         """
-        connection_name = self.connection_name(project_name, session_name)
-
         path = self.session_config_path(project_name, session_name)
         path.touch(mode=0o600, exist_ok=True)
 
         config_content = textwrap.dedent(
             f"""
-            Host {connection_name}
+            Host {session_name}
                 HostName {session_name}
                 RemoteCommand cd work/{project_name}/ || true && exec $SHELL --login
                 RequestTTY yes
                 ServerAliveInterval 15
                 ServerAliveCountMax 3
+                ProxyJump  jumphost-{self.renku_host}
+                IdentityFile {self.keyfile}
+                User jovyan
             """
         )
 
         path.write_text(config_content)
 
-        return connection_name
+        return session_name

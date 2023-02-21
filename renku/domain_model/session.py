@@ -32,12 +32,11 @@ if TYPE_CHECKING:
 class Session:
     """Interactive session."""
 
-    def __init__(self, id: str, status: str, url: str, ssh_enabled: bool = False, ssh_connection: Optional[str] = None):
+    def __init__(self, id: str, status: str, url: str, ssh_enabled: bool = False):
         self.id = id
         self.status = status
         self.url = url
         self.ssh_enabled = ssh_enabled
-        self.ssh_connection = ssh_connection
 
 
 class ISessionProvider(metaclass=ABCMeta):

@@ -38,5 +38,5 @@ SESSION_COLUMNS = {
     "id": ("id", "id"),
     "status": ("status", "status"),
     "url": ("url", "url"),
-    "ssh": ("ssh_connection", "SSH connection"),
+    "ssh": ("ssh_enabled", "SSH enabled"),
 }

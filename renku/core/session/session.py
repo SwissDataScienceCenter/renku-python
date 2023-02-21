@@ -303,11 +303,6 @@ def ssh_setup(existing_key: Optional[Path] = None, force: bool = False):
                 HostName {system_config.renku_host}
                 Port 2022
                 User jovyan
-
-            Host {system_config.renku_host}-*
-                ProxyJump  jumphost-{system_config.renku_host}
-                IdentityFile {system_config.keyfile}
-                User jovyan
             """
         )
         f.write(content)
