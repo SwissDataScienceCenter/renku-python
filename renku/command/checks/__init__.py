@@ -17,7 +17,7 @@
 # limitations under the License.
 """Define repository checks for :program:`renku doctor`."""
 
-from .activities import check_migrated_activity_ids
+from .activities import check_activity_dates, check_migrated_activity_ids
 from .datasets import (
     check_dataset_files_outside_datadir,
     check_dataset_old_metadata_location,
@@ -30,7 +30,7 @@ from .migration import check_migration
 from .project import check_project_id_group
 from .storage import check_lfs_info
 from .validate_shacl import check_datasets_structure, check_project_structure
-from .workflow import check_activity_catalog, check_modification_date
+from .workflow import check_activity_catalog, check_plan_modification_date
 
 # Checks will be executed in the order as they are listed in __all__. They are mostly used in ``doctor`` command to
 # inspect broken things. The order of operations matters when fixing issues, so, don't sort this list.
@@ -48,5 +48,6 @@ __all__ = (
     "check_missing_files",
     "check_project_id_group",
     "check_project_structure",
-    "check_modification_date",
+    "check_plan_modification_date",
+    "check_activity_dates",
 )

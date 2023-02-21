@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Various metadata migrations for v10."""
+
 import io
 import json
 import os
@@ -26,6 +27,7 @@ from typing import Any, Dict, List, Tuple, cast
 
 import zstandard as zstd
 
+from renku.command.checks.activities import fix_activity_dates
 from renku.command.checks.workflow import fix_plan_dates
 from renku.command.command_builder import inject
 from renku.core.interface.activity_gateway import IActivityGateway
@@ -53,9 +55,12 @@ def migrate(migration_context: MigrationContext):
     if MigrationType.WORKFLOWS in migration_context.options.type:
         migrate_activity_ids()
         fix_plan_times()
+        fix_activity_times()
 
     migrate_remote_entity_ids()
     fix_dataset_date_modified()
+    fix_dataset_image_ids()
+    fix_removed_plans()
 
     # NOTE: Rebuild all workflow catalogs since ids and times have changed
     communication.echo("Rebuilding workflow metadata")
@@ -76,8 +81,8 @@ def migrate_old_metadata_namespaces():
                 header = int.from_bytes(file.read(4), "little")
                 file.seek(0)
                 if header == zstd.MAGIC_NUMBER:
-                    with decompressor.stream_reader(file) as zfile:
-                        data = json.load(zfile)
+                    with decompressor.stream_reader(file) as compressed_file:
+                        data = json.load(compressed_file)
                         compressed = True
                 else:
                     data = json.load(file)
@@ -99,7 +104,7 @@ def migrate_old_metadata_namespaces():
 
 
 def nested_update(data: Dict[str, Any], target_key: str, transforms: List[Tuple[str, str]]) -> None:
-    """Update a key's value based on tranformations (from, to) in a deeply nested dictionary."""
+    """Update a key's value based on transformations (from, to) in a deeply nested dictionary."""
     for k in list(data.keys()):
         value = data[k]
         if isinstance(value, str) and k == target_key:
@@ -232,19 +237,10 @@ def migrate_project_template_data(project_gateway: IProjectGateway):
     project_context.database.commit()
 
 
-@inject.autoparams("activity_gateway", "plan_gateway")
-def fix_plan_times(activity_gateway: IActivityGateway, plan_gateway: IPlanGateway):
+@inject.autoparams("plan_gateway")
+def fix_plan_times(plan_gateway: IPlanGateway):
     """Add timezone to plan invalidations."""
-    database = project_context.database
-
     plans: List[AbstractPlan] = plan_gateway.get_all_plans()
-    all_activities = activity_gateway.get_all_activities()
-    activity_map: Dict[str, Activity] = {}
-
-    for activity in all_activities:
-        plan_id = activity.association.plan.id
-        if plan_id not in activity_map or activity.started_at_time < activity_map[plan_id].started_at_time:
-            activity_map[plan_id] = activity
 
     for plan in plans:
         plan.unfreeze()
@@ -255,24 +251,41 @@ def fix_plan_times(activity_gateway: IActivityGateway, plan_gateway: IPlanGatewa
             plan.date_removed = None
 
         if plan.date_removed is not None:
-            if plan.date_removed < plan.date_created:
-                # NOTE: Fix invalidation times set before creation date on plans
-                plan.date_removed = plan.date_created
             if plan.date_removed.tzinfo is None:
                 # NOTE: There was a bug that caused date_removed to be set without timezone (as UTC time)
                 # so we patch in the timezone here
                 plan.date_removed = plan.date_removed.replace(microsecond=0).astimezone(timezone.utc)
-        if plan.id in activity_map and plan.date_created > activity_map[plan.id].started_at_time:
-            plan.date_created = activity_map[plan.id].started_at_time
+            if plan.date_removed < plan.date_created:
+                # NOTE: Fix invalidation times set before creation date on plans
+                plan.date_removed = plan.date_created
         plan.freeze()
 
     fix_plan_dates(plans=plans, plan_gateway=plan_gateway)
-    database.commit()
+    project_context.database.commit()
+
+
+@inject.autoparams("activity_gateway")
+def fix_activity_times(activity_gateway: IActivityGateway):
+    """Make sure activities have valid start/end/delete dates."""
+    fix_activity_dates(activities=activity_gateway.get_all_activities(include_deleted=True))
+    project_context.database.commit()
 
 
 @inject.autoparams("dataset_gateway")
 def fix_dataset_date_modified(dataset_gateway: IDatasetGateway):
     """Change date_created and date_modified to have correct semantics."""
+
+    def fix_creation_date(dataset):
+        """Check creation date to make sure that it's after project's creation date."""
+        if dataset.date_created and dataset.date_created < project_context.project.date_created:
+            try:
+                dataset.date_created = min([f.date_added for f in dataset.files])
+            except (ValueError, TypeError):
+                dataset.date_created = project_context.project.date_created
+            else:
+                if dataset.date_created < project_context.project.date_created:
+                    dataset.date_created = project_context.project.date_created
+
     tails = dataset_gateway.get_provenance_tails()
 
     for dataset_tail in tails:
@@ -281,6 +294,7 @@ def fix_dataset_date_modified(dataset_gateway: IDatasetGateway):
         previous_modification_date = local_now()
 
         while dataset.derived_from is not None:
+            fix_creation_date(dataset)
             modification_date = dataset.date_removed or dataset.date_created
 
             if modification_date is not None:
@@ -294,8 +308,9 @@ def fix_dataset_date_modified(dataset_gateway: IDatasetGateway):
             found_datasets.append(dataset)
             dataset = dataset_gateway.get_by_id(dataset.derived_from.value)
 
+        fix_creation_date(dataset)
         # NOTE: first dataset in chain
-        modification_date = dataset.date_created or dataset.date_published
+        modification_date = dataset.date_published or dataset.date_created
         if modification_date is not None:
             dataset.unfreeze()
             dataset.date_modified = modification_date
@@ -306,5 +321,43 @@ def fix_dataset_date_modified(dataset_gateway: IDatasetGateway):
             child.date_created = dataset.date_created
             child.date_published = dataset.date_published
             child.freeze()
+
+    project_context.database.commit()
+
+
+@inject.autoparams("dataset_gateway")
+def fix_dataset_image_ids(dataset_gateway: IDatasetGateway):
+    """Remove dashes from dataset image IDs."""
+    for dataset in dataset_gateway.get_provenance_tails():
+        while True:
+            if dataset.images:
+                for image in dataset.images:
+                    image.id = image.id.replace("-", "")
+
+                dataset._p_changed = True
+
+            if not dataset.derived_from:
+                break
+
+            dataset = dataset_gateway.get_by_id(dataset.derived_from.value)
+
+    project_context.database.commit()
+
+
+@inject.autoparams("plan_gateway")
+def fix_removed_plans(plan_gateway: IPlanGateway):
+    """Create a derivative if a removed plan doesn't have one."""
+    plans: List[AbstractPlan] = plan_gateway.get_all_plans()
+
+    for plan in plans:
+        if plan.date_removed and plan.derived_from is None:
+            derived_plan = plan.derive()
+            derived_plan.date_modified = plan.date_modified
+            derived_plan.delete(when=plan.date_removed)
+            plan_gateway.add(derived_plan)
+
+            plan.unfreeze()
+            plan.date_removed = None
+            plan.freeze()
 
     project_context.database.commit()

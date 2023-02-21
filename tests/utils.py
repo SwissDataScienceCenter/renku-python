@@ -22,7 +22,7 @@ import os
 import traceback
 import uuid
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, Iterator, List, Optional, Tuple, Type, Union
@@ -36,6 +36,7 @@ from flaky import flaky
 
 from renku.command.command_builder.command import inject, replace_injection
 from renku.core.interface.dataset_gateway import IDatasetGateway
+from renku.core.util.datetime8601 import local_now
 from renku.domain_model.dataset import Dataset
 from renku.domain_model.project_context import project_context
 
@@ -308,7 +309,7 @@ def create_dummy_activity(
         assert isinstance(plan, str)
         plan = Plan(id=Plan.generate_id(), name=plan, command=plan)
 
-    ended_at_time = ended_at_time or datetime.utcnow()
+    ended_at_time = ended_at_time or local_now(remove_microseconds=False)
     empty_checksum = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"  # Git hash of an empty string/file
     activity_id = id or Activity.generate_id(uuid=None if index is None else str(index))
 
@@ -388,7 +389,7 @@ def create_dummy_plan(
 
     plan = Plan(
         command=command,
-        date_created=date_created or datetime(2022, 5, 20, 0, 42, 0),
+        date_created=date_created or datetime(2022, 5, 20, 0, 42, 0, tzinfo=timezone.utc),
         description=description,
         id=id,
         inputs=[],
