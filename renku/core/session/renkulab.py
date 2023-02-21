@@ -171,24 +171,7 @@ class RenkulabSessionProvider(ISessionProvider):
                         "run 'renku session ssh-setup'."
                     )
 
-            project_context.ssh_authorized_keys_path.parent.mkdir(parents=True, exist_ok=True)
-            project_context.ssh_authorized_keys_path.touch(mode=0o600, exist_ok=True)
-
-            key = system_config.public_keyfile.read_text()
-            key = f"\n{key} {project_context.repository.get_user().name}"
-
-            if key in project_context.ssh_authorized_keys_path.read_text():
-                return
-
-            communication.info("Adding SSH public key to project.")
-            with project_context.ssh_authorized_keys_path.open("at") as f:
-                f.writelines(key)
-
-            repository.add(project_context.ssh_authorized_keys_path)
-            repository.commit("Add SSH public key.")
-            communication.info(
-                "Added public key. Changes need to be pushed and remote image built for changes to take effect."
-            )
+            system_config.setup_session_keys()
 
     def _cleanup_ssh_connection_configs(self, project_name: str):
         """Cleanup leftover SSH connections that aren't valid anymore."""
@@ -302,7 +285,6 @@ class RenkulabSessionProvider(ISessionProvider):
         if sessions_res.status_code == 200:
             system_config = SystemSSHConfig()
             name = self._project_name_from_full_project_name(project_name)
-
             return [
                 Session(
                     session["name"],
@@ -442,12 +424,31 @@ class RenkulabSessionProvider(ISessionProvider):
             return False
 
         if ssh:
-            if not system_config.is_configured or not system_config.session_config_path(name, session_name).exists():
+            connection = None
+            ssh_setup = True
+            if not system_config.is_configured:
                 raise errors.RenkulabSessionError(
                     "SSH not set up for session. Run without '--ssh' or "
                     "run 'renku session ssh-setup' and start the session again."
                 )
-            pty.spawn(["ssh", system_config.connection_name(name, session_name)])
+            elif not system_config.session_config_path(name, session_name).exists():
+                # NOTE: Session wasn't launched from CLI
+                if system_config.is_session_configured(session_name):
+                    raise errors.RenkulabSessionError(
+                        "Session wasn't started using 'renku session start --ssh ...' "
+                        "and is not configured for SSH access by you."
+                    )
+                communication.info(f"Setting up SSH connection config for session {session_name}")
+                connection = SystemSSHConfig().setup_session_config(name, session_name)
+            else:
+                connection = system_config.connection_name(name, session_name)
+
+            exit_code = pty.spawn(["ssh", connection])
+
+            if exit_code > 0 and not ssh_setup:
+                # NOTE: We tried to connect to SSH even though it wasn't started from CLI
+                # This failed, so we'll remove the temporary connection information.
+                pass
         else:
             url = self.session_url(session_name)
 

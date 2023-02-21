@@ -24,7 +24,7 @@ import shutil
 import tempfile
 from enum import Enum, IntEnum, auto
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple
 
 from packaging.version import Version
 
@@ -483,10 +483,7 @@ class RepositoryTemplates(TemplatesSource):
         """Return if template id is available at a reference."""
         try:
             content = self.repository.get_content(TEMPLATE_MANIFEST, revision=reference)
-
-            if isinstance(content, bytes):
-                return False
-            manifest = TemplatesManifest.from_string(cast(str, content))
+            manifest = TemplatesManifest.from_string(content)
         except (errors.FileNotFound, errors.InvalidTemplateError):
             return False
         else:

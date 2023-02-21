@@ -28,6 +28,8 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 
 from renku.core import errors
 from renku.core.session.utils import get_renku_url
+from renku.core.util import communication
+from renku.domain_model.project_context import project_context
 
 SSHKeyPair = NamedTuple("SSHKeyPair", [("private_key", str), ("public_key", str)])
 
@@ -79,11 +81,42 @@ class SystemSSHConfig:
         """Check if the system is already configured correctly."""
         return self.jumphost_file.exists() and self.keyfile.exists() and self.public_keyfile.exists()
 
+    @property
+    def public_key_string(self) -> str:
+        """Get the public key string, ready for authorized_keys."""
+        key = self.public_keyfile.read_text()
+        key = f"\n{key} {project_context.repository.get_user().name}"
+        return key
+
+    def is_session_configured(self, session_name: str) -> bool:
+        """Check if a session is configured for SSH.
+
+        Args:
+            session_name(str): The name of the session.
+        """
+        if not project_context.ssh_authorized_keys_path.exists():
+            return False
+
+        session_commit = session_name.rsplit("-", 1)[-1]
+
+        try:
+            project_context.repository.get_commit(session_commit)
+        except errors.GitCommitNotFoundError:
+            return False
+
+        authorized_keys = project_context.repository.get_content(
+            project_context.ssh_authorized_keys_path, revision=session_commit
+        )
+
+        if self.public_key_string in authorized_keys:
+            return True
+        return False
+
     def session_config_path(self, project_name: str, session_name: str) -> Path:
         """Get path to a session config.
 
         Args:
-            project_name(str): The name of the project, potentially with the owner name.
+            project_name(str): The name of the project, without the owner name.
             session_name(str): The name of the session to setup a connection to.
         Returns:
             The path to the SSH connection file.
@@ -94,18 +127,36 @@ class SystemSSHConfig:
         """Get the connection name for an ssh connection.
 
         Args:
-            project_name(str): The name of the project, potentially with the owner name.
+            project_name(str): The name of the project, without the owner name.
             session_name(str): The name of the session to setup a connection to.
         Returns:
             The name of the SSH connection.
         """
         return f"{self.renku_host}-{project_name}-{session_name}"
 
+    def setup_session_keys(self):
+        """Add a users key to a project."""
+        project_context.ssh_authorized_keys_path.parent.mkdir(parents=True, exist_ok=True)
+        project_context.ssh_authorized_keys_path.touch(mode=0o600, exist_ok=True)
+
+        if self.public_key_string in project_context.ssh_authorized_keys_path.read_text():
+            return
+
+        communication.info("Adding SSH public key to project.")
+        with project_context.ssh_authorized_keys_path.open("at") as f:
+            f.writelines(self.public_key_string)
+
+        project_context.repository.add(project_context.ssh_authorized_keys_path)
+        project_context.repository.commit("Add SSH public key.")
+        communication.info(
+            "Added public key. Changes need to be pushed and remote image built for changes to take effect."
+        )
+
     def setup_session_config(self, project_name: str, session_name: str) -> str:
         """Setup local SSH config for connecting to a session.
 
         Args:
-            project_name(str): The name of the project, potentially with the owner name.
+            project_name(str): The name of the project, without the owner name.
             session_name(str): The name of the session to setup a connection to.
         Returns:
             The name of the created SSH host config.

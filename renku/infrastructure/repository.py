@@ -35,6 +35,7 @@ from typing import (
     Dict,
     Generator,
     List,
+    Literal,
     NamedTuple,
     Optional,
     Sequence,
@@ -44,6 +45,7 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    overload,
 )
 
 import git
@@ -544,6 +546,28 @@ class BaseRepository:
                 pass
 
         return ignored
+
+    @overload
+    def get_content(
+        self,
+        path: Union[Path, str],
+        *,
+        revision: Optional[Union["Reference", str]] = None,
+        checksum: Optional[str] = None,
+        binary: Literal[False] = False,
+    ) -> str:
+        ...
+
+    @overload
+    def get_content(
+        self,
+        path: Union[Path, str],
+        *,
+        revision: Optional[Union["Reference", str]] = None,
+        checksum: Optional[str] = None,
+        binary: Literal[True],
+    ) -> bytes:
+        ...
 
     def get_content(
         self,
