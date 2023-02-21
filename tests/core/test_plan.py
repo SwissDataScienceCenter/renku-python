@@ -20,7 +20,7 @@ from datetime import datetime
 
 import pytest
 
-from renku.command.checks import check_modification_date
+from renku.command.checks import check_plan_modification_date
 from renku.core import errors
 from renku.core.workflow.plan import (
     get_activities,
@@ -176,7 +176,7 @@ def test_modification_date_fix(project_with_injection):
     del plan.date_modified
     unrelated.date_modified = None
 
-    check_modification_date(fix=True)
+    check_plan_modification_date(fix=True)
 
     assert dummy_date == plan.date_modified
     assert unrelated.date_created == unrelated.date_modified
