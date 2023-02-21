@@ -108,7 +108,6 @@ class ManifestTemplateSchema(Schema):
     icon = fields.String(
         load_default=None, metadata={"description": "base64 encoded icon for the template in PNG format"}
     )
-    ssh_supported = fields.Boolean(load_default=False, metadata={"description": "Whether the template supports SSH"})
 
 
 class ManifestTemplatesResponse(Schema):

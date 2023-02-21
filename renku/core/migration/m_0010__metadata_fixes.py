@@ -266,7 +266,7 @@ def fix_plan_times(plan_gateway: IPlanGateway):
 
 @inject.autoparams("activity_gateway")
 def fix_activity_times(activity_gateway: IActivityGateway):
-    """Make sure activity have valid start/end/delete dates."""
+    """Make sure activities have valid start/end/delete dates."""
     fix_activity_dates(activities=activity_gateway.get_all_activities(include_deleted=True))
     project_context.database.commit()
 
@@ -282,6 +282,9 @@ def fix_dataset_date_modified(dataset_gateway: IDatasetGateway):
                 dataset.date_created = min([f.date_added for f in dataset.files])
             except (ValueError, TypeError):
                 dataset.date_created = project_context.project.date_created
+            else:
+                if dataset.date_created < project_context.project.date_created:
+                    dataset.date_created = project_context.project.date_created
 
     tails = dataset_gateway.get_provenance_tails()
 

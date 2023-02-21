@@ -110,7 +110,7 @@ def check_activity_dates(fix, activity_gateway: IActivityGateway, **_):
 
     fix_activity_dates(activities=invalid_activities)
     project_context.database.commit()
-    communication.info("Activity dates dates were fixed")
+    communication.info("Activity dates were fixed")
 
     return True, None
 
