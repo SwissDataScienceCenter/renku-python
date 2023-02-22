@@ -18,7 +18,7 @@
 """Test ``service`` command."""
 
 import re
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
@@ -81,3 +81,29 @@ def test_session_start_config_requests(runner, project, dummy_session_provider, 
         result = runner.invoke(cli, ["session", "start", "-p", "docker"])
         assert 0 == result.exit_code, format_result_exception(result)
         assert "successfully started" in result.output
+
+
+def test_session_ssh_setup(runner, project, dummy_session_provider, fake_home):
+    """Test starting a session."""
+    from renku.core.util.ssh import generate_ssh_keys
+
+    with patch("renku.core.util.ssh.get_renku_url", lambda: "https://renkulab.io/"):
+        result = runner.invoke(cli, ["session", "ssh-setup"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert 2 == len(result.output.splitlines())
+    assert "Generating keys" in result.output
+    assert "Writing SSH config" in result.output
+
+    private_key, public_key = generate_ssh_keys()
+
+    private_path = fake_home / ".ssh" / "existing"
+    private_path.write_text(private_key)
+    (fake_home / ".ssh" / "existing.pub").write_text(public_key)
+
+    with patch("renku.core.util.ssh.get_renku_url", lambda: "https://renkulab.io/"):
+        result = runner.invoke(cli, ["session", "ssh-setup", "-k", str(private_path), "--force"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    assert 2 == len(result.output.splitlines())
+    assert "Linking existing keys" in result.output
+    assert "Writing SSH config" in result.output

@@ -82,11 +82,14 @@ class SystemSSHConfig:
         return self.jumphost_file.exists() and self.keyfile.exists() and self.public_keyfile.exists()
 
     @property
-    def public_key_string(self) -> str:
+    def public_key_string(self) -> Optional[str]:
         """Get the public key string, ready for authorized_keys."""
-        key = self.public_keyfile.read_text()
-        key = f"\n{key} {project_context.repository.get_user().name}"
-        return key
+        try:
+            key = self.public_keyfile.read_text()
+            key = f"\n{key} {project_context.repository.get_user().name}"
+            return key
+        except FileNotFoundError:
+            return None
 
     def is_session_configured(self, session_name: str) -> bool:
         """Check if a session is configured for SSH.
@@ -104,11 +107,14 @@ class SystemSSHConfig:
         except errors.GitCommitNotFoundError:
             return False
 
-        authorized_keys = project_context.repository.get_content(
-            project_context.ssh_authorized_keys_path, revision=session_commit
-        )
+        try:
+            authorized_keys = project_context.repository.get_content(
+                project_context.ssh_authorized_keys_path, revision=session_commit
+            )
+        except errors.FileNotFound:
+            return False
 
-        if self.public_key_string in authorized_keys:
+        if self.public_key_string and self.public_key_string in authorized_keys:
             return True
         return False
 
@@ -164,6 +170,7 @@ class SystemSSHConfig:
                 ProxyJump  jumphost-{self.renku_host}
                 IdentityFile {self.keyfile}
                 User jovyan
+                StrictHostKeyChecking no
             """
         )
 

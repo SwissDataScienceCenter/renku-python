@@ -28,6 +28,7 @@ from renku.core.plugin.session import get_supported_session_providers
 from renku.core.session.docker import DockerSessionProvider
 from renku.core.session.renkulab import RenkulabSessionProvider
 from renku.core.session.session import session_list, session_start, session_stop, ssh_setup
+from renku.core.util.ssh import SystemSSHConfig
 
 
 def fake_start(
@@ -274,3 +275,32 @@ def test_session_start_ssh(project, with_injection, mock_communication, fake_hom
         assert (renku_ssh_path / "99-renkulab.io-jumphost.conf").exists()
         assert (project.path / ".ssh" / "authorized_keys").exists()
         assert len(list(renku_ssh_path.glob("00-*-0xdeadbeef.conf"))) == 1
+
+
+def test_session_ssh_configured(project, with_injection, fake_home):
+    """Test that the SSH class correctly determines if a session is configured for SSH."""
+    from renku.domain_model.project_context import project_context
+
+    with patch("renku.core.util.ssh.get_renku_url", lambda: "https://renkulab.io/"):
+        with with_injection():
+            system_config = SystemSSHConfig()
+
+            assert not system_config.is_session_configured("my-session-abcdefg")
+
+            previous_commit = project_context.repository.head.commit
+
+            project_context.ssh_authorized_keys_path.parent.mkdir(parents=True, exist_ok=True)
+            project_context.ssh_authorized_keys_path.touch()
+            project_context.repository.add(project_context.ssh_authorized_keys_path)
+            intermediate_commit = project_context.repository.commit("Add auth keys file")
+
+            assert not system_config.is_session_configured("my-session-abcdefg")
+            assert not system_config.is_session_configured(f"my-session-{previous_commit}")
+            assert not system_config.is_session_configured(f"my-session-{intermediate_commit}")
+
+            key = "my-key"
+            system_config.public_keyfile.write_text(key)
+            project_context.ssh_authorized_keys_path.write_text(f"\n{key} Renku Bot")
+            project_context.repository.add(project_context.ssh_authorized_keys_path)
+            valid_commit = project_context.repository.commit("Add auth keys file")
+            assert system_config.is_session_configured(f"my-session-{valid_commit}")

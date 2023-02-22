@@ -173,15 +173,24 @@ class RenkulabSessionProvider(ISessionProvider):
 
             system_config.setup_session_keys()
 
-    def _cleanup_ssh_connection_configs(self, project_name: str):
-        """Cleanup leftover SSH connections that aren't valid anymore."""
-        sessions = self.session_list("", None)
+    def _cleanup_ssh_connection_configs(
+        self, project_name: str, running_sessions: Optional[List[Session]] = None
+    ) -> None:
+        """Cleanup leftover SSH connections that aren't valid anymore.
+
+        Args:
+            project_name(str): Name of the project.
+            running_sessions(List[Session], optional): List of running sessions to check against, otherwise will be
+                gotten from the server.
+        """
+        if not running_sessions:
+            running_sessions = self.session_list("", None, ssh_garbage_collection=False)
 
         system_config = SystemSSHConfig()
 
         name = self._project_name_from_full_project_name(project_name)
 
-        session_config_paths = [system_config.session_config_path(name, s.id) for s in sessions]
+        session_config_paths = [system_config.session_config_path(name, s.id) for s in running_sessions]
 
         for path in system_config.renku_ssh_root.glob(f"00-{name}*.conf"):
             if path not in session_config_paths:
@@ -270,7 +279,9 @@ class RenkulabSessionProvider(ISessionProvider):
             ProviderParameter("ssh", help="Open a remote terminal through SSH.", is_flag=True),
         ]
 
-    def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
+    def session_list(
+        self, project_name: str, config: Optional[Dict[str, Any]], ssh_garbage_collection: bool = True
+    ) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
 
         Returns:
@@ -285,7 +296,7 @@ class RenkulabSessionProvider(ISessionProvider):
         if sessions_res.status_code == 200:
             system_config = SystemSSHConfig()
             name = self._project_name_from_full_project_name(project_name)
-            return [
+            sessions = [
                 Session(
                     session["name"],
                     session.get("status", {}).get("state", "unknown"),
@@ -294,6 +305,9 @@ class RenkulabSessionProvider(ISessionProvider):
                 )
                 for session in sessions_res.json().get("servers", {}).values()
             ]
+            if ssh_garbage_collection:
+                self._cleanup_ssh_connection_configs(project_name, running_sessions=sessions)
+            return sessions
         return []
 
     def session_start(

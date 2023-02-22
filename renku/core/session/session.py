@@ -297,9 +297,10 @@ def ssh_setup(existing_key: Optional[Path] = None, force: bool = False):
 
     communication.info("Writing SSH config")
     with system_config.jumphost_file.open(mode="wt") as f:
+        # NOTE: The * at the end of the jumphost name hides it from VSCode
         content = textwrap.dedent(
             f"""
-            Host jumphost-{system_config.renku_host}
+            Host jumphost-{system_config.renku_host}*
                 HostName {system_config.renku_host}
                 Port 2022
                 User jovyan
