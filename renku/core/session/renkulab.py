@@ -435,14 +435,16 @@ class RenkulabSessionProvider(ISessionProvider):
                         "and is not configured for SSH access by you."
                     )
                 communication.info(f"Setting up SSH connection config for session {session_name}")
-                SystemSSHConfig().setup_session_config(name, session_name)
+                system_config.setup_session_config(name, session_name)
+                ssh_setup = False
 
             exit_code = pty.spawn(["ssh", session_name])
 
             if exit_code > 0 and not ssh_setup:
                 # NOTE: We tried to connect to SSH even though it wasn't started from CLI
                 # This failed, so we'll remove the temporary connection information.
-                pass
+                if system_config.session_config_path(project_name, session_name).exists():
+                    system_config.session_config_path(project_name, session_name).unlink()
         else:
             url = self.session_url(session_name)
 
