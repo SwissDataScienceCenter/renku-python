@@ -48,7 +48,7 @@ def test_login(runner, project_with_remote, mock_login, with_injection):
 
 def test_login_with_no_warn_config(runner, project_with_remote, mock_login, with_injection):
     """Test login command with ``show_login_warning`` configured in the ``renku.ini``."""
-    assert 0 == runner.invoke(cli, ["config", "set", "show_login_warning", "False"]).exit_code
+    assert 0 == runner.invoke(cli, ["config", "set", "show_login_warning", "false"]).exit_code
 
     result = runner.invoke(cli, ["login", ENDPOINT])  # No ``--yes`` and no input
 
@@ -158,7 +158,7 @@ def test_login_to_multiple_endpoints(runner, project_with_remote, mock_login, wi
     with with_injection():
         assert ACCESS_TOKEN == read_renku_token(ENDPOINT)
         assert second_token == read_renku_token(second_endpoint)
-        assert project_with_remote.repository.remotes["origin"].url.startswith(f"https://{ENDPOINT}/repo")
+        assert project_with_remote.repository.remotes["origin"].url.startswith(f"https://{second_endpoint}/repo")
 
 
 def test_logout_all(runner, project, mock_login, with_injection):

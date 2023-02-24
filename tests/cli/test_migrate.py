@@ -89,6 +89,7 @@ def test_migration_check(isolated_runner, project):
         "latest_template_version",
         "template_ref",
         "template_id",
+        "ssh_supported",
     }
 
 

@@ -161,6 +161,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
                 commit_message=self.ctx["commit_message"],
                 description=self.ctx["project_description"],
                 data_dir=self.ctx.get("data_directory"),
+                ssh_supported=self.template.ssh_supported,
             )
 
         self.new_project_push(new_project_path)

@@ -22,7 +22,7 @@ from renku.ui.service.config import SERVICE_PREFIX
 from renku.ui.service.controllers.workflow_plans_export import WorkflowPlansExportCtrl
 from renku.ui.service.controllers.workflow_plans_list import WorkflowPlansListCtrl
 from renku.ui.service.controllers.workflow_plans_show import WorkflowPlansShowCtrl
-from renku.ui.service.views.api_versions import V1_5, VERSIONS_FROM_V1_4, VersionedBlueprint
+from renku.ui.service.views.api_versions import VERSIONS_FROM_V1_4, VERSIONS_FROM_V1_5, VersionedBlueprint
 from renku.ui.service.views.decorators import optional_identity, requires_cache
 from renku.ui.service.views.error_handlers import handle_common_except, handle_workflow_errors
 
@@ -90,7 +90,7 @@ def show_plan_view(user_data, cache):
 
 
 @workflow_plans_blueprint.route(
-    "/workflow_plans.export", methods=["POST"], provide_automatic_options=False, versions=[V1_5]
+    "/workflow_plans.export", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_FROM_V1_5
 )
 @handle_common_except
 @handle_workflow_errors

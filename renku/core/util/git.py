@@ -196,7 +196,6 @@ def get_renku_repo_url(remote_url, deployment_hostname=None, access_token=None):
         remote_url: The repository URL.
         deployment_hostname: The host name used by this deployment (Default value = None).
         access_token: The OAuth2 access token (Default value = None).
-
     Returns:
         The Renku repository URL with credentials.
     """
@@ -204,7 +203,8 @@ def get_renku_repo_url(remote_url, deployment_hostname=None, access_token=None):
     path = parsed_remote.path.strip("/")
     if path.startswith("gitlab/"):
         path = path.replace("gitlab/", "")
-    path = posixpath.join(CLI_GITLAB_ENDPOINT, path)
+    if not path.startswith(f"{CLI_GITLAB_ENDPOINT}/"):
+        path = posixpath.join(CLI_GITLAB_ENDPOINT, path)
 
     credentials = f"renku:{access_token}@" if access_token else ""
     hostname = deployment_hostname or parsed_remote.hostname
@@ -379,7 +379,7 @@ def get_entity_from_revision(
         Entity: The Entity for the given path and revision.
 
     """
-    from renku.domain_model.entity import Collection, Entity
+    from renku.domain_model.entity import NON_EXISTING_ENTITY_CHECKSUM, Collection, Entity
 
     def get_directory_members(absolute_path: Path) -> List[Entity]:
         """Return first-level files/directories in a directory."""
@@ -410,7 +410,9 @@ def get_entity_from_revision(
     checksum = repository.get_object_hash(revision=revision, path=path)
     # NOTE: If object was not found at a revision it's either removed or exists in a different revision; keep the
     # entity and use revision as checksum
-    checksum = checksum or revision or "HEAD"
+    if isinstance(revision, str) and revision == "HEAD":
+        revision = repository.head.commit.hexsha
+    checksum = checksum or revision or NON_EXISTING_ENTITY_CHECKSUM
     id = Entity.generate_id(checksum=checksum, path=path)
 
     absolute_path = repository.path / path

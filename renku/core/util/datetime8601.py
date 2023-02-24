@@ -75,6 +75,7 @@ def _set_to_local_timezone(value):
     return value.replace(tzinfo=local_tz)
 
 
-def local_now() -> datetime:
+def local_now(remove_microseconds: bool = True) -> datetime:
     """Return current datetime in local timezone."""
-    return datetime.now(timezone.utc).replace(microsecond=0).astimezone()
+    now = datetime.now(timezone.utc).astimezone()
+    return now.replace(microsecond=0) if remove_microseconds else now

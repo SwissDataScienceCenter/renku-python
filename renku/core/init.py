@@ -338,6 +338,7 @@ def create_from_template_local(
     description: Optional[str] = None,
     keywords: Optional[List[str]] = None,
     data_dir: Optional[str] = None,
+    ssh_supported: bool = False,
 ):
     """Initialize a new project from a template.
 
@@ -381,6 +382,7 @@ def create_from_template_local(
         description="",
         parameters={},
         icon="",
+        ssh_supported=ssh_supported,
         immutable_files=immutable_template_files or [],
         allow_update=automated_template_update,
         source=metadata["__template_source__"],

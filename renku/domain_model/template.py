@@ -135,6 +135,7 @@ class TemplatesManifest:
                     description=cast(str, t.get("description")),
                     parameters=cast(Dict[str, Dict[str, Any]], t.get("variables") or t.get("parameters")),
                     icon=cast(str, t.get("icon")),
+                    ssh_supported=t.get("ssh_supported", False),
                     immutable_files=t.get("immutable_template_files", []),
                     allow_update=t.get("allow_template_update", True),
                     source=None,
@@ -208,6 +209,7 @@ class Template:
         description: str,
         parameters: Dict[str, Dict[str, Any]],
         icon: str,
+        ssh_supported: bool,
         immutable_files: List[str],
         allow_update: bool,
         source: Optional[str],
@@ -224,6 +226,7 @@ class Template:
         self.name: str = name
         self.description: str = description
         self.icon = icon
+        self.ssh_supported = ssh_supported
         self.immutable_files: List[str] = immutable_files or []
         self.allow_update: bool = allow_update
         parameters = parameters or {}

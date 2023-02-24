@@ -58,7 +58,13 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
             tempdir_path = Path(tempdir)
 
             self.git_api_provider.download_files_from_api(
-                [".renku/metadata/root", ".renku/metadata/project", ".renku/metadata.yml", "Dockerfile"],
+                [
+                    ".renku/metadata/root",
+                    ".renku/metadata/project",
+                    ".renku/metadata.yml",
+                    ".renku/renku.ini",
+                    "Dockerfile",
+                ],
                 tempdir_path,
                 remote=self.ctx["git_url"],
                 ref=self.request_data.get("ref", None),
