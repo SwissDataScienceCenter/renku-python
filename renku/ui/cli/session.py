@@ -235,7 +235,7 @@ def list_sessions(provider, config, format):
 
 
 def session_start_provider_options(*param_decls, **attrs):
-    """Sets dataset export provider option groups on the dataset export command."""
+    """Sets session provider options groups on the session start command."""
     from renku.core.plugin.session import get_supported_session_providers
     from renku.ui.cli.utils.click import create_options
 
@@ -315,7 +315,7 @@ def stop(session_name, stop_all, provider):
 
 
 def session_open_provider_options(*param_decls, **attrs):
-    """Sets dataset export provider option groups on the dataset export command."""
+    """Sets session provider option groups on the session open command."""
     from renku.core.plugin.session import get_supported_session_providers
     from renku.ui.cli.utils.click import create_options
 
