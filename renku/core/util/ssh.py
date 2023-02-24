@@ -22,9 +22,8 @@ import urllib.parse
 from pathlib import Path
 from typing import NamedTuple, Optional, cast
 
-from cryptography.hazmat.backends import default_backend as crypto_default_backend
 from cryptography.hazmat.primitives import serialization as crypto_serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from renku.core import errors
 from renku.core.session.utils import get_renku_url
@@ -40,10 +39,12 @@ def generate_ssh_keys() -> SSHKeyPair:
     Returns:
         Private Public key pair.
     """
-    key = rsa.generate_private_key(backend=crypto_default_backend(), public_exponent=65537, key_size=4096)
+    key = Ed25519PrivateKey.generate()
 
     private_key = key.private_bytes(
-        crypto_serialization.Encoding.PEM, crypto_serialization.PrivateFormat.PKCS8, crypto_serialization.NoEncryption()
+        crypto_serialization.Encoding.PEM,
+        crypto_serialization.PrivateFormat.OpenSSH,
+        crypto_serialization.NoEncryption(),
     )
 
     public_key = key.public_key().public_bytes(
