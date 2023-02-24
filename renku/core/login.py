@@ -64,7 +64,8 @@ def login(endpoint: Optional[str], git_login: bool, yes: bool):
                 remote_name, remote_url = remote.name, remote.url
 
             if remote_name and remote_url:
-                if not yes and not get_value("renku", "show_login_warning"):
+                show_login_warning = get_value("renku", "show_login_warning")
+                if not yes and (show_login_warning is None or show_login_warning.lower() == "true"):
                     message = (
                         "Remote URL will be changed. Do you want to continue "
                         "(to disable this warning, pass '--yes' or run 'renku config set show_login_warning False')?"
@@ -140,7 +141,8 @@ def login(endpoint: Optional[str], git_login: bool, yes: bool):
         )
         if backup_exists:
             communication.echo(f"Backup remote '{backup_remote_name}' already exists.")
-        elif not remote:
+
+        if not remote and not backup_exists:
             communication.error(f"Cannot create backup remote '{backup_remote_name}' for '{remote_url}'")
         else:
             _set_renku_url_for_remote(
@@ -182,7 +184,6 @@ def _set_renku_url_for_remote(repository: "Repository", remote_name: str, remote
         remote_name(str): Name of the remote.
         remote_url(str): Url of the remote.
         hostname(str): Hostname.
-
     Raises:
         errors.GitCommandError: If remote doesn't exist.
     """

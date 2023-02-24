@@ -97,12 +97,18 @@ the ``renku config`` command:
 | ``lfs_threshold``              | Threshold file size below which     | ``100kb`` |
 |                                | files are not added to git LFS      |           |
 +--------------------------------+-------------------------------------+-----------+
-| ``show_lfs_message``           | Whether to show messages about      | ``True``  |
+| ``show_lfs_message``           | Whether to show messages about      | ``true``  |
 |                                | files being added to git LFS or not |           |
 +--------------------------------+-------------------------------------+-----------+
-| ``show_login_warning``         | Whether to warn when logging in to  | ``True``  |
+| ``show_login_warning``         | Whether to warn when logging in to  | ``true``  |
 |                                | Renku inside a project that causes  |           |
 |                                | project's git remote to be changed. |           |
++--------------------------------+-------------------------------------+-----------+
+| ``ssh_supported``              | Whether the image in this project   | ``false`` |
+|                                | contains an SSH server on port 22   |           |
+|                                | for SSH connections. Used to        |           |
+|                                | override the corresponding project  |           |
+|                                | template setting.                   |           |
 +--------------------------------+-------------------------------------+-----------+
 | ``zenodo.access_token``        | Access token for Zenodo API         | ``None``  |
 +--------------------------------+-------------------------------------+-----------+

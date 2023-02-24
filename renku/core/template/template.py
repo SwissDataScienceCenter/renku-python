@@ -24,7 +24,7 @@ import shutil
 import tempfile
 from enum import Enum, IntEnum, auto
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple
 
 from packaging.version import Version
 
@@ -132,6 +132,7 @@ def copy_template_to_project(
             template_version=rendered_template.template.version,
             immutable_template_files=rendered_template.template.immutable_files.copy(),
             metadata=json.dumps(rendered_template.metadata),
+            ssh_supported=rendered_template.template.ssh_supported,
         )
 
     actions_mapping: Dict[FileAction, Tuple[str, str]] = {
@@ -482,10 +483,7 @@ class RepositoryTemplates(TemplatesSource):
         """Return if template id is available at a reference."""
         try:
             content = self.repository.get_content(TEMPLATE_MANIFEST, revision=reference)
-
-            if isinstance(content, bytes):
-                return False
-            manifest = TemplatesManifest.from_string(cast(str, content))
+            manifest = TemplatesManifest.from_string(content)
         except (errors.FileNotFound, errors.InvalidTemplateError):
             return False
         else:

@@ -95,9 +95,14 @@ class ProjectContext(threading.local):
         return self.path / RENKU_HOME / DATASET_IMAGES
 
     @property
-    def docker_path(self):
+    def docker_path(self) -> Path:
         """Path to the Dockerfile."""
         return self.path / DOCKERFILE
+
+    @property
+    def ssh_authorized_keys_path(self) -> Path:
+        """Path to SSH authorized keys."""
+        return self.path / ".ssh" / "authorized_keys"
 
     @property
     def global_config_dir(self) -> str:
@@ -255,6 +260,7 @@ class ProjectContext(threading.local):
 
         Arguments:
             path(Union[Path, str]): The path to push.
+            save_changes(bool): Whether to save changes to the database or not.
         """
         path = Path(path).resolve()
         self._context_stack.append(ProjectProperties(path=path, save_changes=save_changes))
@@ -280,6 +286,7 @@ class ProjectContext(threading.local):
 
         Arguments:
             path(Union[Path, str]): The path to push.
+            save_changes(bool): Whether to save changes to the database or not.
         """
         with self.with_rollback():
             self.push_path(path=path, save_changes=save_changes)

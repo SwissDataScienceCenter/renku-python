@@ -66,7 +66,7 @@ def no_lfs_warning(project):
 
     For those times in life when mocking just isn't enough.
     """
-    set_value("renku", "show_lfs_message", "False")
+    set_value("renku", "show_lfs_message", "false")
 
     project.repository.add(all=True)
     project.repository.commit(message="Unset show_lfs_message")
@@ -81,7 +81,7 @@ def project_with_lfs_warning(project):
 
     with project_context.with_path(project.path):
         set_value("renku", "lfs_threshold", "0b")
-        set_value("renku", "show_lfs_message", "True")
+        set_value("renku", "show_lfs_message", "true")
 
         project.repository.add(".renku/renku.ini")
         project.repository.commit("update renku.ini")

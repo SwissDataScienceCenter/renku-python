@@ -110,6 +110,10 @@ class AuthenticationError(RenkuException):
     """Raise when there is a problem with authentication."""
 
 
+class KeyNotFoundError(RenkuException):
+    """Raise when an SSH private or public key couldn't be found."""
+
+
 class DirtyRepository(RenkuException):
     """Raise when trying to work with dirty repository."""
 
@@ -524,6 +528,24 @@ class NodeNotFoundError(RenkuException):
             "Please install it, for details see https://nodejs.org/en/download/package-manager/"
         )
         super(NodeNotFoundError, self).__init__(msg)
+
+
+class SSHNotFoundError(RenkuException):
+    """Raised when SSH client is not installed on the system."""
+
+    def __init__(self):
+        """Build a custom message."""
+        msg = "SSH client (ssh) could not be found on this system"
+        super(SSHNotFoundError, self).__init__(msg)
+
+
+class SSHNotSetupError(RenkuException):
+    """Raised when SSH client is not installed on the system."""
+
+    def __init__(self):
+        """Build a custom message."""
+        msg = "SSH is not set up correctly, use 'renku session ssh-setup' to set it up."
+        super(SSHNotSetupError, self).__init__(msg)
 
 
 class ObjectNotFoundError(RenkuException):

@@ -339,6 +339,10 @@ class TemplateStatusResponse(Schema):
         allow_none=True, metadata={"description": "The current version of the template in the template repository."}
     )
 
+    ssh_supported = fields.Boolean(
+        metadata={"description": "Whether this project supports ssh connections to sessions or not."}
+    )
+
 
 class ProjectMigrationCheckResponse(Schema):
     """Response schema for project migration check."""

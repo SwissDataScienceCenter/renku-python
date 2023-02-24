@@ -150,6 +150,9 @@ def _print_project(project):
     click.echo(
         click.style("Project Template: ", bold=True, fg=color.MAGENTA) + click.style(project.template_info, bold=True)
     )
+    click.echo(
+        click.style("SSH Supported: ", bold=True, fg=color.MAGENTA) + click.style(project.ssh_supported, bold=True)
+    )
 
     if project.annotations:
         click.echo(
