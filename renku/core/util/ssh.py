@@ -134,6 +134,9 @@ class SystemSSHConfig:
         project_context.ssh_authorized_keys_path.parent.mkdir(parents=True, exist_ok=True)
         project_context.ssh_authorized_keys_path.touch(mode=0o600, exist_ok=True)
 
+        if not self.public_key_string:
+            raise errors.SSHNotSetupError()
+
         if self.public_key_string in project_context.ssh_authorized_keys_path.read_text():
             return
 

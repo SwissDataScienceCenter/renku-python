@@ -162,7 +162,7 @@ class RenkulabSessionProvider(ISessionProvider):
 
             if not system_config.is_configured:
                 if communication.confirm(
-                    "Your system is not set up for SSH connections to Renku. Would you like to set it up?"
+                    "Your system is not set up for SSH connections to Renkulab. Would you like to set it up?"
                 ):
                     ssh_setup()
                 else:

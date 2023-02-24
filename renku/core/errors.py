@@ -539,6 +539,15 @@ class SSHNotFoundError(RenkuException):
         super(SSHNotFoundError, self).__init__(msg)
 
 
+class SSHNotSetupError(RenkuException):
+    """Raised when SSH client is not installed on the system."""
+
+    def __init__(self):
+        """Build a custom message."""
+        msg = "SSH is not set up correctly, use 'renku session ssh-setup' to set it up."
+        super(SSHNotSetupError, self).__init__(msg)
+
+
 class ObjectNotFoundError(RenkuException):
     """Raised when an object is not found in the storage."""
 

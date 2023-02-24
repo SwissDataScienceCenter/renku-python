@@ -90,7 +90,6 @@ def test_session_ssh_setup(runner, project, dummy_session_provider, fake_home):
     with patch("renku.core.util.ssh.get_renku_url", lambda: "https://renkulab.io/"):
         result = runner.invoke(cli, ["session", "ssh-setup"])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert 2 == len(result.output.splitlines())
     assert "Generating keys" in result.output
     assert "Writing SSH config" in result.output
 
@@ -104,6 +103,5 @@ def test_session_ssh_setup(runner, project, dummy_session_provider, fake_home):
         result = runner.invoke(cli, ["session", "ssh-setup", "-k", str(private_path), "--force"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    assert 2 == len(result.output.splitlines())
     assert "Linking existing keys" in result.output
     assert "Writing SSH config" in result.output

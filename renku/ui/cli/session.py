@@ -106,9 +106,9 @@ You can start a session with SSH support using:
 .. code-block:: console
 
     $ renku session start -p renkulab --ssh
-    Your system is not set up for SSH connections to Renku. Would you like to set it up? [y/N]: y
+    Your system is not set up for SSH connections to Renkulab. Would you like to set it up? [y/N]: y
     [...]
-    SSH connection successfully configured, use 'ssh renkulab.io-myproject-sessionid' to connect.
+    Session sessionid successfully started, use 'renku session open --ssh sessionid' or 'ssh sessionid' to connect to it
 
 This will create SSH keys for you and setup SSH configuration for connecting to the renku deployment.
 You can then use the SSH connection name (``ssh renkulab.io-myproject-sessionid`` in the example)
