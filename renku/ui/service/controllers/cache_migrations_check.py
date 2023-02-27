@@ -96,8 +96,14 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
 
         result_dict = asdict(result)
 
-        if result.errors:
-            for key, value in result.errors.items():
-                result_dict["errors"][key] = pretty_print_error(value)
+        # NOTE: Pretty-print errors for the UI
+        if isinstance(result.template_status, Exception):
+            result_dict["template_status"] = pretty_print_error(result.template_status)
+
+        if isinstance(result.dockerfile_renku_status, Exception):
+            result_dict["dockerfile_renku_status"] = pretty_print_error(result.dockerfile_renku_status)
+
+        if isinstance(result.core_compatibility_status, Exception):
+            result_dict["core_compatibility_status"] = pretty_print_error(result.core_compatibility_status)
 
         return result_response(self.RESPONSE_SERIALIZER, result_dict)

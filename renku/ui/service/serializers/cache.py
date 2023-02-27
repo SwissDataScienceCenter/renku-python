@@ -21,9 +21,9 @@ import uuid
 from urllib.parse import urlparse
 
 from marshmallow import Schema, ValidationError, fields, post_load, pre_load, validates_schema
+from marshmallow_oneofschema import OneOfSchema
 from werkzeug.utils import secure_filename
 
-from renku.command.migrate import MigrationType
 from renku.core import errors
 from renku.core.util.os import normalize_to_ascii
 from renku.domain_model.git import GitURL
@@ -31,6 +31,7 @@ from renku.ui.service.config import PROJECT_CLONE_DEPTH_DEFAULT
 from renku.ui.service.serializers.common import (
     ArchiveSchema,
     AsyncSchema,
+    ErrorResponse,
     FileDetailsSchema,
     LocalRepositorySchema,
     RemoteRepositorySchema,
@@ -276,7 +277,7 @@ class ProjectMigrationCheckRequest(LocalRepositorySchema, RemoteRepositorySchema
     """Request schema for project migration check."""
 
 
-class ProjectCompatibilityResponse(Schema):
+class ProjectCompatibilityResponseDetail(Schema):
     """Response schema outlining service compatibility for migrations check."""
 
     project_metadata_version = fields.String(
@@ -290,7 +291,22 @@ class ProjectCompatibilityResponse(Schema):
     )
 
 
-class DockerfileStatusResponse(Schema):
+class ProjectCompatibilityResponse(OneOfSchema):
+    """Combined schema of DockerfileStatusResponseDetail or Exception."""
+
+    type_schemas = {"detail": ProjectCompatibilityResponseDetail, "error": ErrorResponse}
+
+    def get_obj_type(self, obj):
+        """Get type from object."""
+        from renku.command.migrate import CoreStatusResult
+
+        if isinstance(obj, CoreStatusResult) or (isinstance(obj, dict) and "userMessage" not in obj):
+            return "detail"
+
+        return "error"
+
+
+class DockerfileStatusResponseDetail(Schema):
     """Response schema outlining dockerfile status for migrations check."""
 
     newer_renku_available = fields.Boolean(
@@ -307,7 +323,22 @@ class DockerfileStatusResponse(Schema):
     dockerfile_renku_version = fields.String(metadata={"description": "Version of Renku specified in the Dockerfile."})
 
 
-class TemplateStatusResponse(Schema):
+class DockerfileStatusResponse(OneOfSchema):
+    """Combined schema of DockerfileStatusResponseDetail or Exception."""
+
+    type_schemas = {"detail": DockerfileStatusResponseDetail, "error": ErrorResponse}
+
+    def get_obj_type(self, obj):
+        """Get type from object."""
+        from renku.command.migrate import DockerfileStatusResult
+
+        if isinstance(obj, DockerfileStatusResult) or (isinstance(obj, dict) and "userMessage" not in obj):
+            return "detail"
+
+        return "error"
+
+
+class TemplateStatusResponseDetail(Schema):
     """Response schema outlining template status for migrations check."""
 
     automated_template_update = fields.Boolean(
@@ -345,6 +376,21 @@ class TemplateStatusResponse(Schema):
     )
 
 
+class TemplateStatusResponse(OneOfSchema):
+    """Combined schema of TemplateStatusResponseDetail or Exception."""
+
+    type_schemas = {"detail": TemplateStatusResponseDetail, "error": ErrorResponse}
+
+    def get_obj_type(self, obj):
+        """Get type from object."""
+        from renku.command.migrate import TemplateStatusResult
+
+        if isinstance(obj, TemplateStatusResult) or (isinstance(obj, dict) and "userMessage" not in obj):
+            return "detail"
+
+        return "error"
+
+
 class ProjectMigrationCheckResponse(Schema):
     """Response schema for project migration check."""
 
@@ -368,11 +414,6 @@ class ProjectMigrationCheckResponse(Schema):
     template_status = fields.Nested(
         TemplateStatusResponse,
         metadata={"description": "Fields detailing the status of the project template used by this project."},
-    )
-    errors = fields.Dict(
-        fields.Enum(MigrationType),
-        fields.Dict,
-        metadata={"description": "Errors if there were any (corresponding entry will be empty)."},
     )
 
 

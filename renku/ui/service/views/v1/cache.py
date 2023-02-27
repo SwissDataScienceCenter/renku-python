@@ -97,24 +97,26 @@ def migration_check_project_view_1_5(user_data, cache):
     ctrl = MigrationsCheckCtrl(cache, user_data, dict(request.args), GitlabAPIProvider())
 
     if "project_id" in ctrl.context:  # type: ignore
-        result = asdict(ctrl.execute_op())
+        result = ctrl.execute_op()
     else:
         # NOTE: use quick flow but fallback to regular flow in case of unexpected exceptions
         try:
-            result = asdict(ctrl._fast_op_without_cache())
+            result = ctrl._fast_op_without_cache()
         except (AuthenticationError, ProjectNotFound):
             raise
         except BaseException:
-            result = asdict(ctrl.execute_op())
+            result = ctrl.execute_op()
 
-    if result.get("errors", None):
-        error = result["errors"][list(result["errors"].keys())[0]]
-        return jsonify(JsonRPCResponse().dump({"error": pretty_print_error(error)}))
+    if isinstance(result.core_compatibility_status, Exception):
+        return jsonify(JsonRPCResponse().dump({"error": pretty_print_error(result.core_compatibility_status)}))
 
-    else:
-        del result["errors"]
+    if isinstance(result.template_status, Exception):
+        return jsonify(JsonRPCResponse().dump({"error": pretty_print_error(result.template_status)}))
 
-    return result_response(ProjectMigrationCheckResponseRPC_1_5(), result)
+    if isinstance(result.dockerfile_renku_status, Exception):
+        return jsonify(JsonRPCResponse().dump({"error": pretty_print_error(result.dockerfile_renku_status)}))
+
+    return result_response(ProjectMigrationCheckResponseRPC_1_5(), asdict(result))
 
 
 def add_v1_specific_endpoints(cache_blueprint):

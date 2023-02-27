@@ -871,8 +871,6 @@ def test_check_migrations_local(svc_client_setup):
     assert "template_ref" in response.json["result"]["template_status"]
     assert "template_id" in response.json["result"]["template_status"]
     assert "automated_template_update" in response.json["result"]["template_status"]
-    assert "errors" in response.json["result"]
-    assert not response.json["result"]["errors"]
     assert "ssh_supported" in response.json["result"]["template_status"]
     assert not response.json["result"]["template_status"]["ssh_supported"]
 
@@ -893,8 +891,6 @@ def test_check_migrations_remote(svc_client, identity_headers, it_remote_repo_ur
     assert response.json["result"]["project_supported"]
     assert response.json["result"]["project_renku_version"]
     assert response.json["result"]["core_renku_version"]
-    assert "errors" in response.json["result"]
-    assert not response.json["result"]["errors"]
 
 
 @pytest.mark.service
@@ -946,11 +942,10 @@ def test_migrate_wrong_template_source(svc_client_setup, monkeypatch):
         response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
 
         assert_rpc_response(response)
-        assert "errors" in response.json["result"]
-        assert len(response.json["result"]["errors"]) == 1
-        assert response.json["result"]["errors"].get("CORE").get("userMessage") == (
-            "The reference template for the project is currently unavailable. "
-            "It may be a temporary problem, or the template may not be accessible anymore."
+
+        assert response.json["result"].get("template_status", {}).get("code") == 3140
+        assert "Error accessing the project template" in response.json["result"].get("template_status", {}).get(
+            "devMessage"
         )
 
 
@@ -969,12 +964,11 @@ def test_migrate_wrong_template_ref(svc_client_setup, template, monkeypatch):
         response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
 
         assert_rpc_response(response)
-        assert "errors" in response.json["result"]
-        assert len(response.json["result"]["errors"]) == 1
 
-        assert "Cannot find the reference 'FAKE_REF' in the template repository" in response.json["result"][
-            "errors"
-        ].get("CORE").get("userMessage")
+        assert response.json["result"].get("template_status", {}).get("code") == 1141
+        assert "Cannot find the reference 'FAKE_REF' in the template repository" in response.json["result"].get(
+            "template_status", {}
+        ).get("devMessage")
 
 
 @pytest.mark.service

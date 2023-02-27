@@ -18,8 +18,7 @@
 """Migrate project to the latest Renku version."""
 
 from dataclasses import dataclass
-from enum import Enum, auto
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 from pydantic import validate_arguments
 
@@ -35,14 +34,6 @@ NON_RENKU_REPOSITORY = 8
 TEMPLATE_UPDATE_POSSIBLE = 16
 AUTOMATED_TEMPLATE_UPDATE_SUPPORTED = 32
 DOCKERFILE_UPDATE_POSSIBLE = 64
-
-
-class MigrationType(Enum):
-    """Enum for different migration types."""
-
-    CORE = auto()
-    DOCKERFILE = auto()
-    TEMPLATE = auto()
 
 
 @dataclass
@@ -85,10 +76,9 @@ class MigrationCheckResult:
     project_supported: bool
     core_renku_version: str
     project_renku_version: Optional[str]
-    core_compatibility_status: Optional[CoreStatusResult]
-    dockerfile_renku_status: Optional[DockerfileStatusResult]
-    template_status: Optional[TemplateStatusResult]
-    errors: Optional[Dict[MigrationType, Exception]] = None
+    core_compatibility_status: Union[CoreStatusResult, Exception]
+    dockerfile_renku_status: Union[DockerfileStatusResult, Exception]
+    template_status: Union[TemplateStatusResult, Exception]
 
     @staticmethod
     def from_minimum_version_error(minimum_version_error: MinimumVersionError) -> "MigrationCheckResult":
@@ -138,25 +128,20 @@ def _migrations_check() -> MigrationCheckResult:
 
     core_version, latest_version = _migrations_versions()
 
-    errors: Dict[MigrationType, Exception] = {}
+    try:
+        core_compatibility_status: Union[CoreStatusResult, Exception] = _metadata_migration_check()
+    except Exception as e:
+        core_compatibility_status = e
 
     try:
-        core_compatibility_status = _metadata_migration_check()
+        docker_status: Union[DockerfileStatusResult, Exception] = _dockerfile_migration_check()
     except Exception as e:
-        core_compatibility_status = None
-        errors[MigrationType.CORE] = e
+        docker_status = e
 
     try:
-        docker_status = _dockerfile_migration_check()
+        template_status: Union[TemplateStatusResult, Exception] = _template_migration_check()
     except Exception as e:
-        docker_status = None
-        errors[MigrationType.CORE] = e
-
-    try:
-        template_status = _template_migration_check()
-    except Exception as e:
-        template_status = None
-        errors[MigrationType.CORE] = e
+        template_status = e
 
     return MigrationCheckResult(
         project_supported=not is_project_unsupported(),
@@ -165,7 +150,6 @@ def _migrations_check() -> MigrationCheckResult:
         core_compatibility_status=core_compatibility_status,
         dockerfile_renku_status=docker_status,
         template_status=template_status,
-        errors=errors,
     )
 
 

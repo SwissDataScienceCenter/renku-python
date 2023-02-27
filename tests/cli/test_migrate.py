@@ -69,7 +69,6 @@ def test_migration_check(isolated_runner, project):
         "core_compatibility_status",
         "dockerfile_renku_status",
         "template_status",
-        "errors",
     }
     assert output["core_compatibility_status"].keys() == {
         "project_metadata_version",
