@@ -877,6 +877,8 @@ def test_check_migrations_local(svc_client_setup):
     assert "template_ref" in response.json["result"]["template_status"]
     assert "template_id" in response.json["result"]["template_status"]
     assert "automated_template_update" in response.json["result"]["template_status"]
+    assert "ssh_supported" in response.json["result"]["template_status"]
+    assert not response.json["result"]["template_status"]["ssh_supported"]
 
 
 @pytest.mark.service

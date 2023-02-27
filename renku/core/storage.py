@@ -90,7 +90,7 @@ def check_external_storage_wrapper(fn):
         ``errors.ExternalStorageNotInstalled``: If external storage isn't installed.
         ``errors.ExternalStorageDisabled``: If external storage isn't enabled.
     """
-    # noqa
+
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
         if not check_external_storage():
@@ -219,11 +219,11 @@ def track_paths_in_storage(*paths):
             raise errors.ParameterError(f"Couldn't run 'git lfs':\n{e}")
 
     show_message = get_value("renku", "show_lfs_message")
-    if track_paths and (show_message is None or show_message == "True"):
+    if track_paths and (show_message is None or show_message.lower() == "true"):
         files_list = "\n\t".join(track_paths)
         communication.info(
             f"Adding these files to Git LFS:\n\t{files_list}"
-            "\nTo disable this message in the future, run:\n\trenku config set show_lfs_message False"
+            "\nTo disable this message in the future, run:\n\trenku config set show_lfs_message false"
         )
 
     return track_paths

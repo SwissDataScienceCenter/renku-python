@@ -17,10 +17,10 @@
 # limitations under the License.
 """Test Activity."""
 
-from datetime import datetime
 from unittest.mock import MagicMock
 from uuid import uuid4
 
+from renku.core.util.datetime8601 import local_now
 from renku.domain_model.entity import Entity
 from renku.domain_model.provenance.activity import Activity
 from renku.domain_model.provenance.agent import Person
@@ -77,8 +77,8 @@ def test_activity_parameter_values(project_with_injection, mocker):
         plan,
         repository=project_with_injection.repository,
         project_gateway=project_gateway,
-        started_at_time=datetime.utcnow(),
-        ended_at_time=datetime.utcnow(),
+        started_at_time=local_now(remove_microseconds=False),
+        ended_at_time=local_now(remove_microseconds=False),
         annotations=[],
     )
 

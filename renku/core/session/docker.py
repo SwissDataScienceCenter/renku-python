@@ -17,8 +17,9 @@
 # limitations under the License.
 """Docker based interactive session provider."""
 
+import webbrowser
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, cast
 from uuid import uuid4
 
 import docker
@@ -31,6 +32,9 @@ from renku.core.plugin import hookimpl
 from renku.core.util import communication
 from renku.domain_model.project_context import project_context
 from renku.domain_model.session import ISessionProvider, Session
+
+if TYPE_CHECKING:
+    from renku.core.dataset.providers.models import ProviderParameter
 
 
 class DockerSessionProvider(ISessionProvider):
@@ -71,7 +75,8 @@ class DockerSessionProvider(ISessionProvider):
     def _get_docker_containers(self, project_name: str) -> List[docker.models.containers.Container]:
         return self.docker_client().containers.list(filters={"label": f"renku_project={project_name}"})
 
-    def get_name(self) -> str:
+    @property
+    def name(self) -> str:
         """Return session provider's name."""
         return "docker"
 
@@ -109,9 +114,17 @@ class DockerSessionProvider(ISessionProvider):
         """Supported session provider.
 
         Returns:
-            a reference to ``self``.
+            A reference to ``self``.
         """
         return self
+
+    def get_start_parameters(self) -> List["ProviderParameter"]:
+        """Returns parameters that can be set for session start."""
+        return []
+
+    def get_open_parameters(self) -> List["ProviderParameter"]:
+        """Returns parameters that can be set for session open."""
+        return []
 
     def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
@@ -140,6 +153,7 @@ class DockerSessionProvider(ISessionProvider):
         mem_request: Optional[str] = None,
         disk_request: Optional[str] = None,
         gpu_request: Optional[str] = None,
+        **kwargs,
     ) -> Tuple[str, str]:
         """Creates an interactive session.
 
@@ -258,6 +272,21 @@ class DockerSessionProvider(ISessionProvider):
             return True
         except docker.errors.APIError as error:
             raise errors.DockerError(error.msg)
+
+    def session_open(self, project_name: str, session_name: str, **kwargs) -> bool:
+        """Open a given interactive session.
+
+        Args:
+            project_name(str): Renku project name.
+            session_name(str): The unique id of the interactive session.
+        """
+        url = self.session_url(session_name)
+
+        if not url:
+            return False
+
+        webbrowser.open(url)
+        return True
 
     def session_url(self, session_name: str) -> Optional[str]:
         """Get the URL of the interactive session."""

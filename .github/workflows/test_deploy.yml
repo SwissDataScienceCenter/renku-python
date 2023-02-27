@@ -3,9 +3,16 @@ name: Test, Integration Tests and Deploy
 on:
   push:
     branches:
-      - "**"
+      - master
+      - develop
+      - "release/**" # otherwise PRs created by the PR action don't execute tests
     tags:
       - "v*.*.*"
+  pull_request:
+    types: [opened, reopened, synchronize]
+    branches:
+      - "!release/**"
+
 env:
   DEPENDENCY_CACHE_PREFIX: "v2"
   NETWORK_CACHE_PREFIX: "v1"

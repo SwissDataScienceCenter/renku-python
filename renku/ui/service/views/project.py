@@ -22,7 +22,7 @@ from renku.ui.service.config import SERVICE_PREFIX
 from renku.ui.service.controllers.project_edit import ProjectEditCtrl
 from renku.ui.service.controllers.project_lock_status import ProjectLockStatusCtrl
 from renku.ui.service.controllers.project_show import ProjectShowCtrl
-from renku.ui.service.views.api_versions import VERSIONS_FROM_V1_0, VersionedBlueprint
+from renku.ui.service.views.api_versions import ALL_VERSIONS, VersionedBlueprint
 from renku.ui.service.views.decorators import accepts_json, requires_cache, requires_identity
 from renku.ui.service.views.error_handlers import handle_common_except, handle_project_write_errors
 
@@ -30,9 +30,7 @@ PROJECT_BLUEPRINT_TAG = "project"
 project_blueprint = VersionedBlueprint(PROJECT_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
-@project_blueprint.route(
-    "/project.show", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_FROM_V1_0
-)
+@project_blueprint.route("/project.show", methods=["POST"], provide_automatic_options=False, versions=ALL_VERSIONS)
 @handle_common_except
 @accepts_json
 @requires_cache
@@ -60,9 +58,7 @@ def show_project_view(user_data, cache):
     return ProjectShowCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
-@project_blueprint.route(
-    "/project.edit", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_FROM_V1_0
-)
+@project_blueprint.route("/project.edit", methods=["POST"], provide_automatic_options=False, versions=ALL_VERSIONS)
 @handle_common_except
 @handle_project_write_errors
 @accepts_json
@@ -94,7 +90,7 @@ def edit_project_view(user_data, cache):
 
 
 @project_blueprint.route(
-    "/project.lock_status", methods=["GET"], provide_automatic_options=False, versions=VERSIONS_FROM_V1_0
+    "/project.lock_status", methods=["GET"], provide_automatic_options=False, versions=ALL_VERSIONS
 )
 @handle_common_except
 @requires_cache

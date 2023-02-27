@@ -655,19 +655,16 @@ def _process_datasets(
 
     for dataset in datasets:
         dataset, tags = convert_dataset(dataset=dataset, revision=revision)
-        if is_last_commit:
-            datasets_provenance.update_during_migration(
-                dataset,
-                commit_sha=revision,
-                date=date,
-                tags=tags,
-                replace=True,
-                preserve_identifiers=preserve_identifiers,
-            )
-        else:
-            datasets_provenance.update_during_migration(
-                dataset, commit_sha=revision, date=date, tags=tags, preserve_identifiers=preserve_identifiers
-            )
+
+        datasets_provenance.update_during_migration(
+            dataset,
+            commit_sha=revision,
+            date=date,
+            tags=tags,
+            replace=True if is_last_commit else False,
+            preserve_identifiers=preserve_identifiers,
+        )
+
     for dataset in deleted_datasets:
         dataset, _ = convert_dataset(dataset=dataset, revision=revision)
         datasets_provenance.update_during_migration(

@@ -85,6 +85,7 @@ def load_downstream_relations(token, catalog, cache):
 
 def initialize_database(database):
     """Initialize an empty database with all required metadata."""
+    # NOTE: A list of existing and removed activities
     database.add_index(name="activities", object_type=Activity, attribute="id")
     database.add_root_object(name="activities-by-usage", obj=RenkuOOBTree())
     database.add_root_object(name="activities-by-generation", obj=RenkuOOBTree())

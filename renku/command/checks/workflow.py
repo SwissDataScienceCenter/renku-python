@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Checks needed to determine integrity of workflows."""
-
+from datetime import timedelta
 from typing import List, Optional, Tuple, cast
 
 from renku.command.command_builder import inject
@@ -64,7 +64,7 @@ def check_activity_catalog(fix, force, **_) -> Tuple[bool, Optional[str]]:
 
 
 @inject.autoparams("plan_gateway")
-def check_modification_date(fix, plan_gateway: IPlanGateway, **_) -> Tuple[bool, Optional[str]]:
+def check_plan_modification_date(fix, plan_gateway: IPlanGateway, **_) -> Tuple[bool, Optional[str]]:
     """Check if all plans have modification date set for them.
 
     Args:
@@ -88,7 +88,7 @@ def check_modification_date(fix, plan_gateway: IPlanGateway, **_) -> Tuple[bool,
         ids = [plan.id for plan in to_be_processed]
         message = (
             WARNING
-            + "The following workflows have incorrect modification date (use 'renku doctor --fix' to fix them).:\n\t"
+            + "The following workflows have incorrect modification date (use 'renku doctor --fix' to fix them):\n\t"
             + "\n\t".join(ids)
         )
         return False, message
@@ -124,4 +124,6 @@ def fix_plan_dates(plans: List[AbstractPlan], plan_gateway):
             plan.unfreeze()
             plan.date_modified = plan.date_created
             plan.date_created = creation_date
+            if plan.date_removed and plan.date_removed < plan.date_created:
+                plan.date_removed = plan.date_created + timedelta(seconds=1)
             plan.freeze()

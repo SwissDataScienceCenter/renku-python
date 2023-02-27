@@ -44,12 +44,18 @@ from typing import (
     TypeVar,
     Union,
     cast,
+    overload,
 )
 
 import git
 
 from renku.core import errors
 from renku.core.util.os import delete_dataset_file, get_absolute_path
+
+try:
+    from typing_extensions import Literal  # NOTE: Required for Python 3.7 compatibility
+except ImportError:
+    from typing import Literal  # type: ignore
 
 NULL_TREE = git.NULL_TREE
 _MARKER = object()
@@ -544,6 +550,28 @@ class BaseRepository:
                 pass
 
         return ignored
+
+    @overload
+    def get_content(
+        self,
+        path: Union[Path, str],
+        *,
+        revision: Optional[Union["Reference", str]] = None,
+        checksum: Optional[str] = None,
+        binary: Literal[False] = False,
+    ) -> str:
+        ...
+
+    @overload
+    def get_content(
+        self,
+        path: Union[Path, str],
+        *,
+        revision: Optional[Union["Reference", str]] = None,
+        checksum: Optional[str] = None,
+        binary: Literal[True],
+    ) -> bytes:
+        ...
 
     def get_content(
         self,
