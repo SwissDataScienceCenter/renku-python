@@ -49,7 +49,7 @@ def test_versions_differences(svc_client, identity_headers, it_remote_repo_url):
     assert 200 == response_default.status_code
     assert response_default.json["result"]["core_compatibility_status"]["migration_required"] is True
     assert response_default.json["result"].keys() == response_new.json["result"].keys()
-    assert response_default.json["result"].keys() != response_old.json["result"].keys()
+    assert response_default.json["result"].keys() == response_old.json["result"].keys()
     assert (
         response_default.json["result"]["template_status"].keys()
         == response_new.json["result"]["template_status"].keys()
