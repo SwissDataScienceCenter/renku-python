@@ -18,6 +18,30 @@
 Changes
 =======
 
+`2.3.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.2.0...v2.3.0>`__ (2023-02-27)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** fix renku workflow visualize crashing for large graphs due
+   to a curses error
+   (`#3273 <https://github.com/SwissDataScienceCenter/renku-python/issues/3273>`__)
+   (`5898cbb <https://github.com/SwissDataScienceCenter/renku-python/commit/5898cbb5756c86013c169e234e8002285e4e84a7>`__)
+-  **core:** metadata v10 migration fixes
+   (`#3326 <https://github.com/SwissDataScienceCenter/renku-python/issues/3326>`__)
+   (`38aa53c <https://github.com/SwissDataScienceCenter/renku-python/commit/38aa53c3fa2a15976ff1cce68b5a21ca24df2078>`__)
+-  **svc:** properly use Redis sentinel
+   (`#3319 <https://github.com/SwissDataScienceCenter/renku-python/issues/3319>`__)
+   (`4a52069 <https://github.com/SwissDataScienceCenter/renku-python/commit/4a5206971fb8212a399d06132fe811d948edb96f>`__)
+
+Features
+~~~~~~~~
+
+-  **core:** add support for ssh connections into sessions
+   (`#3318 <https://github.com/SwissDataScienceCenter/renku-python/issues/3318>`__)
+   (`c024650 <https://github.com/SwissDataScienceCenter/renku-python/commit/c024650c96beef6d1ae2153b18b5b142171f2d80>`__)
+
 `2.2.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.1.0...v2.2.0>`__ (2023-02-10)
 -------------------------------------------------------------------------------------------------------
 
