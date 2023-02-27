@@ -56,7 +56,7 @@ class GraphExportCtrl(ServiceCtrl, RenkuOperationMixin):
         """Renku operation for the controller."""
         result = migrations_check().build().execute().output
 
-        if not result["project_supported"]:
+        if not result.project_supported:
             raise RenkuException("project not supported")
 
         callback_payload = {

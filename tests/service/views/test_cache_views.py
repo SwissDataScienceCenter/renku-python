@@ -971,10 +971,10 @@ def test_migrate_wrong_template_ref(svc_client_setup, template, monkeypatch):
         assert_rpc_response(response)
         assert "errors" in response.json["result"]
         assert len(response.json["result"]["errors"]) == 1
-        assert (
-            response.json["result"]["errors"][0]
-            == "Template status: Cannot clone template repository from https://FAKE_URL"
-        )
+
+        assert "Cannot find the reference 'FAKE_REF' in the template repository" in response.json["result"][
+            "errors"
+        ].get("CORE").get("userMessage")
 
 
 @pytest.mark.service

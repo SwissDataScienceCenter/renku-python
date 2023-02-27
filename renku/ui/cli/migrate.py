@@ -60,6 +60,7 @@ by running
 """
 import json
 import os
+from dataclasses import asdict
 
 import click
 
@@ -153,7 +154,7 @@ def migrationscheck():
     from renku.command.migrate import migrations_check
 
     result = migrations_check().lock_project().build().execute().output
-    result_dict = result.as_dict()
+    result_dict = asdict(result)
 
     if result_dict.get("errors"):
         for key, value in result_dict["errors"]:
