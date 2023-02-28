@@ -10,8 +10,8 @@ on:
       - "v*.*.*"
   pull_request:
     types: [opened, reopened, synchronize]
-    branches:
-      - "!release/**"
+    branches-ignore:
+      - "release/**"
 
 env:
   DEPENDENCY_CACHE_PREFIX: "v2"
