@@ -365,7 +365,11 @@ def is_path_safe(path: Union[Path, str]) -> bool:
 
 
 def get_entity_from_revision(
-    repository: "Repository", path: Union[Path, str], revision: Optional[str] = None, bypass_cache: bool = False
+    repository: "Repository",
+    path: Union[Path, str],
+    revision: Optional[str] = None,
+    bypass_cache: bool = False,
+    checksum: Optional[str] = None,
 ) -> "Entity":
     """Return an Entity instance from given path and revision.
 
@@ -374,7 +378,7 @@ def get_entity_from_revision(
         path(Union[Path, str]): The path of the entity.
         revision(str, optional): The revision to check at (Default value = None).
         bypass_cache(bool): Whether to ignore cached entries and get information from disk (Default value = False).
-
+        checksum(str, optional): Pre-calculated checksum for performance reasons, will be calculated if not set.
     Returns:
         Entity: The Entity for the given path and revision.
 
@@ -407,7 +411,8 @@ def get_entity_from_revision(
         return cached_entry
 
     # NOTE: For untracked directory the hash is None; make sure to stage them first before calling this function.
-    checksum = repository.get_object_hash(revision=revision, path=path)
+    if not checksum:
+        checksum = repository.get_object_hash(revision=revision, path=path)
     # NOTE: If object was not found at a revision it's either removed or exists in a different revision; keep the
     # entity and use revision as checksum
     if isinstance(revision, str) and revision == "HEAD":
