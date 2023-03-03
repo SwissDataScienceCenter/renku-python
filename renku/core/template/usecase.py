@@ -228,7 +228,9 @@ def update_template(force: bool, interactive: bool, dry_run: bool) -> Optional[T
         input_parameters=None,
     )
 
-    return TemplateChangeViewModel.from_template(template=rendered_template, actions=actions)
+    return TemplateChangeViewModel.from_template(
+        template=rendered_template, actions=actions, old_id=template_metadata.id
+    )
 
 
 @inject.autoparams("project_gateway")
