@@ -38,6 +38,8 @@ if TYPE_CHECKING:
 
 
 class ParameterReference(NamedTuple):
+    """Reference to a workflow parameter."""
+
     id: str
     plan_id: str
     type: str

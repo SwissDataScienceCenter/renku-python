@@ -42,6 +42,8 @@ def _safe_get_provider(provider: str) -> ISessionProvider:
 
 
 class SessionList(NamedTuple):
+    """Session list return."""
+
     sessions: List[Session]
     all_local: bool
     warning_messages: List[str]

@@ -31,6 +31,8 @@ from renku.domain_model.project_context import project_context
 
 
 class SSHKeyPair(NamedTuple):
+    """A public/private key pair for SSH."""
+
     private_key: str
     public_key: str
 

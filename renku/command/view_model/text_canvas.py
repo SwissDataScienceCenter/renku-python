@@ -29,6 +29,8 @@ if TYPE_CHECKING:
 
 
 class Point(NamedTuple):
+    """A point with coordinates for rendering."""
+
     x: int
     y: int
 

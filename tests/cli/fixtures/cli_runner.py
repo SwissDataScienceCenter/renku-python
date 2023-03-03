@@ -25,6 +25,8 @@ if TYPE_CHECKING:
 
 
 class Result(NamedTuple):
+    """CLI execution result."""
+
     exit_code: int
     activities: Union[None, "Activity", List["Activity"]]
 

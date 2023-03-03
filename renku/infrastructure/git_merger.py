@@ -42,6 +42,8 @@ from renku.version import __version__
 
 
 class RemoteEntry(NamedTuple):
+    """Reference to an entry in a database on a separate branch."""
+
     reference: str
     database: Database
     path: Path
