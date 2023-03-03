@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -37,7 +36,7 @@ class SetConfigCtrl(ServiceCtrl, RenkuOpSyncMixin):
         config_keys = ", ".join(request_data["config"].keys())
         self.ctx["commit_message"] = f"{MESSAGE_PREFIX} config set {config_keys}"
 
-        super(SetConfigCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
+        super().__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
     @property
     def context(self):

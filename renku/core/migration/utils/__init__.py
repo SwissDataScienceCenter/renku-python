@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -47,7 +46,7 @@ def generate_url_id(url_str, url_id):
         host = project_context.remote.host or host
     host = os.environ.get("RENKU_DOMAIN") or host
 
-    return urljoin("https://{host}".format(host=host), posixpath.join("/urls", quote(id_, safe="")))
+    return urljoin(f"https://{host}", posixpath.join("/urls", quote(id_, safe="")))
 
 
 def generate_dataset_tag_id(name, commit):
@@ -57,9 +56,9 @@ def generate_dataset_tag_id(name, commit):
         host = project_context.remote.host or host
     host = os.environ.get("RENKU_DOMAIN") or host
 
-    name = "{0}@{1}".format(name, commit)
+    name = f"{name}@{commit}"
 
-    return urljoin("https://{host}".format(host=host), posixpath.join("/dataset-tags", quote(name, safe="")))
+    return urljoin(f"https://{host}", posixpath.join("/dataset-tags", quote(name, safe="")))
 
 
 def generate_dataset_id(identifier):

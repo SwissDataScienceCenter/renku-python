@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2017-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -27,4 +26,4 @@ class OptionalGroup(click.Group):
         """Check if the first argument is an existing command."""
         if args and args[0] in self.commands:
             args.insert(0, "")
-        super(OptionalGroup, self).parse_args(ctx, args)
+        super().parse_args(ctx, args)

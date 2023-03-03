@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -40,7 +39,7 @@ class IWorkflowFileParser(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def parse(self, path: Union[Path, str]) -> "WorkflowFile":
+    def parse(self, path: Union[Path, str]) -> WorkflowFile:
         """Parse a given workflow file using the provider.
 
         Args:

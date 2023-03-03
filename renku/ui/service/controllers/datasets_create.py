@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -39,7 +38,7 @@ class DatasetsCreateCtrl(ServiceCtrl, RenkuOpSyncMixin):
         self.ctx = DatasetsCreateCtrl.REQUEST_SERIALIZER.load(request_data)
         self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset create {self.ctx['name']}"
 
-        super(DatasetsCreateCtrl, self).__init__(cache, user_data, request_data, migrate_project)
+        super().__init__(cache, user_data, request_data, migrate_project)
 
     @property
     def context(self):

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -69,7 +68,7 @@ def setup_mergetool(with_attributes: bool = True):
     pattern_string = ".renku/metadata/**    merge=renkumerge\n"
 
     if attributes_path.exists():
-        with open(attributes_path, "r") as f:
+        with open(attributes_path) as f:
             content = f.readlines()
             if pattern_string in content:
                 return

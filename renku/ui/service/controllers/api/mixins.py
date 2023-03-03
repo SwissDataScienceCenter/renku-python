@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -50,7 +49,7 @@ PROJECT_FETCH_TIME = 30
 
 def local_identity(method):
     """Ensure identity on local execution."""
-    # noqa
+
     @wraps(method)
     def _impl(self, *method_args, **method_kwargs):
         """Implementation of method wrapper."""

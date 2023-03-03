@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -31,7 +30,7 @@ class TemplateVariableFormatter(Formatter):
     RESERVED_KEYS = ["iter_index"]
 
     def __init__(self):
-        super(TemplateVariableFormatter, self).__init__()
+        super().__init__()
 
     def apply(self, param: str, parameters: Mapping[str, Any] = {}) -> str:
         """Renders the parameter template into its final value."""

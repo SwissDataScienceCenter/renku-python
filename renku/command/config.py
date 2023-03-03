@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -39,7 +38,7 @@ def _split_section_and_key(key):
     """
     parts = key.split(".")
     if len(parts) > 1:
-        return "{0}".format(parts[0]), ".".join(parts[1:])
+        return f"{parts[0]}", ".".join(parts[1:])
     return "renku", key
 
 
@@ -98,7 +97,7 @@ def _update_config(
     if remove:
         value = remove_value(section, section_key, global_only=global_only)
         if value is None:
-            raise errors.ParameterError('Key "{}" not found.'.format(key))
+            raise errors.ParameterError(f'Key "{key}" not found.')
     else:
         set_value(section, section_key, value, global_only=global_only)
         return value

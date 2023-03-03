@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -107,7 +106,7 @@ def _remove(sources: List[str], edit_command: EditCommandCallable, dataset_gatew
                 edit_command(filename=str(project_context.path / ".gitattributes"))
 
     # Finally remove the files.
-    files_to_remove = set(str(project_context.path / f) for f in files.values())
+    files_to_remove = {str(project_context.path / f) for f in files.values()}
     final_sources = list(files_to_remove)
     if final_sources:
         run(["git", "rm", "-rf"] + final_sources, check=True)

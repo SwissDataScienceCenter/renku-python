@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -117,7 +116,7 @@ class DatasetAddRequest(
         """Check serialized file list."""
         for _file in data["files"]:
             if "file_id" in _file and "file_path" in _file:
-                raise ValidationError(("invalid reference found:" "use either `file_id` or `file_path`"))
+                raise ValidationError("invalid reference found: use either `file_id` or `file_path`")
 
         return data
 

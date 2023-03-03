@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2018-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -138,7 +137,7 @@ class BaseRepository:
         return RemoteManager(self._repository)
 
     @property  # type: ignore
-    @lru_cache()
+    @lru_cache
     def submodules(self) -> "SubmoduleManager":
         """Return a list of submodules."""
         if self._repository is None:
@@ -975,7 +974,7 @@ class BaseRepository:
     def hash_string(content: str) -> str:
         """Calculate the object-hash for a blob with specified content."""
         content_bytes = content.encode("utf-8")
-        data = f"blob {len(content_bytes)}\0".encode("utf-8") + content_bytes
+        data = f"blob {len(content_bytes)}\0".encode() + content_bytes
         return hashlib.sha1(data).hexdigest()  # nosec
 
 

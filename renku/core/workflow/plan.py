@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -795,10 +794,10 @@ def get_plans_with_metadata(activity_gateway: IActivityGateway, plan_gateway: IP
 
     all_activities = activity_gateway.get_all_activities()
     activity_map = _reverse_activity_plan_map(list(all_activities))
-    latest_plan_chains: Set[Tuple[AbstractPlan]] = set(
+    latest_plan_chains: Set[Tuple[AbstractPlan]] = {
         cast(Tuple[AbstractPlan], tuple(get_derivative_chain(p)))
         for p in plan_gateway.get_newest_plans_by_names().values()
-    )
+    }
 
     result: Dict[str, Union[Plan, CompositePlan]] = {}
     touches_file_cache: Dict[str, bool] = {}

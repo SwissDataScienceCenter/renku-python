@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -105,7 +104,7 @@ def write_template_checksum(checksums: Dict):
 def read_template_checksum() -> Dict[str, str]:
     """Read templates checksum file for a project."""
     if has_template_checksum():
-        with open(project_context.template_checksums_path, "r") as checksum_file:
+        with open(project_context.template_checksums_path) as checksum_file:
             return json.load(checksum_file)
 
     return {}

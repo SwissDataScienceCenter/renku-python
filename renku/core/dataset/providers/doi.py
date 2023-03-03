@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -57,7 +56,7 @@ class DOIProvider(ProviderApi, ImportProviderInterface):
             response = requests.get(url, headers=self.headers)
 
             if response.status_code != 200:
-                raise LookupError("record not found. Status: {}".format(response.status_code))
+                raise LookupError(f"record not found. Status: {response.status_code}")
 
             return response
 

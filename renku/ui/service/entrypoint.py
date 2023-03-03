@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -89,7 +88,7 @@ def create_app(custom_exceptions=True):
         """Service health check."""
         import renku
 
-        return "renku repository service version {}\n".format(renku.__version__)
+        return f"renku repository service version {renku.__version__}\n"
 
     if custom_exceptions:
         register_exceptions(app)
@@ -163,11 +162,7 @@ app = create_app()
 @app.after_request
 def after_request(response):
     """After request handler."""
-    service_log.info(
-        "{0} {1} {2} {3} {4}".format(
-            request.remote_addr, request.method, request.scheme, request.full_path, response.status
-        )
-    )
+    service_log.info(f"{request.remote_addr} {request.method} {request.scheme} {request.full_path} {response.status}")
 
     return response
 

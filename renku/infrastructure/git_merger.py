@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -41,9 +40,12 @@ from renku.infrastructure.database import Database, Index
 from renku.infrastructure.repository import Repository
 from renku.version import __version__
 
-RemoteEntry = NamedTuple(
-    "RemoteEntry", [("reference", str), ("database", Database), ("path", Path), ("repository", Repository)]
-)
+
+class RemoteEntry(NamedTuple):
+    reference: str
+    database: Database
+    path: Path
+    repository: Repository
 
 
 class GitMerger:

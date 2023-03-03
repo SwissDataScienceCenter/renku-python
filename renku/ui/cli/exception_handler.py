@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -154,7 +153,7 @@ class IssueFromTraceback(RenkuExceptionsHandler):
                 scope.user = {"name": user.name, "email": user.email}
 
             event_id = capture_exception()
-            click.echo(_BUG + "Recorded in Sentry with ID: {0}\n".format(event_id), err=True)
+            click.echo(_BUG + f"Recorded in Sentry with ID: {event_id}\n", err=True)
             raise
 
     def _handle_github(self):

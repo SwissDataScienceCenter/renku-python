@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -243,7 +242,7 @@ def _extract_iterate_parameters(values: Dict[str, Any], index_pattern: re.Patter
                 if tag in iter_params["tagged"]:
                     iter_params["tagged"][tag].update([(f"{param_name}.{ik}", iv) for ik, iv in param.items()])
                 else:
-                    iter_params["tagged"][tag] = dict([(f"{param_name}.{ik}", iv) for ik, iv in param.items()])
+                    iter_params["tagged"][tag] = {f"{param_name}.{ik}": iv for ik, iv in param.items()}
             params[param_name] = inner_params
         else:
             params[param_name] = param_value
@@ -346,8 +345,7 @@ def _build_iterations(
     def _flatten(values):
         for i in values:
             if isinstance(i, (list, tuple)):
-                for k in i:
-                    yield k
+                yield from i
             else:
                 yield i
 

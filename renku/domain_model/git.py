@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2018-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -80,7 +79,7 @@ def filter_repo_name(repo_name: str) -> str:
 
 
 @attr.s()
-class GitURL(object):
+class GitURL:
     """Parser for common Git URLs."""
 
     # Initial value

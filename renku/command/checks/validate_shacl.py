@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -51,7 +50,7 @@ def _shacl_graph_to_string(graph):
         res = graph.value(result, sh.resultMessage)
 
         if res:
-            message = "{0}: {1}".format(path, res)
+            message = f"{path}: {res}"
         else:
             kind = graph.value(result, sh.sourceConstraintComponent)
             focus_node = graph.value(result, sh.focusNode)
@@ -59,7 +58,7 @@ def _shacl_graph_to_string(graph):
             if isinstance(focus_node, BNode):
                 focus_node = "<Anonymous>"
 
-            message = "{0}: Type: {1}, Node ID: {2}".format(path, kind, focus_node)
+            message = f"{path}: Type: {kind}, Node ID: {focus_node}"
 
         problems.append(message)
 
@@ -82,7 +81,7 @@ def check_project_structure(**_):
     if conform:
         return True, None
 
-    problems = "{0}Invalid structure of project metadata\n\t{1}".format(WARNING, _shacl_graph_to_string(graph))
+    problems = f"{WARNING}Invalid structure of project metadata\n\t{_shacl_graph_to_string(graph)}"
 
     return False, problems
 

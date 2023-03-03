@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2018-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -794,7 +793,7 @@ class Storage:
                 with io.TextIOWrapper(compressor) as out:
                     json.dump(data, out, ensure_ascii=False)
         else:
-            with open(path, "wt") as ft:
+            with open(path, "w") as ft:
                 json.dump(data, ft, ensure_ascii=False, sort_keys=True, indent=2)
 
     def load(self, filename: str, absolute: bool = False):
@@ -1031,7 +1030,7 @@ class ObjectReader:
                 # NOTE: we had a circular reference, we return the (not yet finalized) class here
                 return self._deserialization_cache[data["@renku_data_value"]]
             elif object_type == SET_TYPE:
-                return set([self._deserialize_helper(value) for value in data["@renku_data_value"]])
+                return {self._deserialize_helper(value) for value in data["@renku_data_value"]}
             elif object_type == FROZEN_SET_TYPE:
                 return frozenset([self._deserialize_helper(value) for value in data["@renku_data_value"]])
 

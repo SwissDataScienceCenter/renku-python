@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -747,11 +746,9 @@ def edit(name, title, description, creators, metadata, metadata_source, keywords
 
     if not updated:
         click.echo(
-            (
-                "Nothing to update. "
-                "Check available fields with `renku dataset edit --help`\n\n"
-                'Hint: `renku dataset edit --title "new title"`'
-            )
+            "Nothing to update. "
+            "Check available fields with `renku dataset edit --help`\n\n"
+            'Hint: `renku dataset edit --title "new title"`'
         )
     else:
         click.echo("Successfully updated: {}.".format(", ".join(updated.keys())))
@@ -906,11 +903,9 @@ def unlink(name, include, exclude, yes):
 
     if not include and not exclude:
         raise errors.ParameterError(
-            (
-                "include or exclude filters not found.\n"
-                "Check available filters with 'renku dataset unlink --help'\n"
-                "Hint: 'renku dataset unlink my-dataset -I path'"
-            )
+            "include or exclude filters not found.\n"
+            "Check available filters with 'renku dataset unlink --help'\n"
+            "Hint: 'renku dataset unlink my-dataset -I path'"
         )
 
     communicator = ClickCallback()

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2018-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -168,7 +167,7 @@ def unmount_path(path: Union[Path, str]) -> None:
 
     def execute_command(*command: str) -> bool:
         try:
-            subprocess.run(command, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(command, check=True, text=True, capture_output=True)
         except (subprocess.CalledProcessError, FileNotFoundError):
             return False
         else:

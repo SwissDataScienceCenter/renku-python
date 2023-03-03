@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -141,7 +140,7 @@ class GraphViewModel:
 
         def node(x):
             """Return a name of the given node."""
-            return nodes.setdefault(x, "node{0}".format(len(nodes)))
+            return nodes.setdefault(x, f"node{len(nodes)}")
 
         def label(x, g):
             """Generate a label for the node."""
@@ -159,9 +158,9 @@ class GraphViewModel:
             """Format and escape literal."""
             v = html.escape(literal)
             if literal.datatype:
-                return "&quot;%s&quot;^^%s" % (v, qname(literal.datatype, g))
+                return f"&quot;{v}&quot;^^{qname(literal.datatype, g)}"
             elif literal.language:
-                return "&quot;%s&quot;@%s" % (v, literal.language)
+                return f"&quot;{v}&quot;@{literal.language}"
             return "&quot;%s&quot;" % v
 
         def qname(x, g):
@@ -212,7 +211,7 @@ class GraphViewModel:
                 fields[sn].add((qname(p, graph), formatliteral(o, graph)))
 
         for u, n in nodes.items():
-            output.write("# %s %s\n" % (u, n))
+            output.write(f"# {u} {n}\n")
             f = [
                 '<tr><td align="left"><b>%s</b></td><td align="left">' "<b>%s</b></td></tr>" % x
                 for x in sorted(types[n])

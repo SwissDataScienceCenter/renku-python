@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2018-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -57,7 +56,7 @@ class LinkReference:
     def name_validator(self, attribute, value):
         """Validate reference name."""
         if not self.check_ref_format(value):
-            raise errors.ParameterError('The reference name "{0}" is not valid.'.format(value))
+            raise errors.ParameterError(f'The reference name "{value}" is not valid.')
 
     @property
     def path(self):
