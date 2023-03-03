@@ -1,5 +1,5 @@
 #
-# Copyright 2022 - Swiss Data Science Center (SDSC)
+# Copyright 2022-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -99,7 +99,6 @@ def handle_redis_except(f):
 
 def handle_validation_except(f):
     """Wrapper which handles marshmallow `ValidationError`."""
-
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
