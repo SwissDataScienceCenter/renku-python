@@ -133,7 +133,7 @@ in the template will be left untouched by the command.
 .. code-block:: console
 
     $ echo "# Example\nThis is a README." > README.md
-    $ echo "FROM python:3.7-alpine" > Dockerfile
+    $ echo "FROM python:3.10-alpine" > Dockerfile
     $ renku init
 
     INDEX  ID              PARAMETERS

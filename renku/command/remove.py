@@ -20,7 +20,7 @@
 import os
 from pathlib import Path
 from subprocess import run
-from typing import List
+from typing import List, Protocol, runtime_checkable
 
 from pydantic import validate_arguments
 
@@ -34,11 +34,6 @@ from renku.core.util import communication
 from renku.core.util.git import get_git_user
 from renku.core.util.os import delete_dataset_file, expand_directories
 from renku.domain_model.project_context import project_context
-
-try:
-    from typing_extensions import Protocol, runtime_checkable  # NOTE: Required for Python 3.7 compatibility
-except ImportError:
-    from typing import Protocol, runtime_checkable  # type: ignore
 
 
 @runtime_checkable

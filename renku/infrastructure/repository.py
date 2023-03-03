@@ -36,6 +36,7 @@ from typing import (
     Dict,
     Generator,
     List,
+    Literal,
     NamedTuple,
     Optional,
     Sequence,
@@ -52,11 +53,6 @@ import git
 
 from renku.core import errors
 from renku.core.util.os import delete_dataset_file, get_absolute_path
-
-try:
-    from typing_extensions import Literal  # NOTE: Required for Python 3.7 compatibility
-except ImportError:
-    from typing import Literal  # type: ignore
 
 NULL_TREE = git.NULL_TREE
 _MARKER = object()
