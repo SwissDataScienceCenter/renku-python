@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2021 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -24,7 +23,10 @@ import pytest
 if TYPE_CHECKING:
     from renku.domain_model.provenance.activity import Activity
 
-Result = NamedTuple("Result", [("exit_code", int), ("activities", Union[None, "Activity", List["Activity"]])])
+
+class Result(NamedTuple):
+    exit_code: int
+    activities: Union[None, "Activity", List["Activity"]]
 
 
 @pytest.fixture

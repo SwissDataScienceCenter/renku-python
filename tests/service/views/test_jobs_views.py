@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2019-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -212,9 +211,9 @@ def test_job_details_by_user(svc_client_with_user):
     }
 
     for job in jobs:
-        response = svc_client.get("/jobs/{0}".format(job["job_id"]), headers=headers)
+        response = svc_client.get("/jobs/{}".format(job["job_id"]), headers=headers)
         assert response
         assert job["job_id"] == response.json["result"]["job_id"]
 
-        response = svc_client.get("/jobs/{0}".format(job["job_id"]), headers=excluded_user_headers)
+        response = svc_client.get("/jobs/{}".format(job["job_id"]), headers=excluded_user_headers)
         assert response.json["result"] is None

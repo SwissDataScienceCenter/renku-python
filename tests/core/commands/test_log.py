@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2017-2022- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -200,7 +199,7 @@ def test_log_dataset_create_complex(mocker):
     assert not entry.details.files_added
     assert not entry.details.files_removed
     assert not entry.details.creators_removed
-    assert set(["a", "b"]) == set(entry.details.keywords_added)
+    assert {"a", "b"} == set(entry.details.keywords_added)
     assert not entry.details.keywords_removed
     assert ["./img/img1.png"] == entry.details.images_changed_to
     assert not entry.details.source
@@ -255,7 +254,7 @@ def test_log_dataset_add_create(mocker):
     assert "new-title" == entry.details.title_changed
     assert "new-description" == entry.details.description_changed
     assert not entry.details.creators_added
-    assert set(["file_b", "file_a"]) == set(entry.details.files_added)
+    assert {"file_b", "file_a"} == set(entry.details.files_added)
     assert not entry.details.files_removed
     assert not entry.details.creators_removed
     assert not entry.details.keywords_added
@@ -312,7 +311,7 @@ def test_log_dataset_import(mocker):
     assert "new-title" == entry.details.title_changed
     assert "new-description" == entry.details.description_changed
     assert not entry.details.creators_added
-    assert set(["file_b", "file_a"]) == set(entry.details.files_added)
+    assert {"file_b", "file_a"} == set(entry.details.files_added)
     assert not entry.details.files_removed
     assert not entry.details.creators_removed
     assert not entry.details.keywords_added

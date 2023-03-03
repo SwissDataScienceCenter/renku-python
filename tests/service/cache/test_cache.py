@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020-2022 -Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -40,9 +39,9 @@ def test_service_cache_get_users(svc_client_cache):
     """Test getting multiple users."""
     client, _, cache = svc_client_cache
 
-    expected_users = set([cache.ensure_user({"user_id": uuid.uuid4().hex}).user_id for _ in range(10)])
+    expected_users = {cache.ensure_user({"user_id": uuid.uuid4().hex}).user_id for _ in range(10)}
 
-    received_users = set([user.user_id for user in cache.get_users()])
+    received_users = {user.user_id for user in cache.get_users()}
 
     assert expected_users.issubset(received_users)
 
@@ -169,26 +168,26 @@ def test_service_cache_set_files(svc_client_cache):
         for _ in range(10)
     ]
 
-    expected = set([file_["file_name"] for file_ in files])
+    expected = {file_["file_name"] for file_ in files}
 
     received_files = cache.set_files(user, files)
-    received_names = set([file_.file_name for file_ in received_files])
+    received_names = {file_.file_name for file_ in received_files}
 
-    files_age = set([file_.age for file_ in received_files])
+    files_age = {file_.age for file_ in received_files}
     assert {0} == files_age
 
-    files_ttl_exp = set([file_.ttl_expired() for file_ in received_files])
+    files_ttl_exp = {file_.ttl_expired() for file_ in received_files}
     assert {False} == files_ttl_exp
 
     time.sleep(2)
     os.environ["RENKU_SVC_CLEANUP_TTL_FILES"] = "1"
-    files_age = set([file_.age for file_ in received_files])
+    files_age = {file_.age for file_ in received_files}
     assert {2} == files_age
 
-    files_ttl_exp = set([file_.ttl_expired() for file_ in received_files])
+    files_ttl_exp = {file_.ttl_expired() for file_ in received_files}
     assert {True} == files_ttl_exp
 
-    received_users = set([file_.user_id for file_ in received_files])
+    received_users = {file_.user_id for file_ in received_files}
 
     assert expected.issubset(received_names)
     assert user.user_id in received_users

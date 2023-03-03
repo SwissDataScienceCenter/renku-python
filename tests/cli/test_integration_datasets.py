@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2017-2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -393,8 +392,8 @@ def test_dataset_import_renkulab_dataset_with_image(runner, project, with_inject
     with with_injection():
         dataset = [d for d in DatasetGateway().get_all_active_datasets()][0]
     assert 2 == len(dataset.images)
-    img1 = next((i for i in dataset.images if i.position == 1))
-    img2 = next((i for i in dataset.images if i.position == 2))
+    img1 = next(i for i in dataset.images if i.position == 1)
+    img2 = next(i for i in dataset.images if i.position == 2)
 
     assert img1.content_url == "https://example.com/image1.jpg"
     assert img2.content_url.endswith("/2.png")
@@ -747,7 +746,7 @@ def test_dataset_export_upload_multiple(
     # create data file
     paths = []
     for i in range(3):
-        new_file = tmpdir.join("file_{0}".format(i))
+        new_file = tmpdir.join(f"file_{i}")
         new_file.write(str(i))
         paths.append(str(new_file))
 
@@ -1633,7 +1632,7 @@ def test_files_are_tracked_in_lfs(runner, project, no_lfs_size_limit):
         ],
     )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    path = "data/dataset/{}".format(filename)
+    path = f"data/dataset/{filename}"
     assert path in subprocess.check_output(["git", "lfs", "ls-files"]).decode()
 
 
@@ -1701,7 +1700,10 @@ def test_check_disk_space(runner, project, monkeypatch, url):
 
     def disk_usage(_):
         """Mocked response."""
-        Usage = NamedTuple("Usage", [("free", int)])
+
+        class Usage(NamedTuple):
+            free: int
+
         return Usage(free=0)
 
     monkeypatch.setattr(shutil, "disk_usage", disk_usage)
