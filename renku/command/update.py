@@ -55,8 +55,6 @@ def _update(
     config: Optional[str],
     paths: Optional[List[str]] = None,
 ):
-    if not paths and not update_all and not dry_run:
-        raise ParameterError("Either PATHS, --all/-a, or --dry-run/-n should be specified.")
     if paths and update_all:
         raise ParameterError("Cannot use PATHS and --all/-a at the same time.")
 
