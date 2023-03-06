@@ -148,7 +148,7 @@ class DatabaseGateway(IDatabaseGateway):
             commits = [repository.get_commit(revision_or_range)]
 
         for commit in commits:
-            for file in commit.get_changes(paths=f"{project_context.database_path}/**"):
+            for file in commit.get_changes(f"{project_context.database_path}/**"):
                 if file.deleted:
                     continue
 

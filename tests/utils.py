@@ -259,7 +259,7 @@ def write_and_commit_file(repository: "Repository", path: Union[Path, str], cont
 
     repository.add(path)
     if commit:
-        repository.commit(f"Updated '{path.relative_to(repository.path)}'")
+        repository.commit(f"Updated '{path.relative_to(repository.path)}'", no_verify=True)
 
 
 def delete_and_commit_file(repository: "Repository", path: Union[Path, str]):

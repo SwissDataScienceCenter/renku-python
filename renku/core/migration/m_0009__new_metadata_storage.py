@@ -96,7 +96,7 @@ def migrate(migration_context: MigrationContext):
 
 def _commit_previous_changes():
     repository = project_context.repository
-    if repository.is_dirty():
+    if repository.is_dirty(untracked_files=False):
         project_path = project_context.metadata_path.joinpath(OLD_METADATA_PATH)
         project = old_schema.Project.from_yaml(project_path)
         project.version = "8"
@@ -349,7 +349,7 @@ def _process_workflows(
     migration_context: MigrationContext, activity_gateway: IActivityGateway, commit: "Commit", remove: bool
 ):
 
-    for file in commit.get_changes(paths=f"{project_context.metadata_path}/workflow/*.yaml"):
+    for file in commit.get_changes(f"{project_context.metadata_path}/workflow/*.yaml"):
         if file.deleted:
             continue
 
@@ -640,7 +640,7 @@ def _process_datasets(
     is_last_commit,
     preserve_identifiers,
 ):
-    changes = commit.get_changes(paths=".renku/datasets/*/*.yml")
+    changes = commit.get_changes(".renku/datasets/*/*.yml")
     changed_paths = [c.b_path for c in changes if not c.deleted]
     paths = [p for p in changed_paths if len(Path(p).parents) == 4]  # Exclude files that are not in the right place
     deleted_paths = [c.a_path for c in changes if c.deleted]

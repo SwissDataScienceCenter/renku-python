@@ -24,7 +24,10 @@ from pathlib import Path
 import pytest
 from packaging.version import Version
 
+from renku.core.template.template import read_template_checksum
 from renku.core.util.contexts import chdir
+from renku.core.util.metadata import replace_renku_version_in_dockerfile
+from renku.core.util.os import hash_file
 from renku.core.util.yaml import write_yaml
 from renku.domain_model.project_context import project_context
 from renku.domain_model.template import TemplateMetadata, TemplateParameter
@@ -46,7 +49,10 @@ def test_template_list(isolated_runner):
         result = isolated_runner.invoke(cli, command, replace_argv=False)
 
         assert 0 == result.exit_code, format_result_exception(result)
-        assert "python-minimal" in result.output
+        assert "python" in result.output
+        assert "R" in result.output
+        assert "bioc" in result.output
+        assert "julia" in result.output
     finally:
         sys.argv = argv
 
@@ -62,8 +68,10 @@ def test_template_list_from_source(isolated_runner):
         result = isolated_runner.invoke(cli, command + ["--source", TEMPLATES_URL])
 
         assert 0 == result.exit_code, format_result_exception(result)
-        assert "python-minimal" in result.output
-        assert "julia-minimal" in result.output
+        assert "python" in result.output
+        assert "R" in result.output
+        assert "bioc" in result.output
+        assert "julia" in result.output
 
         result = isolated_runner.invoke(cli, command + ["-s", TEMPLATES_URL, "--reference", "0.3.2"])
 
@@ -164,7 +172,7 @@ def test_template_set_overwrites_modified(runner, project, with_injection):
     with with_injection():
         assert "R-minimal" == project_context.project.template_metadata.template_id
     assert "my-modifications" not in (project.path / "Dockerfile").read_text()
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
 
 @pytest.mark.parametrize("overwrite, found", [["y", False], ["n", True]])
@@ -178,7 +186,7 @@ def test_template_set_interactive(runner, project, with_injection, overwrite, fo
     with with_injection():
         assert "R-minimal" == project_context.project.template_metadata.template_id
     assert ("my-modifications" in (project.path / "Dockerfile").read_text()) is found
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
 
 def test_template_set_preserve_renku_version(runner, project):
@@ -210,11 +218,11 @@ def test_template_set_uses_renku_version_when_non_existing(tmpdir, runner):
     with project_context.with_path(path=repo_path), chdir(repo_path):
         assert 0 == runner.invoke(cli, ["migrate", "--strict"]).exit_code
 
-        assert "RENKU_VERSION" not in project_context.docker_path.read_text()
+        assert "RENKU_VERSION" not in project_context.dockerfile_path.read_text()
 
         assert 0 == runner.invoke(cli, ["template", "set", "python-minimal"]).exit_code
 
-        assert f"RENKU_VERSION={__version__}" in project_context.docker_path.read_text()
+        assert f"RENKU_VERSION={__version__}" in project_context.dockerfile_path.read_text()
 
 
 def test_template_set_dry_run(runner, project):
@@ -453,3 +461,23 @@ def test_template_validate_remote(runner):
         cli, ["template", "validate", "--source", "https://github.com/SwissDataScienceCenter/renku-project-template"]
     )
     assert 0 == result.exit_code, format_result_exception(result)
+
+
+def test_template_dockerfile_checksum_update(runner, project, with_injection):
+    """Test updating Renku version in the Dockerfile also updates its template checksum."""
+    from renku.version import __version__
+
+    dockerfile = project.path / "Dockerfile"
+    new_content = replace_renku_version_in_dockerfile(dockerfile.read_text(), version="0.0.1")
+    write_and_commit_file(project.repository, dockerfile, new_content)
+
+    result = runner.invoke(cli, ["migrate", "--strict"])
+    assert result.exit_code == 0, result.output
+
+    with with_injection():
+        checksums = read_template_checksum()
+        dockerfile_checksum = checksums.get("Dockerfile")
+        assert hash_file(dockerfile) == dockerfile_checksum
+
+        assert not project.repository.is_dirty()
+        assert __version__ in dockerfile.read_text()

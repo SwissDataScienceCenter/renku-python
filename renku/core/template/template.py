@@ -184,6 +184,8 @@ def get_file_actions(
     rendered_template: RenderedTemplate, template_action: TemplateAction, interactive
 ) -> Dict[str, FileAction]:
     """Render a template regarding files in a project."""
+    from renku.core.template.usecase import is_dockerfile_updated_by_user
+
     if interactive and not communication.has_prompt():
         raise errors.ParameterError("Cannot use interactive mode with no prompt")
 
@@ -220,6 +222,8 @@ def get_file_actions(
         elif interactive:
             overwrite = communication.confirm(f"Overwrite {relative_path}?", default=True)
             return FileAction.OVERWRITE if overwrite else FileAction.KEEP
+        elif relative_path == "Dockerfile" and not is_dockerfile_updated_by_user():
+            return FileAction.OVERWRITE
         elif should_keep(relative_path):
             return FileAction.KEEP
         else:
@@ -248,6 +252,8 @@ def get_file_actions(
                 return FileAction.OVERWRITE if overwrite else FileAction.KEEP
         elif not remote_changes:
             return FileAction.IGNORE_UNCHANGED_REMOTE
+        elif relative_path == "Dockerfile" and not is_dockerfile_updated_by_user():
+            return FileAction.OVERWRITE
         elif file_deleted or local_changes:
             if relative_path in immutable_files:
                 # NOTE: There are local changes in a file that should not be changed by users, and the file was
@@ -417,6 +423,9 @@ class RepositoryTemplates(TemplatesSource):
 
     A template repository is checked out at a specific Git reference if one is provided. However, it's still possible to
     get available versions of templates.
+
+    For these templates, ``reference`` is set to whatever user passed as a reference (defaults to remote HEAD if not
+    passed) and ``version`` is set to the commit SHA of the reference commit.
     """
 
     def __init__(self, path, source, reference, version, repository: Repository, skip_validation: bool = False):

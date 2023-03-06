@@ -147,7 +147,7 @@ class RenkulabSessionProvider(ISessionProvider):
 
         repository = project_context.repository
 
-        if repository.is_dirty(untracked_files=True):
+        if repository.is_dirty():
             communication.confirm(
                 "You have new uncommitted or untracked changes to your repository. "
                 "Renku can automatically commit these changes so that it builds "

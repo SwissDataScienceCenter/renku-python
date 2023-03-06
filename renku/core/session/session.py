@@ -134,7 +134,7 @@ def session_start(
                 abort=True,
             )
             with communication.busy(msg=f"Building image {image_name}"):
-                provider_api.build_image(project_context.docker_path.parent, image_name, config)
+                provider_api.build_image(project_context.dockerfile_path.parent, image_name, config)
             communication.echo(f"Image {image_name} built successfully.")
     else:
         if not provider_api.find_image(image_name, config):
