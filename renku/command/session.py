@@ -29,7 +29,7 @@ def session_list_command():
 
 def session_start_command():
     """Start an interactive session."""
-    return Command().command(session_start).with_database()
+    return Command().command(session_start).with_database().require_migration()
 
 
 def session_stop_command():
