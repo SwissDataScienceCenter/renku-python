@@ -18,28 +18,43 @@
 """Renku service cache management."""
 import json
 import os
+from typing import Any, Dict
 
 import redis
 from redis import RedisError
 from walrus import Database
 
-from renku.ui.service.cache.config import REDIS_DATABASE, REDIS_HOST, REDIS_NAMESPACE, REDIS_PASSWORD, REDIS_PORT
+from renku.ui.service.cache.config import (
+    REDIS_DATABASE,
+    REDIS_HOST,
+    REDIS_IS_SENTINEL,
+    REDIS_MASTER_SET,
+    REDIS_NAMESPACE,
+    REDIS_PASSWORD,
+    REDIS_PORT,
+)
+
+_config: Dict[str, Any] = {
+    "db": REDIS_DATABASE,
+    "password": REDIS_PASSWORD,
+    "retry_on_timeout": True,
+    "health_check_interval": int(os.getenv("CACHE_HEALTH_CHECK_INTERVAL", 60)),
+}
+
+if REDIS_IS_SENTINEL:
+    _sentinel = redis.Sentinel([(REDIS_HOST, REDIS_PORT)], sentinel_kwargs={"password": REDIS_PASSWORD})
+    _cache = _sentinel.master_for(REDIS_MASTER_SET, **_config)
+    _model_db = Database(connection_pool=_cache.connection_pool, **_config)
+else:
+    _cache = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, **_config)  # type: ignore
+    _model_db = Database(host=REDIS_HOST, port=REDIS_PORT, **_config)
 
 
 class BaseCache:
     """Cache management."""
 
-    config_ = {
-        "host": REDIS_HOST,
-        "port": REDIS_PORT,
-        "db": REDIS_DATABASE,
-        "password": REDIS_PASSWORD,
-        "retry_on_timeout": True,
-        "health_check_interval": int(os.getenv("CACHE_HEALTH_CHECK_INTERVAL", 60)),
-    }
-
-    cache = redis.Redis(**config_)  # type: ignore
-    model_db = Database(**config_)
+    cache: redis.Redis = _cache
+    model_db: Database = _model_db
     namespace = REDIS_NAMESPACE
 
     def set_record(self, name, key, value):
