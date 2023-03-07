@@ -18,6 +18,17 @@
 Changes
 =======
 
+`1.11.3 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.11.2...v1.11.3>`__ (2023-03-07)
+----------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **svc:** properly use Redis sentinel
+   (`#3319 <https://github.com/SwissDataScienceCenter/renku-python/issues/3319>`__)
+   (`#3352 <https://github.com/SwissDataScienceCenter/renku-python/issues/3352>`__)
+   (`46869bd <https://github.com/SwissDataScienceCenter/renku-python/commit/46869bd942deb92050dca5a299f8158552bd2636>`__)
+
 `1.11.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.11.1...v1.11.2>`__ (2023-01-23)
 ----------------------------------------------------------------------------------------------------------
 
