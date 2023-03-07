@@ -299,9 +299,9 @@ def get_upload_uri(dataset: Dataset, entity_path: Union[Path, str]) -> str:
 def move_files_to_dataset(dataset: Dataset, files: List[DatasetAddMetadata]):
     """Copy/Move files into a dataset's directory."""
 
-    def move_file(file: DatasetAddMetadata, storage: Optional[IStorage]):
+    def move_file(file: DatasetAddMetadata, storage: Optional[IStorage]) -> bool:
         if not file.has_action:
-            return
+            return False
 
         if file.action in (
             DatasetAddAction.COPY,
@@ -350,9 +350,6 @@ def move_files_to_dataset(dataset: Dataset, files: List[DatasetAddMetadata]):
             else:
                 raise
 
-        if track_in_lfs and not dataset.storage:
-            track_paths_in_storage(file.destination)
-
         # NOTE: We always copy the files to the dataset's data dir. If dataset has a storage backend, we also upload the
         # file to the remote storage.
         if storage:
@@ -367,14 +364,22 @@ def move_files_to_dataset(dataset: Dataset, files: List[DatasetAddMetadata]):
 
             file.based_on = RemoteEntity(url=file_uri, path=file.entity_path, checksum=md5_hash)
 
+        return track_in_lfs
+
     dataset_storage = None
     if dataset.storage:
         provider = ProviderFactory.get_storage_provider(uri=dataset.storage)
         dataset_storage = provider.get_storage()
 
+    lfs_files = []
+
     for dataset_file in files:
         # TODO: Parallelize copy/download/upload
-        move_file(file=dataset_file, storage=dataset_storage)
+        if move_file(file=dataset_file, storage=dataset_storage):
+            lfs_files.append(dataset_file.destination)
+
+    if lfs_files and not dataset.storage:
+        track_paths_in_storage(*lfs_files)
 
 
 def add_files_to_repository(dataset: Dataset, files: List[DatasetAddMetadata]):
@@ -401,8 +406,16 @@ def add_files_to_repository(dataset: Dataset, files: List[DatasetAddMetadata]):
 def update_dataset_metadata(dataset: Dataset, files: List[DatasetAddMetadata], clear_files_before: bool):
     """Add newly-added files to the dataset's metadata."""
     dataset_files = []
+    repo_paths: List[Union[Path, str]] = [
+        file.entity_path for file in files if (project_context.path / file.entity_path).exists()
+    ]
+
+    checksums = project_context.repository.get_object_hashes(repo_paths)
+
     for file in files:
-        dataset_file = DatasetFile.from_path(path=file.entity_path, source=file.url, based_on=file.based_on)
+        dataset_file = DatasetFile.from_path(
+            path=file.entity_path, source=file.url, based_on=file.based_on, checksum=checksums.get(file.entity_path)
+        )
         dataset_files.append(dataset_file)
 
     if clear_files_before:

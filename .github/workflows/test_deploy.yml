@@ -5,10 +5,13 @@ on:
     branches:
       - master
       - develop
+      - "release/**" # otherwise PRs created by the PR action don't execute tests
     tags:
       - "v*.*.*"
   pull_request:
     types: [opened, reopened, synchronize]
+    branches-ignore:
+      - "release/**"
 
 env:
   DEPENDENCY_CACHE_PREFIX: "v2"
