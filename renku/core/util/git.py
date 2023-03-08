@@ -32,12 +32,13 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union, cast
 from uuid import uuid4
 
 from renku.core import errors
+from renku.infrastructure.repository import DiffChangeType
 
 if TYPE_CHECKING:
     from renku.domain_model.entity import Collection, Entity
     from renku.domain_model.git import GitURL
     from renku.domain_model.provenance.agent import Person, SoftwareAgent
-    from renku.infrastructure.repository import Commit, DiffChangeType, Remote, Repository
+    from renku.infrastructure.repository import Commit, Remote, Repository
 
 COMMIT_DIFF_STRATEGY = "DIFF"
 STARTED_AT = int(time.time() * 1e3)
