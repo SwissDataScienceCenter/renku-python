@@ -48,7 +48,7 @@ from renku.core.util.tabulate import tabulate
 from renku.domain_model.project import Project
 from renku.domain_model.project_context import project_context
 from renku.domain_model.template import RenderedTemplate, Template, TemplateMetadata, TemplatesSource
-from renku.infrastructure.repository import Repository
+from renku.infrastructure.repository import DiffLineChangeType, Repository
 
 
 def update_dockerfile_checksum(new_checksum: str):
@@ -56,14 +56,14 @@ def update_dockerfile_checksum(new_checksum: str):
     if not project_context.dockerfile_path.exists():
         raise errors.DockerfileUpdateError("Project doesn't have a Dockerfile")
     if is_dockerfile_updated_by_user():
-        raise errors.DockerfileUpdateError("Cannot update Dockerfile checksum because it was update by the user")
+        raise errors.DockerfileUpdateError("Cannot update Dockerfile checksum because it was updated by the user")
 
     checksums = read_template_checksum()
     checksums["Dockerfile"] = new_checksum
     write_template_checksum(checksums)
 
 
-def does_dockerfile_contains_only_version_change() -> bool:
+def does_dockerfile_contain_only_version_change() -> bool:
     """Return True if Dockerfile only contains Renku version changes."""
     commits = list(project_context.repository.iterate_commits(project_context.dockerfile_path))
     # NOTE: Don't include the first commit that added the Dockerfile
@@ -75,7 +75,7 @@ def does_dockerfile_contains_only_version_change() -> bool:
         # NOTE: Check the Dockerfile change only includes adding and removing a Renku version line
         if (
             len(diff) != 2
-            or {c.change_type for c in diff} != {"A", "D"}
+            or {c.change_type for c in diff} != {DiffLineChangeType.ADDED, DiffLineChangeType.DELETED}
             or any("ARG RENKU_VERSION=" not in c.text for c in diff)
         ):
             return False
@@ -106,7 +106,7 @@ def is_dockerfile_updated_by_user() -> bool:
     if original_checksum == original_calculated_checksum:
         return False
 
-    return False if does_dockerfile_contains_only_version_change() else True
+    return False if does_dockerfile_contain_only_version_change() else True
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))

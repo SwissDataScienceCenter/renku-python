@@ -31,7 +31,7 @@ from renku.core.template.template import (
 )
 from renku.core.template.usecase import (
     check_for_template_update,
-    does_dockerfile_contains_only_version_change,
+    does_dockerfile_contain_only_version_change,
     is_dockerfile_updated_by_user,
     update_template,
 )
@@ -239,12 +239,12 @@ def test_detect_dockerfile_version_update(project, with_injection):
     write_and_commit_file(project.repository, dockerfile, new_content)
 
     with with_injection():
-        assert does_dockerfile_contains_only_version_change()
+        assert does_dockerfile_contain_only_version_change()
         assert not is_dockerfile_updated_by_user()
 
     new_content = dockerfile.read_text() + "\nRUN echo 'user modifications'"
     write_and_commit_file(project.repository, dockerfile, new_content)
 
     with with_injection():
-        assert not does_dockerfile_contains_only_version_change()
+        assert not does_dockerfile_contain_only_version_change()
         assert is_dockerfile_updated_by_user()

@@ -26,6 +26,7 @@ import subprocess
 import tempfile
 from collections import defaultdict
 from datetime import datetime
+from enum import Enum
 from functools import lru_cache
 from itertools import zip_longest
 from pathlib import Path
@@ -1259,26 +1260,38 @@ class Actor(NamedTuple):
         return hash((self.name, self.email))
 
 
+class DiffLineChangeType(Enum):
+    """Type of change in a ``DiffLine``."""
+
+    ADDED = "A"
+    DELETED = "D"
+
+
 class DiffLine(NamedTuple):
     """A single line in a patch."""
 
     text: str
-    """
-    Possible values:
-        A = Added
-        D = Deleted
-    """
-    change_type: str
+    change_type: DiffLineChangeType
 
     @property
     def deleted(self) -> bool:
         """True if line was deleted."""
-        return self.change_type == "D"
+        return self.change_type == DiffLineChangeType.DELETED
 
     @property
     def added(self) -> bool:
         """True if line was added."""
-        return self.change_type == "A"
+        return self.change_type == DiffLineChangeType.ADDED
+
+
+class DiffChangeType(Enum):
+    """Type of change in a ``Diff``."""
+
+    ADDED = "A"
+    DELETED = "D"
+    RENAMED = "R"
+    MODIFIED = "M"
+    TYPE_CHANGED = "T"
 
 
 class Diff(NamedTuple):
@@ -1287,15 +1300,7 @@ class Diff(NamedTuple):
     # NOTE: In case a rename, a_path and b_path have different values. Make sure to use the correct one.
     a_path: str
     b_path: str
-    """
-    Possible values:
-        A = Added
-        D = Deleted
-        R = Renamed
-        M = Modified
-        T = Changed in the type
-    """
-    change_type: str
+    change_type: DiffChangeType
     diff: List[DiffLine]
 
     @classmethod
@@ -1317,9 +1322,9 @@ class Diff(NamedTuple):
                 elif line.startswith("+") and index > 0 and lines[index - 1] == "\\ No newline at end of file":
                     continue
                 elif line.startswith("+"):
-                    diff_lines.append(DiffLine(text=line[1:], change_type="A"))
+                    diff_lines.append(DiffLine(text=line[1:], change_type=DiffLineChangeType.ADDED))
                 elif line.startswith("-"):
-                    diff_lines.append(DiffLine(text=line[1:], change_type="D"))
+                    diff_lines.append(DiffLine(text=line[1:], change_type=DiffLineChangeType.DELETED))
 
             return diff_lines
 
@@ -1330,17 +1335,19 @@ class Diff(NamedTuple):
         a_path = a_path or b_path
         b_path = b_path or a_path
 
-        return cls(a_path=a_path, b_path=b_path, change_type=cast(str, diff.change_type), diff=process_diff_lines())
+        return cls(
+            a_path=a_path, b_path=b_path, change_type=DiffChangeType(diff.change_type), diff=process_diff_lines()
+        )
 
     @property
     def deleted(self) -> bool:
         """True if file was deleted."""
-        return self.change_type == "D"
+        return self.change_type == DiffChangeType.DELETED
 
     @property
     def added(self) -> bool:
         """True if file was added."""
-        return self.change_type == "A"
+        return self.change_type == DiffChangeType.ADDED
 
 
 class Commit:
