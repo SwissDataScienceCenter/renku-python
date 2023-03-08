@@ -83,11 +83,11 @@ def execute_workflow_graph(
     if config:
         config = safe_read_yaml(config)
 
-    started_at_time = local_now()
+    started_at_time = local_now(remove_microseconds=False)
 
     execute(dag=dag, basedir=project_context.path, provider=provider, config=config)
 
-    ended_at_time = local_now()
+    ended_at_time = local_now(remove_microseconds=False)
 
     activities = []
 

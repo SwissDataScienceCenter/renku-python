@@ -2231,8 +2231,8 @@ class ActivitySchema(OldCommitMixinSchema):
         prov.wasInvalidatedBy, [OldEntitySchema, OldCollectionSchema], reverse=True, many=True, load_default=None
     )
     influenced = Nested(prov.influenced, OldCollectionSchema, many=True)
-    started_at_time = fields.DateTime(prov.startedAtTime, add_value_types=True)
-    ended_at_time = fields.DateTime(prov.endedAtTime, add_value_types=True)
+    started_at_time = fields.DateTime(prov.startedAtTime, format="iso", add_value_types=True)
+    ended_at_time = fields.DateTime(prov.endedAtTime, format="iso", add_value_types=True)
     agents = Nested(prov.wasAssociatedWith, [OldPersonSchema, OldSoftwareAgentSchema], many=True)
 
     @pre_dump(pass_many=True)

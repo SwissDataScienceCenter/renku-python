@@ -108,7 +108,7 @@ class ActivitySchema(JsonLDSchema):
     agents = Nested(prov.wasAssociatedWith, [PersonSchema, SoftwareAgentSchema], many=True)
     annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
     association = Nested(prov.qualifiedAssociation, AssociationSchema)
-    ended_at_time = fields.DateTime(prov.endedAtTime, add_value_types=True)
+    ended_at_time = fields.DateTime(prov.endedAtTime, format="iso", add_value_types=True)
     generations = Nested(prov.activity, GenerationSchema, reverse=True, many=True, load_default=None)
     id = fields.Id()
     invalidations = Nested(prov.wasInvalidatedBy, EntitySchema, reverse=True, many=True, load_default=None)
@@ -120,7 +120,7 @@ class ActivitySchema(JsonLDSchema):
     )
     path = fields.String(prov.atLocation)
     project_id = fields.IRI(renku.hasActivity, reverse=True)
-    started_at_time = fields.DateTime(prov.startedAtTime, add_value_types=True)
+    started_at_time = fields.DateTime(prov.startedAtTime, format="iso", add_value_types=True)
     usages = Nested(prov.qualifiedUsage, UsageSchema, many=True)
 
     @pre_dump(pass_many=True)

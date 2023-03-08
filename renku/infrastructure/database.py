@@ -27,6 +27,7 @@ from types import BuiltinFunctionType, FunctionType
 from typing import Any, Dict, List, Optional, Union, cast
 from uuid import uuid4
 
+import deal
 import persistent
 import zstandard as zstd
 from BTrees.Length import Length
@@ -67,7 +68,7 @@ def _is_module_allowed(module_name: str, type_name: str):
         TypeError: If the type is now allowed in the database.
     """
 
-    if module_name not in ["BTrees", "builtins", "datetime", "persistent", "renku", "zc", "zope"]:
+    if module_name not in ["BTrees", "builtins", "datetime", "persistent", "renku", "zc", "zope", "deal"]:
         raise TypeError(f"Objects of type '{type_name}' are not allowed")
 
 
@@ -365,6 +366,7 @@ class Database:
         Returns:
             persistent.Persistent: The object.
         """
+        deal.disable(warn=False)
         data = self._storage.load(filename=path, absolute=absolute)
         if override_type is not None:
             if "@renku_data_type" not in data:
@@ -374,7 +376,7 @@ class Database:
         object = self._reader.deserialize(data)
         object._p_changed = 0
         object._p_serial = PERSISTED
-
+        deal.enable()
         return object
 
     def get_by_id(self, id: str) -> persistent.Persistent:
@@ -441,11 +443,13 @@ class Database:
         Args:
             object(persistent.Persistent): The object to set the state on.
         """
+        deal.disable(warn=False)
         data = self._storage.load(filename=self._get_filename_from_oid(object._p_oid))
         self._reader.set_ghost_state(object, data)
         object._p_serial = PERSISTED
         if isinstance(object, Persistent):
             object.freeze()
+        deal.enable()
 
     def commit(self):
         """Commit modified and new objects."""

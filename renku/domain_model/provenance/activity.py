@@ -21,6 +21,7 @@ from itertools import chain
 from typing import Dict, List, Optional, Union, cast
 from uuid import uuid4
 
+import deal
 from werkzeug.utils import cached_property
 
 from renku.command.command_builder import inject
@@ -97,6 +98,7 @@ class Activity(Persistent):
     invalidated_at: Optional[datetime] = None
     hidden_usages: List[HiddenUsage] = list()
 
+    @deal.ensure(lambda self, *_, result, **kwargs: self.ended_at_time >= self.started_at_time)
     def __init__(
         self,
         *,
@@ -135,6 +137,7 @@ class Activity(Persistent):
         # TODO: influenced = attr.ib(kw_only=True)
 
     @classmethod
+    @deal.post(lambda activity: activity.ended_at_time >= activity.started_at_time)
     @inject.autoparams("project_gateway")
     def from_plan(
         cls,
@@ -273,10 +276,11 @@ class Activity(Persistent):
 
         return 0
 
-    def delete(self, when: datetime = local_now()):
+    @deal.ensure(lambda self, *_, result, **kwargs: self.invalidated_at >= self.ended_at_time)
+    def delete(self, when: Optional[datetime] = None):
         """Mark the activity as deleted."""
         self.unfreeze()
-        self.invalidated_at = when
+        self.invalidated_at = when or local_now(remove_microseconds=False)
         self.freeze()
 
 

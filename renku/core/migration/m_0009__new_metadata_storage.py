@@ -27,6 +27,8 @@ from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, List, Optional, Union, cast
 from urllib.parse import urlparse
 
+import deal
+
 from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
@@ -347,37 +349,42 @@ def _get_process_runs(workflow_run: old_schema.WorkflowRun) -> List[old_schema.P
 def _process_workflows(
     migration_context: MigrationContext, activity_gateway: IActivityGateway, commit: "Commit", remove: bool
 ):
+    try:
+        deal.disable(warn=False)
+        for file in commit.get_changes(f"{project_context.metadata_path}/workflow/*.yaml"):
+            if file.deleted:
+                continue
 
-    for file in commit.get_changes(f"{project_context.metadata_path}/workflow/*.yaml"):
-        if file.deleted:
-            continue
+            path: str = file.b_path
 
-        path: str = file.b_path
+            if not path.startswith(".renku/workflow") or not path.endswith(".yaml"):
+                continue
 
-        if not path.startswith(".renku/workflow") or not path.endswith(".yaml"):
-            continue
+            if not (project_context.path / path).exists():
+                communication.warn(f"Workflow file does not exists: '{path}'")
+                continue
 
-        if not (project_context.path / path).exists():
-            communication.warn(f"Workflow file does not exists: '{path}'")
-            continue
+            workflow = old_schema.Activity.from_yaml(path=path)
 
-        workflow = old_schema.Activity.from_yaml(path=path)
+            if isinstance(workflow, old_schema.WorkflowRun):
+                activities = _get_process_runs(workflow)
+            else:
+                activities = [workflow]
 
-        if isinstance(workflow, old_schema.WorkflowRun):
-            activities = _get_process_runs(workflow)
-        else:
-            activities = [workflow]
+            for old_activity in activities:
+                new_activities = _process_run_to_new_activity(
+                    migration_context=migration_context, process_run=old_activity
+                )
+                for new_activity in new_activities:
+                    activity_gateway.add(new_activity)
 
-        for old_activity in activities:
-            new_activities = _process_run_to_new_activity(migration_context=migration_context, process_run=old_activity)
-            for new_activity in new_activities:
-                activity_gateway.add(new_activity)
-
-        if remove:
-            try:
-                os.remove(file.b_path)
-            except FileNotFoundError:
-                pass
+            if remove:
+                try:
+                    os.remove(file.b_path)
+                except FileNotFoundError:
+                    pass
+    finally:
+        deal.enable()
 
 
 def _process_run_to_new_activity(

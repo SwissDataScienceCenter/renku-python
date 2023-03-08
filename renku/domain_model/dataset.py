@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Union, cast
 from urllib.parse import quote, urlparse
 from uuid import uuid4
 
+import deal
 import marshmallow
 
 from renku.core import errors
@@ -232,6 +233,7 @@ class DatasetFile(Slots):
 
     __slots__ = ("based_on", "date_added", "date_removed", "entity", "id", "is_external", "source")
 
+    @deal.ensure(lambda self, *_, result, **kwargs: self.date_removed is None or self.date_removed >= self.date_added)
     def __init__(
         self,
         *,
@@ -316,6 +318,7 @@ class DatasetFile(Slots):
             and self.source == other.source
         )
 
+    @deal.ensure(lambda self, *_, result, **kwargs: self.date_removed >= self.date_added)
     def remove(self, date: Optional[datetime] = None):
         """Create a new instance and mark it as removed."""
         date_removed = fix_datetime(date) or local_now()
@@ -333,6 +336,18 @@ class Dataset(Persistent):
     storage: Optional[str] = None
     datadir: Optional[str] = None
 
+    @deal.ensure(
+        lambda self, *_, result, **kwargs: (self.date_created is not None and self.date_published is None)
+        or (self.date_created is None and self.date_published is not None)
+    )
+    @deal.ensure(
+        lambda self, *_, result, **kwargs: self.date_modified is None
+        or self.date_modified >= self.date_created
+        or self.date_modified >= self.date_published
+    )
+    @deal.ensure(
+        lambda self, *_, result, **kwargs: self.date_removed is None or self.date_removed >= self.date_modified
+    )
     def __init__(
         self,
         *,
@@ -486,6 +501,15 @@ class Dataset(Persistent):
         self._assign_new_identifier(identifier)
         # NOTE: Do not unset `same_as` because it can be set for imported datasets
 
+    @deal.ensure(
+        lambda self, *_, result, **kwargs: (self.date_created is not None and self.date_published is None)
+        or (self.date_created is None and self.date_published is not None)
+    )
+    @deal.ensure(
+        lambda self, *_, result, **kwargs: self.date_modified >= self.date_created
+        or self.date_modified >= self.date_published
+    )
+    @deal.ensure(lambda self, *_, result, **kwargs: self.derived_from is not None)
     def derive_from(
         self,
         dataset: "Dataset",
@@ -518,6 +542,7 @@ class Dataset(Persistent):
         # NOTE: We also need to re-assign the _p_oid since identifier has changed
         self.reassign_oid()
 
+    @deal.ensure(lambda self, *_, result, **kwargs: self.date_removed >= self.date_modified)
     def remove(self, date: Optional[datetime] = None):
         """Mark the dataset as removed."""
         self.date_removed = fix_datetime(date) or local_now()
@@ -616,7 +641,7 @@ class Dataset(Persistent):
 
         new_files = []
 
-        for file in files:
+        for file in cast(List[DatasetFile], files):
             existing_file = self.find_file(file.entity.path)
             if not existing_file:
                 new_files.append(file)

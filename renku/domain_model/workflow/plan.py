@@ -161,7 +161,7 @@ class AbstractPlan(Persistent, ABC):
         when = when or local_now()
 
         self.unfreeze()
-        self.date_removed = when
+        self.date_removed = when or local_now()
         self.freeze()
 
 
