@@ -240,6 +240,12 @@ def create_backup_remote(repository: "Repository", remote_name: str, url: str) -
         return backup_remote_name, False, remote
 
 
+def set_git_credential_helper(repository: "Repository", hostname):
+    """Set up credential helper for renku git."""
+    with repository.get_configuration(writable=True) as config:
+        config.set_value("credential", "helper", f"!renku credentials --hostname {hostname}")
+
+
 def get_full_repository_path(url: Optional[str]) -> str:
     """Extract hostname/path of a git repository from its URL.
 
@@ -681,6 +687,9 @@ def clone_renku_repository(
 
     if create_backup:
         create_backup_remote(repository=repository, remote_name="origin", url=url)
+        set_git_credential_helper(
+            repository=cast("Repository", repository), hostname=deployment_hostname or parsed_url.hostname
+        )
 
     return repository
 
