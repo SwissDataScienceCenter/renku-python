@@ -107,7 +107,7 @@ def _migrate_old_workflows(migration_context, strict):
 
                 repository.add(cwl_file, path)
 
-                if repository.is_dirty():
+                if repository.is_dirty(untracked_files=False):
                     commit_msg = "renku migrate: committing migrated workflow"
                     committer = Actor(name=f"renku {__version__}", email=version_url)
                     repository.commit(commit_msg + project_context.transaction_id, committer=committer, no_verify=True)

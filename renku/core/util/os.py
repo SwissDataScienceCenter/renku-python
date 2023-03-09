@@ -20,6 +20,7 @@
 import fnmatch
 import glob
 import hashlib
+import io
 import os
 import re
 import shutil
@@ -246,6 +247,14 @@ def hash_file(path: Union[Path, str], hash_type: str = "sha256") -> Optional[str
 
     with open(path, "rb") as f:
         return hash_file_descriptor(f, hash_type)
+
+
+def hash_string(content: str, hash_type: str = "sha256") -> str:
+    """Hash a string."""
+    content_bytes = content.encode("utf-8")
+    file = io.BytesIO(content_bytes)
+
+    return hash_file_descriptor(file, hash_type)
 
 
 def hash_file_descriptor(file: BinaryIO, hash_type: str = "sha256") -> str:

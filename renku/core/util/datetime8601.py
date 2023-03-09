@@ -64,8 +64,6 @@ def fix_datetime(value) -> Optional[datetime]:
     if isinstance(value, datetime):
         if not value.tzinfo:
             value = _set_to_local_timezone(value)
-        if value.microsecond:
-            value = value.replace(microsecond=0)
 
     return value
 
@@ -75,7 +73,7 @@ def _set_to_local_timezone(value):
     return value.replace(tzinfo=local_tz)
 
 
-def local_now(remove_microseconds: bool = True) -> datetime:
+def local_now(remove_microseconds: bool = False) -> datetime:
     """Return current datetime in local timezone."""
     now = datetime.now(timezone.utc).astimezone()
     return now.replace(microsecond=0) if remove_microseconds else now

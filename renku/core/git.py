@@ -207,6 +207,6 @@ def ensure_clean(ignore_std_streams=False):
         if dirty_paths - set(mapped_streams.values()):
             _clean_streams(repository, mapped_streams)
             raise errors.DirtyRepository(repository)
-    elif repository.is_dirty():
+    elif repository.is_dirty(untracked_files=False):
         _clean_streams(repository, mapped_streams)
         raise errors.DirtyRepository(repository)

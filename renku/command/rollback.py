@@ -149,10 +149,10 @@ def _get_modifications_from_diff(diff):
             continue
 
         # normal file
-        if diff_index.change_type == "A":
+        if diff_index.added:
             modifications["files"]["removed"].append(entry)
 
-        elif diff_index.change_type == "D":
+        elif diff_index.deleted:
             modifications["files"]["restored"].append(entry)
         else:
             modifications["files"]["modified"].append(entry)

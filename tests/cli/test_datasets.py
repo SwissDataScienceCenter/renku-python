@@ -60,7 +60,7 @@ def test_datasets_create_clean(runner, project):
     assert isinstance(dataset, Dataset)
     assert Path("data/dataset/") == dataset.get_datadir()
 
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
 
 def test_datasets_create_clean_with_datadir(runner, project):
@@ -76,7 +76,7 @@ def test_datasets_create_clean_with_datadir(runner, project):
     assert isinstance(dataset, Dataset)
     assert datadir == dataset.get_datadir()
 
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
 
 def test_datasets_create_with_datadir_with_files(runner, project):
@@ -97,7 +97,7 @@ def test_datasets_create_with_datadir_with_files(runner, project):
     assert datadir == dataset.get_datadir()
     assert dataset.find_file(file)
 
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
 
 def test_datasets_create_dirty(runner, project):
@@ -571,7 +571,7 @@ def test_add_to_dirty_repo(directory_tree, runner, project):
     )
     assert 0 == result.exit_code, format_result_exception(result)
 
-    assert project.repository.is_dirty(untracked_files=True)
+    assert project.repository.is_dirty()
     assert ["untracked"] == project.repository.untracked_files
 
     # Add without making a change
@@ -580,7 +580,7 @@ def test_add_to_dirty_repo(directory_tree, runner, project):
     )
     assert 1 == result.exit_code
 
-    assert project.repository.is_dirty(untracked_files=True)
+    assert project.repository.is_dirty()
     assert ["untracked"] == project.repository.untracked_files
 
 
@@ -755,7 +755,7 @@ def test_add_untracked_file(runner, project):
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    assert project.repository.is_dirty(untracked_files=True)
+    assert project.repository.is_dirty()
     assert project.repository.contains(project.path / "data" / "my-dataset" / "untracked")
     assert get_dataset_with_injection("my-dataset").find_file("data/my-dataset/untracked")
 
@@ -773,7 +773,7 @@ def test_add_untracked_file_as_external(runner, project):
 
     path = project.path / DATA_DIR / "my-dataset" / "untracked" / "some-file"
 
-    assert project.repository.is_dirty(untracked_files=True)
+    assert project.repository.is_dirty()
     assert not project.repository.contains(untracked)
     assert get_dataset_with_injection("my-dataset").find_file(path.relative_to(project.path))
     assert path.is_symlink()
@@ -1188,7 +1188,7 @@ def test_dataset_unlink_file(tmpdir, runner, project, subdirectory):
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(new_file)])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
     dataset = get_dataset_with_injection("my-dataset")
     created_dataset_files = [Path(f.entity.path) for f in dataset.files]
@@ -1198,7 +1198,7 @@ def test_dataset_unlink_file(tmpdir, runner, project, subdirectory):
 
     result = runner.invoke(cli, ["dataset", "unlink", "my-dataset", "--include", new_file.basename, "-y"])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
     commit_sha_after = project.repository.head.commit.hexsha
     assert commit_sha_before != commit_sha_after
@@ -1446,7 +1446,7 @@ def test_dataset_edit_no_change(runner, project, dirty):
 
     commit_sha_after = project.repository.head.commit.hexsha
     assert commit_sha_after == commit_sha_before
-    assert dirty is project.repository.is_dirty(untracked_files=True)
+    assert dirty is project.repository.is_dirty()
 
 
 @pytest.mark.parametrize(
@@ -2234,7 +2234,7 @@ def test_datasets_provenance_after_create(runner, project):
     assert dataset.same_as is None
     assert [] == dataset.dataset_files
 
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
 
 def test_datasets_provenance_after_create_when_adding(runner, project):
@@ -2249,7 +2249,7 @@ def test_datasets_provenance_after_create_when_adding(runner, project):
     assert dataset.same_as is None
     assert {"README.md"} == {Path(f.entity.path).name for f in dataset.dataset_files}
 
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
 
 def test_datasets_provenance_after_edit(runner, project):
@@ -2414,7 +2414,7 @@ def test_datasets_provenance_after_adding_tag(runner, project):
     assert current_version.identifier == current_version.initial_identifier
     assert current_version.derived_from is None
     assert current_version.identifier == old_dataset.identifier
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
 
 def test_datasets_provenance_after_removing_tag(runner, project):
@@ -2434,7 +2434,7 @@ def test_datasets_provenance_after_removing_tag(runner, project):
     assert current_version.identifier == current_version.initial_identifier
     assert current_version.derived_from is None
     assert current_version.identifier == old_dataset.identifier
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
 
 def test_datasets_provenance_multiple(runner, project, directory_tree):
@@ -2584,7 +2584,7 @@ def test_update_local_file(runner, project, directory_tree, datadir_option, data
     assert str(file1) in result.output
     assert str(file2) in result.output
     assert commit_sha_before_update == project.repository.head.commit.hexsha
-    assert project.repository.is_dirty(untracked_files=True)
+    assert project.repository.is_dirty()
 
     result = runner.invoke(cli, ["dataset", "update", "my-data", "--no-local"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -2593,7 +2593,7 @@ def test_update_local_file(runner, project, directory_tree, datadir_option, data
     result = runner.invoke(cli, ["dataset", "update", "my-data"])
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
     dataset = get_dataset_with_injection("my-data")
     assert new_checksum_file1 == dataset.find_file(file1).entity.checksum
     assert new_checksum_file2 == dataset.find_file(file2).entity.checksum
@@ -2630,7 +2630,7 @@ def test_update_local_file_in_datadir(runner, project, directory_tree, datadir_o
     assert str(file1) in result.output
     assert str(file2) in result.output
 
-    assert project.repository.is_dirty(untracked_files=True)
+    assert project.repository.is_dirty()
 
     result = runner.invoke(
         cli, ["dataset", "update", "my-data", "--check-data-directory", "--no-remote", "--no-external"]
@@ -2638,7 +2638,7 @@ def test_update_local_file_in_datadir(runner, project, directory_tree, datadir_o
 
     assert 0 == result.exit_code, format_result_exception(result)
 
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
     dataset = get_dataset_with_injection("my-data")
     assert dataset.find_file(file1)
     assert dataset.find_file(file2)
@@ -2663,7 +2663,7 @@ def test_update_local_deleted_file(runner, project, directory_tree):
     assert "The following files will be deleted" in result.output
     assert str(file1) in result.output
     assert commit_sha_after_file1_delete == project.repository.head.commit.hexsha
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
     # NOTE: Update without `--delete`
     result = runner.invoke(cli, ["dataset", "update", "my-data"])

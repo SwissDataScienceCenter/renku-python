@@ -273,6 +273,8 @@ def test_graph_export_full():
             initial_identifier="abcdefg",
             date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
             date_modified=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
+            date_removed=None,
+            date_published=None,
         )
     ]
     dataset_gateway.get_by_id.return_value = Dataset(
@@ -280,6 +282,8 @@ def test_graph_export_full():
         name="my-dataset",
         date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
         date_modified=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
+        date_removed=None,
+        date_published=None,
         identifier="abcdefg",
         initial_identifier="abcdefg",
     )
@@ -313,6 +317,8 @@ def test_graph_export_full():
                 agent=Person(email="test@example.com", name="John Doe"),
                 plan=plan,
             ),
+            started_at_time=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
+            ended_at_time=datetime.fromisoformat("2022-07-12T16:29:15+02:00"),
         )
     ]
 
@@ -330,7 +336,9 @@ def test_graph_export_full():
     ]
 
     project_gateway = MagicMock(spec=IProjectGateway)
-    project_gateway.get_project.return_value = MagicMock(spec=Project, id="/projects/my-project")
+    project_gateway.get_project.return_value = MagicMock(
+        spec=Project, id="/projects/my-project", date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00")
+    )
 
     result = get_graph_for_all_objects(
         project_gateway=project_gateway,
@@ -344,6 +352,12 @@ def test_graph_export_full():
             "@id": "/activities/abcdefg123456",
             "@type": ["http://www.w3.org/ns/prov#Activity"],
             "http://www.w3.org/ns/prov#qualifiedAssociation": [{"@id": "/activities/abcdefg123456/association"}],
+            "http://www.w3.org/ns/prov#endedAtTime": [
+                {"@type": "http://www.w3.org/2001/XMLSchema#dateTime", "@value": "2022-07-12T16:29:15+02:00"}
+            ],
+            "http://www.w3.org/ns/prov#startedAtTime": [
+                {"@type": "http://www.w3.org/2001/XMLSchema#dateTime", "@value": "2022-07-12T16:29:14+02:00"}
+            ],
         },
         {
             "@id": "/activities/abcdefg123456/association",
@@ -413,6 +427,7 @@ def test_graph_export_full():
             "@id": "/projects/my-project",
             "@type": ["http://schema.org/Project", "http://www.w3.org/ns/prov#Location"],
             "http://schema.org/keywords": [],
+            "http://schema.org/dateCreated": [{"@value": "2022-07-12T16:29:14+02:00"}],
         },
         {
             "@id": "/dataset-files/abcdefg123456789",

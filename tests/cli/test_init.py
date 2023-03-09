@@ -417,7 +417,7 @@ def test_init_with_data_dir(isolated_runner, data_dir, directory_tree, project_i
 
     assert (new_project / data_dir).exists()
     assert (new_project / data_dir / ".gitkeep").exists()
-    assert not Repository(new_project).is_dirty(untracked_files=True)
+    assert not Repository(new_project).is_dirty()
 
     os.chdir(new_project.resolve())
     result = isolated_runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-data", str(directory_tree)])

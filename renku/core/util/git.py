@@ -32,13 +32,13 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union, cast
 from uuid import uuid4
 
 from renku.core import errors
+from renku.infrastructure.repository import DiffChangeType
 
 if TYPE_CHECKING:
     from renku.domain_model.entity import Collection, Entity
     from renku.domain_model.git import GitURL
     from renku.domain_model.provenance.agent import Person, SoftwareAgent
     from renku.infrastructure.repository import Commit, Remote, Repository
-
 
 COMMIT_DIFF_STRATEGY = "DIFF"
 STARTED_AT = int(time.time() * 1e3)
@@ -1110,7 +1110,7 @@ def finalize_commit(
     if isinstance(commit_only, list):
         for path_ in commit_only:
             p = repository.path / path_
-            if p.exists() or change_types.get(str(path_)) == "D":
+            if p.exists() or change_types.get(str(path_)) == DiffChangeType.DELETED:
                 repository.add(path_)
 
     if not commit_only:

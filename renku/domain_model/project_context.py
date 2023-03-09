@@ -95,7 +95,7 @@ class ProjectContext(threading.local):
         return self.path / RENKU_HOME / DATASET_IMAGES
 
     @property
-    def docker_path(self) -> Path:
+    def dockerfile_path(self) -> Path:
         """Path to the Dockerfile."""
         return self.path / DOCKERFILE
 
