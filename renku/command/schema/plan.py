@@ -54,3 +54,27 @@ class PlanSchema(JsonLDSchema):
     parameters = Nested(renku.hasArguments, CommandParameterSchema, many=True, load_default=None)
     success_codes = fields.List(renku.successCodes, fields.Integer(), load_default=[0])
     annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
+
+    @marshmallow.pre_dump(pass_many=True)
+    def removes_ms(self, objs, many, **kwargs):
+        """Remove milliseconds from datetimes.
+
+        Note: since DateField uses `strftime` as format, which only supports timezone info without a colon
+        e.g. `+0100` instead of `+01:00`, we have to deal with milliseconds manually instead of using a format string.
+        """
+
+        def _replace_times(obj):
+            obj.unfreeze()
+            obj.date_created = obj.date_created.replace(microsecond=0)
+            obj.date_modified = obj.date_modified.replace(microsecond=0)
+            if obj.date_removed:
+                obj.date_removed = obj.date_removed.replace(microsecond=0)
+            obj.freeze()
+
+        if many:
+            for obj in objs:
+                _replace_times(obj)
+            return objs
+
+        _replace_times(objs)
+        return objs
