@@ -215,7 +215,7 @@ def _update_dockerfile(check_only=False):
     """Update the dockerfile to the newest version of renku."""
     from renku import __version__
 
-    if not project_context.docker_path.exists():
+    if not project_context.dockerfile_path.exists():
         return False, None, None
 
     communication.echo("Updating dockerfile...")
