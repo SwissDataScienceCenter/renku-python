@@ -192,8 +192,7 @@ def update(update_all, dry_run, paths, provider, config, ignore_deleted, skip_me
 
     if not paths and not update_all and not dry_run:
         message = f"{WARNING}Updating all outputs could trigger expensive computations. Are you sure?"
-        if not communicator.confirm(message, default=True):
-            exit(1)
+        communicator.confirm(message, default=True, abort=True)
 
     try:
         result = (
