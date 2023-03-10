@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -29,7 +28,7 @@ def session_list_command():
 
 def session_start_command():
     """Start an interactive session."""
-    return Command().command(session_start).with_database()
+    return Command().command(session_start).with_database().require_migration()
 
 
 def session_stop_command():

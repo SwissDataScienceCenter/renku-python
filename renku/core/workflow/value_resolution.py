@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -67,7 +66,7 @@ class PlanValueResolver(ValueResolver):
     """
 
     def __init__(self, plan: Plan, values: Dict[str, Any]):
-        super(PlanValueResolver, self).__init__(plan, values)
+        super().__init__(plan, values)
 
     def apply(self) -> AbstractPlan:
         """Applies values and default_values to a ``Plan``.
@@ -112,7 +111,7 @@ class CompositePlanValueResolver(ValueResolver):
     """
 
     def __init__(self, plan: CompositePlan, values: Optional[Dict[str, Any]] = None):
-        super(CompositePlanValueResolver, self).__init__(plan, values)
+        super().__init__(plan, values)
 
     def apply(self) -> AbstractPlan:
         """Applies values and default_values to a ``CompositePlan``.

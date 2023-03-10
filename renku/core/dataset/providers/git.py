@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -113,7 +112,7 @@ class GitProvider(ProviderApi, AddProviderInterface):
                 normalized_source = os.path.normpath(source)
                 absolute_source = os.path.join(remote_repository.path, normalized_source)  # type: ignore
                 # NOTE: Path.glob("root/**") does not return correct results (e.g. it include ``root`` in the result)
-                subpaths = set(Path(p) for p in glob.glob(absolute_source))
+                subpaths = {Path(p) for p in glob.glob(absolute_source)}
                 if len(subpaths) == 0:
                     raise errors.ParameterError("No such file or directory", param_hint=str(source))
                 paths |= subpaths

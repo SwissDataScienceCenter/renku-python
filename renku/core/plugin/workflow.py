@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022- Swiss Data Science Center (SDSC)
+# Copyright 2017-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,19 +17,13 @@
 """Plugin hooks for renku workflow customization."""
 
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Protocol, Tuple
 
 import pluggy
 
 from renku.core import errors
 from renku.domain_model.workflow.converters import IWorkflowConverter
 from renku.domain_model.workflow.plan import Plan
-
-try:
-    from typing_extensions import Protocol  # NOTE: Required for Python 3.7 compatibility
-except ImportError:
-    from typing import Protocol  # type: ignore
-
 
 hookspec = pluggy.HookspecMarker("renku")
 

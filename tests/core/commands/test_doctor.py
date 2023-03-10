@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -138,7 +137,7 @@ def test_fix_invalid_imported_dataset(runner, project_with_datasets, with_inject
     assert "Fixing dataset 'dataset-1'" in result.output
 
     assert before_commit_sha != project_with_datasets.repository.head.commit.hexsha
-    assert not project_with_datasets.repository.is_dirty(untracked_files=True)
+    assert not project_with_datasets.repository.is_dirty()
 
     with with_injection():
         with with_dataset(name="dataset-1") as dataset:
@@ -204,7 +203,7 @@ def test_doctor_fix_activity_catalog(runner, project, with_injection):
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Workflow metadata was rebuilt" in result.output
     assert before_commit_sha != project_context.repository.head.commit.hexsha
-    assert not project_context.repository.is_dirty(untracked_files=True)
+    assert not project_context.repository.is_dirty()
 
     result = runner.invoke(cli, ["doctor", "--fix", "--force"])
 

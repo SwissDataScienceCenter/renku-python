@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -99,7 +98,7 @@ def migrate_old_metadata_namespaces():
                     with io.TextIOWrapper(compression_writer) as out:
                         json.dump(data, out, ensure_ascii=False)
             else:
-                with open(path, "wt") as ft:
+                with open(path, "w") as ft:
                     json.dump(data, ft, ensure_ascii=False, sort_keys=True, indent=2)
 
 
@@ -254,7 +253,7 @@ def fix_plan_times(plan_gateway: IPlanGateway):
             if plan.date_removed.tzinfo is None:
                 # NOTE: There was a bug that caused date_removed to be set without timezone (as UTC time)
                 # so we patch in the timezone here
-                plan.date_removed = plan.date_removed.replace(microsecond=0).astimezone(timezone.utc)
+                plan.date_removed = plan.date_removed.astimezone(timezone.utc)
             if plan.date_removed < plan.date_created:
                 # NOTE: Fix invalidation times set before creation date on plans
                 plan.date_removed = plan.date_created
