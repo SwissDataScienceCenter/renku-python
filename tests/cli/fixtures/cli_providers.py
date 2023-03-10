@@ -101,7 +101,10 @@ def cloud_storage_credentials(project):
     # S3
     s3_access_key_id = os.getenv("CLOUD_STORAGE_S3_ACCESS_KEY_ID", "")
     s3_secret_access_key = os.getenv("CLOUD_STORAGE_S3_SECRET_ACCESS_KEY", "")
-    s3_section = "os.zhdk.cloud.switch.ch"
+    s3_section = "renku-python-test-public.os.zhdk.cloud.switch.ch"
+    set_value(section=s3_section, key="access-key-id", value=s3_access_key_id, global_only=True)
+    set_value(section=s3_section, key="secret-access-key", value=s3_secret_access_key, global_only=True)
+    s3_section = "renku-python-integration-test.os.zhdk.cloud.switch.ch"
     set_value(section=s3_section, key="access-key-id", value=s3_access_key_id, global_only=True)
     set_value(section=s3_section, key="secret-access-key", value=s3_secret_access_key, global_only=True)
 
