@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -81,7 +80,7 @@ class MigrateProjectCtrl(ServiceCtrl, RenkuOpSyncMixin):
         self.skip_migrations = self.ctx.get("skip_migrations", False)
         self.commit_message = f"{MESSAGE_PREFIX} migrate to latest version for renku {__version__}"
 
-        super(MigrateProjectCtrl, self).__init__(
+        super().__init__(
             cache,
             user_data,
             request_data,

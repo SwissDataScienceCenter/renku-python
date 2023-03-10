@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2021 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -137,7 +136,7 @@ def identity_headers():
     headers = {
         "Content-Type": "application/json",
         "Renku-User": jwt.encode(jwt_data, JWT_TOKEN_SECRET, algorithm="HS256"),
-        "Authorization": "Bearer {0}".format(os.getenv("IT_OAUTH_GIT_TOKEN")),
+        "Authorization": "Bearer {}".format(os.getenv("IT_OAUTH_GIT_TOKEN")),
     }
 
     return headers
@@ -210,10 +209,10 @@ def svc_client_templates_creation(svc_client_with_templates):
     # cleanup by invoking the GitLab delete API
     # TODO: consider using the project delete endpoint once implemented
     def remove_project():
-        project_slug = "{0}/{1}".format(payload["project_namespace"], normalize_to_ascii(payload["project_name"]))
+        project_slug = "{}/{}".format(payload["project_namespace"], normalize_to_ascii(payload["project_name"]))
 
         project_slug_encoded = urllib.parse.quote(project_slug, safe="")
-        project_delete_url = "{0}/api/v4/projects/{1}".format(payload["project_repository"], project_slug_encoded)
+        project_delete_url = "{}/api/v4/projects/{}".format(payload["project_repository"], project_slug_encoded)
 
         requests.delete(url=project_delete_url, headers=authentication_headers)
 

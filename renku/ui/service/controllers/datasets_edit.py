@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -43,7 +42,7 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
         self.ctx = cast(Dict, DatasetsEditCtrl.REQUEST_SERIALIZER.load(request_data))
         self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset edit {self.ctx['name']}"
 
-        super(DatasetsEditCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
+        super().__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
     @property
     def context(self):

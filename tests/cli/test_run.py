@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -47,7 +46,7 @@ def test_run_many_args(project, run):
     os.mkdir("files")
     output = "output.txt"
     for i in range(103):
-        os.system("touch files/{}.txt".format(i))
+        os.system(f"touch files/{i}.txt")
     project.repository.add("files/")
     project.repository.commit("add many files")
 

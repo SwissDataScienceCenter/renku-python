@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -51,7 +50,7 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
         args = {**flask_request.args, **flask_request.form}
         self.response_builder.update(UploadFilesCtrl.REQUEST_SERIALIZER.load(args))
 
-        super(UploadFilesCtrl, self).__init__(cache, user_data, {})
+        super().__init__(cache, user_data, {})
 
     @property
     def context(self):
@@ -149,7 +148,7 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
         """Postprocessing of uploaded file."""
         files = []
         if self.response_builder["unpack_archive"] and self.response_builder["is_archive"]:
-            unpack_dir = "{0}.unpacked".format(file_path.name)
+            unpack_dir = f"{file_path.name}.unpacked"
             temp_dir = file_path.parent / Path(unpack_dir)
             if temp_dir.exists():
                 shutil.rmtree(temp_dir)

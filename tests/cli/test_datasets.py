@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -416,7 +415,7 @@ def test_dataset_creator_is_invalid(runner, project, creator, field):
 @pytest.mark.parametrize("output_format", DATASETS_FORMATS.keys())
 def test_datasets_list_empty(output_format, runner, project):
     """Test listing without datasets."""
-    format_option = "--format={0}".format(output_format)
+    format_option = f"--format={output_format}"
     result = runner.invoke(cli, ["dataset", "ls", format_option])
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -427,7 +426,7 @@ def test_datasets_list_empty(output_format, runner, project):
 )
 def test_datasets_list_non_empty(output_format, runner, project, datadir_option, datadir):
     """Test listing with datasets."""
-    format_option = "--format={0}".format(output_format)
+    format_option = f"--format={output_format}"
     result = runner.invoke(cli, ["dataset", "create", "my-dataset"] + datadir_option)
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
@@ -593,7 +592,7 @@ def test_add_unicode_file(tmpdir, runner, project):
 
     filename = "fi1é-àèû爱ಠ_ಠ.txt"
     new_file = tmpdir.join(filename)
-    new_file.write(str("test"))
+    new_file.write("test")
 
     # add data
     result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(new_file)])
@@ -616,7 +615,7 @@ def test_multiple_file_to_dataset(tmpdir, runner, project):
 
     paths = []
     for i in range(3):
-        new_file = tmpdir.join("file_{0}".format(i))
+        new_file = tmpdir.join(f"file_{i}")
         new_file.write(str(i))
         paths.append(str(new_file))
 
@@ -809,7 +808,7 @@ def test_dataset_add_with_copy(tmpdir, runner, project):
     paths = []
     original_inodes = []
     for i in range(3):
-        new_file = tmpdir.join("file_{0}".format(i))
+        new_file = tmpdir.join(f"file_{i}")
         new_file.write(str(i))
         original_inodes.append(os.lstat(str(new_file))[stat.ST_INO])
         paths.append(str(new_file))
@@ -842,7 +841,7 @@ def test_dataset_add_many(tmpdir, runner, project):
 
     paths = []
     for i in range(1000):
-        new_file = tmpdir.join("file_{0}".format(i))
+        new_file = tmpdir.join(f"file_{i}")
         new_file.write(str(i))
         paths.append(str(new_file))
 
@@ -898,7 +897,7 @@ def test_datasets_ls_files_tabular_empty(runner, project):
 @pytest.mark.parametrize("output_format", DATASET_FILES_FORMATS.keys())
 def test_datasets_ls_files_check_exit_code(output_format, runner, project):
     """Test file listing exit codes for different formats."""
-    format_option = "--format={0}".format(output_format)
+    format_option = f"--format={output_format}"
     result = runner.invoke(cli, ["dataset", "ls-files", format_option])
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -964,8 +963,8 @@ def test_datasets_ls_files_json(runner, project, tmpdir, large_file):
     result = json.loads(result.output)
 
     assert len(result) == 2
-    file1 = next((f for f in result if f["path"].endswith("file_1")))
-    file2 = next((f for f in result if f["path"].endswith(large_file.name)))
+    file1 = next(f for f in result if f["path"].endswith("file_1"))
+    file2 = next(f for f in result if f["path"].endswith(large_file.name))
 
     assert not file1["is_lfs"]
     assert file2["is_lfs"]
@@ -1058,7 +1057,7 @@ def test_datasets_ls_files_tabular_creators(runner, project, directory_tree):
     assert creator is not None
 
     # check creators filters
-    result = runner.invoke(cli, ["dataset", "ls-files", "--creators={0}".format(creator)])
+    result = runner.invoke(cli, ["dataset", "ls-files", f"--creators={creator}"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     # check output
@@ -1481,7 +1480,7 @@ def test_dataset_tag(tmpdir, runner, project, subdirectory):
 
     # create some data
     new_file = tmpdir.join("file")
-    new_file.write(str("test"))
+    new_file.write("test")
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(new_file)], catch_exceptions=False)
@@ -1517,7 +1516,7 @@ def test_dataset_ls_tags(tmpdir, runner, project, form):
 
     # create some data
     new_file = tmpdir.join("file")
-    new_file.write(str("test"))
+    new_file.write("test")
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(new_file)], catch_exceptions=False)
@@ -1534,9 +1533,7 @@ def test_dataset_ls_tags(tmpdir, runner, project, form):
     result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "aBc9.34-11_55.t"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(
-        cli, ["dataset", "ls-tags", "my-dataset", "--format={}".format(form)], catch_exceptions=False
-    )
+    result = runner.invoke(cli, ["dataset", "ls-tags", "my-dataset", f"--format={form}"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
     assert "1.0" in result.output
     assert "aBc9.34-11_55.t" in result.output
@@ -1553,7 +1550,7 @@ def test_dataset_rm_tag(tmpdir, runner, project, subdirectory):
 
     # create some data
     new_file = tmpdir.join("file")
-    new_file.write(str("test"))
+    new_file.write("test")
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(new_file)], catch_exceptions=False)
@@ -1594,7 +1591,7 @@ def test_dataset_rm_tags_multiple(tmpdir, runner, project):
 
     # create some data
     new_file = tmpdir.join("file")
-    new_file.write(str("test"))
+    new_file.write("test")
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(new_file)], catch_exceptions=False)
@@ -1623,7 +1620,7 @@ def test_dataset_rm_tags_failure(tmpdir, runner, project):
 
     # create some data
     new_file = tmpdir.join("file")
-    new_file.write(str("test"))
+    new_file.write("test")
 
     # add data to dataset
     result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(new_file)], catch_exceptions=False)
@@ -1697,7 +1694,7 @@ def test_add_protected_file(runner, project, filename, subdirectory):
 def test_add_non_protected_file(runner, project, tmpdir, filename, subdirectory):
     """Check adding an 'almost' protected file."""
     new_file = tmpdir.join(filename)
-    new_file.write(str("test"))
+    new_file.write("test")
 
     result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-dataset1", str(new_file)])
 

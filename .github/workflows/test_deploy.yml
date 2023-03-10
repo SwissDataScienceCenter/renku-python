@@ -31,9 +31,9 @@ jobs:
         run: |
           if [ "$REF" == "refs/heads/$DEFAULT_BRANCH" ] || [[ "$REF" =~ ^refs/tags/.* ]]
           then
-              echo "matrix={\"python-version\": [\"3.7\", \"3.10\"]}" >> $GITHUB_OUTPUT
+              echo "matrix={\"python-version\": [\"3.8\", \"3.11\"]}" >> $GITHUB_OUTPUT
           else
-              echo "matrix={\"python-version\": [\"3.9\"]}" >> $GITHUB_OUTPUT
+              echo "matrix={\"python-version\": [\"3.10\"]}" >> $GITHUB_OUTPUT
           fi
 
   cleanup-runs:

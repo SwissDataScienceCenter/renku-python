@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -286,12 +285,14 @@ def select_template(templates_source: TemplatesSource, id: Optional[str] = None)
         if not communication.has_prompt():
             raise errors.InvalidTemplateError("Cannot select a template")
 
-        Selection = NamedTuple("Selection", [("index", int), ("id", str)])
+        class Selection(NamedTuple):
+            number: int
+            id: str
 
-        templates = [Selection(index=i, id=t.id) for i, t in enumerate(templates_source.templates, start=1)]
-        tables = tabulate(templates, headers=["index", "id"])
+        templates = [Selection(number=i, id=t.id) for i, t in enumerate(templates_source.templates, start=1)]
+        tables = tabulate(templates, headers=["number", "id"])
 
-        message = f"{tables}\nPlease choose a template by typing its index"
+        message = f"{tables}\nPlease choose a template by typing its number"
 
         template_index = communication.prompt(
             msg=message, type=click.IntRange(1, len(templates_source.templates)), show_default=False, show_choices=False

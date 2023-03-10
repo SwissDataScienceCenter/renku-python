@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -887,7 +886,7 @@ def get_file_size(repository_path: Path, path: str) -> Optional[int]:
             ("git", "lfs", "ls-files", "--name-only", "--size"),
             stdout=PIPE,
             cwd=repository_path,
-            universal_newlines=True,
+            text=True,
         )
     except SubprocessError:
         pass

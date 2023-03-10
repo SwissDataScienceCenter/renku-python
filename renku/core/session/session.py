@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -42,9 +41,12 @@ def _safe_get_provider(provider: str) -> ISessionProvider:
         raise errors.ParameterError(f"Session provider '{provider}' is not available!")
 
 
-SessionList = NamedTuple(
-    "SessionList", [("sessions", List[Session]), ("all_local", bool), ("warning_messages", List[str])]
-)
+class SessionList(NamedTuple):
+    """Session list return."""
+
+    sessions: List[Session]
+    all_local: bool
+    warning_messages: List[str]
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))

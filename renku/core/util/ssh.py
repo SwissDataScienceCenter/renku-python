@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -30,7 +29,12 @@ from renku.core.session.utils import get_renku_url
 from renku.core.util import communication
 from renku.domain_model.project_context import project_context
 
-SSHKeyPair = NamedTuple("SSHKeyPair", [("private_key", str), ("public_key", str)])
+
+class SSHKeyPair(NamedTuple):
+    """A public/private key pair for SSH."""
+
+    private_key: str
+    public_key: str
 
 
 def generate_ssh_keys() -> SSHKeyPair:

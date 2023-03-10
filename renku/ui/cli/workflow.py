@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -1187,9 +1186,7 @@ def execute(
 
     if result.output:
         click.echo(
-            "Unchanged files:\n\n\t{0}".format(
-                "\n\t".join(click.style(path, fg=color.YELLOW) for path in result.output)
-            )
+            "Unchanged files:\n\n\t{}".format("\n\t".join(click.style(path, fg=color.YELLOW) for path in result.output))
         )
 
 

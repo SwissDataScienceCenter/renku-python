@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -42,7 +41,7 @@ class CommandLineTool(cwl.CommandLineTool):
 
     def get_dict(self):
         """Set outputs to empty if not set."""
-        d = super(CommandLineTool, self).get_dict()  # type: ignore[misc]
+        d = super().get_dict()  # type: ignore[misc]
         if "outputs" not in d:
             d["outputs"] = []
         return d
@@ -53,7 +52,7 @@ class WorkflowStep(cwl.WorkflowStep):
 
     def get_dict(self):
         """Set out to empty if not set."""
-        d = super(WorkflowStep, self).get_dict()  # type: ignore[misc]
+        d = super().get_dict()  # type: ignore[misc]
         if "out" not in d:
             d["out"] = []
         return d
@@ -188,7 +187,7 @@ class CWLExporter(IWorkflowConverter):
 
         for i, wf in enumerate(nx.topological_sort(graph.workflow_graph)):
             step_clitool = CWLExporter._convert_step(workflow=wf, basedir=basedir, resolve_paths=resolve_paths)
-            step = WorkflowStep(in_=[], out=[], run=step_clitool, id="step_{}".format(i))
+            step = WorkflowStep(in_=[], out=[], run=step_clitool, id=f"step_{i}")
 
             for input in wf.inputs:
                 input_path = input.actual_value
@@ -201,18 +200,16 @@ class CWLExporter(IWorkflowConverter):
                     # output of a previous step, refer to it
                     consumed_outputs.add(outputs[input_path][0])
                     step.in_.append(
-                        cwl.WorkflowStepInput(
-                            sanitized_id, source="{}/{}".format(outputs[input_path][1], outputs[input_path][0])
-                        )
+                        cwl.WorkflowStepInput(sanitized_id, source=f"{outputs[input_path][1]}/{outputs[input_path][0]}")
                     )
                 else:
                     # input isn't output and doesn't exist yet, add new
-                    inputs[input_path] = "input_{}".format(input_index)
+                    inputs[input_path] = f"input_{input_index}"
                     step.in_.append(cwl.WorkflowStepInput(sanitized_id, source=inputs[input_path]))
                     input_index += 1
 
             for parameter in wf.parameters:
-                argument_id = "argument_{}".format(argument_index)
+                argument_id = f"argument_{argument_index}"
                 arguments[argument_id] = parameter.actual_value
                 step.in_.append(cwl.WorkflowStepInput(CWLExporter._sanitize_id(parameter.id), source=argument_id))
                 argument_index += 1
@@ -221,7 +218,7 @@ class CWLExporter(IWorkflowConverter):
                 sanitized_id = CWLExporter._sanitize_id(output.id)
 
                 if output.mapped_to:
-                    sanitized_id = "output_{}".format(output.mapped_to.stream_type)
+                    sanitized_id = f"output_{output.mapped_to.stream_type}"
                 outputs[output.actual_value] = (sanitized_id, step.id)
                 step.out.append(cwl.WorkflowStepOutput(sanitized_id))
 
@@ -253,9 +250,7 @@ class CWLExporter(IWorkflowConverter):
         for index, (path, (id_, step_id)) in enumerate(outputs.items(), 1):
             type_ = "Directory" if os.path.isdir(path) else "File"
             workflow_object.outputs.append(
-                cwl.WorkflowOutputParameter(
-                    id="output_{}".format(index), outputSource="{}/{}".format(step_id, id_), type=type_
-                )
+                cwl.WorkflowOutputParameter(id=f"output_{index}", outputSource=f"{step_id}/{id_}", type=type_)
             )
 
         return workflow_object
@@ -318,7 +313,7 @@ class CWLExporter(IWorkflowConverter):
             tool_input = CWLExporter._convert_input(input_, basedir, resolve_paths=resolve_paths)
 
             workdir_req.listing.append(
-                cwl.Dirent(entry="$(inputs.{})".format(tool_input.id), entryname=input_.actual_value, writable=False)
+                cwl.Dirent(entry=f"$(inputs.{tool_input.id})", entryname=input_.actual_value, writable=False)
             )
 
             environment_variables.append(
@@ -326,7 +321,7 @@ class CWLExporter(IWorkflowConverter):
             )
             tool_object.inputs.append(tool_input)
             if input_.mapped_to:
-                tool_object.stdin = "$(inputs.{}.path)".format(tool_input.id)
+                tool_object.stdin = f"$(inputs.{tool_input.id}.path)"
                 jsrequirement = True
 
         for parameter in workflow.parameters:
@@ -432,7 +427,7 @@ class CWLExporter(IWorkflowConverter):
         if output.mapped_to:
             return (
                 cwl.CommandOutputParameter(
-                    id="output_{}".format(output.mapped_to.stream_type),
+                    id=f"output_{output.mapped_to.stream_type}",
                     type=output.mapped_to.stream_type,
                     streamable=False,
                 ),
@@ -460,7 +455,7 @@ class CWLExporter(IWorkflowConverter):
                     separate = True
 
             arg = cwl.CommandInputParameter(
-                id="{}_arg".format(sanitized_id),
+                id=f"{sanitized_id}_arg",
                 type="string",
                 inputBinding=cwl.CommandLineBinding(position=output.position, prefix=prefix, separate=separate),
                 default=output.actual_value,
@@ -468,7 +463,7 @@ class CWLExporter(IWorkflowConverter):
             outp = cwl.CommandOutputParameter(
                 id=sanitized_id,
                 type=type_,
-                outputBinding=cwl.CommandOutputBinding(glob="$(inputs.{})".format(arg.id)),
+                outputBinding=cwl.CommandOutputBinding(glob=f"$(inputs.{arg.id})"),
             )
             return outp, arg
 

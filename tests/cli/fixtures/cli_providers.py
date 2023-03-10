@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2021 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -147,9 +146,7 @@ def doi_responses():
                 ),
             )
 
-        response.add_callback(
-            method="GET", url=re.compile("{base_url}/.*".format(base_url=DOI_BASE_URL)), callback=doi_callback
-        )
+        response.add_callback(method="GET", url=re.compile(f"{DOI_BASE_URL}/.*"), callback=doi_callback)
 
         def version_callback(_):
             return (
@@ -162,7 +159,7 @@ def doi_responses():
 
         url_parts = list(urllib.parse.urlparse(base_url))
         url_parts[2] = posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSION_API)
-        pattern = "{url}.*".format(url=urllib.parse.urlunparse(url_parts))
+        pattern = f"{urllib.parse.urlunparse(url_parts)}.*"
 
         response.add_callback(method="GET", url=re.compile(pattern), callback=version_callback)
         yield response

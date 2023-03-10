@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -105,7 +104,7 @@ class Uri(fields._JsonLDField, marshmallow.fields.String, marshmallow.fields.Dic
         elif isinstance(value, dict):
             return super(marshmallow.fields.String, self)._deserialize(value, attr, data, **kwargs)
         else:
-            raise ValueError("Invalid type for field {}: {}".format(self.name, type(value)))
+            raise ValueError(f"Invalid type for field {self.name}: {type(value)}")
 
 
 class StringList(fields.String):

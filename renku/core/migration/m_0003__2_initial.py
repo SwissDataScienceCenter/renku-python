@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -107,7 +106,7 @@ def _migrate_datasets_pre_v0_3():
         dataset.to_yaml(new_path)
 
         Path(old_path).unlink()
-        ref = LinkReference.create(name="datasets/{0}".format(name), force=True)
+        ref = LinkReference.create(name=f"datasets/{name}", force=True)
         ref.set_reference(new_path)
 
     if changed:
@@ -132,7 +131,7 @@ def _migrate_broken_dataset_paths(migration_context):
 
         # migrate the refs
         if not is_using_temporary_datasets_path():
-            ref = LinkReference.create(name="datasets/{0}".format(dataset.name), force=True)
+            ref = LinkReference.create(name=f"datasets/{dataset.name}", force=True)
             ref.set_reference(expected_path / OLD_METADATA_PATH)
 
         if not expected_path.exists():
