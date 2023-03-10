@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -58,7 +57,7 @@ def check_queues(queue_list):
     """Check if listening on specified queues is possible."""
     for queue in queue_list:
         if queue and queue not in QUEUES:
-            err_msg = "Invalid queue name: {0}\n\n" "Valid queue names: \n{1}".format(queue, "\n".join(QUEUES))
+            err_msg = "Invalid queue name: {}\n\nValid queue names: \n{}".format(queue, "\n".join(QUEUES))
             raise UsageError(err_msg)
 
 

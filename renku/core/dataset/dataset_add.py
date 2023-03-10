@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -115,7 +114,7 @@ def add_to_dataset(
             "with '--create' option for automatic dataset creation.".format(dataset_name)
         )
     except (FileNotFoundError, errors.GitCommandError) as e:
-        raise errors.ParameterError("Could not find paths/URLs: \n{0}".format("\n".join(urls))) from e
+        raise errors.ParameterError("Could not find paths/URLs: \n{}".format("\n".join(urls))) from e
     else:
         project_context.database.commit()
         return dataset

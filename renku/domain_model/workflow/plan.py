@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -153,12 +152,14 @@ class AbstractPlan(Persistent, ABC):
         """Return if an ``AbstractPlan`` has correct derived_from."""
         raise NotImplementedError()
 
-    def delete(self, when: datetime = local_now()):
+    def delete(self, when: Optional[datetime] = None):
         """Mark a plan as deleted.
 
         NOTE: Don't call this function for deleting plans since it doesn't delete the whole plan derivatives chain. Use
         renku.core.workflow.plan::remove_plan instead.
         """
+        when = when or local_now()
+
         self.unfreeze()
         self.date_removed = when
         self.freeze()

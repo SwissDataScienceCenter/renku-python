@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -50,7 +49,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
             TemplatesCreateProjectCtrl.REQUEST_SERIALIZER.load({**user_data, **request_data}, unknown=EXCLUDE),
         )
         self.ctx["commit_message"] = f"{MESSAGE_PREFIX} init {self.ctx['project_name']}"
-        super(TemplatesCreateProjectCtrl, self).__init__(cache, user_data, request_data)
+        super().__init__(cache, user_data, request_data)
 
         self.template: Optional[Template] = None
 
@@ -126,7 +125,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
         self.template_version = repository.head.commit.hexsha
 
         # Verify missing parameters
-        template_parameters = set(p.name for p in self.template.parameters)
+        template_parameters = {p.name for p in self.template.parameters}
         provided_parameters = {p["key"]: p["value"] for p in self.ctx["parameters"]}
         missing_keys = list(template_parameters - provided_parameters.keys())
         if len(missing_keys) > 0:

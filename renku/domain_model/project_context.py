@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -95,7 +94,7 @@ class ProjectContext(threading.local):
         return self.path / RENKU_HOME / DATASET_IMAGES
 
     @property
-    def docker_path(self) -> Path:
+    def dockerfile_path(self) -> Path:
         """Path to the Dockerfile."""
         return self.path / DOCKERFILE
 

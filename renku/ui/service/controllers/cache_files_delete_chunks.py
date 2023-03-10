@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -35,7 +34,7 @@ class DeleteFileChunksCtrl(ServiceCtrl, RenkuOperationMixin):
     def __init__(self, cache, user_data, request_data):
         """Construct list uploaded files controller."""
         self.ctx = DeleteFileChunksCtrl.REQUEST_SERIALIZER.load(request_data)
-        super(DeleteFileChunksCtrl, self).__init__(cache, user_data, request_data)
+        super().__init__(cache, user_data, request_data)
 
     @property
     def context(self):

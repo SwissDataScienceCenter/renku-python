@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -78,7 +77,7 @@ def get_lfs_tracking_and_file_sizes(records, has_tag: bool):
             ("git", "lfs", "ls-files", "--name-only", "--size", "--deleted"),
             stdout=PIPE,
             cwd=project_context.path,
-            universal_newlines=True,
+            text=True,
         )
     except SubprocessError:
         pass

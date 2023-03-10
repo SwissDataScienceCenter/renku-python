@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -393,8 +392,8 @@ def test_dataset_import_renkulab_dataset_with_image(runner, project, with_inject
     with with_injection():
         dataset = [d for d in DatasetGateway().get_all_active_datasets()][0]
     assert 2 == len(dataset.images)
-    img1 = next((i for i in dataset.images if i.position == 1))
-    img2 = next((i for i in dataset.images if i.position == 2))
+    img1 = next(i for i in dataset.images if i.position == 1)
+    img2 = next(i for i in dataset.images if i.position == 2)
 
     assert img1.content_url == "https://example.com/image1.jpg"
     assert img2.content_url.endswith("/2.png")
@@ -707,7 +706,7 @@ def test_dataset_export_to_local(runner, tmp_path):
     assert 0 == result.exit_code, format_result_exception(result)
     assert f"Dataset metadata was copied to {repository.path}/data/parts-v1/METADATA.yml" in result.output
     assert f"Exported to: {repository.path}/data/parts-v1" in result.output
-    assert repository.is_dirty(untracked_files=True)
+    assert repository.is_dirty()
     assert (repository.path / "data" / "parts-v1" / "part_relationships.csv").exists()
     assert (repository.path / "data" / "parts-v1" / "parts.csv").read_text() == (
         repository.path / "data" / "parts-v1" / "parts.csv"
@@ -747,7 +746,7 @@ def test_dataset_export_upload_multiple(
     # create data file
     paths = []
     for i in range(3):
-        new_file = tmpdir.join("file_{0}".format(i))
+        new_file = tmpdir.join(f"file_{i}")
         new_file.write(str(i))
         paths.append(str(new_file))
 
@@ -1198,7 +1197,7 @@ def test_dataset_update_zenodo(project, runner, doi):
     assert "The following imported datasets will be updated" in result.output
     assert "imported_dataset" in result.output
     assert commit_sha_after_file1_delete == project.repository.head.commit.hexsha
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
     result = runner.invoke(cli, ["dataset", "update", "imported_dataset"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
@@ -1278,7 +1277,7 @@ def test_dataset_update_renku(project, runner, with_injection):
     assert "The following imported datasets will be updated" in result.output
     assert "remote-dataset" in result.output
     assert commit_sha_after_file1_delete == project.repository.head.commit.hexsha
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
     result = runner.invoke(cli, ["dataset", "update", "--all"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
@@ -1557,7 +1556,7 @@ def test_update_specific_refs(ref, runner, project):
     assert "The following files will be updated" in result.output
     assert str(file) in result.output
     assert commit_sha_after_file1_delete == project.repository.head.commit.hexsha
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
     # update data to a later version
     result = runner.invoke(cli, ["dataset", "update", "--ref", ref, "--all"])
@@ -1633,7 +1632,7 @@ def test_files_are_tracked_in_lfs(runner, project, no_lfs_size_limit):
         ],
     )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    path = "data/dataset/{}".format(filename)
+    path = f"data/dataset/{filename}"
     assert path in subprocess.check_output(["git", "lfs", "ls-files"]).decode()
 
 
@@ -1701,7 +1700,10 @@ def test_check_disk_space(runner, project, monkeypatch, url):
 
     def disk_usage(_):
         """Mocked response."""
-        Usage = NamedTuple("Usage", [("free", int)])
+
+        class Usage(NamedTuple):
+            free: int
+
         return Usage(free=0)
 
     monkeypatch.setattr(shutil, "disk_usage", disk_usage)

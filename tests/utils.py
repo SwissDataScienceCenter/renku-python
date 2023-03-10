@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2020-2022 -Swiss Data Science Center (SDSC)
+# Copyright 2020-2023 -Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -259,7 +258,7 @@ def write_and_commit_file(repository: "Repository", path: Union[Path, str], cont
 
     repository.add(path)
     if commit:
-        repository.commit(f"Updated '{path.relative_to(repository.path)}'")
+        repository.commit(f"Updated '{path.relative_to(repository.path)}'", no_verify=True)
 
 
 def delete_and_commit_file(repository: "Repository", path: Union[Path, str]):
@@ -309,7 +308,7 @@ def create_dummy_activity(
         assert isinstance(plan, str)
         plan = Plan(id=Plan.generate_id(), name=plan, command=plan)
 
-    ended_at_time = ended_at_time or local_now(remove_microseconds=False)
+    ended_at_time = ended_at_time or (local_now() + timedelta(seconds=1))
     empty_checksum = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"  # Git hash of an empty string/file
     activity_id = id or Activity.generate_id(uuid=None if index is None else str(index))
 

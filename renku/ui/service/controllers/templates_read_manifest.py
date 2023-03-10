@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -40,7 +39,7 @@ class TemplatesReadManifestCtrl(ServiceCtrl, RenkuOperationMixin):
     def __init__(self, cache, user_data, request_data):
         """Construct a templates read manifest controller."""
         self.ctx = TemplatesReadManifestCtrl.REQUEST_SERIALIZER.load({**user_data, **request_data}, unknown=EXCLUDE)
-        super(TemplatesReadManifestCtrl, self).__init__(cache, user_data, request_data)
+        super().__init__(cache, user_data, request_data)
 
     @property
     def context(self):

@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -38,6 +37,7 @@ def test_template_get_files(source_template):
         "Dockerfile",
         "README.md",
         "{{ __name__ }}.dummy",
+        "requirements.txt",
         "immutable.file",
     } == files
 
@@ -47,7 +47,7 @@ def test_template_render(source_template):
     rendered_template = source_template.render(metadata=TemplateMetadata.from_dict(TEMPLATE_METADATA))
 
     assert "A Renku project: My Project\n" == (rendered_template.path / "README.md").read_text()
-    assert "42.0.0" == read_renku_version_from_dockerfile(rendered_template.path / "Dockerfile")
+    assert "42.0.0" == str(read_renku_version_from_dockerfile(rendered_template.path / "Dockerfile"))
 
 
 @pytest.mark.parametrize("name", ["", "a-renku-project"])
@@ -62,9 +62,15 @@ def test_template_get_rendered_files(source_template):
     """Test get files of a rendered template."""
     rendered_template = source_template.render(metadata=TemplateMetadata.from_dict(TEMPLATE_METADATA))
 
-    assert {".gitignore", ".renku/renku.ini", "Dockerfile", "README.md", "my-project.dummy", "immutable.file"} == set(
-        rendered_template.get_files()
-    )
+    assert {
+        ".gitignore",
+        ".renku/renku.ini",
+        "Dockerfile",
+        "README.md",
+        "my-project.dummy",
+        "requirements.txt",
+        "immutable.file",
+    } == set(rendered_template.get_files())
 
 
 def test_templates_manifest():
