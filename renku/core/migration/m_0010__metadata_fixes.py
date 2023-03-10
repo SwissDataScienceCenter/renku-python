@@ -254,7 +254,7 @@ def fix_plan_times(plan_gateway: IPlanGateway):
             if plan.date_removed.tzinfo is None:
                 # NOTE: There was a bug that caused date_removed to be set without timezone (as UTC time)
                 # so we patch in the timezone here
-                plan.date_removed = plan.date_removed.replace(microsecond=0).astimezone(timezone.utc)
+                plan.date_removed = plan.date_removed.astimezone(timezone.utc)
             if plan.date_removed < plan.date_created:
                 # NOTE: Fix invalidation times set before creation date on plans
                 plan.date_removed = plan.date_created

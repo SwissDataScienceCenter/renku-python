@@ -17,7 +17,7 @@
 # limitations under the License.
 """Project JSON-LD schema."""
 
-from marshmallow import EXCLUDE
+from marshmallow import EXCLUDE, pre_dump
 
 from renku.command.schema.agent import PersonSchema
 from renku.command.schema.annotation import AnnotationSchema
@@ -59,3 +59,22 @@ class ProjectSchema(JsonLDSchema):
     )
     version = StringList(schema.schemaVersion, load_default="1")
     keywords = fields.List(schema.keywords, fields.String(), load_default=None)
+
+    @pre_dump(pass_many=True)
+    def removes_ms(self, objs, many, **kwargs):
+        """Remove milliseconds from datetimes.
+
+        Note: since DateField uses `strftime` as format, which only supports timezone info without a colon
+        e.g. `+0100` instead of `+01:00`, we have to deal with milliseconds manually instead of using a format string.
+        """
+
+        def _replace_times(obj):
+            obj.date_created = obj.date_created.replace(microsecond=0)
+
+        if many:
+            for obj in objs:
+                _replace_times(obj)
+            return objs
+
+        _replace_times(objs)
+        return objs

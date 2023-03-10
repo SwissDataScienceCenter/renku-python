@@ -29,9 +29,16 @@ from renku.core.template.template import (
     fetch_templates_source,
     get_file_actions,
 )
-from renku.core.template.usecase import check_for_template_update, update_template
+from renku.core.template.usecase import (
+    check_for_template_update,
+    does_dockerfile_contain_only_version_change,
+    is_dockerfile_updated_by_user,
+    update_template,
+)
+from renku.core.util.metadata import replace_renku_version_in_dockerfile
 from renku.domain_model.project_context import project_context
 from renku.domain_model.template import TEMPLATE_MANIFEST
+from tests.utils import write_and_commit_file
 
 TEMPLATES_URL = "https://github.com/SwissDataScienceCenter/renku-project-template"
 
@@ -194,14 +201,14 @@ def test_update_with_locally_modified_file(project_with_template, rendered_templ
 
 def test_update_with_locally_deleted_file(project_with_template, rendered_template_with_update, with_injection):
     """Test a locally deleted file that is remotely updated won't be re-created."""
-    (project_context.path / "Dockerfile").unlink()
+    (project_context.path / "requirements.txt").unlink()
 
     with with_injection():
         actions = get_file_actions(
             rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
         )
 
-    assert FileAction.DELETED == actions["Dockerfile"]
+    assert FileAction.DELETED == actions["requirements.txt"]
 
 
 @pytest.mark.parametrize("delete", [False, True])
@@ -220,3 +227,24 @@ def test_update_with_locally_changed_immutable_file(
         get_file_actions(
             rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
         )
+
+
+def test_detect_dockerfile_version_update(project, with_injection):
+    """Test detecting a Dockerfile was only updated for changing Renku version."""
+    dockerfile = project_context.path / "Dockerfile"
+    new_content = replace_renku_version_in_dockerfile(dockerfile.read_text(), version="1.42.42")
+    write_and_commit_file(project.repository, dockerfile, new_content)
+
+    new_content = replace_renku_version_in_dockerfile(dockerfile.read_text(), version="2.42.42")
+    write_and_commit_file(project.repository, dockerfile, new_content)
+
+    with with_injection():
+        assert does_dockerfile_contain_only_version_change()
+        assert not is_dockerfile_updated_by_user()
+
+    new_content = dockerfile.read_text() + "\nRUN echo 'user modifications'"
+    write_and_commit_file(project.repository, dockerfile, new_content)
+
+    with with_injection():
+        assert not does_dockerfile_contain_only_version_change()
+        assert is_dockerfile_updated_by_user()

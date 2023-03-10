@@ -77,8 +77,8 @@ def test_activity_parameter_values(project_with_injection, mocker):
         plan,
         repository=project_with_injection.repository,
         project_gateway=project_gateway,
-        started_at_time=local_now(remove_microseconds=False),
-        ended_at_time=local_now(remove_microseconds=False),
+        started_at_time=local_now(),
+        ended_at_time=local_now(),
         annotations=[],
     )
 

@@ -2236,6 +2236,26 @@ class ActivitySchema(OldCommitMixinSchema):
     ended_at_time = fields.DateTime(prov.endedAtTime, add_value_types=True)
     agents = Nested(prov.wasAssociatedWith, [OldPersonSchema, OldSoftwareAgentSchema], many=True)
 
+    @pre_dump(pass_many=True)
+    def removes_ms(self, objs, many, **kwargs):
+        """Remove milliseconds from datetimes.
+
+        Note: since DateField uses `strftime` as format, which only supports timezone info without a colon
+        e.g. `+0100` instead of `+01:00`, we have to deal with milliseconds manually instead of using a format string.
+        """
+
+        def _replace_times(obj):
+            obj.started_at_time = obj.started_at_time.replace(microsecond=0)
+            obj.ended_at_time = obj.ended_at_time.replace(microsecond=0)
+
+        if many:
+            for obj in objs:
+                _replace_times(obj)
+            return objs
+
+        _replace_times(objs)
+        return objs
+
 
 class ProcessRunSchema(ActivitySchema):
     """ProcessRun schema."""

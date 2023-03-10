@@ -28,7 +28,13 @@ from pydantic import validate_arguments
 from renku.core import errors
 from renku.core.config import get_value, remove_value, set_value
 from renku.core.util import communication
-from renku.core.util.git import RENKU_BACKUP_PREFIX, create_backup_remote, get_remote, get_renku_repo_url
+from renku.core.util.git import (
+    RENKU_BACKUP_PREFIX,
+    create_backup_remote,
+    get_remote,
+    get_renku_repo_url,
+    set_git_credential_helper,
+)
 from renku.core.util.urls import parse_authentication_endpoint
 from renku.domain_model.enums import ConfigFilter
 from renku.domain_model.project_context import project_context
@@ -135,7 +141,7 @@ def login(endpoint: Optional[str], git_login: bool, yes: bool):
     _store_token(parsed_endpoint.netloc, access_token)
 
     if git_login and repository:
-        _set_git_credential_helper(repository=cast("Repository", repository), hostname=parsed_endpoint.netloc)
+        set_git_credential_helper(repository=cast("Repository", repository), hostname=parsed_endpoint.netloc)
         backup_remote_name, backup_exists, remote = create_backup_remote(
             repository=repository, remote_name=remote_name, url=remote_url  # type:ignore
         )
@@ -169,11 +175,6 @@ def _get_url(parsed_endpoint, path, **query_args) -> str:
 def _store_token(netloc, access_token):
     set_value(section=CONFIG_SECTION, key=netloc, value=access_token, global_only=True)
     os.chmod(project_context.global_config_path, 0o600)
-
-
-def _set_git_credential_helper(repository: "Repository", hostname):
-    with repository.get_configuration(writable=True) as config:
-        config.set_value("credential", "helper", f"!renku credentials --hostname {hostname}")
 
 
 def _set_renku_url_for_remote(repository: "Repository", remote_name: str, remote_url: str, hostname: str):

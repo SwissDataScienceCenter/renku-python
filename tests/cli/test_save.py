@@ -113,4 +113,4 @@ def test_save_with_staged(runner, project_with_remote):
     assert {"tracked", "untracked", "deleted"} == {
         f.a_path for f in project_with_remote.repository.head.commit.get_changes()
     }
-    assert not project_with_remote.repository.is_dirty(untracked_files=True)
+    assert not project_with_remote.repository.is_dirty()

@@ -32,13 +32,13 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union, cast
 from uuid import uuid4
 
 from renku.core import errors
+from renku.infrastructure.repository import DiffChangeType
 
 if TYPE_CHECKING:
     from renku.domain_model.entity import Collection, Entity
     from renku.domain_model.git import GitURL
     from renku.domain_model.provenance.agent import Person, SoftwareAgent
     from renku.infrastructure.repository import Commit, Remote, Repository
-
 
 COMMIT_DIFF_STRATEGY = "DIFF"
 STARTED_AT = int(time.time() * 1e3)
@@ -241,6 +241,12 @@ def create_backup_remote(repository: "Repository", remote_name: str, url: str) -
         return backup_remote_name, False, remote
 
 
+def set_git_credential_helper(repository: "Repository", hostname):
+    """Set up credential helper for renku git."""
+    with repository.get_configuration(writable=True) as config:
+        config.set_value("credential", "helper", f"!renku credentials --hostname {hostname}")
+
+
 def get_full_repository_path(url: Optional[str]) -> str:
     """Extract hostname/path of a git repository from its URL.
 
@@ -365,7 +371,11 @@ def is_path_safe(path: Union[Path, str]) -> bool:
 
 
 def get_entity_from_revision(
-    repository: "Repository", path: Union[Path, str], revision: Optional[str] = None, bypass_cache: bool = False
+    repository: "Repository",
+    path: Union[Path, str],
+    revision: Optional[str] = None,
+    bypass_cache: bool = False,
+    checksum: Optional[str] = None,
 ) -> "Entity":
     """Return an Entity instance from given path and revision.
 
@@ -374,7 +384,7 @@ def get_entity_from_revision(
         path(Union[Path, str]): The path of the entity.
         revision(str, optional): The revision to check at (Default value = None).
         bypass_cache(bool): Whether to ignore cached entries and get information from disk (Default value = False).
-
+        checksum(str, optional): Pre-calculated checksum for performance reasons, will be calculated if not set.
     Returns:
         Entity: The Entity for the given path and revision.
 
@@ -407,7 +417,8 @@ def get_entity_from_revision(
         return cached_entry
 
     # NOTE: For untracked directory the hash is None; make sure to stage them first before calling this function.
-    checksum = repository.get_object_hash(revision=revision, path=path)
+    if not checksum:
+        checksum = repository.get_object_hash(revision=revision, path=path)
     # NOTE: If object was not found at a revision it's either removed or exists in a different revision; keep the
     # entity and use revision as checksum
     if isinstance(revision, str) and revision == "HEAD":
@@ -677,6 +688,9 @@ def clone_renku_repository(
 
     if create_backup:
         create_backup_remote(repository=repository, remote_name="origin", url=url)
+        set_git_credential_helper(
+            repository=cast("Repository", repository), hostname=deployment_hostname or parsed_url.hostname
+        )
 
     return repository
 
@@ -1096,7 +1110,7 @@ def finalize_commit(
     if isinstance(commit_only, list):
         for path_ in commit_only:
             p = repository.path / path_
-            if p.exists() or change_types.get(str(path_)) == "D":
+            if p.exists() or change_types.get(str(path_)) == DiffChangeType.DELETED:
                 repository.add(path_)
 
     if not commit_only:

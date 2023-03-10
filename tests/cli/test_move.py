@@ -181,7 +181,7 @@ def test_move_in_the_same_dataset(runner, project_with_datasets, args):
 
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not project_with_datasets.repository.is_dirty(untracked_files=True)
+    assert not project_with_datasets.repository.is_dirty()
 
 
 def test_move_to_existing_destination_in_a_dataset(runner, project_with_datasets):
@@ -216,7 +216,7 @@ def test_move_to_existing_destination_in_a_dataset(runner, project_with_datasets
 
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not project_with_datasets.repository.is_dirty(untracked_files=True)
+    assert not project_with_datasets.repository.is_dirty()
 
 
 @pytest.mark.parametrize(
@@ -250,7 +250,7 @@ def test_move_external_files(data_repository, runner, project, destination, dire
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
 
     assert 0 == result.exit_code, result.output
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
 
 def test_move_between_datasets(runner, project, directory_tree, large_file, directory_tree_files):
@@ -300,4 +300,4 @@ def test_move_between_datasets(runner, project, directory_tree, large_file, dire
     assert {"data/dataset-3/large-file"} == {f.entity.path for f in get_dataset_with_injection("dataset-3").files}
 
     assert 0 == runner.invoke(cli, ["doctor"], catch_exceptions=False).exit_code
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()

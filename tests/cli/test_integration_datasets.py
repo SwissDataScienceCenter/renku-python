@@ -707,7 +707,7 @@ def test_dataset_export_to_local(runner, tmp_path):
     assert 0 == result.exit_code, format_result_exception(result)
     assert f"Dataset metadata was copied to {repository.path}/data/parts-v1/METADATA.yml" in result.output
     assert f"Exported to: {repository.path}/data/parts-v1" in result.output
-    assert repository.is_dirty(untracked_files=True)
+    assert repository.is_dirty()
     assert (repository.path / "data" / "parts-v1" / "part_relationships.csv").exists()
     assert (repository.path / "data" / "parts-v1" / "parts.csv").read_text() == (
         repository.path / "data" / "parts-v1" / "parts.csv"
@@ -1198,7 +1198,7 @@ def test_dataset_update_zenodo(project, runner, doi):
     assert "The following imported datasets will be updated" in result.output
     assert "imported_dataset" in result.output
     assert commit_sha_after_file1_delete == project.repository.head.commit.hexsha
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
     result = runner.invoke(cli, ["dataset", "update", "imported_dataset"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
@@ -1278,7 +1278,7 @@ def test_dataset_update_renku(project, runner, with_injection):
     assert "The following imported datasets will be updated" in result.output
     assert "remote-dataset" in result.output
     assert commit_sha_after_file1_delete == project.repository.head.commit.hexsha
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
     result = runner.invoke(cli, ["dataset", "update", "--all"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
@@ -1557,7 +1557,7 @@ def test_update_specific_refs(ref, runner, project):
     assert "The following files will be updated" in result.output
     assert str(file) in result.output
     assert commit_sha_after_file1_delete == project.repository.head.commit.hexsha
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
     # update data to a later version
     result = runner.invoke(cli, ["dataset", "update", "--ref", ref, "--all"])

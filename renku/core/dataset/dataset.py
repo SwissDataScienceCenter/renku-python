@@ -802,9 +802,12 @@ def add_datadir_files_to_dataset(dataset: Dataset) -> None:
         # NOTE: Add existing files to dataset
         dataset_files: List[DatasetFile] = []
         files: List[Path] = []
-        for file in get_files(datadir):
+        existing_files: List[Union[Path, str]] = list(get_files(datadir))
+        checksums = project_context.repository.get_object_hashes(existing_files)
+
+        for file in cast(List[Path], existing_files):
             files.append(file)
-            dataset_files.append(DatasetFile.from_path(path=file, source=file))
+            dataset_files.append(DatasetFile.from_path(path=file, source=file, checksum=checksums.get(file)))
 
         if not dataset_files:
             return
@@ -907,11 +910,14 @@ def move_files(dataset_gateway: IDatasetGateway, files: Dict[Path, Path], to_dat
     progress_name = "Updating dataset metadata"
     communication.start_progress(progress_name, total=len(files))
     try:
+        checksums = project_context.repository.get_object_hashes(
+            [file.relative_to(project_context.path) for file in files.values()]
+        )
         for src, dst in files.items():
             src = src.relative_to(project_context.path)
             dst = dst.relative_to(project_context.path)
             # NOTE: Files are moved at this point, so, we can use dst
-            new_dataset_file = DatasetFile.from_path(dst)
+            new_dataset_file = DatasetFile.from_path(dst, checksum=checksums.get(dst))
 
             for dataset in datasets:
                 removed = dataset.unlink_file(src, missing_ok=True)
@@ -1007,9 +1013,11 @@ def update_dataset_local_files(
 
 def _update_datasets_files_metadata(updated_files: List[DynamicProxy], deleted_files: List[DynamicProxy], delete: bool):
     modified_datasets = {}
-
+    checksums = project_context.repository.get_object_hashes([file.entity.path for file in updated_files])
     for file in updated_files:
-        new_file = DatasetFile.from_path(path=file.entity.path, based_on=file.based_on, source=file.source)
+        new_file = DatasetFile.from_path(
+            path=file.entity.path, based_on=file.based_on, source=file.source, checksum=checksums.get(file.entity.path)
+        )
         modified_datasets[file.dataset.name] = file.dataset
         file.dataset.add_or_update_files(new_file)
 
