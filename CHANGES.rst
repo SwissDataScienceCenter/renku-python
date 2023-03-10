@@ -18,6 +18,22 @@
 Changes
 =======
 
+`2.3.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.3.0...v2.3.1>`__ (2023-03-10)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** set git credentials helper correctly on git clone
+   (`#3348 <https://github.com/SwissDataScienceCenter/renku-python/issues/3348>`__)
+   (`ac21c32 <https://github.com/SwissDataScienceCenter/renku-python/commit/ac21c3266246f011ec0bfd785e53fd03a553eee4>`__)
+-  **core:** update template checksum when updating Dockerfile
+   (`#3351 <https://github.com/SwissDataScienceCenter/renku-python/issues/3351>`__)
+   (`24407e5 <https://github.com/SwissDataScienceCenter/renku-python/commit/24407e5857faab0fe4d20883039f2a831977b15c>`__)
+-  **core:** parallelize dataset add to improve performance
+   (`#3338 <https://github.com/SwissDataScienceCenter/renku-python/issues/3338>`__)
+   (`85ab141 <https://github.com/SwissDataScienceCenter/renku-python/commit/85ab14199c83815f6d3a63fd6dc721638b3b4c95>`__)
+
 `2.3.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.2.0...v2.3.0>`__ (2023-02-27)
 -------------------------------------------------------------------------------------------------------
 
