@@ -30,7 +30,7 @@ Bug Fixes
 -  **core:** update template checksum when updating Dockerfile
    (`#3351 <https://github.com/SwissDataScienceCenter/renku-python/issues/3351>`__)
    (`24407e5 <https://github.com/SwissDataScienceCenter/renku-python/commit/24407e5857faab0fe4d20883039f2a831977b15c>`__)
--  parallelize dataset add for performance
+-  **core:** parallelize dataset add to improve performance
    (`#3338 <https://github.com/SwissDataScienceCenter/renku-python/issues/3338>`__)
    (`85ab141 <https://github.com/SwissDataScienceCenter/renku-python/commit/85ab14199c83815f6d3a63fd6dc721638b3b4c95>`__)
 
