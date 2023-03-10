@@ -17,7 +17,7 @@
 """Repository datasets management."""
 
 from renku.command.command_builder.command import Command
-from renku.core.constant import CONFIG_LOCAL_PATH, DATASET_METADATA_PATHS
+from renku.core.constant import DATASET_METADATA_PATHS
 from renku.core.dataset.dataset import (
     create_dataset,
     edit_dataset,
@@ -130,7 +130,7 @@ def list_tags_command():
 def pull_cloud_storage_command():
     """Command for pulling/copying data from a cloud storage."""
     command = Command().command(pull_cloud_storage).lock_dataset().with_database(write=True)
-    return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS + [CONFIG_LOCAL_PATH])
+    return command.require_migration().with_commit(commit_only=DATASET_METADATA_PATHS)
 
 
 def mount_cloud_storage_command(unmount: bool):

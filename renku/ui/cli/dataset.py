@@ -518,7 +518,7 @@ import renku.ui.cli.utils.color as color
 from renku.command.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.command.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.command.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
-from renku.core.util.util import NO_VALUE, NoValueType
+from renku.domain_model.constant import NO_VALUE, NoValueType
 
 
 def _complete_datasets(ctx, param, incomplete):

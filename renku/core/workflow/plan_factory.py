@@ -175,7 +175,6 @@ class PlanFactory:
         output_streams = {getattr(self, stream_name) for stream_name in ("stdout", "stderr")}
 
         for index, argument in enumerate(arguments):
-
             if prefix:
                 if argument.startswith("-"):
                     position += 1

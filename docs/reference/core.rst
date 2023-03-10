@@ -256,11 +256,11 @@ Utilities
    :members:
    :show-inheritance:
 
-.. automodule:: renku.core.util.file_size
+.. automodule:: renku.core.util.git
    :members:
    :show-inheritance:
 
-.. automodule:: renku.core.util.git
+.. automodule:: renku.core.util.jwt
    :members:
    :show-inheritance:
 
@@ -280,15 +280,19 @@ Utilities
    :members:
    :show-inheritance:
 
+.. automodule:: renku.core.util.ssh
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.util.tabulate
+   :members:
+   :show-inheritance:
+
 .. automodule:: renku.core.util.urls
    :members:
    :show-inheritance:
 
 .. automodule:: renku.core.util.util
-   :members:
-   :show-inheritance:
-
-.. automodule:: renku.core.util.uuid
    :members:
    :show-inheritance:
 

@@ -1188,7 +1188,6 @@ class SubmoduleManager:
             raise errors.ParameterError("Repository not set.")
 
         for s in self._repository.submodules:
-
             yield self._get_submodule(s)
 
     def __len__(self) -> int:

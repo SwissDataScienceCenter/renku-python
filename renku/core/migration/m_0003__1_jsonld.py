@@ -199,7 +199,7 @@ def _migrate_absolute_paths(data):
 def _migrate_doi_identifier(data):
     """If the dataset _id is doi, make it a UUID."""
     from renku.core.util.doi import is_doi
-    from renku.core.util.uuid import is_uuid
+    from renku.core.util.util import is_uuid
 
     _id = data.get("_id", "")
     identifier = data.get("identifier", "")

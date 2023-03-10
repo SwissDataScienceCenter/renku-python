@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +33,7 @@ from renku.core.util.git import get_entity_from_revision
 from renku.core.util.metadata import is_linked_file
 from renku.core.util.os import get_absolute_path
 from renku.core.util.urls import get_path, get_slug
-from renku.core.util.util import NO_VALUE
+from renku.domain_model.constant import NO_VALUE, NON_EXISTING_ENTITY_CHECKSUM
 from renku.domain_model.project_context import project_context
 from renku.infrastructure.immutable import Immutable, Slots
 from renku.infrastructure.persistent import Persistent
@@ -203,10 +202,10 @@ class RemoteEntity(Slots):
 
     __slots__ = ("checksum", "id", "path", "url")
 
-    def __init__(self, *, checksum: str, id: Optional[str] = None, path: Union[Path, str], url: str):
+    def __init__(self, *, checksum: Optional[str], id: Optional[str] = None, path: Union[Path, str], url: str):
         super().__init__()
-        self.checksum: str = checksum
-        self.id: str = id or RemoteEntity.generate_id(checksum=checksum, path=path, url=url)
+        self.checksum: str = checksum or NON_EXISTING_ENTITY_CHECKSUM
+        self.id: str = id or RemoteEntity.generate_id(checksum=self.checksum, path=path, url=url)
         self.path: str = str(path)
         self.url: str = url
 
@@ -274,7 +273,7 @@ class DatasetFile(Slots):
         size: Optional[int] = None,
     ) -> "DatasetFile":
         """Return an instance from a path."""
-        from renku.domain_model.entity import NON_EXISTING_ENTITY_CHECKSUM, Entity
+        from renku.domain_model.entity import Entity
 
         # NOTE: Data is added from an external storage and isn't pulled yet
         if based_on and not (project_context.path / path).exists():
@@ -306,6 +305,9 @@ class DatasetFile(Slots):
         self.id = DatasetFile.generate_id()
 
         return self
+
+    def __repr__(self) -> str:
+        return f"<DatasetFile {self.entity.path}>"
 
     def correct_linked_attribute(self):
         """Replace ``is_external`` attribute with ``linked`` for linked dataset files."""
@@ -343,6 +345,22 @@ class DatasetFile(Slots):
     def is_removed(self) -> bool:
         """Return true if dataset is removed and should not be accessed."""
         return self.date_removed is not None
+
+    def has_valid_checksum(self) -> bool:
+        """Return if file has a valid checksum."""
+        return (
+            bool(self.entity.checksum)
+            and self.entity.checksum != NON_EXISTING_ENTITY_CHECKSUM
+            and (
+                self.based_on is None
+                or self.based_on.checksum != NON_EXISTING_ENTITY_CHECKSUM
+                or bool(self.based_on.checksum)
+            )
+        )
+
+    def has_valid_size(self) -> bool:
+        """Return if file has a valid size."""
+        return self.size is not None
 
 
 class Dataset(Persistent):
