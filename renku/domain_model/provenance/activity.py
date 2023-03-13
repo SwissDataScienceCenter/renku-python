@@ -137,7 +137,8 @@ class Activity(Persistent):
         # TODO: influenced = attr.ib(kw_only=True)
 
     @classmethod
-    @deal.post(lambda activity: activity.ended_at_time >= activity.started_at_time)
+    @deal.post(lambda activity: activity is None or activity.ended_at_time >= activity.started_at_time)
+    # NOTE: check for none due to bug in deal thinking inner function return value is actual return
     @inject.autoparams("project_gateway")
     def from_plan(
         cls,
