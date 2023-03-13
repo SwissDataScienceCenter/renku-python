@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -32,13 +31,13 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union, cast
 from uuid import uuid4
 
 from renku.core import errors
+from renku.infrastructure.repository import DiffChangeType
 
 if TYPE_CHECKING:
     from renku.domain_model.entity import Collection, Entity
     from renku.domain_model.git import GitURL
     from renku.domain_model.provenance.agent import Person, SoftwareAgent
     from renku.infrastructure.repository import Commit, Remote, Repository
-
 
 COMMIT_DIFF_STRATEGY = "DIFF"
 STARTED_AT = int(time.time() * 1e3)
@@ -239,6 +238,12 @@ def create_backup_remote(repository: "Repository", remote_name: str, url: str) -
         return backup_remote_name, False, None
     else:
         return backup_remote_name, False, remote
+
+
+def set_git_credential_helper(repository: "Repository", hostname):
+    """Set up credential helper for renku git."""
+    with repository.get_configuration(writable=True) as config:
+        config.set_value("credential", "helper", f"!renku credentials --hostname {hostname}")
 
 
 def get_full_repository_path(url: Optional[str]) -> str:
@@ -682,6 +687,9 @@ def clone_renku_repository(
 
     if create_backup:
         create_backup_remote(repository=repository, remote_name="origin", url=url)
+        set_git_credential_helper(
+            repository=cast("Repository", repository), hostname=deployment_hostname or parsed_url.hostname
+        )
 
     return repository
 
@@ -878,7 +886,7 @@ def get_file_size(repository_path: Path, path: str) -> Optional[int]:
             ("git", "lfs", "ls-files", "--name-only", "--size"),
             stdout=PIPE,
             cwd=repository_path,
-            universal_newlines=True,
+            text=True,
         )
     except SubprocessError:
         pass
@@ -1101,7 +1109,7 @@ def finalize_commit(
     if isinstance(commit_only, list):
         for path_ in commit_only:
             p = repository.path / path_
-            if p.exists() or change_types.get(str(path_)) == "D":
+            if p.exists() or change_types.get(str(path_)) == DiffChangeType.DELETED:
                 repository.add(path_)
 
     if not commit_only:

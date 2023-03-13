@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -68,7 +67,7 @@ class ParameterError(RenkuException):
         """Build a custom message."""
         if param_hint:
             if isinstance(param_hint, (tuple, list)):
-                param_hint = " / ".join('"{}"'.format(x) for x in param_hint)
+                param_hint = " / ".join(f'"{x}"' for x in param_hint)
             message = f"Invalid parameter value for {param_hint}: {message}"
         else:
             if show_prefix:
@@ -119,7 +118,7 @@ class DirtyRepository(RenkuException):
 
     def __init__(self, repository):
         """Build a custom message."""
-        super(DirtyRepository, self).__init__(
+        super().__init__(
             "The repository is dirty. "
             'Please use the "git" command to clean it.'
             "\n\n" + str(repository.status()) + "\n\n"
@@ -133,7 +132,7 @@ class DirtyRenkuDirectory(RenkuException):
 
     def __init__(self, repository):
         """Build a custom message."""
-        super(DirtyRenkuDirectory, self).__init__(
+        super().__init__(
             (
                 "The renku directory {0} contains uncommitted changes.\n"
                 'Please use "git" command to resolve.\n'
@@ -151,7 +150,7 @@ class ProtectedFiles(RenkuException):
 
     def __init__(self, ignored: List[Union[Path, str]]):
         """Build a custom message."""
-        super(ProtectedFiles, self).__init__(
+        super().__init__(
             "The following paths are protected as part of renku:"
             "\n\n" + "\n".join("\t" + click.style(str(path), fg="yellow") for path in ignored) + "\n"
             "They cannot be used in renku commands."
@@ -187,7 +186,7 @@ class NothingToCommit(RenkuException):
 
     def __init__(self):
         """Build a custom message."""
-        super(NothingToCommit, self).__init__("There is nothing to commit.")
+        super().__init__("There is nothing to commit.")
 
 
 class CommitMessageEmpty(RenkuException):
@@ -195,7 +194,7 @@ class CommitMessageEmpty(RenkuException):
 
     def __init__(self):
         """Build a custom message."""
-        super(CommitMessageEmpty, self).__init__("Invalid commit message.")
+        super().__init__("Invalid commit message.")
 
 
 class FailedMerge(RenkuException):
@@ -203,8 +202,8 @@ class FailedMerge(RenkuException):
 
     def __init__(self, repository, branch, merge_args):
         """Build a custom message."""
-        super(FailedMerge, self).__init__(
-            "Failed merge of branch {0} with args {1}".format(branch, ",".join(merge_args))
+        super().__init__(
+            "Failed merge of branch {} with args {}".format(branch, ",".join(merge_args))
             + "The automatic merge failed.\n\n"
             'Please use the "git" command to clean it.'
             "\n\n" + str(repository.status())
@@ -216,7 +215,7 @@ class UnmodifiedOutputs(RenkuException):
 
     def __init__(self, repository, unmodified):
         """Build a custom message."""
-        super(UnmodifiedOutputs, self).__init__(
+        super().__init__(
             "There are no detected new outputs or changes.\n"
             "\nIf any of the following files should be considered as outputs,"
             "\nthey need to be removed first in order to be detected "
@@ -247,7 +246,7 @@ class OutputsNotFound(RenkuException):
             "manually."
         )
 
-        super(OutputsNotFound, self).__init__(msg)
+        super().__init__(msg)
 
 
 class InvalidInputPath(RenkuException):
@@ -262,12 +261,12 @@ class InvalidSuccessCode(RenkuException):
         if message:
             msg = message
         elif not success_codes:
-            msg = "Command returned non-zero exit status {0}.".format(return_code)
+            msg = f"Command returned non-zero exit status {return_code}."
         else:
-            msg = "Command returned {0} exit status, but it expects {1}".format(
-                return_code, ", ".join((str(code) for code in success_codes))
+            msg = "Command returned {} exit status, but it expects {}".format(
+                return_code, ", ".join(str(code) for code in success_codes)
             )
-        super(InvalidSuccessCode, self).__init__(msg)
+        super().__init__(msg)
 
 
 class DatasetNotFound(DatasetException):
@@ -346,7 +345,7 @@ class ExternalStorageNotInstalled(RenkuException):
             'otherwise install LFS with "git lfs install --local".'
         )
 
-        super(ExternalStorageNotInstalled, self).__init__(msg)
+        super().__init__(msg)
 
 
 class ExternalStorageDisabled(RenkuException):
@@ -365,7 +364,7 @@ class ExternalStorageDisabled(RenkuException):
             'otherwise install e.g. git-LFS with "git lfs install --local".'
         )
 
-        super(ExternalStorageDisabled, self).__init__(msg)
+        super().__init__(msg)
 
 
 class UninitializedProject(RenkuException):
@@ -376,7 +375,7 @@ class UninitializedProject(RenkuException):
         msg = "{repo_path} does not seem to be a Renku project.\n" 'Initialize it with "renku init"'.format(
             repo_path=repo_path
         )
-        super(UninitializedProject, self).__init__(msg)
+        super().__init__(msg)
 
 
 class InvalidAccessToken(RenkuException):
@@ -385,7 +384,7 @@ class InvalidAccessToken(RenkuException):
     def __init__(self):
         """Build a custom message."""
         msg = "Invalid access token.\n" "Please, update access token."
-        super(InvalidAccessToken, self).__init__(msg)
+        super().__init__(msg)
 
 
 class GitError(RenkuException):
@@ -527,7 +526,7 @@ class NodeNotFoundError(RenkuException):
             "NodeJs could not be found on this system\n"
             "Please install it, for details see https://nodejs.org/en/download/package-manager/"
         )
-        super(NodeNotFoundError, self).__init__(msg)
+        super().__init__(msg)
 
 
 class SSHNotFoundError(RenkuException):
@@ -536,7 +535,7 @@ class SSHNotFoundError(RenkuException):
     def __init__(self):
         """Build a custom message."""
         msg = "SSH client (ssh) could not be found on this system"
-        super(SSHNotFoundError, self).__init__(msg)
+        super().__init__(msg)
 
 
 class SSHNotSetupError(RenkuException):
@@ -545,7 +544,7 @@ class SSHNotSetupError(RenkuException):
     def __init__(self):
         """Build a custom message."""
         msg = "SSH is not set up correctly, use 'renku session ssh-setup' to set it up."
-        super(SSHNotSetupError, self).__init__(msg)
+        super().__init__(msg)
 
 
 class ObjectNotFoundError(RenkuException):

@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -148,7 +147,7 @@ class DatabaseGateway(IDatabaseGateway):
             commits = [repository.get_commit(revision_or_range)]
 
         for commit in commits:
-            for file in commit.get_changes(paths=f"{project_context.database_path}/**"):
+            for file in commit.get_changes(f"{project_context.database_path}/**"):
                 if file.deleted:
                     continue
 

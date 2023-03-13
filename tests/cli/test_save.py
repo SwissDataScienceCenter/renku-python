@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -113,4 +112,4 @@ def test_save_with_staged(runner, project_with_remote):
     assert {"tracked", "untracked", "deleted"} == {
         f.a_path for f in project_with_remote.repository.head.commit.get_changes()
     }
-    assert not project_with_remote.repository.is_dirty(untracked_files=True)
+    assert not project_with_remote.repository.is_dirty()

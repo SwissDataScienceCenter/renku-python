@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -60,7 +59,7 @@ class JobManagementCache(BaseCache):
     @staticmethod
     def get_jobs(user):
         """Get all user jobs."""
-        return Job.query((Job.user_id == user.user_id))
+        return Job.query(Job.user_id == user.user_id)
 
     @staticmethod
     def invalidate_job(user, job_id):

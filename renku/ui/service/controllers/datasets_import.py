@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -39,7 +38,7 @@ class DatasetsImportCtrl(ServiceCtrl, RenkuOpSyncMixin):
         self.ctx = DatasetsImportCtrl.REQUEST_SERIALIZER.load(request_data)
         self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset import of {self.ctx['dataset_uri']}"
 
-        super(DatasetsImportCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
+        super().__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
     @property
     def context(self):

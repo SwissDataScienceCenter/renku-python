@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -120,7 +119,7 @@ def test_remote_create_dataset_view(svc_client_cache, it_remote_repo_url):
 
     payload = {
         "git_url": it_remote_repo_url,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": f"{uuid.uuid4().hex}",
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
@@ -137,7 +136,7 @@ def test_delay_create_dataset_view(svc_client_cache, it_remote_repo_url):
 
     payload = {
         "git_url": it_remote_repo_url,
-        "name": "{0}".format(uuid.uuid4().hex),
+        "name": f"{uuid.uuid4().hex}",
         "is_delayed": True,
     }
 

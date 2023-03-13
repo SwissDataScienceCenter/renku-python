@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -20,6 +19,7 @@
 import fnmatch
 import glob
 import hashlib
+import io
 import os
 import re
 import shutil
@@ -167,7 +167,7 @@ def unmount_path(path: Union[Path, str]) -> None:
 
     def execute_command(*command: str) -> bool:
         try:
-            subprocess.run(command, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(command, check=True, text=True, capture_output=True)
         except (subprocess.CalledProcessError, FileNotFoundError):
             return False
         else:
@@ -246,6 +246,14 @@ def hash_file(path: Union[Path, str], hash_type: str = "sha256") -> Optional[str
 
     with open(path, "rb") as f:
         return hash_file_descriptor(f, hash_type)
+
+
+def hash_string(content: str, hash_type: str = "sha256") -> str:
+    """Hash a string."""
+    content_bytes = content.encode("utf-8")
+    file = io.BytesIO(content_bytes)
+
+    return hash_file_descriptor(file, hash_type)
 
 
 def hash_file_descriptor(file: BinaryIO, hash_type: str = "sha256") -> str:

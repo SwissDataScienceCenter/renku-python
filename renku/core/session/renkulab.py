@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -147,7 +146,7 @@ class RenkulabSessionProvider(ISessionProvider):
 
         repository = project_context.repository
 
-        if repository.is_dirty(untracked_files=True):
+        if repository.is_dirty():
             communication.confirm(
                 "You have new uncommitted or untracked changes to your repository. "
                 "Renku can automatically commit these changes so that it builds "

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -296,9 +295,7 @@ class Template:
         existing_prohibited_paths: Set[str] = set()
 
         for pattern in self.PROHIBITED_PATHS:
-            matches = set(
-                m for m in self.path.glob(pattern) if str(m.relative_to(self.path)) not in self.REQUIRED_FILES
-            )
+            matches = {m for m in self.path.glob(pattern) if str(m.relative_to(self.path)) not in self.REQUIRED_FILES}
             if matches:
                 existing_prohibited_paths.update(str(m.relative_to(self.path)) for m in matches)
 
@@ -534,7 +531,7 @@ class TemplateMetadata:
         # NOTE: Always set __renku_version__ to the value read from the Dockerfile (if available) since setting/updating
         # the template doesn't change project's metadata version and shouldn't update the Renku version either
         renku_version = metadata.get("__renku_version__")
-        metadata["__renku_version__"] = read_renku_version_from_dockerfile() or renku_version or __version__
+        metadata["__renku_version__"] = str(read_renku_version_from_dockerfile()) or renku_version or __version__
 
         return cls(metadata=metadata, immutable_files=immutable_files)
 

@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -26,6 +25,7 @@ import subprocess
 import tempfile
 from collections import defaultdict
 from datetime import datetime
+from enum import Enum
 from functools import lru_cache
 from itertools import zip_longest
 from pathlib import Path
@@ -35,6 +35,7 @@ from typing import (
     Dict,
     Generator,
     List,
+    Literal,
     NamedTuple,
     Optional,
     Sequence,
@@ -51,11 +52,6 @@ import git
 
 from renku.core import errors
 from renku.core.util.os import delete_dataset_file, get_absolute_path
-
-try:
-    from typing_extensions import Literal  # NOTE: Required for Python 3.7 compatibility
-except ImportError:
-    from typing import Literal  # type: ignore
 
 NULL_TREE = git.NULL_TREE
 _MARKER = object()
@@ -141,7 +137,7 @@ class BaseRepository:
         return RemoteManager(self._repository)
 
     @property  # type: ignore
-    @lru_cache()
+    @lru_cache
     def submodules(self) -> "SubmoduleManager":
         """Return a list of submodules."""
         if self._repository is None:
@@ -400,7 +396,7 @@ class BaseRepository:
         """
         self.run_git_command("worktree", "remove", path)
 
-    def is_dirty(self, untracked_files: bool = False) -> bool:
+    def is_dirty(self, untracked_files: bool = True) -> bool:
         """Return True if the repository has modified or untracked files ignoring submodules."""
         if self._repository is None:
             raise errors.ParameterError("Repository not set.")
@@ -978,7 +974,7 @@ class BaseRepository:
     def hash_string(content: str) -> str:
         """Calculate the object-hash for a blob with specified content."""
         content_bytes = content.encode("utf-8")
-        data = f"blob {len(content_bytes)}\0".encode("utf-8") + content_bytes
+        data = f"blob {len(content_bytes)}\0".encode() + content_bytes
         return hashlib.sha1(data).hexdigest()  # nosec
 
 
@@ -1259,25 +1255,74 @@ class Actor(NamedTuple):
         return hash((self.name, self.email))
 
 
+class DiffLineChangeType(Enum):
+    """Type of change in a ``DiffLine``."""
+
+    ADDED = "A"
+    DELETED = "D"
+
+
+class DiffLine(NamedTuple):
+    """A single line in a patch."""
+
+    text: str
+    change_type: DiffLineChangeType
+
+    @property
+    def deleted(self) -> bool:
+        """True if line was deleted."""
+        return self.change_type == DiffLineChangeType.DELETED
+
+    @property
+    def added(self) -> bool:
+        """True if line was added."""
+        return self.change_type == DiffLineChangeType.ADDED
+
+
+class DiffChangeType(Enum):
+    """Type of change in a ``Diff``."""
+
+    ADDED = "A"
+    DELETED = "D"
+    RENAMED = "R"
+    MODIFIED = "M"
+    TYPE_CHANGED = "T"
+
+
 class Diff(NamedTuple):
     """A single diff object between two trees."""
 
     # NOTE: In case a rename, a_path and b_path have different values. Make sure to use the correct one.
     a_path: str
     b_path: str
-    """
-    Possible values:
-        A = Added
-        D = Deleted
-        R = Renamed
-        M = Modified
-        T = Changed in the type
-    """
-    change_type: str
+    change_type: DiffChangeType
+    diff: List[DiffLine]
 
     @classmethod
     def from_diff(cls, diff: git.Diff):
         """Create an instance from a git object."""
+
+        def process_diff_lines():
+            patch = diff.diff.decode("utf-8") if isinstance(diff.diff, bytes) else diff.diff
+            patch = patch or ""
+            lines = patch.splitlines()
+            last_index = len(lines) - 1
+
+            diff_lines = []
+
+            for index, line in enumerate(lines):
+                # NOTE: Ignore ``No newline at end of file`` message
+                if line.startswith("-") and index < last_index and lines[index + 1] == "\\ No newline at end of file":
+                    continue
+                elif line.startswith("+") and index > 0 and lines[index - 1] == "\\ No newline at end of file":
+                    continue
+                elif line.startswith("+"):
+                    diff_lines.append(DiffLine(text=line[1:], change_type=DiffLineChangeType.ADDED))
+                elif line.startswith("-"):
+                    diff_lines.append(DiffLine(text=line[1:], change_type=DiffLineChangeType.DELETED))
+
+            return diff_lines
+
         a_path = git_unicode_unescape(diff.a_path)
         b_path = git_unicode_unescape(diff.b_path)
 
@@ -1285,17 +1330,19 @@ class Diff(NamedTuple):
         a_path = a_path or b_path
         b_path = b_path or a_path
 
-        return cls(a_path=a_path, b_path=b_path, change_type=cast(str, diff.change_type))
+        return cls(
+            a_path=a_path, b_path=b_path, change_type=DiffChangeType(diff.change_type), diff=process_diff_lines()
+        )
 
     @property
     def deleted(self) -> bool:
         """True if file was deleted."""
-        return self.change_type == "D"
+        return self.change_type == DiffChangeType.DELETED
 
     @property
     def added(self) -> bool:
         """True if file was added."""
-        return self.change_type == "A"
+        return self.change_type == DiffChangeType.ADDED
 
 
 class Commit:
@@ -1371,25 +1418,50 @@ class Commit:
         """Return all objects in the commit's tree."""
         return {o.path: Object.from_object(o) for o in self._commit.tree.traverse()}
 
+    @property
+    def root(self) -> bool:
+        """Return True if this commit is the root commit."""
+        return len(self._commit.parents) == 0
+
     def get_changes(
         self,
-        paths: Union[Path, str, List[Union[Path, str]], None] = None,
+        *paths: Optional[Union[Path, str]],
         commit: Optional[Union[str, "Commit"]] = None,
+        patch: bool = False,
     ) -> List[Diff]:
         """Return list of changes in a commit.
 
         NOTE: This function can be implemented with ``git diff-tree``.
+        NOTE: When ``patch`` is False ``Diff.diff`` will be empty. We need to call ``Commit.diff`` twice when ``patch``
+        is True because GitPython won't set ``Diff.change_type`` in this case.
         """
+
+        def merge(diff, patch_diff):
+            for d, p_d in zip(sorted(diff), sorted(patch_diff)):
+                d.diff = p_d.diff
+
         if commit:
             if isinstance(commit, Commit):
                 commit = commit.hexsha
 
             diff = self._commit.diff(commit, paths=paths, ignore_submodules=True)
+            if patch:
+                patch_diff = self._commit.diff(commit, paths=paths, ignore_submodules=True, create_patch=True)
+                merge(diff, patch_diff)
+
         elif len(self._commit.parents) == 0:
             diff = self._commit.diff(git.NULL_TREE, paths=paths, ignore_submodules=True)
+            if patch:
+                patch_diff = self._commit.diff(git.NULL_TREE, paths=paths, ignore_submodules=True, create_patch=True)
+                merge(diff, patch_diff)
         elif len(self._commit.parents) == 1:
             # NOTE: Diff is reverse so we get the diff of the parent to the child
             diff = self._commit.parents[0].diff(self._commit, paths=paths, ignore_submodules=True)
+            if patch:
+                patch_diff = self._commit.parents[0].diff(
+                    self._commit, paths=paths, ignore_submodules=True, create_patch=True
+                )
+                merge(diff, patch_diff)
         else:
             # NOTE: A merge commit, so there is no clear diff
             return []

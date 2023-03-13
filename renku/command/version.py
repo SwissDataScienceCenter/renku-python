@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -55,7 +54,7 @@ def find_latest_version(name: str, allow_prereleases: bool = False):
     """
     from renku.core.util import requests
 
-    response = requests.get("https://pypi.org/pypi/{name}/json".format(name=name))
+    response = requests.get(f"https://pypi.org/pypi/{name}/json")
 
     if response.status_code != 200:
         return
@@ -132,7 +131,7 @@ class VersionCache:
         try:
             with cache.open() as fp:
                 return cls(**json.load(fp)[sys.prefix])
-        except (IOError, ValueError, KeyError):
+        except (OSError, ValueError, KeyError):
             return cls()
 
     def dump(self, app_name):
