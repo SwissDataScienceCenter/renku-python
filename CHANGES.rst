@@ -18,6 +18,15 @@
 Changes
 =======
 
+`2.3.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.3.1...v2.3.2>`__ (2023-03-13)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** Fix a bug that caused crashing when migrating to v10 metadata
+   (`f9da0be <https://github.com/SwissDataScienceCenter/renku-python/commit/f9da0be8585a692c49fbdaa19316b779a965db03>`__)
+
 `2.3.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.3.0...v2.3.1>`__ (2023-03-10)
 -------------------------------------------------------------------------------------------------------
 
