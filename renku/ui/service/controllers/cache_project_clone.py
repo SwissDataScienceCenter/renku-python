@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -35,7 +34,7 @@ class ProjectCloneCtrl(ServiceCtrl, RenkuOperationMixin):
         """Construct controller."""
         self.request_data = ProjectCloneCtrl.REQUEST_SERIALIZER.load(request_data)
         self.ctx = ProjectCloneContext().load({**user_data, **self.request_data}, unknown=EXCLUDE)
-        super(ProjectCloneCtrl, self).__init__(cache, user_data, self.request_data)
+        super().__init__(cache, user_data, self.request_data)
 
     @property
     def context(self):

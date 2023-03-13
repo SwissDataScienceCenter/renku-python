@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -127,7 +126,7 @@ def run_rclone_command(command: str, *args: Any, env=None, **kwargs) -> str:
 
     full_command = ("rclone", command, *transform_kwargs(**kwargs), *transform_args(*args))
     try:
-        result = subprocess.run(full_command, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=os_env)
+        result = subprocess.run(full_command, text=True, capture_output=True, env=os_env)
     except FileNotFoundError:
         raise errors.RCloneException("RClone is not installed. See https://rclone.org/install/")
 

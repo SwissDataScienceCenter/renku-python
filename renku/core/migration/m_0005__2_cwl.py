@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -107,7 +106,7 @@ def _migrate_old_workflows(migration_context, strict):
 
                 repository.add(cwl_file, path)
 
-                if repository.is_dirty():
+                if repository.is_dirty(untracked_files=False):
                     commit_msg = "renku migrate: committing migrated workflow"
                     committer = Actor(name=f"renku {__version__}", email=version_url)
                     repository.commit(commit_msg + project_context.transaction_id, committer=committer, no_verify=True)
@@ -312,7 +311,7 @@ def _migrate_single_step(migration_context, cmd_line_tool, path, commit=None, pa
     if not persist:
         return run, None
 
-    step_name = "{0}_{1}.yaml".format(uuid.uuid4().hex, secure_filename("_".join(cmd_line_tool.baseCommand)))
+    step_name = "{}_{}.yaml".format(uuid.uuid4().hex, secure_filename("_".join(cmd_line_tool.baseCommand)))
 
     absolute_path = project_context.metadata_path / OLD_WORKFLOW_PATH / step_name
     path = absolute_path.relative_to(project_context.path)
@@ -340,7 +339,7 @@ def _migrate_composite_step(migration_context, workflow, path, commit=None):
     identifier = sha1(label.encode("utf-8")).hexdigest()
     run._id = Run.generate_id(identifier=identifier)
 
-    name = "{0}_migrated.yaml".format(uuid.uuid4().hex)
+    name = f"{uuid.uuid4().hex}_migrated.yaml"
 
     wf_path = project_context.metadata_path / OLD_WORKFLOW_PATH
     run.path = (wf_path / name).relative_to(project_context.path)

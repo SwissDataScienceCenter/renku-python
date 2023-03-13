@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -25,7 +24,7 @@ except ImportError:
     from importlib_metadata import distribution, version  # type: ignore
 
 __version__ = version("renku")
-__template_version__ = "0.4.1"
+__template_version__ = "0.5.0"
 __minimum_project_version__ = "2.1.0"
 
 

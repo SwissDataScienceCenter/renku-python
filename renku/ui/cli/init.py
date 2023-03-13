@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -68,12 +67,12 @@ You can take inspiration from the
     https://github.com/SwissDataScienceCenter/renku-project-template@master
     ... OK
 
-    INDEX ID             DESCRIPTION                PARAMETERS
+    NUMBER ID             DESCRIPTION                PARAMETERS
     ----- -------------- -------------------------- ----------------------
     1     python-minimal Basic Python Project:[...] description: proj[...]
     2     R-minimal      Basic R Project: The [...] description: proj[...]
 
-    Please choose a template by typing the index:
+    Please choose a template by typing the number:
 
 Provide parameters
 ~~~~~~~~~~~~~~~~~~
@@ -133,17 +132,17 @@ in the template will be left untouched by the command.
 .. code-block:: console
 
     $ echo "# Example\nThis is a README." > README.md
-    $ echo "FROM python:3.7-alpine" > Dockerfile
+    $ echo "FROM python:3.10-alpine" > Dockerfile
     $ renku init
 
-    INDEX  ID              PARAMETERS
+    NUMBER  ID              PARAMETERS
     -------  --------------  ------------
         1  python-minimal  description
         2  R-minimal       description
         3  bioc-minimal    description
         4  julia-minimal   description
         5  minimal
-    Please choose a template by typing the index: 1
+    Please choose a template by typing the number: 1
     The template requires a value for "description": Test Project
     Initializing Git repository...
     Warning: The following files exist in the directory and will be overwritten:

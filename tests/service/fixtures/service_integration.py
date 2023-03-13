@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2021 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -248,7 +247,7 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
         finally:
             try:
                 shutil.rmtree(home)
-            except OSError:  # noqa: B014
+            except OSError:
                 pass
 
             payload = {"git_url": f"file://{remote_repo_path}", "depth": PROJECT_CLONE_NO_DEPTH}
@@ -268,12 +267,12 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
 
         try:
             shutil.rmtree(remote_repo_path)
-        except OSError:  # noqa: B014
+        except OSError:
             pass
 
         try:
             shutil.rmtree(remote_repo_checkout_path)
-        except OSError:  # noqa: B014
+        except OSError:
             pass
 
 

@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -53,7 +52,7 @@ def test_graph_export_validation(runner, project, directory_tree, run, revision)
         assert "https://renkulab.io" in result.output
 
     # Make sure that nothing has changed during export which is a read-only operation
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
 
 @pytest.mark.serial

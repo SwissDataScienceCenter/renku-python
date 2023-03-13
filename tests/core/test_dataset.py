@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -22,16 +21,16 @@ from pathlib import Path
 import pytest
 
 from renku.core import errors
+from renku.core.config import get_value
 from renku.core.dataset.dataset_add import get_dataset_file_path_within_dataset
-from renku.core.dataset.providers.s3 import parse_s3_uri
+from renku.core.dataset.providers.s3 import S3Credentials, S3Provider, parse_s3_uri
 from renku.domain_model.dataset import Dataset
+from renku.domain_model.enums import ConfigFilter
 
 
 @pytest.mark.parametrize(
     "uri, endpoint, bucket, path",
     [
-        ("s3://no.bucket.path/", "no.bucket.path", "", ""),
-        ("s3://no.bucket.path///", "no.bucket.path", "", ""),
         ("s3://no.path/bucket/", "no.path", "bucket", ""),
         ("S3://uppercase.scheme/bucket/path", "uppercase.scheme", "bucket", "path"),
         ("s3://slashes.are.stripped///bucket///path/to/data//", "slashes.are.stripped", "bucket", "path/to/data"),
@@ -46,11 +45,43 @@ def test_valid_s3_uri(uri, endpoint, bucket, path):
     assert path == parsed_path
 
 
-@pytest.mark.parametrize("uri", ["https://invalid.scheme/bucket/", "s3:no-endpoint/bucket/path"])
+@pytest.mark.parametrize(
+    "uri",
+    [
+        "https://invalid.scheme/bucket/",
+        "s3:no-endpoint/bucket/path",
+        "s3://no.bucket.path/",
+        "s3://no.bucket.path///",
+    ],
+)
 def test_invalid_s3_uri(uri):
     """Test invalid s3 URI raise an error."""
     with pytest.raises(errors.ParameterError):
         parse_s3_uri(uri=uri)
+
+
+def test_s3_credential_is_per_bucket(project):
+    """Test S3 stores credentials per bucket."""
+    same_host = "s3.host"
+    provider_1 = S3Provider(uri=f"s3://{same_host}/bucket-1/")
+    credentials_1 = S3Credentials(provider_1)
+    credentials_1["access-key-id"] = "id-1"
+    credentials_1["secret-access-key"] = "key-1"
+
+    provider_2 = S3Provider(uri=f"s3://{same_host}/bucket-2/")
+    credentials_2 = S3Credentials(provider_2)
+    credentials_2["access-key-id"] = "id-2"
+    credentials_2["secret-access-key"] = "key-2"
+
+    credentials_1.store()
+    credentials_2.store()
+
+    assert "id-1" == get_value(
+        section=f"bucket-1.{same_host}", key="access-key-id", config_filter=ConfigFilter.GLOBAL_ONLY
+    )
+    assert "id-2" == get_value(
+        section=f"bucket-2.{same_host}", key="access-key-id", config_filter=ConfigFilter.GLOBAL_ONLY
+    )
 
 
 @pytest.mark.parametrize(

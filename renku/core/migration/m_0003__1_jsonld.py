@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -192,7 +191,7 @@ def _migrate_absolute_paths(data):
     for file_ in files:
         path = Path(file_.get("path"), ".")
         if path.is_absolute():
-            file_["path"] = str(path.relative_to((os.getcwd())))
+            file_["path"] = str(path.relative_to(os.getcwd()))
     data["files"] = files
     return data
 
