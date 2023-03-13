@@ -277,6 +277,7 @@ def fix_dataset_date_modified(dataset_gateway: IDatasetGateway):
     def fix_creation_date(dataset):
         """Check creation date to make sure that it's after project's creation date."""
         if dataset.date_created and dataset.date_created < project_context.project.date_created:
+            dataset.unfreeze()
             try:
                 dataset.date_created = min([f.date_added for f in dataset.files])
             except (ValueError, TypeError):
@@ -284,6 +285,7 @@ def fix_dataset_date_modified(dataset_gateway: IDatasetGateway):
             else:
                 if dataset.date_created < project_context.project.date_created:
                     dataset.date_created = project_context.project.date_created
+            dataset.freeze()
 
     tails = dataset_gateway.get_provenance_tails()
 
