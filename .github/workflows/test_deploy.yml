@@ -965,26 +965,23 @@ jobs:
           poetry install -E service --with dev,tests,docs
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
-      - name: Get version
-        id: get-version
+      - name: Calculate pre-release version
+        id: pre-release-version
         run: |
-          export VERSION=$(renku --version)
-          if [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "renku_version=${VERSION}rc1" >> $GITHUB_OUTPUT
-          else
-            echo "RENKU_VERSION=${VERSION}" >> $GITHUB_OUTPUT
-          fi
+          renku_version=$(renku --version)
+          rc=$(curl https://pypi.org/pypi/renku/json | jq ".releases|keys_unsorted | map(select( . | startswith(\"$renku_version\"))) | map(match(\"[0-9]+\\\\.[0-9]+\\\\.[0-9]+(rc([0-9]+))?\").captures[1].string // 0) | max | tonumber + 1")
+          echo "RELEASE_VERSION=${renku_version}rc${rc}"
       - name: Build and publish to pypi
         env:
           POETRY_VIRTUALENVS_CREATE: false
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
-          POETRY_DYNAMIC_VERSIONING_BYPASS: ${{ steps.get-version.outputs.RENKU_VERSION }}
+          POETRY_DYNAMIC_VERSIONING_BYPASS: ${{ steps.pre-release-version.outputs.RELEASE_VERSION }}
         run: make publish-package
       - name: Build and publish lock package
         env:
           POETRY_VIRTUALENVS_CREATE: false
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
-          POETRY_DYNAMIC_VERSIONING_BYPASS: ${{ steps.get-version.outputs.RENKU_VERSION }}
+          POETRY_DYNAMIC_VERSIONING_BYPASS: ${{ steps.pre-release-version.outputs.RELEASE_VERSION  }}
         run: make publish-lock-package
 
   update-develop-branch:
