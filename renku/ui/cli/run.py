@@ -229,6 +229,7 @@ all files within that range during its execution.
 To address this issue, the program can dump a mapping of input and output files
 that it is accessing in ``inputs.yml`` and ``outputs.yml``. This YAML file
 should be of the format
+
 .. code-block:: YAML
 
    name1: path1
