@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -77,8 +76,8 @@ def test_activity_parameter_values(project_with_injection, mocker):
         plan,
         repository=project_with_injection.repository,
         project_gateway=project_gateway,
-        started_at_time=local_now(remove_microseconds=False),
-        ended_at_time=local_now(remove_microseconds=False),
+        started_at_time=local_now(),
+        ended_at_time=local_now(),
         annotations=[],
     )
 

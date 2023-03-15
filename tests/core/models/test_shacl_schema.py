@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022- Swiss Data Science Center (SDSC)
+# Copyright 2017-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -42,7 +41,7 @@ def test_dataset_shacl(tmpdir, runner, project):
 
     paths = []
     for i in range(3):
-        new_file = tmpdir.join("file_{0}".format(i))
+        new_file = tmpdir.join(f"file_{i}")
         new_file.write(str(i))
         paths.append(str(new_file))
 

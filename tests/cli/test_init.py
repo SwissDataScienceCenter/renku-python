@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -65,7 +64,7 @@ def test_template_selection_helpers(isolated_runner):
 
     stripped_output = " ".join(result.output.split())
 
-    assert "Please choose a template by typing its index:" in stripped_output
+    assert "Please choose a template by typing its number:" in stripped_output
 
     assert "1 python-minimal" in stripped_output
     assert "2 R-minimal" in stripped_output
@@ -417,7 +416,7 @@ def test_init_with_data_dir(isolated_runner, data_dir, directory_tree, project_i
 
     assert (new_project / data_dir).exists()
     assert (new_project / data_dir / ".gitkeep").exists()
-    assert not Repository(new_project).is_dirty(untracked_files=True)
+    assert not Repository(new_project).is_dirty()
 
     os.chdir(new_project.resolve())
     result = isolated_runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-data", str(directory_tree)])

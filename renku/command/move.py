@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -181,7 +180,7 @@ def _check_existing_destinations(destinations):
 def _warn_about_ignored_destinations(destinations):
     ignored = project_context.repository.get_ignored_paths(*destinations)
     if ignored:
-        ignored_str = "\n\t".join((str(Path(p).relative_to(project_context.path)) for p in ignored))
+        ignored_str = "\n\t".join(str(Path(p).relative_to(project_context.path)) for p in ignored)
         communication.warn(f"The following moved path match .gitignore:\n\t{ignored_str}")
 
 

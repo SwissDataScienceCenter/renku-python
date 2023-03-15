@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -521,7 +520,7 @@ class ZenodoDeposition:
             if response.status_code == 400:
                 err_response = response.json()
                 messages = [
-                    '"{0}" failed with "{1}"'.format(err["field"], err["message"]) for err in err_response["errors"]
+                    '"{}" failed with "{}"'.format(err["field"], err["message"]) for err in err_response["errors"]
                 ]
 
                 raise errors.ExportError(

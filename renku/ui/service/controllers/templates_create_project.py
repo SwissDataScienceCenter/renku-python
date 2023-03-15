@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -30,7 +29,7 @@ from renku.infrastructure.repository import Repository
 from renku.ui.service.config import MESSAGE_PREFIX
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
-from renku.ui.service.errors import UserProjectCreationError
+from renku.ui.service.errors import UserProjectCreationError, UserTemplateInvalidError
 from renku.ui.service.serializers.templates import ProjectTemplateRequest, ProjectTemplateResponseRPC
 from renku.ui.service.utils import new_repo_push
 from renku.ui.service.views import result_response
@@ -50,7 +49,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
             TemplatesCreateProjectCtrl.REQUEST_SERIALIZER.load({**user_data, **request_data}, unknown=EXCLUDE),
         )
         self.ctx["commit_message"] = f"{MESSAGE_PREFIX} init {self.ctx['project_name']}"
-        super(TemplatesCreateProjectCtrl, self).__init__(cache, user_data, request_data)
+        super().__init__(cache, user_data, request_data)
 
         self.template: Optional[Template] = None
 
@@ -117,16 +116,18 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
         identifier = self.ctx["identifier"]
         try:
             self.template = templates_source.get_template(id=identifier, reference=None)
-        except (errors.InvalidTemplateError, errors.TemplateNotFoundError) as e:
+        except errors.TemplateNotFoundError as e:
             raise UserProjectCreationError(
                 error_message=f"the template '{identifier}' does not exist in the target template's repository"
             ) from e
+        except errors.InvalidTemplateError as e:
+            raise UserTemplateInvalidError(error_message=f"the template '{identifier}' is invalid") from e
 
         repository = Repository(templates_source.path)
         self.template_version = repository.head.commit.hexsha
 
         # Verify missing parameters
-        template_parameters = set(p.name for p in self.template.parameters)
+        template_parameters = {p.name for p in self.template.parameters}
         provided_parameters = {p["key"]: p["value"] for p in self.ctx["parameters"]}
         missing_keys = list(template_parameters - provided_parameters.keys())
         if len(missing_keys) > 0:

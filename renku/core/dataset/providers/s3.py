@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -146,22 +145,29 @@ class S3Credentials(ProviderCredentials):
 
         NOTE: This methods should be overridden by subclasses to allow multiple credentials per providers if needed.
         """
-        return self.provider.endpoint.lower()
+        return f"{self.provider.bucket}.{self.provider.endpoint.lower()}"
 
 
 def parse_s3_uri(uri: str) -> Tuple[str, str, str]:
     """Extract endpoint, bucket name, and path within the bucket from a given URI.
 
-    NOTE: We only support s3://<endpoint>/<bucket-name>/<path> at the moment.
+    NOTE: We only support s3://<hostname>/<bucket-name>/<path> at the moment.
     """
     parsed_uri = urllib.parse.urlparse(uri)
 
-    endpoint = parsed_uri.netloc
+    hostname = parsed_uri.netloc
     path = parsed_uri.path.strip("/")
-
-    if parsed_uri.scheme.lower() != "s3" or not endpoint:
-        raise errors.ParameterError(f"Invalid S3 URI: {uri}. Valid format is 's3://<endpoint>/<bucket-name>/<path>'")
-
     bucket, _, path = path.partition("/")
 
-    return endpoint, bucket, path.strip("/")
+    if parsed_uri.scheme.lower() != "s3":
+        raise errors.ParameterError(f"Invalid S3 scheme: {uri}. Valid format is 's3://<hostname>/<bucket-name>/<path>'")
+    if not hostname:
+        raise errors.ParameterError(
+            f"Hostname is missing in S3 URI: {uri}. Valid format is 's3://<hostname>/<bucket-name>/<path>'"
+        )
+    if not bucket:
+        raise errors.ParameterError(
+            f"Bucket name is missing in S3 URI: {uri}. Valid format is 's3://<hostname>/<bucket-name>/<path>'"
+        )
+
+    return hostname, bucket, path.strip("/")

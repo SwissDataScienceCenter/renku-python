@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -149,10 +148,10 @@ def _get_modifications_from_diff(diff):
             continue
 
         # normal file
-        if diff_index.change_type == "A":
+        if diff_index.added:
             modifications["files"]["removed"].append(entry)
 
-        elif diff_index.change_type == "D":
+        elif diff_index.deleted:
             modifications["files"]["restored"].append(entry)
         else:
             modifications["files"]["modified"].append(entry)

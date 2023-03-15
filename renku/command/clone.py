@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -62,8 +61,8 @@ def _project_clone(
         Tuple of cloned ``Repository`` and whether it's a Renku project or not.
     """
     from renku.command.mergetool import setup_mergetool
-    from renku.core.migration.migrate import is_renku_project
     from renku.core.util.git import clone_renku_repository
+    from renku.core.util.metadata import is_renku_project
 
     install_lfs = project_context.external_storage_requested
 

@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -122,7 +121,7 @@ def test_streams(runner, project, capsys, no_lfs_warning):
                 finally:
                     sys.stdin, sys.stdout = old_stdin, old_stdout
 
-    with open("result.txt", "r") as f:
+    with open("result.txt") as f:
         assert f.read().strip() == "second"
 
     result = runner.invoke(cli, ["workflow", "export", workflow_name])
@@ -199,7 +198,7 @@ def test_streams_and_args_names(runner, project, capsys, no_lfs_warning):
             finally:
                 sys.stdout = old_stdout
 
-    with open("lalala", "r") as f:
+    with open("lalala") as f:
         assert f.read().strip() == "lalala"
 
     result = runner.invoke(cli, ["status"], catch_exceptions=False)
@@ -593,7 +592,7 @@ def test_input_directory(runner, project, run, no_lfs_warning):
 
     result = runner.invoke(cli, ["workflow", "inputs"])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert set(str(p.relative_to(cwd)) for p in inputs.rglob("*") if p.name != ".gitkeep") == set(
+    assert {str(p.relative_to(cwd)) for p in inputs.rglob("*") if p.name != ".gitkeep"} == set(
         result.output.strip().split("\n")
     )
 

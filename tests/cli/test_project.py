@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -76,7 +75,7 @@ def test_project_edit(runner, project, subdirectory, with_injection):
     assert "Successfully updated: creator, description, keywords, custom_metadata." in result.output
     assert "Warning: No email or wrong format for: Forename Surname" in result.output
 
-    assert project.repository.is_dirty(untracked_files=True)
+    assert project.repository.is_dirty()
     commit_sha_after = project.repository.head.commit.hexsha
     assert commit_sha_before != commit_sha_after
 
@@ -117,7 +116,7 @@ def test_project_edit_no_change(runner, project):
 
     commit_sha_after = project.repository.head.commit.hexsha
     assert commit_sha_after == commit_sha_before
-    assert project.repository.is_dirty(untracked_files=True)
+    assert project.repository.is_dirty()
 
 
 def test_project_edit_unset(runner, project, subdirectory, with_injection):
@@ -166,7 +165,7 @@ def test_project_edit_unset(runner, project, subdirectory, with_injection):
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Successfully updated: keywords, custom_metadata." in result.output
 
-    assert project.repository.is_dirty(untracked_files=True)
+    assert project.repository.is_dirty()
     commit_sha_after = project.repository.head.commit.hexsha
     assert commit_sha_before != commit_sha_after
 

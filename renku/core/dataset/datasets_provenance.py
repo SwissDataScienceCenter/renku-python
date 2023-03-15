@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,18 +17,13 @@
 """Datasets Provenance."""
 
 from datetime import datetime
-from typing import TYPE_CHECKING, List, Optional, Union, overload
+from typing import TYPE_CHECKING, List, Literal, Optional, Union, overload
 from uuid import UUID
 
 from renku.command.command_builder.command import inject
 from renku.core import errors
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.util import communication
-
-try:
-    from typing_extensions import Literal  # NOTE: Required for Python 3.7 compatibility
-except ImportError:
-    from typing import Literal  # type: ignore
 
 if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset, DatasetTag
