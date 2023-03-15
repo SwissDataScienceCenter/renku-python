@@ -224,14 +224,20 @@ def check_external_files(fix, dataset_gateway: IDatasetGateway, **_):
     if not external_files:
         return True, None
 
+    external_files_str = "\n\t".join(sorted(external_files))
+
     if not fix:
-        external_files_str = "\n\t".join(sorted(external_files))
         problems = (
             f"\n{WARNING}: External files are deprecated in favor of an external dataset backend.\n"
             "Use 'renku dataset rm' or rerun 'renku doctor' with '--fix' flag to remove them:\n\t"
             f"{external_files_str}\n"
         )
         return False, problems
+
+    communication.info(
+        "The following external files were deleted from the project. You need to add them later manually using a "
+        f"dataset with an external storage backend:\n\t{external_files_str}"
+    )
 
     for name, files in datasets.items():
         file_unlink(name=name, yes=True, dataset_files=files)
