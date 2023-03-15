@@ -341,8 +341,7 @@ class Dataset(Persistent):
         or (self.date_created is None and self.date_published is not None)
     )
     @deal.ensure(
-        lambda self, *_, result, **kwargs: self.date_modified is None
-        or self.date_modified >= self.date_created
+        lambda self, *_, result, **kwargs: self.date_modified >= self.date_created
         or self.date_modified >= self.date_published
     )
     @deal.ensure(

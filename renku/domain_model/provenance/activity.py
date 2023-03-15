@@ -281,7 +281,7 @@ class Activity(Persistent):
     def delete(self, when: Optional[datetime] = None):
         """Mark the activity as deleted."""
         self.unfreeze()
-        self.invalidated_at = when or local_now(remove_microseconds=False)
+        self.invalidated_at = when or local_now()
         self.freeze()
 
 

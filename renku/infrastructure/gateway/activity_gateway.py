@@ -144,12 +144,10 @@ class ActivityGateway(IActivityGateway):
     @deal.pre(lambda _: _.activity.started_at_time is not None)
     @deal.pre(lambda _: _.activity.ended_at_time is not None)
     @deal.pre(lambda _: _.activity.started_at_time >= project_context.project.date_created)
-    @deal.pre(lambda _: _.activity.ended_at_time >= project_context.project.date_created)
     @deal.pre(
         lambda _: _.activity.invalidated_at is None or _.activity.invalidated_at >= project_context.project.date_created
     )
     @deal.pre(lambda _: _.activity.started_at_time >= _.activity.association.plan.date_created)
-    @deal.pre(lambda _: _.activity.ended_at_time >= _.activity.association.plan.date_created)
     def add(self, activity: Activity) -> None:
         """Add an ``Activity`` to storage."""
 

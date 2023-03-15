@@ -291,7 +291,7 @@ def run_command_line(
                 if stderr_redirected:
                     sys.stderr = old_stderr
 
-            started_at_time = local_now(remove_microseconds=False)
+            started_at_time = local_now()
 
             try:
                 return_code = call(
@@ -304,7 +304,7 @@ def run_command_line(
                     "This is likely because the executable doesn't exist or has the wrong permissions set."
                 )
 
-            ended_at_time = local_now(remove_microseconds=False)
+            ended_at_time = local_now()
 
             sys.stdout.flush()
             sys.stderr.flush()
