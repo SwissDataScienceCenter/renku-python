@@ -93,7 +93,7 @@ pyyaml = "<6.1.0,>=5.4"
 rdflib = "<7.0,>=6.0.0"
 requests = ">=2.23.0,<2.28.2"
 rich = ">=9.3.0,<12.6.0"
-shellingham = "1.5.0"
+shellingham = "1.5.0.post1"
 tabulate = ">=0.7.7,<0.8.11"
 toil = "==5.7.1"
 tqdm = "<4.62.4,>=4.48.1"
@@ -295,7 +295,6 @@ module = [
     "gunicorn.*",
     "humanize",
     "lazy_object_proxy",
-    "lockfile",
     "marshmallow_oneofschema",
     "networkx.*",
     "pathspec",
