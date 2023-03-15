@@ -18,18 +18,13 @@
 import abc
 from collections import UserDict
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Protocol, Tuple, Type, Union
 
 from renku.core import errors
 from renku.core.constant import ProviderPriority
 from renku.core.plugin import hookimpl
 from renku.core.util.util import NO_VALUE, NoValueType
 from renku.domain_model.dataset_provider import IDatasetProviderPlugin
-
-try:
-    from typing_extensions import Protocol  # NOTE: Required for Python 3.7 compatibility
-except ImportError:
-    from typing import Protocol  # type: ignore
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import (
