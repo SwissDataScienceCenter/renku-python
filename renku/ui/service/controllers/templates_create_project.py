@@ -29,7 +29,7 @@ from renku.infrastructure.repository import Repository
 from renku.ui.service.config import MESSAGE_PREFIX
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
-from renku.ui.service.errors import UserProjectCreationError
+from renku.ui.service.errors import UserProjectCreationError, UserTemplateInvalidError
 from renku.ui.service.serializers.templates import ProjectTemplateRequest, ProjectTemplateResponseRPC
 from renku.ui.service.utils import new_repo_push
 from renku.ui.service.views import result_response
@@ -116,10 +116,12 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
         identifier = self.ctx["identifier"]
         try:
             self.template = templates_source.get_template(id=identifier, reference=None)
-        except (errors.InvalidTemplateError, errors.TemplateNotFoundError) as e:
+        except errors.TemplateNotFoundError as e:
             raise UserProjectCreationError(
                 error_message=f"the template '{identifier}' does not exist in the target template's repository"
             ) from e
+        except errors.InvalidTemplateError as e:
+            raise UserTemplateInvalidError(error_message=f"the template '{identifier}' is invalid") from e
 
         repository = Repository(templates_source.path)
         self.template_version = repository.head.commit.hexsha

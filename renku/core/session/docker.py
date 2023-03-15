@@ -121,7 +121,11 @@ class DockerSessionProvider(ISessionProvider):
 
     def get_start_parameters(self) -> List["ProviderParameter"]:
         """Returns parameters that can be set for session start."""
-        return []
+        from renku.core.dataset.providers.models import ProviderParameter
+
+        return [
+            ProviderParameter("port", help="Local port to use (random if not specified).", type=int),
+        ]
 
     def get_open_parameters(self) -> List["ProviderParameter"]:
         """Returns parameters that can be set for session open."""
@@ -243,7 +247,7 @@ class DockerSessionProvider(ISessionProvider):
                     f" --NotebookApp.notebook_dir={work_dir}" + (" --allow-root" if os.getuid() != 1000 else ""),
                     detach=True,
                     labels={"renku_project": project_name, "jupyter_token": auth_token},
-                    ports={f"{DockerSessionProvider.JUPYTER_PORT}/tcp": None},
+                    ports={f"{DockerSessionProvider.JUPYTER_PORT}/tcp": kwargs.get("port")},
                     remove=True,
                     environment=environment,
                     volumes=volumes,
