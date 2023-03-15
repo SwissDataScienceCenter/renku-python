@@ -949,7 +949,7 @@ jobs:
         with:
           fetch-depth: 0
       - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.9
         uses: actions/setup-python@v4
         with:
           python-version: "3.9"
@@ -963,21 +963,26 @@ jobs:
           poetry install -E service --with dev,tests,docs
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
-      - name: Tag if necessary
-        if: "!startsWith(github.ref, 'refs/tags/')"
+      - name: Get version
+        id: get-version
         run: |
-          renku --version
-          export GIT_TAG=$(renku --version)
-          git tag $GIT_TAG
+          export VERSION=$(renku --version)
+          if [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "renku_version=${VERSION}rc1" >> $GITHUB_OUTPUT
+          else
+            echo "RENKU_VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          fi
       - name: Build and publish to pypi
         env:
           POETRY_VIRTUALENVS_CREATE: false
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+          POETRY_DYNAMIC_VERSIONING_BYPASS: ${{ steps.get-version.outputs.RENKU_VERSION }}
         run: make publish-package
       - name: Build and publish lock package
         env:
           POETRY_VIRTUALENVS_CREATE: false
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+          POETRY_DYNAMIC_VERSIONING_BYPASS: ${{ steps.get-version.outputs.RENKU_VERSION }}
         run: make publish-lock-package
 
   update-develop-branch:
