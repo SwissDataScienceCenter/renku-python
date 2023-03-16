@@ -130,12 +130,16 @@ class FilesystemProvider(ProviderApi, AddProviderInterface, ExportProviderInterf
         elif copy:
             prompt_action = False
 
+        ends_with_slash = False
         u = urllib.parse.urlparse(uri)
         path = u.path
 
         action = DatasetAddAction.SYMLINK if external else default_action
         source_root = Path(get_absolute_path(path))
         warnings: List[str] = []
+
+        if source_root.is_dir() and uri.endswith("/"):
+            ends_with_slash = True
 
         def check_recursive_addition(src: Path):
             if is_subpath(destination, src):
@@ -155,7 +159,12 @@ class FilesystemProvider(ProviderApi, AddProviderInterface, ExportProviderInterf
             if source_root.is_dir() and destination_exists and not destination_is_dir:
                 raise errors.ParameterError(f"Cannot copy directory '{path}' to non-directory '{destination}'")
 
-            return destination / source_root.name if destination_exists and destination_is_dir else destination
+            if destination_exists and destination_is_dir:
+                if ends_with_slash:
+                    return destination
+
+                return destination / source_root.name
+            return destination
 
         def get_metadata(src: Path) -> DatasetAddMetadata:
             is_tracked = repository.contains(src)
