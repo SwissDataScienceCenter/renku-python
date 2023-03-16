@@ -51,7 +51,7 @@ def test_cli_initialization_err(cmd, runner):
 
     with tempfile.TemporaryDirectory() as tmpdir:
         with chdir(tmpdir):
-            result = runner.invoke(cli, ["--disable-version-check"] + cmd)
+            result = runner.invoke(cli, cmd)
             assert 2 == result.exit_code
 
             assert "is not a renku repository.\n" in result.output

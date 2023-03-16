@@ -88,7 +88,7 @@ from click_plugins import with_plugins
 
 from renku.command.options import option_external_storage_requested
 from renku.command.util import WARNING
-from renku.command.version import check_version, print_version
+from renku.command.version import print_version
 from renku.core import errors
 from renku.core.constant import DATABASE_PATH
 from renku.core.util.git import get_git_path
@@ -217,15 +217,6 @@ def is_allowed_command(ctx):
     "--path", show_default=True, metavar="<path>", default=get_git_path, help="Location of a Renku repository."
 )
 @option_external_storage_requested
-@click.option(
-    "--disable-version-check",
-    envvar="RENKU_DISABLE_VERSION_CHECK",
-    is_flag=True,
-    default=False,
-    callback=check_version,
-    expose_value=False,
-    help="Do not periodically check PyPI for a new version of renku.",
-)
 @click.pass_context
 def cli(ctx, path, external_storage_requested):
     """Check common Renku commands used in various situations."""
