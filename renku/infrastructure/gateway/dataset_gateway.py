@@ -18,6 +18,7 @@
 
 from typing import List, Optional
 
+import deal
 from persistent.list import PersistentList
 
 from renku.core.interface.dataset_gateway import IDatasetGateway
@@ -50,6 +51,7 @@ class DatasetGateway(IDatasetGateway):
         """Return the list of all tags for a dataset."""
         return list(project_context.database["datasets-tags"].get(dataset.name, []))
 
+    @deal.pre(lambda _: _.tag.date_created is None or _.tag.date_created >= project_context.project.date_created)
     def add_tag(self, dataset: Dataset, tag: DatasetTag):
         """Add a tag from a dataset."""
         tags: PersistentList = project_context.database["datasets-tags"].get(dataset.name)
@@ -69,6 +71,12 @@ class DatasetGateway(IDatasetGateway):
                 tags.remove(t)
                 break
 
+    @deal.pre(
+        lambda _: _.dataset.date_created is None or _.dataset.date_created >= project_context.project.date_created
+    )
+    @deal.pre(
+        lambda _: _.dataset.date_published is None or _.dataset.date_published >= project_context.project.date_created
+    )
     def add_or_remove(self, dataset: Dataset) -> None:
         """Add or remove a dataset."""
         database = project_context.database

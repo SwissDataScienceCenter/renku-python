@@ -21,7 +21,7 @@ import os
 import traceback
 import uuid
 from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from functools import wraps
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, Iterator, List, Optional, Tuple, Type, Union
@@ -287,6 +287,7 @@ def create_and_commit_files(repository: "Repository", *path_and_content: Union[P
 def create_dummy_activity(
     plan: Union["Plan", str],
     *,
+    started_at_time=None,
     ended_at_time=None,
     generations: Iterable[Union[Path, str, "Generation", Tuple[str, str]]] = (),
     id: Optional[str] = None,
@@ -308,7 +309,8 @@ def create_dummy_activity(
         assert isinstance(plan, str)
         plan = Plan(id=Plan.generate_id(), name=plan, command=plan)
 
-    ended_at_time = ended_at_time or (local_now() + timedelta(seconds=1))
+    started_at_time = started_at_time or local_now()
+    ended_at_time = ended_at_time or local_now()
     empty_checksum = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"  # Git hash of an empty string/file
     activity_id = id or Activity.generate_id(uuid=None if index is None else str(index))
 
@@ -343,7 +345,7 @@ def create_dummy_activity(
 
     return Activity(
         id=activity_id,
-        started_at_time=ended_at_time - timedelta(seconds=1),
+        started_at_time=started_at_time,
         ended_at_time=ended_at_time,
         agents=[
             SoftwareAgent(name="renku test", id="https://github.com/swissdatasciencecenter/renku-python/tree/test"),
@@ -368,15 +370,15 @@ def create_dummy_activity(
 def create_dummy_plan(
     name: str,
     *,
-    command: str = None,
-    date_created: datetime = None,
-    description: str = None,
-    index: int = None,
+    command: Optional[str] = None,
+    date_created: Optional[datetime] = None,
+    description: Optional[str] = None,
+    index: Optional[int] = None,
     inputs: Iterable[Union[str, Tuple[str, str]]] = (),
-    keywords: List[str] = None,
+    keywords: Optional[List[str]] = None,
     outputs: Iterable[Union[str, Tuple[str, str]]] = (),
     parameters: Iterable[Tuple[str, Any, Optional[str]]] = (),
-    success_codes: List[int] = None,
+    success_codes: Optional[List[int]] = None,
 ) -> "Plan":
     """Create a dummy plan."""
     from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter, MappedIOStream
@@ -388,7 +390,7 @@ def create_dummy_plan(
 
     plan = Plan(
         command=command,
-        date_created=date_created or datetime(2022, 5, 20, 0, 42, 0, tzinfo=timezone.utc),
+        date_created=date_created or local_now(),
         description=description,
         id=id,
         inputs=[],
