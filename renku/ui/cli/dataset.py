@@ -137,6 +137,14 @@ Adding data to the dataset:
 This will copy the contents of ``data-url`` to the dataset and add it
 to the dataset metadata.
 
+.. note::
+
+   If the URL refers to a local directory, data is added differently depending
+   on if there is a trailing slash (``/``) or not. If the URL ends in a slash,
+   files inside the directory are added to the target directory. If it does
+   not end in a slash, then the directory itself will be added inside the
+   target directory.
+
 You can create a dataset when you add data to it for the first time by passing
 ``--create`` flag to add command:
 
