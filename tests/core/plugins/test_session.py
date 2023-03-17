@@ -68,6 +68,10 @@ def fake_pre_start_checks(self, **kwargs):
     pass
 
 
+def fake_force_build_image(self, **kwargs):
+    return kwargs.get("force_build", False)
+
+
 @pytest.mark.parametrize(
     "provider_name,session_provider,provider_patches",
     [
@@ -80,7 +84,8 @@ def fake_pre_start_checks(self, **kwargs):
     [
         ({}, "0xdeadbeef"),
         ({"image_name": "fixed_image"}, "0xdeadbeef"),
-        ({"image_name": "missing_image"}, ParameterError),
+        ({"image_name": "missing_image"}, click.Abort),
+        (({"image_name": "missing_image", "force_build": True}, "0xdeadbeef")),
     ],
 )
 def test_session_start(
@@ -101,6 +106,7 @@ def test_session_start(
         find_image=fake_find_image,
         build_image=fake_build_image,
         pre_start_checks=fake_pre_start_checks,
+        force_build_image=fake_force_build_image,
         **provider_patches,
     ):
         provider_implementation = next(
