@@ -21,6 +21,7 @@ import os
 import secrets
 import shutil
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Generator
 
@@ -112,3 +113,14 @@ def project(fake_home) -> Generator[RenkuProject, None, None]:
             project_context.repository = repository
 
             yield RenkuProject(path=repository.path, repository=repository)
+
+
+@pytest.fixture
+def project_with_creation_date(project, monkeypatch, with_injection) -> Generator[RenkuProject, None, None]:
+    """A Renku test project."""
+    with with_injection():
+        project_context.project.date_created = datetime(2022, 5, 20, 0, 40, 0, tzinfo=timezone.utc)
+        project_context.database.commit()
+        project_context.repository.add(all=True)
+        project_context.repository.commit("fake creation date")
+    yield project

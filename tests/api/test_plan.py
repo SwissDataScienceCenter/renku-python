@@ -169,13 +169,14 @@ def test_get_plan_activities(project_with_runs):
     assert isinstance(activity, Activity)
 
 
-def test_get_latest_version(project_with_runs):
+def test_get_latest_version(project_with_runs, with_injection):
     """Test getting the latest version of a plan."""
-    plan_gateway = get_plan_gateway()
-    plan = next(p for p in plan_gateway.get_all_plans() if p.name == "plan-1")
-    newer_plan = plan.derive()
-    plan_gateway.add(newer_plan)
-    project_context.database.commit()
+    with with_injection():
+        plan_gateway = get_plan_gateway()
+        plan = next(p for p in plan_gateway.get_all_plans() if p.name == "plan-1")
+        newer_plan = plan.derive()
+        plan_gateway.add(newer_plan)
+        project_context.database.commit()
 
     latest_version = Plan.from_plan(plan).get_latest_version()
 
@@ -189,13 +190,14 @@ def test_get_latest_version(project_with_runs):
     assert plan is latest_version
 
 
-def test_list_returns_latest_versions(project_with_runs):
+def test_list_returns_latest_versions(project_with_runs, with_injection):
     """Test Plan.list returns the latest versions of plans."""
-    plan_gateway = get_plan_gateway()
-    plan = next(p for p in plan_gateway.get_all_plans() if p.name == "plan-1")
-    newer_plan = plan.derive()
-    plan_gateway.add(newer_plan)
-    project_context.database.commit()
+    with with_injection():
+        plan_gateway = get_plan_gateway()
+        plan = next(p for p in plan_gateway.get_all_plans() if p.name == "plan-1")
+        newer_plan = plan.derive()
+        plan_gateway.add(newer_plan)
+        project_context.database.commit()
 
     plans = Plan.list()
 

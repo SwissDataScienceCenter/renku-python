@@ -18,6 +18,8 @@
 
 from typing import Dict, List, Optional, cast
 
+import deal
+
 from renku.core import errors
 from renku.core.interface.plan_gateway import IPlanGateway
 from renku.domain_model.project_context import project_context
@@ -62,6 +64,10 @@ class PlanGateway(IPlanGateway):
         """Get all plans in project."""
         return list(project_context.database["plans"].values())
 
+    @deal.pre(lambda _: _.plan.date_created is not None)
+    @deal.pre(lambda _: _.plan.date_created >= project_context.project.date_created)
+    @deal.pre(lambda _: _.plan.date_modified is None or _.plan.date_modified >= project_context.project.date_created)
+    @deal.pre(lambda _: _.plan.date_removed is None or _.plan.date_removed >= project_context.project.date_created)
     def add(self, plan: AbstractPlan) -> None:
         """Add a plan to the database."""
         database = project_context.database
