@@ -123,11 +123,15 @@ class LocalProvider(ProviderApi, AddProviderInterface, ExportProviderInterface):
         else:
             default_action = DatasetAddAction.COPY
 
+        ends_with_slash = False
         u = urllib.parse.urlparse(uri)
         path = u.path
 
         action = default_action
         source_root = Path(get_absolute_path(path))
+
+        if source_root.is_dir() and uri.endswith("/"):
+            ends_with_slash = True
 
         def check_recursive_addition(src: Path):
             if is_subpath(destination, src):
@@ -147,7 +151,12 @@ class LocalProvider(ProviderApi, AddProviderInterface, ExportProviderInterface):
             if source_root.is_dir() and destination_exists and not destination_is_dir:
                 raise errors.ParameterError(f"Cannot copy directory '{path}' to non-directory '{destination}'")
 
-            return destination / source_root.name if destination_exists and destination_is_dir else destination
+            if destination_exists and destination_is_dir:
+                if ends_with_slash:
+                    return destination
+
+                return destination / source_root.name
+            return destination
 
         def get_file_metadata(src: Path) -> DatasetAddMetadata:
             in_datadir = is_subpath(src, destination)

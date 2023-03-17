@@ -355,9 +355,9 @@ def test_update_relative_path_for_directory_input(project, run, renku_cli, provi
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
 def test_update_no_args(runner, project, no_lfs_warning, provider):
-    """Test calling update with no args raises ParameterError."""
-    source = os.path.join(project.path, "source.txt")
-    output = os.path.join(project.path, "output.txt")
+    """Test calling update with no args defaults to update all."""
+    source = project.path / "source.txt"
+    output = project.path / "output.txt"
 
     write_and_commit_file(project.repository, source, "content")
 
@@ -366,14 +366,13 @@ def test_update_no_args(runner, project, no_lfs_warning, provider):
 
     write_and_commit_file(project.repository, source, "changed content")
 
-    before_commit = project.repository.head.commit
+    # NOTE: Don't pass ``--all`` to check it's the default action
+    result = runner.invoke(cli, ["update", "-p", provider], input="y\n")
 
-    result = runner.invoke(cli, ["update", "-p", provider])
+    assert 0 == result.exit_code
+    assert "Updating all outputs could trigger expensive computations" in result.output
 
-    assert 2 == result.exit_code
-    assert "Either PATHS, --all/-a, or --dry-run/-n should be specified." in result.output
-
-    assert before_commit == project.repository.head.commit
+    assert "changed content" == source.read_text()
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())

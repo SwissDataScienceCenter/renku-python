@@ -96,14 +96,15 @@ def test_graph_export_strict_dataset(tmpdir, runner, project, subdirectory):
     result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset"] + paths)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["graph", "export", "--strict", "--format=json-ld"])
+    result = runner.invoke(cli, ["graph", "export", "--strict", "--format=json-ld", "--revision", "HEAD"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert all(p in result.output for p in test_paths), result.output
 
     # check that only most recent dataset is exported
     assert 1 == result.output.count("http://schema.org/Dataset")
 
-    result = runner.invoke(cli, ["graph", "export", "--strict", "--format=json-ld", "--full"])
+    # NOTE: Don't pass ``--full`` to check it's the default action.
+    result = runner.invoke(cli, ["graph", "export", "--strict", "--format=json-ld"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert all(p in result.output for p in test_paths), result.output
 
