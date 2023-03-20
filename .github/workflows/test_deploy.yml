@@ -710,7 +710,8 @@ jobs:
       - name: Install system packages
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y libyaml-0-2 libyaml-dev rclone fuse
+          sudo apt-get install -y libyaml-0-2 libyaml-dev unzip fuse
+          sudo -v ; curl https://rclone.org/install.sh | sudo bash
       - uses: actions/cache@master
         id: dependency-cache
         with:
@@ -807,7 +808,8 @@ jobs:
       - name: Install system packages
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y libyaml-0-2 libyaml-dev rclone fuse
+          sudo apt-get install -y libyaml-0-2 libyaml-dev unzip fuse
+          sudo -v ; curl https://rclone.org/install.sh | sudo bash
       - uses: actions/cache@master
         id: dependency-cache
         with:

@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,23 +19,26 @@ import itertools
 import os.path
 import shutil
 from pathlib import Path
-from typing import Generator, List, Optional, Union, cast
+from typing import Generator, List, Optional, Tuple, Union, cast
 
+from renku.command.command_builder.command import inject
 from renku.core import errors
 from renku.core.dataset.context import DatasetContext
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.pointer_file import create_external_file
 from renku.core.dataset.providers.api import ImporterApi
 from renku.core.dataset.providers.factory import ProviderFactory
+from renku.core.dataset.providers.local import LocalProvider
 from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
+from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.interface.storage import IStorage
 from renku.core.storage import check_external_storage, track_paths_in_storage
 from renku.core.util import communication, requests
-from renku.core.util.dataset import check_url
 from renku.core.util.git import get_git_user
-from renku.core.util.os import delete_dataset_file, get_files, get_relative_path, hash_file
-from renku.core.util.urls import is_uri_subfolder
+from renku.core.util.os import get_absolute_path, get_files, get_relative_path, get_size, hash_file, is_subpath
+from renku.core.util.urls import check_url, is_uri_subfolder, resolve_uri
 from renku.domain_model.dataset import Dataset, DatasetFile, RemoteEntity
+from renku.domain_model.entity import NON_EXISTING_ENTITY_CHECKSUM
 from renku.domain_model.project_context import project_context
 
 
@@ -70,7 +72,7 @@ def add_to_dataset(
 
             check_external_storage()
 
-            # NOTE: This is not required for external storages
+            # NOTE: This is not required for cloud storages
             if not dataset.storage:
                 _check_available_space(urls, total_size=total_size)
 
@@ -80,7 +82,7 @@ def add_to_dataset(
                 for file in get_files(datadir):
                     urls.append(str(file))
 
-            files = _get_files_metadata(
+            files = get_files_metadata(
                 urls=urls,
                 dataset=dataset,
                 importer=importer,
@@ -102,7 +104,7 @@ def add_to_dataset(
 
             # NOTE: All files at this point can be force-added
 
-            move_files_to_dataset(dataset=dataset, files=files)
+            copy_files_to_dataset(dataset=dataset, files=files)
             add_files_to_repository(dataset=dataset, files=files)
             update_dataset_metadata(dataset=dataset, files=files, clear_files_before=clear_files_before)
 
@@ -120,7 +122,7 @@ def add_to_dataset(
         return dataset
 
 
-def _get_files_metadata(
+def get_files_metadata(
     *,
     urls: List[str],
     importer: Optional[ImporterApi] = None,
@@ -144,14 +146,28 @@ def _get_files_metadata(
     files = []
 
     for url in urls:
-        _, is_git = check_url(url)
+        is_remote, is_git = check_url(url)
 
         if not is_git and sources:
             raise errors.ParameterError("Cannot use '-s/--src/--source' with URLs or local files.")
 
-        provider = ProviderFactory.get_add_provider(uri=url)
+        dataset_add_action = DatasetAddAction.NONE
 
-        new_files = provider.add(
+        if is_remote:
+            provider = ProviderFactory.get_add_provider(uri=url)
+        else:
+            # NOTE: If URI is in the local file system, check to see if it's part of a mounted dataset/provider
+            cloud_dataset, remote_url = get_cloud_dataset_from_path(path=url)
+            if cloud_dataset:
+                url = remote_url
+                provider = ProviderFactory.get_storage_provider(uri=cloud_dataset.storage)
+                # NOTE: Update metadata if destination dataset is the same as source dataset, otherwise copy the file
+                # since it's already in the local filesystem
+                dataset_add_action = DatasetAddAction.COPY
+            else:
+                provider = LocalProvider(uri=url)
+
+        new_files = provider.get_metadata(
             uri=url,
             destination=destination,
             revision=revision,
@@ -159,6 +175,7 @@ def _get_files_metadata(
             dataset=dataset,
             extract=extract,
             force=force,
+            dataset_add_action=dataset_add_action,
             **kwargs,
         )
 
@@ -167,11 +184,66 @@ def _get_files_metadata(
     return files
 
 
+@inject.autoparams("dataset_gateway")
+def has_cloud_storage(dataset_gateway: IDatasetGateway) -> bool:
+    """Return if a project has any dataset with cloud storage with its data directory mounted or pulled."""
+    # NOTE: ``exists`` return False for symlinks if their target doesn't exists, but it's fine here since it means the
+    # dataset's mounted/pulled location doesn't exist.
+    return any(
+        dataset
+        for dataset in dataset_gateway.get_all_active_datasets()
+        if dataset.storage and (project_context.path / dataset.get_datadir()).exists()
+    )
+
+
+@inject.autoparams("dataset_gateway")
+def get_cloud_dataset_from_path(
+    path: Union[Path, str], dataset_gateway: IDatasetGateway, missing_ok: bool = False
+) -> Tuple[Optional[Dataset], Optional[str]]:
+    """Check the path against datasets' storage and return a dataset (if any)."""
+    if not has_cloud_storage():
+        return None, None
+
+    # NOTE: If path is inside the datadir of a dataset with storage backend and the dataset isn't mounted, we should
+    # still add whatever is in the path (because it might have been pulled)
+
+    path = Path(get_absolute_path(path))
+
+    if not missing_ok and not path.exists() and not os.path.lexists(path):
+        return None, None
+
+    for dataset in dataset_gateway.get_all_active_datasets():
+        if not dataset.storage:
+            continue
+
+        datadir = project_context.path / dataset.get_datadir()
+        resolved_path = path.resolve()
+
+        # NOTE: Resolve ``path`` because ``datadir`` is resolved and resolved paths might have be on a different
+        # location (e.g. on macos /tmp resolves to /private/tmp)
+        resolved_relative_path = get_relative_path(resolved_path, base=datadir.resolve())
+
+        if is_subpath(path, base=datadir) or resolved_relative_path is not None:
+            if resolved_relative_path == ".":
+                resolved_relative_path = ""
+            storage_uri = dataset.storage.rstrip("/")
+            remote_url = f"{storage_uri}/{resolved_relative_path}"
+            return dataset, remote_url
+        elif is_subpath(resolved_path, Path(dataset.storage).resolve()):  # NOTE: For local backend storage
+            return dataset, str(resolved_path)
+
+    return None, None
+
+
 def _check_available_space(urls: List[str], total_size: Optional[int] = None):
     """Check that there is enough space available on the device for download."""
     if total_size is None:
         total_size = 0
         for url in urls:
+            is_remote, _ = check_url(url)
+            if not is_remote:
+                continue
+
             try:
                 response = requests.head(url, allow_redirects=True)
                 total_size += int(response.headers.get("content-length", 0))
@@ -190,9 +262,6 @@ def _check_available_space(urls: List[str], total_size: Optional[int] = None):
 def _create_destination_directory(dataset: Dataset, destination: Optional[Union[Path, str]] = None) -> Path:
     """Create directory for dataset add."""
     dataset_datadir = project_context.path / dataset.get_datadir()
-
-    if dataset_datadir.is_symlink():
-        dataset_datadir.unlink()
 
     # NOTE: Make sure that dataset's data dir exists because we check for existence of a destination later to decide
     # what will be its name
@@ -295,12 +364,23 @@ def get_upload_uri(dataset: Dataset, entity_path: Union[Path, str]) -> str:
     return f"{base}/{path_within_dataset}"
 
 
-def move_files_to_dataset(dataset: Dataset, files: List[DatasetAddMetadata]):
+def copy_files_to_dataset(dataset: Dataset, files: List[DatasetAddMetadata]):
     """Copy/Move files into a dataset's directory."""
 
-    def move_file(file: DatasetAddMetadata, storage: Optional[IStorage]) -> bool:
+    def copy_file(file: DatasetAddMetadata, storage: Optional[IStorage]) -> bool:
         if not file.has_action:
             return False
+
+        track_in_lfs = True
+
+        # NOTE: If file is in a sub-directory of a dataset's remote storage URI, only update the metadata
+        if file.from_cloud_storage:
+            if dataset.storage and is_uri_subfolder(resolve_uri(dataset.storage), file.url):
+                file.action = DatasetAddAction.METADATA_ONLY
+            else:
+                file.action = DatasetAddAction.DOWNLOAD
+
+        file_to_upload = file.source.resolve()
 
         if file.action in (
             DatasetAddAction.COPY,
@@ -308,20 +388,10 @@ def move_files_to_dataset(dataset: Dataset, files: List[DatasetAddMetadata]):
             DatasetAddAction.SYMLINK,
             DatasetAddAction.DOWNLOAD,
         ):
-            # NOTE: Remove existing file if any; required as a safety-net to avoid corrupting external files
-            delete_dataset_file(file.destination, follow_symlinks=True)
-            file.destination.parent.mkdir(parents=True, exist_ok=True)
-
-        track_in_lfs = True
-
-        # NOTE: If file is in a sub-directory of a dataset's remote storage URI, only update the metadata
-        if file.remote_storage:
-            if dataset.storage and is_uri_subfolder(dataset.storage, file.url):
-                file.action = DatasetAddAction.METADATA_ONLY
-            else:
-                file.action = DatasetAddAction.DOWNLOAD
-
-        file_to_upload = file.source.resolve()
+            try:
+                file.destination.parent.mkdir(parents=True, exist_ok=True)
+            except OSError as e:
+                raise errors.InvalidFileOperation(f"Cannot create destination '{file.destination.parent}': {e}")
 
         try:
             if file.action == DatasetAddAction.COPY:
@@ -347,19 +417,25 @@ def move_files_to_dataset(dataset: Dataset, files: List[DatasetAddMetadata]):
             if "Read-only file system" in str(e) and storage:
                 pass
             else:
-                raise
+                dst = get_relative_path(file.destination, project_context.path) or file.destination
+                raise errors.InvalidFileOperation(f"Cannot copy/move '{dst}': {e}")
+
+        if file.size is None:
+            file.size = get_size(file_to_upload)
 
         # NOTE: We always copy the files to the dataset's data dir. If dataset has a storage backend, we also upload the
         # file to the remote storage.
         if storage:
+            md5_hash: str = file.based_on.checksum if file.based_on else ""
+
             if file.metadata_only:
                 assert file.based_on, f"wasBasedOn isn't set for {file} with METADATA_ONLY action"
                 file_uri = file.based_on.url
-                md5_hash = file.based_on.checksum
             else:
                 file_uri = get_upload_uri(dataset=dataset, entity_path=file.entity_path)
                 storage.upload(source=file_to_upload, uri=file_uri)
-                md5_hash = hash_file(file_to_upload, hash_type="md5") or ""
+                if not md5_hash:
+                    md5_hash = hash_file(file_to_upload, hash_type="md5") or NON_EXISTING_ENTITY_CHECKSUM
 
             file.based_on = RemoteEntity(url=file_uri, path=file.entity_path, checksum=md5_hash)
 
@@ -374,7 +450,7 @@ def move_files_to_dataset(dataset: Dataset, files: List[DatasetAddMetadata]):
 
     for dataset_file in files:
         # TODO: Parallelize copy/download/upload
-        if move_file(file=dataset_file, storage=dataset_storage):
+        if copy_file(file=dataset_file, storage=dataset_storage):
             lfs_files.append(dataset_file.destination)
 
     if lfs_files and not dataset.storage:
@@ -385,7 +461,6 @@ def add_files_to_repository(dataset: Dataset, files: List[DatasetAddMetadata]):
     """Track files in project's repository."""
     # NOTE: There is nothing to track for remote storages
     if dataset.storage:
-        communication.info("Nothing to add to the project for datasets with a storage backend")
         return
 
     # NOTE: Don't commit files that will be uploaded to a remote storage
@@ -413,7 +488,11 @@ def update_dataset_metadata(dataset: Dataset, files: List[DatasetAddMetadata], c
 
     for file in files:
         dataset_file = DatasetFile.from_path(
-            path=file.entity_path, source=file.url, based_on=file.based_on, checksum=checksums.get(file.entity_path)
+            path=file.entity_path,
+            source=file.url,
+            based_on=file.based_on,
+            size=file.size,
+            checksum=checksums.get(file.entity_path),
         )
         dataset_files.append(dataset_file)
 

@@ -15,10 +15,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku CLI fixtures for providers testing."""
+
 import json
 import os
 import posixpath
 import re
+import shutil
 import urllib
 import warnings
 
@@ -114,6 +116,23 @@ def cloud_storage_credentials(project):
     azure_section = f"{azure_account}.blob.core.windows.net"
     set_value(section=azure_section, key="account", value=azure_account, global_only=True)
     set_value(section=azure_section, key="key", value=azure_key, global_only=True)
+
+
+@pytest.fixture
+def shared_external_cloud_storage(directory_tree) -> str:
+    """Path to a directory to be used with an external cloud storage provider.
+
+    NOTE: Since the directory is shared, tests that use it (even for only reading) should run in serial.
+    """
+    from tests.constant import SHARED_EXTERNAL_CLOUD_STORAGE
+
+    shutil.rmtree(SHARED_EXTERNAL_CLOUD_STORAGE, ignore_errors=True)
+    shutil.copytree(directory_tree.as_posix(), SHARED_EXTERNAL_CLOUD_STORAGE)
+
+    try:
+        yield SHARED_EXTERNAL_CLOUD_STORAGE
+    finally:
+        shutil.rmtree(SHARED_EXTERNAL_CLOUD_STORAGE, ignore_errors=True)
 
 
 @pytest.fixture

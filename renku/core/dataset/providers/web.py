@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,8 +27,7 @@ from renku.core.constant import CACHE
 from renku.core.dataset.providers.api import AddProviderInterface, ProviderApi, ProviderPriority
 from renku.core.util import communication
 from renku.core.util.contexts import wait_for
-from renku.core.util.dataset import check_url
-from renku.core.util.urls import remove_credentials
+from renku.core.util.urls import check_url, remove_credentials
 from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
@@ -48,7 +46,7 @@ class WebProvider(ProviderApi, AddProviderInterface):
         is_remote, is_git = check_url(uri)
         return is_remote and not is_git
 
-    def add(
+    def get_metadata(
         self,
         uri: str,
         destination: Path,
@@ -58,7 +56,7 @@ class WebProvider(ProviderApi, AddProviderInterface):
         multiple: bool = False,
         **kwargs,
     ) -> List["DatasetAddMetadata"]:
-        """Add files from a URI to a dataset."""
+        """Get metadata of files that will be added to a dataset."""
         dataset = kwargs.get("dataset")
         if dataset and dataset.storage and urlparse(dataset.storage).scheme != urlparse(uri).scheme:
             raise errors.ParameterError(

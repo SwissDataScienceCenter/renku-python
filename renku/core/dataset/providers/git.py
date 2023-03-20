@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,10 +25,9 @@ from renku.core import errors
 from renku.core.dataset.providers.api import AddProviderInterface, ProviderApi, ProviderPriority
 from renku.core.storage import pull_paths_from_storage
 from renku.core.util import communication
-from renku.core.util.dataset import check_url
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository
 from renku.core.util.os import get_files, is_subpath
-from renku.core.util.urls import remove_credentials
+from renku.core.util.urls import check_url, remove_credentials
 from renku.domain_model.dataset import RemoteEntity
 from renku.domain_model.project_context import project_context
 
@@ -71,7 +69,7 @@ class GitProvider(ProviderApi, AddProviderInterface):
             ),
         ]
 
-    def add(
+    def get_metadata(
         self,
         uri: str,
         destination: Path,
@@ -80,7 +78,7 @@ class GitProvider(ProviderApi, AddProviderInterface):
         revision: Optional[str] = None,
         **kwargs,
     ) -> List["DatasetAddMetadata"]:
-        """Add files from a URI to a dataset."""
+        """Get metadata of files that will be added to a dataset."""
         from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
 
         destination_exists = destination.exists()
@@ -129,7 +127,7 @@ class GitProvider(ProviderApi, AddProviderInterface):
 
             return has_multiple_sources or (destination_exists and destination_is_dir)
 
-        def get_metadata(src: Path, dst: Path) -> Optional["DatasetAddMetadata"]:
+        def get_file_metadata(src: Path, dst: Path) -> Optional["DatasetAddMetadata"]:
             path_in_src_repo = src.relative_to(remote_repository.path)  # type: ignore
             path_in_dst_repo = dst.relative_to(project_context.path)
 
@@ -169,7 +167,7 @@ class GitProvider(ProviderApi, AddProviderInterface):
                 relative_path = file.relative_to(path)
                 dst = dst_root / relative_path
 
-                metadata = get_metadata(src, dst)
+                metadata = get_file_metadata(src, dst)
                 if metadata:
                     results.append(metadata)
 

@@ -1,5 +1,5 @@
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,6 +55,7 @@ class DatasetAddMetadata:
     destination: Path
     provider: Optional["StorageProviderInterface"] = None
     based_on: Optional["RemoteEntity"] = None
+    size: Optional[int] = None
 
     @property
     def has_action(self) -> bool:
@@ -67,8 +68,8 @@ class DatasetAddMetadata:
         return self.action == DatasetAddAction.METADATA_ONLY
 
     @property
-    def remote_storage(self) -> bool:
-        """Returns if file is from a remote storage."""
+    def from_cloud_storage(self) -> bool:
+        """Returns if file is from a cloud storage."""
         return self.action == DatasetAddAction.REMOTE_STORAGE
 
     def get_absolute_commit_path(self, project_path: Path) -> str:
