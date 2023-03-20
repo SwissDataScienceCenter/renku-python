@@ -20,7 +20,7 @@ from typing import Dict, List, Union, cast
 from renku.command.dataset import edit_dataset_command
 from renku.core.dataset.request_model import ImageRequestModel
 from renku.core.util.metadata import construct_creators
-from renku.core.util.util import NO_VALUE, NoValueType
+from renku.domain_model.constant import NO_VALUE, NoValueType
 from renku.domain_model.provenance.agent import Person
 from renku.ui.service.cache.models.job import Job
 from renku.ui.service.config import CACHE_UPLOADS_PATH, MESSAGE_PREFIX

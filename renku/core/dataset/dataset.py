@@ -50,6 +50,7 @@ from renku.core.util.os import (
     delete_dataset_file,
     delete_path,
     get_absolute_path,
+    get_file_size,
     get_files,
     get_safe_relative_path,
     hash_file,
@@ -59,8 +60,10 @@ from renku.core.util.os import (
 )
 from renku.core.util.tabulate import tabulate
 from renku.core.util.urls import get_slug
-from renku.core.util.util import NO_VALUE, NoValueType
+from renku.core.util.util import parallel_execute
+from renku.domain_model.constant import NO_VALUE, NON_EXISTING_ENTITY_CHECKSUM, NoValueType
 from renku.domain_model.dataset import Dataset, DatasetDetailsJson, DatasetFile, RemoteEntity, is_dataset_name_valid
+from renku.domain_model.entity import Entity
 from renku.domain_model.enums import ConfigFilter
 from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.agent import Person
@@ -68,6 +71,7 @@ from renku.domain_model.provenance.annotation import Annotation
 from renku.infrastructure.immutable import DynamicProxy
 
 if TYPE_CHECKING:
+    from renku.core.interface.storage import IStorage
     from renku.infrastructure.repository import Repository
 
 
@@ -1249,6 +1253,59 @@ def filter_dataset_files(
     return sorted(records, key=lambda r: r.date_added)
 
 
+def download_file(file: DatasetFile, storage: "IStorage") -> List[DatasetFile]:
+    """Download a dataset file and retrieve its missing metadata (if any).
+
+    Args:
+        file(DatasetFile): Dataset file to download.
+        storage: Dataset's cloud storage (an instance of ``IStorage``).
+
+    Returns:
+         List[DatasetFile]: A list with the updated file if its metadata was missing; an empty list otherwise.
+
+    """
+    if not file.based_on:
+        raise errors.DatasetImportError(f"Dataset file doesn't have a URI: {file.entity.path}")
+
+    path = project_context.path / file.entity.path
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    # NOTE: Don't check if destination file exists. ``IStorage.copy`` won't copy a file if it exists and is not
+    # modified.
+
+    communication.start_progress(name=file.entity.path, total=1)
+    try:
+        storage.download(file.based_on.url, path)
+        communication.update_progress(name=file.entity.path, amount=1)
+    finally:
+        communication.finalize_progress(name=file.entity.path)
+
+    # NOTE: File has no missing information
+    if file.has_valid_checksum() and file.has_valid_size():
+        return []
+
+    if not file.has_valid_checksum():
+        md5_hash = hash_file(path, hash_type="md5") or NON_EXISTING_ENTITY_CHECKSUM
+        entity = Entity(path=file.entity.path, checksum=md5_hash)
+        remote_entity = RemoteEntity(checksum=md5_hash, url=file.based_on.url, path=file.based_on.path)
+    else:
+        entity = file.entity
+        remote_entity = file.based_on
+
+    size = file.size if file.has_valid_size() else get_file_size(path)
+
+    return [
+        DatasetFile(
+            entity=entity,
+            based_on=remote_entity,
+            size=size,
+            date_added=file.date_added,
+            date_removed=file.date_removed,
+            source=file.source,
+        )
+    ]
+
+
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
 def pull_cloud_storage(name: str, location: Optional[Path] = None) -> None:
     """Pull/copy data for a cloud storage to a dataset's data directory or a specified location.
@@ -1257,67 +1314,29 @@ def pull_cloud_storage(name: str, location: Optional[Path] = None) -> None:
         name(str): Name of the dataset
         location(Optional[Path]): A directory to copy data to (Default value = None).
     """
-    datasets_provenance = DatasetsProvenance()
-
-    dataset = datasets_provenance.get_by_name(name=name, strict=True)
-
-    if not dataset.storage:
-        communication.warn(f"Dataset '{name}' doesn't have a storage backend")
-        return
+    dataset, datadir = _get_dataset_with_cloud_storage(name=name)
 
     # NOTE: Try to unmount the path in case it was mounted before
-    unmount_path(project_context.path / dataset.get_datadir())
-
-    create_symlinks = True
-    destination: Union[Path, str]
+    unmount_path(datadir)
 
     if location:
-        destination = get_absolute_path(location)
-    else:
-        stored_location = read_dataset_data_location(dataset=dataset)
-        if stored_location:
-            destination = stored_location
-        else:
-            destination = project_context.path
-            create_symlinks = False
+        if not is_path_empty(datadir):
+            communication.confirm(
+                f"Dataset's data directory will be removed: {dataset.get_datadir()}. Do you want to continue?",
+                abort=True,
+                warning=True,
+            )
+        create_symlink(target=location, symlink_path=datadir, overwrite=True)
 
     provider = ProviderFactory.get_pull_provider(uri=dataset.storage)
     storage = provider.get_storage()
 
-    updated_files = []
-
-    for file in dataset.files:
-        path = Path(destination) / file.entity.path
-        path.parent.mkdir(parents=True, exist_ok=True)
-        # NOTE: Don't check if destination exists. ``IStorage.copy`` won't copy a file if it exists and is not modified.
-
-        if not file.based_on:
-            raise errors.DatasetImportError(f"Dataset file doesn't have a URI: {file.entity.path}")
-
-        with communication.busy(f"Copying {file.entity.path} ..."):
-            storage.download(file.based_on.url, path)
-
-            # NOTE: Make files read-only since we don't support pushing data to the remote storage
-            os.chmod(path, 0o400)
-
-            if not file.based_on.checksum:
-                md5_hash = hash_file(path, hash_type="md5") or ""
-                file.based_on = RemoteEntity(checksum=md5_hash, url=file.based_on.url, path=file.based_on.path)
-
-            new_file = DynamicProxy(file)
-            new_file.dataset = dataset
-            updated_files.append(new_file)
-
-            if create_symlinks:
-                symlink_path = project_context.path / file.entity.path
-                symlink_path.parent.mkdir(parents=True, exist_ok=True)
-                create_symlink(path=path, symlink_path=symlink_path, overwrite=True)
-
-    # NOTE: Store location in metadata in case where we want to mount the external storage in the same location
-    store_dataset_data_location(dataset=dataset, location=location)
+    updated_files = parallel_execute(download_file, dataset.files, rate=5, storage=storage)
 
     if updated_files:
-        _update_datasets_files_metadata(updated_files=updated_files, deleted_files=[], delete=False)
+        dataset.add_or_update_files(updated_files)
+        DatasetsProvenance().add_or_update(dataset, creator=get_git_user(repository=project_context.repository))
+        project_context.database.commit()
 
 
 def store_dataset_data_location(dataset: Dataset, location: Optional[Path]) -> None:
@@ -1358,7 +1377,7 @@ def mount_cloud_storage(name: str, existing: Optional[Path], yes: bool) -> None:
         )
 
     if existing:
-        create_symlink(path=existing, symlink_path=datadir, overwrite=True)
+        create_symlink(target=existing, symlink_path=datadir, overwrite=True)
         return
 
     delete_path(datadir)

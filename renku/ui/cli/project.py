@@ -37,7 +37,7 @@ from pathlib import Path
 import click
 
 import renku.ui.cli.utils.color as color
-from renku.core.util.util import NO_VALUE
+from renku.domain_model.constant import NO_VALUE
 from renku.ui.cli.utils.callback import ClickCallback
 
 

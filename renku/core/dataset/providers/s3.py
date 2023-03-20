@@ -19,7 +19,6 @@ import urllib
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple, cast
 
-from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.dataset.providers.api import (
     AddProviderInterface,
@@ -30,10 +29,11 @@ from renku.core.dataset.providers.api import (
 )
 from renku.core.dataset.providers.common import get_metadata
 from renku.core.dataset.providers.models import DatasetAddAction
-from renku.core.interface.storage import IStorage, IStorageFactory
+from renku.core.interface.storage import IStorage
 from renku.core.util.metadata import prompt_for_credentials
 from renku.core.util.urls import get_scheme
 from renku.domain_model.project_context import project_context
+from renku.infrastructure.storage.factory import StorageFactory
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import DatasetAddMetadata
@@ -79,10 +79,7 @@ class S3Provider(ProviderApi, StorageProviderInterface, AddProviderInterface):
         """Return an instance of provider's credential class."""
         return S3Credentials(provider=self)
 
-    @inject.autoparams("storage_factory")
-    def get_storage(
-        self, storage_factory: "IStorageFactory", credentials: Optional["ProviderCredentials"] = None
-    ) -> "IStorage":
+    def get_storage(self, credentials: Optional["ProviderCredentials"] = None) -> "IStorage":
         """Return the storage manager for the provider."""
         s3_configuration = {
             "type": "s3",
@@ -94,7 +91,7 @@ class S3Provider(ProviderApi, StorageProviderInterface, AddProviderInterface):
             credentials = self.get_credentials()
             prompt_for_credentials(credentials)
 
-        return storage_factory.get_storage(
+        return StorageFactory.get_storage(
             storage_scheme="s3",
             provider=self,
             credentials=credentials,

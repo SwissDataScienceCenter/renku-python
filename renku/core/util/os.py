@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -155,11 +154,11 @@ def is_path_empty(path: Union[Path, str]) -> bool:
     return not any(subpaths)
 
 
-def create_symlink(path: Union[Path, str], symlink_path: Union[Path, str], overwrite: bool = True) -> None:
-    """Create a symlink that points from symlink_path to path."""
+def create_symlink(target: Union[Path, str], symlink_path: Union[Path, str], overwrite: bool = True) -> None:
+    """Create a symlink that points from symlink_path to target."""
     # NOTE: Don't resolve symlink path
     absolute_symlink_path = get_absolute_path(symlink_path)
-    absolute_path = get_absolute_path(path, resolve_symlinks=True)
+    absolute_path = get_absolute_path(target, resolve_symlinks=True)
 
     Path(absolute_symlink_path).parent.mkdir(parents=True, exist_ok=True)
 
@@ -168,7 +167,7 @@ def create_symlink(path: Union[Path, str], symlink_path: Union[Path, str], overw
             delete_path(absolute_symlink_path)
         os.symlink(absolute_path, absolute_symlink_path)
     except OSError:
-        raise errors.InvalidFileOperation(f"Cannot create symlink from '{symlink_path}' to '{path}'")
+        raise errors.InvalidFileOperation(f"Cannot create symlink from '{symlink_path}' to '{target}'")
 
 
 def delete_path(path: Union[Path, str]) -> None:
@@ -213,7 +212,7 @@ def is_ascii(data):
     return len(data) == len(data.encode())
 
 
-def get_size(path: Union[Path, str], follow_symlinks: bool = True) -> Optional[int]:
+def get_file_size(path: Union[Path, str], follow_symlinks: bool = True) -> Optional[int]:
     """Return size of a file in bytes."""
     path = Path(path).resolve() if follow_symlinks else Path(path)
     try:
@@ -340,3 +339,49 @@ def expand_directories(paths):
             else:
                 processed_paths.add(matched_path)
                 yield matched_path
+
+
+UNITS = {
+    "b": 1,
+    "kb": 1000,
+    "mb": 1000**2,
+    "gb": 1000**3,
+    "tb": 1000**4,
+    "m": 1000**2,
+    "g": 1000**3,
+    "t": 1000**4,
+    "p": 1000**5,
+    "e": 1000**6,
+    "z": 1000**7,
+    "y": 1000**8,
+    "ki": 1024,
+    "mi": 1024**2,
+    "gi": 1024**3,
+    "ti": 1024**4,
+    "pi": 1024**5,
+    "ei": 1024**6,
+    "zi": 1024**7,
+    "yi": 1024**8,
+}
+
+
+def parse_file_size(size_str):
+    """Parse a human readable file size to bytes."""
+    res = re.search(r"([0-9.]+)([a-zA-Z]{1,2})", size_str)
+    if not res or res.group(2).lower() not in UNITS:
+        raise ValueError(
+            "Supplied file size does not contain a unit. " "Valid units are: {}".format(", ".join(UNITS.keys()))
+        )
+
+    value = float(res.group(1))
+    unit = UNITS[res.group(2).lower()]
+
+    return int(value * unit)
+
+
+def bytes_to_unit(size_in_bytes, unit: str) -> Optional[float]:
+    """Return size in the provided unit."""
+    unit = unit.lower()
+    if unit not in UNITS:
+        raise ValueError(f"Invalid unit '{unit}'. Valid units are: [{', '.join(UNITS)}]")
+    return None if size_in_bytes is None else size_in_bytes / UNITS[unit]

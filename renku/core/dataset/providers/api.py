@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Protocol, Tuple, Ty
 from renku.core import errors
 from renku.core.constant import ProviderPriority
 from renku.core.plugin import hookimpl
-from renku.core.util.util import NO_VALUE, NoValueType
+from renku.domain_model.constant import NO_VALUE, NoValueType
 from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:

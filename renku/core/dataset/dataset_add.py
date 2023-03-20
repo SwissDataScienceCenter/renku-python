@@ -18,8 +18,9 @@
 import itertools
 import os.path
 import shutil
+import tempfile
 from pathlib import Path
-from typing import Generator, List, Optional, Tuple, Union, cast
+from typing import Dict, Generator, List, Optional, Tuple, Union, cast
 
 from renku.command.command_builder.command import inject
 from renku.core import errors
@@ -35,10 +36,11 @@ from renku.core.interface.storage import IStorage
 from renku.core.storage import check_external_storage, track_paths_in_storage
 from renku.core.util import communication, requests
 from renku.core.util.git import get_git_user
-from renku.core.util.os import get_absolute_path, get_files, get_relative_path, get_size, hash_file, is_subpath
+from renku.core.util.os import get_absolute_path, get_file_size, get_files, get_relative_path, hash_file, is_subpath
 from renku.core.util.urls import check_url, is_uri_subfolder, resolve_uri
+from renku.core.util.util import parallel_execute
+from renku.domain_model.constant import NON_EXISTING_ENTITY_CHECKSUM
 from renku.domain_model.dataset import Dataset, DatasetFile, RemoteEntity
-from renku.domain_model.entity import NON_EXISTING_ENTITY_CHECKSUM
 from renku.domain_model.project_context import project_context
 
 
@@ -364,94 +366,108 @@ def get_upload_uri(dataset: Dataset, entity_path: Union[Path, str]) -> str:
     return f"{base}/{path_within_dataset}"
 
 
+def copy_file(file: DatasetAddMetadata, dataset: Dataset, storage: Optional[IStorage]) -> List[Optional[Path]]:
+    """Copy/move/link a file to dataset's data directory."""
+    if not file.has_action:
+        return []
+
+    # NOTE: If file is in a sub-directory of a dataset's remote storage URI, only update the metadata
+    if file.from_cloud_storage:
+        if dataset.storage and is_uri_subfolder(resolve_uri(dataset.storage), file.url):
+            file.action = DatasetAddAction.METADATA_ONLY
+        else:
+            file.action = DatasetAddAction.DOWNLOAD
+
+    if file.action in (
+        DatasetAddAction.COPY,
+        DatasetAddAction.MOVE,
+        DatasetAddAction.SYMLINK,
+        DatasetAddAction.DOWNLOAD,
+    ):
+        try:
+            file.destination.parent.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            raise errors.InvalidFileOperation(f"Cannot create destination '{file.destination.parent}': {e}")
+
+    file_to_upload: Union[Path, str] = file.source.resolve()
+    delete_source = False
+    track_in_lfs = True
+
+    try:
+        if file.action == DatasetAddAction.DOWNLOAD:
+            # NOTE: Download to a temporary location if dataset has a cloud storage because it's usually mounted as
+            # read-only and download would fail. It's ok not to move it to dataset's data dir since it'll be uploaded.
+            dst: Union[Path, str]
+            if storage:
+                fd, dst = tempfile.mkstemp()
+                os.close(fd)
+            else:
+                dst = file.destination
+
+            assert file.provider, f"Storage provider isn't set for {file} with DOWNLOAD action"
+            download_storage = file.provider.get_storage()
+            download_storage.download(file.url, dst)
+            file_to_upload = dst
+        elif file.action == DatasetAddAction.COPY:
+            shutil.copy(file.source, file.destination)
+        elif file.action == DatasetAddAction.MOVE:
+            # NOTE: Set ``delete_source`` in case move fails due to a dataset's read-only mounted data directory
+            delete_source = True
+            shutil.move(file.source, file.destination, copy_function=shutil.copy)  # type: ignore
+            delete_source = False
+            file_to_upload = file.destination
+        elif file.action == DatasetAddAction.SYMLINK:
+            create_external_file(target=file.source, path=file.destination)
+            # NOTE: Don't track symlinks to external files in LFS
+            track_in_lfs = False
+        elif file.metadata_only:
+            # NOTE: Nothing to do when adding file to a dataset with a parent remote storage
+            pass
+        else:
+            raise errors.OperationError(f"Invalid action {file.action}")
+    except OSError as e:
+        # NOTE: It's ok if copying data to a read-only mounted cloud storage fails
+        if "Read-only file system" in str(e) and storage:
+            pass
+        else:
+            dst = get_relative_path(file.destination, project_context.path) or file.destination
+            raise errors.InvalidFileOperation(f"Cannot copy/move '{dst}': {e}")
+
+    if file.size is None:
+        file.size = get_file_size(file_to_upload)
+
+    if storage:
+        # NOTE: Don't track files in a dataset with cloud storage in LFS
+        track_in_lfs = False
+
+        if file.metadata_only:
+            assert file.based_on, f"wasBasedOn isn't set for {file} with METADATA_ONLY action"
+            file_uri = file.based_on.url
+            md5_hash: Optional[str] = file.based_on.checksum
+        else:
+            file_uri = get_upload_uri(dataset=dataset, entity_path=file.entity_path)
+            md5_hash = hash_file(file_to_upload, hash_type="md5")
+
+            # NOTE: If dataset has a storage backend, upload the file to the remote storage.
+            storage.upload(source=file_to_upload, uri=file_uri)
+
+        file.based_on = RemoteEntity(url=file_uri, path=file.entity_path, checksum=md5_hash)
+
+    if delete_source:
+        file.source.unlink(missing_ok=True)
+
+    return [file.destination] if track_in_lfs else []
+
+
 def copy_files_to_dataset(dataset: Dataset, files: List[DatasetAddMetadata]):
     """Copy/Move files into a dataset's directory."""
-
-    def copy_file(file: DatasetAddMetadata, storage: Optional[IStorage]) -> bool:
-        if not file.has_action:
-            return False
-
-        track_in_lfs = True
-
-        # NOTE: If file is in a sub-directory of a dataset's remote storage URI, only update the metadata
-        if file.from_cloud_storage:
-            if dataset.storage and is_uri_subfolder(resolve_uri(dataset.storage), file.url):
-                file.action = DatasetAddAction.METADATA_ONLY
-            else:
-                file.action = DatasetAddAction.DOWNLOAD
-
-        file_to_upload = file.source.resolve()
-
-        if file.action in (
-            DatasetAddAction.COPY,
-            DatasetAddAction.MOVE,
-            DatasetAddAction.SYMLINK,
-            DatasetAddAction.DOWNLOAD,
-        ):
-            try:
-                file.destination.parent.mkdir(parents=True, exist_ok=True)
-            except OSError as e:
-                raise errors.InvalidFileOperation(f"Cannot create destination '{file.destination.parent}': {e}")
-
-        try:
-            if file.action == DatasetAddAction.COPY:
-                shutil.copy(file.source, file.destination)
-            elif file.action == DatasetAddAction.MOVE:
-                shutil.move(file.source, file.destination, copy_function=shutil.copy)  # type: ignore
-            elif file.action == DatasetAddAction.SYMLINK:
-                create_external_file(target=file.source, path=file.destination)
-                # NOTE: Don't track symlinks to external files in LFS
-                track_in_lfs = False
-            elif file.action == DatasetAddAction.DOWNLOAD:
-                assert file.provider, f"Storage provider isn't set for {file} with DOWNLOAD action"
-                download_storage = file.provider.get_storage()
-                download_storage.download(file.url, file.destination)
-                file_to_upload = file.destination
-            elif file.metadata_only:
-                # NOTE: Nothing to do when adding file to a dataset with a parent remote storage
-                pass
-            else:
-                raise errors.OperationError(f"Invalid action {file.action}")
-        except OSError as e:
-            # NOTE: It's ok if copying data to a read-only mounted cloud storage fails
-            if "Read-only file system" in str(e) and storage:
-                pass
-            else:
-                dst = get_relative_path(file.destination, project_context.path) or file.destination
-                raise errors.InvalidFileOperation(f"Cannot copy/move '{dst}': {e}")
-
-        if file.size is None:
-            file.size = get_size(file_to_upload)
-
-        # NOTE: We always copy the files to the dataset's data dir. If dataset has a storage backend, we also upload the
-        # file to the remote storage.
-        if storage:
-            md5_hash: str = file.based_on.checksum if file.based_on else ""
-
-            if file.metadata_only:
-                assert file.based_on, f"wasBasedOn isn't set for {file} with METADATA_ONLY action"
-                file_uri = file.based_on.url
-            else:
-                file_uri = get_upload_uri(dataset=dataset, entity_path=file.entity_path)
-                storage.upload(source=file_to_upload, uri=file_uri)
-                if not md5_hash:
-                    md5_hash = hash_file(file_to_upload, hash_type="md5") or NON_EXISTING_ENTITY_CHECKSUM
-
-            file.based_on = RemoteEntity(url=file_uri, path=file.entity_path, checksum=md5_hash)
-
-        return track_in_lfs
 
     dataset_storage = None
     if dataset.storage:
         provider = ProviderFactory.get_storage_provider(uri=dataset.storage)
         dataset_storage = provider.get_storage()
 
-    lfs_files = []
-
-    for dataset_file in files:
-        # TODO: Parallelize copy/download/upload
-        if copy_file(file=dataset_file, storage=dataset_storage):
-            lfs_files.append(dataset_file.destination)
+    lfs_files = parallel_execute(copy_file, files, rate=5, dataset=dataset, storage=dataset_storage)
 
     if lfs_files and not dataset.storage:
         track_paths_in_storage(*lfs_files)
@@ -479,12 +495,18 @@ def add_files_to_repository(dataset: Dataset, files: List[DatasetAddMetadata]):
 
 def update_dataset_metadata(dataset: Dataset, files: List[DatasetAddMetadata], clear_files_before: bool):
     """Add newly-added files to the dataset's metadata."""
-    dataset_files = []
-    repo_paths: List[Union[Path, str]] = [
-        file.entity_path for file in files if (project_context.path / file.entity_path).exists()
-    ]
+    # NOTE: For datasets with cloud storage backend, we use MD5 hash as checksum instead of git hash.
+    if dataset.storage:
+        checksums: Dict[Union[Path, str], Optional[str]] = {
+            f.entity_path: f.based_on.checksum for f in files if f.based_on
+        }
+    else:
+        repo_paths: List[Union[Path, str]] = [
+            file.entity_path for file in files if (project_context.path / file.entity_path).exists()
+        ]
+        checksums = project_context.repository.get_object_hashes(repo_paths)
 
-    checksums = project_context.repository.get_object_hashes(repo_paths)
+    dataset_files = []
 
     for file in files:
         dataset_file = DatasetFile.from_path(
@@ -492,7 +514,7 @@ def update_dataset_metadata(dataset: Dataset, files: List[DatasetAddMetadata], c
             source=file.url,
             based_on=file.based_on,
             size=file.size,
-            checksum=checksums.get(file.entity_path),
+            checksum=checksums.get(file.entity_path) or NON_EXISTING_ENTITY_CHECKSUM,
         )
         dataset_files.append(dataset_file)
 

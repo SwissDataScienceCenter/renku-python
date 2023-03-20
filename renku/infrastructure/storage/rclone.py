@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Union
 
 from renku.core import errors
 from renku.core.interface.storage import FileHash, IStorage
-from renku.core.util.util import NO_VALUE
+from renku.domain_model.constant import NO_VALUE
 
 
 class RCloneStorage(IStorage):

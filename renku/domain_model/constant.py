@@ -1,6 +1,5 @@
-#
-# Copyright 2019-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,18 +13,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helper utilities for handling UUIDs."""
-import uuid
+"""Renku domain models constants."""
 
+from typing import NewType
 
-def is_uuid(value):
-    """Check if value is UUID4.
+NoValueType = NewType("NoValueType", object)
+"""Type to represent a value not being set in cases where ``None`` is a valid value."""
 
-    Copied from https://stackoverflow.com/questions/19989481/
-    """
-    try:
-        uuid_obj = uuid.UUID(value, version=4)
-    except ValueError:
-        return False
-
-    return str(uuid_obj) == value
+NO_VALUE = NoValueType(object())
+"""Sentinel to represent a value not being set in cases where ``None`` is a valid value."""
+NON_EXISTING_ENTITY_CHECKSUM = "0" * 40

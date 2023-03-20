@@ -33,7 +33,6 @@ def composite_plan():
     """Fixture for a basic CompositePlan."""
 
     def create_run(name: str) -> Plan:
-
         run_id = Plan.generate_id()
         input1 = CommandInput(
             id=CommandInput.generate_id(run_id, 1),
