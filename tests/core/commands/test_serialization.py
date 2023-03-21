@@ -22,7 +22,7 @@ from urllib.parse import urljoin
 import pytest
 
 from renku.core.migration.models import v9 as old_datasets
-from renku.core.util.uuid import is_uuid
+from renku.core.util.util import is_uuid
 from tests.utils import get_dataset_with_injection
 
 

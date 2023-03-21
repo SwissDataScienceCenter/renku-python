@@ -158,7 +158,6 @@ class RenkuOperationMixin(metaclass=ABCMeta):
             return self.remote()
 
         elif "git_url" in self.context and "user_id" in self.user_data:
-
             try:
                 project = Project.get(
                     (Project.user_id == self.user_data["user_id"]) & (Project.git_url == self.context["git_url"])

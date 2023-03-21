@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,6 +69,9 @@ def check_missing_files(dataset_gateway: IDatasetGateway, **_):
     missing = defaultdict(list)
 
     for dataset in dataset_gateway.get_all_active_datasets():
+        # NOTE: Datasets with storage backend don't have local copies of files
+        if dataset.storage:
+            continue
         for file_ in dataset.files:
             path = project_context.path / file_.entity.path
             file_exists = path.exists() or (file_.is_external and os.path.lexists(path))
@@ -163,7 +165,7 @@ def check_dataset_files_outside_datadir(fix, dataset_gateway: IDatasetGateway, *
         detected_files = []
 
         for file in dataset.files:
-            if file.is_external:
+            if file.is_external or file.linked:
                 continue
             try:
                 get_safe_relative_path(project_context.path / file.entity.path, project_context.path / data_dir)
@@ -192,5 +194,52 @@ def check_dataset_files_outside_datadir(fix, dataset_gateway: IDatasetGateway, *
             + "\n"
         )
         return False, problems
+
+    return True, None
+
+
+@inject.autoparams("dataset_gateway")
+def check_external_files(fix, dataset_gateway: IDatasetGateway, **_):
+    """Find external files.
+
+    Args:
+        fix: Whether to fix found issues.
+        dataset_gateway(IDatasetGateway): The injected dataset gateway.
+        _: keyword arguments.
+
+    Returns:
+        Tuple of whether no external files are found and string of found problems.
+    """
+    from renku.core.dataset.dataset import file_unlink
+
+    external_files = []
+    datasets = defaultdict(list)
+
+    for dataset in dataset_gateway.get_all_active_datasets():
+        for file in dataset.files:
+            if file.is_external:
+                external_files.append(file.entity.path)
+                datasets[dataset.name].append(file)
+
+    if not external_files:
+        return True, None
+
+    external_files_str = "\n\t".join(sorted(external_files))
+
+    if not fix:
+        problems = (
+            f"\n{WARNING}: External files are deprecated in favor of an external dataset backend.\n"
+            "Use 'renku dataset rm' or rerun 'renku doctor' with '--fix' flag to remove them:\n\t"
+            f"{external_files_str}\n"
+        )
+        return False, problems
+
+    communication.info(
+        "The following external files were deleted from the project. You need to add them later manually using a "
+        f"dataset with an external storage backend:\n\t{external_files_str}"
+    )
+
+    for name, files in datasets.items():
+        file_unlink(name=name, yes=True, dataset_files=files)
 
     return True, None

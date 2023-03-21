@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -388,7 +387,8 @@ def get_entity_from_revision(
         Entity: The Entity for the given path and revision.
 
     """
-    from renku.domain_model.entity import NON_EXISTING_ENTITY_CHECKSUM, Collection, Entity
+    from renku.domain_model.constant import NON_EXISTING_ENTITY_CHECKSUM
+    from renku.domain_model.entity import Collection, Entity
 
     def get_directory_members(absolute_path: Path) -> List[Entity]:
         """Return first-level files/directories in a directory."""

@@ -50,7 +50,6 @@ class MutuallyExclusiveOption(click.Option):
                 self.mutually_exclusive.add(mutex[0])
                 self.mutually_exclusive_names.append(mutex[1])
             else:
-
                 self.mutually_exclusive.add(mutex)
                 self.mutually_exclusive_names.append(mutex)
 

@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,9 +34,8 @@ from renku.core import errors
 from renku.core.config import get_value
 from renku.core.constant import RENKU_LFS_IGNORE_PATH, RENKU_PROTECTED_PATHS
 from renku.core.util import communication
-from renku.core.util.file_size import parse_file_size
 from renku.core.util.git import get_in_submodules, run_command
-from renku.core.util.os import expand_directories
+from renku.core.util.os import expand_directories, parse_file_size
 from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:

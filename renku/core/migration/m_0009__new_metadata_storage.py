@@ -48,7 +48,8 @@ from renku.core.migration.utils import (
 from renku.core.migration.utils.conversion import convert_dataset
 from renku.core.util import communication
 from renku.core.util.yaml import load_yaml
-from renku.domain_model.entity import NON_EXISTING_ENTITY_CHECKSUM, Collection, Entity
+from renku.domain_model.constant import NON_EXISTING_ENTITY_CHECKSUM
+from renku.domain_model.entity import Collection, Entity
 from renku.domain_model.project_context import has_graph_files, project_context
 from renku.domain_model.provenance.activity import Activity, Association, Generation, Usage
 from renku.domain_model.provenance.agent import Person, SoftwareAgent

@@ -236,7 +236,6 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
             # NOTE: init "remote" repo
             runner = RenkuRunner()
             with chdir(remote_repo_checkout_path):
-
                 result = runner.invoke(
                     cli, ["init", ".", "--template-id", "python-minimal", "--force"], "\n", catch_exceptions=False
                 )

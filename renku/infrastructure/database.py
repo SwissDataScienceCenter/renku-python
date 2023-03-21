@@ -584,7 +584,7 @@ class Index(persistent.Persistent):
     """Database index."""
 
     def __init__(self, *, name: str, object_type, attribute: Optional[str], key_type=None):
-        """Create an index where keys are extracted using `attribute` from an object or a key.
+        """Create an index where keys are extracted using ``attribute`` from an object or a key.
 
         Args:
             name (str): Index's name.
@@ -637,6 +637,9 @@ class Index(persistent.Persistent):
         self._key_type = get_class(data.pop("key_type"))
         self._attribute = data.pop("attribute")
         self._entries = data.pop("entries")
+
+    def __iter__(self):
+        return self._entries.__iter__()
 
     @property
     def name(self) -> str:
@@ -927,7 +930,7 @@ class ObjectWriter:
                 return {"@renku_data_type": REFERENCE_TYPE, "@renku_data_value": self._serialization_cache[id(object)]}
 
             # NOTE: The reference used for circular reference is just the position in the serialization cache,
-            # as the order is deterministic. So the order in which objects are encoutered is their id for referencing.
+            # as the order is deterministic. So the order in which objects are encountered is their id for referencing.
             self._serialization_cache[id(object)] = len(self._serialization_cache)
 
             value = object.__getstate__().copy()
@@ -1100,8 +1103,11 @@ class ObjectReader:
                 if "id" in data and data["id"] in self._normal_object_cache:
                     return self._normal_object_cache[data["id"]]
 
-                for name, value in data.items():
-                    object.__setattr__(new_object, name, value)
+                if hasattr(new_object, "__setstate__"):
+                    new_object.__setstate__(data)
+                else:
+                    for name, value in data.items():
+                        object.__setattr__(new_object, name, value)
 
                 if issubclass(cls, Immutable):
                     new_object = cls.make_instance(new_object)

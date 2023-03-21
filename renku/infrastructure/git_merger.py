@@ -301,7 +301,6 @@ class GitMerger:
 
             # NOTE: Merge description
             if local.description != remote.description:
-
                 if base is None or (local.description != base.description and remote.description != base.description):
                     local.description = communication.prompt(
                         f"Project description was modified in local and remote branch.\n"

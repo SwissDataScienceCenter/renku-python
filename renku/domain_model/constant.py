@@ -13,4 +13,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""JSON-LD schemes for core models."""
+"""Renku domain models constants."""
+
+from typing import NewType
+
+NoValueType = NewType("NoValueType", object)
+"""Type to represent a value not being set in cases where ``None`` is a valid value."""
+
+NO_VALUE = NoValueType(object())
+"""Sentinel to represent a value not being set in cases where ``None`` is a valid value."""
+NON_EXISTING_ENTITY_CHECKSUM = "0" * 40

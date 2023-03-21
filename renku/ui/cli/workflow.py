@@ -730,7 +730,7 @@ from renku.command.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS, WO
 from renku.command.util import ERROR
 from renku.command.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
 from renku.core import errors
-from renku.core.util.util import NO_VALUE
+from renku.domain_model.constant import NO_VALUE
 from renku.ui.cli.utils.callback import ClickCallback
 from renku.ui.cli.utils.plugins import available_workflow_providers, get_supported_formats
 from renku.ui.cli.utils.terminal import print_workflow_file, show_text_with_pager
