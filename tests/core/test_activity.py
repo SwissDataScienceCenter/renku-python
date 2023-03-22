@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022- Swiss Data Science Center (SDSC)
+# Copyright 2017-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,7 +16,9 @@
 # limitations under the License.
 """Renku activity management tests."""
 
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Optional
 
 from renku.core.workflow.activity import revert_activity
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
@@ -26,7 +27,7 @@ from renku.infrastructure.repository import Repository
 from tests.utils import create_and_commit_files, create_dummy_activity, create_dummy_plan
 
 
-def create_dummy_activities(repository: Repository):
+def create_dummy_activities(repository: Repository, start_date: Optional[datetime] = None):
     """Create activities for tests in this file."""
     # Create files so that they can be found by git
     create_and_commit_files(
@@ -40,18 +41,31 @@ def create_dummy_activities(repository: Repository):
     )
     create_and_commit_files(repository, ("latest-generated", "new-content"), ("old-generated", "new-content"))
 
-    plan = create_dummy_plan(name="plan")
-    to_be_deleted_plan = create_dummy_plan(name="to-be-deleted-plan")
+    plan = create_dummy_plan(name="plan", date_created=start_date)
+    to_be_deleted_plan = create_dummy_plan(name="to-be-deleted-plan", date_created=start_date)
 
-    upstream = create_dummy_activity(plan=plan, generations=["input", ("latest-generated", "old-content")])
+    upstream = create_dummy_activity(
+        plan=plan,
+        generations=["input", ("latest-generated", "old-content")],
+        ended_at_time=start_date + timedelta(seconds=1) if start_date else None,
+    )
     activity = create_dummy_activity(
         plan=to_be_deleted_plan,
         usages=["input"],
         generations=[("latest-generated", "new-content"), ("old-generated", "old-content"), "to-be-deleted", "used"],
+        ended_at_time=start_date + timedelta(seconds=1.5) if start_date else None,
     )
-    downstream = create_dummy_activity(plan=plan, usages=["used"], generations=["output"])
+    downstream = create_dummy_activity(
+        plan=plan,
+        usages=["used"],
+        generations=["output"],
+        ended_at_time=start_date + timedelta(seconds=3) if start_date else None,
+    )
     other = create_dummy_activity(
-        plan=to_be_deleted_plan, usages=["other"], generations=[("old-generated", "new-content")]
+        plan=to_be_deleted_plan,
+        usages=["other"],
+        generations=[("old-generated", "new-content")],
+        ended_at_time=start_date + timedelta(seconds=3.5) if start_date else None,
     )
 
     activity_gateway = ActivityGateway()

@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -95,8 +94,8 @@ flag to ``renku update``.
    :group: Running
    :command: $ renku update [--all] [<path>...]
    :description: Update outdated output files created by renku run. With
-                 <path>'s: Only recreate these files. With --all: Update
-                 all outdated output files.
+                 <path>'s: Only recreate these files. With --all (default):
+                 Update all outdated output files.
    :target: rp
 
 Pre-update checks
@@ -160,13 +159,14 @@ downstream dependencies that aren't deleted.
 import click
 from lazy_object_proxy import Proxy
 
+from renku.command.util import WARNING
 from renku.core import errors
 from renku.ui.cli.utils.callback import ClickCallback
 from renku.ui.cli.utils.plugins import available_workflow_providers
 
 
 @click.command()
-@click.option("--all", "-a", "update_all", is_flag=True, default=False, help="Update all outdated files.")
+@click.option("--all", "-a", "update_all", is_flag=True, default=False, help="Update all outdated files (default).")
 @click.option("--dry-run", "-n", is_flag=True, default=False, help="Show a preview of plans that will be executed.")
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
 @click.option(
@@ -189,6 +189,10 @@ def update(update_all, dry_run, paths, provider, config, ignore_deleted, skip_me
     from renku.command.update import update_command
 
     communicator = ClickCallback()
+
+    if not paths and not update_all and not dry_run:
+        message = f"{WARNING}Updating all outputs could trigger expensive computations. Are you sure?"
+        communicator.confirm(message, default=True, abort=True)
 
     try:
         result = (

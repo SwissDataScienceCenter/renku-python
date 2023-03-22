@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,6 +20,7 @@ import itertools
 from pathlib import Path
 from typing import List, Optional, Set, Tuple, Union
 
+import deal
 from persistent.list import PersistentList
 
 from renku.command.command_builder.command import inject
@@ -141,6 +141,13 @@ class ActivityGateway(IActivityGateway):
         database = project_context.database
         return [a for a in database["activities"].values() if not a.deleted or include_deleted]
 
+    @deal.pre(lambda _: _.activity.started_at_time is not None)
+    @deal.pre(lambda _: _.activity.ended_at_time is not None)
+    @deal.pre(lambda _: _.activity.started_at_time >= project_context.project.date_created)
+    @deal.pre(
+        lambda _: _.activity.invalidated_at is None or _.activity.invalidated_at >= project_context.project.date_created
+    )
+    @deal.pre(lambda _: _.activity.started_at_time >= _.activity.association.plan.date_created)
     def add(self, activity: Activity) -> None:
         """Add an ``Activity`` to storage."""
 

@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +15,7 @@
 # limitations under the License.
 """Activity JSON-LD schema."""
 
-from marshmallow import EXCLUDE
+from marshmallow import EXCLUDE, pre_dump
 
 from renku.command.schema.agent import PersonSchema, SoftwareAgentSchema
 from renku.command.schema.annotation import AnnotationSchema
@@ -109,7 +107,7 @@ class ActivitySchema(JsonLDSchema):
     agents = Nested(prov.wasAssociatedWith, [PersonSchema, SoftwareAgentSchema], many=True)
     annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
     association = Nested(prov.qualifiedAssociation, AssociationSchema)
-    ended_at_time = fields.DateTime(prov.endedAtTime, add_value_types=True)
+    ended_at_time = fields.DateTime(prov.endedAtTime, format="iso", add_value_types=True)
     generations = Nested(prov.activity, GenerationSchema, reverse=True, many=True, load_default=None)
     id = fields.Id()
     invalidations = Nested(prov.wasInvalidatedBy, EntitySchema, reverse=True, many=True, load_default=None)
@@ -121,8 +119,30 @@ class ActivitySchema(JsonLDSchema):
     )
     path = fields.String(prov.atLocation)
     project_id = fields.IRI(renku.hasActivity, reverse=True)
-    started_at_time = fields.DateTime(prov.startedAtTime, add_value_types=True)
+    started_at_time = fields.DateTime(prov.startedAtTime, format="iso", add_value_types=True)
     usages = Nested(prov.qualifiedUsage, UsageSchema, many=True)
+
+    @pre_dump(pass_many=True)
+    def removes_ms(self, objs, many, **kwargs):
+        """Remove milliseconds from datetimes.
+
+        Note: since DateField uses `strftime` as format, which only supports timezone info without a colon
+        e.g. `+0100` instead of `+01:00`, we have to deal with milliseconds manually instead of using a format string.
+        """
+
+        def _replace_times(obj):
+            obj.unfreeze()
+            obj.started_at_time = obj.started_at_time.replace(microsecond=0)
+            obj.ended_at_time = obj.ended_at_time.replace(microsecond=0)
+            obj.freeze()
+
+        if many:
+            for obj in objs:
+                _replace_times(obj)
+            return objs
+
+        _replace_times(objs)
+        return objs
 
 
 class WorkflowFileActivityCollectionSchema(JsonLDSchema):

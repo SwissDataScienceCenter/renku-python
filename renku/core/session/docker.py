@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,6 +16,8 @@
 # limitations under the License.
 """Docker based interactive session provider."""
 
+import os
+import platform
 import webbrowser
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, cast
@@ -120,7 +121,11 @@ class DockerSessionProvider(ISessionProvider):
 
     def get_start_parameters(self) -> List["ProviderParameter"]:
         """Returns parameters that can be set for session start."""
-        return []
+        from renku.core.dataset.providers.models import ProviderParameter
+
+        return [
+            ProviderParameter("port", help="Local port to use (random if not specified).", type=int),
+        ]
 
     def get_open_parameters(self) -> List["ProviderParameter"]:
         """Returns parameters that can be set for session open."""
@@ -160,6 +165,7 @@ class DockerSessionProvider(ISessionProvider):
         Returns:
             Tuple[str, str]: Provider message and a possible warning message.
         """
+        show_non_standard_user_warning = True
 
         def session_start_helper(consider_disk_request: bool):
             try:
@@ -213,20 +219,41 @@ class DockerSessionProvider(ISessionProvider):
                     "EMAIL": user.email,
                 }
 
+                additional_options: Dict[str, Any] = {}
+
+                if platform.system() == "Linux" and os.getuid() != 1000:
+                    # NOTE: Current user id is not 1000 like jovyan, need to run docker under that user.
+                    nonlocal show_non_standard_user_warning
+                    if show_non_standard_user_warning:
+                        communication.confirm(
+                            "Your user id is not 1000 and for Jupyter to work the session must be started as root.\n"
+                            "Jupyter itself will run as your user.\n"
+                            "Starting as root has security implications, make sure you trust this Dockerfile.\n"
+                            "Proceed?",
+                            abort=True,
+                        )
+                        show_non_standard_user_warning = False
+
+                    additional_options["user"] = "root"
+                    environment["NB_UID"] = str(os.getuid())
+                    environment["CHOWN_HOME"] = "yes"
+                    environment["CHOWN_HOME_OPTS"] = "-R"
+
                 container = self.docker_client().containers.run(
                     image_name,
                     'jupyter notebook --NotebookApp.ip="0.0.0.0"'
                     f" --NotebookApp.port={DockerSessionProvider.JUPYTER_PORT}"
                     f' --NotebookApp.token="{auth_token}" --NotebookApp.default_url="{default_url}"'
-                    f" --NotebookApp.notebook_dir={work_dir}",
+                    f" --NotebookApp.notebook_dir={work_dir}" + (" --allow-root" if os.getuid() != 1000 else ""),
                     detach=True,
                     labels={"renku_project": project_name, "jupyter_token": auth_token},
-                    ports={f"{DockerSessionProvider.JUPYTER_PORT}/tcp": None},
+                    ports={f"{DockerSessionProvider.JUPYTER_PORT}/tcp": kwargs.get("port")},
                     remove=True,
                     environment=environment,
                     volumes=volumes,
                     working_dir=str(work_dir),
                     **resource_requests,
+                    **additional_options,
                 )
 
                 if not container.ports:

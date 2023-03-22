@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2020-2022 -Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,18 +14,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Helper utilities for handling UUIDs."""
-import uuid
+"""Test constants."""
 
+import os
+import tempfile
 
-def is_uuid(value):
-    """Check if value is UUID4.
-
-    Copied from https://stackoverflow.com/questions/19989481/
-    """
-    try:
-        uuid_obj = uuid.UUID(value, version=4)
-    except ValueError:
-        return False
-
-    return str(uuid_obj) == value
+SHARED_EXTERNAL_CLOUD_STORAGE: str = os.path.join(tempfile.gettempdir(), "cloud-storage", "external")

@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +15,7 @@
 # limitations under the License.
 """Datasets JSON-LD schemes."""
 
-from marshmallow import EXCLUDE
+from marshmallow import EXCLUDE, pre_dump
 
 from renku.command.schema.agent import PersonSchema
 from renku.command.schema.annotation import AnnotationSchema
@@ -68,6 +66,27 @@ class DatasetTagSchema(JsonLDSchema):
     description = fields.String(schema.description, load_default=None)
     id = fields.Id()
     name = fields.String(schema.name)
+
+    @pre_dump(pass_many=True)
+    def removes_ms(self, objs, many, **kwargs):
+        """Remove milliseconds from datetimes.
+
+        Note: since DateField uses `strftime` as format, which only supports timezone info without a colon
+        e.g. `+0100` instead of `+01:00`, we have to deal with milliseconds manually instead of using a format string.
+        """
+
+        def _replace_times(obj):
+            obj.unfreeze()
+            obj.date_created = obj.date_created.replace(microsecond=0)
+            obj.freeze()
+
+        if many:
+            for obj in objs:
+                _replace_times(obj)
+            return objs
+
+        _replace_times(objs)
+        return objs
 
 
 class LanguageSchema(JsonLDSchema):
@@ -134,6 +153,27 @@ class DatasetFileSchema(JsonLDSchema):
     is_external = fields.Boolean(renku.external, load_default=False)
     source = fields.String(renku.source, load_default=None)
 
+    @pre_dump(pass_many=True)
+    def removes_ms(self, objs, many, **kwargs):
+        """Remove milliseconds from datetimes.
+
+        Note: since DateField uses `strftime` as format, which only supports timezone info without a colon
+        e.g. `+0100` instead of `+01:00`, we have to deal with milliseconds manually instead of using a format string.
+        """
+
+        def _replace_times(obj):
+            obj.date_added = obj.date_added.replace(microsecond=0)
+            if obj.date_removed:
+                obj.date_removed = obj.date_removed.replace(microsecond=0)
+
+        if many:
+            for obj in objs:
+                _replace_times(obj)
+            return objs
+
+        _replace_times(objs)
+        return objs
+
 
 class DatasetSchema(JsonLDSchema):
     """Dataset schema."""
@@ -168,3 +208,30 @@ class DatasetSchema(JsonLDSchema):
     same_as = Nested(schema.sameAs, UrlSchema, load_default=None)
     title = fields.String(schema.name)
     version = fields.String(schema.version, load_default=None)
+
+    @pre_dump(pass_many=True)
+    def removes_ms(self, objs, many, **kwargs):
+        """Remove milliseconds from datetimes.
+
+        Note: since DateField uses `strftime` as format, which only supports timezone info without a colon
+        e.g. `+0100` instead of `+01:00`, we have to deal with milliseconds manually instead of using a format string.
+        """
+
+        def _replace_times(obj):
+            obj.unfreeze()
+            if obj.date_created:
+                obj.date_created = obj.date_created.replace(microsecond=0)
+            if obj.date_removed:
+                obj.date_removed = obj.date_removed.replace(microsecond=0)
+            if obj.date_published:
+                obj.date_published = obj.date_published.replace(microsecond=0)
+            obj.date_modified = obj.date_modified.replace(microsecond=0)
+            obj.freeze()
+
+        if many:
+            for obj in objs:
+                _replace_times(obj)
+            return objs
+
+        _replace_times(objs)
+        return objs

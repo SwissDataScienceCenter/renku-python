@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,7 +20,7 @@ from pathlib import Path
 import pytest
 
 from renku.core import errors
-from renku.infrastructure.repository import Repository
+from renku.infrastructure.repository import DiffChangeType, Repository
 
 FIRST_COMMIT_SHA = "d44be0700e7ad1d062544763fd55c6ccb6f456e1"
 LAST_COMMIT_SHA = "8853e0c1112e512c36db9cc76faff560b655e5d5"  # HEAD
@@ -74,7 +73,7 @@ def test_repository_get_changes_in_a_commit(git_repository):
 
     changes = {c.a_path: c for c in commit.get_changes()}
 
-    assert "M" == changes["A"].change_type
+    assert DiffChangeType.MODIFIED == changes["A"].change_type
     assert "A" == changes["A"].b_path
     assert not changes["A"].added
     assert not changes["A"].deleted
@@ -82,7 +81,7 @@ def test_repository_get_changes_in_a_commit(git_repository):
     assert changes["B"].deleted
     assert "B" == changes["B"].b_path
 
-    assert "R" == changes["C"].change_type
+    assert DiffChangeType.RENAMED == changes["C"].change_type
     assert "data/X" == changes["C"].b_path
     assert not changes["C"].added
     assert not changes["C"].deleted
@@ -95,12 +94,12 @@ def test_repository_get_changes_in_the_first_commit(git_repository):
 
     changes = {c.a_path: c for c in commit.get_changes()}
 
-    assert "A" == changes["A"].change_type
+    assert DiffChangeType.ADDED == changes["A"].change_type
     assert changes["A"].added
     assert not changes["A"].deleted
     assert "A" == changes["A"].b_path
 
-    assert "A" == changes["B"].change_type
+    assert DiffChangeType.ADDED == changes["B"].change_type
     assert changes["B"].added
     assert not changes["B"].deleted
     assert "B" == changes["B"].b_path

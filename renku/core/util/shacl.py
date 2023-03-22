@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +32,7 @@ def validate_graph(graph, shacl_path=None, format="nquads"):
     """
     shacl: Union[str, bytes]
     if shacl_path:
-        with open(shacl_path, "r", encoding="utf-8") as f:
+        with open(shacl_path, encoding="utf-8") as f:
             shacl = f.read()
     else:
         shacl = importlib_resources.files("renku.data").joinpath("shacl_shape.json").read_bytes()

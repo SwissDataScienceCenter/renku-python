@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -144,9 +143,7 @@ def test_edit_project_view_unset(svc_client_with_repo):
 
     assert_rpc_response(response)
     assert {"warning", "edited", "remote_branch"} == set(response.json["result"])
-    assert {"keywords": None, "custom_metadata": None,} == response.json[
-        "result"
-    ]["edited"]
+    assert {"keywords": None, "custom_metadata": None} == response.json["result"]["edited"]
 
 
 @pytest.mark.service

@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -20,49 +19,40 @@
 import abc
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, Optional, Union
 
 if TYPE_CHECKING:
-    from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials
+    from renku.core.dataset.providers.api import CloudStorageProviderType, ProviderCredentials
 
 
 @dataclass
 class FileHash:
-    """The has for a file at a specific location."""
+    """The hash for a file at a specific location."""
 
-    base_uri: str
+    uri: str
     path: str
-    hash: Optional[str] = None
-    hash_type: Optional[str] = None
-    modified_datetime: Optional[str] = None
-
-    @property
-    def full_uri(self) -> str:
-        """Return the full uri to the file."""
-        return str(Path(self.base_uri) / Path(self.path))
+    size: Optional[int]  # Size in bytes
+    hash: Optional[str]
 
 
 class IStorageFactory(abc.ABC):
-    """Interface to get an external storage."""
+    """Interface to get a cloud storage."""
 
     @staticmethod
     @abc.abstractmethod
     def get_storage(
         storage_scheme: str,
-        provider: "ProviderApi",
+        provider: "CloudStorageProviderType",
         credentials: "ProviderCredentials",
         configuration: Dict[str, str],
-        uri_convertor: Callable[[str], str],
     ) -> "IStorage":
         """Return a storage that handles provider.
 
         Args:
             storage_scheme(str): Storage name.
-            provider(ProviderApi): The backend provider.
+            provider(CloudStorageProviderType): The backend provider.
             credentials(ProviderCredentials): Credentials for the provider.
             configuration(Dict[str, str]): Storage-specific configuration that are passed to the IStorage implementation
-            uri_convertor(Callable[[str], str]): A function that converts backend-specific URI to a URI that is usable
-                by the IStorage implementation.
 
         Returns:
             An instance of IStorage.
@@ -76,16 +66,14 @@ class IStorage(abc.ABC):
     def __init__(
         self,
         storage_scheme: str,
-        provider: "ProviderApi",
+        provider: "CloudStorageProviderType",
         credentials: "ProviderCredentials",
         provider_configuration: Dict[str, str],
-        provider_uri_convertor: Callable[[str], str],
     ):
         self._storage_scheme: str = storage_scheme
-        self._provider: "ProviderApi" = provider
+        self._provider: "CloudStorageProviderType" = provider
         self._credentials: "ProviderCredentials" = credentials
         self._provider_configuration: Dict[str, str] = provider_configuration
-        self._provider_uri_convertor: Callable[[str], str] = provider_uri_convertor
 
     @property
     def credentials(self) -> "ProviderCredentials":
@@ -93,7 +81,7 @@ class IStorage(abc.ABC):
         return self._credentials
 
     @property
-    def provider(self) -> "ProviderApi":
+    def provider(self) -> "CloudStorageProviderType":
         """Return the dataset provider for this storage handler."""
         return self._provider
 
@@ -120,6 +108,11 @@ class IStorage(abc.ABC):
     @abc.abstractmethod
     def get_hashes(self, uri: str, hash_type: str = "md5") -> List[FileHash]:
         """Get the hashes of all files at the uri."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def is_directory(self, uri: str) -> bool:
+        """Return True if URI points to a directory."""
         raise NotImplementedError
 
     @abc.abstractmethod

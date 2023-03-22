@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,6 +41,7 @@ from renku.core.dataset.providers.dataverse_metadata_templates import (
 from renku.core.dataset.providers.doi import DOIProvider
 from renku.core.dataset.providers.repository import RepositoryImporter, make_request
 from renku.core.util import communication
+from renku.core.util.datetime8601 import fix_datetime
 from renku.core.util.doi import extract_doi, get_doi_url, is_doi
 from renku.core.util.urls import remove_credentials
 from renku.domain_model.project_context import project_context
@@ -83,7 +82,7 @@ class DataverseProvider(ProviderApi, ExportProviderInterface, ImportProviderInte
     priority = ProviderPriority.HIGH
     name = "Dataverse"
 
-    def __init__(self, uri: Optional[str], is_doi: bool = False):
+    def __init__(self, uri: str, is_doi: bool = False):
         super().__init__(uri=uri)
 
         self.is_doi = is_doi
@@ -223,7 +222,7 @@ class DataverseImporter(RepositoryImporter):
 
     def fetch_provider_dataset(self) -> "ProviderDataset":
         """Deserialize a ``Dataset``."""
-        from marshmallow import pre_load
+        from marshmallow import post_load, pre_load
 
         from renku.command.schema.agent import PersonSchema
         from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile, ProviderDatasetSchema
@@ -253,6 +252,16 @@ class DataverseImporter(RepositoryImporter):
                     data["license"] = license.get("url", "")
 
                 return data
+
+            @post_load
+            def fix_timezone(self, obj, **kwargs):
+                """Add timezone to datetime object."""
+                if obj.get("date_modified"):
+                    obj["date_modified"] = fix_datetime(obj["date_modified"])
+                if obj.get("date_published"):
+                    obj["date_published"] = fix_datetime(obj["date_published"])
+
+                return obj
 
         files = self.get_files()
         dataset = ProviderDataset.from_jsonld(data=self._json, schema_class=DataverseDatasetSchema)

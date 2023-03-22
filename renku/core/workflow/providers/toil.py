@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -50,7 +49,7 @@ class AbstractToilJob(Job):
     """Toil job implementation for a renku ``Plan``."""
 
     def __init__(self, workflow: Plan, *args, **kwargs):
-        super(AbstractToilJob, self).__init__(unitName=workflow.name, displayName=workflow.name, *args, **kwargs)
+        super().__init__(unitName=workflow.name, displayName=workflow.name, *args, **kwargs)
         self.workflow: Plan = workflow
         self._input_files: Dict[str, FileID] = {}
         self._parents_promise: List[Promise] = []

@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -272,13 +271,9 @@ def check_project():
 
 
 def _check_project():
-    from renku.core.migration.migrate import (
-        is_docker_update_possible,
-        is_migration_required,
-        is_project_unsupported,
-        is_renku_project,
-    )
+    from renku.core.migration.migrate import is_docker_update_possible, is_migration_required, is_project_unsupported
     from renku.core.template.usecase import check_for_template_update
+    from renku.core.util.metadata import is_renku_project
 
     if not is_renku_project():
         return NON_RENKU_REPOSITORY

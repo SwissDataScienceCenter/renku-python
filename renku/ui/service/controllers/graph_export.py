@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -45,7 +44,7 @@ class GraphExportCtrl(ServiceCtrl, RenkuOperationMixin):
     def __init__(self, cache, user_data, request_data):
         """Construct a datasets list controller."""
         self.ctx = GraphExportCtrl.REQUEST_SERIALIZER.load(request_data)
-        super(GraphExportCtrl, self).__init__(cache, user_data, request_data, clone_depth=PROJECT_CLONE_NO_DEPTH)
+        super().__init__(cache, user_data, request_data, clone_depth=PROJECT_CLONE_NO_DEPTH)
 
     @property
     def context(self):

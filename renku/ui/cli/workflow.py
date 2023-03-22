@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -731,7 +730,7 @@ from renku.command.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS, WO
 from renku.command.util import ERROR
 from renku.command.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
 from renku.core import errors
-from renku.core.util.util import NO_VALUE
+from renku.domain_model.constant import NO_VALUE
 from renku.ui.cli.utils.callback import ClickCallback
 from renku.ui.cli.utils.plugins import available_workflow_providers, get_supported_formats
 from renku.ui.cli.utils.terminal import print_workflow_file, show_text_with_pager
@@ -1187,9 +1186,7 @@ def execute(
 
     if result.output:
         click.echo(
-            "Unchanged files:\n\n\t{0}".format(
-                "\n\t".join(click.style(path, fg=color.YELLOW) for path in result.output)
-            )
+            "Unchanged files:\n\n\t{}".format("\n\t".join(click.style(path, fg=color.YELLOW) for path in result.output))
         )
 
 

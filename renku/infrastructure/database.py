@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -28,6 +27,7 @@ from types import BuiltinFunctionType, FunctionType
 from typing import Any, Dict, List, Optional, Union, cast
 from uuid import uuid4
 
+import deal
 import persistent
 import zstandard as zstd
 from BTrees.Length import Length
@@ -68,7 +68,7 @@ def _is_module_allowed(module_name: str, type_name: str):
         TypeError: If the type is now allowed in the database.
     """
 
-    if module_name not in ["BTrees", "builtins", "datetime", "persistent", "renku", "zc", "zope"]:
+    if module_name not in ["BTrees", "builtins", "datetime", "persistent", "renku", "zc", "zope", "deal"]:
         raise TypeError(f"Objects of type '{type_name}' are not allowed")
 
 
@@ -366,6 +366,7 @@ class Database:
         Returns:
             persistent.Persistent: The object.
         """
+        deal.disable(warn=False)
         data = self._storage.load(filename=path, absolute=absolute)
         if override_type is not None:
             if "@renku_data_type" not in data:
@@ -375,7 +376,7 @@ class Database:
         object = self._reader.deserialize(data)
         object._p_changed = 0
         object._p_serial = PERSISTED
-
+        deal.enable()
         return object
 
     def get_by_id(self, id: str) -> persistent.Persistent:
@@ -442,11 +443,13 @@ class Database:
         Args:
             object(persistent.Persistent): The object to set the state on.
         """
+        deal.disable(warn=False)
         data = self._storage.load(filename=self._get_filename_from_oid(object._p_oid))
         self._reader.set_ghost_state(object, data)
         object._p_serial = PERSISTED
         if isinstance(object, Persistent):
             object.freeze()
+        deal.enable()
 
     def commit(self):
         """Commit modified and new objects."""
@@ -581,7 +584,7 @@ class Index(persistent.Persistent):
     """Database index."""
 
     def __init__(self, *, name: str, object_type, attribute: Optional[str], key_type=None):
-        """Create an index where keys are extracted using `attribute` from an object or a key.
+        """Create an index where keys are extracted using ``attribute`` from an object or a key.
 
         Args:
             name (str): Index's name.
@@ -634,6 +637,9 @@ class Index(persistent.Persistent):
         self._key_type = get_class(data.pop("key_type"))
         self._attribute = data.pop("attribute")
         self._entries = data.pop("entries")
+
+    def __iter__(self):
+        return self._entries.__iter__()
 
     @property
     def name(self) -> str:
@@ -794,7 +800,7 @@ class Storage:
                 with io.TextIOWrapper(compressor) as out:
                     json.dump(data, out, ensure_ascii=False)
         else:
-            with open(path, "wt") as ft:
+            with open(path, "w") as ft:
                 json.dump(data, ft, ensure_ascii=False, sort_keys=True, indent=2)
 
     def load(self, filename: str, absolute: bool = False):
@@ -924,7 +930,7 @@ class ObjectWriter:
                 return {"@renku_data_type": REFERENCE_TYPE, "@renku_data_value": self._serialization_cache[id(object)]}
 
             # NOTE: The reference used for circular reference is just the position in the serialization cache,
-            # as the order is deterministic. So the order in which objects are encoutered is their id for referencing.
+            # as the order is deterministic. So the order in which objects are encountered is their id for referencing.
             self._serialization_cache[id(object)] = len(self._serialization_cache)
 
             value = object.__getstate__().copy()
@@ -1031,7 +1037,7 @@ class ObjectReader:
                 # NOTE: we had a circular reference, we return the (not yet finalized) class here
                 return self._deserialization_cache[data["@renku_data_value"]]
             elif object_type == SET_TYPE:
-                return set([self._deserialize_helper(value) for value in data["@renku_data_value"]])
+                return {self._deserialize_helper(value) for value in data["@renku_data_value"]}
             elif object_type == FROZEN_SET_TYPE:
                 return frozenset([self._deserialize_helper(value) for value in data["@renku_data_value"]])
 
@@ -1097,8 +1103,11 @@ class ObjectReader:
                 if "id" in data and data["id"] in self._normal_object_cache:
                     return self._normal_object_cache[data["id"]]
 
-                for name, value in data.items():
-                    object.__setattr__(new_object, name, value)
+                if hasattr(new_object, "__setstate__"):
+                    new_object.__setstate__(data)
+                else:
+                    for name, value in data.items():
+                        object.__setattr__(new_object, name, value)
 
                 if issubclass(cls, Immutable):
                     new_object = cls.make_instance(new_object)

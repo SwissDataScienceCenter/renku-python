@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -47,7 +46,7 @@ def test_run_many_args(project, run):
     os.mkdir("files")
     output = "output.txt"
     for i in range(103):
-        os.system("touch files/{}.txt".format(i))
+        os.system(f"touch files/{i}.txt")
     project.repository.add("files/")
     project.repository.commit("add many files")
 
@@ -295,15 +294,3 @@ def test_run_prints_plan_when_stderr_redirected(runner, project):
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Name: echo-command" in (project.path / "output").read_text()
     assert "Name:" not in result.output
-
-
-def test_run_with_external_files(runner, project, directory_tree):
-    """Test run commands that use external files."""
-    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-dataset", directory_tree]).exit_code
-
-    path = project.path / "data" / "my-dataset" / "directory_tree" / "file1"
-
-    result = runner.invoke(cli, ["run", "tail", path], stdout="output")
-
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "file1" in (project.path / "output").read_text()

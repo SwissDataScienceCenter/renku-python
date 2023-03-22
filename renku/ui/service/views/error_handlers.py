@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2022 - Swiss Data Science Center (SDSC)
+# Copyright 2022-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -198,7 +197,7 @@ def handle_base_except(f):
         # NOTE: GitError here may not be necessary anymore
         except GitError as e:
             return error_response(ProgramGitError(e, cast(str, e.message) if hasattr(e, "message") else ""))
-        except (Exception, BaseException, OSError, IOError) as e:
+        except (Exception, BaseException, OSError) as e:
             if hasattr(e, "stderr") and e.stderr:
                 error_message = " ".join(e.stderr.strip().split("\n"))
             else:

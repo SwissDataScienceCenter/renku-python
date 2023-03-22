@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +21,6 @@ from pathlib import Path
 
 import pytest
 
-from renku.core.constant import DEFAULT_DATA_DIR as DATA_DIR
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, get_dataset_with_injection
 
@@ -181,7 +178,7 @@ def test_move_in_the_same_dataset(runner, project_with_datasets, args):
 
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not project_with_datasets.repository.is_dirty(untracked_files=True)
+    assert not project_with_datasets.repository.is_dirty()
 
 
 def test_move_to_existing_destination_in_a_dataset(runner, project_with_datasets):
@@ -216,41 +213,7 @@ def test_move_to_existing_destination_in_a_dataset(runner, project_with_datasets
 
     result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not project_with_datasets.repository.is_dirty(untracked_files=True)
-
-
-@pytest.mark.parametrize(
-    "destination",
-    (
-        "destination",
-        os.path.join("dir", "subdir", "destination"),
-        os.path.join(DATA_DIR, "destination"),
-        os.path.join(DATA_DIR, "dataset", "destination"),
-        os.path.join(DATA_DIR, "dataset", "subdir", "subdir", "destination"),
-    ),
-)
-def test_move_external_files(data_repository, runner, project, destination, directory_tree, directory_tree_files):
-    """Test move of external files (symlinks)."""
-    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-dataset", str(directory_tree)]).exit_code
-
-    result = runner.invoke(cli, ["mv", os.path.join(DATA_DIR, "my-dataset"), destination])
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    for path in directory_tree_files:
-        dst = Path(destination) / directory_tree.name / path
-        assert dst.exists()
-        assert dst.is_symlink()
-        assert directory_tree / path == dst.resolve()
-
-        file = get_dataset_with_injection("my-dataset").find_file(dst)
-        assert file
-        assert str(dst) in file.entity.id
-        assert file.is_external
-
-    result = runner.invoke(cli, ["doctor"], catch_exceptions=False)
-
-    assert 0 == result.exit_code, result.output
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project_with_datasets.repository.is_dirty()
 
 
 def test_move_between_datasets(runner, project, directory_tree, large_file, directory_tree_files):
@@ -300,4 +263,4 @@ def test_move_between_datasets(runner, project, directory_tree, large_file, dire
     assert {"data/dataset-3/large-file"} == {f.entity.path for f in get_dataset_with_injection("dataset-3").files}
 
     assert 0 == runner.invoke(cli, ["doctor"], catch_exceptions=False).exit_code
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()

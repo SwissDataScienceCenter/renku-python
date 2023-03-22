@@ -212,7 +212,7 @@
         },
         {
           "command": "$ renku update [--all] [<path>...]",
-          "description": "Update outdated output files created by renku run. With\n<path>'s: Only recreate these files. With --all: Update\nall outdated output files.",
+          "description": "Update outdated output files created by renku run. With\n<path>'s: Only recreate these files. With --all (default):\nUpdate all outdated output files.",
           "target": [
             "rp"
           ]

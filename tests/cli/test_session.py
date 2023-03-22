@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -78,7 +77,7 @@ def test_session_start_config_requests(runner, project, dummy_session_provider, 
         docker_mock = MagicMock()
         docker_mock.api.inspect_image.return_value = {}
         monkey.setattr(docker, "from_env", lambda: docker_mock)
-        result = runner.invoke(cli, ["session", "start", "-p", "docker"])
+        result = runner.invoke(cli, ["session", "start", "-p", "docker"], input="y\n")
         assert 0 == result.exit_code, format_result_exception(result)
         assert "successfully started" in result.output
 

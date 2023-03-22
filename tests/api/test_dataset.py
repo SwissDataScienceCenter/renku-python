@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -62,4 +61,4 @@ def test_list_dataset_files(project_with_datasets, dataset, files_paths):
         dataset = next(d for d in Dataset.list() if d.name == dataset)
 
         assert set(files_paths) == {f.path for f in dataset.files}
-        assert set(project.path / p for p in files_paths) == {d.full_path for d in dataset.files}
+        assert {project.path / p for p in files_paths} == {d.full_path for d in dataset.files}

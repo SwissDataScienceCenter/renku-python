@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -87,7 +85,7 @@ def create_backup_branch(path):
                     commit=repository.head.commit,
                     merge_args=["--no-ff", "-s", "recursive", "-X", "ours", "--allow-unrelated-histories"],
                 ):
-                    communication.warn("Saving current data in branch {0}".format(branch_name))
+                    communication.warn(f"Saving current data in branch {branch_name}")
         except AttributeError:
             communication.echo("Warning! Overwriting non-empty folder.")
         except errors.GitCommandError:

@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -91,7 +90,7 @@ def test_cwl_workflow_export(
         stdout, stderr = ps.communicate()
         assert ps.returncode == 0, f"{stdout} + {stderr} + {command}"
 
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
     ps = run_shell(
         f"renku workflow export --format cwl {workflow_name} > test.cwl", work_dir=project.path, return_ps=True
@@ -109,4 +108,4 @@ def test_cwl_workflow_export(
     assert ps.returncode == 0
 
     os.remove(project.path / "test.cwl")
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()

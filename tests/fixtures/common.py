@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2021 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -50,31 +49,6 @@ def directory_tree(tmp_path, directory_tree_files) -> Path:
             path.write_text("file3 content")
 
     return base
-
-
-@pytest.fixture
-def data_repository(directory_tree):
-    """Create a test repository."""
-    # NOTE: Initialize step.
-    from renku.infrastructure.repository import Actor, Repository
-
-    repository = Repository.initialize(directory_tree)
-
-    # NOTE: Add a file step.
-    repository.add(directory_tree / "file1")
-    repository.commit("test commit", author=Actor("me", "me@example.com"))
-
-    # NOTE: Commit changes to the same file with a different user.
-    directory_tree.joinpath("file1").write_text("5678")
-    repository.add(directory_tree / "file1")
-    repository.commit("test commit", author=Actor("me2", "me2@example.com"))
-
-    # NOTE: Commit a second file.
-    repository.add(directory_tree / "dir1" / "file2")
-    repository.commit("test commit", author=Actor("me", "me@example.com"))
-
-    # NOTE: Return the repo.
-    return repository
 
 
 @pytest.fixture

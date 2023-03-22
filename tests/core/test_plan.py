@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022- Swiss Data Science Center (SDSC)
+# Copyright 2017-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -16,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku plan management tests."""
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 
@@ -143,25 +142,34 @@ def test_plan_get_initial_id(project_with_injection):
     assert initial_id == get_initial_id(grand_child)
 
 
-def test_get_activities(project_with_injection):
+def test_get_activities(project_with_injection, monkeypatch):
     """Test getting activities of a plan."""
-    grand_parent, _, plan, child, grand_child, unrelated = create_dummy_plans()
-    activities = [
-        create_dummy_activity(plan),
-        create_dummy_activity(grand_parent),
-        create_dummy_activity(grand_child),
-        create_dummy_activity(child),
-        create_dummy_activity(plan),
-        create_dummy_activity(unrelated),
-        create_dummy_activity("other-plan"),
-    ]
-    activity_gateway = ActivityGateway()
-    for activity in activities:
-        activity_gateway.add(activity)
+    import renku.domain_model.project_context
 
-    plan_activities = set(get_activities(plan))
+    with monkeypatch.context() as monkey:
+        monkey.setattr(
+            renku.domain_model.project_context.project_context.project,
+            "date_created",
+            datetime(2022, 5, 20, 0, 41, 0, tzinfo=timezone.utc),
+        )
 
-    assert set(activities[0:5]) == plan_activities
+        grand_parent, _, plan, child, grand_child, unrelated = create_dummy_plans()
+        activities = [
+            create_dummy_activity(plan),
+            create_dummy_activity(grand_parent),
+            create_dummy_activity(grand_child),
+            create_dummy_activity(child),
+            create_dummy_activity(plan),
+            create_dummy_activity(unrelated),
+            create_dummy_activity("other-plan"),
+        ]
+        activity_gateway = ActivityGateway()
+        for activity in activities:
+            activity_gateway.add(activity)
+
+        plan_activities = set(get_activities(plan))
+
+        assert set(activities[0:5]) == plan_activities
 
 
 def test_modification_date_fix(project_with_injection):

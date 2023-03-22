@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -19,7 +18,7 @@
 from typing import Dict, cast
 
 from renku.command.project import edit_project_command
-from renku.core.util.util import NO_VALUE
+from renku.domain_model.constant import NO_VALUE
 from renku.ui.service.cache.models.job import Job
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOpSyncMixin

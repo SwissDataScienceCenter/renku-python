@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -430,7 +429,7 @@ def test_workflow_edit(runner, project):
     database = Database.from_path(project.database_path)
     test_plan = database["plans-by-name"][workflow_name]
 
-    time.sleep(1)
+    time.sleep(2)
 
     cmd = ["workflow", "edit", workflow_name, "--name", "first"]
     result = runner.invoke(cli, cmd)

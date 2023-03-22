@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2021 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -16,10 +15,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku CLI fixtures for providers testing."""
+
 import json
 import os
 import posixpath
 import re
+import shutil
 import urllib
 import warnings
 
@@ -102,7 +103,10 @@ def cloud_storage_credentials(project):
     # S3
     s3_access_key_id = os.getenv("CLOUD_STORAGE_S3_ACCESS_KEY_ID", "")
     s3_secret_access_key = os.getenv("CLOUD_STORAGE_S3_SECRET_ACCESS_KEY", "")
-    s3_section = "os.zhdk.cloud.switch.ch"
+    s3_section = "renku-python-test-public.os.zhdk.cloud.switch.ch"
+    set_value(section=s3_section, key="access-key-id", value=s3_access_key_id, global_only=True)
+    set_value(section=s3_section, key="secret-access-key", value=s3_secret_access_key, global_only=True)
+    s3_section = "renku-python-integration-test.os.zhdk.cloud.switch.ch"
     set_value(section=s3_section, key="access-key-id", value=s3_access_key_id, global_only=True)
     set_value(section=s3_section, key="secret-access-key", value=s3_secret_access_key, global_only=True)
 
@@ -112,6 +116,23 @@ def cloud_storage_credentials(project):
     azure_section = f"{azure_account}.blob.core.windows.net"
     set_value(section=azure_section, key="account", value=azure_account, global_only=True)
     set_value(section=azure_section, key="key", value=azure_key, global_only=True)
+
+
+@pytest.fixture
+def shared_external_cloud_storage(directory_tree) -> str:
+    """Path to a directory to be used with an external cloud storage provider.
+
+    NOTE: Since the directory is shared, tests that use it (even for only reading) should run in serial.
+    """
+    from tests.constant import SHARED_EXTERNAL_CLOUD_STORAGE
+
+    shutil.rmtree(SHARED_EXTERNAL_CLOUD_STORAGE, ignore_errors=True)
+    shutil.copytree(directory_tree.as_posix(), SHARED_EXTERNAL_CLOUD_STORAGE)
+
+    try:
+        yield SHARED_EXTERNAL_CLOUD_STORAGE
+    finally:
+        shutil.rmtree(SHARED_EXTERNAL_CLOUD_STORAGE, ignore_errors=True)
 
 
 @pytest.fixture
@@ -147,9 +168,7 @@ def doi_responses():
                 ),
             )
 
-        response.add_callback(
-            method="GET", url=re.compile("{base_url}/.*".format(base_url=DOI_BASE_URL)), callback=doi_callback
-        )
+        response.add_callback(method="GET", url=re.compile(f"{DOI_BASE_URL}/.*"), callback=doi_callback)
 
         def version_callback(_):
             return (
@@ -162,7 +181,7 @@ def doi_responses():
 
         url_parts = list(urllib.parse.urlparse(base_url))
         url_parts[2] = posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSION_API)
-        pattern = "{url}.*".format(url=urllib.parse.urlunparse(url_parts))
+        pattern = f"{urllib.parse.urlunparse(url_parts)}.*"
 
         response.add_callback(method="GET", url=re.compile(pattern), callback=version_callback)
         yield response

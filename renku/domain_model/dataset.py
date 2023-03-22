@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,14 +24,16 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Union, cast
 from urllib.parse import quote, urlparse
 from uuid import uuid4
 
+import deal
 import marshmallow
 
 from renku.core import errors
 from renku.core.util.datetime8601 import fix_datetime, local_now, parse_date
 from renku.core.util.git import get_entity_from_revision
-from renku.core.util.metadata import is_external_file
+from renku.core.util.metadata import is_linked_file
+from renku.core.util.os import get_absolute_path
 from renku.core.util.urls import get_path, get_slug
-from renku.core.util.util import NO_VALUE
+from renku.domain_model.constant import NO_VALUE, NON_EXISTING_ENTITY_CHECKSUM
 from renku.domain_model.project_context import project_context
 from renku.infrastructure.immutable import Immutable, Slots
 from renku.infrastructure.persistent import Persistent
@@ -202,10 +202,10 @@ class RemoteEntity(Slots):
 
     __slots__ = ("checksum", "id", "path", "url")
 
-    def __init__(self, *, checksum: str, id: Optional[str] = None, path: Union[Path, str], url: str):
+    def __init__(self, *, checksum: Optional[str], id: Optional[str] = None, path: Union[Path, str], url: str):
         super().__init__()
-        self.checksum: str = checksum
-        self.id: str = id or RemoteEntity.generate_id(checksum=checksum, path=path, url=url)
+        self.checksum: str = checksum or NON_EXISTING_ENTITY_CHECKSUM
+        self.id: str = id or RemoteEntity.generate_id(checksum=self.checksum, path=path, url=url)
         self.path: str = str(path)
         self.url: str = url
 
@@ -231,8 +231,9 @@ class RemoteEntity(Slots):
 class DatasetFile(Slots):
     """A file in a dataset."""
 
-    __slots__ = ("based_on", "date_added", "date_removed", "entity", "id", "is_external", "source")
+    __slots__ = ("based_on", "date_added", "date_removed", "entity", "id", "is_external", "source", "linked", "size")
 
+    @deal.ensure(lambda self, *_, result, **kwargs: self.date_removed is None or self.date_removed >= self.date_added)
     def __init__(
         self,
         *,
@@ -242,7 +243,9 @@ class DatasetFile(Slots):
         date_removed: Optional[datetime] = None,
         id: Optional[str] = None,
         is_external: Optional[bool] = False,
+        linked: Optional[bool] = False,
         source: Optional[Union[Path, str]] = None,
+        size: Optional[int] = None,
     ):
         from renku.domain_model.entity import Entity
 
@@ -256,7 +259,9 @@ class DatasetFile(Slots):
         self.entity: "Entity" = entity
         self.id: str = id or DatasetFile.generate_id()
         self.is_external: bool = is_external or False
+        self.linked: bool = linked or False
         self.source: Optional[str] = str(source)
+        self.size: Optional[int] = size
 
     @classmethod
     def from_path(
@@ -265,9 +270,10 @@ class DatasetFile(Slots):
         source=None,
         based_on: Optional[RemoteEntity] = None,
         checksum: Optional[str] = None,
+        size: Optional[int] = None,
     ) -> "DatasetFile":
         """Return an instance from a path."""
-        from renku.domain_model.entity import NON_EXISTING_ENTITY_CHECKSUM, Entity
+        from renku.domain_model.entity import Entity
 
         # NOTE: Data is added from an external storage and isn't pulled yet
         if based_on and not (project_context.path / path).exists():
@@ -279,8 +285,9 @@ class DatasetFile(Slots):
                 repository=project_context.repository, path=path, bypass_cache=True, checksum=checksum
             )
 
-        is_external = is_external_file(path=path, project_path=project_context.path)
-        return cls(entity=entity, is_external=is_external, source=source, based_on=based_on)
+        is_external = False
+        linked = is_linked_file(path=path, project_path=project_context.path)
+        return cls(entity=entity, is_external=is_external, source=source, based_on=based_on, linked=linked, size=size)
 
     @staticmethod
     def generate_id():
@@ -299,6 +306,17 @@ class DatasetFile(Slots):
 
         return self
 
+    def __repr__(self) -> str:
+        return f"<DatasetFile {self.entity.path}>"
+
+    def correct_linked_attribute(self):
+        """Replace ``is_external`` attribute with ``linked`` for linked dataset files."""
+        if self.is_external and is_linked_file(self.entity.path, project_path=project_context.path):
+            self.linked = True
+            self.is_external = False
+        elif not hasattr(self, "linked"):
+            self.linked = False
+
     def copy(self) -> "DatasetFile":
         """Return a clone of this object."""
         return copy.copy(self)
@@ -314,9 +332,11 @@ class DatasetFile(Slots):
             and self.date_removed == other.date_removed
             and self.entity == other.entity
             and self.is_external == other.is_external
+            and self.linked == other.linked
             and self.source == other.source
         )
 
+    @deal.ensure(lambda self, *_, result, **kwargs: self.date_removed >= self.date_added)
     def remove(self, date: Optional[datetime] = None):
         """Create a new instance and mark it as removed."""
         date_removed = fix_datetime(date) or local_now()
@@ -326,6 +346,22 @@ class DatasetFile(Slots):
         """Return true if dataset is removed and should not be accessed."""
         return self.date_removed is not None
 
+    def has_valid_checksum(self) -> bool:
+        """Return if file has a valid checksum."""
+        return (
+            bool(self.entity.checksum)
+            and self.entity.checksum != NON_EXISTING_ENTITY_CHECKSUM
+            and (
+                self.based_on is None
+                or self.based_on.checksum != NON_EXISTING_ENTITY_CHECKSUM
+                or bool(self.based_on.checksum)
+            )
+        )
+
+    def has_valid_size(self) -> bool:
+        """Return if file has a valid size."""
+        return self.size is not None
+
 
 class Dataset(Persistent):
     """Represent a dataset."""
@@ -334,6 +370,17 @@ class Dataset(Persistent):
     storage: Optional[str] = None
     datadir: Optional[str] = None
 
+    @deal.ensure(
+        lambda self, *_, result, **kwargs: (self.date_created is not None and self.date_published is None)
+        or (self.date_created is None and self.date_published is not None)
+    )
+    @deal.ensure(
+        lambda self, *_, result, **kwargs: (self.date_created is not None and self.date_modified >= self.date_created)
+        or (self.date_published is not None and self.date_modified >= self.date_published)
+    )
+    @deal.ensure(
+        lambda self, *_, result, **kwargs: self.date_removed is None or self.date_removed >= self.date_modified
+    )
     def __init__(
         self,
         *,
@@ -405,6 +452,17 @@ class Dataset(Persistent):
         if datadir:
             self.datadir: Optional[str] = str(datadir)
 
+        self.correct_linked_files()
+
+    def __setstate__(self, state):
+        super().__setstate__(state)
+        self.correct_linked_files()
+
+    def correct_linked_files(self):
+        """Fix linked dataset files."""
+        for file in self.dataset_files:
+            file.correct_linked_attribute()
+
     @staticmethod
     def generate_id(identifier: str) -> str:
         """Generate an identifier for Dataset."""
@@ -445,7 +503,7 @@ class Dataset(Persistent):
         return ", ".join(self.keywords)
 
     def get_datadir(self) -> Path:
-        """Return dataset's data directory."""
+        """Return dataset's data directory relative to project's root."""
         if self.datadir:
             return Path(self.datadir)
 
@@ -487,6 +545,15 @@ class Dataset(Persistent):
         self._assign_new_identifier(identifier)
         # NOTE: Do not unset `same_as` because it can be set for imported datasets
 
+    @deal.ensure(
+        lambda self, *_, result, **kwargs: (self.date_created is not None and self.date_published is None)
+        or (self.date_created is None and self.date_published is not None)
+    )
+    @deal.ensure(
+        lambda self, *_, result, **kwargs: (self.date_created is not None and self.date_modified >= self.date_created)
+        or (self.date_published is not None and self.date_modified >= self.date_published)
+    )
+    @deal.ensure(lambda self, *_, result, **kwargs: self.derived_from is not None)
     def derive_from(
         self,
         dataset: "Dataset",
@@ -519,6 +586,7 @@ class Dataset(Persistent):
         # NOTE: We also need to re-assign the _p_oid since identifier has changed
         self.reassign_oid()
 
+    @deal.ensure(lambda self, *_, result, **kwargs: self.date_removed >= self.date_modified)
     def remove(self, date: Optional[datetime] = None):
         """Mark the dataset as removed."""
         self.date_removed = fix_datetime(date) or local_now()
@@ -608,6 +676,12 @@ class Dataset(Persistent):
 
         return file
 
+    def is_within_datadir(self, path: Union[Path, str]) -> bool:
+        """Return True if a given path is inside dataset's data directory."""
+        datadir = get_absolute_path(self.get_datadir())
+        absolute_path = get_absolute_path(path)
+        return os.path.commonpath([absolute_path, datadir]) == datadir
+
     def add_or_update_files(self, files: Union[DatasetFile, List[DatasetFile]]):
         """Add new files or update existing files."""
         assert not self.immutable, f"Dataset is immutable {self}"
@@ -617,7 +691,7 @@ class Dataset(Persistent):
 
         new_files = []
 
-        for file in files:
+        for file in cast(List[DatasetFile], files):
             existing_file = self.find_file(file.entity.path)
             if not existing_file:
                 new_files.append(file)

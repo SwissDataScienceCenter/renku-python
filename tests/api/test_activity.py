@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -48,8 +47,8 @@ def test_get_activity_attributes(project_with_runs):
     assert {"input"} == {p.path for p in activity.used_inputs}
     assert {"intermediate"} == {p.path for p in activity.generated_outputs}
     assert "command-1 -n 42 input > intermediate" == activity.executed_command
-    assert "2022-05-20T00:42:00" == activity.started_at.isoformat()
-    assert "2022-05-20T00:42:01" == activity.ended_at.isoformat()
+    assert "2022-05-20T00:42:00+00:00" == activity.started_at.isoformat()
+    assert "2022-05-20T00:42:01+00:00" == activity.ended_at.isoformat()
     assert "Renku Bot <renku@datascience.ch>" == activity.user
 
 

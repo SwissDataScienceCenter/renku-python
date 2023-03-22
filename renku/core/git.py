@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -207,6 +205,6 @@ def ensure_clean(ignore_std_streams=False):
         if dirty_paths - set(mapped_streams.values()):
             _clean_streams(repository, mapped_streams)
             raise errors.DirtyRepository(repository)
-    elif repository.is_dirty():
+    elif repository.is_dirty(untracked_files=False):
         _clean_streams(repository, mapped_streams)
         raise errors.DirtyRepository(repository)

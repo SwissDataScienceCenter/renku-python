@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -41,7 +40,7 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
         """Construct migration check controller."""
         self.ctx = MigrationsCheckCtrl.REQUEST_SERIALIZER.load(request_data)
         self.git_api_provider = git_api_provider
-        super(MigrationsCheckCtrl, self).__init__(cache, user_data, request_data)
+        super().__init__(cache, user_data, request_data)
 
     @property
     def context(self):

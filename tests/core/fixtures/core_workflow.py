@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2021 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -17,7 +16,7 @@
 # limitations under the License.
 """Renku core fixtures for workflow testing."""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Generator
 
 import pytest
@@ -34,7 +33,6 @@ def composite_plan():
     """Fixture for a basic CompositePlan."""
 
     def create_run(name: str) -> Plan:
-
         run_id = Plan.generate_id()
         input1 = CommandInput(
             id=CommandInput.generate_id(run_id, 1),
@@ -93,7 +91,7 @@ def composite_plan():
 
 
 @pytest.fixture
-def project_with_runs(project, with_injection) -> Generator[RenkuProject, None, None]:
+def project_with_runs(project_with_creation_date, with_injection) -> Generator[RenkuProject, None, None]:
     """A project with runs."""
     from renku.domain_model.provenance.activity import Activity
     from renku.infrastructure.gateway.activity_gateway import ActivityGateway
@@ -102,14 +100,14 @@ def project_with_runs(project, with_injection) -> Generator[RenkuProject, None, 
         """Create an activity with id /activities/index."""
         return Activity.from_plan(
             plan=plan,
-            repository=project.repository,
+            repository=project_with_creation_date.repository,
             id=Activity.generate_id(str(index)),
             started_at_time=date,
             ended_at_time=date + timedelta(seconds=1),
         )
 
-    date_1 = datetime(2022, 5, 20, 0, 42, 0)
-    date_2 = datetime(2022, 5, 20, 0, 43, 0)
+    date_1 = datetime(2022, 5, 20, 0, 42, 0, tzinfo=timezone.utc)
+    date_2 = datetime(2022, 5, 20, 0, 43, 0, tzinfo=timezone.utc)
 
     plan_1 = create_dummy_plan(
         command="command-1",
@@ -145,7 +143,7 @@ def project_with_runs(project, with_injection) -> Generator[RenkuProject, None, 
         activity_gateway.add(activity_1)
         activity_gateway.add(activity_2)
 
-    project.repository.add(all=True)
-    project.repository.commit("Add runs")
+    project_with_creation_date.repository.add(all=True)
+    project_with_creation_date.repository.commit("Add runs")
 
-    yield project
+    yield project_with_creation_date

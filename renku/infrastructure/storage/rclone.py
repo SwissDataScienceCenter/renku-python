@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,13 +18,14 @@
 
 import json
 import os
+import posixpath
 import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Union
 
 from renku.core import errors
 from renku.core.interface.storage import FileHash, IStorage
-from renku.core.util.util import NO_VALUE
+from renku.domain_model.constant import NO_VALUE
 
 
 class RCloneStorage(IStorage):
@@ -51,7 +51,7 @@ class RCloneStorage(IStorage):
 
         Arguments:
             uri(str): Provider uri.
-            hash_type(str): Type of hash to get from rclone (Default value = `md5`).
+            hash_type(str): Type of hash to get from rclone (Default value = ``md5``).
 
         Example:
             hashes_raw json::
@@ -64,25 +64,49 @@ class RCloneStorage(IStorage):
                     }
                 ]
         """
-        hashes_raw = self.run_command_with_uri("lsjson", uri, hash=True, R=True, files_only=True)
-        # TODO: Handle JSON load errors
-        hashes = json.loads(hashes_raw)
-        if not hashes:
-            raise errors.ParameterError(f"Cannot find URI: {uri}")
-
+        hashes = self.list_files(
+            uri=uri, hash=True, recursive=True, files_only=True, no_modtime=True, no_mimetype=True, hash_type=hash_type
+        )
         output = []
+        is_directory = self.is_directory(uri)
         for hash in hashes:
+            path: str = hash["Path"]
+            full_uri = posixpath.join(uri, path.strip("/")) if is_directory else uri
             hash_content = hash.get("Hashes", {}).get(hash_type)
-            output.append(
-                FileHash(
-                    base_uri=uri,
-                    path=hash["Path"],
-                    hash=hash_content,
-                    hash_type=hash_type if hash_content else None,
-                    modified_datetime=hash.get("ModTime"),
-                )
-            )
+            file = FileHash(uri=full_uri, path=hash["Path"], size=hash.get("Size"), hash=hash_content)
+            output.append(file)
+
         return output
+
+    def is_directory(self, uri: str) -> bool:
+        """Return True if URI points to a directory.
+
+        NOTE: This returns True for non-existing paths on bucket-based backends like S3 since listing non-existing paths
+        won't fail and there is no way to distinguish between empty directories and non-existing paths.
+        """
+        uri = uri.rstrip("/")
+        try:
+            # NOTE: Listing with a trailing slash works for directories
+            files = self.list_files(uri=f"{uri}/")
+        except errors.StorageObjectNotFound:
+            return False
+        else:
+            # NOTE: Listing with trailing slash won't fail for non-existing directories on S3 and similar backends
+            # NOTE: Listing a file returns exactly one entry in the list; also, if a single entry is a directory then
+            # its parent is a directory too.
+            if len(files) != 1 or files[0]["IsDir"]:
+                return True
+            pathname = files[0]["Path"]
+            if pathname != posixpath.basename(uri):
+                return True
+            # NOTE: The only remaining possibility is a directory with a single file with the same name (e.g. data/data:
+            # Listing data/ and data/data returns the same results)
+            try:
+                files = self.list_files(uri=f"{uri}/{pathname}")
+            except (errors.StorageObjectNotFound, errors.ParameterError):
+                return False
+            else:
+                return True if len(files) == 1 else False
 
     def mount(self, path: Union[Path, str]) -> None:
         """Mount the provider's URI to the given path."""
@@ -102,9 +126,21 @@ class RCloneStorage(IStorage):
 
         return configurations
 
+    def list_files(self, uri: str, *args, **kwargs) -> List[Dict[str, Any]]:
+        """List a URI and return results in JSON format."""
+        hashes_raw = self.run_command_with_uri("lsjson", uri, *args, **kwargs)
+        try:
+            hashes = json.loads(hashes_raw)
+        except json.JSONDecodeError as e:
+            raise errors.RCloneException(f"Cannot parse command output: {e}")
+        if not hashes:
+            raise errors.ParameterError(f"Cannot find URI: {uri}")
+
+        return hashes
+
     def run_command_with_uri(self, command: str, uri: str, *args, **kwargs) -> Any:
         """Run a RClone command by converting a given URI."""
-        uri = self._provider_uri_convertor(uri)
+        uri = self.provider.convert_to_storage_uri(uri)
 
         return self.run_command(command, uri, *args, **kwargs)
 
@@ -114,7 +150,7 @@ class RCloneStorage(IStorage):
 
     def upload(self, source: Union[Path, str], uri: str) -> None:
         """Upload data from ``source`` to ``uri``."""
-        uri = self._provider_uri_convertor(uri)
+        uri = self.provider.convert_to_storage_uri(uri)
 
         self.run_command("copyto", source, uri)
 
@@ -125,9 +161,9 @@ def run_rclone_command(command: str, *args: Any, env=None, **kwargs) -> str:
     if env:
         os_env.update(env)
 
-    full_command = ("rclone", command, *transform_kwargs(**kwargs), *transform_args(*args))
+    full_command = ("rclone", "--config", os.devnull, command, *transform_kwargs(**kwargs), *transform_args(*args))
     try:
-        result = subprocess.run(full_command, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=os_env)
+        result = subprocess.run(full_command, text=True, capture_output=True, env=os_env)
     except FileNotFoundError:
         raise errors.RCloneException("RClone is not installed. See https://rclone.org/install/")
 
@@ -136,7 +172,11 @@ def run_rclone_command(command: str, *args: Any, env=None, **kwargs) -> str:
         return result.stdout
 
     all_outputs = result.stdout + result.stderr
-    if result.returncode in (3, 4):
+    if (
+        result.returncode in (3, 4)
+        or (result.returncode == 1 and "failed to read directory entry" in all_outputs)
+        or (result.returncode == 1 and "no Host in request URL" in all_outputs)
+    ):
         raise errors.StorageObjectNotFound(all_outputs)
     elif (
         "AccessDenied" in all_outputs

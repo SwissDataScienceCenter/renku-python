@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Local exporter."""
+"""Local provider for local filesystem."""
 
 import os
 import urllib
@@ -33,9 +31,9 @@ from renku.core.dataset.providers.api import (
 )
 from renku.core.storage import check_external_storage, track_paths_in_storage
 from renku.core.util import communication
-from renku.core.util.dataset import check_url
 from renku.core.util.metadata import is_protected_path
 from renku.core.util.os import get_absolute_path, is_path_empty, is_subpath
+from renku.core.util.urls import check_url
 from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
@@ -43,13 +41,13 @@ if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset, DatasetTag
 
 
-class FilesystemProvider(ProviderApi, AddProviderInterface, ExportProviderInterface):
+class LocalProvider(ProviderApi, AddProviderInterface, ExportProviderInterface):
     """Local filesystem provider."""
 
     priority = ProviderPriority.LOW
     name = "Local"
 
-    def __init__(self, uri: Optional[str]):
+    def __init__(self, uri: str):
         super().__init__(uri=uri)
 
         self._path: Optional[str] = None
@@ -66,9 +64,6 @@ class FilesystemProvider(ProviderApi, AddProviderInterface, ExportProviderInterf
         from renku.core.dataset.providers.models import ProviderParameter
 
         return [
-            ProviderParameter(
-                "external", flags=["e", "external"], help="Creates a link to external data.", is_flag=True
-            ),
             ProviderParameter(
                 "copy",
                 flags=["cp", "copy"],
@@ -99,44 +94,44 @@ class FilesystemProvider(ProviderApi, AddProviderInterface, ExportProviderInterf
 
         return [ProviderParameter("path", flags=["p", "path"], help="Path to copy data to.", type=str)]
 
-    def add(
+    def get_metadata(
         self,
         uri: str,
         destination: Path,
         *,
-        external: bool = False,
         move: bool = False,
         copy: bool = False,
         link: bool = False,
         force: bool = False,
         **kwargs,
     ) -> List["DatasetAddMetadata"]:
-        """Add files from a URI to a dataset."""
+        """Get metadata of files that will be added to a dataset."""
         from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
 
         repository = project_context.repository
 
-        if sum([move, copy, link]) > 1:
+        flags = sum([move, copy, link])
+        if flags > 1:
             raise errors.ParameterError("--move, --copy and --link are mutually exclusive.")
 
-        default_action = DatasetAddAction.COPY
-        prompt_action = True
+        prompt_action = True if flags == 0 else False
 
         if move:
             default_action = DatasetAddAction.MOVE
-            prompt_action = False
         elif link:
             default_action = DatasetAddAction.SYMLINK
-            prompt_action = False
-        elif copy:
-            prompt_action = False
+        else:
+            default_action = DatasetAddAction.COPY
 
+        ends_with_slash = False
         u = urllib.parse.urlparse(uri)
         path = u.path
 
-        action = DatasetAddAction.SYMLINK if external else default_action
+        action = default_action
         source_root = Path(get_absolute_path(path))
-        warnings: List[str] = []
+
+        if source_root.is_dir() and uri.endswith("/"):
+            ends_with_slash = True
 
         def check_recursive_addition(src: Path):
             if is_subpath(destination, src):
@@ -156,20 +151,21 @@ class FilesystemProvider(ProviderApi, AddProviderInterface, ExportProviderInterf
             if source_root.is_dir() and destination_exists and not destination_is_dir:
                 raise errors.ParameterError(f"Cannot copy directory '{path}' to non-directory '{destination}'")
 
-            return destination / source_root.name if destination_exists and destination_is_dir else destination
+            if destination_exists and destination_is_dir:
+                if ends_with_slash:
+                    return destination
 
-        def get_metadata(src: Path) -> DatasetAddMetadata:
-            is_tracked = repository.contains(src)
+                return destination / source_root.name
+            return destination
+
+        def get_file_metadata(src: Path) -> DatasetAddMetadata:
             in_datadir = is_subpath(src, destination)
 
             relative_path = src.relative_to(source_root)
             dst = destination_root / relative_path
 
-            if is_tracked and external:
-                warnings.append(str(src.relative_to(project_context.path)))
-
-            if not is_tracked and not external and action == DatasetAddAction.SYMLINK:
-                # NOTE: we need to commit src if it is linked to and not external.
+            # NOTE: Add link targets in case they aren't already tracked in the repository
+            if action == DatasetAddAction.SYMLINK:
                 if check_external_storage():
                     track_paths_in_storage(src)
                 repository.add(src)
@@ -193,11 +189,11 @@ class FilesystemProvider(ProviderApi, AddProviderInterface, ExportProviderInterf
                 if file.is_dir():
                     check_recursive_addition(file)
                     continue
-                results.append(get_metadata(file))
+                results.append(get_file_metadata(file))
         else:
-            results = [get_metadata(source_root)]
+            results = [get_file_metadata(source_root)]
 
-        if not force and prompt_action and not external:
+        if not force and prompt_action:
             communication.confirm(
                 f"The following files will be copied to {destination.relative_to(project_context.path)} "
                 "(use '--move' or '--link' to move or symlink them instead, '--copy' to not show this warning):\n\t"
@@ -206,10 +202,6 @@ class FilesystemProvider(ProviderApi, AddProviderInterface, ExportProviderInterf
                 abort=True,
                 warning=True,
             )
-
-        if warnings:
-            message = "\n\t".join(warnings)
-            communication.warn(f"Warning: The following files cannot be added as external:\n\t{message}")
 
         return results
 
@@ -226,7 +218,7 @@ class FilesystemProvider(ProviderApi, AddProviderInterface, ExportProviderInterf
 
 
 class LocalExporter(ExporterApi):
-    """Local export manager."""
+    """Local filesystem export manager."""
 
     def __init__(self, dataset: "Dataset", tag: Optional["DatasetTag"], path: Optional[str]):
         super().__init__(dataset)

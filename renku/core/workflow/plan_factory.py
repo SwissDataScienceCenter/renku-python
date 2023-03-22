@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -176,7 +175,6 @@ class PlanFactory:
         output_streams = {getattr(self, stream_name) for stream_name in ("stdout", "stderr")}
 
         for index, argument in enumerate(arguments):
-
             if prefix:
                 if argument.startswith("-"):
                     position += 1
@@ -306,7 +304,7 @@ class PlanFactory:
             candidate = self._resolve_existing_subpath(self.working_dir / candidate_path)
 
             if candidate is None:
-                raise errors.UsageError('Path "{0}" does not exist inside the current project.'.format(candidate_path))
+                raise errors.UsageError(f'Path "{candidate_path}" does not exist inside the current project.')
 
             glob = str(candidate.relative_to(self.working_dir))
 

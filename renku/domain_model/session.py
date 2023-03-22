@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -80,7 +78,7 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def session_provider(self) -> "ISessionProvider":
+    def session_provider(self) -> ISessionProvider:
         """Supported session provider.
 
         Returns:
@@ -89,12 +87,12 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def get_start_parameters(self) -> List["ProviderParameter"]:
+    def get_start_parameters(self) -> List[ProviderParameter]:
         """Returns parameters that can be set for session start."""
         pass
 
     @abstractmethod
-    def get_open_parameters(self) -> List["ProviderParameter"]:
+    def get_open_parameters(self) -> List[ProviderParameter]:
         """Returns parameters that can be set for session open."""
         pass
 

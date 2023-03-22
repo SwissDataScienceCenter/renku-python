@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -24,7 +23,7 @@ import patoolib
 from patoolib.util import PatoolError
 
 from renku.core.errors import RenkuException
-from renku.core.util.file_size import bytes_to_unit
+from renku.core.util.os import bytes_to_unit
 from renku.ui.service.config import CACHE_UPLOADS_PATH, MAX_CONTENT_LENGTH, SUPPORTED_ARCHIVES
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
@@ -51,7 +50,7 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
         args = {**flask_request.args, **flask_request.form}
         self.response_builder.update(UploadFilesCtrl.REQUEST_SERIALIZER.load(args))
 
-        super(UploadFilesCtrl, self).__init__(cache, user_data, {})
+        super().__init__(cache, user_data, {})
 
     @property
     def context(self):
@@ -149,7 +148,7 @@ class UploadFilesCtrl(ServiceCtrl, RenkuOperationMixin):
         """Postprocessing of uploaded file."""
         files = []
         if self.response_builder["unpack_archive"] and self.response_builder["is_archive"]:
-            unpack_dir = "{0}.unpacked".format(file_path.name)
+            unpack_dir = f"{file_path.name}.unpacked"
             temp_dir = file_path.parent / Path(unpack_dir)
             if temp_dir.exists():
                 shutil.rmtree(temp_dir)

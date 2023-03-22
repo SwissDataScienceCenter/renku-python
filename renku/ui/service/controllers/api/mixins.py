@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -50,7 +49,7 @@ PROJECT_FETCH_TIME = 30
 
 def local_identity(method):
     """Ensure identity on local execution."""
-    # noqa
+
     @wraps(method)
     def _impl(self, *method_args, **method_kwargs):
         """Implementation of method wrapper."""
@@ -159,7 +158,6 @@ class RenkuOperationMixin(metaclass=ABCMeta):
             return self.remote()
 
         elif "git_url" in self.context and "user_id" in self.user_data:
-
             try:
                 project = Project.get(
                     (Project.user_id == self.user_data["user_id"]) & (Project.git_url == self.context["git_url"])
