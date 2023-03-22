@@ -185,18 +185,11 @@ def _template_migration_check() -> TemplateStatusResult:
     from renku.core.config import get_value
     from renku.core.template.usecase import check_for_template_update
 
-    try:
-        project = project_context.project
-        template_source = project.template_metadata.template_source
-        template_ref = project.template_metadata.template_ref
-        template_id = project.template_metadata.template_id
-        ssh_supported = project.template_metadata.ssh_supported
-    except (ValueError, AttributeError):
-        project = None
-        template_source = None
-        template_ref = None
-        template_id = None
-        ssh_supported = False
+    project = project_context.project
+    template_source = project.template_metadata.template_source
+    template_ref = project.template_metadata.template_ref
+    template_id = project.template_metadata.template_id
+    ssh_supported = project.template_metadata.ssh_supported
 
     ssh_supported = get_value("renku", "ssh_supported") == "true" or ssh_supported
 
