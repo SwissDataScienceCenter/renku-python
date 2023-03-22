@@ -35,8 +35,10 @@ from renku.core.dataset.pointer_file import (
     is_linked_file_updated,
     update_linked_file,
 )
+from renku.core.dataset.providers.api import AddProviderInterface
 from renku.core.dataset.providers.factory import ProviderFactory
-from renku.core.dataset.providers.models import ProviderDataset
+from renku.core.dataset.providers.git import GitProvider
+from renku.core.dataset.providers.models import DatasetUpdateAction, ProviderDataset
 from renku.core.dataset.request_model import ImageRequestModel
 from renku.core.dataset.tag import get_dataset_by_tag, prompt_access_token, prompt_tag_selection
 from renku.core.interface.dataset_gateway import IDatasetGateway
@@ -714,15 +716,34 @@ def update_datasets(
             raise errors.ParameterError("No files matched the criteria.")
         return imported_dataset_updates_view_models, []
 
-    git_files = []
+    remote_files: Dict[AddProviderInterface, List[DynamicProxy]] = {}
     unique_remotes = set()
     linked_files = []
     local_files = []
 
     for file in records:
         if file.based_on:
-            git_files.append(file)
-            unique_remotes.add(file.based_on.url)
+            if not getattr(file.dataset, "provider", None):
+                try:
+                    provider = cast(
+                        AddProviderInterface,
+                        ProviderFactory.get_add_provider(
+                            file.dataset.same_as.value if file.dataset.same_as else file.based_on.url
+                        ),
+                    )
+                except errors.DatasetProviderNotFound:
+                    communication.warn(f"Couldn't find provider for file {file.path} in dataset {file.dataset.name}")
+                    continue
+
+                file.dataset.provider = provider
+
+            if file.dataset.provider not in remote_files:
+                remote_files[file.dataset.provider] = []
+
+            remote_files[file.dataset.provider].append(file)
+
+            if isinstance(file.dataset.provider, GitProvider):
+                unique_remotes.add(file.based_on.url)
         elif file.linked:
             linked_files.append(file)
         else:
@@ -741,10 +762,12 @@ def update_datasets(
         updated = update_linked_files(linked_files, dry_run=dry_run)
         updated_files.extend(updated)
 
-    if git_files and not no_remote:
-        updated, deleted = update_dataset_git_files(files=git_files, ref=ref, delete=delete, dry_run=dry_run)
-        updated_files.extend(updated)
-        deleted_files.extend(deleted)
+    provider_context: Dict[str, Any] = {}
+
+    for provider, files in remote_files.items():
+        results = provider.update_files(files=files, dry_run=dry_run, delete=delete, context=provider_context, ref=ref)
+        updated_files.extend(r.entity for r in results if r.action == DatasetUpdateAction.UPDATE)
+        deleted_files.extend(r.entity for r in results if r.action == DatasetUpdateAction.DELETE)
 
     if local_files and not no_local:
         updated, deleted, new = update_dataset_local_files(
@@ -1037,12 +1060,16 @@ def _update_datasets_files_metadata(updated_files: List[DynamicProxy], deleted_f
         new_file = DatasetFile.from_path(
             path=file.entity.path, based_on=file.based_on, source=file.source, checksum=checksums.get(file.entity.path)
         )
-        modified_datasets[file.dataset.name] = file.dataset
+        modified_datasets[file.dataset.name] = (
+            file.dataset._subject if isinstance(file.dataset, DynamicProxy) else file.dataset
+        )
         file.dataset.add_or_update_files(new_file)
 
     if delete:
         for file in deleted_files:
-            modified_datasets[file.dataset.name] = file.dataset
+            modified_datasets[file.dataset.name] = (
+                file.dataset._subject if isinstance(file.dataset, DynamicProxy) else file.dataset
+            )
             file.dataset.unlink_file(file.entity.path)
 
     datasets_provenance = DatasetsProvenance()
@@ -1230,7 +1257,7 @@ def filter_dataset_files(
                 continue
 
             record = DynamicProxy(file)
-            record.dataset = dataset
+            record.dataset = DynamicProxy(dataset)
             records.append(record)
 
         if not check_data_directory:

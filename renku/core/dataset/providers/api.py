@@ -25,10 +25,12 @@ from renku.core.constant import ProviderPriority
 from renku.core.plugin import hookimpl
 from renku.domain_model.constant import NO_VALUE, NoValueType
 from renku.domain_model.dataset_provider import IDatasetProviderPlugin
+from renku.infrastructure.immutable import DynamicProxy
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import (
         DatasetAddMetadata,
+        DatasetUpdateMetadata,
         ProviderDataset,
         ProviderDatasetFile,
         ProviderParameter,
@@ -83,6 +85,13 @@ class AddProviderInterface(abc.ABC):
     @abc.abstractmethod
     def get_metadata(self, uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
         """Get metadata of files that will be added to a dataset."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def update_files(
+        self, files: List[DynamicProxy], dry_run: bool, delete: bool, context: Dict[str, Any], **kwargs
+    ) -> List["DatasetUpdateMetadata"]:
+        """Update dataset files from the remote provider."""
         raise NotImplementedError
 
 

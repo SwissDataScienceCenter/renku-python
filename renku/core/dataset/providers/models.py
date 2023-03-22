@@ -26,6 +26,7 @@ from marshmallow import EXCLUDE
 
 from renku.command.schema.dataset import DatasetSchema
 from renku.domain_model.dataset import Dataset
+from renku.infrastructure.immutable import DynamicProxy
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.api import StorageProviderInterface
@@ -42,6 +43,13 @@ class DatasetAddAction(Enum):
     DOWNLOAD = auto()  # For URIs that are from a storage provider
     METADATA_ONLY = auto()  # For URIs that will be added to a dataset with a storage backend
     REMOTE_STORAGE = auto()  # For URIs that are from a remote storage provider
+
+
+class DatasetUpdateAction(Enum):
+    """Types of action when updating a file in a dataset."""
+
+    UPDATE = auto()
+    DELETE = auto()
 
 
 @dataclasses.dataclass
@@ -75,6 +83,12 @@ class DatasetAddMetadata:
     def get_absolute_commit_path(self, project_path: Path) -> str:
         """Return path of the file in the repository."""
         return os.path.join(project_path, self.entity_path)
+
+
+@dataclasses.dataclass
+class DatasetUpdateMetadata:
+    entity: DynamicProxy
+    action: DatasetUpdateAction
 
 
 class ProviderParameter(NamedTuple):
