@@ -135,6 +135,25 @@ def login(endpoint: Optional[str], git_login: bool, yes: bool):
         else:
             raise errors.AuthenticationError(f"Invalid status code from server: {status_code} - {response.content}")
 
+    image_regsitry_host_req_url = _get_url(parsed_endpoint, path="/api/config/imageRegistries")
+    image_registry_host_res = requests.get(image_regsitry_host_req_url)
+    if image_registry_host_res.status_code != 200:
+        raise errors.ConfigurationError(
+            f"Cannot get the image registry host from {image_regsitry_host_req_url}, "
+            f"got unexpected status code {image_registry_host_res.status_code}"
+        )
+    image_registry_host = image_registry_host_res.json().get("default")
+    if not image_registry_host:
+        raise errors.ConfigurationError(
+            f"Cannot get the image registry host from the response {image_registry_host_res.text}"
+        )
+    set_value(
+        section=CONFIG_SECTION,
+        key=f"{parsed_endpoint.netloc}_image_registry_host",
+        value=image_registry_host,
+        global_only=True,
+    )
+
     access_token = response.json().get("access_token")
     _store_token(parsed_endpoint.netloc, access_token)
 

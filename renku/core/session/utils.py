@@ -19,6 +19,7 @@ import os
 import urllib
 from typing import Optional
 
+from renku.core.config import get_value
 from renku.core.util.git import get_remote
 from renku.core.util.urls import parse_authentication_endpoint
 from renku.domain_model.project_context import project_context
@@ -48,11 +49,10 @@ def get_renku_url() -> Optional[str]:
 
 def get_image_repository_host() -> Optional[str]:
     """Derive the hostname for the gitlab container registry."""
-    # NOTE: Used to circumvent cases where the registry URL is not guessed correctly
-    # remove once #3301 is done
     if "RENKU_IMAGE_REGISTRY" in os.environ:
         return os.environ["RENKU_IMAGE_REGISTRY"]
-    renku_url = get_renku_url()
+    renku_url = parse_authentication_endpoint(use_remote=True)
     if not renku_url:
         return None
-    return "registry." + urllib.parse.urlparse(renku_url).netloc
+    renku_host = renku_url.netloc
+    return get_value("http", f"{renku_host}_image_registry_host")
