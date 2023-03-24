@@ -61,6 +61,7 @@ class ZenodoProvider(ProviderApi, ExportProviderInterface, ImportProviderInterfa
 
     priority = ProviderPriority.HIGH
     name = "Zenodo"
+    is_remote = True
 
     def __init__(self, uri: str, is_doi: bool = False):
         super().__init__(uri=uri)

@@ -17,7 +17,7 @@
 
 import urllib
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, List, Optional, Tuple, cast
 
 from renku.core import errors
 from renku.core.dataset.providers.api import (
@@ -30,16 +30,13 @@ from renku.core.dataset.providers.api import (
 from renku.core.dataset.providers.common import get_metadata
 from renku.core.dataset.providers.models import DatasetAddAction
 from renku.core.interface.storage import IStorage
-from renku.core.util import communication
 from renku.core.util.metadata import prompt_for_credentials
 from renku.core.util.urls import get_scheme
-from renku.domain_model.dataset import RemoteEntity
 from renku.domain_model.project_context import project_context
-from renku.infrastructure.immutable import DynamicProxy
 from renku.infrastructure.storage.factory import StorageFactory
 
 if TYPE_CHECKING:
-    from renku.core.dataset.providers.models import DatasetAddMetadata, DatasetUpdateMetadata
+    from renku.core.dataset.providers.models import DatasetAddMetadata
     from renku.domain_model.dataset import Dataset
 
 
@@ -48,6 +45,7 @@ class S3Provider(ProviderApi, StorageProviderInterface, AddProviderInterface):
 
     priority = ProviderPriority.HIGHEST
     name = "S3"
+    is_remote = True
 
     def __init__(self, uri: str):
         super().__init__(uri=uri)
@@ -72,45 +70,6 @@ class S3Provider(ProviderApi, StorageProviderInterface, AddProviderInterface):
     ) -> List["DatasetAddMetadata"]:
         """Get metadata of files that will be added to a dataset."""
         return get_metadata(provider=self, uri=uri, destination=destination, dataset_add_action=dataset_add_action)
-
-    def update_files(
-        self,
-        files: List[DynamicProxy],
-        dry_run: bool,
-        delete: bool,
-        context: Dict[str, Any],
-        ref: Optional[str],
-        **kwargs,
-    ) -> List["DatasetUpdateMetadata"]:
-        """Update dataset files from the remote provider."""
-        from renku.core.dataset.providers.models import DatasetUpdateAction, DatasetUpdateMetadata
-
-        progress_text = "Checking git files for updates"
-
-        results: List[DatasetUpdateMetadata] = []
-
-        try:
-            communication.start_progress(progress_text, len(files))
-
-            storage = self.get_storage()
-            hashes = storage.get_hashes(uri=files[0].dataset.storage)
-            for file in files:
-                communication.update_progress(progress_text, 1)
-                if not file.based_on:
-                    continue
-
-                hash = next((h for h in hashes if h.uri == file.based_on.uri), None)
-
-                if hash:
-                    file.based_on = RemoteEntity(checksum=hash.hash if hash.hash else "", url=hash.uri, path=hash.path)
-                    results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.UPDATE))
-                else:
-                    results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.DELETE))
-
-        finally:
-            communication.finalize_progress(progress_text)
-
-        return results
 
     def convert_to_storage_uri(self, uri: str) -> str:
         """Convert backend-specific URI to a URI that is usable by the IStorage implementation."""

@@ -19,7 +19,7 @@ import os
 import urllib
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from renku.core import errors
 from renku.core.dataset.providers.api import (
@@ -32,12 +32,13 @@ from renku.core.dataset.providers.api import (
 from renku.core.storage import check_external_storage, track_paths_in_storage
 from renku.core.util import communication
 from renku.core.util.metadata import is_protected_path
-from renku.core.util.os import get_absolute_path, is_path_empty, is_subpath
+from renku.core.util.os import get_absolute_path, get_safe_relative_path, is_path_empty, is_subpath
 from renku.core.util.urls import check_url
 from renku.domain_model.project_context import project_context
+from renku.infrastructure.immutable import DynamicProxy
 
 if TYPE_CHECKING:
-    from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderParameter
+    from renku.core.dataset.providers.models import DatasetAddMetadata, DatasetUpdateMetadata, ProviderParameter
     from renku.domain_model.dataset import Dataset, DatasetTag
 
 
@@ -46,6 +47,7 @@ class LocalProvider(ProviderApi, AddProviderInterface, ExportProviderInterface):
 
     priority = ProviderPriority.LOW
     name = "Local"
+    is_remote = False
 
     def __init__(self, uri: str):
         super().__init__(uri=uri)
@@ -203,6 +205,58 @@ class LocalProvider(ProviderApi, AddProviderInterface, ExportProviderInterface):
                 warning=True,
             )
 
+        return results
+
+    def update_files(
+        self,
+        files: List[DynamicProxy],
+        dry_run: bool,
+        delete: bool,
+        context: Dict[str, Any],
+        check_data_directory: bool = False,
+        **kwargs,
+    ) -> List["DatasetUpdateMetadata"]:
+        """Update dataset files from the remote provider."""
+        from renku.core.dataset.providers.models import DatasetUpdateAction, DatasetUpdateMetadata
+
+        progress_text = "Checking for local updates"
+        results: List[DatasetUpdateMetadata] = []
+
+        try:
+            communication.start_progress(progress_text, len(files))
+            check_paths = []
+            records_to_check = []
+            for file in files:
+                communication.update_progress(progress_text, 1)
+
+                if file.based_on or file.linked:
+                    continue
+
+                if not (project_context.path / file.entity.path).exists():
+                    results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.DELETE))
+                    continue
+
+                check_paths.append(file.entity.path)
+                records_to_check.append(file)
+
+            checksums = project_context.repository.get_object_hashes(check_paths)
+
+            for file in records_to_check:
+                current_checksum = checksums.get(file.entity.path)
+                if not current_checksum:
+                    results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.DELETE))
+                elif current_checksum != file.entity.checksum:
+                    results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.UPDATE))
+                elif check_data_directory and not any(file.entity.path == f.entity.path for f in file.dataset.files):
+                    datadir = file.dataset.get_datadir()
+                    try:
+                        get_safe_relative_path(file.entity.path, datadir)
+                    except ValueError:
+                        continue
+
+                    results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.UPDATE))
+        finally:
+            communication.finalize_progress(progress_text)
         return results
 
     def get_exporter(

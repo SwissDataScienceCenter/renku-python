@@ -35,7 +35,7 @@ from renku.core.dataset.pointer_file import (
     is_linked_file_updated,
     update_linked_file,
 )
-from renku.core.dataset.providers.api import AddProviderInterface
+from renku.core.dataset.providers.api import AddProviderInterface, ProviderApi
 from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.git import GitProvider
 from renku.core.dataset.providers.models import DatasetUpdateAction, ProviderDataset
@@ -716,38 +716,43 @@ def update_datasets(
             raise errors.ParameterError("No files matched the criteria.")
         return imported_dataset_updates_view_models, []
 
-    remote_files: Dict[AddProviderInterface, List[DynamicProxy]] = {}
+    provider_files: Dict[AddProviderInterface, List[DynamicProxy]] = {}
     unique_remotes = set()
     linked_files = []
-    local_files = []
 
     for file in records:
-        if file.based_on:
+        if file.based_on or file.source:
             if not getattr(file.dataset, "provider", None):
+                if file.based_on:
+                    uri = file.dataset.same_as.value if file.dataset.same_as else file.based_on.url
+                else:
+                    uri = file.source
                 try:
-                    provider = cast(
+                    file.dataset.provider = cast(
                         AddProviderInterface,
-                        ProviderFactory.get_add_provider(
-                            file.dataset.same_as.value if file.dataset.same_as else file.based_on.url
-                        ),
+                        ProviderFactory.get_add_provider(uri),
                     )
                 except errors.DatasetProviderNotFound:
                     communication.warn(f"Couldn't find provider for file {file.path} in dataset {file.dataset.name}")
                     continue
 
-                file.dataset.provider = provider
+            if file.dataset.provider not in provider_files:
+                provider_files[file.dataset.provider] = []
 
-            if file.dataset.provider not in remote_files:
-                remote_files[file.dataset.provider] = []
-
-            remote_files[file.dataset.provider].append(file)
+            provider_files[file.dataset.provider].append(file)
 
             if isinstance(file.dataset.provider, GitProvider):
                 unique_remotes.add(file.based_on.url)
         elif file.linked:
             linked_files.append(file)
         else:
-            local_files.append(file)
+            if not getattr(file.dataset, "provider", None):
+                file.dataset.provider = cast(AddProviderInterface, ProviderFactory.get_add_provider(file.entity.path))
+
+            if file.dataset.provider not in provider_files:
+                provider_files[file.dataset.provider] = []
+
+            provider_files[file.dataset.provider].append(file)
 
     if ref and len(unique_remotes) > 1:
         raise errors.ParameterError(
@@ -764,18 +769,22 @@ def update_datasets(
 
     provider_context: Dict[str, Any] = {}
 
-    for provider, files in remote_files.items():
-        results = provider.update_files(files=files, dry_run=dry_run, delete=delete, context=provider_context, ref=ref)
+    for provider, files in provider_files.items():
+        if (no_remote and cast(ProviderApi, provider).is_remote) or (
+            no_local and not cast(ProviderApi, provider).is_remote
+        ):
+            continue
+
+        results = provider.update_files(
+            files=files,
+            dry_run=dry_run,
+            delete=delete,
+            context=provider_context,
+            ref=ref,
+            check_data_directory=check_data_directory,
+        )
         updated_files.extend(r.entity for r in results if r.action == DatasetUpdateAction.UPDATE)
         deleted_files.extend(r.entity for r in results if r.action == DatasetUpdateAction.DELETE)
-
-    if local_files and not no_local:
-        updated, deleted, new = update_dataset_local_files(
-            records=local_files, check_data_directory=check_data_directory
-        )
-        updated_files.extend(updated)
-        deleted_files.extend(deleted)
-        updated_files.extend(new)
 
     if not dry_run:
         if deleted_files and not delete:

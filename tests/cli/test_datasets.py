@@ -34,6 +34,7 @@ from renku.core.constant import REFS, RENKU_HOME
 from renku.core.dataset.providers.dataverse import DataverseProvider
 from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.zenodo import ZenodoProvider
+from renku.core.interface.storage import FileHash
 from renku.core.storage import track_paths_in_storage
 from renku.core.util.git import get_dirty_paths
 from renku.core.util.urls import get_slug
@@ -2492,7 +2493,6 @@ def test_add_local_data_to_cloud_datasets(runner, project, mocker, directory_tre
 
     cloud_storage.upload.return_value = []
 
-    uri = "s3://s3.endpoint/bucket/path"
     result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", uri])
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -2519,6 +2519,153 @@ def test_add_local_data_to_cloud_datasets(runner, project, mocker, directory_tre
     ]
 
     cloud_storage.upload.assert_has_calls(calls=calls, any_order=True)
+
+
+@pytest.mark.parametrize("uri", ["s3://s3.endpoint/bucket/", "azure://renkupythontest1/test-private-1"])
+def test_dataset_update_remote_file(runner, project, mocker, uri):
+    """Test updating a file added from remote/cloud storage."""
+    storage_factory = mocker.patch("renku.infrastructure.storage.factory.StorageFactory.get_storage", autospec=True)
+    cloud_storage = storage_factory.return_value
+
+    uri = f"{uri}/path/myfile"
+
+    def _fake_download(uri, destination):
+        with open(destination, "w") as f:
+            f.write("a")
+
+    cloud_storage.get_hashes.return_value = [FileHash(uri=uri, path="path/myfile", size=5, hash="deadbeef")]
+    cloud_storage.download.side_effect = _fake_download
+
+    result = runner.invoke(cli, ["dataset", "create", "local-data"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "add", "local-data", uri])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 1 == len(dataset.files)
+    assert dataset.files[0].based_on.url == uri
+    assert dataset.files[0].based_on.checksum == "deadbeef"
+
+    # Updating without changes does nothing
+    result = runner.invoke(cli, ["dataset", "update", "local-data"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 1 == len(dataset.files)
+    assert dataset.files[0].based_on.url == uri
+    assert dataset.files[0].based_on.checksum == "deadbeef"
+
+    # Updating with changes works
+    def _fake_download2(uri, destination):
+        with open(destination, "w") as f:
+            f.write("b")
+
+    cloud_storage.get_hashes.return_value = [FileHash(uri=uri, path="path/myfile", size=7, hash="8badf00d")]
+    cloud_storage.download.side_effect = _fake_download2
+
+    result = runner.invoke(cli, ["dataset", "update", "local-data"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 1 == len(dataset.files)
+    assert dataset.files[0].based_on.url == uri
+    assert dataset.files[0].based_on.checksum == "8badf00d"
+
+    cloud_storage.get_hashes.return_value = []
+
+    # check deletion doesn't happen without --delete
+    result = runner.invoke(cli, ["dataset", "update", "local-data"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 1 == len(dataset.files)
+
+    # check deletion
+    result = runner.invoke(cli, ["dataset", "update", "local-data", "--delete"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 0 == len(dataset.files)
+
+
+def test_dataset_update_web_file(runner, project, mocker):
+    """Test updating a file added from remote/cloud storage."""
+
+    uri = "http://www.example.com/myfile.txt"
+
+    cache = project.path / ".renku" / "cache"
+    cache.mkdir(parents=True, exist_ok=True)
+    new_file = cache / "myfile.txt"
+    new_file.write_text("output")
+
+    mocker.patch("renku.core.util.requests.get_redirect_url", lambda _: uri)
+    mocker.patch(
+        "renku.core.util.requests.download_file",
+        lambda base_directory, url, filename, extract: (cache, [Path(new_file)]),
+    )
+
+    result = runner.invoke(cli, ["dataset", "create", "local-data"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "add", "local-data", uri])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 1 == len(dataset.files)
+    assert dataset.files[0].source == uri
+    assert dataset.files[0].entity.checksum == "6caf68aff423350af0ef7b148fec2ed4243658e5"
+
+    # Updating without changes does nothing
+    new_file.write_text("output")
+
+    result = runner.invoke(cli, ["dataset", "update", "local-data"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 1 == len(dataset.files)
+    assert dataset.files[0].source == uri
+    assert dataset.files[0].entity.checksum == "6caf68aff423350af0ef7b148fec2ed4243658e5"
+
+    # Updating with changes works
+    new_file.write_text("output2")
+
+    result = runner.invoke(cli, ["dataset", "update", "local-data"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 1 == len(dataset.files)
+    assert dataset.files[0].source == uri
+    assert dataset.files[0].entity.checksum == "1bc6411450b62581e5cea1174c15269c249dd4ea"
+
+    # check deletion doesn't happen without --delete
+    def _fake_raise(base_directory, url, filename, extract):
+        raise errors.RequestError
+
+    mocker.patch("renku.core.util.requests.download_file", _fake_raise)
+
+    result = runner.invoke(cli, ["dataset", "update", "local-data"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 1 == len(dataset.files)
+
+    # check deletion
+    result = runner.invoke(cli, ["dataset", "update", "local-data", "--delete"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 0 == len(dataset.files)
 
 
 @pytest.mark.parametrize(

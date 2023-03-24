@@ -44,6 +44,7 @@ class GitProvider(ProviderApi, AddProviderInterface):
 
     priority = ProviderPriority.NORMAL
     name = "Git"
+    is_remote = True
 
     @staticmethod
     def supports(uri: str) -> bool:
@@ -189,7 +190,7 @@ class GitProvider(ProviderApi, AddProviderInterface):
         dry_run: bool,
         delete: bool,
         context: Dict[str, Any],
-        ref: Optional[str],
+        ref: Optional[str] = None,
         **kwargs,
     ) -> List["DatasetUpdateMetadata"]:
         """Update dataset files from the remote provider."""

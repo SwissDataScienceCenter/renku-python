@@ -87,6 +87,8 @@ class DatasetAddMetadata:
 
 @dataclasses.dataclass
 class DatasetUpdateMetadata:
+    """Metadata for updating dataset files."""
+
     entity: DynamicProxy
     action: DatasetUpdateAction
 

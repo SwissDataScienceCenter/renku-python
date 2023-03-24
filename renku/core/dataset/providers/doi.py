@@ -30,6 +30,7 @@ class DOIProvider(ProviderApi, ImportProviderInterface):
 
     priority = ProviderPriority.HIGHER
     name = "DOI"
+    is_remote = True
 
     def __init__(self, uri: str, headers=None, timeout=3):
         super().__init__(uri=uri)
