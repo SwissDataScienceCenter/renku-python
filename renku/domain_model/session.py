@@ -182,3 +182,7 @@ class ISessionProvider(metaclass=ABCMeta):
         make sure that the session launches successfully. By default this method does not do any checks.
         """
         return None
+
+    def force_build_image(self, **kwargs) -> bool:
+        """Whether we should force build the image directly or check for an existing image first."""
+        return False

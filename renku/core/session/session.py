@@ -130,17 +130,19 @@ def session_start(
         if repo_host:
             image_name = f"{repo_host}/{image_name}"
 
-        if not provider_api.find_image(image_name, config):
-            communication.confirm(
-                f"The container image '{image_name}' does not exist. Would you like to build it using {provider}?",
-                abort=True,
-            )
-            with communication.busy(msg=f"Building image {image_name}"):
-                provider_api.build_image(project_context.dockerfile_path.parent, image_name, config)
-            communication.echo(f"Image {image_name} built successfully.")
-    else:
-        if not provider_api.find_image(image_name, config):
-            raise errors.ParameterError(f"Cannot find the provided container image '{image_name}'!")
+    force_build_image = provider_api.force_build_image(**kwargs)
+
+    if not force_build_image and not provider_api.find_image(image_name, config):
+        communication.confirm(
+            f"The container image '{image_name}' does not exist. Would you like to build it using {provider}?",
+            abort=True,
+        )
+        force_build_image = True
+
+    if force_build_image:
+        with communication.busy(msg=f"Building image {image_name}"):
+            provider_api.build_image(project_context.dockerfile_path.parent, image_name, config)
+        communication.echo(f"Image {image_name} built successfully.")
 
     # set resource settings
     cpu_limit = cpu_request or get_value("interactive", "cpu_request")
