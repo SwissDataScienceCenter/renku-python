@@ -125,6 +125,7 @@ class DockerSessionProvider(ISessionProvider):
 
         return [
             ProviderParameter("port", help="Local port to use (random if not specified).", type=int),
+            ProviderParameter("force-build", help="Always build image and don't check if it exists.", is_flag=True),
         ]
 
     def get_open_parameters(self) -> List["ProviderParameter"]:
@@ -322,3 +323,7 @@ class DockerSessionProvider(ISessionProvider):
                 host = c.ports[f"{DockerSessionProvider.JUPYTER_PORT}/tcp"][0]
                 return f'http://{host["HostIp"]}:{host["HostPort"]}/?token={c.labels["jupyter_token"]}'
         return None
+
+    def force_build_image(self, force_build: bool = False, **kwargs) -> bool:
+        """Whether we should force build the image directly or check for an existing image first."""
+        return force_build
