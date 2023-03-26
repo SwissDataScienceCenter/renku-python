@@ -129,18 +129,44 @@ to allow execution using various execution backends.
 
 Parameters can be set using the ``--set`` keyword or by specifying them in a
 values YAML file and passing that using ``--values``. In case of passing a file,
-the YAML should follow the this structure:
+for a composite workflow like:
+
+.. code-block:: console
+
+    $ renku run --name train -- python train.py --lr=0.1 --gamma=0.5 --output=result.csv
+    $ renku run --name eval -- python eval.py --image=graph.png --data=result.csv
+    $ renku workflow compose --map learning_rate=train.lr --map graph=eval.image
+
+the YAML file could look like:
 
 .. code-block:: yaml
 
+    # composite (mapped) parameters
     learning_rate: 0.9
-    dataset_input: dataset.csv
-    chart_output: chart.png
-    my-workflow:
-        lr: 0.8
-        lookup-table: lookup.xml
-        my-other-workflow:
-            language: en
+    graph: overview.png
+    train: # child workflow name
+        # child workflow parameters
+        gamma: 1.0
+
+Which would rerun the two steps but with ``lr`` set to ``0.9``, ``gamma`` set to ``1.0``
+and the output saved under ``overview.png``.
+
+Note that this would be the same as using:
+
+.. code-block:: yaml
+
+    train:
+        lr: 0.9
+        gamma: 1.0
+    eval:
+        image: overview.png
+
+For a regular (non-composite) workflow it is enough to just specify key-value pairs like:
+
+.. code-block:: yaml
+
+    lr: 0.9
+    gamma: 1.0
 
 In addition to being passed on the command line and being available to
 ``renku.ui.api.*`` classes in Python scripts, parameters are also set as
