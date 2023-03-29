@@ -410,7 +410,10 @@ class ProjectMigrationCheckResponse(Schema):
         DockerfileStatusResponse,
         metadata={"description": "Fields detailing the status of the Dockerfile in the project."},
     )
-    template_status = fields.Nested(TemplateStatusResponse)
+    template_status = fields.Nested(
+        TemplateStatusResponse,
+        metadata={"description": "Fields detailing the status of the project template used by this project."},
+    )
 
 
 class ProjectMigrationCheckResponseRPC(JsonRPCResponse):
