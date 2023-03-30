@@ -54,8 +54,10 @@ a session there, or in the case where they simply have no access to a Renku depl
 
     $ renku session start -p docker
 
-The command first looks for a local image to use. If a local image isn't found, it searches the remote Renku deployment
-(if any) and pulls the image if it exists. Finally, it prompts the user to build the image locally if no image is found.
+The command first looks for a local image to use. If a local image isn't found, it
+searches the remote Renku deployment (if any) and pulls the image if it exists.
+Finally, it prompts the user to build the image locally if no image is found. You
+can force the image to always be built by using the ``--force-build`` flag.
 
 Renkulab provider
 ~~~~~~~~~~~~~~~~~

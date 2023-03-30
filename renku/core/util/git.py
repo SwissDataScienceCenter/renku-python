@@ -490,7 +490,8 @@ def commit_changes(*paths: Union[Path, str], repository: "Repository", message=N
         if saved_paths:
             if not message:
                 # Show saved files in message
-                max_len = 100
+                max_line_len = 100
+                max_total_len = 100000
                 message = "Saved changes to: "
                 paths_with_lens = cast(
                     List[Tuple[str, int]],
@@ -501,7 +502,10 @@ def commit_changes(*paths: Union[Path, str], repository: "Repository", message=N
                     )[1:],
                 )
                 # limit first line to max_len characters
-                message += " ".join(p if l < max_len else "\n\t" + p for p, l in paths_with_lens)
+                message += " ".join(p if l < max_line_len else "\n\t" + p for p, l in paths_with_lens)
+
+                if len(message) > max_total_len:
+                    message = message[: max_total_len - 3] + "..."
 
             repository.commit(message)
     except errors.GitCommandError as e:

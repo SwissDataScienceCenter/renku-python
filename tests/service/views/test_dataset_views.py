@@ -1343,7 +1343,13 @@ def test_edit_datasets_view_unset_values(svc_client_with_repo):
 
     assert_rpc_response(response)
     assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
-    assert {"keywords": [], "custom_metadata": None, "images": []} == response.json["result"]["edited"]
+    assert {
+        "keywords": [],
+        "custom_metadata": None,
+        "images": [],
+    } == response.json[
+        "result"
+    ]["edited"]
 
     params_list = {
         "project_id": project_id,
