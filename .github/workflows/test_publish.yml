@@ -3,70 +3,26 @@ name: Integration Test when Publishing to External Data Warehouses
 on:
   push:
     branches:
-    - master
-    - develop
+      - master
+      - develop
     paths:
-    - renku/core/commands/providers/*.py
+      - renku/core/commands/providers/*.py
 
 jobs:
   test-linux-integration-publish:
     runs-on: ubuntu-latest
-    strategy:
-      max-parallel: 4
-      matrix:
-        python-version: [3.10]
     steps:
-    - uses: actions/checkout@v3.3.0
-      with:
-        fetch-depth: 0
-    - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install .[all]
-        git config --global --add user.name "Renku Bot"
-        git config --global --add user.email "renku@datascience.ch"
-    - name: Test with pytest
-      env:
-        DATAVERSE_ACCESS_TOKEN: ${{ secrets.DATAVERSE_ACCESS_TOKEN }}
-        IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
-        ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
-        OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
-      run: pytest -m publish -v
-
-  test-macos-integration-publish:
-    runs-on: macos-latest
-    strategy:
-      max-parallel: 4
-      matrix:
-        python-version: [3.10]
-    if: "startsWith(github.ref, 'refs/tags/') || endsWith(github.ref, github.event.repository.default_branch)"
-    steps:
-    - uses: actions/checkout@v3.3.0
-      with:
-        fetch-depth: 0
-    - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
-      run: |
-        brew update
-        curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
-        brew install shellcheck node || brew link --overwrite node
-        python -m pip install --upgrade pip
-        python -m pip install .[all]
-        git config --global --add user.name "Renku Bot"
-        git config --global --add user.email "renku@datascience.ch"
-    - name: Test with pytest
-      env:
-        DATAVERSE_ACCESS_TOKEN: ${{ secrets.DATAVERSE_ACCESS_TOKEN }}
-        IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
-        ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
-        OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
-      run: pytest -m publish -v
+      - uses: actions/checkout@v3.5.0
+        with:
+          fetch-depth: 0
+      - name: Install dependencies
+        uses: ./.github/actions/install-linux
+        with:
+          python-version: "3.10"
+      - name: Test with pytest
+        env:
+          DATAVERSE_ACCESS_TOKEN: ${{ secrets.DATAVERSE_ACCESS_TOKEN }}
+          IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
+          ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
+          OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
+        run: pytest -m publish -v
