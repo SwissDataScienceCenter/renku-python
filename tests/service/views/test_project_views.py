@@ -143,7 +143,12 @@ def test_edit_project_view_unset(svc_client_with_repo):
 
     assert_rpc_response(response)
     assert {"warning", "edited", "remote_branch"} == set(response.json["result"])
-    assert {"keywords": None, "custom_metadata": None} == response.json["result"]["edited"]
+    assert {
+        "keywords": None,
+        "custom_metadata": None,
+    } == response.json[
+        "result"
+    ]["edited"]
 
 
 @pytest.mark.service

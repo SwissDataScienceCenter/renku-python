@@ -71,12 +71,10 @@ class DatasetGateway(IDatasetGateway):
                 tags.remove(t)
                 break
 
-    @deal.pre(
-        lambda _: _.dataset.date_created is None or _.dataset.date_created >= project_context.project.date_created
-    )
-    @deal.pre(
-        lambda _: _.dataset.date_published is None or _.dataset.date_published >= project_context.project.date_created
-    )
+    # NOTE: Enable this again once we properly deal with `date_created` on imported Renku datasets
+    # @deal.pre(
+    #     lambda _: _.dataset.date_created is None or _.dataset.date_created >= project_context.project.date_created
+    # )
     def add_or_remove(self, dataset: Dataset) -> None:
         """Add or remove a dataset."""
         database = project_context.database
