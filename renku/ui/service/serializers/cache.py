@@ -288,6 +288,12 @@ class ProjectCompatibilityResponseDetail(Schema):
     migration_required = fields.Boolean(
         metadata={"description": "Whether or not a metadata migration is required to be compatible with this service."}
     )
+    fixes_available = fields.Boolean(
+        metadata={
+            "description": "Whether automated fixes of metadata (beyond those done during migration) are available."
+        }
+    )
+    issues_found = fields.List(fields.Str, metadata={"description": "Metadata issues found on project."})
 
 
 class ProjectCompatibilityResponse(OneOfSchema):

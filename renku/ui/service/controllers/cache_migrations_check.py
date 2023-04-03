@@ -20,6 +20,7 @@ import tempfile
 from dataclasses import asdict
 from pathlib import Path
 
+from renku.command.doctor import doctor_check_command
 from renku.command.migrate import MigrationCheckResult, migrations_check
 from renku.core.errors import AuthenticationError, MinimumVersionError, ProjectNotFound, RenkuException
 from renku.core.util.contexts import renku_project_context
@@ -54,16 +55,12 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
 
         with tempfile.TemporaryDirectory() as tempdir:
             tempdir_path = Path(tempdir)
-
             self.git_api_provider.download_files_from_api(
-                [
-                    ".renku/metadata/root",
-                    ".renku/metadata/project",
-                    ".renku/metadata.yml",
-                    ".renku/renku.ini",
+                files=[
                     "Dockerfile",
                 ],
-                tempdir_path,
+                folders=[".renku"],
+                target_folder=tempdir_path,
                 remote=self.ctx["git_url"],
                 ref=self.request_data.get("ref", None),
                 token=self.user_data.get("token", None),
@@ -74,7 +71,11 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
     def renku_op(self):
         """Renku operation for the controller."""
         try:
-            return migrations_check().build().execute().output
+            migrations_check_result = migrations_check().build().execute().output
+            doctor_result = doctor_check_command(with_fix=False).build().execute(fix=False, force=False).output
+            migrations_check_result.core_compatibility_status.fixes_available = doctor_result[1]
+            migrations_check_result.core_compatibility_status.issues_found = doctor_result[2]
+            return migrations_check_result
         except MinimumVersionError as e:
             return MigrationCheckResult.from_minimum_version_error(e)
 

@@ -42,21 +42,25 @@ def check_project_id_group(fix, project_gateway: IProjectGateway, **_):
     )
 
     if namespace is None or name is None:
-        return True, None
+        return True, False, None
 
     generated_id = Project.generate_id(namespace=namespace, name=name)
 
     if generated_id == current_project.id:
-        return True, None
+        return True, False, None
 
     if fix:
         communication.info(f"Fixing project id '{current_project.id}' -> '{generated_id}'")
         current_project.id = generated_id
         project_gateway.update_project(current_project)
-        return True, None
+        return True, False, None
 
-    return True, (
-        WARNING
-        + "Project id doesn't match id created based on the current Git remote (use 'renku doctor --fix' to fix it):"
-        f"\n\t'{current_project.id}' -> '{generated_id}'"
+    return (
+        False,
+        True,
+        (
+            WARNING
+            + "Project id doesn't match id based on the current Git remote (use 'renku doctor --fix' to fix it):"
+            f"\n\t'{current_project.id}' -> '{generated_id}'"
+        ),
     )

@@ -26,7 +26,8 @@ class IGitAPIProvider(ABC):
 
     def download_files_from_api(
         self,
-        paths: List[Union[Path, str]],
+        files: List[Union[Path, str]],
+        folders: List[Union[Path, str]],
         target_folder: Union[Path, str],
         remote: str,
         token: str,

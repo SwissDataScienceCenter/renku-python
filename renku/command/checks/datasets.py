@@ -43,7 +43,7 @@ def check_dataset_old_metadata_location(**_):
     old_metadata = get_pre_0_3_4_datasets_metadata()
 
     if not old_metadata:
-        return True, None
+        return True, False, None
 
     problems = (
         WARNING + "There are metadata files in the old location."
@@ -52,7 +52,7 @@ def check_dataset_old_metadata_location(**_):
         + "\n"
     )
 
-    return False, problems
+    return False, False, problems
 
 
 @inject.autoparams("dataset_gateway")
@@ -79,7 +79,7 @@ def check_missing_files(dataset_gateway: IDatasetGateway, **_):
                 missing[dataset.name].append(file_.entity.path)
 
     if not missing:
-        return True, None
+        return True, False, None
 
     problems = WARNING + "There are missing files in datasets."
 
@@ -91,7 +91,7 @@ def check_missing_files(dataset_gateway: IDatasetGateway, **_):
             + "\n\t  ".join(click.style(path, fg="red") for path in files)
         )
 
-    return False, problems
+    return False, False, problems
 
 
 @inject.autoparams("dataset_gateway")
@@ -130,7 +130,7 @@ def check_invalid_datasets_derivation(fix, dataset_gateway: IDatasetGateway, **_
                 break
 
     if not invalid_datasets:
-        return True, None
+        return True, False, None
 
     problems = (
         WARNING
@@ -140,7 +140,7 @@ def check_invalid_datasets_derivation(fix, dataset_gateway: IDatasetGateway, **_
         + "\n"
     )
 
-    return False, problems
+    return False, True, problems
 
 
 @inject.autoparams("dataset_gateway")
@@ -193,9 +193,9 @@ def check_dataset_files_outside_datadir(fix, dataset_gateway: IDatasetGateway, *
             + "\n\t".join(click.style(file.entity.path, fg="yellow") for file in invalid_files)
             + "\n"
         )
-        return False, problems
+        return False, True, problems
 
-    return True, None
+    return True, False, None
 
 
 @inject.autoparams("dataset_gateway")
@@ -222,7 +222,7 @@ def check_external_files(fix, dataset_gateway: IDatasetGateway, **_):
                 datasets[dataset.name].append(file)
 
     if not external_files:
-        return True, None
+        return True, False, None
 
     external_files_str = "\n\t".join(sorted(external_files))
 
@@ -232,7 +232,7 @@ def check_external_files(fix, dataset_gateway: IDatasetGateway, **_):
             "Use 'renku dataset rm' or rerun 'renku doctor' with '--fix' flag to remove them:\n\t"
             f"{external_files_str}\n"
         )
-        return False, problems
+        return False, True, problems
 
     communication.info(
         "The following external files were deleted from the project. You need to add them later manually using a "
@@ -242,4 +242,4 @@ def check_external_files(fix, dataset_gateway: IDatasetGateway, **_):
     for name, files in datasets.items():
         file_unlink(name=name, yes=True, dataset_files=files)
 
-    return True, None
+    return True, False, None

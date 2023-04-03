@@ -16,6 +16,8 @@
 # limitations under the License.
 """Git APi provider interface."""
 
+import tarfile
+import tempfile
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -43,13 +45,23 @@ class GitlabAPIProvider(IGitAPIProvider):
 
     def download_files_from_api(
         self,
-        paths: List[Union[Path, str]],
+        files: List[Union[Path, str]],
+        folders: List[Union[Path, str]],
         target_folder: Union[Path, str],
         remote: str,
         token: str,
         ref: Optional[str] = None,
     ):
-        """Download files through a remote Git API."""
+        """Download files through a remote Git API.
+
+        Args:
+            files(List[Union[Path, str]]): Files to download.
+            folders(List[Union[Path, str]]): Folders to download.
+            target_folder(Union[Path, str]): Destination to save downloads to.
+            remote(str): Git remote URL.
+            token(str): Gitlab API token.
+            ref(Optional[str]): Git reference (Default value = None).
+        """
         if not ref:
             ref = "HEAD"
 
@@ -73,18 +85,33 @@ class GitlabAPIProvider(IGitAPIProvider):
                 else:
                     raise
 
-        result_paths = []
-
-        for path in paths:
-            full_path = target_folder / path
+        for file in files:
+            full_path = target_folder / file
 
             full_path.parent.mkdir(parents=True, exist_ok=True)
 
             try:
                 with open(full_path, "wb") as f:
-                    project.files.raw(file_path=str(path), ref=ref, streamed=True, action=f.write)
-
-                result_paths.append(full_path)
+                    project.files.raw(file_path=str(file), ref=ref, streamed=True, action=f.write)
             except gitlab.GitlabGetError:
                 delete_dataset_file(full_path)
                 continue
+
+        for folder in folders:
+            with tempfile.NamedTemporaryFile() as f:
+                project.repository_archive(path=str(folder), sha=ref, streamed=True, action=f.write, format="tar.gz")
+                f.seek(0)
+                with tarfile.open(fileobj=f) as archive:
+                    archive.extractall(
+                        path=target_folder, members=self._set_tarfile_members_path_relative_to_base(archive)
+                    )
+
+    def _set_tarfile_members_path_relative_to_base(self, archive: tarfile.TarFile):
+        """Changes member paths in a tar file from `folder/*` to `./*`."""
+        if not archive.getmembers():
+            return
+        base_path = archive.getmembers()[0].path.split("/")[0]
+        path_len = len(base_path)
+        for member in archive.getmembers():
+            if member.path.startswith(base_path):
+                member.path = "." + member.path[path_len:]
