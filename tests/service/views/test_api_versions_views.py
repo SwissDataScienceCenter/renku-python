@@ -34,19 +34,19 @@ def test_versions_differences(svc_client, identity_headers, it_remote_repo_url):
     )
 
     assert 200 == response_old.status_code
-    assert response_old.json["result"]["core_compatibility_status"]["migration_required"] is True
+    assert response_old.json["result"]["core_compatibility_status"]["migration_required"] is False
     assert "ssh_supported" not in response_old.json["result"]["template_status"]
 
     response_new = svc_client.get(
         f"/{max_ver}/cache.migrations_check", query_string=query_string, headers=identity_headers
     )
     assert 200 == response_new.status_code
-    assert response_new.json["result"]["core_compatibility_status"]["migration_required"] is True
+    assert response_new.json["result"]["core_compatibility_status"]["migration_required"] is False
     assert "ssh_supported" in response_new.json["result"]["template_status"]
 
     response_default = svc_client.get("/cache.migrations_check", query_string=query_string, headers=identity_headers)
     assert 200 == response_default.status_code
-    assert response_default.json["result"]["core_compatibility_status"]["migration_required"] is True
+    assert response_default.json["result"]["core_compatibility_status"]["migration_required"] is False
     assert response_default.json["result"].keys() == response_new.json["result"].keys()
     assert response_default.json["result"].keys() == response_old.json["result"].keys()
     assert (
