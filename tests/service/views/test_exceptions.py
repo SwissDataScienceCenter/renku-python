@@ -99,6 +99,7 @@ def test_content_type_headers_exc(svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@pytest.mark.remote_repo("old")
 @retry_failed
 def test_migration_required_flag(svc_client_setup):
     """Check migration required failure."""
