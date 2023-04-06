@@ -36,6 +36,8 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Development Status :: 4 - Beta",
 ]
 homepage = "https://github.com/swissdatasciencecenter/renku-python"
@@ -73,7 +75,7 @@ importlib-resources = ">=5.12.0,<5.13.0"
 inject = "<4.4.0,>=4.3.0"
 jinja2 = { version = ">=2.11.3,<3.1.3" }
 networkx = "<2.7,>=2.6.0"
-numpy = ">=1.20.0,<1.22.0"
+numpy = ">=1.24.0,<1.25.0"
 packaging = "<24.0,>=23.0"
 pathspec = "<1.0.0,>=0.8.0"
 patool = "==1.12"
@@ -234,8 +236,7 @@ format-jinja = """
         {{ base }}{{"-%s"|format(stage) if stage else ""}}{{".%s"|format(revision) if revision else ""}}.dev{{distance}}+g{{commit}}{{"-dirty" if dirty else ""}}
     {%- endif -%}
 """
-pattern = """
-    (?x)                                                (?# ignore whitespace)
+pattern = """(?x)                                          (?# ignore whitespace)
     ^v(?P<base>\\d+(\\.\\d+)*)                             (?# v1.2.3)
     (-?((?P<stage>[a-zA-Z0-9]+)?\\.?(?P<revision>(pre|post)\\d+)?))?    (?# b0)
     (\\+(?P<tagged_metadata>.+))?$                       (?# e.g., +linux)
@@ -256,6 +257,7 @@ markers = [
     "serial: mark a test that can not be run in parallel",
     "service: mark a test as service test.",
     "shelled: mark a test as a shelled test.",
+    "remote_repo: used to specify which remote to use in test fixtures."
 ]
 filterwarnings = [
     "ignore:<class 'pytest_black.BlackItem'> is not using a cooperative constructor:pytest.PytestDeprecationWarning",

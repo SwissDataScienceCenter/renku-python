@@ -123,8 +123,8 @@ def test_remote_create_dataset_view(svc_client_cache, it_remote_repo_url):
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
-    assert_rpc_response(response, "error")
-    assert UserOutdatedProjectError.code == response.json["error"]["code"]
+    assert_rpc_response(response)
+    assert {"name", "remote_branch"} == set(response.json["result"].keys())
 
 
 @pytest.mark.service
