@@ -257,6 +257,7 @@ markers = [
     "serial: mark a test that can not be run in parallel",
     "service: mark a test as service test.",
     "shelled: mark a test as a shelled test.",
+    "remote_repo: used to specify which remote to use in test fixtures."
 ]
 filterwarnings = [
     "ignore:<class 'pytest_black.BlackItem'> is not using a cooperative constructor:pytest.PytestDeprecationWarning",
