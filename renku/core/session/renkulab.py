@@ -366,6 +366,7 @@ class RenkulabSessionProvider(ISessionProvider):
             "image": image_name,
             "commit_sha": session_commit,
             "serverOptions": server_options,
+            "branch": repository.active_branch or "master",
             **self._get_renku_project_name_parts(),
         }
         res = self._send_renku_request(
