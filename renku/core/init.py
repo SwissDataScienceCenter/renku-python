@@ -376,6 +376,7 @@ def create_from_template_local(
 
     template = Template(
         id=metadata["__template_id__"],
+        aliases=[],
         name="",
         description="",
         parameters={},

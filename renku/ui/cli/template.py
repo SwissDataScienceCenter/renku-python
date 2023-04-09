@@ -334,6 +334,7 @@ def _print_template(template: "TemplateViewModel"):
                 click.echo(print_name("    Default value: ") + print_value(p.default))
 
     click.echo(print_name("Id: ") + print_value(template.id))
+    click.echo(print_name("Id aliases: ") + print_value(template.aliases))
     click.echo(print_name("Name: ") + print_value(template.name))
     click.echo(print_name("Source: ") + print_value(template.source))
     click.echo(print_name("Reference: ") + print_value(to_string(template.reference)))
@@ -369,6 +370,7 @@ def _print_template_change(changes: "TemplateChangeViewModel"):
     print_value = functools.partial(click.style, bold=True)
 
     click.echo(print_name("Id: ") + print_value(changes.id))
+    click.echo(print_name("Old Id: ") + print_value(changes.old_id))
     click.echo(print_name("Source: ") + print_value(changes.source))
     click.echo(print_name("New reference: ") + print_value(to_string(changes.reference)))
     click.echo(print_name("New version: ") + print_value(to_string(changes.version)))

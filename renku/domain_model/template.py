@@ -130,6 +130,7 @@ class TemplatesManifest:
             self._templates = [
                 Template(
                     id=cast(str, t.get("id") or t.get("folder")),
+                    aliases=t.get("aliases", []),
                     name=cast(str, t.get("name")),
                     description=cast(str, t.get("description")),
                     parameters=cast(Dict[str, Dict[str, Any]], t.get("variables") or t.get("parameters")),
@@ -161,6 +162,8 @@ class TemplatesManifest:
         elif not isinstance(self._content, list):
             raise errors.InvalidTemplateError(f"Invalid manifest content type: '{type(self._content).__name__}'")
 
+        existing_ids: Set[str] = set()
+
         # NOTE: First check if required fields exists for creating Template instances
         for template_entry in self._content:
             if not isinstance(template_entry, dict):
@@ -171,6 +174,15 @@ class TemplatesManifest:
                 raise errors.InvalidTemplateError(f"Template doesn't have an id: '{template_entry}'")
             if not template_entry.get("id"):
                 warnings.append(f"Template '{id}' should use 'id' attribute instead of 'folder'.")
+
+            # NOTE: Check for duplicate IDs and aliases
+            aliases = {id}
+            aliases.update(template_entry.get("aliases", []))
+            duplicates = existing_ids.intersection(aliases)
+            if duplicates:
+                duplicates_str = ", ".join(sorted(f"'{d}'" for d in duplicates))
+                raise errors.InvalidTemplateError(f"Found duplicate IDs or aliases: {duplicates_str}")
+            existing_ids.update(aliases)
 
             parameters = template_entry.get("variables")
             if parameters:
@@ -209,6 +221,7 @@ class Template:
         parameters: Dict[str, Dict[str, Any]],
         icon: str,
         ssh_supported: bool,
+        aliases: List[str],
         immutable_files: List[str],
         allow_update: bool,
         source: Optional[str],
@@ -226,6 +239,7 @@ class Template:
         self.description: str = description
         self.icon = icon
         self.ssh_supported = ssh_supported
+        self.aliases: List[str] = aliases
         self.immutable_files: List[str] = immutable_files or []
         self.allow_update: bool = allow_update
         parameters = parameters or {}
@@ -234,6 +248,9 @@ class Template:
         ]
 
         self._templates_source: Optional[TemplatesSource] = templates_source
+
+    def __repr__(self) -> str:
+        return f"<Template {self.id}@{self.version}>"
 
     @property
     def templates_source(self) -> Optional[TemplatesSource]:
