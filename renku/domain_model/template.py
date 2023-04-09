@@ -29,6 +29,7 @@ import yaml
 from renku.core import errors
 from renku.core.constant import RENKU_HOME
 from renku.core.util.os import get_safe_relative_path, hash_file
+from renku.core.util.util import to_string
 
 if TYPE_CHECKING:
     from renku.domain_model.project import Project
@@ -547,7 +548,8 @@ class TemplateMetadata:
         # NOTE: Always set __renku_version__ to the value read from the Dockerfile (if available) since setting/updating
         # the template doesn't change project's metadata version and shouldn't update the Renku version either
         renku_version = metadata.get("__renku_version__")
-        metadata["__renku_version__"] = str(read_renku_version_from_dockerfile()) or renku_version or __version__
+        dockerfile_version = to_string(read_renku_version_from_dockerfile())
+        metadata["__renku_version__"] = dockerfile_version or renku_version or __version__
 
         return cls(metadata=metadata, immutable_files=immutable_files)
 

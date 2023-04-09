@@ -91,7 +91,14 @@ def integration_repo(headers, project_id, url_components) -> Generator[Repositor
 
 @pytest.fixture()
 def integration_lifecycle(
-    svc_client, mock_redis, identity_headers, it_remote_repo_url, it_protected_repo_url, it_workflow_repo_url, request
+    svc_client,
+    mock_redis,
+    identity_headers,
+    it_remote_repo_url,
+    it_protected_repo_url,
+    it_workflow_repo_url,
+    it_remote_old_repo_url,
+    request,
 ):
     """Setup and teardown steps for integration tests."""
     from renku.domain_model.git import GitURL
@@ -104,6 +111,8 @@ def integration_lifecycle(
         remote_repo = it_protected_repo_url
     elif marker.args[0] == "workflow":
         remote_repo = it_workflow_repo_url
+    elif marker.args[0] == "old":
+        remote_repo = it_remote_old_repo_url
     else:
         raise ValueError(f"Couldn't get remote repo for marker {marker.args[0]}")
 
