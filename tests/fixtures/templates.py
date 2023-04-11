@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2021 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -26,7 +25,13 @@ import pytest
 
 from renku.core.template.template import EmbeddedTemplates, FileAction, RepositoryTemplates, copy_template_to_project
 from renku.domain_model.project_context import project_context
-from renku.domain_model.template import RenderedTemplate, Template, TemplateMetadata, TemplateParameter
+from renku.domain_model.template import (
+    RenderedTemplate,
+    Template,
+    TemplateMetadata,
+    TemplateParameter,
+    TemplatesManifest,
+)
 from renku.infrastructure.repository import Repository
 from renku.version import __version__ as renku_version
 from tests.fixtures.repository import RenkuProject
@@ -133,6 +138,7 @@ def source_template(templates_source_root) -> Template:
 
     return Template(
         id="dummy",
+        aliases=[],
         name="Dummy Template",
         description="A dummy template",
         source="dummy",
@@ -151,7 +157,9 @@ def source_template(templates_source_root) -> Template:
 @pytest.fixture(params=["renku", "repository"])
 def templates_source(request, monkeypatch, templates_source_root, source_template):
     """A dummy TemplatesSource."""
-    (templates_source_root / "manifest.yaml").write_text(
+    manifest = templates_source_root / "manifest.yaml"
+
+    manifest.write_text(
         textwrap.dedent(
             """
             - id: dummy
@@ -163,7 +171,7 @@ def templates_source(request, monkeypatch, templates_source_root, source_templat
         )
     )
 
-    def update_dummy_template_files(templates_source, id, content, parameters):
+    def update_template_files(templates_source, id, content, parameters):
         template = templates_source.get_template(id=id, reference=None)
 
         if template is None or template.path is None:
@@ -175,6 +183,24 @@ def templates_source(request, monkeypatch, templates_source_root, source_templat
 
         template.parameters = parameters or []
 
+    def rename_template(templates_source, id: str, new_name: str):
+        shutil.copytree(templates_source.path / "dummy", templates_source.path / new_name)
+
+        manifest.write_text(
+            textwrap.dedent(
+                f"""
+                - id: {new_name}
+                  name: Dummy Template
+                  description: A dummy template
+                  immutable_template_files:
+                    - immutable.file
+                  aliases: [{id}]
+                """
+            )
+        )
+        # NOTE: Reload manifest file
+        templates_source.manifest = TemplatesManifest.from_path(manifest, skip_validation=True)
+
     class DummyRenkuTemplatesSource(EmbeddedTemplates):
         """Base class for Renku template sources."""
 
@@ -184,8 +210,12 @@ def templates_source(request, monkeypatch, templates_source_root, source_templat
 
         def update(self, id, version, content="# modification", parameters: Optional[List[TemplateParameter]] = None):
             """Update all files of a template."""
-            update_dummy_template_files(self, id, content, parameters)
+            update_template_files(self, id, content, parameters)
+            self.version = self.reference = version
 
+        def rename(self, id: str, new_name: str, version: str):
+            """Rename a template."""
+            rename_template(templates_source=self, id=id, new_name=new_name)
             self.version = self.reference = version
 
     class DummyRepositoryTemplatesSource(RepositoryTemplates):
@@ -208,10 +238,17 @@ def templates_source(request, monkeypatch, templates_source_root, source_templat
 
         def update(self, id, version, content="# modification", parameters: Optional[List[TemplateParameter]] = None):
             """Update all files of a template."""
-            update_dummy_template_files(self, id, content, parameters)
+            update_template_files(self, id, content, parameters)
+            self.update_templates(f"Update {id} template", version)
 
+        def rename(self, id: str, new_name: str, version: str):
+            """Rename a template."""
+            rename_template(templates_source=self, id=id, new_name=new_name)
+            self.update_templates(f"Rename {id} template", version)
+
+        def update_templates(self, message, version):
             self.repository.add(all=True)
-            self.repository.commit("updated dummy template", no_verify=True)
+            self.repository.commit(message, no_verify=True)
             self.repository.tags.add(version)
 
             self.version = self.repository.head.commit.hexsha

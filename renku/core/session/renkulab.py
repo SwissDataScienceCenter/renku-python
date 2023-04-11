@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -46,8 +45,9 @@ class RenkulabSessionProvider(ISessionProvider):
     DEFAULT_TIMEOUT_SECONDS = 300
 
     def __init__(self):
-        self.__renku_url = None
-        self.__notebooks_url = None
+        self.__renku_url: Optional[str] = None
+        self.__notebooks_url: Optional[str] = None
+        self._force_build: bool = False
 
     def _renku_url(self) -> str:
         """Get the URL of the renku instance."""
@@ -165,13 +165,15 @@ class RenkulabSessionProvider(ISessionProvider):
                     "Your system is not set up for SSH connections to Renkulab. Would you like to set it up?"
                 ):
                     ssh_setup()
+                    self._force_build = True
                 else:
                     raise errors.RenkulabSessionError(
                         "Can't run ssh session without setting up Renku SSH support. Run without '--ssh' or "
                         "run 'renku session ssh-setup'."
                     )
 
-            system_config.setup_session_keys()
+            if system_config.setup_session_keys():
+                self._force_build = True
 
     def _cleanup_ssh_connection_configs(
         self, project_name: str, running_sessions: Optional[List[Session]] = None
@@ -364,6 +366,7 @@ class RenkulabSessionProvider(ISessionProvider):
             "image": image_name,
             "commit_sha": session_commit,
             "serverOptions": server_options,
+            "branch": repository.active_branch or "master",
             **self._get_renku_project_name_parts(),
         }
         res = self._send_renku_request(
@@ -476,3 +479,7 @@ class RenkulabSessionProvider(ISessionProvider):
             session_name,
         ]
         return urllib.parse.urljoin(self._renku_url(), "/".join(session_url_parts))
+
+    def force_build_image(self, **kwargs) -> bool:
+        """Whether we should force build the image directly or check for an existing image first."""
+        return self._force_build

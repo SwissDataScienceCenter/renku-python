@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -27,7 +26,7 @@ import pytest
 
 from renku.core import errors
 from renku.infrastructure.database import Database
-from renku.infrastructure.repository import Repository
+from renku.infrastructure.repository import Actor, Repository
 from renku.ui.cli import cli
 from renku.ui.cli.init import parse_parameters
 from tests.utils import format_result_exception, raises
@@ -65,7 +64,7 @@ def test_template_selection_helpers(isolated_runner):
 
     stripped_output = " ".join(result.output.split())
 
-    assert "Please choose a template by typing its index:" in stripped_output
+    assert "Please choose a template by typing its number:" in stripped_output
 
     assert "1 python-minimal" in stripped_output
     assert "2 R-minimal" in stripped_output
@@ -250,15 +249,18 @@ def test_init_force_in_dirty_dir(isolated_runner, project_init):
     assert "My first project!" == readme.read_text()
 
 
-def test_init_on_cloned_repo(isolated_runner, data_repository, project_init):
+def test_init_on_cloned_repo(isolated_runner, project_init):
     """Run init --force in directory containing another repository."""
     data, commands = project_init
 
+    # Create a repository
     new_project = Path(data["test_project"])
-    import shutil
-
-    shutil.copytree(str(data_repository.path), str(new_project))
+    repository = Repository.initialize(new_project)
     assert new_project.exists()
+    (repository.path / "file1").write_text("some data")
+    repository.add(all=True)
+    repository.commit("test commit", author=Actor("me", "me@example.com"))
+    assert repository.contains("file1")
 
     # try to create in a dirty folder
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])

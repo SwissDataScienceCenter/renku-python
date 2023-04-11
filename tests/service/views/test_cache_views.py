@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -807,6 +806,7 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
 
 @pytest.mark.service
 @pytest.mark.integration
+@pytest.mark.remote_repo("old")
 def test_execute_migrations(svc_client_setup):
     """Check execution of all migrations."""
     svc_client, headers, project_id, _, _ = svc_client_setup
@@ -842,12 +842,12 @@ def test_execute_migrations_job(svc_client_setup):
 
 @pytest.mark.service
 @pytest.mark.integration
-def test_execute_migrations_remote(svc_client, identity_headers, it_remote_repo_url):
+def test_execute_migrations_remote(svc_client, identity_headers, it_remote_old_repo_url):
     """Check execution of all migrations."""
 
     response = svc_client.post(
         "/cache.migrate",
-        data=json.dumps(dict(git_url=it_remote_repo_url, skip_docker_update=True)),
+        data=json.dumps(dict(git_url=it_remote_old_repo_url, skip_docker_update=True)),
         headers=identity_headers,
     )
 
@@ -867,7 +867,7 @@ def test_check_migrations_local(svc_client_setup):
     response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
 
-    assert response.json["result"]["core_compatibility_status"]["migration_required"]
+    assert not response.json["result"]["core_compatibility_status"]["migration_required"]
     assert not response.json["result"]["template_status"]["newer_template_available"]
     assert not response.json["result"]["dockerfile_renku_status"]["automated_dockerfile_update"]
     assert response.json["result"]["project_supported"]
@@ -891,7 +891,7 @@ def test_check_migrations_remote(svc_client, identity_headers, it_remote_repo_ur
 
     assert 200 == response.status_code
 
-    assert response.json["result"]["core_compatibility_status"]["migration_required"]
+    assert not response.json["result"]["core_compatibility_status"]["migration_required"]
     assert not response.json["result"]["template_status"]["newer_template_available"]
     assert not response.json["result"]["dockerfile_renku_status"]["automated_dockerfile_update"]
     assert response.json["result"]["project_supported"]

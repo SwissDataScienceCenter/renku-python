@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2021 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -92,7 +91,14 @@ def integration_repo(headers, project_id, url_components) -> Generator[Repositor
 
 @pytest.fixture()
 def integration_lifecycle(
-    svc_client, mock_redis, identity_headers, it_remote_repo_url, it_protected_repo_url, it_workflow_repo_url, request
+    svc_client,
+    mock_redis,
+    identity_headers,
+    it_remote_repo_url,
+    it_protected_repo_url,
+    it_workflow_repo_url,
+    it_remote_old_repo_url,
+    request,
 ):
     """Setup and teardown steps for integration tests."""
     from renku.domain_model.git import GitURL
@@ -105,6 +111,8 @@ def integration_lifecycle(
         remote_repo = it_protected_repo_url
     elif marker.args[0] == "workflow":
         remote_repo = it_workflow_repo_url
+    elif marker.args[0] == "old":
+        remote_repo = it_remote_old_repo_url
     else:
         raise ValueError(f"Couldn't get remote repo for marker {marker.args[0]}")
 
@@ -237,7 +245,6 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
             # NOTE: init "remote" repo
             runner = RenkuRunner()
             with chdir(remote_repo_checkout_path):
-
                 result = runner.invoke(
                     cli, ["init", ".", "--template-id", "python-minimal", "--force"], "\n", catch_exceptions=False
                 )
@@ -248,7 +255,7 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
         finally:
             try:
                 shutil.rmtree(home)
-            except OSError:  # noqa: B014
+            except OSError:
                 pass
 
             payload = {"git_url": f"file://{remote_repo_path}", "depth": PROJECT_CLONE_NO_DEPTH}
@@ -268,12 +275,12 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
 
         try:
             shutil.rmtree(remote_repo_path)
-        except OSError:  # noqa: B014
+        except OSError:
             pass
 
         try:
             shutil.rmtree(remote_repo_checkout_path)
-        except OSError:  # noqa: B014
+        except OSError:
             pass
 
 

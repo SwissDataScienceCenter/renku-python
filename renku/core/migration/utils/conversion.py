@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -22,6 +21,7 @@ from typing import List, Optional, Tuple, Union
 from urllib.parse import urlparse
 
 from renku.core.migration.models import v9 as old_datasets
+from renku.core.util.datetime8601 import fix_datetime
 from renku.core.util.git import get_entity_from_revision
 from renku.core.util.urls import get_slug
 from renku.domain_model.dataset import (
@@ -193,10 +193,10 @@ def convert_dataset(dataset: old_datasets.Dataset, revision: str) -> Tuple[Datas
         Dataset(
             creators=[_convert_agent(creator) for creator in dataset.creators],
             dataset_files=convert_dataset_files(dataset.files),
-            date_created=dataset.date_created,
-            date_published=dataset.date_published,
+            date_created=fix_datetime(dataset.date_created),
+            date_published=fix_datetime(dataset.date_published),
             date_removed=None,
-            date_modified=dataset.date_created or dataset.date_published,
+            date_modified=fix_datetime(dataset.date_created or dataset.date_published),
             derived_from=convert_derived_from(dataset.derived_from, dataset.same_as),
             description=dataset.description,
             id=id,

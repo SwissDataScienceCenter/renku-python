@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -29,7 +28,7 @@ from renku.ui.service.views.error_handlers import handle_redis_except
 
 def requires_identity(f):
     """Wrapper which indicates that route requires user identification."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kws):
         """Represents decorated function."""
@@ -58,7 +57,7 @@ def optional_identity(f):
 @handle_redis_except
 def requires_cache(f):
     """Wrapper which injects cache object into view."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""
@@ -69,7 +68,7 @@ def requires_cache(f):
 
 def accepts_json(f):
     """Wrapper which ensures only JSON payload can be in request."""
-    # noqa
+
     @wraps(f)
     def decorated_function(*args, **kwargs):
         """Represents decorated function."""

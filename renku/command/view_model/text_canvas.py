@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +26,13 @@ from click import style
 if TYPE_CHECKING:
     import numpy.typing as npt
 
-Point = NamedTuple("Point", [("x", int), ("y", int)])
+
+class Point(NamedTuple):
+    """A point with coordinates for rendering."""
+
+    x: int
+    y: int
+
 
 MAX_NODE_LENGTH = 40
 

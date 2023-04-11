@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022- Swiss Data Science Center (SDSC)
+# Copyright 2017-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -299,7 +298,7 @@ def test_merge_project_both_changed():
 
     result = GitMerger().merge_projects(local_project, remote_project, base_project)
 
-    assert set(result.keywords) == set(["datascience", "awesome"])
+    assert set(result.keywords) == {"datascience", "awesome"}
     assert "9" == result.version
     assert result.agent_version
 

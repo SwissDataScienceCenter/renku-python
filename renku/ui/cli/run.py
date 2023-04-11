@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -230,6 +229,7 @@ all files within that range during its execution.
 To address this issue, the program can dump a mapping of input and output files
 that it is accessing in ``inputs.yml`` and ``outputs.yml``. This YAML file
 should be of the format
+
 .. code-block:: YAML
 
    name1: path1

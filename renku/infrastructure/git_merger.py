@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -41,9 +40,14 @@ from renku.infrastructure.database import Database, Index
 from renku.infrastructure.repository import Repository
 from renku.version import __version__
 
-RemoteEntry = NamedTuple(
-    "RemoteEntry", [("reference", str), ("database", Database), ("path", Path), ("repository", Repository)]
-)
+
+class RemoteEntry(NamedTuple):
+    """Reference to an entry in a database on a separate branch."""
+
+    reference: str
+    database: Database
+    path: Path
+    repository: Repository
 
 
 class GitMerger:
@@ -297,7 +301,6 @@ class GitMerger:
 
             # NOTE: Merge description
             if local.description != remote.description:
-
                 if base is None or (local.description != base.description and remote.description != base.description):
                     local.description = communication.prompt(
                         f"Project description was modified in local and remote branch.\n"

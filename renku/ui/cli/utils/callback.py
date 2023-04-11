@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -75,7 +74,7 @@ class StandardOutput(CommunicationCallback):
     def start_progress(self, name, total, **kwargs):
         """Start a new tqdm progressbar."""
         if name in self._progress_bars:
-            raise ValueError("Name {} is already a registered progressbar.".format(name))
+            raise ValueError(f"Name {name} is already a registered progressbar.")
 
         if "type" not in kwargs:
             kwargs["type"] = "download"

@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2021 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,10 +35,13 @@ def tabulate_activities(activities: List[Activity], modified_inputs: Set[str]):
     """
     collection = []
     fields = "plan,execution_date,modified_inputs,outputs,command"
-    ActivityDisplay = NamedTuple(
-        "ActivityDisplay",
-        [("plan", str), ("execution_date", datetime), ("modified_inputs", str), ("outputs", str), ("command", str)],
-    )
+
+    class ActivityDisplay(NamedTuple):
+        plan: str
+        execution_date: datetime
+        modified_inputs: str
+        outputs: str
+        command: str
 
     for activity in activities:
         modified_usages = {

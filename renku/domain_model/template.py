@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +29,7 @@ import yaml
 from renku.core import errors
 from renku.core.constant import RENKU_HOME
 from renku.core.util.os import get_safe_relative_path, hash_file
+from renku.core.util.util import to_string
 
 if TYPE_CHECKING:
     from renku.domain_model.project import Project
@@ -131,6 +130,7 @@ class TemplatesManifest:
             self._templates = [
                 Template(
                     id=cast(str, t.get("id") or t.get("folder")),
+                    aliases=t.get("aliases", []),
                     name=cast(str, t.get("name")),
                     description=cast(str, t.get("description")),
                     parameters=cast(Dict[str, Dict[str, Any]], t.get("variables") or t.get("parameters")),
@@ -162,6 +162,8 @@ class TemplatesManifest:
         elif not isinstance(self._content, list):
             raise errors.InvalidTemplateError(f"Invalid manifest content type: '{type(self._content).__name__}'")
 
+        existing_ids: Set[str] = set()
+
         # NOTE: First check if required fields exists for creating Template instances
         for template_entry in self._content:
             if not isinstance(template_entry, dict):
@@ -172,6 +174,15 @@ class TemplatesManifest:
                 raise errors.InvalidTemplateError(f"Template doesn't have an id: '{template_entry}'")
             if not template_entry.get("id"):
                 warnings.append(f"Template '{id}' should use 'id' attribute instead of 'folder'.")
+
+            # NOTE: Check for duplicate IDs and aliases
+            aliases = {id}
+            aliases.update(template_entry.get("aliases", []))
+            duplicates = existing_ids.intersection(aliases)
+            if duplicates:
+                duplicates_str = ", ".join(sorted(f"'{d}'" for d in duplicates))
+                raise errors.InvalidTemplateError(f"Found duplicate IDs or aliases: {duplicates_str}")
+            existing_ids.update(aliases)
 
             parameters = template_entry.get("variables")
             if parameters:
@@ -210,6 +221,7 @@ class Template:
         parameters: Dict[str, Dict[str, Any]],
         icon: str,
         ssh_supported: bool,
+        aliases: List[str],
         immutable_files: List[str],
         allow_update: bool,
         source: Optional[str],
@@ -227,6 +239,7 @@ class Template:
         self.description: str = description
         self.icon = icon
         self.ssh_supported = ssh_supported
+        self.aliases: List[str] = aliases
         self.immutable_files: List[str] = immutable_files or []
         self.allow_update: bool = allow_update
         parameters = parameters or {}
@@ -235,6 +248,9 @@ class Template:
         ]
 
         self._templates_source: Optional[TemplatesSource] = templates_source
+
+    def __repr__(self) -> str:
+        return f"<Template {self.id}@{self.version}>"
 
     @property
     def templates_source(self) -> Optional[TemplatesSource]:
@@ -296,9 +312,7 @@ class Template:
         existing_prohibited_paths: Set[str] = set()
 
         for pattern in self.PROHIBITED_PATHS:
-            matches = set(
-                m for m in self.path.glob(pattern) if str(m.relative_to(self.path)) not in self.REQUIRED_FILES
-            )
+            matches = {m for m in self.path.glob(pattern) if str(m.relative_to(self.path)) not in self.REQUIRED_FILES}
             if matches:
                 existing_prohibited_paths.update(str(m.relative_to(self.path)) for m in matches)
 
@@ -534,7 +548,8 @@ class TemplateMetadata:
         # NOTE: Always set __renku_version__ to the value read from the Dockerfile (if available) since setting/updating
         # the template doesn't change project's metadata version and shouldn't update the Renku version either
         renku_version = metadata.get("__renku_version__")
-        metadata["__renku_version__"] = str(read_renku_version_from_dockerfile()) or renku_version or __version__
+        dockerfile_version = to_string(read_renku_version_from_dockerfile())
+        metadata["__renku_version__"] = dockerfile_version or renku_version or __version__
 
         return cls(metadata=metadata, immutable_files=immutable_files)
 

@@ -11,26 +11,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3.3.0
-      with:
-        fetch-depth: 0
-    - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.7
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install .[all]
-    - name: Publish shape
-      run: |
-        git clone https://${{secrets.RENKUBOT_GITHUB_TOKEN}}@github.com/SwissDataScienceCenter/renku-ontology.git shacl_publish
-        cd shacl_publish
-        mkdir $(renku --version)
-        cp ../renku/data/shacl_shape.json ./$(renku --version)/
-        git config --local user.email "renku@datascience.ch"
-        git config --local user.name "RenkuBot"
-        git add $(renku --version)/shacl_shape.json
-        git commit -m "Publish SHACL shape for $(renku --version)"
-        git push
+      - uses: actions/checkout@v3.5.0
+        with:
+          fetch-depth: 0
+      - name: Install dependencies
+        uses: ./.github/actions/install-linux
+        with:
+          python-version: "3.10"
+      - name: Publish shape
+        run: |
+          git clone https://${{secrets.RENKUBOT_GITHUB_TOKEN}}@github.com/SwissDataScienceCenter/renku-ontology.git shacl_publish
+          cd shacl_publish
+          mkdir $(renku --version)
+          cp ../renku/data/shacl_shape.json ./$(renku --version)/
+          git config --local user.email "renku@datascience.ch"
+          git config --local user.name "RenkuBot"
+          git add $(renku --version)/shacl_shape.json
+          git commit -m "Publish SHACL shape for $(renku --version)"
+          git push

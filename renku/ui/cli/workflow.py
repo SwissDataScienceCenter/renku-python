@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -130,18 +129,44 @@ to allow execution using various execution backends.
 
 Parameters can be set using the ``--set`` keyword or by specifying them in a
 values YAML file and passing that using ``--values``. In case of passing a file,
-the YAML should follow the this structure:
+for a composite workflow like:
+
+.. code-block:: console
+
+    $ renku run --name train -- python train.py --lr=0.1 --gamma=0.5 --output=result.csv
+    $ renku run --name eval -- python eval.py --image=graph.png --data=result.csv
+    $ renku workflow compose --map learning_rate=train.lr --map graph=eval.image
+
+the YAML file could look like:
 
 .. code-block:: yaml
 
+    # composite (mapped) parameters
     learning_rate: 0.9
-    dataset_input: dataset.csv
-    chart_output: chart.png
-    my-workflow:
-        lr: 0.8
-        lookup-table: lookup.xml
-        my-other-workflow:
-            language: en
+    graph: overview.png
+    train: # child workflow name
+        # child workflow parameters
+        gamma: 1.0
+
+Which would rerun the two steps but with ``lr`` set to ``0.9``, ``gamma`` set to ``1.0``
+and the output saved under ``overview.png``.
+
+Note that this would be the same as using:
+
+.. code-block:: yaml
+
+    train:
+        lr: 0.9
+        gamma: 1.0
+    eval:
+        image: overview.png
+
+For a regular (non-composite) workflow it is enough to just specify key-value pairs like:
+
+.. code-block:: yaml
+
+    lr: 0.9
+    gamma: 1.0
 
 In addition to being passed on the command line and being available to
 ``renku.ui.api.*`` classes in Python scripts, parameters are also set as
@@ -731,7 +756,7 @@ from renku.command.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS, WO
 from renku.command.util import ERROR
 from renku.command.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
 from renku.core import errors
-from renku.core.util.util import NO_VALUE
+from renku.domain_model.constant import NO_VALUE
 from renku.ui.cli.utils.callback import ClickCallback
 from renku.ui.cli.utils.plugins import available_workflow_providers, get_supported_formats
 from renku.ui.cli.utils.terminal import print_workflow_file, show_text_with_pager
@@ -1187,9 +1212,7 @@ def execute(
 
     if result.output:
         click.echo(
-            "Unchanged files:\n\n\t{0}".format(
-                "\n\t".join(click.style(path, fg=color.YELLOW) for path in result.output)
-            )
+            "Unchanged files:\n\n\t{}".format("\n\t".join(click.style(path, fg=color.YELLOW) for path in result.output))
         )
 
 

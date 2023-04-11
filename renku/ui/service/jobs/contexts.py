@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -31,7 +30,7 @@ def enqueue_retry(queue, retry=3):
     while count < retry:
         try:
             yield WorkerQueues.get(queue)
-        except (OSError, IOError, BusyLoadingError):
+        except (OSError, BusyLoadingError):
             time.sleep(2**count)
             count += 1
         break

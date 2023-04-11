@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -221,7 +220,7 @@ def _update_dockerfile(check_only=False):
 
     communication.echo("Updating dockerfile...")
 
-    with open(project_context.dockerfile_path, "r") as f:
+    with open(project_context.dockerfile_path) as f:
         dockerfile_content = f.read()
 
     docker_version = read_renku_version_from_dockerfile()
@@ -273,7 +272,7 @@ def get_migrations():
             continue
 
         version = int(match.groups()[0])
-        path = "renku.core.migration.{}".format(Path(entry.name).stem)
+        path = f"renku.core.migration.{Path(entry.name).stem}"
         migrations.append((version, path))
 
     migrations = sorted(migrations, key=lambda v: v[1].lower())

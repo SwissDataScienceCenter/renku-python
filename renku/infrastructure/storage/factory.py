@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,12 +16,12 @@
 # limitations under the License.
 """Storage factory implementation."""
 
-from typing import TYPE_CHECKING, Callable, Dict
+from typing import TYPE_CHECKING, Dict
 
 from renku.core.interface.storage import IStorage, IStorageFactory
 
 if TYPE_CHECKING:
-    from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials
+    from renku.core.dataset.providers.api import CloudStorageProviderType, ProviderCredentials
 
 
 class StorageFactory(IStorageFactory):
@@ -31,20 +30,17 @@ class StorageFactory(IStorageFactory):
     @staticmethod
     def get_storage(
         storage_scheme: str,
-        provider: "ProviderApi",
+        provider: "CloudStorageProviderType",
         credentials: "ProviderCredentials",
         configuration: Dict[str, str],
-        uri_convertor: Callable[[str], str],
     ) -> "IStorage":
         """Return a storage that handles provider.
 
         Args:
             storage_scheme(str): Storage name.
-            provider(ProviderApi): The backend provider.
+            provider(CloudStorageProviderType): The backend provider.
             credentials(ProviderCredentials): Credentials for the provider.
             configuration(Dict[str, str]): Storage-specific configuration that are passed to the IStorage implementation
-            uri_convertor(Callable[[str], str]): A function that converts backend-specific URI to a URI that is usable
-                by the IStorage implementation.
 
         Returns:
             An instance of IStorage.
@@ -56,5 +52,4 @@ class StorageFactory(IStorageFactory):
             provider=provider,
             credentials=credentials,
             provider_configuration=configuration,
-            provider_uri_convertor=uri_convertor,
         )

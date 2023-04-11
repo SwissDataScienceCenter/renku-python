@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -161,7 +159,7 @@ class Person(Agent):
         initials = [name[0] for name in names]
         initials.pop()
 
-        return "{0}.{1}".format(".".join(initials), last_name)
+        return "{}.{}".format(".".join(initials), last_name)
 
     @property
     def full_identity(self):

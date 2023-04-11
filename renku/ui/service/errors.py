@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -262,11 +261,15 @@ class UserTemplateInvalidError(ServiceError):
     """The provided URL doesn't lead to a valid template repository."""
 
     code = SVC_ERROR_USER + 101
-    userMessage = "The target repository is not a valid Renku template repository."
-    devMessage = "Target repository is not a valid template."
+    userMessage = "The target repository is not a valid Renku template repository: {error_message}"
+    devMessage = "Target repository is not a valid template.: {error_message}"
 
-    def __init__(self, exception=None):
-        super().__init__(exception=exception)
+    def __init__(self, exception=None, error_message=ERROR_NOT_AVAILABLE):
+        super().__init__(
+            userMessage=self.userMessage.format(error_message=error_message),
+            devMessage=self.devMessage.format(error_message=error_message),
+            exception=exception,
+        )
 
 
 class UserProjectCreationError(ServiceError):

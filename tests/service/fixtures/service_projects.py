@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2021 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -58,6 +57,14 @@ def it_remote_repo_url():
 
 
 @pytest.fixture(scope="module")
+def it_remote_old_repo_url():
+    """Returns a remote path to integration test repository."""
+    from tests.fixtures.config import IT_REMOTE_OLD_REPO_URL
+
+    return IT_REMOTE_OLD_REPO_URL
+
+
+@pytest.fixture(scope="module")
 def it_remote_public_renku_repo_url():
     """Returns a remote path to a public integration test repository."""
     from tests.fixtures.config import IT_PUBLIC_REMOTE_REPO_URL
@@ -79,7 +86,7 @@ def it_remote_repo_url_temp_branch(it_remote_repo_url):
         # NOTE: create temporary branch and push it
         git_url = urlparse(it_remote_repo_url)
 
-        url = "oauth2:{0}@{1}".format(os.getenv("IT_OAUTH_GIT_TOKEN"), git_url.netloc)
+        url = "oauth2:{}@{}".format(os.getenv("IT_OAUTH_GIT_TOKEN"), git_url.netloc)
         git_url = git_url._replace(netloc=url).geturl()
         repo = Repository.clone_from(url=git_url, path=tempdir)
         origin = repo.remotes["origin"]
@@ -88,6 +95,29 @@ def it_remote_repo_url_temp_branch(it_remote_repo_url):
         repo.push(origin, branch, set_upstream=True)
         try:
             yield it_remote_repo_url, branch_name
+        finally:
+            # NOTE: delete remote branch
+            repo.push(origin, branch, delete=True)
+            repo.branches.remove(branch)
+
+
+@pytest.fixture(scope="function")
+def it_remote_old_repo_url_temp_branch(it_remote_old_repo_url):
+    """Returns a remote path to integration test repository."""
+
+    with tempfile.TemporaryDirectory() as tempdir:
+        # NOTE: create temporary branch and push it
+        git_url = urlparse(it_remote_old_repo_url)
+
+        url = "oauth2:{}@{}".format(os.getenv("IT_OAUTH_GIT_TOKEN"), git_url.netloc)
+        git_url = git_url._replace(netloc=url).geturl()
+        repo = Repository.clone_from(url=git_url, path=tempdir)
+        origin = repo.remotes["origin"]
+        branch_name = uuid.uuid4().hex
+        branch = repo.branches.add(branch_name)
+        repo.push(origin, branch, set_upstream=True)
+        try:
+            yield it_remote_old_repo_url, branch_name
         finally:
             # NOTE: delete remote branch
             repo.push(origin, branch, delete=True)

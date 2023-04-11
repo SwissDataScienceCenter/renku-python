@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,7 +62,7 @@ class ZenodoProvider(ProviderApi, ExportProviderInterface, ImportProviderInterfa
     priority = ProviderPriority.HIGH
     name = "Zenodo"
 
-    def __init__(self, uri: Optional[str], is_doi: bool = False):
+    def __init__(self, uri: str, is_doi: bool = False):
         super().__init__(uri=uri)
 
         self.is_doi = is_doi
@@ -521,7 +519,7 @@ class ZenodoDeposition:
             if response.status_code == 400:
                 err_response = response.json()
                 messages = [
-                    '"{0}" failed with "{1}"'.format(err["field"], err["message"]) for err in err_response["errors"]
+                    '"{}" failed with "{}"'.format(err["field"], err["message"]) for err in err_response["errors"]
                 ]
 
                 raise errors.ExportError(

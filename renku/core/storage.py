@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,9 +34,8 @@ from renku.core import errors
 from renku.core.config import get_value
 from renku.core.constant import RENKU_LFS_IGNORE_PATH, RENKU_PROTECTED_PATHS
 from renku.core.util import communication
-from renku.core.util.file_size import parse_file_size
 from renku.core.util.git import get_in_submodules, run_command
-from renku.core.util.os import expand_directories
+from renku.core.util.os import expand_directories, parse_file_size
 from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
@@ -101,7 +98,7 @@ def check_external_storage_wrapper(fn):
     return wrapper
 
 
-@functools.lru_cache()
+@functools.lru_cache
 def storage_installed():
     """Verify that git-lfs is installed and on system PATH."""
     return bool(which("git-lfs"))
@@ -159,7 +156,7 @@ def init_external_storage(force=False):
             stdout=PIPE,
             stderr=STDOUT,
             cwd=project_context.path,
-            universal_newlines=True,
+            text=True,
         )
 
         if result.returncode != 0:
@@ -351,7 +348,7 @@ def clean_storage_cache(*check_paths):
         current_repository = repositories[project_path]
 
         for path in paths:
-            with open(path, "r") as tracked_file:
+            with open(path) as tracked_file:
                 try:
                     header = tracked_file.read(len(_LFS_HEADER))
                     if header == _LFS_HEADER:
@@ -363,9 +360,7 @@ def clean_storage_cache(*check_paths):
             with tempfile.NamedTemporaryFile(mode="w+t", encoding="utf-8", delete=False) as tmp, open(
                 path, "r+t"
             ) as input_file:
-                result = run(
-                    _CMD_STORAGE_CLEAN, cwd=project_path, stdin=input_file, stdout=tmp, universal_newlines=True
-                )
+                result = run(_CMD_STORAGE_CLEAN, cwd=project_path, stdin=input_file, stdout=tmp, text=True)
 
                 if result.returncode != 0:
                     raise errors.GitLFSError(f"Error executing 'git lfs clean: \n {result.stdout}")
@@ -501,7 +496,7 @@ def check_lfs_migrate_info(everything=False, use_size_filter=True):
             stdout=PIPE,
             stderr=STDOUT,
             cwd=project_context.path,
-            universal_newlines=True,
+            text=True,
         )
     except (KeyboardInterrupt, OSError) as e:
         raise errors.GitError(f"Couldn't run 'git lfs migrate info':\n{e}")
@@ -509,7 +504,7 @@ def check_lfs_migrate_info(everything=False, use_size_filter=True):
     if lfs_output.returncode != 0:
         # NOTE: try running without --pointers (old versions of git lfs)
         try:
-            lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=project_context.path, universal_newlines=True)
+            lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=project_context.path, text=True)
         except (KeyboardInterrupt, OSError) as e:
             raise errors.GitError(f"Couldn't run 'git lfs migrate info':\n{e}")
 
@@ -547,14 +542,14 @@ def migrate_files_to_lfs(paths):
     command = _CMD_STORAGE_MIGRATE_IMPORT + includes + excludes + object_map
 
     try:
-        lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=project_context.path, universal_newlines=True)
+        lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=project_context.path, text=True)
     except (KeyboardInterrupt, OSError) as e:
         raise errors.GitError(f"Couldn't run 'git lfs migrate import':\n{e}")
 
     if lfs_output.returncode != 0:
         raise errors.GitLFSError(f"Error executing 'git lfs migrate import: \n {lfs_output.stdout}")
 
-    with open(map_path, "r", newline="") as csvfile:
+    with open(map_path, newline="") as csvfile:
         reader = csv.reader(csvfile, delimiter=",")
 
         commit_sha_mapping = [(r[0], r[1]) for r in reader]

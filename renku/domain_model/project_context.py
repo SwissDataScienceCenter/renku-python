@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -222,9 +220,9 @@ class ProjectContext(threading.local):
 
         raise errors.ProjectContextError("No project context was pushed")
 
-    def has_context(self) -> bool:
-        """Return if at least one context is pushed."""
-        return bool(self._context_stack)
+    def has_context(self, path: Optional[Union[Path, str]] = None) -> bool:
+        """Return if at least one context which is equal to path (if not None) is pushed."""
+        return True if self._context_stack and (path is None or self.path == Path(path).resolve()) else False
 
     def clear(self) -> None:
         """Remove all contexts and reset the state without committing intermediate changes.

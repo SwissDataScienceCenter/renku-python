@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,7 +80,7 @@ class DatabaseCommand(Command):
             self.project_found = True
         except (KeyError, ImportError, ValueError):
             try:
-                with open(project_context.database_path / "project", "r") as f:
+                with open(project_context.database_path / "project") as f:
                     project = json.load(f)
                     min_version = project.get("minimum_renku_version")
                     if min_version is None:

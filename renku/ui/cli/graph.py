@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -62,9 +61,10 @@ created metadata as JSON-LD, the default format.
     ]
 
 If you want the Knowledge Graph data for the whole project, you can use
-``renku graph export --full``. Alternatively, you can get data for a single
-commit by using ``renku graph export --revision <git commit sha>`` or by
-specifying a range of commits like ``renku graph export --revision sha1..sha2``.
+``renku graph export --full`` (``--full`` is the default). Alternatively,
+you can get data for a single commit by using ``renku graph export
+--revision <git commit sha>`` or by specifying a range of commits like
+``renku graph export --revision sha1..sha2``.
 
 ``renku graph export`` currently supports various formats for export, such as
 ``json-ld``, ``rdf``, ``nt`` (for triples) and ``dot`` (for GraphViz graphs),
@@ -112,10 +112,10 @@ def graph():
 @click.option(
     "--revision",
     type=str,
-    default="HEAD",
+    default=None,
     help="Limit graph to changes done in revision (or range of revisions like 'A..B').",
 )
-@click.option("-f", "--full", is_flag=True, help="Generate full graph for project. Overrides --revision.")
+@click.option("-f", "--full", is_flag=True, help="Generate full graph for project (default). Overrides --revision.")
 @click.option("--strict", is_flag=True, default=False, help="Validate triples before output.")
 @click.option(
     "--no-indent", is_flag=True, default=False, help="Format without indentation/pretty-printing (only for JSON-LD)."

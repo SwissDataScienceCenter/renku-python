@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -389,7 +387,8 @@ def get_entity_from_revision(
         Entity: The Entity for the given path and revision.
 
     """
-    from renku.domain_model.entity import NON_EXISTING_ENTITY_CHECKSUM, Collection, Entity
+    from renku.domain_model.constant import NON_EXISTING_ENTITY_CHECKSUM
+    from renku.domain_model.entity import Collection, Entity
 
     def get_directory_members(absolute_path: Path) -> List[Entity]:
         """Return first-level files/directories in a directory."""
@@ -491,7 +490,8 @@ def commit_changes(*paths: Union[Path, str], repository: "Repository", message=N
         if saved_paths:
             if not message:
                 # Show saved files in message
-                max_len = 100
+                max_line_len = 100
+                max_total_len = 100000
                 message = "Saved changes to: "
                 paths_with_lens = cast(
                     List[Tuple[str, int]],
@@ -502,7 +502,10 @@ def commit_changes(*paths: Union[Path, str], repository: "Repository", message=N
                     )[1:],
                 )
                 # limit first line to max_len characters
-                message += " ".join(p if l < max_len else "\n\t" + p for p, l in paths_with_lens)
+                message += " ".join(p if l < max_line_len else "\n\t" + p for p, l in paths_with_lens)
+
+                if len(message) > max_total_len:
+                    message = message[: max_total_len - 3] + "..."
 
             repository.commit(message)
     except errors.GitCommandError as e:
@@ -887,7 +890,7 @@ def get_file_size(repository_path: Path, path: str) -> Optional[int]:
             ("git", "lfs", "ls-files", "--name-only", "--size"),
             stdout=PIPE,
             cwd=repository_path,
-            universal_newlines=True,
+            text=True,
         )
     except SubprocessError:
         pass

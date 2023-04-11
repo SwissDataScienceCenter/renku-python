@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -90,7 +89,7 @@ class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
         data["project_slug"] = project_slug
 
         new_project_url_parsed = urlparse(new_project_url)
-        url = "oauth2:{0}@{1}".format(data["token"], new_project_url_parsed.netloc)
+        url = "oauth2:{}@{}".format(data["token"], new_project_url_parsed.netloc)
         data["new_project_url_with_auth"] = new_project_url_parsed._replace(netloc=url).geturl()
 
         return data

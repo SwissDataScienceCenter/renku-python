@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2021 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +26,7 @@ from packaging.version import Version
 
 from renku.core import errors
 from renku.core.config import get_value, set_value
-from renku.core.constant import RENKU_HOME, RENKU_PROTECTED_PATHS, RENKU_TMP
+from renku.core.constant import POINTERS, RENKU_HOME, RENKU_PROTECTED_PATHS, RENKU_TMP
 from renku.core.migration.utils import OLD_METADATA_PATH
 from renku.core.util import communication
 from renku.core.util.os import is_subpath
@@ -88,14 +86,22 @@ def construct_creator(creator: Union[dict, str], ignore_email) -> Tuple[Optional
 
 def is_external_file(path: Union[Path, str], project_path: Path):
     """Checks if a path is an external file."""
-    from renku.core.constant import POINTERS, RENKU_HOME
-
     path = project_path / path
     if not path.is_symlink() or not is_subpath(path=path, base=project_path):
         return False
 
     pointer = os.readlink(path)
     return str(os.path.join(RENKU_HOME, POINTERS)) in pointer
+
+
+def is_linked_file(path: Union[Path, str], project_path: Path) -> bool:
+    """Return True if a dataset file is a linked file."""
+    path = project_path / path
+    if not path.is_symlink() or not is_subpath(path=path.resolve(), base=project_path):
+        return False
+
+    pointer = os.readlink(path)
+    return os.path.join(RENKU_HOME, POINTERS) in pointer
 
 
 def read_renku_version_from_dockerfile(path: Optional[Union[Path, str]] = None) -> Optional[Version]:

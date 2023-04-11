@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -185,7 +184,7 @@ def create_activity_graph(
                     graph.add_edge(b, a)
                 overridden_activities[b].add(path)
             else:
-                raise ValueError(f"Cannot create an order between activities that generate '{path}': {a.id} and {b.id}")
+                raise ValueError(f"Cannot create an order between activities that generate '{path}': {a} and {b}")
 
     def remove_overridden_activities():
         to_be_removed = set()

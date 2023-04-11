@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -398,7 +397,7 @@ class Collection(Entity):
 
 
 @attr.s(eq=False, order=False)
-class MappedIOStream(object):
+class MappedIOStream:
     """Represents an IO stream (``stdin``, ``stdout``, ``stderr``)."""
 
     _id = attr.ib(default=None, kw_only=True)
@@ -415,11 +414,11 @@ class MappedIOStream(object):
             host = project_context.remote.host or host
         host = os.environ.get("RENKU_DOMAIN") or host
 
-        return urljoin("https://{host}".format(host=host), posixpath.join("/iostreams", self.stream_type))
+        return urljoin(f"https://{host}", posixpath.join("/iostreams", self.stream_type))
 
     def default_label(self):
         """Set default label."""
-        return 'Stream mapping for stream "{}"'.format(self.stream_type)
+        return f'Stream mapping for stream "{self.stream_type}"'
 
     def __attrs_post_init__(self):
         """Post-init hook."""
@@ -488,11 +487,11 @@ class CommandArgument(CommandParameter):
             id_ = str(position)
         else:
             id_ = uuid.uuid4().hex
-        return "{}/arguments/{}".format(run_id, id_)
+        return f"{run_id}/arguments/{id_}"
 
     def default_label(self):
         """Set default label."""
-        return 'Command Argument "{}"'.format(self.default_value)
+        return f'Command Argument "{self.default_value}"'
 
     def default_name(self):
         """Create a default name."""
@@ -521,11 +520,11 @@ class CommandInput(CommandParameter):
             id_ = str(position)
         else:
             id_ = uuid.uuid4().hex
-        return "{}/inputs/{}".format(run_id, id_)
+        return f"{run_id}/inputs/{id_}"
 
     def default_label(self):
         """Set default label."""
-        return 'Command Input "{}"'.format(self.default_value)
+        return f'Command Input "{self.default_value}"'
 
     def default_name(self):
         """Create a default name."""
@@ -556,11 +555,11 @@ class CommandOutput(CommandParameter):
             id_ = str(position)
         else:
             id_ = uuid.uuid4().hex
-        return "{}/outputs/{}".format(run_id, id_)
+        return f"{run_id}/outputs/{id_}"
 
     def default_label(self):
         """Set default label."""
-        return 'Command Output "{}"'.format(self.default_value)
+        return f'Command Output "{self.default_value}"'
 
     def default_name(self):
         """Create a default name."""
@@ -626,7 +625,7 @@ class Run(CommitMixin):
         if not identifier:
             identifier = str(uuid.uuid4())
 
-        return urljoin("https://{host}".format(host=host), posixpath.join("/runs", quote(identifier, safe="")))
+        return urljoin(f"https://{host}", posixpath.join("/runs", quote(identifier, safe="")))
 
     def __lt__(self, other):
         """Compares two subprocesses order based on their dependencies."""
@@ -859,7 +858,7 @@ class Activity(CommitMixin):
     @agents.default
     def default_agents(self):
         """Set person agent to be the author of the commit."""
-        renku_agent = SoftwareAgent(label="renku {0}".format(__version__), id=version_url)
+        renku_agent = SoftwareAgent(label=f"renku {__version__}", id=version_url)
         if self.commit:
             return [Person.from_commit(self.commit), renku_agent]
         return [renku_agent]
@@ -932,7 +931,7 @@ class ProcessRun(Activity):
         host = os.environ.get("RENKU_DOMAIN") or host
 
         return urljoin(
-            "https://{host}".format(host=host),
+            f"https://{host}",
             posixpath.join("/activities", f"commit/{commit_hexsha}"),
         )
 
@@ -1163,7 +1162,7 @@ class Person:
         initials = [name[0] for name in names]
         initials.pop()
 
-        return "{0}.{1}".format(".".join(initials), last_name)
+        return "{}.{}".format(".".join(initials), last_name)
 
     @property
     def full_identity(self):
@@ -1267,7 +1266,7 @@ def _extract_doi(value):
 
 
 @attr.s(slots=True)
-class DatasetTag(object):
+class DatasetTag:
     """Represents a Tag of an instance of a dataset."""
 
     name = attr.ib(default=None, kw_only=True, validator=instance_of(str))
@@ -1409,7 +1408,7 @@ class DatasetFile(Entity):
         parsed_id = urlparse(self._id)
 
         if not parsed_id.scheme:
-            self._id = "file://{}".format(self._id)
+            self._id = f"file://{self._id}"
 
         if not self.url:
             self.url = self.default_url()
@@ -2232,8 +2231,8 @@ class ActivitySchema(OldCommitMixinSchema):
         prov.wasInvalidatedBy, [OldEntitySchema, OldCollectionSchema], reverse=True, many=True, load_default=None
     )
     influenced = Nested(prov.influenced, OldCollectionSchema, many=True)
-    started_at_time = fields.DateTime(prov.startedAtTime, add_value_types=True)
-    ended_at_time = fields.DateTime(prov.endedAtTime, add_value_types=True)
+    started_at_time = fields.DateTime(prov.startedAtTime, format="iso", add_value_types=True)
+    ended_at_time = fields.DateTime(prov.endedAtTime, format="iso", add_value_types=True)
     agents = Nested(prov.wasAssociatedWith, [OldPersonSchema, OldSoftwareAgentSchema], many=True)
 
     @pre_dump(pass_many=True)

@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -105,7 +103,7 @@ def write_template_checksum(checksums: Dict):
 def read_template_checksum() -> Dict[str, str]:
     """Read templates checksum file for a project."""
     if has_template_checksum():
-        with open(project_context.template_checksums_path, "r") as checksum_file:
+        with open(project_context.template_checksums_path) as checksum_file:
             return json.load(checksum_file)
 
     return {}
@@ -384,14 +382,14 @@ class EmbeddedTemplates(TemplatesSource):
         from renku import __template_version__
 
         template_path = importlib_resources.files("renku") / "templates"
-        with importlib_resources.as_file(template_path) as folder:
-            path = Path(folder)
+        with importlib_resources.as_file(template_path) as templates:
+            path = Path(templates)
 
         return cls(path=path, source="renku", reference=__template_version__, version=__template_version__)
 
     def get_all_references(self, id) -> List[str]:
         """Return all available references for a template id."""
-        template_exists = any(t.id == id for t in self.templates)
+        template_exists = any(id == t.id or id in t.aliases for t in self.templates)
         return [self.reference] if template_exists and self.reference is not None else []
 
     def get_latest_reference_and_version(
@@ -413,7 +411,7 @@ class EmbeddedTemplates(TemplatesSource):
     def get_template(self, id, reference: Optional[str]) -> "Template":
         """Return all available versions for a template id."""
         try:
-            return next(t for t in self.templates if t.id == id)
+            return next(t for t in self.templates if id == t.id or id in t.aliases)
         except StopIteration:
             raise errors.TemplateNotFoundError(f"The template with id '{id}' is not available.")
 
@@ -496,7 +494,7 @@ class RepositoryTemplates(TemplatesSource):
         except (errors.FileNotFound, errors.InvalidTemplateError):
             return False
         else:
-            return any(t.id == id for t in manifest.templates)
+            return any(id == t.id or id in t.aliases for t in manifest.templates)
 
     def get_template(self, id, reference: Optional[str]) -> "Template":
         """Return a template at a specific reference."""
@@ -516,8 +514,9 @@ class RepositoryTemplates(TemplatesSource):
             else:
                 self.manifest = manifest
 
-        template = next((t for t in self.templates if t.id == id), None)
+        template = next((t for t in self.templates if id == t.id or id in t.aliases), None)
         if template is None:
+            reference = reference or "HEAD"
             raise errors.TemplateNotFoundError(f"The template with id '{id}' is not available at '{reference}'.")
 
         return template

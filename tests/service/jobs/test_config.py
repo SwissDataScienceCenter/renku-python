@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -18,7 +17,6 @@
 """Test config jobs."""
 import pytest
 
-from renku.core.errors import MigrationRequired
 from tests.utils import retry_failed
 
 
@@ -68,5 +66,6 @@ def test_delay_config_set_failure(svc_client_cache, it_remote_repo_url, view_use
 
     from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
-    with pytest.raises(MigrationRequired):
-        delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
+    updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
+
+    assert updated_job

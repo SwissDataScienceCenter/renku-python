@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,11 +28,16 @@ from renku.core.session.utils import get_renku_url
 from renku.core.util import communication
 from renku.domain_model.project_context import project_context
 
-SSHKeyPair = NamedTuple("SSHKeyPair", [("private_key", str), ("public_key", str)])
+
+class SSHKeyPair(NamedTuple):
+    """A public/private key pair for SSH."""
+
+    private_key: str
+    public_key: str
 
 
 def generate_ssh_keys() -> SSHKeyPair:
-    """Generate an SSH keypair.
+    """Generate an SSH key pair.
 
     Returns:
         Private Public key pair.
@@ -130,7 +133,7 @@ class SystemSSHConfig:
         """
         return self.renku_ssh_root / f"00-{project_name}-{session_name}.conf"
 
-    def setup_session_keys(self):
+    def setup_session_keys(self) -> bool:
         """Add a users key to a project."""
         project_context.ssh_authorized_keys_path.parent.mkdir(parents=True, exist_ok=True)
         project_context.ssh_authorized_keys_path.touch(mode=0o600, exist_ok=True)
@@ -139,7 +142,7 @@ class SystemSSHConfig:
             raise errors.SSHNotSetupError()
 
         if self.public_key_string in project_context.ssh_authorized_keys_path.read_text():
-            return
+            return False
 
         communication.info("Adding SSH public key to project.")
         with project_context.ssh_authorized_keys_path.open("at") as f:
@@ -150,6 +153,7 @@ class SystemSSHConfig:
         communication.info(
             "Added public key. Changes need to be pushed and remote image built for changes to take effect."
         )
+        return True
 
     def setup_session_config(self, project_name: str, session_name: str) -> str:
         """Setup local SSH config for connecting to a session.

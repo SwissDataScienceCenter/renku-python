@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2021 Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +22,12 @@ import pytest
 if TYPE_CHECKING:
     from renku.domain_model.provenance.activity import Activity
 
-Result = NamedTuple("Result", [("exit_code", int), ("activities", Union[None, "Activity", List["Activity"]])])
+
+class Result(NamedTuple):
+    """CLI execution result."""
+
+    exit_code: int
+    activities: Union[None, "Activity", List["Activity"]]
 
 
 @pytest.fixture

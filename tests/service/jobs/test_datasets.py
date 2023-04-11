@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2020-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2020-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -24,7 +23,7 @@ import jwt
 import pytest
 from werkzeug.utils import secure_filename
 
-from renku.core.errors import DatasetExistsError, MigrationRequired, ParameterError
+from renku.core.errors import DatasetExistsError, DatasetNotFound, ParameterError
 from renku.infrastructure.repository import Repository
 from renku.ui.service.jobs.cleanup import cache_project_cleanup
 from renku.ui.service.jobs.datasets import dataset_add_remote_file, dataset_import
@@ -363,8 +362,7 @@ def test_delay_add_file_job_failure(svc_client_cache, it_remote_repo_url_temp_br
 
     from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
-    with pytest.raises(MigrationRequired):
-        delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
+    delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
 
 @pytest.mark.parametrize("doi", ["10.5281/zenodo.3761586"])
@@ -472,15 +470,14 @@ def test_delay_create_dataset_failure(svc_client_cache, it_remote_repo_url_temp_
 
     from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
-    with pytest.raises(MigrationRequired):
-        delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
+    delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
 
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
 def test_delay_remove_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
-    """Create a dataset was removed successfully."""
+    """Check a dataset was removed successfully."""
     from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
     from renku.ui.service.serializers.datasets import DatasetRemoveRequest
 
@@ -513,7 +510,7 @@ def test_delay_remove_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
 @pytest.mark.integration
 @retry_failed
 def test_delay_remove_dataset_job_failure(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
-    """Create a dataset was removed successfully."""
+    """Check removing missing dataset fails."""
     from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
     from renku.ui.service.serializers.datasets import DatasetRemoveRequest
 
@@ -536,7 +533,7 @@ def test_delay_remove_dataset_job_failure(svc_client_cache, it_remote_repo_url_t
         user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
     )
 
-    with pytest.raises(MigrationRequired):
+    with pytest.raises(DatasetNotFound):
         delayed_ctrl_job(context, view_user_data, delete_job.job_id, renku_module, renku_ctrl)
 
 
@@ -609,8 +606,7 @@ def test_delay_edit_dataset_job_failure(svc_client_cache, it_remote_repo_url_tem
 
     from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
-    with pytest.raises(MigrationRequired):
-        delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
+    delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
 
 @pytest.mark.service
@@ -676,8 +672,7 @@ def test_delay_unlink_dataset_job_failure(svc_client_cache, it_remote_repo_url_t
 
     from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
-    with pytest.raises(MigrationRequired):
-        delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
+    delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
 
 @pytest.mark.service

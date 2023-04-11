@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +23,7 @@ from renku.command.command_builder import inject
 from renku.command.view_model.project import ProjectViewModel
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.util.metadata import construct_creator
-from renku.core.util.util import NO_VALUE, NoValueType
+from renku.domain_model.constant import NO_VALUE, NoValueType
 from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.agent import Person
 

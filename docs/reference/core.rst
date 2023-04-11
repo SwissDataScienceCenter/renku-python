@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2023 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -256,11 +256,11 @@ Utilities
    :members:
    :show-inheritance:
 
-.. automodule:: renku.core.util.file_size
+.. automodule:: renku.core.util.git
    :members:
    :show-inheritance:
 
-.. automodule:: renku.core.util.git
+.. automodule:: renku.core.util.jwt
    :members:
    :show-inheritance:
 
@@ -280,15 +280,19 @@ Utilities
    :members:
    :show-inheritance:
 
+.. automodule:: renku.core.util.ssh
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.util.tabulate
+   :members:
+   :show-inheritance:
+
 .. automodule:: renku.core.util.urls
    :members:
    :show-inheritance:
 
 .. automodule:: renku.core.util.util
-   :members:
-   :show-inheritance:
-
-.. automodule:: renku.core.util.uuid
    :members:
    :show-inheritance:
 

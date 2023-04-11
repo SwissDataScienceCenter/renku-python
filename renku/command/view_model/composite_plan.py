@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +36,14 @@ if TYPE_CHECKING:
     from renku.command.view_model.plan import PlanViewModel
 
 
-ParameterReference = NamedTuple("ParameterReference", [("id", str), ("plan_id", str), ("type", str), ("name", str)])
+class ParameterReference(NamedTuple):
+    """Reference to a workflow parameter."""
+
+    id: str
+    plan_id: str
+    type: str
+    name: str
+
 
 parameter_type_mapping: Dict[type, str] = {
     CommandInput: "Input",

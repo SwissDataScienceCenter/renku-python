@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,11 +37,30 @@ def get_relative_path_to_cwd(path: Union[Path, str]) -> str:
     return os.path.relpath(absolute_path, os.getcwd())
 
 
+def get_expanded_user_path(path: Union[Path, str]) -> str:
+    """Expand the path if it starts with ``~``."""
+    return "" if not path else os.path.expanduser(path)
+
+
 def get_absolute_path(
-    path: Union[Path, str], base: Optional[Union[Path, str]] = None, resolve_symlinks: bool = False
+    path: Union[Path, str], base: Optional[Union[Path, str]] = None, resolve_symlinks: bool = False, expand: bool = True
 ) -> str:
-    """Return absolute normalized path."""
+    """Return absolute normalized path.
+
+    Args:
+        path(Union[Path, str]): Path to get its absolute.
+        base(Union[Path, str]): Base path to get absolute path from it.
+        resolve_symlinks(bool): Whether to keep or resolve symlinks.
+        expand(bool): Whether to expand ``~`` or not (Default value = True)
+
+    Returns:
+        str: Absolute path.
+    """
+    if expand:
+        path = get_expanded_user_path(path)
     if base is not None:
+        if expand:
+            base = get_expanded_user_path(base)
         base = Path(base).resolve() if resolve_symlinks else os.path.abspath(base)
         path = os.path.join(base, path)
 
@@ -68,7 +85,7 @@ def get_safe_relative_path(path: Union[Path, str], base: Union[Path, str]) -> Pa
 
 
 def get_relative_path(path: Union[Path, str], base: Union[Path, str], strict: bool = False) -> Optional[str]:
-    """Return a relative path to the base if path is within base with/without resolving symlinks."""
+    """Return a relative path to the base if path is within base without resolving symlinks."""
     try:
         absolute_path = get_absolute_path(path=path, base=base)
         return str(Path(absolute_path).relative_to(base))
@@ -137,11 +154,11 @@ def is_path_empty(path: Union[Path, str]) -> bool:
     return not any(subpaths)
 
 
-def create_symlink(path: Union[Path, str], symlink_path: Union[Path, str], overwrite: bool = True) -> None:
-    """Create a symlink that points from symlink_path to path."""
+def create_symlink(target: Union[Path, str], symlink_path: Union[Path, str], overwrite: bool = True) -> None:
+    """Create a symlink that points from symlink_path to target."""
     # NOTE: Don't resolve symlink path
     absolute_symlink_path = get_absolute_path(symlink_path)
-    absolute_path = get_absolute_path(path, resolve_symlinks=True)
+    absolute_path = get_absolute_path(target, resolve_symlinks=True)
 
     Path(absolute_symlink_path).parent.mkdir(parents=True, exist_ok=True)
 
@@ -150,7 +167,7 @@ def create_symlink(path: Union[Path, str], symlink_path: Union[Path, str], overw
             delete_path(absolute_symlink_path)
         os.symlink(absolute_path, absolute_symlink_path)
     except OSError:
-        raise errors.InvalidFileOperation(f"Cannot create symlink from '{symlink_path}' to '{path}'")
+        raise errors.InvalidFileOperation(f"Cannot create symlink from '{symlink_path}' to '{target}'")
 
 
 def delete_path(path: Union[Path, str]) -> None:
@@ -168,7 +185,7 @@ def unmount_path(path: Union[Path, str]) -> None:
 
     def execute_command(*command: str) -> bool:
         try:
-            subprocess.run(command, check=True, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(command, check=True, text=True, capture_output=True)
         except (subprocess.CalledProcessError, FileNotFoundError):
             return False
         else:
@@ -193,6 +210,15 @@ def unmount_path(path: Union[Path, str]) -> None:
 def is_ascii(data):
     """Check if provided string contains only ascii characters."""
     return len(data) == len(data.encode())
+
+
+def get_file_size(path: Union[Path, str], follow_symlinks: bool = True) -> Optional[int]:
+    """Return size of a file in bytes."""
+    path = Path(path).resolve() if follow_symlinks else Path(path)
+    try:
+        return path.stat().st_size
+    except OSError:
+        return None
 
 
 def normalize_to_ascii(input_string, sep="-"):
@@ -313,3 +339,49 @@ def expand_directories(paths):
             else:
                 processed_paths.add(matched_path)
                 yield matched_path
+
+
+UNITS = {
+    "b": 1,
+    "kb": 1000,
+    "mb": 1000**2,
+    "gb": 1000**3,
+    "tb": 1000**4,
+    "m": 1000**2,
+    "g": 1000**3,
+    "t": 1000**4,
+    "p": 1000**5,
+    "e": 1000**6,
+    "z": 1000**7,
+    "y": 1000**8,
+    "ki": 1024,
+    "mi": 1024**2,
+    "gi": 1024**3,
+    "ti": 1024**4,
+    "pi": 1024**5,
+    "ei": 1024**6,
+    "zi": 1024**7,
+    "yi": 1024**8,
+}
+
+
+def parse_file_size(size_str):
+    """Parse a human readable file size to bytes."""
+    res = re.search(r"([0-9.]+)([a-zA-Z]{1,2})", size_str)
+    if not res or res.group(2).lower() not in UNITS:
+        raise ValueError(
+            "Supplied file size does not contain a unit. " "Valid units are: {}".format(", ".join(UNITS.keys()))
+        )
+
+    value = float(res.group(1))
+    unit = UNITS[res.group(2).lower()]
+
+    return int(value * unit)
+
+
+def bytes_to_unit(size_in_bytes, unit: str) -> Optional[float]:
+    """Return size in the provided unit."""
+    unit = unit.lower()
+    if unit not in UNITS:
+        raise ValueError(f"Invalid unit '{unit}'. Valid units are: [{', '.join(UNITS)}]")
+    return None if size_in_bytes is None else size_in_bytes / UNITS[unit]
