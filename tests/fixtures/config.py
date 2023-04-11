@@ -24,6 +24,9 @@ import pytest
 IT_REMOTE_REPO_URL = os.getenv(
     "IT_REMOTE_REPOSITORY", "https://gitlab.dev.renku.ch/renku-python-integration-tests/core-integration-test"
 )
+IT_REMOTE_OLD_REPO_URL = os.getenv(
+    "IT_REMOTE_REPOSITORY", "https://gitlab.dev.renku.ch/renku-python-integration-tests/core-integration-test-old"
+)
 IT_PROTECTED_REMOTE_REPO_URL = os.getenv(
     "IT_PROTECTED_REMOTE_REPO", "https://gitlab.dev.renku.ch/renku-python-integration-tests/core-it-protected.git"
 )

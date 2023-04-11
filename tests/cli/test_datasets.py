@@ -1440,6 +1440,7 @@ def test_dataset_provider_resolution_zenodo(doi_responses, uri):
     ],
 )
 @pytest.mark.integration
+@pytest.mark.shaky
 def test_dataset_provider_resolution_dataverse(doi_responses, uri):
     """Check that dataverse URIs resolve to ``DataverseProvider``."""
     provider = ProviderFactory.get_import_provider(uri)

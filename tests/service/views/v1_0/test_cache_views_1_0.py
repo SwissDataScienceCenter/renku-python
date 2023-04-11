@@ -22,6 +22,7 @@ import pytest
 
 @pytest.mark.service
 @pytest.mark.integration
+@pytest.mark.remote_repo("old")
 def test_execute_migrations_1_0(svc_client_setup):
     """Check execution of all migrations."""
     svc_client, headers, project_id, _, _ = svc_client_setup

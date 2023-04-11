@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -228,7 +227,9 @@ def update_template(force: bool, interactive: bool, dry_run: bool) -> Optional[T
         input_parameters=None,
     )
 
-    return TemplateChangeViewModel.from_template(template=rendered_template, actions=actions)
+    return TemplateChangeViewModel.from_template(
+        template=rendered_template, actions=actions, old_id=template_metadata.id
+    )
 
 
 @inject.autoparams("project_gateway")

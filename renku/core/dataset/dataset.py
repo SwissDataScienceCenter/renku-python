@@ -1304,7 +1304,7 @@ def download_file(file: DatasetFile, storage: "IStorage") -> List[DatasetFile]:
         raise errors.DatasetImportError(f"Dataset file doesn't have a URI: {file.entity.path}")
 
     path = project_context.path / file.entity.path
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path.resolve().parent.mkdir(parents=True, exist_ok=True)
 
     # NOTE: Don't check if destination file exists. ``IStorage.copy`` won't copy a file if it exists and is not
     # modified.
