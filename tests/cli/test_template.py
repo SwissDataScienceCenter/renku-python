@@ -480,3 +480,17 @@ def test_template_dockerfile_checksum_update(runner, project, with_injection):
 
         assert not project.repository.is_dirty()
         assert __version__ in dockerfile.read_text()
+
+
+def test_template_update_with_renames(runner, project_with_template, templates_source, with_injection):
+    """Test updating a renamed template."""
+    templates_source.rename(id="dummy", new_name="new-name", version="2.2.42")
+
+    result = runner.invoke(cli, ["template", "update"])
+
+    assert result.exit_code == 0, result.output
+
+    with with_injection():
+        assert "2.2.42" == project_context.project.template_metadata.template_ref
+        assert "new-name" == project_context.project.template_metadata.template_id
+        assert not project_with_template.repository.is_dirty()

@@ -1,6 +1,5 @@
-#
-# Copyright 2021 Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -119,20 +118,17 @@ def cloud_storage_credentials(project):
 
 
 @pytest.fixture
-def shared_external_cloud_storage(directory_tree) -> str:
-    """Path to a directory to be used with an external cloud storage provider.
+def external_cloud_storage(directory_tree, fake_home) -> str:
+    """Path to a directory to be used with an external cloud storage provider."""
+    external_storage = fake_home / "external" / "cloud" / "storage"
 
-    NOTE: Since the directory is shared, tests that use it (even for only reading) should run in serial.
-    """
-    from tests.constant import SHARED_EXTERNAL_CLOUD_STORAGE
-
-    shutil.rmtree(SHARED_EXTERNAL_CLOUD_STORAGE, ignore_errors=True)
-    shutil.copytree(directory_tree.as_posix(), SHARED_EXTERNAL_CLOUD_STORAGE)
+    shutil.rmtree(external_storage, ignore_errors=True)
+    shutil.copytree(directory_tree, external_storage)
 
     try:
-        yield SHARED_EXTERNAL_CLOUD_STORAGE
+        yield external_storage.as_posix()
     finally:
-        shutil.rmtree(SHARED_EXTERNAL_CLOUD_STORAGE, ignore_errors=True)
+        shutil.rmtree(external_storage, ignore_errors=True)
 
 
 @pytest.fixture
