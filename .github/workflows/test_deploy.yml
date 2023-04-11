@@ -6,6 +6,7 @@ on:
       - master
       - develop
       - "release/**" # Or else PRs created by the PR action don't execute tests
+      - "hotfix/**"
     tags:
       - "v*.*.*"
   pull_request:
