@@ -547,7 +547,7 @@ jobs:
         id: pre-release-version
         run: |
           renku_version=$(renku --version)
-          rc=$(curl -s https://pypi.org/pypi/renku/json | jq ".releases | keys_unsorted | map(select( . | startswith(\"$renku_version\"))) | map(match(\"[0-9]+\\\\.[0-9]+\\\\.[0-9]+(rc([0-9]+))?\").captures[1].string // 0) | max | tonumber + 1")
+          rc=$(curl -s https://pypi.org/pypi/renku/json | jq ".releases | keys_unsorted | map(select( . | startswith(\"$renku_version\"))) | map(match(\"[0-9]+\\\\.[0-9]+\\\\.[0-9]+(rc([0-9]+))?\").captures[1].string // 0) | max // 0 | tonumber + 1")
           echo "RELEASE_VERSION=${renku_version}rc${rc}" >> "$GITHUB_OUTPUT"
       - name: Build and publish to pypi
         env:
@@ -561,25 +561,6 @@ jobs:
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
           POETRY_DYNAMIC_VERSIONING_BYPASS: ${{ steps.pre-release-version.outputs.RELEASE_VERSION  }}
         run: make publish-lock-package
-
-  update-develop-branch:
-    runs-on: ubuntu-latest
-    if: "startsWith(github.ref, 'refs/tags/')"
-    steps:
-      - uses: actions/checkout@v3.3.0
-        with:
-          fetch-depth: 0
-          ref: "develop"
-      - name: Set Git config
-        run: |
-          git config --global --add user.name "Renku Bot"
-          git config --global --add user.email "renku@datascience.ch"
-      - name: merge changes from master
-        env:
-          GITHUB_TOKEN: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
-        run: |
-          git merge origin/master --message "Merge branch 'master' into develop"
-          git push
 
   build-images:
     runs-on: ubuntu-latest
