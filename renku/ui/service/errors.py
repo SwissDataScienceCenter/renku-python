@@ -301,6 +301,17 @@ class UserNonRenkuProjectError(ServiceError):
         super().__init__(exception=exception)
 
 
+class UserProjectMetadataCorruptError(ServiceError):
+    """The target repository is valid but it is not a Renku project."""
+
+    code = SVC_ERROR_USER + 120
+    userMessage = "The target project is not a Renku project."
+    devMessage = "Cannot work on a non Renku project."
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
+
+
 class UserDatasetsMultipleImagesError(ServiceError):
     """Multiple images dataset have the same priority."""
 

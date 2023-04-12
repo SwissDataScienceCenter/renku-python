@@ -833,7 +833,10 @@ class Storage:
                 with self.zstd_decompressor.stream_reader(file) as zfile:
                     data = json.load(zfile)
             else:
-                data = json.load(file)
+                try:
+                    data = json.load(file)
+                except json.JSONDecodeError:
+                    raise errors.MetadataCorruptError(path)
         return data
 
 

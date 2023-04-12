@@ -33,6 +33,7 @@ from renku.core.errors import (
     GitCommandError,
     GitError,
     InvalidTemplateError,
+    MetadataCorruptError,
     MigrationError,
     MigrationRequired,
     MinimumVersionError,
@@ -73,6 +74,7 @@ from renku.ui.service.errors import (
     UserNonRenkuProjectError,
     UserOutdatedProjectError,
     UserProjectCreationError,
+    UserProjectMetadataCorruptError,
     UserProjectTemplateReferenceError,
     UserRepoBranchInvalidError,
     UserRepoNoAccessError,
@@ -146,6 +148,8 @@ def handle_renku_except(f):
         """Represents decorated function."""
         try:
             return f(*args, **kwargs)
+        except MetadataCorruptError as e:
+            raise UserProjectMetadataCorruptError(e)
         except MigrationRequired as e:
             raise UserOutdatedProjectError(e)
         except UninitializedProject as e:
