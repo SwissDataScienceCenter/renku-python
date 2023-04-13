@@ -131,9 +131,9 @@ def _dockerfile_migration_check():
         Dictionary of Dockerfile migration status.
     """
     from renku import __version__
-    from renku.core.migration.migrate import is_docker_update_possible
+    from renku.core.migration.migrate import update_dockerfile
 
-    automated_dockerfile_update, newer_renku_available, dockerfile_renku_version = is_docker_update_possible()
+    automated_dockerfile_update, newer_renku_available, dockerfile_renku_version = update_dockerfile()
 
     return {
         "automated_dockerfile_update": automated_dockerfile_update,
@@ -194,14 +194,13 @@ def _check_project():
             # NOTE: v10 migration not done
             return MIGRATION_REQUIRED
 
-    # NOTE: ``project.automated_update`` is deprecated and we always allow template update for a project
+    # NOTE: ``project.automated_update`` is deprecated. We always allow template update for a project
     status = AUTOMATED_TEMPLATE_UPDATE_SUPPORTED
 
     if check_for_template_update(project_context.project)[0]:
         status |= TEMPLATE_UPDATE_POSSIBLE
-    if is_docker_update_possible()[0]:
+    if is_docker_update_possible():
         status |= DOCKERFILE_UPDATE_POSSIBLE
-
     if is_migration_required():
         return status | MIGRATION_REQUIRED
 

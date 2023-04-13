@@ -156,6 +156,7 @@ class TemplateChangeViewModel:
             FileAction.KEEP: "Keep",
             FileAction.OVERWRITE: "Overwrite",
             FileAction.RECREATE: "Recreate deleted file",
+            FileAction.DOCKERFILE: "Update",
         }
 
         file_changes = [
