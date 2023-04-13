@@ -263,7 +263,7 @@ jobs:
           CLOUD_STORAGE_S3_SECRET_ACCESS_KEY: ${{ secrets.CLOUD_STORAGE_S3_SECRET_ACCESS_KEY }}
         run: pytest -m "integration and not shaky and not service and not serial" -v --timeout=600 -n auto
       - name: Start Redis
-        uses: supercharge/redis-github-action@1.4.0
+        uses: supercharge/redis-github-action@1.5.0
       - name: Test with pytest (serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -314,7 +314,7 @@ jobs:
           CLOUD_STORAGE_S3_SECRET_ACCESS_KEY: ${{ secrets.CLOUD_STORAGE_S3_SECRET_ACCESS_KEY }}
         run: pytest -m "integration and shaky and not service and not serial" -v --timeout=600 -n auto
       - name: Start Redis
-        uses: supercharge/redis-github-action@1.4.0
+        uses: supercharge/redis-github-action@1.5.0
       - name: Test with pytest (serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -520,7 +520,7 @@ jobs:
           CLOUD_STORAGE_S3_SECRET_ACCESS_KEY: ${{ secrets.CLOUD_STORAGE_S3_SECRET_ACCESS_KEY }}
         run: pytest -m "integration and not serial" -v
       - name: Start Redis
-        uses: supercharge/redis-github-action@1.4.0
+        uses: supercharge/redis-github-action@1.5.0
       - name: Test with pytest (serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -576,7 +576,7 @@ jobs:
         test-macos-service,
       ]
     steps:
-      - uses: actions/checkout@v3.3.0
+      - uses: actions/checkout@v3.5.0
         with:
           fetch-depth: 0
       - name: Build images
@@ -606,7 +606,7 @@ jobs:
       ]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - uses: actions/checkout@v3.3.0
+      - uses: actions/checkout@v3.5.0
         with:
           fetch-depth: 0
       - name: Set up environment variables
