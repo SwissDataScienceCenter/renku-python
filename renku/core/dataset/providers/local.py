@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional
 
 from renku.core import errors
+from renku.core.config import get_value
 from renku.core.dataset.providers.api import (
     AddProviderInterface,
     ExporterApi,
@@ -114,14 +115,30 @@ class LocalProvider(ProviderApi, AddProviderInterface, ExportProviderInterface):
         if flags > 1:
             raise errors.ParameterError("--move, --copy and --link are mutually exclusive.")
 
-        prompt_action = True if flags == 0 else False
+        prompt_action = False
 
         if move:
             default_action = DatasetAddAction.MOVE
         elif link:
             default_action = DatasetAddAction.SYMLINK
-        else:
+        elif copy:
             default_action = DatasetAddAction.COPY
+        else:
+            prompt_action = True
+            action = get_value("renku", "default_dataset_add_action")
+            if action:
+                prompt_action = False
+                if action.lower() == "copy":
+                    default_action = DatasetAddAction.COPY
+                elif action.lower() == "move":
+                    default_action = DatasetAddAction.MOVE
+                else:
+                    raise errors.ParameterError(
+                        f"Invalid default action for adding to datasets in Renku config: '{action}'. "
+                        "Valid values are 'copy' and 'move'."
+                    )
+            else:
+                default_action = DatasetAddAction.COPY
 
         ends_with_slash = False
         u = urllib.parse.urlparse(uri)
@@ -161,6 +178,9 @@ class LocalProvider(ProviderApi, AddProviderInterface, ExportProviderInterface):
         def get_file_metadata(src: Path) -> DatasetAddMetadata:
             in_datadir = is_subpath(src, destination)
 
+            if not is_subpath(src, project_context.path) and link:
+                raise errors.ParameterError(f"Cannot use '--link' for files outside of project: '{uri}'")
+
             relative_path = src.relative_to(source_root)
             dst = destination_root / relative_path
 
@@ -195,8 +215,9 @@ class LocalProvider(ProviderApi, AddProviderInterface, ExportProviderInterface):
 
         if not force and prompt_action:
             communication.confirm(
-                f"The following files will be copied to {destination.relative_to(project_context.path)} "
-                "(use '--move' or '--link' to move or symlink them instead, '--copy' to not show this warning):\n\t"
+                f"The following files will be copied to {destination.relative_to(project_context.path)}:\n\t"
+                "(use '--move' or '--link' to move or symlink them instead, '--copy' to not show this warning).\n\t"
+                "(run 'renku config set renku.default_dataset_add_action copy' to make copy the default action).\n\t"
                 + "\n\t".join(str(e.source) for e in results)
                 + "\nProceed?",
                 abort=True,
