@@ -149,7 +149,7 @@ def handle_renku_except(f):
         try:
             return f(*args, **kwargs)
         except MetadataCorruptError as e:
-            raise UserProjectMetadataCorruptError(e)
+            raise UserProjectMetadataCorruptError(e, str(e))
         except MigrationRequired as e:
             raise UserOutdatedProjectError(e)
         except UninitializedProject as e:
