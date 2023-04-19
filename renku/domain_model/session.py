@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
@@ -30,10 +31,24 @@ if TYPE_CHECKING:
 class Session:
     """Interactive session."""
 
-    def __init__(self, id: str, status: str, url: str, ssh_enabled: bool = False):
+    def __init__(
+        self,
+        id: str,
+        status: str,
+        url: str,
+        commit: str,
+        branch: str,
+        provider: str,
+        start_time: datetime,
+        ssh_enabled: bool = False,
+    ):
         self.id = id
         self.status = status
         self.url = url
+        self.start_time = start_time
+        self.commit = commit
+        self.branch = branch
+        self.provider = provider
         self.ssh_enabled = ssh_enabled
 
 

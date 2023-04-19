@@ -186,7 +186,7 @@ The command ``renku session stop --all`` will stop all active sessions regardles
 import click
 from lazy_object_proxy import Proxy
 
-from renku.command.format.session import SESSION_FORMATS
+from renku.command.format.session import SESSION_COLUMNS, SESSION_FORMATS
 from renku.command.util import WARNING
 from renku.core import errors
 from renku.ui.cli.utils.callback import ClickCallback
@@ -217,15 +217,23 @@ def session():
     help="YAML file containing configuration for the provider.",
 )
 @click.option(
-    "--format", type=click.Choice(list(SESSION_FORMATS.keys())), default="tabular", help="Choose an output format."
+    "--columns",
+    type=click.STRING,
+    default=None,
+    metavar="<columns>",
+    help="Comma-separated list of column to display: {}.".format(", ".join(SESSION_COLUMNS.keys())),
+    show_default=True,
 )
-def list_sessions(provider, config, format):
+@click.option(
+    "--format", type=click.Choice(list(SESSION_FORMATS.keys())), default="log", help="Choose an output format."
+)
+def list_sessions(provider, config, columns, format):
     """List interactive sessions."""
     from renku.command.session import session_list_command
 
     result = session_list_command().build().execute(provider=provider, config_path=config)
 
-    click.echo(SESSION_FORMATS[format](result.output.sessions))
+    click.echo(SESSION_FORMATS[format](result.output.sessions, columns=columns))
 
     if result.output.warning_messages:
         click.echo()
