@@ -15,15 +15,11 @@ jobs:
           git branch --track dependabot-updates origin/dependabot-updates
           echo "poetry.lock merge=ours" >> .git/info/attributes
           git config merge.ours.driver true
-      - uses: mark-hingston/combine-dependabot-prs@main
+      - uses: github/combine-prs@main
         with:
-          branchPrefix: "dependabot"
-          mustBeGreen: false
-          combineBranchName: "combined-prs"
-          includeLabel: ""
-          ignoreLabel: "nocombine"
-          baseBranch: "develop"
-          openPR: true
-          allowSkipped: false
-          closeOnceCombined: true
-          githubToken: "${{ secrets.RENKUBOT_GITHUB_TOKEN }}"
+          branch_prefix: "dependabot"
+          ci_required: false
+          ignore_label: "nocombine"
+          open_pr: true
+          github_token: "${{ secrets.RENKUBOT_GITHUB_TOKEN }}"
+          pr_title: "chore: combined dependency update"
