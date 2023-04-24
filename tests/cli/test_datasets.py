@@ -702,8 +702,23 @@ def test_add_default_configured_actions(runner, project, directory_tree, action,
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "The following files will be copied to" not in result.output
-    assert source_exists_after == path.exists()
+    assert path.exists() is source_exists_after
     assert (project.path / "data" / "local" / "file1").exists()
+
+
+@pytest.mark.serial
+def test_add_default_configured_link(runner, project, directory_tree):
+    """Test adding data with default ``link`` action should prompt the user."""
+    path = directory_tree / "file1"
+    set_value("renku", "default_dataset_add_action", "link", global_only=True)
+
+    result = runner.invoke(cli, ["dataset", "add", "--create", "local", path], input="y\n")
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "The following files will be copied to" in result.output
+    assert path.exists()
+    assert (project.path / "data" / "local" / "file1").exists()
+    assert not (project.path / "data" / "local" / "file1").is_symlink()
 
 
 @pytest.mark.serial

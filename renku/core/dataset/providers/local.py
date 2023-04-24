@@ -132,10 +132,12 @@ class LocalProvider(ProviderApi, AddProviderInterface, ExportProviderInterface):
                     default_action = DatasetAddAction.COPY
                 elif action.lower() == "move":
                     default_action = DatasetAddAction.MOVE
+                elif action.lower() == "link":
+                    default_action = DatasetAddAction.SYMLINK
                 else:
                     raise errors.ParameterError(
                         f"Invalid default action for adding to datasets in Renku config: '{action}'. "
-                        "Valid values are 'copy' and 'move'."
+                        "Valid values are 'copy', 'link', and 'move'."
                     )
             else:
                 default_action = DatasetAddAction.COPY
@@ -178,9 +180,6 @@ class LocalProvider(ProviderApi, AddProviderInterface, ExportProviderInterface):
         def get_file_metadata(src: Path) -> DatasetAddMetadata:
             in_datadir = is_subpath(src, destination)
 
-            if not is_subpath(src, project_context.path) and link:
-                raise errors.ParameterError(f"Cannot use '--link' for files outside of project: '{uri}'")
-
             relative_path = src.relative_to(source_root)
             dst = destination_root / relative_path
 
@@ -199,6 +198,14 @@ class LocalProvider(ProviderApi, AddProviderInterface, ExportProviderInterface):
             )
 
         destination_root = get_destination_root()
+
+        if not is_subpath(source_root, project_context.path):
+            if link:
+                raise errors.ParameterError(f"Cannot use '--link' for files outside of project: '{uri}'")
+            if default_action == DatasetAddAction.SYMLINK:
+                # NOTE: A default action of 'link' cannot be used for external files
+                action = DatasetAddAction.COPY
+                prompt_action = True
 
         results = []
         if source_root.is_dir():
