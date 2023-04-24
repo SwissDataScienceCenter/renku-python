@@ -15,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service template create project controller."""
+import os
 import shutil
 from typing import Any, Dict, Optional, cast
 
@@ -34,6 +35,8 @@ from renku.ui.service.serializers.templates import ProjectTemplateRequest, Proje
 from renku.ui.service.utils import new_repo_push
 from renku.ui.service.views import result_response
 from renku.version import __version__, is_release
+
+DEFAULT_RENKU_CLI_VERSION = os.environ.get("RENKU_PROJECT_DEFAULT_CLI_VERSION") or __version__
 
 
 class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
@@ -73,7 +76,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
             "__project_description__": self.ctx["project_description"],
         }
         if is_release():
-            metadata["__renku_version__"] = __version__
+            metadata["__renku_version__"] = DEFAULT_RENKU_CLI_VERSION
 
         return metadata
 
