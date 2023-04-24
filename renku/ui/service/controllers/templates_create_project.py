@@ -36,8 +36,6 @@ from renku.ui.service.utils import new_repo_push
 from renku.ui.service.views import result_response
 from renku.version import __version__, is_release
 
-DEFAULT_RENKU_CLI_VERSION = os.environ.get("RENKU_PROJECT_DEFAULT_CLI_VERSION") or __version__
-
 
 class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
     """Template create project controller."""
@@ -75,8 +73,10 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
             "__project_slug__": self.ctx["project_slug"],
             "__project_description__": self.ctx["project_description"],
         }
-        if is_release():
-            metadata["__renku_version__"] = DEFAULT_RENKU_CLI_VERSION
+
+        cli_version = os.environ.get("RENKU_PROJECT_DEFAULT_CLI_VERSION") or __version__
+        if is_release(cli_version):
+            metadata["__renku_version__"] = cli_version
 
         return metadata
 
