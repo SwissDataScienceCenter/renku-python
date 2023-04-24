@@ -603,7 +603,7 @@ def find_renku_section(lines: List[str]) -> Tuple[int, int]:
     return start, end
 
 
-def get_renku_section_from_dockerfile(content: str) -> str:
+def get_renku_section_from_dockerfile(content: str) -> Optional[str]:
     """Return the Renku-specific section of the Dockerfile or the whole Dockerfile if it doesn't exist."""
     lines = [line.rstrip() for line in content.splitlines()]
     start, end = find_renku_section(lines)
@@ -613,7 +613,7 @@ def get_renku_section_from_dockerfile(content: str) -> str:
         lines = [line for line in lines if line]  # NOTE: Remove empty lines
         return "\n".join(lines)
     else:
-        return content
+        return None
 
 
 def calculate_dockerfile_checksum(
@@ -630,7 +630,7 @@ def calculate_dockerfile_checksum(
         raise errors.ParameterError("Cannot pass both Dockerfile and its content")
 
     content = dockerfile_content if dockerfile_content is not None else dockerfile.read_text()  # type: ignore
-    renku_section = get_renku_section_from_dockerfile(content)
+    renku_section = get_renku_section_from_dockerfile(content) or content
     return hash_string(renku_section)
 
 

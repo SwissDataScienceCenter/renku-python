@@ -74,7 +74,7 @@ class FileAction(IntEnum):
     KEEP = 6
     OVERWRITE = 7
     RECREATE = 8
-    DOCKERFILE = 9
+    UPDATE_DOCKERFILE = 9
 
 
 def fetch_templates_source(source: Optional[str], reference: Optional[str]) -> TemplatesSource:
@@ -144,7 +144,7 @@ def copy_template_to_project(
         FileAction.KEEP: ("", "Keeping"),
         FileAction.OVERWRITE: ("copy", "Overwriting"),
         FileAction.RECREATE: ("copy", "Recreating deleted file"),
-        FileAction.DOCKERFILE: ("dockerfile", "Updating"),
+        FileAction.UPDATE_DOCKERFILE: ("dockerfile", "Updating"),
     }
 
     for relative_path, action in get_sorted_actions(actions=actions).items():
@@ -259,7 +259,7 @@ def get_file_actions(
             if is_dockerfile_updated_by_user():
                 raise errors.TemplateUpdateError("Can't update template as Dockerfile was locally changed.")
             else:
-                return FileAction.DOCKERFILE
+                return FileAction.UPDATE_DOCKERFILE
         elif file_deleted or local_changes:
             if relative_path in immutable_files:
                 # NOTE: There are local changes in a file that should not be changed by users, and the file was

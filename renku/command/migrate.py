@@ -133,7 +133,7 @@ def _dockerfile_migration_check():
     from renku import __version__
     from renku.core.migration.migrate import update_dockerfile
 
-    automated_dockerfile_update, newer_renku_available, dockerfile_renku_version = update_dockerfile()
+    automated_dockerfile_update, newer_renku_available, dockerfile_renku_version = update_dockerfile(check_only=True)
 
     return {
         "automated_dockerfile_update": automated_dockerfile_update,

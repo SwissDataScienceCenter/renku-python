@@ -185,7 +185,7 @@ def test_get_file_actions_for_update(project_with_template, rendered_template_wi
     remotely_modified = ".gitignore"
     assert FileAction.OVERWRITE == actions[remotely_modified]
     dockerfile = "Dockerfile"
-    assert FileAction.DOCKERFILE == actions[dockerfile]
+    assert FileAction.UPDATE_DOCKERFILE == actions[dockerfile]
 
 
 def test_template_set_with_locally_modified_dockerfile(
@@ -248,7 +248,7 @@ def test_update_with_safe_modified_dockerfile(project_with_template, rendered_te
             rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
         )
 
-    assert FileAction.DOCKERFILE == actions["Dockerfile"]
+    assert FileAction.UPDATE_DOCKERFILE == actions["Dockerfile"]
 
 
 @pytest.mark.parametrize("delete", [False, True])

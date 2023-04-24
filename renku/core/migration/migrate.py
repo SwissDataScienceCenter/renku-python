@@ -85,7 +85,7 @@ def is_project_unsupported():
 
 def is_docker_update_possible() -> bool:
     """Check if the Dockerfile can be updated to a new version of renku-python."""
-    return update_dockerfile()[0]
+    return update_dockerfile(check_only=True)[0]
 
 
 @inject.autoparams("project_gateway")
@@ -145,7 +145,7 @@ def migrate_project(
 
     if not skip_docker_update:
         try:
-            docker_updated, _, _ = update_dockerfile(check_only=False)
+            docker_updated, _, _ = update_dockerfile()
         except DockerfileUpdateError:
             raise
         except Exception as e:
@@ -209,7 +209,7 @@ def _update_template() -> bool:
     return bool(update_template(interactive=False, force=False, dry_run=False))
 
 
-def update_dockerfile(check_only=True) -> Tuple[bool, Optional[bool], Optional[str]]:
+def update_dockerfile(*, check_only=False) -> Tuple[bool, Optional[bool], Optional[str]]:
     """Update the dockerfile to the newest version of renku."""
     from renku import __version__
 
