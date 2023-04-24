@@ -4457,25 +4457,24 @@ test = ["zope.testing"]
 
 [[package]]
 name = "zc-relation"
-version = "1.1.post2"
+version = "2.0"
 description = "Index intransitive and transitive n-ary relationships."
 category = "main"
 optional = false
-python-versions = "*"
+python-versions = ">=3.7"
 files = [
-    {file = "zc.relation-1.1.post2-py2.py3-none-any.whl", hash = "sha256:57218b4d18e1842eba33b96b53a13004fa2e187bc849887c3150be299e6fc261"},
-    {file = "zc.relation-1.1.post2.tar.gz", hash = "sha256:b1aeb9e97ead0206a210e7f1fe32ae60f43630109e46e2ff40e99294fb892add"},
+    {file = "zc.relation-2.0-py3-none-any.whl", hash = "sha256:41461015747508ca66becddd222838bd6246e2909cc3c9fd922b7e0705da009e"},
+    {file = "zc.relation-2.0.tar.gz", hash = "sha256:73493dcce01b763450483086f047a226e9f5d0dd8b233d7ec602b2ff5deed963"},
 ]
 
 [package.dependencies]
+BTrees = "*"
 setuptools = "*"
-six = "*"
-ZODB3 = ">=3.8dev"
 "zope.interface" = "*"
 "zope.testing" = "*"
 
 [package.extras]
-test = ["zc.relationship (>=2.0c1)"]
+test = ["ZODB", "zc.relationship (>=2)"]
 
 [[package]]
 name = "zconfig"
@@ -4492,53 +4491,6 @@ files = [
 [package.extras]
 docs = ["sphinxcontrib-programoutput"]
 test = ["docutils", "manuel", "zope.exceptions", "zope.testrunner"]
-
-[[package]]
-name = "zdaemon"
-version = "4.4"
-description = "Daemon process control library and tools for Unix-based systems"
-category = "main"
-optional = false
-python-versions = "*"
-files = [
-    {file = "zdaemon-4.4-py2.py3-none-any.whl", hash = "sha256:714b3dd37ab7f9dbc2817258ed9788e0b802be9e872b06b1a38fcd2be50509d5"},
-    {file = "zdaemon-4.4.tar.gz", hash = "sha256:4821e3bdb47387cf1e9255b0444bac437cf72aa0b59d1407b932e31fd4323efc"},
-]
-
-[package.dependencies]
-setuptools = "*"
-ZConfig = "*"
-
-[package.extras]
-test = ["manuel", "mock", "zc.customdoctests", "zope.testing", "zope.testrunner"]
-
-[[package]]
-name = "zeo"
-version = "5.4.0"
-description = "ZEO - Single-server client-server database server for ZODB"
-category = "main"
-optional = false
-python-versions = ">=2.7.9,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*"
-files = [
-    {file = "ZEO-5.4.0-py2.py3-none-any.whl", hash = "sha256:c0a1e38361394d397b5ec8552315a262d4978ac873ed109d81f6687d04178d00"},
-    {file = "ZEO-5.4.0.tar.gz", hash = "sha256:50f640b36a992f66ed58caf55be80faf26deaccd4f02a84caae3c440f6320133"},
-]
-
-[package.dependencies]
-persistent = ">=4.1.0"
-six = "*"
-transaction = ">=2.0.3"
-"zc.lockfile" = "*"
-ZConfig = "*"
-zdaemon = "*"
-ZODB = ">=5.1.1"
-"zope.interface" = "*"
-
-[package.extras]
-docs = ["Sphinx", "repoze.sphinx.autointerface", "sphinx-rtd-theme"]
-msgpack = ["msgpack-python"]
-test = ["ZConfig", "ZODB (>=5.5.1)", "ZopeUndo", "manuel", "mock", "msgpack (<1)", "transaction", "zdaemon", "zope.testing", "zope.testrunner"]
-uvloop = ["uvloop (>=0.5.1)"]
 
 [[package]]
 name = "zipp"
@@ -4580,27 +4532,6 @@ zodbpickle = ">=1.0.1"
 
 [package.extras]
 test = ["manuel", "mock", "zope.testing", "zope.testrunner (>=4.4.6)"]
-
-[[package]]
-name = "zodb3"
-version = "3.11.0"
-description = "ZODB3 - Meta release for ZODB, persistent, BTrees and ZEO"
-category = "main"
-optional = false
-python-versions = "*"
-files = [
-    {file = "ZODB3-3.11.0.tar.gz", hash = "sha256:b5767028e732c619f45c27189dd001e14ec155d7984807991fce751b35b4fcb0"},
-]
-
-[package.dependencies]
-BTrees = ">=4.0.0dev"
-persistent = ">=4.0.0dev"
-transaction = "*"
-ZEO = ">=4.0.0dev"
-ZODB = ">=4.0.0dev"
-
-[package.extras]
-test = ["BTrees[test]", "ZEO[test]", "ZODB[test]", "persistent[test]"]
 
 [[package]]
 name = "zodbpickle"
@@ -4781,4 +4712,4 @@ service = ["apispec", "apispec-webframeworks", "circus", "flask", "gunicorn", "m
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8.1"
-content-hash = "d3b22067733aab0d3779e6b177d388611b6eeff6d4e898de77d9b2a490aa30b0"
+content-hash = "900af454bce20ae96ebe84c7c9f108153e745132c1866e885600081334ebecf6"
