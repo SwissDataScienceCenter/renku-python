@@ -466,14 +466,14 @@ unicode-backport = ["unicodedata2"]
 
 [[package]]
 name = "circus"
-version = "0.17.1"
-description = "Circus is a program that will let you run and watch  multiple processes and sockets."
+version = "0.18.0"
+description = "Circus is a program that will let you run and watch multiple processes and sockets."
 category = "main"
 optional = true
-python-versions = "*"
+python-versions = ">=3.7"
 files = [
-    {file = "circus-0.17.1-py3-none-any.whl", hash = "sha256:ca4cf272654d21bb74718cf6bfd9e05d44140d32685edd357cf0d66e18947983"},
-    {file = "circus-0.17.1.tar.gz", hash = "sha256:7e15dd1ef94f06e1aa00ac0dabe05b9e312633a7e58fa5e2361459e7f915f4c5"},
+    {file = "circus-0.18.0-py3-none-any.whl", hash = "sha256:f3ee4167bea16d34b42bab61440284f3936d2548f5546e70cf79f66daec867b0"},
+    {file = "circus-0.18.0.tar.gz", hash = "sha256:193ce8224e068ced66724cf483106fb6674b51a57583ac1a0e7ed7a7ee8c71ab"},
 ]
 
 [package.dependencies]
@@ -482,7 +482,7 @@ pyzmq = ">=17.0"
 tornado = ">=5.0.2"
 
 [package.extras]
-test = ["PyYAML", "circus-web", "coverage", "flake8 (==2.1.0)", "gevent", "mock", "nose", "nose-cov", "papa", "pyzmq (>=17.0)"]
+test = ["coverage", "flake8 (==2.1.0)", "gevent", "mock", "nose2", "pyyaml", "tox"]
 
 [[package]]
 name = "click"
@@ -4781,4 +4781,4 @@ service = ["apispec", "apispec-webframeworks", "circus", "flask", "gunicorn", "m
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8.1"
-content-hash = "d3b22067733aab0d3779e6b177d388611b6eeff6d4e898de77d9b2a490aa30b0"
+content-hash = "3fecd19912746f9344274acc7e875e5d289a830a4e39bfdaa43decd9c8aba0a6"
