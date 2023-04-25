@@ -19,6 +19,8 @@
 import re
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
@@ -27,7 +29,7 @@ def test_session_up_down(runner, project, dummy_session_provider, monkeypatch):
     """Test starting a session."""
     browser = dummy_session_provider
 
-    result = runner.invoke(cli, ["session", "ls", "-p", "dummy"])
+    result = runner.invoke(cli, ["session", "ls", "-p", "dummy", "--format", "tabular"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert 2 == len(result.output.splitlines())
 
@@ -38,7 +40,7 @@ def test_session_up_down(runner, project, dummy_session_provider, monkeypatch):
 
     session_id = re.findall(r".*(session-random-.*-name).*", result.output, re.MULTILINE)[0]
 
-    result = runner.invoke(cli, ["session", "ls", "-p", "dummy"])
+    result = runner.invoke(cli, ["session", "ls", "-p", "dummy", "--format", "tabular"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert 5 == len(result.output.splitlines())
 
@@ -50,14 +52,14 @@ def test_session_up_down(runner, project, dummy_session_provider, monkeypatch):
     assert 0 == result.exit_code, format_result_exception(result)
     assert "has been successfully stopped" in result.output
 
-    result = runner.invoke(cli, ["session", "ls", "-p", "dummy"])
+    result = runner.invoke(cli, ["session", "ls", "-p", "dummy", "--format", "tabular"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert 4 == len(result.output.splitlines())
 
     result = runner.invoke(cli, ["session", "stop", "-p", "dummy", "-a"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["session", "ls", "-p", "dummy"])
+    result = runner.invoke(cli, ["session", "ls", "-p", "dummy", "--format", "tabular"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert 2 == len(result.output.splitlines())
 
@@ -104,3 +106,23 @@ def test_session_ssh_setup(runner, project, dummy_session_provider, fake_home):
 
     assert "Linking existing keys" in result.output
     assert "Writing SSH config" in result.output
+
+
+@pytest.mark.parametrize(
+    "format,output,length",
+    [
+        ("log", "Url: http://localhost/\nCommit: abcdefg\nBranch: master\nSSH enabled: no", 21),
+        ("tabular", "running   dummy       http://localhost/", 5),
+    ],
+)
+def test_session_list_format(runner, project, dummy_session_provider, format, output, length):
+    """Test session list formats."""
+    for _ in range(3):
+        result = runner.invoke(cli, ["session", "start", "-p", "dummy"])
+        assert 0 == result.exit_code, format_result_exception(result)
+        assert "session-random-" in result.output
+
+    result = runner.invoke(cli, ["session", "ls", "-p", "dummy", "--format", format])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert length == len(result.output.splitlines())
+    assert output in result.output

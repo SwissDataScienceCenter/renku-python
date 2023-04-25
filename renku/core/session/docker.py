@@ -19,6 +19,7 @@
 import os
 import platform
 import webbrowser
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, cast
 from uuid import uuid4
@@ -144,6 +145,10 @@ class DockerSessionProvider(ISessionProvider):
                 lambda x: Session(
                     id=cast(str, x.short_id),
                     status=x.status,
+                    start_time=datetime.fromisoformat(x.labels["start_time"]),
+                    provider="docker",
+                    commit=x.labels["commit"],
+                    branch=x.labels["branch"],
                     url=next(iter(DockerSessionProvider()._get_jupyter_urls(x.ports, x.labels["jupyter_token"]))),
                 ),
                 self._get_docker_containers(project_name),
@@ -247,7 +252,15 @@ class DockerSessionProvider(ISessionProvider):
                     f' --NotebookApp.token="{auth_token}" --NotebookApp.default_url="{default_url}"'
                     f" --NotebookApp.notebook_dir={work_dir}" + (" --allow-root" if os.getuid() != 1000 else ""),
                     detach=True,
-                    labels={"renku_project": project_name, "jupyter_token": auth_token},
+                    labels={
+                        "renku_project": project_name,
+                        "jupyter_token": auth_token,
+                        "commit": project_context.repository.head.commit.hexsha,
+                        "branch": project_context.repository.active_branch.name
+                        if project_context.repository.active_branch
+                        else "master",
+                        "start_time": datetime.now().isoformat(),
+                    },
                     ports={f"{DockerSessionProvider.JUPYTER_PORT}/tcp": kwargs.get("port")},
                     remove=True,
                     environment=environment,
