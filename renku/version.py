@@ -33,7 +33,7 @@ def is_release(version: Optional[str] = None):
     if not version:
         version = __version__
 
-    if re.match(r"\d+.\d+.\d+$", version):
+    if re.match(r"\d+.\d+.\d+(rc\d+)?$", version):
         return True
     return False
 

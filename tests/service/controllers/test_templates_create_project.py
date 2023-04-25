@@ -165,7 +165,7 @@ def test_template_create_project_with_custom_cli_ctrl(
     ctrl_init, svc_cache_dir, svc_client_templates_creation, mocker, monkeypatch
 ):
     """Test template create project controller."""
-    monkeypatch.setenv("RENKU_PROJECT_DEFAULT_CLI_VERSION", "9.9.9")
+    monkeypatch.setenv("RENKU_PROJECT_DEFAULT_CLI_VERSION", "9.9.9rc9")
     from renku.ui.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
 
     cache, user_data = ctrl_init
@@ -186,4 +186,4 @@ def test_template_create_project_with_custom_cli_ctrl(
     )
 
     with open(project_path / "Dockerfile") as f:
-        assert "ARG RENKU_VERSION=9.9.9" in f.read()
+        assert "ARG RENKU_VERSION=9.9.9rc9" in f.read()
