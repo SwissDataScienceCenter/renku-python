@@ -8,7 +8,6 @@ updates:
       prefix: "build(deps): "
       include: "scope"
     target-branch: "develop"
-    open-pull-requests-limit: 0
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
