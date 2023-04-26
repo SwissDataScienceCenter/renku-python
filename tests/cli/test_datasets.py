@@ -725,13 +725,13 @@ def test_add_default_configured_link(runner, project, directory_tree):
 def test_add_default_configured_invalid_action(runner, project, directory_tree):
     """Test adding data with an invalid actions set in Renku configuration file."""
     path = directory_tree / "file1"
-    set_value("renku", "default_dataset_add_action", "link", global_only=True)
+    set_value("renku", "default_dataset_add_action", "invalid", global_only=True)
 
     result = runner.invoke(cli, ["dataset", "add", "--create", "local", path])
 
     assert 2 == result.exit_code, format_result_exception(result)
-    assert "Invalid default action for adding to datasets in Renku config: 'link'." in result.output
-    assert "Valid values are 'copy' and 'move'." in result.output
+    assert "Invalid default action for adding to datasets in Renku config: 'invalid'." in result.output
+    assert "Valid values are 'copy', 'link', and 'move'." in result.output
 
 
 def test_add_an_empty_directory(runner, project, directory_tree):
