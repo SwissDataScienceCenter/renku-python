@@ -1086,12 +1086,17 @@ class ObjectReader:
 
                 # NOTE: we deserialize in the same order as we serialized, so the two stacks here match
                 self._deserialization_cache.append(new_object)
+                cache_index = len(self._deserialization_cache) - 1
 
                 data = self._deserialize_helper(data)
                 assert isinstance(data, dict)
 
                 if "id" in data and data["id"] in self._normal_object_cache:
-                    return self._normal_object_cache[data["id"]]
+                    existing_object = self._normal_object_cache[data["id"]]
+
+                    # NOTE: replace uninitialized object in cache with actual object
+                    self._deserialization_cache[cache_index] = existing_object
+                    return existing_object
 
                 if hasattr(new_object, "__setstate__"):
                     new_object.__setstate__(data)

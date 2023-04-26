@@ -289,8 +289,8 @@ def pull_paths_from_storage(repository: "Repository", *paths):
             absolute_path = Path(path).resolve()
             relative_path = absolute_path.relative_to(project_context.path)
         except ValueError:  # An external file
-            absolute_path = Path(os.path.abspath(path))
-            relative_path = absolute_path.relative_to(project_context.path)
+            continue
+
         project_dict[sub_repository.path].append(shlex.quote(str(relative_path)))
 
     for project_path, file_paths in project_dict.items():
@@ -326,8 +326,7 @@ def clean_storage_cache(*check_paths):
             absolute_path = Path(path).resolve()
             relative_path = absolute_path.relative_to(project_context.path)
         except ValueError:  # An external file
-            absolute_path = Path(os.path.abspath(path))
-            relative_path = absolute_path.relative_to(project_context.path)
+            continue
 
         if project_context.path not in tracked_paths:
             tracked_paths[project_context.path] = list_tracked_paths()
