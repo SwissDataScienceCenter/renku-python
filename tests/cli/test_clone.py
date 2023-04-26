@@ -13,13 +13,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Integration tests for non-dataset CLI command."""
+"""Integration tests for ``renku clone`` command."""
+
 from pathlib import Path
 
 import pytest
 
 from renku.command.clone import project_clone_command
+from renku.core.login import store_token
 from renku.core.util.contexts import chdir
+from renku.infrastructure.repository import Repository
 from renku.ui.cli import cli
 from tests.utils import format_result_exception, retry_failed
 
@@ -27,7 +30,7 @@ from tests.utils import format_result_exception, retry_failed
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.parametrize("url", ["https://gitlab.dev.renku.ch/renku-testing/project-9"])
-def test_renku_clone(runner, monkeypatch, url):
+def test_clone(runner, monkeypatch, url):
     """Test cloning of a Renku repo and existence of required settings."""
     import renku.core.storage
 
@@ -58,7 +61,7 @@ def test_renku_clone(runner, monkeypatch, url):
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.parametrize("url", ["https://gitlab.dev.renku.ch/renku-testing/project-9"])
-def test_renku_clone_with_config(tmp_path, url):
+def test_clone_with_config(tmp_path, url):
     """Test cloning of a Renku repo and existence of required settings."""
     with chdir(tmp_path):
         repository, _ = (
@@ -74,7 +77,7 @@ def test_renku_clone_with_config(tmp_path, url):
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.parametrize("url", ["https://gitlab.dev.renku.ch/renku-testing/project-9"])
-def test_renku_clone_checkout_rev(tmp_path, url):
+def test_clone_checkout_rev(tmp_path, url):
     """Test cloning of a repo checking out a rev with static config."""
     with chdir(tmp_path):
         repository, _ = (
@@ -94,7 +97,7 @@ def test_renku_clone_checkout_rev(tmp_path, url):
 @pytest.mark.integration
 @retry_failed
 @pytest.mark.parametrize("rev,detached", [("test-branch", False), ("my-tag", True)])
-def test_renku_clone_checkout_revs(tmp_path, rev, detached):
+def test_clone_checkout_revs(tmp_path, rev, detached):
     """Test cloning of a Renku repo checking out a rev."""
     with chdir(tmp_path):
         repository, _ = (
@@ -113,7 +116,7 @@ def test_renku_clone_checkout_revs(tmp_path, rev, detached):
 @pytest.mark.integration
 @pytest.mark.parametrize("path,expected_path", [("", "project-9"), (".", "."), ("new-name", "new-name")])
 @retry_failed
-def test_renku_clone_uses_project_name(runner, path, expected_path):
+def test_clone_uses_project_name(runner, path, expected_path):
     """Test renku clone uses project name as target-path by default."""
     remote = "https://gitlab.dev.renku.ch/renku-testing/project-9"
 
@@ -125,7 +128,7 @@ def test_renku_clone_uses_project_name(runner, path, expected_path):
 
 @pytest.mark.integration
 @retry_failed
-def test_renku_clone_private_project_error(runner):
+def test_clone_private_project_error(runner):
     """Test renku clone prints proper error message when a project is private."""
     remote = "git@dev.renku.ch:mohammad.alisafaee/test-private-project.git"
 
@@ -135,3 +138,44 @@ def test_renku_clone_private_project_error(runner):
         assert 0 != result.exit_code
         assert "Please make sure you have the correct access rights" in result.output
         assert "and the repository exists." in result.output
+
+
+def test_clone_does_not_change_remote_when_no_credentials(fake_home, mocker, git_repository, runner):
+    """Test cloning doesn't replace remote URL if no credentials for the hostname exists."""
+
+    def clone_from(url, *_, **__):
+        git_repository.run_git_command("remote", "set-url", "origin", url)
+        return git_repository
+
+    mocker.patch("renku.infrastructure.repository.Repository.clone_from", clone_from)
+
+    result = runner.invoke(cli, ["clone", "https://gitlab.dev.renku.ch/renku-testing/project-9"])
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    with chdir(git_repository.path):
+        repository = Repository()
+
+        assert 1 == len(repository.remotes)
+        assert {"origin"} == {remote.name for remote in repository.remotes}
+        assert repository.remotes["origin"].url.startswith("https://gitlab.dev.renku.ch/renku-testing")
+
+
+def test_clone_changes_remote_when_credentials(fake_home, mocker, git_repository, runner):
+    """Test cloning replaces remote URL if credentials exists for the hostname."""
+    store_token("gitlab.dev.renku.ch", "1234")
+
+    def clone_from(url, *_, **__):
+        git_repository.run_git_command("remote", "set-url", "origin", url)
+        return git_repository
+
+    mocker.patch("renku.infrastructure.repository.Repository.clone_from", clone_from)
+
+    result = runner.invoke(cli, ["clone", "https://gitlab.dev.renku.ch/renku-testing/project-9"])
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    with chdir(git_repository.path):
+        repository = Repository()
+
+        assert 2 == len(repository.remotes)
+        assert {"origin", "renku-backup-origin"} == {remote.name for remote in repository.remotes}
+        assert repository.remotes["origin"].url.startswith("https://dev.renku.ch/repos/renku-testing")
