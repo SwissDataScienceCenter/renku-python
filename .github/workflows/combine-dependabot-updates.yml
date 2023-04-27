@@ -21,6 +21,7 @@ jobs:
         with:
           fetch-depth: 0
           token: "${{ secrets.RENKUBOT_GITHUB_TOKEN }}"
+          ref: ${{ inputs.branch_name }}
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -39,10 +40,11 @@ jobs:
           git config --global --add user.email "renku@datascience.ch"
       - name: Setup local branch and merge tool
         run: |
-          git branch --track "${{ inputs.branch_name }}"  "origin/${{ inputs.branch_name }}" || git checkout "${{ inputs.branch_name }}"
+          git branch --track "${{ inputs.branch_name }}"  "origin/${{ inputs.branch_name }}" || ( git checkout "${{ inputs.branch_name }}" && git branch -u "origin/${{ inputs.branch_name }}" )
+          git pull
           echo "poetry.lock merge=ours" >> .git/info/attributes
           git config merge.ours.driver true
-          git merge --no-edit develop
+          git merge --no-edit "origin/${{ inputs.target_branch }}"
       - name: Merge PRs
         id: merge_prs
         env:
@@ -75,7 +77,8 @@ jobs:
           poetry lock
           git add -A
           git commit -m "update lock file" --no-verify
-          git push origin "${{ inputs.branch_name }}"
+          git status
+          git push
           echo "pr_body=$pr_body" >> $GITHUB_OUTPUT
       - name: Create Pull Request
         uses: actions/github-script@v6
@@ -88,7 +91,7 @@ jobs:
               owner,
               repo,
               head: '${{ inputs.branch_name }}',
-              base: '${{ github.event.inputs.target_branch }}',
+              base: '${{ inputs.target_branch }}',
               body: '${{ steps.merge_prs.outputs.pr_body }}'
             });
             github.rest.issues.addLabels({
