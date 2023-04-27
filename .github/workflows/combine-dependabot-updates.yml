@@ -75,7 +75,7 @@ jobs:
           poetry lock
           git add -A
           git commit -m "update lock file" --no-verify
-          git push
+          git push origin "${{ inputs.branch_name }}"
           echo "pr_body=$pr_body" >> $GITHUB_OUTPUT
       - name: Create Pull Request
         uses: actions/github-script@v6
