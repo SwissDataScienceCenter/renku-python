@@ -132,6 +132,18 @@ def source_template(templates_source_root) -> Template:
             # Docker content
             ARG RENKU_VERSION={{ __renku_version__ | default("0.42.0") }}
             # More content
+            ########################################################
+            #        Renku-specific section - DO NOT MODIFY        #
+            ########################################################
+
+            FROM ${RENKU_BASE_IMAGE} as builder
+
+            RUN specific commands
+
+            ########################################################
+            #              End Renku-specific section              #
+            ########################################################
+            # More content
             """
         )
     )
@@ -179,7 +191,11 @@ def templates_source(request, monkeypatch, templates_source_root, source_templat
 
         for relative_path in template.get_files():
             path = template.path / relative_path
-            path.write_text(f"{path.read_text()}\n{content}")
+
+            if relative_path == "Dockerfile":
+                path.write_text(path.read_text().replace("RUN specific commands", "RUN updated specific commands"))
+            else:
+                path.write_text(f"{path.read_text()}\n{content}")
 
         template.parameters = parameters or []
 
@@ -308,7 +324,7 @@ def rendered_template_with_update(tmp_path, rendered_template):
     (updated_template_root / ".gitignore").write_text(".swp\n.idea")
     (updated_template_root / "requirements.txt").write_text("changed\n")
     dockerfile = updated_template_root / "Dockerfile"
-    dockerfile.write_text(f"{dockerfile.read_text()}\n# Updated Dockerfile")
+    dockerfile.write_text(dockerfile.read_text().replace("RUN specific commands", "RUN updated specific commands"))
     (updated_template_root / "README.md").write_text("""Updated README: {{ __project_description__ }}\n""")
 
     updated_rendered_template = RenderedTemplate(
