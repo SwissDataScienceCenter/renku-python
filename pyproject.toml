@@ -53,7 +53,7 @@ Changelog = "https://github.com/swissdatasciencecenter/renku-python/blob/master/
 [tool.poetry.dependencies]
 python = "^3.8.1"
 appdirs = "<=1.4.4,>=1.4.3"
-attrs = ">=21.1.0,<22.2.0"
+attrs = ">=21.1.0,<23.2.0"
 bashlex = ">=0.16,<0.17"
 calamus = ">=0.3.13,<0.5"
 click = ">=8.0,<8.1.4"
