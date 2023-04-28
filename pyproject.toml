@@ -104,7 +104,7 @@ yagup = ">=0.1.1"
 yaspin = "==2.1.0"
 "zc.relation" = ">=1.1,<2.1"
 zodb = "==5.6.0"
-zstandard = ">=0.16.0,<0.18.0"
+zstandard = ">=0.16.0,<0.22.0"
 
 # service dependencies:
 apispec = { version = ">=4.0.0,<5.3.0", optional = true }
