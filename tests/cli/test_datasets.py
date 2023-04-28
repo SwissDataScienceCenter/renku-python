@@ -669,6 +669,71 @@ def test_add_local_actions(runner, project, action, existing_paths, missing_path
         assert path.is_symlink()
 
 
+@pytest.mark.parametrize("action, source_exists_after", [("--copy", True), ("--move", False)])
+def test_add_non_local_actions(runner, project, directory_tree, action, source_exists_after):
+    """Test adding data outside the project with different actions."""
+    path = directory_tree / "file1"
+
+    result = runner.invoke(cli, ["dataset", "add", action, "--create", "local", path])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert source_exists_after == path.exists()
+    assert (project.path / "data" / "local" / "file1").exists()
+
+
+def test_add_non_local_link_action(runner, project, directory_tree):
+    """Test cannot add and link data outside the project."""
+    path = directory_tree / "file1"
+
+    result = runner.invoke(cli, ["dataset", "add", "--link", "--create", "local", path])
+
+    assert 2 == result.exit_code, format_result_exception(result)
+    assert "Cannot use '--link' for files outside of project:" in result.output
+
+
+@pytest.mark.parametrize("action, source_exists_after", [("copy", True), ("move", False)])
+@pytest.mark.serial
+def test_add_default_configured_actions(runner, project, directory_tree, action, source_exists_after):
+    """Test adding data with different actions set in Renku configuration file."""
+    path = directory_tree / "file1"
+    set_value("renku", "default_dataset_add_action", action, global_only=True)
+
+    result = runner.invoke(cli, ["dataset", "add", "--create", "local", path])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "The following files will be copied to" not in result.output
+    assert path.exists() is source_exists_after
+    assert (project.path / "data" / "local" / "file1").exists()
+
+
+@pytest.mark.serial
+def test_add_default_configured_link(runner, project, directory_tree):
+    """Test adding data with default ``link`` action should prompt the user."""
+    path = directory_tree / "file1"
+    set_value("renku", "default_dataset_add_action", "link", global_only=True)
+
+    result = runner.invoke(cli, ["dataset", "add", "--create", "local", path], input="y\n")
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "The following files will be copied to" in result.output
+    assert path.exists()
+    assert (project.path / "data" / "local" / "file1").exists()
+    assert not (project.path / "data" / "local" / "file1").is_symlink()
+
+
+@pytest.mark.serial
+def test_add_default_configured_invalid_action(runner, project, directory_tree):
+    """Test adding data with an invalid actions set in Renku configuration file."""
+    path = directory_tree / "file1"
+    set_value("renku", "default_dataset_add_action", "invalid", global_only=True)
+
+    result = runner.invoke(cli, ["dataset", "add", "--create", "local", path])
+
+    assert 2 == result.exit_code, format_result_exception(result)
+    assert "Invalid default action for adding to datasets in Renku config: 'invalid'." in result.output
+    assert "Valid values are 'copy', 'link', and 'move'." in result.output
+
+
 def test_add_an_empty_directory(runner, project, directory_tree):
     """Test adding an empty directory to a dataset."""
     path = directory_tree / "empty-directory"

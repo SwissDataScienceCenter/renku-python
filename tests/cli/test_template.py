@@ -350,7 +350,7 @@ def test_template_update_with_parameters_with_defaults(runner, project_with_temp
 
 
 def test_template_set_with_parameters(runner, project_with_template, templates_source, with_injection):
-    """Test template set doesn't prompts for new template parameters when passed on command line."""
+    """Test template set doesn't prompt for new template parameters when passed on command line."""
     parameter = TemplateParameter(name="new-parameter", description="", type="", possible_values=[], default=None)
     templates_source.update(id="dummy", version="2.0.0", parameters=[parameter])
 
@@ -494,3 +494,25 @@ def test_template_update_with_renames(runner, project_with_template, templates_s
         assert "2.2.42" == project_context.project.template_metadata.template_ref
         assert "new-name" == project_context.project.template_metadata.template_id
         assert not project_with_template.repository.is_dirty()
+
+
+@pytest.mark.parametrize("templates_source", ["renku"], indirect=True)
+def test_template_update_with_modified_dockerfile(runner, project_with_template, templates_source, with_injection):
+    """Test template update only updates Dockerfile's Renku-specific section."""
+    dockerfile = project_with_template.path / "Dockerfile"
+
+    write_and_commit_file(
+        project_with_template.repository,
+        "Dockerfile",
+        f"{dockerfile.read_text()}\nRUN local modification outside Renku reserved section",
+    )
+
+    templates_source.update(id="dummy", version="2.0.0")
+
+    result = runner.invoke(cli, ["template", "update"])
+
+    assert result.exit_code == 0, format_result_exception(result)
+
+    assert "RUN local modification outside Renku reserved section" in dockerfile.read_text()
+    assert "RUN updated specific commands" in dockerfile.read_text()
+    assert "RUN specific commands" not in dockerfile.read_text()
