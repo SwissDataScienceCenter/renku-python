@@ -93,6 +93,10 @@ the ``renku config`` command:
 | ``dataverse.server_url``       | URL for the Dataverse API server    | ``None``  |
 |                                | to use                              |           |
 +--------------------------------+-------------------------------------+-----------+
+| ``default_dataset_add_action`` | Default action when adding files to | ``None``  |
+|                                | datasets. Can be either ``copy`` or |           |
+|                                | ``move``.                           |           |
++--------------------------------+-------------------------------------+-----------+
 | ``lfs_threshold``              | Threshold file size below which     | ``100kb`` |
 |                                | files are not added to git LFS      |           |
 +--------------------------------+-------------------------------------+-----------+

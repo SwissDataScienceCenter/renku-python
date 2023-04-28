@@ -41,11 +41,16 @@ from renku.core.template.template import (
 )
 from renku.core.util import communication
 from renku.core.util.metadata import is_renku_project, replace_renku_version_in_dockerfile
-from renku.core.util.os import hash_file, hash_string
 from renku.core.util.tabulate import tabulate
 from renku.domain_model.project import Project
 from renku.domain_model.project_context import project_context
-from renku.domain_model.template import RenderedTemplate, Template, TemplateMetadata, TemplatesSource
+from renku.domain_model.template import (
+    RenderedTemplate,
+    Template,
+    TemplateMetadata,
+    TemplatesSource,
+    calculate_dockerfile_checksum,
+)
 from renku.infrastructure.repository import DiffLineChangeType, Repository
 
 
@@ -89,7 +94,7 @@ def is_dockerfile_updated_by_user() -> bool:
         return False
 
     original_checksum = read_template_checksum().get("Dockerfile")
-    current_checksum = hash_file(dockerfile)
+    current_checksum = calculate_dockerfile_checksum(dockerfile=dockerfile)
 
     if original_checksum == current_checksum:  # Dockerfile was never updated
         return False
@@ -99,7 +104,7 @@ def is_dockerfile_updated_by_user() -> bool:
     original_renku_version = metadata.get("__renku_version__")
 
     original_dockerfile_content = replace_renku_version_in_dockerfile(dockerfile.read_text(), original_renku_version)
-    original_calculated_checksum = hash_string(original_dockerfile_content)
+    original_calculated_checksum = calculate_dockerfile_checksum(dockerfile_content=original_dockerfile_content)
 
     if original_checksum == original_calculated_checksum:
         return False
@@ -186,7 +191,7 @@ def set_template(
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
 def update_template(force: bool, interactive: bool, dry_run: bool) -> Optional[TemplateChangeViewModel]:
-    """Update project's template if possible. Return True if updated."""
+    """Update project's template if possible. Return corresponding viewmodel if updated."""
     template_metadata = TemplateMetadata.from_project(project=project_context.project)
 
     if not template_metadata.source:
