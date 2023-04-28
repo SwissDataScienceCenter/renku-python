@@ -103,7 +103,7 @@ werkzeug = ">=1.0.0,<2.2.4"
 yagup = ">=0.1.1"
 yaspin = "==2.1.0"
 "zc.relation" = ">=1.1,<2.1"
-zodb = "==5.6.0"
+zodb = "==5.8.0"
 zstandard = ">=0.16.0,<0.18.0"
 
 # service dependencies:
