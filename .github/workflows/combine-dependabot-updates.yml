@@ -1,25 +1,102 @@
 name: "Combine Dependabot PRs"
 on:
   workflow_dispatch:
+    inputs:
+      target_branch:
+        description: Target branch to create a release/PR to
+        type: string
+        required: true
+        default: develop
+      branch_name:
+        description: Name of the branch to combine PRs into
+        type: string
+        required: true
+        default: combined-prs-branch
 
 jobs:
   combine-prs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.5.0
+      - uses: actions/checkout@v3.5.2
         with:
           fetch-depth: 0
           token: "${{ secrets.RENKUBOT_GITHUB_TOKEN }}"
+          ref: ${{ inputs.branch_name }}
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+      - name: Install dependencies
+        env:
+          POETRY_VIRTUALENVS_CREATE: "false"
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install poetry
+      - name: Set Git config
+        shell: bash
+        run: |
+          git config --global --add user.name "Renku Bot"
+          git config --global --add user.email "renku@datascience.ch"
       - name: Setup local branch and merge tool
         run: |
-          git branch --track dependabot-updates origin/dependabot-updates
+          git branch --track "${{ inputs.branch_name }}"  "origin/${{ inputs.branch_name }}" || ( git checkout "${{ inputs.branch_name }}" && git branch -u "origin/${{ inputs.branch_name }}" )
+          git pull
           echo "poetry.lock merge=ours" >> .git/info/attributes
           git config merge.ours.driver true
-      - uses: github/combine-prs@main
+          git merge --no-edit "origin/${{ inputs.target_branch }}"
+      - name: Merge PRs
+        id: merge_prs
+        env:
+          POETRY_VIRTUALENVS_CREATE: "false"
+        run: |
+          repo="https://api.github.com/repos/${{ github.repository }}"
+          dependabot_pulls=($(curl -s "$repo/pulls?state=open" | jq -r ".[] | select((.head.ref | test(\"dependabot/\"))) | \"\(.head.ref),\(.number)\""))
+
+          pr_body="# Combined PRs\n✅ The following pull requests have been successfully combined on this PR:\n"
+          failed=()
+
+          for branch in "${dependabot_pulls[@]}"; do
+            branch_arr=(${branch//,/ })
+            echo "Merging branch ${branch_arr[0]}"
+
+            if git merge --no-edit "origin/${branch_arr[0]}"; then
+              pr_body="$pr_body\n- #${branch_arr[1]}"
+            else
+              failed+=(${branch_arr[1]})
+            fi
+          done
+
+          if (( ${#failed[@]} )); then
+            pr_body="$pr_body\n\nFailed to combine:\n"
+
+            for fail in "${failed[@]}"; do
+              pr_body="$pr_body\n- #$fail"
+            done
+          fi
+          poetry lock
+          git add -A
+          git commit -m "update lock file" --no-verify
+          git status
+          git push
+          echo "pr_body=$pr_body" >> $GITHUB_OUTPUT
+      - name: Create Pull Request
+        uses: actions/github-script@v6
         with:
-          branch_prefix: "dependabot"
-          ci_required: false
-          ignore_label: "nocombine"
-          open_pr: true
-          github_token: "${{ secrets.RENKUBOT_GITHUB_TOKEN }}"
-          pr_title: "chore: combined dependency update"
+          token: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
+          script: |
+            const { repo, owner } = context.repo;
+            const result = await github.rest.pulls.create({
+              title: 'chore: combined dependency update',
+              owner,
+              repo,
+              head: '${{ inputs.branch_name }}',
+              base: '${{ inputs.target_branch }}',
+              body: '${{ steps.merge_prs.outputs.pr_body }}'
+            });
+            github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: result.data.number,
+              labels: ['dependencies', 'automated pr']
+            });

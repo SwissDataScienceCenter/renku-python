@@ -371,7 +371,7 @@ def copy_file(file: DatasetAddMetadata, dataset: Dataset, storage: Optional[ISto
     if not file.has_action:
         return []
 
-    # NOTE: If file is in a sub-directory of a dataset's remote storage URI, only update the metadata
+    # NOTE: If file is in a subdirectory of a dataset's remote storage URI, only update the metadata
     if file.from_cloud_storage:
         if dataset.storage and is_uri_subfolder(resolve_uri(dataset.storage), file.url):
             file.action = DatasetAddAction.METADATA_ONLY

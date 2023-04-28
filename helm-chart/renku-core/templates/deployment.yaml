@@ -137,6 +137,8 @@ spec:
               value: {{ $.Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
               value: {{ $.Values.global.renku.domain }}
+            - name: RENKU_PROJECT_DEFAULT_CLI_VERSION
+              value: {{ $.Values.global.renku.cli_version | default "" | quote }}
             {{- include "certificates.env.python" $ | nindent 12 }}
           volumeMounts:
             - name: shared-volume
