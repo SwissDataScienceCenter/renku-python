@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -96,7 +95,7 @@ from renku.ui.cli.utils.plugins import available_workflow_providers
     "provider",
     "-p",
     "--provider",
-    default="cwltool",
+    default="toil",
     show_default=True,
     type=click.Choice(Proxy(available_workflow_providers), case_sensitive=False),
     help="The workflow engine to use.",

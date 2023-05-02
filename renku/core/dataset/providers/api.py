@@ -1,5 +1,5 @@
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,13 +17,13 @@
 
 import abc
 from collections import UserDict
-from enum import IntEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Protocol, Tuple, Type, Union
 
 from renku.core import errors
+from renku.core.constant import ProviderPriority
 from renku.core.plugin import hookimpl
-from renku.core.util.util import NO_VALUE, NoValueType
+from renku.domain_model.constant import NO_VALUE, NoValueType
 from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 
 if TYPE_CHECKING:
@@ -37,28 +37,13 @@ if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset, DatasetTag
 
 
-class ProviderPriority(IntEnum):
-    """Defines the order in which a provider is checked to see if it supports a URI.
-
-    Providers that support more specific URIs should have a higher priority so that they are checked first.
-    """
-
-    HIGHEST = 1
-    HIGHER = 2
-    HIGH = 3
-    NORMAL = 4
-    LOW = 5
-    LOWER = 6
-    LOWEST = 7
-
-
 class ProviderApi(IDatasetProviderPlugin):
     """Interface defining provider methods."""
 
     priority: Optional[ProviderPriority] = None
     name: Optional[str] = None
 
-    def __init__(self, uri: Optional[str], **kwargs):
+    def __init__(self, uri: str, **kwargs):
         self._uri: str = uri or ""
 
     def __init_subclass__(cls, **kwargs):
@@ -96,8 +81,8 @@ class AddProviderInterface(abc.ABC):
         return []
 
     @abc.abstractmethod
-    def add(self, uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
-        """Add files from a URI to a dataset."""
+    def get_metadata(self, uri: str, destination: Path, **kwargs) -> List["DatasetAddMetadata"]:
+        """Get metadata of files that will be added to a dataset."""
         raise NotImplementedError
 
 
@@ -133,6 +118,16 @@ class StorageProviderInterface(abc.ABC):
     """Interface defining backend storage providers."""
 
     @abc.abstractmethod
+    def get_credentials(self) -> "ProviderCredentials":
+        """Return an instance of provider's credential class."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def convert_to_storage_uri(self, uri: str) -> str:
+        """Convert backend-specific URI to a URI that is usable by the IStorage implementation."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def get_storage(self, credentials: Optional["ProviderCredentials"] = None) -> "IStorage":
         """Return the storage manager for the provider."""
         raise NotImplementedError
@@ -140,6 +135,26 @@ class StorageProviderInterface(abc.ABC):
     @abc.abstractmethod
     def on_create(self, dataset: "Dataset") -> None:
         """Hook to perform provider-specific actions on a newly-created dataset."""
+        raise NotImplementedError
+
+    @staticmethod
+    @abc.abstractmethod
+    def supports_storage(uri: str) -> bool:
+        """Whether or not this provider supports a given URI storage."""
+        raise NotImplementedError
+
+
+class CloudStorageProviderType(Protocol):
+    """Intersection type for ``mypy`` hinting in storage classes."""
+
+    @property
+    def uri(self) -> str:
+        """Return provider's URI."""
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def convert_to_storage_uri(self, uri: str) -> str:
+        """Convert backend-specific URI to a URI that is usable by the IStorage implementation."""
         raise NotImplementedError
 
 
@@ -285,10 +300,18 @@ class ProviderCredentials(abc.ABC, UserDict):
 
         return tuple(get_canonical_key(key) for key in self.get_credentials_names())
 
+    def get_canonical_credentials_names_with_no_value(self) -> Tuple[str, ...]:
+        """Return canonical credentials names that can be used as config keys for keys with no valid value."""
+        from renku.core.util.metadata import get_canonical_key
+
+        return tuple(get_canonical_key(key) for key in self.get_credentials_names_with_no_value())
+
     def get_credentials_section_name(self) -> str:
         """Get section name for storing credentials.
 
         NOTE: This methods should be overridden by subclasses to allow multiple credentials per providers if needed.
+        NOTE: Values used in this method shouldn't depend on ProviderCredentials attributes since we don't have those
+        attributes when reading credentials. It's OK to use ProviderApi attributes.
         """
         return self.provider.name.lower()  # type: ignore
 
@@ -302,7 +325,7 @@ class ProviderCredentials(abc.ABC, UserDict):
             value = read_credentials(section=section, key=key)
             return NO_VALUE if value is None else value
 
-        data = {key: read_and_convert_credentials(key) for key in self.get_canonical_credentials_names()}
+        data = {key: read_and_convert_credentials(key) for key in self.get_canonical_credentials_names_with_no_value()}
         self.data.update(data)
 
         return self.data

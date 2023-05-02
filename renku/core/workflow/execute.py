@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,10 +18,11 @@
 
 import itertools
 import re
-from collections import defaultdict
 from functools import reduce
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
+
+from pydantic import validate_arguments
 
 from renku.command.command_builder import inject
 from renku.core import errors
@@ -32,14 +32,15 @@ from renku.core.plugin.provider import execute
 from renku.core.storage import check_external_storage, pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
-from renku.core.util.os import safe_read_yaml
-from renku.core.workflow.concrete_execution_graph import ExecutionGraph
+from renku.core.util.os import is_subpath, safe_read_yaml
+from renku.core.workflow.model.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.plan import is_plan_removed
 from renku.core.workflow.plan_factory import delete_indirect_files_list
 from renku.core.workflow.value_resolution import ValueResolver
 from renku.domain_model.project_context import project_context
-from renku.domain_model.provenance.activity import Activity, ActivityCollection
+from renku.domain_model.provenance.activity import Activity, ActivityCollection, WorkflowFileActivityCollection
 from renku.domain_model.workflow.plan import AbstractPlan
+from renku.domain_model.workflow.workflow_file import WorkflowFileCompositePlan
 
 if TYPE_CHECKING:
     from networkx import DiGraph
@@ -50,8 +51,9 @@ def execute_workflow_graph(
     dag: "DiGraph",
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
-    provider="cwltool",
+    provider="toil",
     config=None,
+    workflow_file_plan: Optional[WorkflowFileCompositePlan] = None,
 ):
     """Execute a Run with/without subprocesses.
 
@@ -59,8 +61,10 @@ def execute_workflow_graph(
         dag(DiGraph): The workflow graph to execute.
         activity_gateway(IActivityGateway): The injected activity gateway.
         plan_gateway(IPlanGateway): The injected plan gateway.
-        provider: Provider to run the workflow with (Default value = "cwltool").
+        provider: Provider to run the workflow with (Default value = "toil").
         config: Path to config for the workflow provider (Default value = None).
+        workflow_file_plan (Optional[WorkflowFileCompositePlan): If passed, a workflow file is executed, so, store
+            related metadata.
     """
     inputs = {i.actual_value for p in dag.nodes for i in p.inputs}
     # NOTE: Pull inputs from Git LFS or other storage backends
@@ -69,9 +73,10 @@ def execute_workflow_graph(
 
     # check whether the none generated inputs of workflows are available
     outputs = {o.actual_value for p in dag.nodes for o in p.outputs}
-    for i in inputs - outputs:
+    inputs = {i for i in inputs if i not in outputs and not any(is_subpath(path=i, base=o) for o in outputs)}
+    for i in inputs:
         if not Path(i).exists():
-            raise errors.ParameterError(f"Input '{i}' for the workflow does not exists!")
+            raise errors.ParameterError(f"Invalid input value: Input '{i}' does not exist!", show_prefix=False)
 
     delete_indirect_files_list(project_context.path)
 
@@ -89,6 +94,11 @@ def execute_workflow_graph(
     for plan in dag.nodes:
         # NOTE: Update plans are copies of Plan objects. We need to use the original Plan objects to avoid duplicates.
         original_plan = plan_gateway.get_by_id(plan.id)
+
+        # NOTE: Workflow files don't have an original plan
+        if not original_plan:
+            original_plan = plan
+
         activity = Activity.from_plan(
             plan=plan,
             repository=project_context.repository,
@@ -99,12 +109,39 @@ def execute_workflow_graph(
         activity_gateway.add(activity)
         activities.append(activity)
 
-    if len(activities) > 1:
+    if workflow_file_plan:
+        activity_collection = WorkflowFileActivityCollection.from_activities(
+            activities=activities, plan=workflow_file_plan
+        )
+        activity_gateway.add_activity_collection(activity_collection)
+    elif len(activities) > 1:
         activity_collection = ActivityCollection(activities=activities)
         activity_gateway.add_activity_collection(activity_collection)
 
 
+def check_for_cycles(graph: ExecutionGraph):
+    """Check for cycles in the graph and raises an error if there are any."""
+    if not graph.cycles:
+        return
+
+    cycles_str = []
+    for cycle in graph.cycles:
+        nodes = []
+        for node in cycle:
+            if isinstance(node, AbstractPlan):
+                nodes.append(f"[{node.name}]")
+            else:
+                cls = node.__class__.__name__.replace("Command", "")
+                nodes.append(f"{cls}: {node.actual_value}")
+        cycles_str.append(" -> ".join(nodes))
+
+    message = "Circular workflows are not supported in Renku. Please remove these cycles:\n\t"
+    message += "\n\t".join(cycles_str)
+    raise errors.GraphCycleError(message=message, cycles=[])
+
+
 @inject.autoparams()
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def execute_workflow(
     name_or_id: str,
     set_params: List[str],
@@ -123,10 +160,6 @@ def execute_workflow(
         values(Optional[str]): Path to YAMl file containing values specified for workflow parameters.
         plan_gateway(IPlanGateway): The plan gateway.
     """
-
-    def _nested_dict():
-        return defaultdict(_nested_dict)
-
     workflow = plan_gateway.get_by_name_or_id(name_or_id)
 
     if is_plan_removed(workflow):
@@ -162,11 +195,11 @@ def execute_workflow(
 
 
 def _extract_iterate_parameters(values: Dict[str, Any], index_pattern: re.Pattern, tag_separator: str = "@"):
-    """Recursively extracts the iteration paramaters from the workflow values given by the user.
+    """Recursively extracts the iteration parameters from the workflow values given by the user.
 
     Args:
         values(Dict[str, Any]): Plan values to iterate over.
-        index_pattern(re.Pattern): Pattern for parameter indizes.
+        index_pattern(re.Pattern): Pattern for parameter indexes.
         tag_separator(str, optional): Separator for tagged values (Default value = "@").
 
     Returns:
@@ -209,7 +242,7 @@ def _extract_iterate_parameters(values: Dict[str, Any], index_pattern: re.Patter
                 if tag in iter_params["tagged"]:
                     iter_params["tagged"][tag].update([(f"{param_name}.{ik}", iv) for ik, iv in param.items()])
                 else:
-                    iter_params["tagged"][tag] = dict([(f"{param_name}.{ik}", iv) for ik, iv in param.items()])
+                    iter_params["tagged"][tag] = {f"{param_name}.{ik}": iv for ik, iv in param.items()}
             params[param_name] = inner_params
         else:
             params[param_name] = param_value
@@ -312,8 +345,7 @@ def _build_iterations(
     def _flatten(values):
         for i in values:
             if isinstance(i, (list, tuple)):
-                for k in i:
-                    yield k
+                yield from i
             else:
                 yield i
 
@@ -339,9 +371,10 @@ def _build_iterations(
 
 
 @inject.autoparams()
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def iterate_workflow(
     name_or_id: str,
-    mapping_path: str,
+    mapping_path: Optional[str],
     mappings: List[str],
     dry_run: bool,
     provider: str,
@@ -373,14 +406,14 @@ def iterate_workflow(
     if is_plan_removed(workflow):
         raise errors.ParameterError(f"The specified workflow '{name_or_id}' cannot be found.")
 
-    TAG_SEPARATOR = "@"
+    tag_separator = "@"
     index_pattern = re.compile(r"{iter_index}")
 
-    iter_params: Optional[Dict[str, Any]] = {"indexed": {}, "params": {}, "tagged": {}}
+    iter_params: Dict[str, Any] = {"indexed": {}, "params": {}, "tagged": {}}
     workflow_params = {}
     if mapping_path:
         mapping = safe_read_yaml(mapping_path)
-        iter_params, workflow_params = _extract_iterate_parameters(mapping, index_pattern, tag_separator=TAG_SEPARATOR)
+        iter_params, workflow_params = _extract_iterate_parameters(mapping, index_pattern, tag_separator=tag_separator)
 
     for m in mappings:
         param_name, param_value = m.split("=", maxsplit=1)
@@ -388,42 +421,42 @@ def iterate_workflow(
             iter_params["indexed"][param_name] = param_value  # type: ignore
         else:
             try:
-                param_value = ast.literal_eval(param_value)
+                evaluated_param_value = ast.literal_eval(param_value)
             except Exception:
                 raise errors.ParameterError(
                     f"The value of '{param_name}' parameter is neither a list nor templated variable!"
                 )
 
-            if isinstance(param_value, list) and len(param_value) == 1:
+            if isinstance(evaluated_param_value, list) and len(evaluated_param_value) == 1:
                 communication.warn(
                     f"The parameter '{param_name}' has only one element '{param_value}', "
                     "changing it to be a fixed parameter!"
                 )
                 workflow_params[param_name] = param_value[0]
                 continue
-            elif not isinstance(param_value, list):
+            elif not isinstance(evaluated_param_value, list):
                 workflow_params[param_name] = param_value
                 continue
 
-            if TAG_SEPARATOR in param_name:
-                name, tag = param_name.split(TAG_SEPARATOR, maxsplit=1)
+            if tag_separator in param_name:
+                name, tag = param_name.split(tag_separator, maxsplit=1)
                 if tag in iter_params["tagged"]:
-                    iter_params["tagged"][tag][name] = param_value
+                    iter_params["tagged"][tag][name] = evaluated_param_value
                 else:
-                    iter_params["tagged"][tag] = {name: param_value}
+                    iter_params["tagged"][tag] = {name: evaluated_param_value}
 
                 param_name = name
             else:
-                iter_params["params"][param_name] = param_value
+                iter_params["params"][param_name] = evaluated_param_value
 
         set_param = reduce(lambda x, y: {y: x}, reversed(param_name.split(".")), param_value)  # type: ignore
         workflow_params = always_merger.merge(workflow_params, set_param)
 
-    iter_params = _validate_iterate_parameters(workflow, workflow_params, cast(Dict[str, Any], iter_params))
-    if iter_params is None:
+    validated_iter_params = _validate_iterate_parameters(workflow, workflow_params, cast(Dict[str, Any], iter_params))
+    if validated_iter_params is None:
         return
 
-    plans, execute_plan = _build_iterations(workflow, workflow_params, iter_params, index_pattern)
+    plans, execute_plan = _build_iterations(workflow, workflow_params, validated_iter_params, index_pattern)
 
     communication.echo(f"\n\n{tabulate(execute_plan, execute_plan[0].keys())}")
     if not dry_run:

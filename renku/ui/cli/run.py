@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -102,10 +101,10 @@ The detection might not work as expected if:
    You can specify ``--input name=path`` or just ``--input path``, the former
    of which would also set the name of the input on the resulting Plan.
 
-   For example, ``renku run --input inputfile=data.csv -- python script.py data.csv outfile``
+   For example, ``renku run --input infile=data.csv -- python script.py data.csv outfile``
    would force Renku to detect ``data.csv`` as an input file and set the name
-   of the input to ``inputfile``.
-   Similarly, ``renku run --input inputfile=data.csv -- python script.py``
+   of the input to ``infile``.
+   Similarly, ``renku run --input infile=data.csv -- python script.py``
    would let Renku know that ``script.py`` reads the file ``data.csv`` even
    though it does not show up on the command line.
 
@@ -119,9 +118,9 @@ The detection might not work as expected if:
    You can specify ``--param name=value`` or just ``--param value``, the former
    of which would also set the name of the parameter on the resulting Plan.
 
-   For example, ``renku run --param myparam=hello -- python script.py hello outfile``
+   For example, ``renku run --param my-param=hello -- python script.py hello outfile``
    would force Renku to detect ``hello`` as the value of a string parameter
-   with name ``myparam`` even if there is a file called ``hello`` present on the
+   with name ``my-param`` even if there is a file called ``hello`` present on the
    filesystem.
 
 .. topic:: Disabling input detection (``--no-input-detection``)
@@ -230,6 +229,7 @@ all files within that range during its execution.
 To address this issue, the program can dump a mapping of input and output files
 that it is accessing in ``inputs.yml`` and ``outputs.yml``. This YAML file
 should be of the format
+
 .. code-block:: YAML
 
    name1: path1
@@ -279,11 +279,213 @@ Due to this, the renku dependency graph has to be *acyclic*. So instead of
 appending to an input file or writing an output file to the same directory
 that was used as an input directory, create new files or write to other
 directories, respectively.
+
+.. _workflow-definition-file:
+
+Workflow Definition File
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Instead of using ``renku run`` to track your workflows, you can pass a workflow
+definition file to renku for execution and tracking. A workflow definition file
+or workflow file contains definition of each individual command as execution
+*steps*. A step's definition includes the command that will be executed along
+with lists of all its inputs, outputs, and parameters that are used in the
+command. The following shows a workflow file with one step:
+
+.. code-block:: console
+
+    name: workflow-file
+    steps:
+      head:
+        command: head -n 10 data/collection/models.csv data/collection/colors.csv > intermediate
+        inputs:
+          - models:
+              path: data/collection/models.csv
+          - colors:
+              path: data/collection/colors.csv
+        outputs:
+          temporary-result:
+            path: intermediate
+        parameters:
+          n:
+            prefix: -n
+            value: 10
+
+The step *head* in this workflow file, has two inputs, one output, and one
+parameter. All these arguments are given a name for better understanding of
+their purpose. The same workflow file can be simplified to the following
+format:
+
+.. code-block:: console
+
+    name: workflow-file
+    steps:
+      head:
+        command: head -n 10 data/collection/models.csv data/collection/colors.csv > intermediate
+        inputs:
+          - data/collection/models.csv
+          - data/collection/colors.csv
+        outputs:
+          - intermediate
+        parameters:
+          - -n
+          - 10
+
+Although the latter format is more concise it's recommended to use the former
+format since it's more readable and has a more clear definition. You can
+provide a description for each of the elements in the workflow file. You can
+also have a set of keywords for each step and for the workflow file. The
+following listing shows a more complete definition of the same workflow file:
+
+.. code-block:: console
+
+    name: workflow-file
+    description: A sample workflow file used for testing
+    keywords:
+      - workflow file
+      - v1
+    steps:
+      head:
+        command: head -n 10 data/collection/models.csv data/collection/colors.csv > intermediate
+        description: first stage of the pipeline
+        success_codes:
+          - 0
+          - 127
+        keywords:
+          - preprocessing
+          - first step
+        inputs:
+          - models:
+              description: all available model numbers
+              path: data/collection/models.csv
+          - colors:
+              path: data/collection/colors.csv
+        outputs:
+          temporary-result:
+            description: temporary intermediate result that won't be saved
+            path: intermediate
+        parameters:
+          n:
+            description: number of lines to print
+            prefix: -n
+            value: 10
+
+.. topic:: Running a workflow file
+
+    The ``renku run`` command can be used to execute a workflow file:
+
+    .. code-block:: console
+
+       $ renku run workflow-file.yml
+
+    .. note:: It's recommended to use a ``.yml`` or ``.yaml`` extension for your
+        workflow files. Renku uses this as a hint to guess that you want to run a
+        workflow file (and not an executable script). You can force execution of
+        a workflow file by passing a ``--file`` flag to the ``renku run`` command.
+
+    Upon running, Renku executes each step of the workflow file and creates
+    corresponding plans for them. The effect is exactly the same as running each
+    step using ``renku run`` in the command line.
+
+    .. note:: The order of execution of steps is determined by the dependencies
+        between the steps and not by the order that they are defined in the
+        workflow file.
+
+    Automatic detection of inputs and outputs is disabled when running a workflow
+    file. The reason is that the list of inputs and outputs are already given in
+    the workflow file and there is no need for automatic detection. This also
+    allows running workflow files in a dirty repository which is not possible when
+    running individual commands. Moreover, once the execution is over, only the
+    outputs that have been generated by the workflow file will be committed.
+
+    You can also select a subset of steps for execution by passing their names
+    after the workflow file. The following command runs only two steps named
+    *step-2* and *step-7* in an example workflow files:
+
+    .. code-block:: console
+
+       $ renku run workflow-file.yml step-2 step-7
+
+.. topic:: Argument templates in workflow files
+
+    In the workflow definition file, each command's input, output, or parameter
+    is defined in two places: One in the command and one in the list of arguments.
+    The reason for this duplication is that Renku needs to know the type of each
+    argument (whether it's an input, output, or parameter) as well as the order
+    that each argument has in the command. This redundant definition of arguments
+    is inconvenient for large workflow files and is error-prone.
+
+    To address this issue, Renku supports argument templates for the workflow
+    files. To use templates, you need to assign a name to each argument and then
+    use this name to refer to each argument in the step's command. The following
+    listing shows the first workflow file rewritten using templates:
+
+    .. code-block:: console
+
+        name: workflow-file
+        steps:
+          head:
+            command: head $n $models $colors > $temporary-result
+            inputs:
+              - models:
+                  path: data/collection/models.csv
+              - colors:
+                  path: data/collection/colors.csv
+            outputs:
+              temporary-result:
+                path: intermediate
+            parameters:
+              n:
+                prefix: -n
+                value: 10
+
+    As is shown, you can use the name of each argument (i.e. input, output, or
+    parameter) prefixed with a ``$`` to refer to an argument.
+
+    In addition, you can use ``$inputs``, ``$outputs``, or ``$parameters`` to refer
+    to the list of all inputs, outputs, or parameters respectively:
+
+    .. code-block:: console
+
+        ...
+            command: cmd $parameters $inputs $outputs
+        ...
+
+    .. note:: If input or output paths or parameter values contain a ``$`` you
+        must replace them with ``$$`` in the command. This doesn't need to be
+        done in the list of arguments.
+
+.. topic:: ``--dry-run`` and ``--no-commit`` flags
+
+    By passing the ``--dry-run`` flag to the ``renku run`` command, you can
+    instruct Renku to only print the order of execution of the steps without
+    actually running any of them. Note that this option is valid only for running
+    workflow files and it is ignored when running a single command.
+
+    The ``--no-commit`` flags causes Renku to run the workflow file but it won't
+    create a commit after the execution. Renku also won't create any metadata in
+    this case.
+
+    .. code-block:: console
+
+       $ renku run --no-commit workflow-file.yml
 """
 
-import click
+import os
+from pathlib import Path
 
+import click
+from lazy_object_proxy import Proxy
+
+from renku.command.run import run_workflow_file_command
+from renku.core import errors
+from renku.core.plugin.workflow_file_parser import read_workflow_file
+from renku.core.util.os import is_subpath
+from renku.core.workflow.workflow_file import get_workflow_file_inputs_and_outputs
+from renku.domain_model.project_context import project_context
 from renku.ui.cli.utils.callback import ClickCallback
+from renku.ui.cli.utils.plugins import available_workflow_providers
+from renku.ui.cli.utils.terminal import print_workflow_file
 
 
 @click.command(context_settings=dict(ignore_unknown_options=True))
@@ -305,7 +507,7 @@ from renku.ui.cli.utils.callback import ClickCallback
     help="Allowed command exit-code.",
 )
 @click.option("--isolation", is_flag=True, default=False, help="Invoke the given command in isolation.")
-@click.argument("command_line", nargs=-1, required=True, type=click.UNPROCESSED)
+@click.option("--file", is_flag=True, default=False, help="Force running of a workflow file.")
 @click.option("--verbose", is_flag=True, default=False, help="Print generated plan after the execution.")
 @click.option(
     "--creator",
@@ -315,6 +517,16 @@ from renku.ui.cli.utils.callback import ClickCallback
     type=click.UNPROCESSED,
     help="Creator's name, email, and affiliation. Accepted format is 'Forename Surname <email> [affiliation]'.",
 )
+@click.option("--dry-run", is_flag=True, help="Show what would have been executed in a workflow file")
+@click.option("--no-commit", is_flag=True, help="Don't update metadata after the execution and don't create a commit.")
+@click.option(
+    "--provider",
+    default=None,
+    show_default=False,
+    type=click.Choice(Proxy(available_workflow_providers), case_sensitive=False),
+    help="The workflow engine to use for executing workflow files.",
+)
+@click.argument("command_line", nargs=-1, metavar="<COMMAND> or <WORKFLOW FILE>", required=True, type=click.UNPROCESSED)
 def run(
     name,
     description,
@@ -327,43 +539,126 @@ def run(
     no_output_detection,
     success_codes,
     isolation,
+    file,
     command_line,
     verbose,
     creators,
+    dry_run,
+    no_commit,
+    provider,
 ):
     """Tracking work on a specific problem."""
-    from renku.command.run import run_command
+    from renku.command.run import run_command_line_command
     from renku.core.util.metadata import construct_creators
     from renku.ui.cli.utils.terminal import print_plan
 
     communicator = ClickCallback()
-    command = run_command()
 
-    if isolation:
-        command = command.with_git_isolation()
+    def is_workflow_file() -> bool:
+        """Some heuristics to guess if the first argument is a workflow file or not."""
+        if file:
+            return True
+        if not command_line:
+            return False
 
-    if creators:
-        creators, _ = construct_creators(creators)
+        path = Path(command_line[0])
+        if path.suffix.lower() in [".yml", ".yaml"] and not os.access(path, os.X_OK):
+            return True
+        if not path.is_file() or not is_subpath(path=path, base=project_context.path):
+            return False
 
-    result = (
-        command.with_communicator(communicator)
-        .build()
-        .execute(
-            name=name,
-            description=description,
-            keyword=keyword,
-            explicit_inputs=explicit_inputs,
-            explicit_outputs=explicit_outputs,
-            explicit_parameters=explicit_parameters,
-            no_output=no_output,
-            no_input_detection=no_input_detection,
-            no_output_detection=no_output_detection,
-            success_codes=success_codes,
-            command_line=command_line,
-            creators=creators,
+        try:
+            content = read_workflow_file(path=path)
+        except (errors.ParseError, errors.ParameterError):
+            return False
+        else:
+            # NOTE: A single string is also a valid YAML, so, we check that the file contains a dict
+            return isinstance(content, dict)
+
+    if is_workflow_file():
+        # NOTE: Check other flags and warn if they are set since they don't have any effect
+        if (
+            name
+            or description
+            or keyword
+            or explicit_inputs
+            or explicit_outputs
+            or explicit_parameters
+            or no_output
+            or no_input_detection
+            or no_output_detection
+            or success_codes
+            or isolation
+            or creators
+        ):
+            communicator.warn("All flags other than '--file', '--verbose', '--dry-run', and 'no-commit' are ignored")
+
+        path = command_line[0]
+        steps = command_line[1:]
+        no_commit = no_commit or dry_run
+
+        # NOTE: Read the workflow file to get list of generated files that should be committed
+        if no_commit:
+            workflow_file = None
+            commit_only = None
+        else:
+            workflow_file = read_workflow_file(path=path, parser="renku")
+            commit_only = (
+                [path]
+                + get_workflow_file_inputs_and_outputs(workflow_file=workflow_file, steps=steps)
+                + [str(project_context.metadata_path)]
+            )
+
+        provider = provider or "local"
+
+        result = (
+            run_workflow_file_command(no_commit=no_commit, commit_only=commit_only)
+            .with_communicator(communicator)
+            .build()
+            .execute(path=path, steps=steps, dry_run=dry_run, workflow_file=workflow_file, provider=provider)
         )
-    )
 
-    if verbose:
-        plan = result.output
-        print_plan(plan, err=True)
+        if dry_run:
+            for line in result.output[1]:
+                communicator.echo(line)
+        elif verbose:
+            print_workflow_file(result.output[0])
+    else:
+        # NOTE: ``dry-run`` and ``no-commit`` should be passed only with WFF
+        if dry_run:
+            communicator.warn("'--dry-run' flag is valid only when running workflow files")
+        if no_commit:
+            communicator.warn("'--no-commit' flag is valid only when running workflow files")
+        if provider:
+            communicator.warn("'--provider' flag is valid only when running workflow files")
+
+        command = run_command_line_command()
+
+        if isolation:
+            command = command.with_git_isolation()
+
+        if creators:
+            creators, _ = construct_creators(creators)
+
+        result = (
+            command.with_communicator(communicator)
+            .build()
+            .execute(
+                name=name,
+                description=description,
+                keyword=keyword,
+                explicit_inputs=explicit_inputs,
+                explicit_outputs=explicit_outputs,
+                explicit_parameters=explicit_parameters,
+                no_output=no_output,
+                no_input_detection=no_input_detection,
+                no_output_detection=no_output_detection,
+                success_codes=success_codes,
+                command_line=command_line,
+                creators=creators,
+            )
+        )
+
+        if verbose:
+            plan = result.output
+            print_plan(plan, err=True)

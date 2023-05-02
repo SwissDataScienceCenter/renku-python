@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,9 +34,8 @@ from renku.core import errors
 from renku.core.config import get_value
 from renku.core.constant import RENKU_LFS_IGNORE_PATH, RENKU_PROTECTED_PATHS
 from renku.core.util import communication
-from renku.core.util.file_size import parse_file_size
 from renku.core.util.git import get_in_submodules, run_command
-from renku.core.util.os import expand_directories
+from renku.core.util.os import expand_directories, parse_file_size
 from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
@@ -90,7 +87,7 @@ def check_external_storage_wrapper(fn):
         ``errors.ExternalStorageNotInstalled``: If external storage isn't installed.
         ``errors.ExternalStorageDisabled``: If external storage isn't enabled.
     """
-    # noqa
+
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
         if not check_external_storage():
@@ -101,7 +98,7 @@ def check_external_storage_wrapper(fn):
     return wrapper
 
 
-@functools.lru_cache()
+@functools.lru_cache
 def storage_installed():
     """Verify that git-lfs is installed and on system PATH."""
     return bool(which("git-lfs"))
@@ -159,7 +156,7 @@ def init_external_storage(force=False):
             stdout=PIPE,
             stderr=STDOUT,
             cwd=project_context.path,
-            universal_newlines=True,
+            text=True,
         )
 
         if result.returncode != 0:
@@ -219,11 +216,11 @@ def track_paths_in_storage(*paths):
             raise errors.ParameterError(f"Couldn't run 'git lfs':\n{e}")
 
     show_message = get_value("renku", "show_lfs_message")
-    if track_paths and (show_message is None or show_message == "True"):
+    if track_paths and (show_message is None or show_message.lower() == "true"):
         files_list = "\n\t".join(track_paths)
         communication.info(
             f"Adding these files to Git LFS:\n\t{files_list}"
-            "\nTo disable this message in the future, run:\n\trenku config set show_lfs_message False"
+            "\nTo disable this message in the future, run:\n\trenku config set show_lfs_message false"
         )
 
     return track_paths
@@ -255,8 +252,8 @@ def list_tracked_paths():
         files = check_output(_CMD_STORAGE_LIST, cwd=project_context.path, encoding="UTF-8")
     except (KeyboardInterrupt, OSError) as e:
         raise errors.ParameterError(f"Couldn't run 'git lfs ls-files':\n{e}")
-    files = [project_context.path / f for f in files.splitlines()]
-    return files
+    files_split = [project_context.path / f for f in files.splitlines()]
+    return files_split
 
 
 @check_external_storage_wrapper
@@ -292,8 +289,8 @@ def pull_paths_from_storage(repository: "Repository", *paths):
             absolute_path = Path(path).resolve()
             relative_path = absolute_path.relative_to(project_context.path)
         except ValueError:  # An external file
-            absolute_path = Path(os.path.abspath(path))
-            relative_path = absolute_path.relative_to(project_context.path)
+            continue
+
         project_dict[sub_repository.path].append(shlex.quote(str(relative_path)))
 
     for project_path, file_paths in project_dict.items():
@@ -312,7 +309,7 @@ def pull_paths_from_storage(repository: "Repository", *paths):
 
 
 @check_external_storage_wrapper
-def clean_storage_cache(*paths):
+def clean_storage_cache(*check_paths):
     """Remove paths from lfs cache."""
     project_dict = defaultdict(list)
     repositories = {}
@@ -323,14 +320,13 @@ def clean_storage_cache(*paths):
 
     repository = project_context.repository
 
-    for path in expand_directories(paths):
+    for path in expand_directories(check_paths):
         current_repository, _, path = get_in_submodules(repository=repository, commit=repository.head.commit, path=path)
         try:
             absolute_path = Path(path).resolve()
             relative_path = absolute_path.relative_to(project_context.path)
         except ValueError:  # An external file
-            absolute_path = Path(os.path.abspath(path))
-            relative_path = absolute_path.relative_to(project_context.path)
+            continue
 
         if project_context.path not in tracked_paths:
             tracked_paths[project_context.path] = list_tracked_paths()
@@ -351,7 +347,7 @@ def clean_storage_cache(*paths):
         current_repository = repositories[project_path]
 
         for path in paths:
-            with open(path, "r") as tracked_file:
+            with open(path) as tracked_file:
                 try:
                     header = tracked_file.read(len(_LFS_HEADER))
                     if header == _LFS_HEADER:
@@ -363,9 +359,7 @@ def clean_storage_cache(*paths):
             with tempfile.NamedTemporaryFile(mode="w+t", encoding="utf-8", delete=False) as tmp, open(
                 path, "r+t"
             ) as input_file:
-                result = run(
-                    _CMD_STORAGE_CLEAN, cwd=project_path, stdin=input_file, stdout=tmp, universal_newlines=True
-                )
+                result = run(_CMD_STORAGE_CLEAN, cwd=project_path, stdin=input_file, stdout=tmp, text=True)
 
                 if result.returncode != 0:
                     raise errors.GitLFSError(f"Error executing 'git lfs clean: \n {result.stdout}")
@@ -478,7 +472,11 @@ def get_lfs_migrate_filters() -> Tuple[List[str], List[str]]:
 
 def check_lfs_migrate_info(everything=False, use_size_filter=True):
     """Return list of file groups in history should be in LFS."""
-    ref = ["--everything"] if everything else ["--include-ref", project_context.repository.active_branch.name]
+    ref = (
+        ["--everything"]
+        if everything or not project_context.repository.active_branch
+        else ["--include-ref", project_context.repository.active_branch.name]
+    )
 
     includes, excludes = get_lfs_migrate_filters()
 
@@ -497,7 +495,7 @@ def check_lfs_migrate_info(everything=False, use_size_filter=True):
             stdout=PIPE,
             stderr=STDOUT,
             cwd=project_context.path,
-            universal_newlines=True,
+            text=True,
         )
     except (KeyboardInterrupt, OSError) as e:
         raise errors.GitError(f"Couldn't run 'git lfs migrate info':\n{e}")
@@ -505,7 +503,7 @@ def check_lfs_migrate_info(everything=False, use_size_filter=True):
     if lfs_output.returncode != 0:
         # NOTE: try running without --pointers (old versions of git lfs)
         try:
-            lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=project_context.path, universal_newlines=True)
+            lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=project_context.path, text=True)
         except (KeyboardInterrupt, OSError) as e:
             raise errors.GitError(f"Couldn't run 'git lfs migrate info':\n{e}")
 
@@ -531,8 +529,8 @@ def check_lfs_migrate_info(everything=False, use_size_filter=True):
 def migrate_files_to_lfs(paths):
     """Migrate files to Git LFS."""
     if paths:
-        includes = ["--include", ",".join(paths)]
-        excludes = []
+        includes: List[str] = ["--include", ",".join(paths)]
+        excludes: List[str] = []
     else:
         includes, excludes = get_lfs_migrate_filters()
 
@@ -543,14 +541,14 @@ def migrate_files_to_lfs(paths):
     command = _CMD_STORAGE_MIGRATE_IMPORT + includes + excludes + object_map
 
     try:
-        lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=project_context.path, universal_newlines=True)
+        lfs_output = run(command, stdout=PIPE, stderr=STDOUT, cwd=project_context.path, text=True)
     except (KeyboardInterrupt, OSError) as e:
         raise errors.GitError(f"Couldn't run 'git lfs migrate import':\n{e}")
 
     if lfs_output.returncode != 0:
         raise errors.GitLFSError(f"Error executing 'git lfs migrate import: \n {lfs_output.stdout}")
 
-    with open(map_path, "r", newline="") as csvfile:
+    with open(map_path, newline="") as csvfile:
         reader = csv.reader(csvfile, delimiter=",")
 
         commit_sha_mapping = [(r[0], r[1]) for r in reader]

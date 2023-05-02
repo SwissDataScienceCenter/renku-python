@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -68,12 +67,12 @@ You can take inspiration from the
     https://github.com/SwissDataScienceCenter/renku-project-template@master
     ... OK
 
-    INDEX ID             DESCRIPTION                PARAMETERS
+    NUMBER ID             DESCRIPTION                PARAMETERS
     ----- -------------- -------------------------- ----------------------
     1     python-minimal Basic Python Project:[...] description: proj[...]
     2     R-minimal      Basic R Project: The [...] description: proj[...]
 
-    Please choose a template by typing the index:
+    Please choose a template by typing the number:
 
 Provide parameters
 ~~~~~~~~~~~~~~~~~~
@@ -133,17 +132,17 @@ in the template will be left untouched by the command.
 .. code-block:: console
 
     $ echo "# Example\nThis is a README." > README.md
-    $ echo "FROM python:3.7-alpine" > Dockerfile
+    $ echo "FROM python:3.10-alpine" > Dockerfile
     $ renku init
 
-    INDEX  ID              PARAMETERS
+    NUMBER  ID              PARAMETERS
     -------  --------------  ------------
         1  python-minimal  description
         2  R-minimal       description
         3  bioc-minimal    description
         4  julia-minimal   description
         5  minimal
-    Please choose a template by typing the index: 1
+    Please choose a template by typing the number: 1
     The template requires a value for "description": Test Project
     Initializing Git repository...
     Warning: The following files exist in the directory and will be overwritten:
@@ -184,6 +183,7 @@ import click
 
 from renku.command.options import option_external_storage_requested
 from renku.core import errors
+from renku.ui.cli.utils import color
 
 INVALID_DATA_DIRS = [".", ".renku", ".git"]
 """Paths that cannot be used as data directory name."""
@@ -232,7 +232,6 @@ def resolve_data_directory(data_dir, path):
     help="Data directory within the project",
 )
 @click.option("-t", "--template-id", help="Provide the id of the template to use.")
-@click.option("-i", "--template-index", help="Deprecated", type=int)
 @click.option("-s", "--template-source", help="Provide the templates repository url or path.")
 @click.option(
     "-r", "--template-ref", default=None, help="Specify the reference to checkout on remote template repository."
@@ -271,7 +270,6 @@ def init(
     description,
     keyword,
     template_id,
-    template_index,
     template_source,
     template_ref,
     parameters,
@@ -283,7 +281,7 @@ def init(
     initial_branch,
 ):
     """Initialize a project in PATH. Default is the current path."""
-    from renku.command.init import init_command
+    from renku.command.init import init_project_command
     from renku.core.util.git import check_global_git_user_is_configured
     from renku.ui.cli.utils.callback import ClickCallback
 
@@ -293,10 +291,6 @@ def init(
         raise errors.ParameterError("'-d/--describe' is deprecated: Use 'renku template show' instead.")
     if list_templates:
         raise errors.ParameterError("'-l/--list-templates' is deprecated: Use 'renku template ls' instead.")
-    if template_index:
-        raise errors.ParameterError(
-            "'-i/--template-index' is deprecated: Use '-t/--template-id' to pass a template id."
-        )
 
     datadir = resolve_data_directory(datadir, path)
 
@@ -307,7 +301,7 @@ def init(
         custom_metadata = json.loads(Path(metadata).read_text())
 
     communicator = ClickCallback()
-    init_command().with_communicator(communicator).build().execute(
+    init_project_command().with_communicator(communicator).build().execute(
         external_storage_requested=external_storage_requested,
         path=path,
         name=name,
@@ -324,7 +318,4 @@ def init(
         install_mergetool=True,
     )
 
-    # Install git hooks
-    from .githooks import install
-
-    ctx.invoke(install, force=force)
+    click.secho("OK", fg=color.GREEN)

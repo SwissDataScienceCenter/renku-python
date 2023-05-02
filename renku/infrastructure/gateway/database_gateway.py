@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -85,6 +84,7 @@ def load_downstream_relations(token, catalog, cache):
 
 def initialize_database(database):
     """Initialize an empty database with all required metadata."""
+    # NOTE: A list of existing and removed activities
     database.add_index(name="activities", object_type=Activity, attribute="id")
     database.add_root_object(name="activities-by-usage", obj=RenkuOOBTree())
     database.add_root_object(name="activities-by-generation", obj=RenkuOOBTree())
@@ -95,10 +95,16 @@ def initialize_database(database):
 
     activity_catalog = Catalog(dump_downstream_relations, load_downstream_relations, btree=BTrees.family32.OO)
     activity_catalog.addValueIndex(
-        IActivityDownstreamRelation["downstream"], dump_activity, load_activity, btree=BTrees.family32.OO
+        IActivityDownstreamRelation["downstream"],  # type: ignore[misc]
+        dump_activity,
+        load_activity,
+        btree=BTrees.family32.OO,
     )
     activity_catalog.addValueIndex(
-        IActivityDownstreamRelation["upstream"], dump_activity, load_activity, btree=BTrees.family32.OO
+        IActivityDownstreamRelation["upstream"],  # type: ignore[misc]
+        dump_activity,
+        load_activity,
+        btree=BTrees.family32.OO,
     )
     # NOTE: Transitive query factory is needed for transitive (follow more than 1 edge) queries
     downstream_transitive_factory = TransposingTransitive("downstream", "upstream")
@@ -141,7 +147,7 @@ class DatabaseGateway(IDatabaseGateway):
             commits = [repository.get_commit(revision_or_range)]
 
         for commit in commits:
-            for file in commit.get_changes(paths=f"{project_context.database_path}/**"):
+            for file in commit.get_changes(f"{project_context.database_path}/**"):
                 if file.deleted:
                     continue
 

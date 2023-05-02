@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2020-2022 -Swiss Data Science Center (SDSC)
+# Copyright 2020-2023 -Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -22,7 +21,7 @@ import os
 import traceback
 import uuid
 from contextlib import contextmanager
-from datetime import datetime, timedelta
+from datetime import datetime
 from functools import wraps
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, Iterator, List, Optional, Tuple, Type, Union
@@ -36,6 +35,7 @@ from flaky import flaky
 
 from renku.command.command_builder.command import inject, replace_injection
 from renku.core.interface.dataset_gateway import IDatasetGateway
+from renku.core.util.datetime8601 import local_now
 from renku.domain_model.dataset import Dataset
 from renku.domain_model.project_context import project_context
 
@@ -89,10 +89,11 @@ def assert_dataset_is_mutated(old: "Dataset", new: "Dataset", mutator=None):
     assert old.identifier != new.identifier
     assert new.derived_from is not None
     assert old.id == new.derived_from.url_id
-    if old.date_created and new.date_created:
-        assert old.date_created <= new.date_created
+    if old.date_created:
+        assert old.date_created == new.date_created
+    if old.date_published:
+        assert old.date_published == new.date_published
     assert new.same_as is None
-    assert new.date_published is None
     assert new.identifier in new.id
 
     if mutator:
@@ -115,10 +116,10 @@ def modified_environ(*remove, **update):
     """
     env = os.environ
     update = update or {}
-    remove = remove or []
+    remove_set = set(remove or [])
 
     # List of environment variables being updated or removed.
-    stomped = (set(update.keys()) | set(remove)) & set(env.keys())
+    stomped = (set(update.keys()) | remove_set) & set(env.keys())
     # Environment variables and values to restore on exit.
     update_after = {k: env[k] for k in stomped}
     # Environment variables and values to remove on exit.
@@ -126,7 +127,7 @@ def modified_environ(*remove, **update):
 
     try:
         env.update(update)
-        [env.pop(k, None) for k in remove]
+        [env.pop(k, None) for k in remove_set]
         yield
     finally:
         env.update(update_after)
@@ -257,7 +258,7 @@ def write_and_commit_file(repository: "Repository", path: Union[Path, str], cont
 
     repository.add(path)
     if commit:
-        repository.commit(f"Updated '{path.relative_to(repository.path)}'")
+        repository.commit(f"Updated '{path.relative_to(repository.path)}'", no_verify=True)
 
 
 def delete_and_commit_file(repository: "Repository", path: Union[Path, str]):
@@ -286,6 +287,7 @@ def create_and_commit_files(repository: "Repository", *path_and_content: Union[P
 def create_dummy_activity(
     plan: Union["Plan", str],
     *,
+    started_at_time=None,
     ended_at_time=None,
     generations: Iterable[Union[Path, str, "Generation", Tuple[str, str]]] = (),
     id: Optional[str] = None,
@@ -307,7 +309,8 @@ def create_dummy_activity(
         assert isinstance(plan, str)
         plan = Plan(id=Plan.generate_id(), name=plan, command=plan)
 
-    ended_at_time = ended_at_time or datetime.utcnow()
+    started_at_time = started_at_time or local_now()
+    ended_at_time = ended_at_time or local_now()
     empty_checksum = "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"  # Git hash of an empty string/file
     activity_id = id or Activity.generate_id(uuid=None if index is None else str(index))
 
@@ -342,7 +345,7 @@ def create_dummy_activity(
 
     return Activity(
         id=activity_id,
-        started_at_time=ended_at_time - timedelta(seconds=1),
+        started_at_time=started_at_time,
         ended_at_time=ended_at_time,
         agents=[
             SoftwareAgent(name="renku test", id="https://github.com/swissdatasciencecenter/renku-python/tree/test"),
@@ -367,15 +370,15 @@ def create_dummy_activity(
 def create_dummy_plan(
     name: str,
     *,
-    command: str = None,
-    date_created: datetime = None,
-    description: str = None,
-    index: int = None,
+    command: Optional[str] = None,
+    date_created: Optional[datetime] = None,
+    description: Optional[str] = None,
+    index: Optional[int] = None,
     inputs: Iterable[Union[str, Tuple[str, str]]] = (),
-    keywords: List[str] = None,
+    keywords: Optional[List[str]] = None,
     outputs: Iterable[Union[str, Tuple[str, str]]] = (),
     parameters: Iterable[Tuple[str, Any, Optional[str]]] = (),
-    success_codes: List[int] = None,
+    success_codes: Optional[List[int]] = None,
 ) -> "Plan":
     """Create a dummy plan."""
     from renku.domain_model.workflow.parameter import CommandInput, CommandOutput, CommandParameter, MappedIOStream
@@ -387,7 +390,7 @@ def create_dummy_plan(
 
     plan = Plan(
         command=command,
-        date_created=date_created or datetime(2022, 5, 20, 0, 42, 0),
+        date_created=date_created or local_now(),
         description=description,
         id=id,
         inputs=[],

@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2021 Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +16,7 @@
 """Renku CLI fixtures for project management."""
 
 import shutil
+from dataclasses import dataclass, field, fields
 from pathlib import Path
 from typing import Generator
 
@@ -65,7 +64,7 @@ def no_lfs_warning(project):
 
     For those times in life when mocking just isn't enough.
     """
-    set_value("renku", "show_lfs_message", "False")
+    set_value("renku", "show_lfs_message", "false")
 
     project.repository.add(all=True)
     project.repository.commit(message="Unset show_lfs_message")
@@ -80,7 +79,7 @@ def project_with_lfs_warning(project):
 
     with project_context.with_path(project.path):
         set_value("renku", "lfs_threshold", "0b")
-        set_value("renku", "show_lfs_message", "True")
+        set_value("renku", "show_lfs_message", "true")
 
         project.repository.add(".renku/renku.ini")
         project.repository.commit("update renku.ini")
@@ -104,3 +103,31 @@ def subdirectory(request) -> Generator[Path, None, None]:
 
     with chdir(request.param):
         yield Path(request.param).resolve()
+
+
+@dataclass
+class RenkuWorkflowFileProject(RenkuProject):
+    """A Renku project with a workflow file property."""
+
+    workflow_file: str = field(init=False)
+
+
+@pytest.fixture
+def workflow_file_project(project, request) -> Generator[RenkuWorkflowFileProject, None, None]:
+    """Return a Renku repository with a workflow file."""
+    filename = getattr(request, "param", None) or "workflow-file.yml"
+    workflow_file = Path(__file__).parent / ".." / ".." / "data" / filename
+
+    workflow_file_project = RenkuWorkflowFileProject.__new__(RenkuWorkflowFileProject)
+    for f in fields(project):
+        setattr(workflow_file_project, f.name, getattr(project, f.name))
+    workflow_file_project.workflow_file = filename
+
+    shutil.copy(workflow_file, project.path)
+
+    # Create dummy input files used in the workflow file
+    (project.path / "data" / "collection").mkdir(parents=True)
+    (project.path / "data" / "collection" / "models.csv").write_text("\n".join(f"model-{i}" for i in range(99)))
+    (project.path / "data" / "collection" / "colors.csv").write_text("\n".join(f"color-{i}" for i in range(99)))
+
+    yield workflow_file_project

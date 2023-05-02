@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -16,15 +15,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service views."""
-from flask import current_app
+from flask import jsonify
+from marshmallow import Schema
 
 from renku.ui.service.config import SVC_ERROR_GENERIC
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
 
-def result_response(serializer, data):
+def result_response(serializer: Schema, data):
     """Construct flask response."""
-    return current_app.response_class(response=serializer.dumps({"result": data}), mimetype="application/json")
+    return jsonify(serializer.dump({"result": data}))
 
 
 def error_response(serviceError):
@@ -40,4 +40,4 @@ def error_response(serviceError):
     if hasattr(serviceError, "sentry"):
         error["sentry"] = serviceError.sentry
 
-    return current_app.response_class(response=JsonRPCResponse().dumps({"error": error}), mimetype="application/json")
+    return jsonify(JsonRPCResponse().dump({"error": error}))

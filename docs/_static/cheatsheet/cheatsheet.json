@@ -1,7 +1,6 @@
 {
   "groups": [
     {
-      "name": "Typical Workflow",
       "commands": [
         {
           "command": "$ git status",
@@ -27,14 +26,62 @@
             "rp"
           ]
         }
-      ]
+      ],
+      "name": "Typical Workflow"
     },
     {
-      "name": "Getting Started",
-      "commands": []
+      "commands": [
+        {
+          "command": "$ pip install renku",
+          "description": "Install with pip",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku init my-renku-project|||\n$ cd my-renku-project",
+          "description": "Starting a Renku project.",
+          "target": [
+            "rp"
+          ]
+        }
+      ],
+      "name": "Getting Started"
     },
     {
-      "name": "Working with Renku Datasets",
+      "commands": [
+        {
+          "command": "$ renku template ls",
+          "description": "List available Renku templates.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku template show <template>",
+          "description": "Show detailed information for the given template.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku template update",
+          "description": "Update the project's template if a newer version is available.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku template set <template>",
+          "description": "Replace the project's template with the given template.",
+          "target": [
+            "rp"
+          ]
+        }
+      ],
+      "name": "Project Templates"
+    },
+    {
       "commands": [
         {
           "command": "$ renku dataset create <dataset>",
@@ -53,38 +100,356 @@
           ]
         },
         {
+          "command": "$ renku dataset rm <dataset>",
+          "description": "Remove a dataset.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
           "command": "$ renku dataset add <dataset> <url>",
           "description": "Add data from <url> to a dataset. <url> can be a local\nfile path, an http(s) address or a Git git+http or git+ssh repository.",
           "target": [
             "rp",
             "ui"
           ]
+        },
+        {
+          "command": "$ renku dataset add <dataset> --source <path>\n[--destination <rel-path>] <git-url>",
+          "description": "Add only data in <path> from Git. With --destination:\nlocation the data is copied to.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku dataset update <dataset>",
+          "description": "Update files in a dataset based on their source.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku dataset tag <dataset> <tag> [-d <desc>]",
+          "description": "Add a tag to the current version of the dataset, with\ndescription <desc>.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku dataset ls-tags <dataset>",
+          "description": "List all tags for a dataset.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku dataset rm-tags <dataset> <tags...>",
+          "description": "Remove tags from a dataset.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku dataset import <uri>",
+          "description": "Import a dataset. <uri> can be a Renku, Zenodo or Dataverse\nURL or DOI.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku dataset export <dataset> <provider>",
+          "description": "Export the dataset <dataset> to <provider>. Providers:\nZenodo, Dataverse.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku dataset ls-files",
+          "description": "List all dataset files in project.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku dataset unlink <dataset> [--include <path|pattern>]",
+          "description": "Remove files from a dataset.",
+          "target": [
+            "rp"
+          ]
         }
-      ]
+      ],
+      "name": "Working with Renku Datasets"
     },
     {
-      "name": "Running",
-      "commands": []
+      "commands": [
+        {
+          "command": "$ renku rerun <path>",
+          "description": "Recreate the file(s) <path> by rerunning the commands that\ncreated them.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku run --name <name> <command> [--input <in_file>...] [--output <out_file>...]",
+          "description": "Execute a <command> with Renku tracking inputs and outputs. Input and output files\nare automatically detected from the command string. Creates a workflow template\nnamed <name>. With --input and/or --output: Manually specify input or output files to track.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku run --name <name> <command> --no-output",
+          "description": "Run a <command> that produces no output.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku status",
+          "description": "The the status of generated output files in the project.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku update [--all] [<path>...]",
+          "description": "Update outdated output files created by renku run. With\n<path>'s: Only recreate these files. With --all (default):\nUpdate all outdated output files.",
+          "target": [
+            "rp"
+          ]
+        }
+      ],
+      "name": "Running"
     },
     {
-      "name": "Workflows",
-      "commands": []
+      "commands": [
+        {
+          "command": "$ renku workflow ls",
+          "description": "List Plans (workflow templates).",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku workflow show <name>",
+          "description": "Show details for Plan <name>.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku workflow execute --provider <provider> [--set\n<param-name>=<value>...] <name>",
+          "description": "Execute a Plan using <provider> as a backend, overriding\nparameter <param-name>'s value.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku workflow iterate [--map <param-name>=[value,value,...]]\n<name>",
+          "description": "Repeatedly execute a Plan, taking values from the list\nspecified with --map.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku workflow export --format <format> <plan>",
+          "description": "Export a Plan in a given format (e.g. 'cwl').",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku workflow compose <composed-name> <plan> <plan>",
+          "description": "Create a new Plan composed of child Plans.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku workflow edit <plan>",
+          "description": "Create a new Plan composed of child Plans.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku workflow delete <plan>",
+          "description": "Remove a Plan.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku workflow visualize [--interactive]",
+          "description": "Show linked workflows as a graph.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku workflow revert <activity ID>",
+          "description": "Undo a Run.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku workflow inputs|||$ renku workflow outputs",
+          "description": "Show input respectively output files used by workflows.",
+          "target": [
+            "rp"
+          ]
+        }
+      ],
+      "name": "Workflows"
     },
     {
-      "name": "Config",
-      "commands": []
+      "commands": [
+        {
+          "command": "$ renku session start --provider renkulab",
+          "description": "Start an interactive session on the remote Renku deployment.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku session ls",
+          "description": "List all active sessions.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku session open <name>",
+          "description": "Open a browser tab and connect to a running session.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku session stop <name>",
+          "description": "Stop the specified session.",
+          "target": [
+            "rp"
+          ]
+        }
+      ],
+      "name": "Managing Interactive Sessions"
     },
     {
-      "name": "Misc",
-      "commands": []
+      "commands": [
+        {
+          "command": "$ renku config show [<key>]",
+          "description": "Show current configuration.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku config set <key> <value>",
+          "description": "Set entry <key> to <value> in renku config.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku config remove <key>",
+          "description": "Unset entry <key> renku config.",
+          "target": [
+            "rp"
+          ]
+        }
+      ],
+      "name": "Config"
     },
     {
-      "name": "Undo Renku Command",
+      "commands": [
+        {
+          "command": "$ renku doctor",
+          "description": "Check your system and repository for potential problems.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku gc",
+          "description": "Free up disk space used for caches and temporary files.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku log",
+          "description": "Show a history of renku actions.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku login --endpoint <URL>",
+          "description": "Login to a Renku deployment for accessing private projects and dataset.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku logout --endpoint <URL>",
+          "description": "Logout from a Renku deployment and clear locally-stored credentials.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku migrate",
+          "description": "Migrate old metadata to the current Renku version.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku mv <path>... <destination>",
+          "description": "Safely move files within a project.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku rm <path>...",
+          "description": "Safely delete files from a project.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku save [-m <message>]",
+          "description": "Save (commit) and push all local changes. with optional\nmessage.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku storage pull <path>...",
+          "description": "Pull <path>'s from external storage (LFS).",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku template validate",
+          "description": "Check a template repository for possible errors (useful when creating Renku templates).",
+          "target": [
+            "rp"
+          ]
+        }
+      ],
+      "name": "Misc"
+    },
+    {
       "commands": [
         {
           "command": "$ renku rollback",
           "description": "Rollback project to a previous point in time.",
           "target": [
+            "rp",
             "ui"
           ]
         },
@@ -95,7 +460,8 @@
             "ui"
           ]
         }
-      ]
+      ],
+      "name": "Undo Renku Command"
     }
   ]
 }

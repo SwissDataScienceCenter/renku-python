@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +18,7 @@
 
 import json
 import os
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 from packaging.version import Version
 
@@ -40,9 +38,6 @@ from renku.infrastructure.gateway.plan_gateway import PlanGateway
 from renku.infrastructure.gateway.project_gateway import ProjectGateway
 from renku.infrastructure.storage.factory import StorageFactory
 
-if TYPE_CHECKING:
-    from renku.domain_model.project import Project
-
 
 class DatabaseCommand(Command):
     """Builder to get a database connection."""
@@ -50,12 +45,12 @@ class DatabaseCommand(Command):
     PRE_ORDER = 4
     POST_ORDER = 5
 
-    def __init__(self, builder: Command, write: bool = False, path: str = None, create: bool = False) -> None:
+    def __init__(self, builder: Command, write: bool = False, path: Optional[str] = None, create: bool = False) -> None:
         self._builder = builder
         self._write = write
         self._path = path
         self._create = create
-        self.project: Optional["Project"] = None
+        self.project_found: bool = False
 
     def _injection_pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
         """Create a Database singleton."""
@@ -80,11 +75,12 @@ class DatabaseCommand(Command):
             return
 
         try:
-            self.project = project_gateway.get_project()
-            minimum_renku_version = Version(self.project.minimum_renku_version)
+            project = project_gateway.get_project()
+            minimum_renku_version = Version(project.minimum_renku_version)
+            self.project_found = True
         except (KeyError, ImportError, ValueError):
             try:
-                with open(project_context.database_path / "project", "r") as f:
+                with open(project_context.database_path / "project") as f:
                     project = json.load(f)
                     min_version = project.get("minimum_renku_version")
                     if min_version is None:
@@ -96,19 +92,20 @@ class DatabaseCommand(Command):
 
         current_version = Version(__version__)
 
-        if current_version < minimum_renku_version:
+        if Version(current_version.base_version) < minimum_renku_version:
             raise errors.MinimumVersionError(current_version, minimum_renku_version)
 
     def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs) -> None:
         from renku.domain_model.project import Project
 
-        if (
-            self._write
-            and self.project is not None
-            and Version(self.project.minimum_renku_version) < Version(Project.minimum_renku_version)
-        ):
-            # NOTE: update minimum renku version on write as migrations might happen on the fly
-            self.project.minimum_renku_version = Project.minimum_renku_version
+        if self._write and self.project_found:
+            # NOTE: Fetch project again in case it was updated (the current reference would be put of date)
+            project_gateway = ProjectGateway()
+            project = project_gateway.get_project()
+
+            if Version(project.minimum_renku_version) < Version(Project.minimum_renku_version):
+                # NOTE: update minimum renku version on write as migrations might happen on the fly
+                project.minimum_renku_version = Project.minimum_renku_version
 
         project_context.pop_context()
 

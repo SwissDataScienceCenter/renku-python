@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,18 +16,13 @@
 """Datasets Provenance."""
 
 from datetime import datetime
-from typing import TYPE_CHECKING, List, Optional, Union, overload
+from typing import TYPE_CHECKING, List, Literal, Optional, Union, overload
 from uuid import UUID
 
 from renku.command.command_builder.command import inject
 from renku.core import errors
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.util import communication
-
-try:
-    from typing import Literal
-except ImportError:
-    from typing_extensions import Literal  # type: ignore
 
 if TYPE_CHECKING:
     from renku.domain_model.dataset import Dataset, DatasetTag
@@ -63,13 +56,11 @@ class DatasetsProvenance:
         return None
 
     @overload
-    def get_by_name(
-        self, name: str, *, immutable: bool = False, strict: Literal[False] = False
-    ) -> Optional["Dataset"]:  # noqa: D102
+    def get_by_name(self, name: str, *, immutable: bool = False, strict: Literal[False] = False) -> Optional["Dataset"]:
         ...
 
     @overload
-    def get_by_name(self, name: str, *, immutable: bool = False, strict: Literal[True]) -> "Dataset":  # noqa: D102
+    def get_by_name(self, name: str, *, immutable: bool = False, strict: Literal[True]) -> "Dataset":
         ...
 
     def get_by_name(
@@ -136,7 +127,7 @@ class DatasetsProvenance:
 
         self.dataset_gateway.add_or_remove(dataset)
 
-    def remove(self, dataset, date: datetime = None, creator: "Person" = None):
+    def remove(self, dataset, date: Optional[datetime] = None, creator: Optional["Person"] = None):
         """Remove a dataset."""
         from renku.domain_model.dataset import Dataset
 

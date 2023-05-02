@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -137,9 +136,9 @@ class Activity:
     @staticmethod
     def filter(
         *,
-        inputs: Union[Path, str, Iterable[Union[Path, str]], Callable[[str], bool]] = None,
-        outputs: Union[Path, str, Iterable[Union[Path, str]], Callable[[str], bool]] = None,
-        parameters: Union[str, Iterable[str], Callable[[str], bool]] = None,
+        inputs: Optional[Union[Path, str, Iterable[Union[Path, str]], Callable[[str], bool]]] = None,
+        outputs: Optional[Union[Path, str, Iterable[Union[Path, str]], Callable[[str], bool]]] = None,
+        parameters: Optional[Union[str, Iterable[str], Callable[[str], bool]]] = None,
         values: Union[Any, Iterable[Any], Callable[[Any], bool]] = None,
     ) -> List["Activity"]:
         """Return a filtered list of activities in a project.
@@ -240,8 +239,8 @@ class Activity:
 
     @staticmethod
     def filter_by_parameter(
-        name: Union[str, Iterable[str], Callable[[str], bool]] = None,
-        value: Union[Any, Iterable[Any], Callable[[Any], bool]] = None,
+        name: Optional[Union[str, Iterable[str], Callable[[str], bool]]] = None,
+        value: Optional[Union[Any, Iterable[Any], Callable[[Any], bool]]] = None,
     ) -> List["Activity"]:
         """Return a filtered list of activities based on parameters and their values.
 
@@ -260,8 +259,8 @@ class Activity:
 
     @staticmethod
     def _filter_by_parameter(
-        name: Union[str, Iterable[str], Callable[[str], bool]] = None,
-        value: Union[Any, Iterable[Any], Callable[[Any], bool]] = None,
+        name: Optional[Union[str, Iterable[str], Callable[[str], bool]]] = None,
+        value: Optional[Union[Any, Iterable[Any], Callable[[Any], bool]]] = None,
         activity_gateway: Optional["ActivityGateway"] = None,
     ) -> Set[core_activity.Activity]:
         if activity_gateway is None:
@@ -395,7 +394,7 @@ class FieldValue(NamedTuple):
         return f"<Parameter '{self.field.name}'={self.value}>"
 
 
-def get_activities(plan_id: str = None) -> List[Activity]:
+def get_activities(plan_id: Optional[str] = None) -> List[Activity]:
     """Return list of activities that use a plan or one of its predecessor plans."""
     activity_gateway = get_activity_gateway()
     plan_gateway = get_plan_gateway()

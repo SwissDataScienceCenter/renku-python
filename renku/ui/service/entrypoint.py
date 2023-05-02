@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -36,6 +35,7 @@ from renku.ui.service.errors import (
     ProgramHttpRequestError,
     ProgramHttpServerError,
     ProgramHttpTimeoutError,
+    ServiceError,
 )
 from renku.ui.service.logger import service_log
 from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET
@@ -89,7 +89,7 @@ def create_app(custom_exceptions=True):
         """Service health check."""
         import renku
 
-        return "renku repository service version {}\n".format(renku.__version__)
+        return f"renku repository service version {renku.__version__}\n"
 
     if custom_exceptions:
         register_exceptions(app)
@@ -117,13 +117,14 @@ def register_exceptions(app):
 
         # NOTE: craft user messages
         if hasattr(e, "code"):
-            code = e.code
+            code = int(e.code)
 
             # NOTE: return an http error for methods with no body allowed. This prevents undesired exceptions.
             NO_PAYLOAD_METHODS = "HEAD"
             if request.method in NO_PAYLOAD_METHODS:
                 return Response(status=code)
 
+            error: ServiceError
             if code == 400:
                 error = ProgramHttpRequestError(e)
             elif code == 404:
@@ -163,11 +164,7 @@ app = create_app()
 @app.after_request
 def after_request(response):
     """After request handler."""
-    service_log.info(
-        "{0} {1} {2} {3} {4}".format(
-            request.remote_addr, request.method, request.scheme, request.full_path, response.status
-        )
-    )
+    service_log.info(f"{request.remote_addr} {request.method} {request.scheme} {request.full_path} {response.status}")
 
     return response
 

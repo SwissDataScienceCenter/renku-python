@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +23,7 @@ from renku.core.util.git import get_hook_path
 from renku.domain_model.project_context import project_context
 
 try:
-    import importlib_resources
+    import importlib_resources  # type: ignore[import]
 except ImportError:
     import importlib.resources as importlib_resources  # type: ignore
 

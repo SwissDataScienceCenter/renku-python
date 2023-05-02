@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,14 +17,14 @@
 """Install and uninstall Git hooks."""
 
 from renku.command.command_builder.command import Command
-from renku.core.githooks import install, uninstall
+from renku.core.githooks import install_githooks, uninstall_githooks
 
 
 def install_githooks_command():
     """Command to install Git hooks."""
-    return Command().command(install)
+    return Command().command(install_githooks)
 
 
 def uninstall_githooks_command():
     """Command to uninstall Git hooks."""
-    return Command().command(uninstall)
+    return Command().command(uninstall_githooks)

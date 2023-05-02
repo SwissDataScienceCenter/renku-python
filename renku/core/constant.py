@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +16,7 @@
 """Renku core constants."""
 
 import os
+from enum import IntEnum
 from pathlib import Path
 
 APP_NAME = "Renku"
@@ -88,3 +87,19 @@ DATASET_METADATA_PATHS = [
     ".gitattributes",
     ".gitignore",
 ]
+
+
+class ProviderPriority(IntEnum):
+    """Defines the order in which providers are checked (highest order is checked first).
+
+    For example, to check if a dataset provider supports a URI, providers that support more specific URIs should have a
+    higher priority so that they are checked first.
+    """
+
+    HIGHEST = 1
+    HIGHER = 2
+    HIGH = 3
+    NORMAL = 4
+    LOW = 5
+    LOWER = 6
+    LOWEST = 7

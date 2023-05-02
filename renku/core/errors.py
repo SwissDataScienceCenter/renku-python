@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +16,7 @@
 """Renku exceptions."""
 
 from pathlib import Path
-from typing import List, Union
+from typing import List, Optional, Union
 
 import click
 from packaging.version import Version
@@ -31,6 +29,10 @@ class RenkuException(Exception):
 
     You can catch all errors raised by Renku SDK by using ``except RenkuException:``.
     """
+
+
+class ProjectContextError(RenkuException):
+    """Raise when no project context is pushed or there is a project context-related error."""
 
 
 class DatasetException(RenkuException):
@@ -60,24 +62,33 @@ class NotFound(RenkuException):
 class ParameterError(RenkuException):
     """Raise in case of invalid parameter."""
 
-    def __init__(self, message, param_hint=None):
+    def __init__(self, message, param_hint=None, show_prefix: bool = True):
         """Build a custom message."""
         if param_hint:
             if isinstance(param_hint, (tuple, list)):
-                param_hint = " / ".join('"{}"'.format(x) for x in param_hint)
-            message = "Invalid parameter value for {}: {}".format(param_hint, message)
+                param_hint = " / ".join(f'"{x}"' for x in param_hint)
+            message = f"Invalid parameter value for {param_hint}: {message}"
         else:
-            message = "Invalid parameter value - {}".format(message)
+            if show_prefix:
+                message = f"Invalid parameter value - {message}"
 
         super().__init__(message)
+
+
+class ParseError(RenkuException):
+    """Raise when a workflow file command has invalid format."""
 
 
 class IncompatibleParametersError(ParameterError):
     """Raise in case of incompatible parameters/flags."""
 
-    def __init__(self, a: str = None, b: str = None):
+    def __init__(self, first_param: Optional[str] = None, second_param: Optional[str] = None):
         """Build a custom message."""
-        message = f"{a} is incompatible with {b}" if a is not None and b is not None else "Incompatible parameters"
+        message = (
+            f"{first_param} is incompatible with {second_param}"
+            if first_param is not None and second_param is not None
+            else "Incompatible parameters"
+        )
         super().__init__(message)
 
 
@@ -97,12 +108,16 @@ class AuthenticationError(RenkuException):
     """Raise when there is a problem with authentication."""
 
 
+class KeyNotFoundError(RenkuException):
+    """Raise when an SSH private or public key couldn't be found."""
+
+
 class DirtyRepository(RenkuException):
     """Raise when trying to work with dirty repository."""
 
     def __init__(self, repository):
         """Build a custom message."""
-        super(DirtyRepository, self).__init__(
+        super().__init__(
             "The repository is dirty. "
             'Please use the "git" command to clean it.'
             "\n\n" + str(repository.status()) + "\n\n"
@@ -116,7 +131,7 @@ class DirtyRenkuDirectory(RenkuException):
 
     def __init__(self, repository):
         """Build a custom message."""
-        super(DirtyRenkuDirectory, self).__init__(
+        super().__init__(
             (
                 "The renku directory {0} contains uncommitted changes.\n"
                 'Please use "git" command to resolve.\n'
@@ -134,7 +149,7 @@ class ProtectedFiles(RenkuException):
 
     def __init__(self, ignored: List[Union[Path, str]]):
         """Build a custom message."""
-        super(ProtectedFiles, self).__init__(
+        super().__init__(
             "The following paths are protected as part of renku:"
             "\n\n" + "\n".join("\t" + click.style(str(path), fg="yellow") for path in ignored) + "\n"
             "They cannot be used in renku commands."
@@ -170,7 +185,7 @@ class NothingToCommit(RenkuException):
 
     def __init__(self):
         """Build a custom message."""
-        super(NothingToCommit, self).__init__("There is nothing to commit.")
+        super().__init__("There is nothing to commit.")
 
 
 class CommitMessageEmpty(RenkuException):
@@ -178,7 +193,7 @@ class CommitMessageEmpty(RenkuException):
 
     def __init__(self):
         """Build a custom message."""
-        super(CommitMessageEmpty, self).__init__("Invalid commit message.")
+        super().__init__("Invalid commit message.")
 
 
 class FailedMerge(RenkuException):
@@ -186,8 +201,8 @@ class FailedMerge(RenkuException):
 
     def __init__(self, repository, branch, merge_args):
         """Build a custom message."""
-        super(FailedMerge, self).__init__(
-            "Failed merge of branch {0} with args {1}".format(branch, ",".join(merge_args))
+        super().__init__(
+            "Failed merge of branch {} with args {}".format(branch, ",".join(merge_args))
             + "The automatic merge failed.\n\n"
             'Please use the "git" command to clean it.'
             "\n\n" + str(repository.status())
@@ -199,7 +214,7 @@ class UnmodifiedOutputs(RenkuException):
 
     def __init__(self, repository, unmodified):
         """Build a custom message."""
-        super(UnmodifiedOutputs, self).__init__(
+        super().__init__(
             "There are no detected new outputs or changes.\n"
             "\nIf any of the following files should be considered as outputs,"
             "\nthey need to be removed first in order to be detected "
@@ -230,7 +245,7 @@ class OutputsNotFound(RenkuException):
             "manually."
         )
 
-        super(OutputsNotFound, self).__init__(msg)
+        super().__init__(msg)
 
 
 class InvalidInputPath(RenkuException):
@@ -240,15 +255,17 @@ class InvalidInputPath(RenkuException):
 class InvalidSuccessCode(RenkuException):
     """Raise when the exit-code is not 0 or redefined."""
 
-    def __init__(self, returncode, success_codes=None):
+    def __init__(self, return_code, success_codes=None, message=None):
         """Build a custom message."""
-        if not success_codes:
-            msg = "Command returned non-zero exit status {0}.".format(returncode)
+        if message:
+            msg = message
+        elif not success_codes:
+            msg = f"Command returned non-zero exit status {return_code}."
         else:
-            msg = "Command returned {0} exit status, but it expects {1}".format(
-                returncode, ", ".join((str(code) for code in success_codes))
+            msg = "Command returned {} exit status, but it expects {}".format(
+                return_code, ", ".join(str(code) for code in success_codes)
             )
-        super(InvalidSuccessCode, self).__init__(msg)
+        super().__init__(msg)
 
 
 class DatasetNotFound(DatasetException):
@@ -327,7 +344,7 @@ class ExternalStorageNotInstalled(RenkuException):
             'otherwise install LFS with "git lfs install --local".'
         )
 
-        super(ExternalStorageNotInstalled, self).__init__(msg)
+        super().__init__(msg)
 
 
 class ExternalStorageDisabled(RenkuException):
@@ -346,7 +363,7 @@ class ExternalStorageDisabled(RenkuException):
             'otherwise install e.g. git-LFS with "git lfs install --local".'
         )
 
-        super(ExternalStorageDisabled, self).__init__(msg)
+        super().__init__(msg)
 
 
 class UninitializedProject(RenkuException):
@@ -357,7 +374,7 @@ class UninitializedProject(RenkuException):
         msg = "{repo_path} does not seem to be a Renku project.\n" 'Initialize it with "renku init"'.format(
             repo_path=repo_path
         )
-        super(UninitializedProject, self).__init__(msg)
+        super().__init__(msg)
 
 
 class InvalidAccessToken(RenkuException):
@@ -366,7 +383,7 @@ class InvalidAccessToken(RenkuException):
     def __init__(self):
         """Build a custom message."""
         msg = "Invalid access token.\n" "Please, update access token."
-        super(InvalidAccessToken, self).__init__(msg)
+        super().__init__(msg)
 
 
 class GitError(RenkuException):
@@ -447,31 +464,6 @@ class CommitProcessingError(RenkuException):
     """Raised when a commit couldn't be processed during graph build."""
 
 
-class WorkflowExecuteError(RenkuException):
-    """Raises when a workflow execution fails."""
-
-    def __init__(self, fail_reason=None):
-        """Build a custom message."""
-
-        msg = "Unable to finish executing workflow"
-        if fail_reason:
-            msg += f": {fail_reason}"
-        super(WorkflowExecuteError, self).__init__(msg)
-
-
-class WorkflowRerunError(RenkuException):
-    """Raises when a workflow re-execution fails."""
-
-    def __init__(self, workflow_file):
-        """Build a custom message."""
-        msg = (
-            "Unable to finish re-executing workflow; check the workflow"
-            " execution outline above and the generated {0} file for"
-            " potential issues, then remove the {0} file and try again".format(str(workflow_file))
-        )
-        super(WorkflowRerunError, self).__init__(msg)
-
-
 class ExportError(DatasetException):
     """Raised when a dataset cannot be exported."""
 
@@ -533,7 +525,25 @@ class NodeNotFoundError(RenkuException):
             "NodeJs could not be found on this system\n"
             "Please install it, for details see https://nodejs.org/en/download/package-manager/"
         )
-        super(NodeNotFoundError, self).__init__(msg)
+        super().__init__(msg)
+
+
+class SSHNotFoundError(RenkuException):
+    """Raised when SSH client is not installed on the system."""
+
+    def __init__(self):
+        """Build a custom message."""
+        msg = "SSH client (ssh) could not be found on this system"
+        super().__init__(msg)
+
+
+class SSHNotSetupError(RenkuException):
+    """Raised when SSH client is not installed on the system."""
+
+    def __init__(self):
+        """Build a custom message."""
+        msg = "SSH is not set up correctly, use 'renku session ssh-setup' to set it up."
+        super().__init__(msg)
 
 
 class ObjectNotFoundError(RenkuException):
@@ -544,7 +554,43 @@ class ObjectNotFoundError(RenkuException):
         super().__init__(f"Cannot find object: '{filename}'")
 
 
-class ParameterNotFoundError(RenkuException):
+class WorkflowError(RenkuException):
+    """Base class for workflow-related errors."""
+
+
+class WorkflowExportError(WorkflowError):
+    """Raises when a workflow cannot be exported."""
+
+
+class DuplicateWorkflowNameError(WorkflowError):
+    """Raises when a workflow name already exists."""
+
+
+class WorkflowExecuteError(WorkflowError):
+    """Raises when a workflow execution fails."""
+
+    def __init__(self, fail_reason=None, show_prefix: bool = True):
+        """Build a custom message."""
+
+        msg = "Unable to finish executing workflow"
+        if fail_reason:
+            msg += f": {fail_reason}"
+        super().__init__(msg)
+
+
+class WorkflowRerunError(WorkflowError):
+    """Raises when a workflow re-execution fails."""
+
+    def __init__(self, cwl_file):
+        """Build a custom message."""
+        msg = (
+            "Unable to finish re-executing workflow; check the workflow execution outline above and the generated "
+            f"{cwl_file} file for potential issues, then remove the {cwl_file} file and try again"
+        )
+        super().__init__(msg)
+
+
+class ParameterNotFoundError(WorkflowError):
     """Raised when a parameter reference cannot be resolved to a parameter."""
 
     def __init__(self, parameter: str, workflow: str):
@@ -552,7 +598,7 @@ class ParameterNotFoundError(RenkuException):
         super().__init__(f"Cannot find parameter '{parameter}' on workflow {workflow}")
 
 
-class MappingExistsError(RenkuException):
+class MappingExistsError(WorkflowError):
     """Raised when a parameter mapping exists already."""
 
     def __init__(self, existing_mappings: List[str]):
@@ -564,7 +610,7 @@ class MappingExistsError(RenkuException):
         )
 
 
-class MappingNotFoundError(RenkuException):
+class MappingNotFoundError(WorkflowError):
     """Raised when a parameter mapping does not exist."""
 
     def __init__(self, mapping: str, workflow: str):
@@ -572,7 +618,7 @@ class MappingNotFoundError(RenkuException):
         super().__init__(f"Cannot find mapping '{mapping}' on workflow {workflow}")
 
 
-class ChildWorkflowNotFoundError(RenkuException):
+class ChildWorkflowNotFoundError(WorkflowError):
     """Raised when a child could not be found on a composite workflow."""
 
     def __init__(self, child: str, workflow: str):
@@ -580,7 +626,7 @@ class ChildWorkflowNotFoundError(RenkuException):
         super().__init__(f"Cannot find child step '{child}' on workflow {workflow}")
 
 
-class WorkflowNotFoundError(RenkuException):
+class WorkflowNotFoundError(WorkflowError):
     """Raised when a workflow could not be found."""
 
     def __init__(self, name_or_id: str):
@@ -600,15 +646,18 @@ class ParameterLinkError(RenkuException):
 class GraphCycleError(RenkuException):
     """Raised when a parameter reference cannot be resolved to a parameter."""
 
-    def __init__(self, cycles: List[List[str]]):
+    def __init__(self, cycles: List[List[str]], message: Optional[str] = None):
         """Embed exception and build a custom message."""
-        cycle_str = "), (".join(", ".join(cycle) for cycle in cycles)
-        super().__init__(
-            f"Cycles detected in execution graph: ({cycle_str})\nCircular workflows are not supported in renku\n"
-            "If this happened as part of a 'renku run' or 'renku workflow execute', please git reset and clean"
-            "the project and try again. This might be due to renku erroneously detecting an input as an output, "
-            "if so, please specify the wrongly detected output as an explicit input using '--input'."
-        )
+        if message:
+            super().__init__(message)
+        else:
+            cycle_str = "), (".join(", ".join(cycle) for cycle in cycles)
+            super().__init__(
+                f"Cycles detected in execution graph: ({cycle_str})\nCircular workflows are not supported in renku\n"
+                "If this happened as part of a 'renku run' or 'renku workflow execute', please git reset and clean"
+                "the project and try again. This might be due to renku erroneously detecting an input as an output, "
+                "if so, please specify the wrongly detected output as an explicit input using '--input'."
+            )
 
 
 class NothingToExecuteError(RenkuException):
@@ -627,7 +676,15 @@ class DockerError(RenkuException):
         super().__init__(f"Docker failed: {reason}")
 
 
-class RenkulabSessionError(RenkuException):
+class DockerAPIError(DockerError):
+    """Raised when error has returned from the Docker API."""
+
+
+class SessionStartError(RenkuException):
+    """Raised when an error occurs trying to start sessions."""
+
+
+class RenkulabSessionError(SessionStartError):
     """Raised when an error occurs trying to start sessions with the notebook service."""
 
 
@@ -651,7 +708,19 @@ class NotebookSessionImageNotExistError(RenkuException):
 
 
 class MetadataMergeError(RenkuException):
-    """Raise when merging of metadata failed."""
+    """Raised when merging of metadata failed."""
+
+
+class MetadataCorruptError(RenkuException):
+    """Raised when metadata is corrupt and couldn't be loaded."""
+
+    def __init__(self, path: Union[str, Path]) -> None:
+        message = f"Metadata file '{path}' couldn't be loaded because it is corrupted."
+        with open(path) as f:
+            content = f.read()
+        if all(pattern in content for pattern in ["<<<<<<<", "=======", ">>>>>>>"]):
+            message += "\nThis is likely due to an unresolved git merge conflict in the file."
+        super().__init__(message)
 
 
 class MinimumVersionError(RenkuException):
@@ -670,7 +739,7 @@ class MinimumVersionError(RenkuException):
 class DatasetProviderNotFound(DatasetException, ParameterError):
     """Raised when a dataset provider cannot be found based on a URI or a provider name."""
 
-    def __init__(self, *, name: str = None, uri: str = None, message: str = None):
+    def __init__(self, *, name: Optional[str] = None, uri: Optional[str] = None, message: Optional[str] = None):
         if message is None:
             if name:
                 message = f"Provider '{name}' not found"
@@ -696,7 +765,7 @@ class RCloneException(DatasetException):
 class StorageObjectNotFound(RCloneException):
     """Raised when a file or directory cannot be found in the remote storage."""
 
-    def __init__(self, error: str = None):
+    def __init__(self, error: Optional[str] = None):
         message = "Cannot find file/directory"
         if error:
             message = f"{message}: {error}"

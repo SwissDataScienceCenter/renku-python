@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,19 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Template use cases."""
-
+import json
 import os
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
 
 import click
+from pydantic import validate_arguments
 
 from renku.command.command_builder.command import inject
 from renku.command.view_model.template import TemplateChangeViewModel, TemplateViewModel
 from renku.core import errors
 from renku.core.interface.project_gateway import IProjectGateway
-from renku.core.migration.migrate import is_renku_project
 from renku.core.template.template import (
     FileAction,
     RepositoryTemplates,
@@ -37,24 +35,93 @@ from renku.core.template.template import (
     fetch_templates_source,
     get_file_actions,
     has_template_checksum,
+    read_template_checksum,
     set_template_parameters,
+    write_template_checksum,
 )
 from renku.core.util import communication
+from renku.core.util.metadata import is_renku_project, replace_renku_version_in_dockerfile
 from renku.core.util.tabulate import tabulate
 from renku.domain_model.project import Project
 from renku.domain_model.project_context import project_context
-from renku.domain_model.template import RenderedTemplate, Template, TemplateMetadata, TemplatesSource
-from renku.infrastructure.repository import Repository
+from renku.domain_model.template import (
+    RenderedTemplate,
+    Template,
+    TemplateMetadata,
+    TemplatesSource,
+    calculate_dockerfile_checksum,
+)
+from renku.infrastructure.repository import DiffLineChangeType, Repository
 
 
-def list_templates(source, reference) -> List[TemplateViewModel]:
+def update_dockerfile_checksum(new_checksum: str):
+    """Update ``Dockerfile`` template checksum if possible."""
+    if not project_context.dockerfile_path.exists():
+        raise errors.DockerfileUpdateError("Project doesn't have a Dockerfile")
+    if is_dockerfile_updated_by_user():
+        raise errors.DockerfileUpdateError("Cannot update Dockerfile checksum because it was updated by the user")
+
+    checksums = read_template_checksum()
+    checksums["Dockerfile"] = new_checksum
+    write_template_checksum(checksums)
+
+
+def does_dockerfile_contain_only_version_change() -> bool:
+    """Return True if Dockerfile only contains Renku version changes."""
+    commits = list(project_context.repository.iterate_commits(project_context.dockerfile_path))
+    # NOTE: Don't include the first commit that added the Dockerfile
+    for commit in commits[:-1]:
+        changes = commit.get_changes(project_context.dockerfile_path, patch=True)
+        if not changes:
+            continue
+        diff = changes[0].diff
+        # NOTE: Check the Dockerfile change only includes adding and removing a Renku version line
+        if (
+            len(diff) != 2
+            or {c.change_type for c in diff} != {DiffLineChangeType.ADDED, DiffLineChangeType.DELETED}
+            or any("ARG RENKU_VERSION=" not in c.text for c in diff)
+        ):
+            return False
+
+    return True
+
+
+def is_dockerfile_updated_by_user() -> bool:
+    """Return if user modified the ``Dockerfile``."""
+    dockerfile = project_context.dockerfile_path
+
+    if not has_template_checksum() or not dockerfile.exists():
+        return False
+
+    original_checksum = read_template_checksum().get("Dockerfile")
+    current_checksum = calculate_dockerfile_checksum(dockerfile=dockerfile)
+
+    if original_checksum == current_checksum:  # Dockerfile was never updated
+        return False
+
+    # NOTE: Check if original Dockerfile has the same checksum as the time when the template was set/updated
+    metadata = json.loads(project_context.project.template_metadata.metadata)
+    original_renku_version = metadata.get("__renku_version__")
+
+    original_dockerfile_content = replace_renku_version_in_dockerfile(dockerfile.read_text(), original_renku_version)
+    original_calculated_checksum = calculate_dockerfile_checksum(dockerfile_content=original_dockerfile_content)
+
+    if original_checksum == original_calculated_checksum:
+        return False
+
+    return False if does_dockerfile_contain_only_version_change() else True
+
+
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def list_templates(source: Optional[str], reference: Optional[str]) -> List[TemplateViewModel]:
     """Return available templates from a source."""
     templates_source = fetch_templates_source(source=source, reference=reference)
 
     return [TemplateViewModel.from_template(t) for t in templates_source.templates]
 
 
-def show_template(source, reference, id) -> TemplateViewModel:
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def show_template(source: Optional[str], reference: Optional[str], id: Optional[str]) -> TemplateViewModel:
     """Show template details."""
     if source or id:
         templates_source = fetch_templates_source(source=source, reference=reference)
@@ -86,11 +153,20 @@ def check_for_template_update(project: Optional[Project]) -> Tuple[bool, bool, O
     return update_available, metadata.allow_update, metadata.reference, latest_reference
 
 
-def set_template(source, reference, id, force, interactive, input_parameters, dry_run) -> TemplateChangeViewModel:
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def set_template(
+    source: Optional[str],
+    reference: Optional[str],
+    id: Optional[str],
+    force: bool,
+    interactive: bool,
+    input_parameters: Optional[Dict[str, str]],
+    dry_run: bool,
+) -> TemplateChangeViewModel:
     """Set template for a project."""
     project = project_context.project
 
-    if project.template_source and not force:
+    if project.template_metadata.template_source and not force:
         raise errors.TemplateUpdateError("Project already has a template: To set a template use '-f/--force' flag")
 
     templates_source = fetch_templates_source(source=source, reference=reference)
@@ -113,8 +189,9 @@ def set_template(source, reference, id, force, interactive, input_parameters, dr
     return TemplateChangeViewModel.from_template(template=rendered_template, actions=actions)
 
 
-def update_template(force, interactive, dry_run) -> Optional[TemplateChangeViewModel]:
-    """Update project's template if possible. Return True if updated."""
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def update_template(force: bool, interactive: bool, dry_run: bool) -> Optional[TemplateChangeViewModel]:
+    """Update project's template if possible. Return corresponding viewmodel if updated."""
     template_metadata = TemplateMetadata.from_project(project=project_context.project)
 
     if not template_metadata.source:
@@ -155,7 +232,9 @@ def update_template(force, interactive, dry_run) -> Optional[TemplateChangeViewM
         input_parameters=None,
     )
 
-    return TemplateChangeViewModel.from_template(template=rendered_template, actions=actions)
+    return TemplateChangeViewModel.from_template(
+        template=rendered_template, actions=actions, old_id=template_metadata.id
+    )
 
 
 @inject.autoparams("project_gateway")
@@ -205,19 +284,21 @@ def _set_or_update_project_from_template(
     return rendered_template, actions
 
 
-def select_template(templates_source: TemplatesSource, id=None) -> Optional[Template]:
+def select_template(templates_source: TemplatesSource, id: Optional[str] = None) -> Optional[Template]:
     """Select a template from a template source."""
 
     def prompt_to_select_template():
         if not communication.has_prompt():
             raise errors.InvalidTemplateError("Cannot select a template")
 
-        Selection = NamedTuple("Selection", [("index", int), ("id", str)])
+        class Selection(NamedTuple):
+            number: int
+            id: str
 
-        templates = [Selection(index=i, id=t.id) for i, t in enumerate(templates_source.templates, start=1)]
-        tables = tabulate(templates, headers=["index", "id"])
+        templates = [Selection(number=i, id=t.id) for i, t in enumerate(templates_source.templates, start=1)]
+        tables = tabulate(templates, headers=["number", "id"])
 
-        message = f"{tables}\nPlease choose a template by typing its index"
+        message = f"{tables}\nPlease choose a template by typing its number"
 
         template_index = communication.prompt(
             msg=message, type=click.IntRange(1, len(templates_source.templates)), show_default=False, show_choices=False
@@ -235,6 +316,7 @@ def select_template(templates_source: TemplatesSource, id=None) -> Optional[Temp
     return prompt_to_select_template()
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def validate_templates(
     source: Optional[str] = None, reference: Optional[str] = None
 ) -> Dict[str, Union[str, Dict[str, List[str]]]]:

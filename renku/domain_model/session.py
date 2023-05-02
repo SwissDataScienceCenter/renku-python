@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,26 +18,55 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+
+from renku.core.constant import ProviderPriority
+
+if TYPE_CHECKING:
+    from renku.core.dataset.providers.models import ProviderParameter
 
 
 class Session:
     """Interactive session."""
 
-    def __init__(self, id: str, status: str, url: str):
+    def __init__(
+        self,
+        id: str,
+        status: str,
+        url: str,
+        commit: str,
+        branch: str,
+        provider: str,
+        start_time: datetime,
+        ssh_enabled: bool = False,
+    ):
         self.id = id
         self.status = status
         self.url = url
+        self.start_time = start_time
+        self.commit = commit
+        self.branch = branch
+        self.provider = provider
+        self.ssh_enabled = ssh_enabled
 
 
 class ISessionProvider(metaclass=ABCMeta):
     """Abstract class for a interactive session provider."""
 
+    priority: ProviderPriority = ProviderPriority.NORMAL
+
+    @property
     @abstractmethod
-    def get_name(self) -> str:
+    def name(self) -> str:
         """Return session provider's name."""
         pass
+
+    @abstractmethod
+    def is_remote_provider(self) -> bool:
+        """Return True for remote providers (i.e. not local Docker)."""
+        raise NotImplementedError
 
     @abstractmethod
     def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]):
@@ -57,7 +84,7 @@ class ISessionProvider(metaclass=ABCMeta):
         """Search for the given container image.
 
         Args:
-            image_name: Container image name.
+            image_name(str): Container image name.
             config: Path to the session provider specific configuration YAML.
 
         Returns:
@@ -66,7 +93,7 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def session_provider(self) -> "ISessionProvider":
+    def session_provider(self) -> ISessionProvider:
         """Supported session provider.
 
         Returns:
@@ -75,12 +102,22 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def get_start_parameters(self) -> List[ProviderParameter]:
+        """Returns parameters that can be set for session start."""
+        pass
+
+    @abstractmethod
+    def get_open_parameters(self) -> List[ProviderParameter]:
+        """Returns parameters that can be set for session open."""
+        pass
+
+    @abstractmethod
     def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
 
         Args:
-            project_name: Renku project name.
-            config: Path to the session provider specific configuration YAML.
+            project_name(str): Renku project name.
+            config(Dict[str, Any], optional): Path to the session provider specific configuration YAML.
 
         Returns:
             a list of sessions.
@@ -97,7 +134,8 @@ class ISessionProvider(metaclass=ABCMeta):
         mem_request: Optional[str] = None,
         disk_request: Optional[str] = None,
         gpu_request: Optional[str] = None,
-    ) -> str:
+        **kwargs,
+    ) -> Tuple[str, str]:
         """Creates an interactive session.
 
         Args:
@@ -110,7 +148,7 @@ class ISessionProvider(metaclass=ABCMeta):
             gpu_request(Optional[str]): GPU device request for the session.
 
         Returns:
-            str: a unique id for the created interactive session.
+            Tuple[str, str]: Provider message and a possible warning message.
         """
         pass
 
@@ -119,9 +157,9 @@ class ISessionProvider(metaclass=ABCMeta):
         """Stops all or a given interactive session.
 
         Args:
-            project_name: Project's name.
-            session_name: The unique id of the interactive session.
-            stop_all: Specifies whether or not to stop all the running interactive sessions.
+            project_name(str): Project's name.
+            session_name(str, optional): The unique id of the interactive session.
+            stop_all(bool): Specifies whether or not to stop all the running interactive sessions.
 
 
         Returns:
@@ -130,18 +168,28 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def session_open(self, project_name: str, session_name: str, **kwargs) -> bool:
+        """Open a given interactive session.
+
+        Args:
+            project_name(str): Renku project name.
+            session_name(str): The unique id of the interactive session.
+        """
+        pass
+
+    @abstractmethod
     def session_url(self, session_name: str) -> Optional[str]:
         """Get the given session's URL.
 
         Args:
-            session_name: The unique id of the interactive session.
+            session_name(str): The unique id of the interactive session.
 
         Returns:
             URL of the interactive session.
         """
         pass
 
-    def pre_start_checks(self):
+    def pre_start_checks(self, **kwargs):
         """Perform any required checks on the state of the repository prior to starting a session.
 
         The expectation is that this method will abort the
@@ -149,3 +197,7 @@ class ISessionProvider(metaclass=ABCMeta):
         make sure that the session launches successfully. By default this method does not do any checks.
         """
         return None
+
+    def force_build_image(self, **kwargs) -> bool:
+        """Whether we should force build the image directly or check for an existing image first."""
+        return False

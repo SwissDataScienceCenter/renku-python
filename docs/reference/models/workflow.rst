@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2023 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -41,6 +41,13 @@ parameter
 ---------------------------------------------
 
 .. automodule:: renku.domain_model.workflow.parameter
+   :members:
+   :show-inheritance:
+
+workflow\_file
+---------------------------------------------------
+
+.. automodule:: renku.domain_model.workflow.workflow_file
    :members:
    :show-inheritance:
 

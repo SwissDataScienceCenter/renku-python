@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -65,7 +64,7 @@ class CWLToolProvider(IWorkflowProvider):
     @hookimpl
     def workflow_provider(self):
         """Workflow provider name."""
-        return (self, "cwltool")
+        return self, "cwltool"
 
     @hookimpl
     def workflow_execute(self, dag: nx.DiGraph, basedir: Path, config: Dict[str, Any]):
@@ -148,6 +147,9 @@ class CWLToolProvider(IWorkflowProvider):
                             if destination.is_dir():
                                 shutil.rmtree(str(destination))
                                 destination = destination.parent
+                                destination.mkdir(parents=True, exist_ok=True)
+                            else:
+                                destination.parent.mkdir(parents=True, exist_ok=True)
                             shutil.move(location, str(destination))
                             continue
 

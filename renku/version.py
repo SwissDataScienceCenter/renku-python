@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,30 +16,35 @@
 """Version information for Renku."""
 
 import re
+from typing import Optional
 
 try:
-    from importlib.metadata import distribution
+    from importlib.metadata import distribution, version
 except ImportError:
-    from importlib_metadata import distribution  # type: ignore
+    from importlib_metadata import distribution, version  # type: ignore
 
-__version__ = "1.9.3"
-__template_version__ = "0.3.1"
-__minimum_project_version__ = "1.7.0"
+__version__ = version("renku")
+__template_version__ = "0.5.0"
+__minimum_project_version__ = "2.4.0"
 
 
-def is_release():
+def is_release(version: Optional[str] = None):
     """Check if current version is a release semver."""
-    if re.match(r"\d+.\d+.\d+$", __version__):
+    if not version:
+        version = __version__
+
+    if re.match(r"\d+.\d+.\d+(rc\d+)?$", version):
         return True
     return False
 
 
 def _get_distribution_url():
     try:
-        d = distribution("renku")
-        return d.metadata["Home-page"]
+        url = distribution("renku").metadata["Home-page"]
     except Exception:
-        return "https://github.com/swissdatasciencecenter/renku-python"
+        url = None
+
+    return "https://github.com/swissdatasciencecenter/renku-python" if not url else url
 
 
 version_url = f"{_get_distribution_url()}/tree/v{__version__}"

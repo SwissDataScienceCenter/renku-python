@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -27,7 +26,7 @@ import pytest
 
 from renku.core import errors
 from renku.infrastructure.database import Database
-from renku.infrastructure.repository import Repository
+from renku.infrastructure.repository import Actor, Repository
 from renku.ui.cli import cli
 from renku.ui.cli.init import parse_parameters
 from tests.utils import format_result_exception, raises
@@ -65,7 +64,7 @@ def test_template_selection_helpers(isolated_runner):
 
     stripped_output = " ".join(result.output.split())
 
-    assert "Please choose a template by typing its index:" in stripped_output
+    assert "Please choose a template by typing its number:" in stripped_output
 
     assert "1 python-minimal" in stripped_output
     assert "2 R-minimal" in stripped_output
@@ -81,6 +80,7 @@ def test_init(isolated_runner, project_init):
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert new_project.exists()
+    assert "RENKU HOOK. DO NOT REMOVE OR MODIFY." in (new_project / ".git" / "hooks" / "pre-commit").read_text()
     assert (new_project / ".renku").exists()
     assert (new_project / ".renku" / "renku.ini").exists()
     assert (new_project / ".renku" / "metadata").exists()
@@ -113,17 +113,6 @@ def test_init(isolated_runner, project_init):
     for template_file in template_files:
         expected_file = new_project_2 / template_file.relative_to(new_project)
         assert expected_file.exists()
-
-
-def test_init_with_template_index(isolated_runner, project_init):
-    """Test initialization with --template-index is deprecated."""
-    _, commands = project_init
-
-    # verify providing both index and id fails
-    result = isolated_runner.invoke(cli, commands["init_alt"] + commands["index"] + commands["force"])
-
-    assert 2 == result.exit_code
-    assert "'-i/--template-index' is deprecated: Use '-t/--template-id' to pass a template id" in result.output
 
 
 def test_init_initial_branch(isolated_runner, project_init):
@@ -260,15 +249,18 @@ def test_init_force_in_dirty_dir(isolated_runner, project_init):
     assert "My first project!" == readme.read_text()
 
 
-def test_init_on_cloned_repo(isolated_runner, data_repository, project_init):
+def test_init_on_cloned_repo(isolated_runner, project_init):
     """Run init --force in directory containing another repository."""
     data, commands = project_init
 
+    # Create a repository
     new_project = Path(data["test_project"])
-    import shutil
-
-    shutil.copytree(str(data_repository.path), str(new_project))
+    repository = Repository.initialize(new_project)
     assert new_project.exists()
+    (repository.path / "file1").write_text("some data")
+    repository.add(all=True)
+    repository.commit("test commit", author=Actor("me", "me@example.com"))
+    assert repository.contains("file1")
 
     # try to create in a dirty folder
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
@@ -311,7 +303,7 @@ def test_init_new_metadata_defaults(isolated_runner, project_init):
     assert 0 == result.exit_code, format_result_exception(result)
 
     project = Database.from_path(Path(data["test_project"]) / ".renku" / "metadata").get("project")
-    metadata = json.loads(project.template_metadata)
+    metadata = json.loads(project.template_metadata.metadata)
     assert True is metadata["bool_var"]
     assert "ask again" == metadata["enum_var"]
     assert "some description" == metadata["description"]
@@ -334,8 +326,8 @@ def test_init_new_metadata_defaults_is_overwritten(isolated_runner, project_init
     assert 0 == result.exit_code, format_result_exception(result)
 
     project = Database.from_path(Path(data["test_project"]) / ".renku" / "metadata").get("project")
-    metadata = json.loads(project.template_metadata)
-    assert False is metadata["bool_var"]
+    metadata = json.loads(project.template_metadata.metadata)
+    assert metadata["bool_var"] is False
     assert "maybe" == metadata["enum_var"]
     assert "some description" == metadata["description"]
     assert 70.12 == metadata["number_val"]
@@ -427,7 +419,7 @@ def test_init_with_data_dir(isolated_runner, data_dir, directory_tree, project_i
 
     assert (new_project / data_dir).exists()
     assert (new_project / data_dir / ".gitkeep").exists()
-    assert not Repository(new_project).is_dirty(untracked_files=True)
+    assert not Repository(new_project).is_dirty()
 
     os.chdir(new_project.resolve())
     result = isolated_runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-data", str(directory_tree)])
@@ -469,7 +461,7 @@ def test_init_with_description(isolated_runner, template):
 
     assert "new project" == project.name
     assert project.id.endswith("new-project")  # make sure id uses slug version of name without space
-    assert "my project description" in project.template_metadata
+    assert "my project description" in project.template_metadata.metadata
     assert "my project description" == project.description
 
     readme_content = (Path("new project") / "README.md").read_text()

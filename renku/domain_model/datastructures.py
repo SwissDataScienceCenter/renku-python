@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +18,7 @@
 import os
 from collections import deque
 from pathlib import Path
+from typing import Deque, List, Tuple
 
 
 class DirectoryTree(dict):
@@ -74,7 +73,7 @@ class DirectoryTree(dict):
         filter = {
             os.path.sep,
         }
-        queue = deque()
+        queue: Deque[Tuple["DirectoryTree", List[str]]] = deque()
         queue.append((self, []))
 
         while queue:

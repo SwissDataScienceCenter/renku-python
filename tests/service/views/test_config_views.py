@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2019-2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -96,6 +95,7 @@ def test_config_view_set(svc_client_with_repo):
     }
 
     response = svc_client.post("/config.set", data=json.dumps(payload), headers=headers)
+
     assert 200 == response.status_code
     assert {"error"} != set(response.json.keys())
 
@@ -118,6 +118,7 @@ def test_config_view_set(svc_client_with_repo):
     }
 
     response = svc_client.post("/config.set", data=json.dumps(payload), headers=headers)
+
     assert 200 == response.status_code
     assert {"error"} != set(response.json.keys())
 

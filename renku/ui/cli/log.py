@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022 Swiss Data Science Center (SDSC)
+# Copyright 2018-2023 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -237,10 +236,10 @@ def log(columns, format, workflows, datasets, no_pager, no_color):
 
         if no_color:
             text = strip_ansi_codes(text)
-
-        if no_pager:
-            click.echo(text)
-        else:
-            show_text_with_pager(text)
     else:
-        click.echo(LOG_FORMATS[format](result, columns), not no_pager)
+        text = LOG_FORMATS[format](result, columns)  # type: ignore
+
+    if no_pager:
+        click.echo(text)
+    else:
+        show_text_with_pager(text)

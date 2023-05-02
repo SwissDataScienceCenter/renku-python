@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -55,8 +54,10 @@ a session there, or in the case where they simply have no access to a Renku depl
 
     $ renku session start -p docker
 
-The command first looks for a local image to use. If a local image isn't found, it searches the remote Renku deployment
-(if any) and pulls the image if it exists. Finally, it prompts the user to build the image locally if no image is found.
+The command first looks for a local image to use. If a local image isn't found, it
+searches the remote Renku deployment (if any) and pulls the image if it exists.
+Finally, it prompts the user to build the image locally if no image is found. You
+can force the image to always be built by using the ``--force-build`` flag.
 
 Renkulab provider
 ~~~~~~~~~~~~~~~~~
@@ -91,6 +92,41 @@ Please note that there are a few limitations with the ``renkulab`` provider:
 .. code-block:: console
 
     $ renku session start -p renkulab
+
+SSH connections to remote sessions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can connect via SSH to remote (Renkulab) sessions, if your project supports it.
+
+To see if your project supports SSH, you can run ``renku project show`` and check the
+``SSH Supported`` flag. If your project doesn't support SSH, update the project template
+or contact the template maintainer to enable SSH support on the template.
+
+You can start a session with SSH support using:
+
+.. code-block:: console
+
+    $ renku session start -p renkulab --ssh
+    Your system is not set up for SSH connections to Renkulab. Would you like to set it up? [y/N]: y
+    [...]
+    Session sessionid successfully started, use 'renku session open --ssh sessionid' or 'ssh sessionid' to connect to it
+
+This will create SSH keys for you and setup SSH configuration for connecting to the renku deployment.
+You can then use the SSH connection name (``ssh renkulab.io-myproject-sessionid`` in the example)
+to connect to the session or in tools such as VSCode.
+
+.. note::
+
+   If you need to recreate the generated SSH keys or you want to use existing keys instead,
+   you can use the ``renku session ssh-setup`` command to perform this step manually. See
+   the help of the command for more details.
+
+Alternatively, you can use ``renku session open --ssh <session_id>`` to directly open an SSH
+connection to the session.
+
+You can see the SSH connection name using ``renku session ls``.
+
+SSH config for specific sessions is removed when the session is stopped.
 
 Managing active sessions
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -150,7 +186,8 @@ The command ``renku session stop --all`` will stop all active sessions regardles
 import click
 from lazy_object_proxy import Proxy
 
-from renku.command.format.session import SESSION_FORMATS
+from renku.command.format.session import SESSION_COLUMNS, SESSION_FORMATS
+from renku.command.util import WARNING
 from renku.core import errors
 from renku.ui.cli.utils.callback import ClickCallback
 from renku.ui.cli.utils.plugins import get_supported_session_providers_names
@@ -180,14 +217,39 @@ def session():
     help="YAML file containing configuration for the provider.",
 )
 @click.option(
-    "--format", type=click.Choice(list(SESSION_FORMATS.keys())), default="tabular", help="Choose an output format."
+    "--columns",
+    type=click.STRING,
+    default=None,
+    metavar="<columns>",
+    help="Comma-separated list of column to display: {}.".format(", ".join(SESSION_COLUMNS.keys())),
+    show_default=True,
 )
-def list_sessions(provider, config, format):
+@click.option(
+    "--format", type=click.Choice(list(SESSION_FORMATS.keys())), default="log", help="Choose an output format."
+)
+def list_sessions(provider, config, columns, format):
     """List interactive sessions."""
     from renku.command.session import session_list_command
 
     result = session_list_command().build().execute(provider=provider, config_path=config)
-    click.echo(SESSION_FORMATS[format](result.output))
+
+    click.echo(SESSION_FORMATS[format](result.output.sessions, columns=columns))
+
+    if result.output.warning_messages:
+        click.echo()
+        if result.output.all_local and result.output.sessions:
+            click.echo(WARNING + "Only showing sessions from local provider")
+        for message in result.output.warning_messages:
+            click.echo(WARNING + message)
+
+
+def session_start_provider_options(*param_decls, **attrs):
+    """Sets session provider options groups on the session start command."""
+    from renku.core.plugin.session import get_supported_session_providers
+    from renku.ui.cli.utils.click import create_options
+
+    providers = [p for p in get_supported_session_providers() if p.get_start_parameters()]
+    return create_options(providers=providers, parameter_function="get_start_parameters")
 
 
 @session.command("start")
@@ -213,26 +275,22 @@ def list_sessions(provider, config, format):
 @click.option("--disk", type=click.STRING, metavar="<disk size>", help="Amount of disk space required for the session.")
 @click.option("--gpu", type=click.STRING, metavar="<GPU quota>", help="GPU quota for the session.")
 @click.option("--memory", type=click.STRING, metavar="<memory size>", help="Amount of memory required for the session.")
-def start(provider, config, image, cpu, disk, gpu, memory):
+@session_start_provider_options()
+def start(provider, config, image, cpu, disk, gpu, memory, **kwargs):
     """Start an interactive session."""
     from renku.command.session import session_start_command
 
     communicator = ClickCallback()
-    result = (
-        session_start_command()
-        .with_communicator(communicator)
-        .build()
-        .execute(
-            provider=provider,
-            config_path=config,
-            image_name=image,
-            cpu_request=cpu,
-            mem_request=memory,
-            disk_request=disk,
-            gpu_request=gpu,
-        )
+    session_start_command().with_communicator(communicator).build().execute(
+        provider=provider,
+        config_path=config,
+        image_name=image,
+        cpu_request=cpu,
+        mem_request=memory,
+        disk_request=disk,
+        gpu_request=gpu,
+        **kwargs,
     )
-    click.echo(result.output)
 
 
 @session.command("stop")
@@ -265,6 +323,15 @@ def stop(session_name, stop_all, provider):
         click.echo(f"Interactive session '{session_name}' has been successfully stopped.")
 
 
+def session_open_provider_options(*param_decls, **attrs):
+    """Sets session provider option groups on the session open command."""
+    from renku.core.plugin.session import get_supported_session_providers
+    from renku.ui.cli.utils.click import create_options
+
+    providers = [p for p in get_supported_session_providers() if p.get_open_parameters()]  # type: ignore
+    return create_options(providers=providers, parameter_function="get_open_parameters")
+
+
 @session.command("open")
 @click.argument("session_name", metavar="<name>", required=True)
 @click.option(
@@ -275,8 +342,27 @@ def stop(session_name, stop_all, provider):
     default=None,
     help="Session provider to use.",
 )
-def open(session_name, provider):
+@session_open_provider_options()
+def open(session_name, provider, **kwargs):
     """Open an interactive session."""
     from renku.command.session import session_open_command
 
-    session_open_command().build().execute(session_name=session_name, provider=provider)
+    session_open_command().build().execute(session_name=session_name, provider=provider, **kwargs)
+
+
+@session.command("ssh-setup")
+@click.option(
+    "existing_key",
+    "-k",
+    "--existing-key",
+    type=click.Path(exists=True, dir_okay=False),
+    metavar="<private key file>",
+    help="Existing private key to use.",
+)
+@click.option("--force", is_flag=True, help="Overwrite existing keys/config.")
+def ssh_setup(existing_key, force):
+    """Setup keys for SSH connections into sessions."""
+    from renku.command.session import ssh_setup_command
+
+    communicator = ClickCallback()
+    ssh_setup_command().with_communicator(communicator).build().execute(existing_key=existing_key, force=force)

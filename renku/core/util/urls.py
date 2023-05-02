@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +19,8 @@ import os
 import re
 import unicodedata
 import urllib
-from typing import List, Optional
+from pathlib import Path
+from typing import List, Optional, Tuple
 from urllib.parse import ParseResult, urlparse
 
 from renku.core import errors
@@ -34,7 +33,7 @@ from renku.domain_model.project_context import project_context
 def url_to_string(url):
     """Convert url from ``list`` or ``ParseResult`` to string."""
     if isinstance(url, list):
-        return ParseResult(scheme=url[0], netloc=url[1], path=url[2], params=None, query=None, fragment=None).geturl()
+        return ParseResult(scheme=url[0], netloc=url[1], path=url[2], params="", query="", fragment="").geturl()
 
     if isinstance(url, ParseResult):
         return url.geturl()
@@ -142,3 +141,29 @@ def is_uri_subfolder(uri: str, subfolder_uri: str) -> bool:
         # INFO: catch s3://test1 vs s3://test2
         return False
     return is_subpath(parsed_subfolder_uri_path, parsed_uri_path)
+
+
+def resolve_uri(uri: str) -> str:
+    """Resolve path part of a URI if it's a local URI."""
+    scheme = get_scheme(uri)
+
+    if scheme not in ("file", ""):
+        return uri
+
+    path = get_path(uri)
+    path = str(Path(path).resolve())
+
+    return f"{scheme}://{path}" if scheme else path
+
+
+def check_url(url: str) -> Tuple[bool, bool]:
+    """Check if a url is local/remote and if it contains a git repository."""
+    # NOTE: Supported scheme before refactoring were: "", "file", "http", "https", "git+https", "git+ssh"
+    u = urllib.parse.urlparse(url)
+    scheme = u.scheme.lower()
+    starts_with_git = url.lower().startswith("git@")
+
+    is_remote = scheme not in ("", "file") or starts_with_git
+    is_git = is_remote and (u.path.lower().endswith(".git") or scheme in ("git+https", "git+ssh") or starts_with_git)
+
+    return is_remote, is_git

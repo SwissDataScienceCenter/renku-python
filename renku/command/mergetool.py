@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,6 +18,8 @@
 
 from pathlib import Path
 
+from pydantic import validate_arguments
+
 from renku.command.command_builder.command import Command
 from renku.domain_model.project_context import project_context
 
@@ -28,6 +29,7 @@ def mergetool_command():
     return Command().command(_mergetool).require_migration().with_database()
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def _mergetool(local: Path, remote: Path, base: Path) -> None:
     """Merge renku metadata files.
 
@@ -48,6 +50,7 @@ def mergetool_install_command():
     return Command().command(setup_mergetool)
 
 
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def setup_mergetool(with_attributes: bool = True):
     """Setup renku custom mergetool."""
     repository = project_context.repository
@@ -65,7 +68,7 @@ def setup_mergetool(with_attributes: bool = True):
     pattern_string = ".renku/metadata/**    merge=renkumerge\n"
 
     if attributes_path.exists():
-        with open(attributes_path, "r") as f:
+        with open(attributes_path) as f:
             content = f.readlines()
             if pattern_string in content:
                 return

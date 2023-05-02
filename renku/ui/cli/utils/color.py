@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,7 +16,7 @@
 # limitations under the License.
 """Terminal Color definitions."""
 
-YELLOW = (196, 160, 0)
+YELLOW = "yellow"
 MAGENTA = "magenta"
 GREEN = "green"
 RED = "red"

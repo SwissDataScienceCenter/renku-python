@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2021 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,7 +19,6 @@ import fnmatch
 import os
 import re
 import tempfile
-from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple, Union
 
@@ -29,7 +26,8 @@ from packaging.version import Version
 
 from renku.core import errors
 from renku.core.config import get_value, set_value
-from renku.core.constant import RENKU_HOME, RENKU_PROTECTED_PATHS, RENKU_TMP
+from renku.core.constant import POINTERS, RENKU_HOME, RENKU_PROTECTED_PATHS, RENKU_TMP
+from renku.core.migration.utils import OLD_METADATA_PATH
 from renku.core.util import communication
 from renku.core.util.os import is_subpath
 
@@ -38,14 +36,9 @@ if TYPE_CHECKING:
     from renku.domain_model.provenance.agent import Person
 
 
-def construct_creators(
-    creators: List[Union[dict, str]], ignore_email=False
-) -> Tuple[List["Person"], List[Union[dict, str]]]:
+def construct_creators(creators: List[Union[dict, str]], ignore_email=False) -> Tuple[List["Person"], List[str]]:
     """Parse input and return a list of Person."""
     creators = creators or []
-
-    if not isinstance(creators, Iterable) or isinstance(creators, str):
-        raise errors.ParameterError("Invalid creators type")
 
     people = []
     no_email_warnings = []
@@ -61,7 +54,7 @@ def construct_creators(
     return people, no_email_warnings
 
 
-def construct_creator(creator: Union[dict, str], ignore_email) -> Tuple[Optional["Person"], Optional[Union[dict, str]]]:
+def construct_creator(creator: Union[dict, str], ignore_email) -> Tuple[Optional["Person"], Optional[str]]:
     """Parse input and return an instance of Person."""
     from renku.domain_model.provenance.agent import Person
 
@@ -84,7 +77,7 @@ def construct_creator(creator: Union[dict, str], ignore_email) -> Tuple[Optional
         if not ignore_email:  # pragma: no cover
             raise errors.ParameterError(f'Email is invalid: "{creator}".\n{message}')
         else:
-            no_email_warning = creator
+            no_email_warning = str(creator)
     else:
         no_email_warning = None
 
@@ -93,8 +86,6 @@ def construct_creator(creator: Union[dict, str], ignore_email) -> Tuple[Optional
 
 def is_external_file(path: Union[Path, str], project_path: Path):
     """Checks if a path is an external file."""
-    from renku.core.constant import POINTERS, RENKU_HOME
-
     path = project_path / path
     if not path.is_symlink() or not is_subpath(path=path, base=project_path):
         return False
@@ -103,23 +94,42 @@ def is_external_file(path: Union[Path, str], project_path: Path):
     return str(os.path.join(RENKU_HOME, POINTERS)) in pointer
 
 
-def read_renku_version_from_dockerfile(path: Optional[Union[Path, str]] = None) -> Optional[str]:
+def is_linked_file(path: Union[Path, str], project_path: Path) -> bool:
+    """Return True if a dataset file is a linked file."""
+    path = project_path / path
+    if not path.is_symlink() or not is_subpath(path=path.resolve(), base=project_path):
+        return False
+
+    pointer = os.readlink(path)
+    return os.path.join(RENKU_HOME, POINTERS) in pointer
+
+
+def read_renku_version_from_dockerfile(path: Optional[Union[Path, str]] = None) -> Optional[Version]:
     """Read RENKU_VERSION from the content of path if a valid version is available."""
     from renku.domain_model.project_context import project_context
 
-    path = Path(path) if path else project_context.docker_path
+    path = Path(path) if path else project_context.dockerfile_path
     if not path.exists():
         return None
 
-    docker_content = path.read_text()
-    m = re.search(r"^\s*ARG RENKU_VERSION=(.+)$", docker_content, flags=re.MULTILINE)
+    m = re.search(r"^\s*ARG RENKU_VERSION=(\d+\.\d+\.\d+\S*)$", path.read_text(), flags=re.MULTILINE)
     if not m:
         return None
 
     try:
-        return str(Version(m.group(1)))
+        return Version(m.group(1))
     except ValueError:
         return None
+
+
+def replace_renku_version_in_dockerfile(dockerfile_content: str, version: str) -> str:
+    """Replace Renku version in the Dockerfile."""
+    return re.sub(
+        r"^\s*ARG RENKU_VERSION=(\d+\.\d+\.\d+\S*)$",
+        f"ARG RENKU_VERSION={version}",
+        dockerfile_content,
+        flags=re.MULTILINE,
+    )
 
 
 def make_project_temp_dir(project_path: Path) -> Path:
@@ -186,3 +196,13 @@ def is_protected_path(path: Path) -> bool:
             return True
 
     return False
+
+
+def is_renku_project() -> bool:
+    """Check if repository is a renku project."""
+    from renku.domain_model.project_context import project_context
+
+    try:
+        return project_context.project is not None
+    except ValueError:  # NOTE: Error in loading due to an older schema
+        return project_context.metadata_path.joinpath(OLD_METADATA_PATH).exists()

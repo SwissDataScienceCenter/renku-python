@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,8 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Represent run templates."""
-
-from datetime import timezone
 
 import marshmallow
 
@@ -46,7 +42,8 @@ class PlanSchema(JsonLDSchema):
     id = fields.Id()
     inputs = Nested(renku.hasInputs, CommandInputSchema, many=True, load_default=None)
     date_created = fields.DateTime(schema.dateCreated, format="iso")
-    invalidated_at = fields.DateTime(prov.invalidatedAtTime, format="iso")
+    date_modified = fields.DateTime(schema.dateModified, format="iso")
+    date_removed = fields.DateTime(prov.invalidatedAtTime, format="iso")
     keywords = fields.List(schema.keywords, fields.String(), load_default=None)
     name = fields.String(schema.name, load_default=None)
     derived_from = fields.IRI(prov.wasDerivedFrom, load_default=None)
@@ -56,13 +53,26 @@ class PlanSchema(JsonLDSchema):
     success_codes = fields.List(renku.successCodes, fields.Integer(), load_default=[0])
     annotations = Nested(oa.hasTarget, AnnotationSchema, reverse=True, many=True)
 
-    @marshmallow.pre_dump
-    def _pre_dump(self, in_data, **kwargs):
-        """Fix data on dumping."""
-        if in_data.invalidated_at is not None and in_data.invalidated_at.tzinfo is None:
-            # NOTE: There was a bug that caused invalidated_at to be set without timezone (as UTC time)
-            # so we patch in the timezone here
-            in_data.unfreeze()
-            in_data.invalidated_at = in_data.invalidated_at.replace(microsecond=0).astimezone(timezone.utc)
-            in_data.freeze()
-        return in_data
+    @marshmallow.pre_dump(pass_many=True)
+    def removes_ms(self, objs, many, **kwargs):
+        """Remove milliseconds from datetimes.
+
+        Note: since DateField uses `strftime` as format, which only supports timezone info without a colon
+        e.g. `+0100` instead of `+01:00`, we have to deal with milliseconds manually instead of using a format string.
+        """
+
+        def _replace_times(obj):
+            obj.unfreeze()
+            obj.date_created = obj.date_created.replace(microsecond=0)
+            obj.date_modified = obj.date_modified.replace(microsecond=0)
+            if obj.date_removed:
+                obj.date_removed = obj.date_removed.replace(microsecond=0)
+            obj.freeze()
+
+        if many:
+            for obj in objs:
+                _replace_times(obj)
+            return objs
+
+        _replace_times(objs)
+        return objs

@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -15,7 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Manage the set of CWL files created by ``renku`` commands.
+"""Manage the set of execution templates created by the ``renku run`` command.
 
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
@@ -130,18 +129,44 @@ to allow execution using various execution backends.
 
 Parameters can be set using the ``--set`` keyword or by specifying them in a
 values YAML file and passing that using ``--values``. In case of passing a file,
-the YAML should follow the this structure:
+for a composite workflow like:
+
+.. code-block:: console
+
+    $ renku run --name train -- python train.py --lr=0.1 --gamma=0.5 --output=result.csv
+    $ renku run --name eval -- python eval.py --image=graph.png --data=result.csv
+    $ renku workflow compose --map learning_rate=train.lr --map graph=eval.image
+
+the YAML file could look like:
 
 .. code-block:: yaml
 
+    # composite (mapped) parameters
     learning_rate: 0.9
-    dataset_input: dataset.csv
-    chart_output: mychart.png
-    myworkflow:
-        lr: 0.8
-        lookuptable: lookup.xml
-        myotherworkflow:
-            language: en
+    graph: overview.png
+    train: # child workflow name
+        # child workflow parameters
+        gamma: 1.0
+
+Which would rerun the two steps but with ``lr`` set to ``0.9``, ``gamma`` set to ``1.0``
+and the output saved under ``overview.png``.
+
+Note that this would be the same as using:
+
+.. code-block:: yaml
+
+    train:
+        lr: 0.9
+        gamma: 1.0
+    eval:
+        image: overview.png
+
+For a regular (non-composite) workflow it is enough to just specify key-value pairs like:
+
+.. code-block:: yaml
+
+    lr: 0.9
+    gamma: 1.0
 
 In addition to being passed on the command line and being available to
 ``renku.ui.api.*`` classes in Python scripts, parameters are also set as
@@ -303,7 +328,7 @@ Composing Plans into larger workflows
 
 For more complex workflows consisting of several steps, you can use the
 ``renku workflow compose`` command. This creates a new workflow that has
-substeps.
+sub-steps.
 
 The basic usage is:
 
@@ -731,10 +756,10 @@ from renku.command.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS, WO
 from renku.command.util import ERROR
 from renku.command.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
 from renku.core import errors
-from renku.core.util.util import NO_VALUE
+from renku.domain_model.constant import NO_VALUE
 from renku.ui.cli.utils.callback import ClickCallback
-from renku.ui.cli.utils.plugins import available_workflow_providers, supported_formats
-from renku.ui.cli.utils.terminal import show_text_with_pager
+from renku.ui.cli.utils.plugins import available_workflow_providers, get_supported_formats
+from renku.ui.cli.utils.terminal import print_workflow_file, show_text_with_pager
 
 
 def _complete_workflows(ctx, param, incomplete):
@@ -775,22 +800,33 @@ def list_workflows(format, columns):
 
 
 @workflow.command()
-@click.argument("name_or_id", metavar="<name_or_id>", shell_complete=_complete_workflows)
-def show(name_or_id):
-    """Show details for workflow <name_or_id>."""
+@click.argument("name_or_id_or_path", metavar="<name_or_id_or_path>", shell_complete=_complete_workflows)
+def show(name_or_id_or_path):
+    """Show details for workflow <name_or_id_or_path>."""
     from renku.command.view_model.plan import PlanViewModel
+    from renku.command.view_model.workflow_file import WorkflowFileViewModel
     from renku.command.workflow import show_workflow_command
     from renku.ui.cli.utils.terminal import print_composite_plan, print_plan
 
-    plan = show_workflow_command().build().execute(name_or_id=name_or_id).output
+    communicator = ClickCallback()
+
+    plan = (
+        show_workflow_command()
+        .with_communicator(communicator)
+        .build()
+        .execute(name_or_id_or_path=name_or_id_or_path)
+        .output
+    )
 
     if plan:
-        if isinstance(plan, PlanViewModel):
+        if isinstance(plan, WorkflowFileViewModel):
+            print_workflow_file(plan)
+        elif isinstance(plan, PlanViewModel):
             print_plan(plan)
         else:
             print_composite_plan(plan)
     else:
-        click.secho(ERROR + f"Workflow '{name_or_id}' not found.")
+        click.secho(ERROR + f"Workflow '{name_or_id_or_path}' not found.")
 
 
 @workflow.command()
@@ -1021,9 +1057,10 @@ def edit(
 @workflow.command()
 @click.argument("workflow_name", metavar="<name or uuid>", shell_complete=_complete_workflows)
 @click.option(
+    "-f",
     "--format",
     default="cwl",
-    type=click.Choice(Proxy(supported_formats), case_sensitive=False),
+    type=click.Choice(Proxy(get_supported_formats), case_sensitive=False),
     show_default=True,
     help="Workflow language format.",
 )
@@ -1123,7 +1160,7 @@ def outputs(ctx, paths):
     "provider",
     "-p",
     "--provider",
-    default="cwltool",
+    default="toil",
     show_default=True,
     type=click.Choice(Proxy(available_workflow_providers), case_sensitive=False),
     help="The workflow engine to use.",
@@ -1141,7 +1178,7 @@ def outputs(ctx, paths):
 )
 @click.option(
     "--values",
-    metavar="<file>",
+    metavar="<values-file>",
     type=click.Path(exists=True, dir_okay=False),
     help="YAML file containing parameter mappings to be used.",
 )
@@ -1175,13 +1212,11 @@ def execute(
 
     if result.output:
         click.echo(
-            "Unchanged files:\n\n\t{0}".format(
-                "\n\t".join(click.style(path, fg=color.YELLOW) for path in result.output)
-            )
+            "Unchanged files:\n\n\t{}".format("\n\t".join(click.style(path, fg=color.YELLOW) for path in result.output))
         )
 
 
-@workflow.command(no_args_is_help=True)
+@workflow.command()
 @click.option(
     "--from",
     "sources",
@@ -1255,7 +1290,7 @@ def visualize(sources, columns, exclude_files, ascii, revision, format, interact
             max_width = max(node[1].x for layer in navigation_data for node in layer)
             tty_size = shutil.get_terminal_size(fallback=(120, 120))
 
-            if no_pager or not sys.stdout.isatty() or os.system(f"less 2>{os.devnull}") != 0:
+            if no_pager or not sys.stdout.isatty() or os.system(f"less 2>{os.devnull}") != 0:  # nosec
                 use_pager = False
             elif pager:
                 use_pager = True
@@ -1299,7 +1334,7 @@ def visualize(sources, columns, exclude_files, ascii, revision, format, interact
     "provider",
     "-p",
     "--provider",
-    default="cwltool",
+    default="toil",
     show_default=True,
     type=click.Choice(Proxy(available_workflow_providers), case_sensitive=False),
     help="The workflow engine to use.",
@@ -1316,7 +1351,7 @@ def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config, skip_
     if len(mappings) == 0 and mapping_path is None:
         raise errors.UsageError("No mapping has been given for the iteration!")
 
-    plan = show_workflow_command().build().execute(name_or_id=name_or_id).output
+    plan = show_workflow_command().build().execute(name_or_id_or_path=name_or_id).output
 
     if plan:
         if isinstance(plan, PlanViewModel):

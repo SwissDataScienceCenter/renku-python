@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022- Swiss Data Science Center (SDSC)
+# Copyright 2017-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -24,6 +23,7 @@ from typing import List
 from renku.command.command_builder.command import inject, remove_injector
 from renku.command.log import _log
 from renku.command.view_model.log import DatasetLogViewModel, LogType
+from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.domain_model.dataset import Url
 from renku.domain_model.provenance.activity import Activity, Association
@@ -76,10 +76,15 @@ def test_log_activities(mocker):
         agents=agents,
     )
 
-    activity_gateway = mocker.MagicMock()
+    activity_gateway = mocker.MagicMock(spec=IActivityGateway)
     activity_gateway.get_all_activities.return_value = [previous, intermediate, following]
     full_agents = [a.full_identity for a in agents]
-    result = _log(activity_gateway, dataset_gateway=mocker.MagicMock(), workflows_only=True, datasets_only=False)
+    result = _log(
+        activity_gateway=activity_gateway,
+        dataset_gateway=mocker.MagicMock(spec=IDatasetGateway),
+        workflows_only=True,
+        datasets_only=False,
+    )
     assert 3 == len(result)
     assert all(log.type == LogType.ACTIVITY for log in result)
     assert result[0].date == previous.ended_at_time
@@ -108,14 +113,14 @@ def test_log_dataset_create_simple(mocker):
     new_dataset.date_modified = datetime.utcnow()
     new_dataset.is_derivation.return_value = False
 
-    dataset_gateway = mocker.MagicMock()
+    dataset_gateway = mocker.MagicMock(spec=IDatasetGateway)
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]
 
     inject.configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway), bind_in_runtime=False)
 
     try:
         result: List[DatasetLogViewModel] = _log(
-            activity_gateway=mocker.MagicMock(),
+            activity_gateway=mocker.MagicMock(spec=IActivityGateway),
             dataset_gateway=dataset_gateway,
             workflows_only=False,
             datasets_only=True,
@@ -164,14 +169,14 @@ def test_log_dataset_create_complex(mocker):
     new_dataset.date_modified = datetime.utcnow()
     new_dataset.is_derivation.return_value = False
 
-    dataset_gateway = mocker.MagicMock()
+    dataset_gateway = mocker.MagicMock(spec=IDatasetGateway)
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]
 
     inject.configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway), bind_in_runtime=False)
 
     try:
         result = _log(
-            activity_gateway=mocker.MagicMock(),
+            activity_gateway=mocker.MagicMock(spec=IActivityGateway),
             dataset_gateway=dataset_gateway,
             workflows_only=False,
             datasets_only=True,
@@ -194,7 +199,7 @@ def test_log_dataset_create_complex(mocker):
     assert not entry.details.files_added
     assert not entry.details.files_removed
     assert not entry.details.creators_removed
-    assert set(["a", "b"]) == set(entry.details.keywords_added)
+    assert {"a", "b"} == set(entry.details.keywords_added)
     assert not entry.details.keywords_removed
     assert ["./img/img1.png"] == entry.details.images_changed_to
     assert not entry.details.source
@@ -222,14 +227,14 @@ def test_log_dataset_add_create(mocker):
     new_dataset.date_modified = datetime.utcnow()
     new_dataset.is_derivation.return_value = False
 
-    dataset_gateway = mocker.MagicMock()
+    dataset_gateway = mocker.MagicMock(spec=IDatasetGateway)
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]
 
     inject.configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway), bind_in_runtime=False)
 
     try:
         result = _log(
-            activity_gateway=mocker.MagicMock(),
+            activity_gateway=mocker.MagicMock(spec=IActivityGateway),
             dataset_gateway=dataset_gateway,
             workflows_only=False,
             datasets_only=True,
@@ -249,7 +254,7 @@ def test_log_dataset_add_create(mocker):
     assert "new-title" == entry.details.title_changed
     assert "new-description" == entry.details.description_changed
     assert not entry.details.creators_added
-    assert set(["file_b", "file_a"]) == set(entry.details.files_added)
+    assert {"file_b", "file_a"} == set(entry.details.files_added)
     assert not entry.details.files_removed
     assert not entry.details.creators_removed
     assert not entry.details.keywords_added
@@ -259,7 +264,7 @@ def test_log_dataset_add_create(mocker):
     assert entry.details.created
     assert not entry.details.imported
     assert not entry.details.migrated
-    assert entry.details.modified
+    assert not entry.details.modified
 
 
 def test_log_dataset_import(mocker):
@@ -279,14 +284,14 @@ def test_log_dataset_import(mocker):
     new_dataset.date_modified = datetime.utcnow()
     new_dataset.is_derivation.return_value = False
 
-    dataset_gateway = mocker.MagicMock()
+    dataset_gateway = mocker.MagicMock(spec=IDatasetGateway)
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]
 
     inject.configure(lambda binder: binder.bind(IDatasetGateway, dataset_gateway), bind_in_runtime=False)
 
     try:
         result = _log(
-            activity_gateway=mocker.MagicMock(),
+            activity_gateway=mocker.MagicMock(spec=IActivityGateway),
             dataset_gateway=dataset_gateway,
             workflows_only=False,
             datasets_only=True,
@@ -306,7 +311,7 @@ def test_log_dataset_import(mocker):
     assert "new-title" == entry.details.title_changed
     assert "new-description" == entry.details.description_changed
     assert not entry.details.creators_added
-    assert set(["file_b", "file_a"]) == set(entry.details.files_added)
+    assert {"file_b", "file_a"} == set(entry.details.files_added)
     assert not entry.details.files_removed
     assert not entry.details.creators_removed
     assert not entry.details.keywords_added
@@ -317,7 +322,7 @@ def test_log_dataset_import(mocker):
     assert not entry.details.created
     assert entry.details.imported
     assert not entry.details.migrated
-    assert entry.details.modified
+    assert not entry.details.modified
 
 
 def test_log_dataset_deleted(mocker):
@@ -341,7 +346,7 @@ def test_log_dataset_deleted(mocker):
     new_dataset.date_removed = datetime.utcnow()
     new_dataset.is_derivation.return_value = True
 
-    dataset_gateway = mocker.MagicMock()
+    dataset_gateway = mocker.MagicMock(spec=IDatasetGateway)
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]
 
     def _mock_get_by_id(id):
@@ -358,7 +363,7 @@ def test_log_dataset_deleted(mocker):
 
     try:
         result: List[DatasetLogViewModel] = _log(
-            activity_gateway=mocker.MagicMock(),
+            activity_gateway=mocker.MagicMock(spec=IActivityGateway),
             dataset_gateway=dataset_gateway,
             workflows_only=False,
             datasets_only=True,
@@ -419,7 +424,7 @@ def test_log_dataset_files_removed(mocker):
     new_dataset.date_removed = None
     new_dataset.is_derivation.return_value = True
 
-    dataset_gateway = mocker.MagicMock()
+    dataset_gateway = mocker.MagicMock(spec=IDatasetGateway)
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]
 
     def _mock_get_by_id(id):
@@ -436,7 +441,7 @@ def test_log_dataset_files_removed(mocker):
 
     try:
         result: List[DatasetLogViewModel] = _log(
-            activity_gateway=mocker.MagicMock(),
+            activity_gateway=mocker.MagicMock(spec=IActivityGateway),
             dataset_gateway=dataset_gateway,
             workflows_only=False,
             datasets_only=True,
@@ -501,7 +506,7 @@ def test_log_dataset_metadata_modified(mocker):
     new_dataset.date_removed = None
     new_dataset.is_derivation.return_value = True
 
-    dataset_gateway = mocker.MagicMock()
+    dataset_gateway = mocker.MagicMock(spec=IDatasetGateway)
     dataset_gateway.get_provenance_tails.return_value = [new_dataset]
 
     def _mock_get_by_id(id):
@@ -518,7 +523,7 @@ def test_log_dataset_metadata_modified(mocker):
 
     try:
         result: List[DatasetLogViewModel] = _log(
-            activity_gateway=mocker.MagicMock(),
+            activity_gateway=mocker.MagicMock(spec=IActivityGateway),
             dataset_gateway=dataset_gateway,
             workflows_only=False,
             datasets_only=True,

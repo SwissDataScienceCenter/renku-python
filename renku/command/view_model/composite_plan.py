@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,11 +17,10 @@
 
 import json
 from datetime import datetime, timedelta
-from typing import Dict, List, NamedTuple, Optional
+from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional, Union
 
 from renku.command.view_model.agent import PersonViewModel
 from renku.core.errors import ParameterNotFoundError
-from renku.core.workflow.plan import get_latest_plan
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.parameter import (
     CommandInput,
@@ -35,7 +32,18 @@ from renku.domain_model.workflow.parameter import (
 )
 from renku.domain_model.workflow.plan import AbstractPlan
 
-ParameterReference = NamedTuple("ParameterReference", [("id", str), ("plan_id", str), ("type", str), ("name", str)])
+if TYPE_CHECKING:
+    from renku.command.view_model.plan import PlanViewModel
+
+
+class ParameterReference(NamedTuple):
+    """Reference to a workflow parameter."""
+
+    id: str
+    plan_id: str
+    type: str
+    name: str
+
 
 parameter_type_mapping: Dict[type, str] = {
     CommandInput: "Input",
@@ -47,6 +55,8 @@ parameter_type_mapping: Dict[type, str] = {
 
 def _parameter_id_to_plan_id(parameter: CommandParameterBase, parent_plan: AbstractPlan, latest: bool = False):
     """Extract plan id from a parameter id."""
+    from renku.core.workflow.plan import get_latest_plan
+
     plan_path = parent_plan.get_parameter_path(parameter)
 
     if plan_path is None or len(plan_path) < 1:
@@ -199,7 +209,7 @@ class CompositePlanViewModel:
         created: datetime,
         mappings: List[ParameterMappingViewModel],
         links: List[ParameterLinkViewModel],
-        steps: List[StepViewModel],
+        steps: List[Union["CompositePlanViewModel", "PlanViewModel"]],
         keywords: List[str],
         description: Optional[str] = None,
         creators: Optional[List[PersonViewModel]] = None,
@@ -237,6 +247,8 @@ class CompositePlanViewModel:
         Returns:
             View model of composite Plan.
         """
+        from renku.command.view_model.plan import plan_view
+
         return cls(
             id=plan.id,
             name=plan.name,
@@ -244,7 +256,7 @@ class CompositePlanViewModel:
             created=plan.date_created,
             mappings=[ParameterMappingViewModel.from_mapping(mapping, plan, latest) for mapping in plan.mappings],
             links=[ParameterLinkViewModel.from_link(link, plan, latest) for link in plan.links],
-            steps=[StepViewModel(id=s.id, name=s.name) for s in getattr(plan, "newest_plans", plan.plans)],
+            steps=[plan_view(p) for p in getattr(plan, "newest_plans", plan.plans)],
             creators=[PersonViewModel.from_person(p) for p in plan.creators] if plan.creators else None,
             keywords=plan.keywords,
             annotations=json.dumps([{"id": a.id, "body": a.body, "source": a.source} for a in plan.annotations])

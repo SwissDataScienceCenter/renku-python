@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -71,7 +71,7 @@ master_doc = "index"
 
 # General information about the project.
 project = "Renku"
-copyright = "2017-2022, Swiss Data Science Center"
+copyright = "2017-2023, Swiss Data Science Center"
 author = "Swiss Data Science Center"
 
 # The version info for the project you're documenting, acts as replacement for
@@ -178,8 +178,8 @@ html_favicon = "_static/icons/favicon.ico"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
-html_css_files = ['css/override-theme.css']
+html_static_path = ["_static"]
+html_css_files = ["css/override-theme.css"]
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied
@@ -363,12 +363,15 @@ nitpick_ignore = [
     ("py:class", "OID_TYPE"),
     ("py:class", "Path"),
     ("py:class", "Persistent"),
+    ("py:class", "WorkflowFileCompositePlan"),
+    ("py:class", "itertools.count"),
     ("py:class", "optional"),
     ("py:class", '"ValueResolver"'),
     ("py:exc", "errors.ParameterError"),
 ]
 
 nitpick_ignore_regex = [
+    ("py:class", r"bashlex.*"),
     ("py:class", r"calamus.*"),
     ("py:class", r"docker.*"),
     ("py:class", r"marshmallow.*"),

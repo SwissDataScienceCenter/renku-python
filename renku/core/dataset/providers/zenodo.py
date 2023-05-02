@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +17,7 @@
 
 import json
 import os
-import pathlib
+import posixpath
 import urllib
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
@@ -64,7 +62,7 @@ class ZenodoProvider(ProviderApi, ExportProviderInterface, ImportProviderInterfa
     priority = ProviderPriority.HIGH
     name = "Zenodo"
 
-    def __init__(self, uri: Optional[str], is_doi: bool = False):
+    def __init__(self, uri: str, is_doi: bool = False):
         super().__init__(uri=uri)
 
         self.is_doi = is_doi
@@ -117,7 +115,7 @@ class ZenodoImporter(RepositoryImporter):
     def __init__(self, *, uri: str, original_uri, json: Dict[str, Any]):
         super().__init__(uri=uri, original_uri=original_uri)
 
-        self._jsonld = None
+        self._jsonld: Optional[dict] = None
         self._json = json
 
         metadata = self._json.pop("metadata", {})
@@ -148,7 +146,7 @@ class ZenodoImporter(RepositoryImporter):
         response = _make_request(self._uri, accept="application/ld+json")
         self._jsonld = response.json()
 
-        if "image" in self._jsonld and isinstance(self._jsonld["image"], str):
+        if self._jsonld is not None and "image" in self._jsonld and isinstance(self._jsonld["image"], str):
             self._jsonld["image"] = {
                 "@id": self._jsonld["image"],
                 "@type": "ImageObject",
@@ -403,7 +401,7 @@ class ZenodoDeposition:
         """Returns publish URL."""
         url = urllib.parse.urljoin(
             self.exporter.zenodo_url,
-            pathlib.posixpath.join(ZENODO_API_PATH, ZENODO_DEPOSIT_PATH, ZENODO_PUBLISH_ACTION_PATH.format(self.id)),
+            posixpath.join(ZENODO_API_PATH, ZENODO_DEPOSIT_PATH, ZENODO_PUBLISH_ACTION_PATH.format(self.id)),
         )
 
         return url
@@ -413,7 +411,7 @@ class ZenodoDeposition:
         """Return URL for attaching metadata."""
         url = urllib.parse.urljoin(
             self.exporter.zenodo_url,
-            pathlib.posixpath.join(ZENODO_API_PATH, ZENODO_DEPOSIT_PATH, ZENODO_METADATA_URL.format(self.id)),
+            posixpath.join(ZENODO_API_PATH, ZENODO_DEPOSIT_PATH, ZENODO_METADATA_URL.format(self.id)),
         )
         return url
 
@@ -422,7 +420,7 @@ class ZenodoDeposition:
         """Return URL for uploading file."""
         url = urllib.parse.urljoin(
             self.exporter.zenodo_url,
-            pathlib.posixpath.join(ZENODO_API_PATH, ZENODO_DEPOSIT_PATH, ZENODO_FILES_URL.format(self.id)),
+            posixpath.join(ZENODO_API_PATH, ZENODO_DEPOSIT_PATH, ZENODO_FILES_URL.format(self.id)),
         )
         return url
 
@@ -431,20 +429,20 @@ class ZenodoDeposition:
         """Return URL for creating new deposit."""
         url = urllib.parse.urljoin(
             self.exporter.zenodo_url,
-            pathlib.posixpath.join(ZENODO_API_PATH, ZENODO_DEPOSIT_PATH, ZENODO_NEW_DEPOSIT_URL),
+            posixpath.join(ZENODO_API_PATH, ZENODO_DEPOSIT_PATH, ZENODO_NEW_DEPOSIT_URL),
         )
         return url
 
     @property
     def published_at(self):
         """Return published at URL."""
-        url = urllib.parse.urljoin(self.exporter.zenodo_url, pathlib.posixpath.join(ZENODO_PUBLISH_PATH, str(self.id)))
+        url = urllib.parse.urljoin(self.exporter.zenodo_url, posixpath.join(ZENODO_PUBLISH_PATH, str(self.id)))
         return url
 
     @property
     def deposit_at(self):
         """Return deposit at URL."""
-        url = urllib.parse.urljoin(self.exporter.zenodo_url, pathlib.posixpath.join(ZENODO_DEPOSIT_PATH, str(self.id)))
+        url = urllib.parse.urljoin(self.exporter.zenodo_url, posixpath.join(ZENODO_DEPOSIT_PATH, str(self.id)))
         return url
 
     def new_deposition(self):
@@ -521,7 +519,7 @@ class ZenodoDeposition:
             if response.status_code == 400:
                 err_response = response.json()
                 messages = [
-                    '"{0}" failed with "{1}"'.format(err["field"], err["message"]) for err in err_response["errors"]
+                    '"{}" failed with "{}"'.format(err["field"], err["message"]) for err in err_response["errors"]
                 ]
 
                 raise errors.ExportError(
@@ -548,4 +546,4 @@ def make_records_url(record_id):
     Returns:
         str: Full URL for the record.
     """
-    return urllib.parse.urljoin(ZENODO_BASE_URL, pathlib.posixpath.join(ZENODO_API_PATH, "records", record_id))
+    return urllib.parse.urljoin(ZENODO_BASE_URL, posixpath.join(ZENODO_API_PATH, "records", record_id))

@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,9 +15,9 @@
 # limitations under the License.
 """Renku modules."""
 
-from __future__ import absolute_import, print_function
 
 import importlib
+import importlib.util
 import sys
 import warnings
 
@@ -55,9 +53,9 @@ class LoaderWrapper(importlib.abc.Loader):
         sys.modules[self.additional_namespace] = module
 
     def __getattr__(self, name):
-        """Forward all calls to wrapped loaded except for one implemented here."""
+        """Forward all calls to wrapped loader except for one implemented here."""
         if name in ["exec_module", "create_module", "get_code"]:
-            object.__getattr__(self, name)
+            object.__getattribute__(self, name)
 
         return getattr(self.wrapped_loader, name)
 
@@ -88,6 +86,9 @@ class DeprecatedImportInterceptor(importlib.abc.MetaPathFinder):
 
                 sys.meta_path = [x for x in sys.meta_path if x is not self]
                 spec = importlib.util.find_spec(target_name)
+                if spec is None:
+                    return None
+
                 spec.loader = LoaderWrapper(spec.loader, fullname, target_name)
             finally:
                 sys.meta_path.insert(0, self)

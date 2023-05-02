@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -20,7 +19,7 @@ from flask import request
 
 from renku.ui.service.config import SERVICE_PREFIX
 from renku.ui.service.controllers.graph_export import GraphExportCtrl
-from renku.ui.service.views.api_versions import VERSIONS_FROM_V1_0, VersionedBlueprint
+from renku.ui.service.views.api_versions import ALL_VERSIONS, VersionedBlueprint
 from renku.ui.service.views.decorators import accepts_json, optional_identity, requires_cache
 from renku.ui.service.views.error_handlers import handle_common_except, handle_graph_errors
 
@@ -28,7 +27,7 @@ GRAPH_BLUEPRINT_TAG = "graph"
 graph_blueprint = VersionedBlueprint(GRAPH_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
-@graph_blueprint.route("/graph.export", methods=["GET"], provide_automatic_options=False, versions=VERSIONS_FROM_V1_0)
+@graph_blueprint.route("/graph.export", methods=["GET"], provide_automatic_options=False, versions=ALL_VERSIONS)
 @handle_common_except
 @handle_graph_errors
 @requires_cache
@@ -54,4 +53,4 @@ def graph_build_view(user_data, cache):
       tags:
         - graph
     """
-    return GraphExportCtrl(cache, user_data, dict(request.json)).to_response()
+    return GraphExportCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore

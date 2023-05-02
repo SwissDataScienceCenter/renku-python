@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2020-2022 -Swiss Data Science Center (SDSC)
+# Copyright 2020-2023 -Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -66,7 +65,6 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         "ref",
         "new_project_url_with_auth",
         "url_with_auth",
-        "user_id",
     }
     assert expected_context.issubset(set(ctrl.context.keys()))
 
@@ -76,7 +74,6 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         "__template_ref__",
         "__template_id__",
         "__namespace__",
-        "__automated_update__",
         "__repository__",
         "__sanitized_project_name__",
         "__project_slug__",
@@ -162,3 +159,31 @@ def test_except_project_name_handler(project_name, ctrl_init, svc_client_templat
         TemplatesCreateProjectCtrl(cache, user_data, payload)
 
     assert "Project name contains only unsupported characters" in str(exc_info.value)
+
+
+def test_template_create_project_with_custom_cli_ctrl(
+    ctrl_init, svc_cache_dir, svc_client_templates_creation, mocker, monkeypatch
+):
+    """Test template create project controller."""
+    monkeypatch.setenv("RENKU_PROJECT_DEFAULT_CLI_VERSION", "9.9.9rc9")
+    from renku.ui.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
+
+    cache, user_data = ctrl_init
+    _, _, payload, _ = svc_client_templates_creation
+
+    ctrl = TemplatesCreateProjectCtrl(cache, user_data, payload)
+    mocker.patch.object(ctrl, "new_project_push", return_value=None)
+    response = ctrl.to_response()
+
+    # Check response.
+    assert {"result"} == response.json.keys()
+    assert {"project_id", "url", "namespace", "name", "slug"} == response.json["result"].keys()
+
+    cache_dir, _ = svc_cache_dir
+
+    project_path = (
+        cache_dir / user_data["user_id"] / response.json["result"]["namespace"] / response.json["result"]["slug"]
+    )
+
+    with open(project_path / "Dockerfile") as f:
+        assert "ARG RENKU_VERSION=9.9.9rc9" in f.read()

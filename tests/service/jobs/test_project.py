@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2020-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2020-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -26,10 +25,10 @@ from tests.utils import retry_failed
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
-def test_delay_migration_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
+def test_delay_migration_job(svc_client_cache, it_remote_old_repo_url_temp_branch, view_user_data):
     """Verify delayed project migration."""
 
-    it_remote_repo_url, branch = it_remote_repo_url_temp_branch
+    it_remote_repo_url, branch = it_remote_old_repo_url_temp_branch
 
     context = ProjectMigrateRequest().load({"git_url": it_remote_repo_url, "ref": branch, "skip_docker_update": True})
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -33,7 +32,7 @@ class WorkflowPlansShowCtrl(ServiceCtrl, RenkuOperationMixin):
     def __init__(self, cache, user_data, request_data):
         """Construct a workflow plan show controller."""
         self.ctx = WorkflowPlansShowCtrl.REQUEST_SERIALIZER.load(request_data)
-        super(WorkflowPlansShowCtrl, self).__init__(cache, user_data, request_data)
+        super().__init__(cache, user_data, request_data)
 
     @property
     def context(self):
@@ -42,7 +41,7 @@ class WorkflowPlansShowCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        result = show_workflow_command().build().execute(name_or_id=self.ctx["plan_id"], with_metadata=True)
+        result = show_workflow_command().build().execute(name_or_id_or_path=self.ctx["plan_id"], with_metadata=True)
         return result.output
 
     def to_response(self):

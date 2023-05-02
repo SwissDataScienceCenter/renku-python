@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -43,7 +42,7 @@ from renku.core.errors import ParameterError
 from renku.core.util.contexts import chdir
 from renku.core.util.git import get_git_user
 from renku.core.util.urls import get_slug
-from renku.domain_model.dataset import Dataset, is_dataset_name_valid
+from renku.domain_model.dataset import Dataset, Url, is_dataset_name_valid
 from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.agent import Person
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
@@ -87,6 +86,22 @@ def test_data_add(scheme, path, overwrite, error, project_with_injection, direct
             dataset.freeze()
             add_to_dataset("dataset", [f"{scheme}{path}"], overwrite=True)
             assert os.path.exists(target_path)
+
+
+@pytest.mark.parametrize(
+    "slash, target",
+    [
+        (False, "data/dataset/dir1/file2"),
+        (True, "data/dataset/file2"),
+    ],
+)
+def test_data_add_trailing_slash(slash, target, directory_tree, project_with_injection):
+    """Test recursive data imports."""
+
+    dataset = add_to_dataset("dataset", [str(directory_tree / "dir1") + ("/" if slash else "")], create=True)
+
+    file = next(f for f in dataset.files if f.entity.path.endswith("file2"))
+    assert file.entity.path == target
 
 
 def test_data_add_recursive(directory_tree, project_with_injection):
@@ -179,7 +194,7 @@ def test_mutate(project):
         name="my-dataset",
         creators=[Person.from_string("John Doe <john.doe@mail.com>")],
         date_published=datetime.datetime.now(datetime.timezone.utc),
-        same_as="http://some-url",
+        same_as=Url(url_str="http://some-url"),
     )
     old_dataset = copy.deepcopy(dataset)
 
@@ -198,7 +213,7 @@ def test_mutator_is_added_once(project):
         name="my-dataset",
         creators=[mutator],
         date_published=datetime.datetime.now(datetime.timezone.utc),
-        same_as="http://some-url",
+        same_as=Url(url_str="http://some-url"),
     )
     old_dataset = copy.deepcopy(dataset)
 

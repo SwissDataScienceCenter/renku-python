@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -113,16 +112,16 @@ def test_open_outputs(project):
 
 def test_parameters(project):
     """Test defining parameters."""
-    p1 = Parameter("parameter 1", 42)
+    p1 = Parameter("parameter-1", 42)
 
     with Project():
         p2 = Parameter("param-2", "42")
 
-    p3 = Parameter("parameter_3 ", 42.42)
+    p3 = Parameter("parameter_3", 42.42)
 
     assert (42, "42", 42.42) == (p1.value, p2.value, p3.value)
 
     data = read_indirect_parameters(project.path)
 
-    assert {"parameter 1", "param-2", "parameter_3 "} == set(data.keys())
+    assert {"parameter-1", "param-2", "parameter_3"} == set(data.keys())
     assert {42, "42", 42.42} == set(data.values())

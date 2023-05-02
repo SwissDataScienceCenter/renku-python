@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -44,7 +43,7 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
         self.ctx = DatasetsAddFileCtrl.REQUEST_SERIALIZER.load(request_data)
         self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset add {self.ctx['name']}"
 
-        super(DatasetsAddFileCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
+        super().__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
     @property
     def context(self):
@@ -90,10 +89,11 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
             if "file_id" in _file:
                 file = self.cache.get_file(self.user, _file["file_id"])
                 local_path = file.abs_path
-
             elif "file_path" in _file:
-                local_path = self.project_path / Path(_file["file_path"])
+                if self.project_path is None:
+                    raise RenkuException("project_path not set.")
 
+                local_path = self.project_path / Path(_file["file_path"])
             if not local_path or not local_path.exists():
                 raise RenkuException(f"invalid file reference: {json.dumps(_file)}")
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -34,7 +33,7 @@ class DatasetsFilesListCtrl(ServiceCtrl, RenkuOperationMixin):
         """Construct a datasets files list controller."""
         self.ctx = DatasetsFilesListCtrl.REQUEST_SERIALIZER.load(request_data)
 
-        super(DatasetsFilesListCtrl, self).__init__(cache, user_data, request_data)
+        super().__init__(cache, user_data, request_data)
 
     @property
     def context(self):

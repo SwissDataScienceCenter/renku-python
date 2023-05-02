@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -159,7 +158,7 @@ def test_05_stdout(project, with_injection):
     with with_injection():
         plan = factory.to_plan()
 
-    assert ["echo", '"Hello world!"'] == plan.to_argv()
+    assert ["echo", "'Hello world!'"] == plan.to_argv()
 
 
 def test_stdout_with_conflicting_arg(project, with_injection):

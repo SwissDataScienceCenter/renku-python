@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -20,6 +19,9 @@
 import os
 from pathlib import Path
 from subprocess import run
+from typing import List, Protocol, runtime_checkable
+
+from pydantic import validate_arguments
 
 from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
@@ -33,13 +35,23 @@ from renku.core.util.os import delete_dataset_file, expand_directories
 from renku.domain_model.project_context import project_context
 
 
+@runtime_checkable
+class EditCommandCallable(Protocol):
+    """Typing Protocol for edit command."""
+
+    def __call__(self, filename: str) -> None:
+        """The call method."""
+        ...
+
+
 @inject.autoparams()
-def _remove(sources, edit_command, dataset_gateway: IDatasetGateway):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _remove(sources: List[str], edit_command: EditCommandCallable, dataset_gateway: IDatasetGateway):
     """Remove files and check repository for potential problems.
 
     Args:
-        sources: Files to remove.
-        edit_command: Command to execute for editing .gitattributes.
+        sources(List[str]): Files to remove.
+        edit_command(Callable[[str], None]): Command to execute for editing .gitattributes.
         dataset_gateway(IDatasetGateway): Injected dataset gateway.
     """
     repository = project_context.repository
@@ -94,7 +106,7 @@ def _remove(sources, edit_command, dataset_gateway: IDatasetGateway):
                 edit_command(filename=str(project_context.path / ".gitattributes"))
 
     # Finally remove the files.
-    files_to_remove = set(str(project_context.path / f) for f in files.values())
+    files_to_remove = {str(project_context.path / f) for f in files.values()}
     final_sources = list(files_to_remove)
     if final_sources:
         run(["git", "rm", "-rf"] + final_sources, check=True)

@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,7 +39,7 @@ class OLOSProvider(ProviderApi, ExportProviderInterface):
     priority = ProviderPriority.HIGH
     name = "OLOS"
 
-    def __init__(self, uri: Optional[str], is_doi: bool = False):
+    def __init__(self, uri: str, is_doi: bool = False):
         super().__init__(uri=uri)
 
         self.is_doi = is_doi
@@ -60,7 +58,7 @@ class OLOSProvider(ProviderApi, ExportProviderInterface):
         return [ProviderParameter("dlcm-server", help="DLCM server base url.", type=str)]
 
     def get_exporter(
-        self, dataset: "Dataset", *, tag: Optional["DatasetTag"], dlcm_server: str = None, **kwargs
+        self, dataset: "Dataset", *, tag: Optional["DatasetTag"], dlcm_server: Optional[str] = None, **kwargs
     ) -> "OLOSExporter":
         """Create export manager for given dataset."""
 
@@ -120,13 +118,14 @@ class OLOSExporter(ExporterApi):
 
     def _get_dataset_metadata(self):
         try:
-            identifier = UUID(self.dataset.identifier, version=4)
+            identifier = str(UUID(self.dataset.identifier, version=4))
         except ValueError:
             identifier = uuid4().hex
+
         metadata = {
             "publicationDate": datetime.date.today().isoformat(),
             "description": self.dataset.description,
-            "identifier": str(identifier),
+            "identifier": identifier,
             "keywords": self.dataset.keywords,
             "title": self.dataset.title,
             "access": "CLOSED",
@@ -236,8 +235,8 @@ class _OLOSDeposition:
         """Create URL for creating a dataset."""
         url_parts = urlparse.urlparse(server_url)
 
-        query_params = urllib.parse.urlencode(query_params)
-        url_parts = url_parts._replace(path=api_path, query=query_params)
+        query_params_encoded = urllib.parse.urlencode(query_params)
+        url_parts = url_parts._replace(path=api_path, query=query_params_encoded)
         return urllib.parse.urlunparse(url_parts)
 
     def _get(self, url):

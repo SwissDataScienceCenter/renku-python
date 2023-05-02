@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,7 +20,7 @@ import tempfile
 from pathlib import Path
 
 from renku.command.dataset import create_dataset_command
-from renku.command.init import init_repository
+from renku.core.init import init_repository
 from renku.domain_model.project_context import project_context
 
 

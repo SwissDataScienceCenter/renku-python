@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +15,9 @@
 # limitations under the License.
 """Renku save commands."""
 
-from typing import List, Tuple
+from typing import List, Optional, Tuple
+
+from pydantic import validate_arguments
 
 from renku.command.command_builder.command import Command
 from renku.core import errors
@@ -25,13 +25,16 @@ from renku.core.storage import track_paths_in_storage
 from renku.domain_model.project_context import project_context
 
 
-def _save_and_push(message=None, remote=None, paths=None) -> Tuple[List[str], str]:
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _save_and_push(
+    message: Optional[str] = None, remote: Optional[str] = None, paths: Optional[List[str]] = None
+) -> Tuple[List[str], str]:
     """Save and push local changes.
 
     Args:
-        message: The commit message (Default value = None).
-        remote: The remote to push to (Default value = None).
-        paths: The paths to include in the commit (Default value = None).
+        message(Optional[str]): The commit message (Default value = None).
+        remote(Optional[str]): The remote to push to (Default value = None).
+        paths(Optional[List[str]]): The paths to include in the commit (Default value = None).
 
     Returns:
         Tuple[List[str], str]: Tuple of paths that were committed and branch that was pushed.
@@ -43,7 +46,7 @@ def _save_and_push(message=None, remote=None, paths=None) -> Tuple[List[str], st
     setup_credential_helper()
 
     if not paths:
-        paths = get_dirty_paths(repository)
+        paths = list(get_dirty_paths(repository))
     else:
         staged_changes = repository.staged_changes
         if staged_changes:

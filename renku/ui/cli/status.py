@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -79,11 +78,19 @@ def status(ctx, paths, ignore_deleted):
         get_status_command().with_communicator(communicator).build().execute(paths=paths, ignore_deleted=ignore_deleted)
     ).output
 
-    if not result.outdated_outputs and not result.deleted_inputs and not result.outdated_activities:
+    if (
+        not result.outdated_outputs
+        and not result.deleted_inputs
+        and not result.outdated_activities
+        and not result.modified_hidden_inputs
+    ):
         click.secho("Everything is up-to-date.", fg=color.GREEN)
         return
 
+    outdated = False
+
     if result.outdated_outputs:
+        outdated = True
         click.echo(
             f"Outdated outputs({len(result.outdated_outputs)}):\n"
             "  (use `renku workflow visualize [<file>...]` to see the full lineage)\n"
@@ -94,7 +101,22 @@ def status(ctx, paths, ignore_deleted):
             paths = click.style(", ".join(sorted(v)), fg=color.BLUE, bold=True)
             output = click.style(k, fg=color.RED, bold=True)
             click.echo(f"\t{output}: {paths}")
-    else:
+
+    if result.modified_hidden_inputs:
+        outdated = True
+        click.echo(
+            f"Outdated workflow files and their outputs({len(result.modified_hidden_inputs)}):\n"
+            "  (use `renku run [<workflow-file>]` to generate the outputs from the latest workflow file)\n"
+        )
+        for k in sorted(result.modified_hidden_inputs.keys()):
+            v = result.modified_hidden_inputs[k]
+            outputs = click.style(", ".join(sorted(v)), fg=color.RED, bold=True)
+            wff = click.style(k, fg=color.BLUE, bold=True)
+            click.echo(f"\t{wff}: {outputs}")
+
+        click.echo()
+
+    if not outdated:
         click.secho("All files are generated from the latest inputs.", fg=color.GREEN)
 
     click.echo()

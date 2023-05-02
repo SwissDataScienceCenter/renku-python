@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +16,8 @@
 """Integration tests for dataset command."""
 
 import os
+import random
+import re
 import shutil
 import subprocess
 import time
@@ -50,6 +50,7 @@ from tests.utils import (
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
@@ -136,6 +137,7 @@ def test_dataset_import_real_doi(runner, project, doi, prefix, sleep_after):
     ],
 )
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_dataset_import_real_param(doi, input, runner, project, sleep_after):
@@ -161,6 +163,7 @@ def test_dataset_import_real_param(doi, input, runner, project, sleep_after):
     "doi", [("10.5281/zenodo.3239984", "n"), ("zenodo.org/record/3239986", "n"), ("10.5281/zenodo.3239982", "n")]
 )
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_dataset_import_uri_404(doi, runner, project, sleep_after):
@@ -173,6 +176,7 @@ def test_dataset_import_uri_404(doi, runner, project, sleep_after):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
@@ -195,7 +199,7 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
 
     result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    assert "pyndl_naive_d_v1.0.0" in result.output
+    assert "pyndl_naive_discr_v1.1.1" in result.output
 
 
 @pytest.mark.parametrize(
@@ -210,6 +214,7 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
     ],
 )
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_dataset_import_expected_err(runner, project, doi, err):
@@ -228,6 +233,7 @@ def test_dataset_import_expected_err(runner, project, doi, err):
     ],
 )
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_dataset_import_real_http(runner, project, url, sleep_after):
@@ -240,6 +246,7 @@ def test_dataset_import_real_http(runner, project, url, sleep_after):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_dataset_import_and_extract(runner, project, sleep_after):
@@ -254,6 +261,7 @@ def test_dataset_import_and_extract(runner, project, sleep_after):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_dataset_import_different_names(runner, project, sleep_after):
@@ -269,6 +277,7 @@ def test_dataset_import_different_names(runner, project, sleep_after):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_dataset_import_ignore_uncompressed_files(runner, project, sleep_after):
@@ -280,6 +289,7 @@ def test_dataset_import_ignore_uncompressed_files(runner, project, sleep_after):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_dataset_reimport_removed_dataset(runner, project, sleep_after):
@@ -296,6 +306,7 @@ def test_dataset_reimport_removed_dataset(runner, project, sleep_after):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_dataset_import_preserve_names(runner, project, sleep_after):
@@ -310,6 +321,7 @@ def test_dataset_import_preserve_names(runner, project, sleep_after):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
@@ -342,6 +354,7 @@ def test_dataset_import_renku_provider(runner, project, uri):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
@@ -370,6 +383,7 @@ def test_dataset_import_renku_provider_with_subgroups(runner, project, uri):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_dataset_import_renkulab_dataset_with_image(runner, project, with_injection):
@@ -391,8 +405,8 @@ def test_dataset_import_renkulab_dataset_with_image(runner, project, with_inject
     with with_injection():
         dataset = [d for d in DatasetGateway().get_all_active_datasets()][0]
     assert 2 == len(dataset.images)
-    img1 = next((i for i in dataset.images if i.position == 1))
-    img2 = next((i for i in dataset.images if i.position == 2))
+    img1 = next(i for i in dataset.images if i.position == 1)
+    img2 = next(i for i in dataset.images if i.position == 2)
 
     assert img1.content_url == "https://example.com/image1.jpg"
     assert img2.content_url.endswith("/2.png")
@@ -400,6 +414,7 @@ def test_dataset_import_renkulab_dataset_with_image(runner, project, with_inject
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
@@ -423,6 +438,7 @@ def test_import_renku_dataset_preserves_directory_hierarchy(runner, project, dat
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba05594fdd8e4682963cec9fe2"])
@@ -443,17 +459,19 @@ def test_dataset_import_renku_fail(runner, project, monkeypatch, url):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba-0559-4fdd-8e46-82963cec9fe2"])
 def test_dataset_import_renku_missing_project(runner, project, missing_kg_project_responses, url):
-    """Test dataset import fails if cannot find project in KG."""
+    """Test dataset import fails when cannot find project in KG."""
     result = runner.invoke(cli, ["dataset", "import", url], input="y")
     assert 1 == result.exit_code
     assert "Resource not found in knowledge graph" in result.output
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
@@ -473,6 +491,7 @@ def test_dataset_import_renkulab_errors(runner, project, url, exit_code):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
@@ -499,6 +518,7 @@ def test_dataset_import_renku_provider_errors(runner, project, uri, message):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize("url", ["https://dev.renku.ch/datasets/e3e1beba05594fdd8e4682963cec9fe2"])
@@ -512,6 +532,7 @@ def test_dataset_reimport_renkulab_dataset(runner, project, url):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_renku_dataset_import_missing_lfs_objects(runner, project):
@@ -526,6 +547,7 @@ def test_renku_dataset_import_missing_lfs_objects(runner, project):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
@@ -584,6 +606,7 @@ def test_dataset_export_upload_file(
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
@@ -673,6 +696,10 @@ def test_dataset_export_to_local(runner, tmp_path):
 
     os.chdir(repository.path)
 
+    result = runner.invoke(cli, ["migrate"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
     output_path: Path = tmp_path / "exported"
 
     result = runner.invoke(cli, ["dataset", "export", "parts", "local", "-t", "v1", "-p", output_path])
@@ -701,7 +728,7 @@ def test_dataset_export_to_local(runner, tmp_path):
     assert 0 == result.exit_code, format_result_exception(result)
     assert f"Dataset metadata was copied to {repository.path}/data/parts-v1/METADATA.yml" in result.output
     assert f"Exported to: {repository.path}/data/parts-v1" in result.output
-    assert repository.is_dirty(untracked_files=True)
+    assert repository.is_dirty()
     assert (repository.path / "data" / "parts-v1" / "part_relationships.csv").exists()
     assert (repository.path / "data" / "parts-v1" / "parts.csv").read_text() == (
         repository.path / "data" / "parts-v1" / "parts.csv"
@@ -709,6 +736,7 @@ def test_dataset_export_to_local(runner, tmp_path):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
@@ -741,7 +769,7 @@ def test_dataset_export_upload_multiple(
     # create data file
     paths = []
     for i in range(3):
-        new_file = tmpdir.join("file_{0}".format(i))
+        new_file = tmpdir.join(f"file_{i}")
         new_file.write(str(i))
         paths.append(str(new_file))
 
@@ -861,6 +889,7 @@ def test_dataset_export_non_existing(runner, project, provider):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
@@ -1173,6 +1202,7 @@ def test_dataset_update(project, runner, params):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @pytest.mark.parametrize("doi", ["10.5281/zenodo.2658634"])
 @retry_failed
 @pytest.mark.vcr
@@ -1192,7 +1222,7 @@ def test_dataset_update_zenodo(project, runner, doi):
     assert "The following imported datasets will be updated" in result.output
     assert "imported_dataset" in result.output
     assert commit_sha_after_file1_delete == project.repository.head.commit.hexsha
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
     result = runner.invoke(cli, ["dataset", "update", "imported_dataset"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
@@ -1208,6 +1238,7 @@ def test_dataset_update_zenodo(project, runner, doi):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @pytest.mark.parametrize("doi", ["10.7910/DVN/F4NUMR"])
 @retry_failed
 @pytest.mark.vcr
@@ -1246,6 +1277,7 @@ def test_dataset_update_dataverse(project, runner, doi, with_injection):
     "DatasetProvenance creates a derived dataset due to some problem, we should investigate in a followup issue"
 )
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_dataset_update_renku(project, runner, with_injection):
@@ -1272,7 +1304,7 @@ def test_dataset_update_renku(project, runner, with_injection):
     assert "The following imported datasets will be updated" in result.output
     assert "remote-dataset" in result.output
     assert commit_sha_after_file1_delete == project.repository.head.commit.hexsha
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
     result = runner.invoke(cli, ["dataset", "update", "--all"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
@@ -1357,7 +1389,7 @@ def test_dataset_invalid_update(project, runner, params):
 @pytest.mark.parametrize("params", [["--all"], ["-I", "CHANGES.rst"], ["-I", "CH*"], ["dataset-1", "dataset-2"]])
 @retry_failed
 @pytest.mark.vcr
-def test_dataset_update_multiple_datasets(project, runner, data_repository, params):
+def test_dataset_update_multiple_datasets(project, runner, params):
     """Test update with multiple datasets."""
     path1 = project.path / DATA_DIR / "dataset-1" / "CHANGES.rst"
     path2 = project.path / DATA_DIR / "dataset-2" / "CHANGES.rst"
@@ -1407,7 +1439,7 @@ def test_dataset_update_multiple_datasets(project, runner, data_repository, para
 
 @pytest.mark.integration
 @retry_failed
-def test_empty_update(project, runner, data_repository):
+def test_empty_update(project, runner):
     """Test update when nothing changed does not create a commit."""
     # Add dataset to project
     result = runner.invoke(
@@ -1551,7 +1583,7 @@ def test_update_specific_refs(ref, runner, project):
     assert "The following files will be updated" in result.output
     assert str(file) in result.output
     assert commit_sha_after_file1_delete == project.repository.head.commit.hexsha
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
     # update data to a later version
     result = runner.invoke(cli, ["dataset", "update", "--ref", ref, "--all"])
@@ -1627,7 +1659,7 @@ def test_files_are_tracked_in_lfs(runner, project, no_lfs_size_limit):
         ],
     )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    path = "data/dataset/{}".format(filename)
+    path = f"data/dataset/{filename}"
     assert path in subprocess.check_output(["git", "lfs", "ls-files"]).decode()
 
 
@@ -1695,7 +1727,10 @@ def test_check_disk_space(runner, project, monkeypatch, url):
 
     def disk_usage(_):
         """Mocked response."""
-        Usage = NamedTuple("Usage", [("free", int)])
+
+        class Usage(NamedTuple):
+            free: int
+
         return Usage(free=0)
 
     monkeypatch.setattr(shutil, "disk_usage", disk_usage)
@@ -1755,6 +1790,7 @@ def test_dataset_add_dropbox(runner, project, url, size):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_immutability_at_import(runner, project):
@@ -1767,6 +1803,7 @@ def test_immutability_at_import(runner, project):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_immutability_after_import(runner, project):
@@ -1802,6 +1839,7 @@ def test_immutability_after_update(project, runner):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @pytest.mark.parametrize(
     "url",
     [
@@ -1825,6 +1863,7 @@ def test_import_returns_last_dataset_version(runner, project, url):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_datasets_provenance_after_import(runner, project):
@@ -1852,6 +1891,7 @@ def test_datasets_provenance_after_git_update(project, runner):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_datasets_provenance_after_external_provider_update(project, runner):
@@ -1868,6 +1908,7 @@ def test_datasets_provenance_after_external_provider_update(project, runner):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_datasets_import_with_tag(project, runner):
@@ -1897,6 +1938,7 @@ def test_datasets_import_with_tag(project, runner):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_datasets_imported_with_tag_are_not_updated(project, runner):
@@ -1916,6 +1958,7 @@ def test_datasets_imported_with_tag_are_not_updated(project, runner):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_dataset_update_removes_deleted_files(project, runner, with_injection):
@@ -1954,6 +1997,10 @@ def test_dataset_ls_with_tag(runner, tmp_path):
 
     os.chdir(repository.path)
 
+    result = runner.invoke(cli, ["migrate"])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
     result = runner.invoke(cli, ["dataset", "ls-files", "--tag", "v1"])
 
     assert 0 == result.exit_code, format_result_exception(result)
@@ -1969,27 +2016,36 @@ def test_dataset_ls_with_tag(runner, tmp_path):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 @pytest.mark.parametrize(
-    "storage", ["s3://s3.amazonaws.com/giab/", "s3://os.zhdk.cloud.switch.ch/renku-python-test-public/"]
+    "storage",
+    [
+        "s3://s3.amazonaws.com/giab/",
+        "s3://os.zhdk.cloud.switch.ch/renku-python-test-public/",
+        "azure://renkupythontest1.blob.core.windows.net/test-private-1/path",
+        "azure://renkupythontest1/test-private-1/path",
+        pytest.lazy_fixture("external_cloud_storage"),
+    ],
 )
-def test_create_with_s3_backend(runner, project, storage):
-    """Test creating a dataset with a valid S3 backend storage."""
-    result = runner.invoke(cli, ["dataset", "create", "s3-data", "--storage", storage], input="\n\n\n")
+def test_create_with_could_storage(runner, project, cloud_storage_credentials, external_cloud_storage, storage):
+    """Test creating a dataset with a valid backend cloud storage."""
+    result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", storage], input="\n\n\n")
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    dataset = get_dataset_with_injection("s3-data")
+    dataset = get_dataset_with_injection("cloud-data")
 
     assert storage == dataset.storage
 
     # NOTE: Dataset's data dir is git-ignored
-    dataset_datadir = os.path.join(DATA_DIR, "s3-data")
+    dataset_datadir = os.path.join(DATA_DIR, "cloud-data")
     assert {dataset_datadir} == set(project.repository.get_ignored_paths(dataset_datadir))
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
 def test_create_with_non_existing_s3_backend(runner, project):
@@ -2003,260 +2059,490 @@ def test_create_with_non_existing_s3_backend(runner, project):
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
-def test_create_with_unauthorized_s3_backend(runner, project):
-    """Test creating a dataset with an invalid credentials."""
+def test_create_with_non_existing_azure_backend(runner, project, cloud_storage_credentials):
+    """Test creating a dataset with an invalid Azure cloud storage."""
     result = runner.invoke(
-        cli, ["dataset", "create", "s3-data", "--storage", "s3://s3.amazonaws.com/amazon/"], input="\n\n\n"
+        cli, ["dataset", "create", "cloud-data", "--storage", "azure://renkupythontest1/non-existing/"], input="\n\n\n"
     )
 
-    assert 1 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    assert "Authentication failed when accessing the remote storage" in result.output
+    assert 2 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+    assert "Azure container 'non-existing' doesn't exists" in result.output
 
 
 @pytest.mark.integration
-@retry_failed
-@pytest.mark.vcr
-def test_pull_data_from_s3_backend(runner, project):
-    """Test pulling data for a dataset with an S3 backend."""
-    result = runner.invoke(
-        cli, ["dataset", "create", "s3-data", "--storage", "s3://s3.amazonaws.com/giab/"], input="\n\n\n"
-    )
+@pytest.mark.shaky
+def test_create_with_non_existing_local_backend(runner, project):
+    """Test creating a dataset with a non-existing local backend storage."""
+    result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", "/non-existing/path"])
 
-    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-
-    result = runner.invoke(
-        cli,
-        [
-            "dataset",
-            "add",
-            "s3-data",
-            "s3://s3.amazonaws.com/giab/Aspera_download_from_ftp.README",
-            "s3://s3.amazonaws.com/giab/technical/unimask/02structural.bed.gz",
-        ],
-    )
-
-    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-
-    result = runner.invoke(cli, ["dataset", "pull", "s3-data"])
-
-    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-
-    dataset = get_dataset_with_injection("s3-data")
-    file = next(f for f in dataset.files if f.entity.path.endswith("Aspera_download_from_ftp.README"))
-
-    assert (project.path / file.entity.path).exists()
-    assert not (project.path / file.entity.path).is_symlink()
-
-    file = next(f for f in dataset.files if f.entity.path.endswith("02structural.bed.gz"))
-
-    assert (project.path / file.entity.path).exists()
-    assert not (project.path / file.entity.path).is_symlink()
-    assert "0ddc10ab9f9f0dd0fea4d66d9a55ba99" == file.based_on.checksum
+    assert 2 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+    assert "External path '/non-existing/path' doesn't exists." in result.output
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
 @retry_failed
 @pytest.mark.vcr
-def test_pull_data_from_s3_backend_to_a_location(runner, project, tmp_path):
-    """Test pulling data for a dataset with an S3 backend to a location other than dataset's data directory."""
-    result = runner.invoke(
-        cli, ["dataset", "create", "s3-data", "--storage", "s3://s3.amazonaws.com/giab/"], input="\n\n\n"
-    )
-
-    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-
-    result = runner.invoke(
-        cli,
-        [
-            "dataset",
-            "add",
-            "s3-data",
-            "s3://s3.amazonaws.com/giab/Aspera_download_from_ftp.README",
-            "s3://s3.amazonaws.com/giab/technical/unimask/02structural.bed.gz",
-        ],
-    )
-
-    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-
-    location = tmp_path / "s3-data"
-
-    result = runner.invoke(cli, ["dataset", "pull", "s3-data", "--location", str(location)])
-
-    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-
-    dataset = get_dataset_with_injection("s3-data")
-    file = next(f for f in dataset.files if f.entity.path.endswith("Aspera_download_from_ftp.README"))
-
-    assert (project.path / file.entity.path).is_symlink()
-    assert (location / file.entity.path).resolve() == (project.path / file.entity.path).resolve()
-
-    file = next(f for f in dataset.files if f.entity.path.endswith("02structural.bed.gz"))
-
-    assert (project.path / file.entity.path).is_symlink()
-    assert (location / file.entity.path).resolve() == (project.path / file.entity.path).resolve()
-    assert "0ddc10ab9f9f0dd0fea4d66d9a55ba99" == file.based_on.checksum
-
-    assert str(location) in (project.path / ".renku" / "renku.ini").read_text()
-
-
-@pytest.mark.integration
 @pytest.mark.parametrize(
-    "args,uris,storage_uri",
+    "storage",
     [
-        (["--create", "--storage", "s3://s3.amazonaws.com/giab"], ["s3://s3.amazonaws.com/giab"], None),
-        (
-            [],
-            ["s3://s3.amazonaws.com/giab/tools", "s3://s3.amazonaws.com/giab/use_cases"],
-            "s3://s3.amazonaws.com/giab",
-        ),
-        ([], ["s3://s3.amazonaws.com/giab"], "s3://s3.amazonaws.com/giab"),
-        (
-            [],
-            ["s3://s3.amazonaws.com/giab/tools", "s3://s3.amazonaws.com/giab/changelog_details"],
-            "s3://s3.amazonaws.com/giab",
-        ),
+        "s3://s3.amazonaws.com/amazon/",
+        "azure://renkupythontest1/test-private-1",
     ],
 )
-def test_adding_data_from_s3(runner, project, create_s3_dataset, mocker, args, uris, storage_uri):
-    """Ensure metadata from a bucket can be added."""
-    mock_s3_storage = mocker.patch("renku.infrastructure.storage.factory.StorageFactory.get_storage", autospec=True)
-    instance_s3_storage = mock_s3_storage.return_value
-    dataset_name = "test-s3-dataset"
-    instance_s3_storage.get_hashes.return_value = [
-        FileHash(base_uri=uri, path=uri[5:], hash=uri, hash_type="md5")  # uri[5:] removes s3:// from beginning
-        for uri in uris
-    ]
-    if storage_uri:
-        res = create_s3_dataset(dataset_name, storage_uri)
-        assert res.exit_code == 0
-    res = runner.invoke(cli, ["dataset", "add", dataset_name, *args, *uris], input="\n\nn\n")
-    assert res.exit_code == 0
-    assert instance_s3_storage.get_hashes.call_count == len(uris)
-    res = runner.invoke(cli, ["dataset", "ls-files"])
-    assert res.exit_code == 0
-    assert all([uri[5:] in res.stdout for uri in uris])
+def test_create_with_unauthorized_cloud_storage(runner, project, storage):
+    """Test creating a dataset with an invalid credentials."""
+    result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", storage], input="\n\n\n")
+
+    assert 1 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+    assert "Authentication failed when accessing the cloud storage" in result.output
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
+@retry_failed
+@pytest.mark.vcr
 @pytest.mark.parametrize(
-    "cmd_args,expected_error_msg",
+    "storage, files",
+    [
+        [
+            "s3://s3.amazonaws.com/giab/",
+            [
+                ("Aspera_download_from_ftp.README", "e8530c02585aaaecba2d5bd6c4cea6ae"),
+                ("technical/unimask/02structural.bed.gz", "0ddc10ab9f9f0dd0fea4d66d9a55ba99"),
+            ],
+        ],
+        [
+            "azure://renkupythontest1/test-private-1",
+            [
+                ("file-1", "ba240f743099afb725adcc0e267b2987"),
+                ("directory-1/file-2", "e984bdba4a20181ef40f1bdc9ca82865"),
+            ],
+        ],
+        [
+            pytest.lazy_fixture("external_cloud_storage"),
+            [("file1", "9d98eede4ccb193e379d6dbd7cc1eb86"), ("dir1/file2", "7bec9352114f8139c2640b2554563508")],
+        ],
+    ],
+)
+def test_pull_data_from_cloud_storage(
+    runner, project, cloud_storage_credentials, external_cloud_storage, storage: str, files
+):
+    """Test pulling data for a dataset with cloud storage backend."""
+    result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", storage], input="\n\n\n")
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    file_1, hash_1 = files[0]
+    file_1 = os.path.join(storage, file_1)
+    file_2, hash_2 = files[1]
+    file_2 = os.path.join(storage, file_2)
+
+    result = runner.invoke(cli, ["dataset", "add", "cloud-data", "--copy", file_1, file_2])
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    result = runner.invoke(cli, ["dataset", "pull", "cloud-data"])
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    dataset = get_dataset_with_injection("cloud-data")
+    file = next(f for f in dataset.files if f.entity.path.endswith(Path(file_1).name))
+    assert hash_1 == file.based_on.checksum
+
+    assert (project.path / file.entity.path).exists()
+    assert not (project.path / file.entity.path).is_symlink()
+
+    file = next(f for f in dataset.files if f.entity.path.endswith(Path(file_2).name))
+
+    assert (project.path / file.entity.path).exists()
+    assert not (project.path / file.entity.path).is_symlink()
+    assert hash_2 == file.based_on.checksum
+
+
+@pytest.mark.integration
+@pytest.mark.shaky
+@retry_failed
+@pytest.mark.vcr
+@pytest.mark.parametrize(
+    "storage, files",
+    [
+        [
+            "s3://s3.amazonaws.com/giab/",
+            [
+                ("Aspera_download_from_ftp.README", "e8530c02585aaaecba2d5bd6c4cea6ae"),
+                ("technical/unimask/02structural.bed.gz", "0ddc10ab9f9f0dd0fea4d66d9a55ba99"),
+            ],
+        ],
+        [
+            "azure://renkupythontest1/test-private-1",
+            [
+                ("file-1", "ba240f743099afb725adcc0e267b2987"),
+                ("directory-1/file-2", "e984bdba4a20181ef40f1bdc9ca82865"),
+            ],
+        ],
+        [
+            pytest.lazy_fixture("external_cloud_storage"),
+            [("file1", "9d98eede4ccb193e379d6dbd7cc1eb86"), ("dir1/file2", "7bec9352114f8139c2640b2554563508")],
+        ],
+    ],
+)
+def test_pull_data_from_cloud_storage_to_a_location(
+    runner, project, cloud_storage_credentials, tmp_path, external_cloud_storage, storage: str, files
+):
+    """Test pulling data for a dataset with cloud storage to a location other than dataset's data directory."""
+    result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", storage], input="\n\n\n")
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    file_1, hash_1 = files[0]
+    file_1 = os.path.join(storage, file_1)
+    file_2, hash_2 = files[1]
+    file_2 = os.path.join(storage, file_2)
+
+    result = runner.invoke(cli, ["dataset", "add", "cloud-data", "--copy", file_1, file_2])
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    location = tmp_path / "cloud-data"
+
+    result = runner.invoke(cli, ["dataset", "pull", "cloud-data", "--location", str(location)], input="y")
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    dataset = get_dataset_with_injection("cloud-data")
+    assert (project.path / dataset.get_datadir()).is_symlink()
+
+    filename = Path(file_1).name
+    file = next(f for f in dataset.files if f.entity.path.endswith(filename))
+
+    assert (location / filename).resolve() == (project.path / file.entity.path).resolve()
+    assert hash_1 == file.based_on.checksum
+
+    filename = Path(file_2).name
+    file = next(f for f in dataset.files if f.entity.path.endswith(filename))
+
+    assert (location / filename).resolve() == (project.path / file.entity.path).resolve()
+    assert hash_2 == file.based_on.checksum
+
+
+@pytest.mark.integration
+@pytest.mark.shaky
+@pytest.mark.parametrize(
+    "args, files, storage",
+    [
+        (["--create", "--storage", "s3://s3.amazonaws.com/giab"], ["s3://s3.amazonaws.com/giab"], None),
+        ([], ["tools", "use_cases"], "s3://s3.amazonaws.com/giab"),
+        ([], [""], "s3://s3.amazonaws.com/giab"),
+        ([], ["tools", "changelog_details"], "s3://s3.amazonaws.com/giab"),
+        (
+            ["--create", "--storage", "azure://renkupythontest1/test-private-1"],
+            ["azure://renkupythontest1/test-private-1"],
+            None,
+        ),
+        ([], ["file-1", "use_cases"], "azure://renkupythontest1/test-private-1"),
+        ([], [""], "azure://renkupythontest1/test-private-1"),
+        ([], ["file-1", "changelog_details"], "azure://renkupythontest1/test-private-1"),
+        (["--copy"], ["file1", "dir1/file2"], pytest.lazy_fixture("external_cloud_storage")),
+    ],
+)
+def test_adding_data_from_cloud_storage(
+    runner, project, create_cloud_storage_dataset, external_cloud_storage, mocker, args, files, storage
+):
+    """Ensure metadata from a bucket can be added."""
+    if storage:
+        files = [os.path.join(storage, f).rstrip("/") for f in files]
+
+    def get_path(uri):
+        return re.sub(r".*://", "", uri).lstrip("/")  # Remove scheme and make sure path isn't absolute
+
+    mock_cloud_storage = mocker.patch("renku.infrastructure.storage.factory.StorageFactory.get_storage", autospec=True)
+    instance_cloud_storage = mock_cloud_storage.return_value
+    dataset_name = "cloud-data"
+    instance_cloud_storage.get_hashes.return_value = [FileHash(uri=f, path=get_path(f), size=42, hash=f) for f in files]
+    if storage:
+        result = create_cloud_storage_dataset(dataset_name, storage)
+        assert result.exit_code == 0, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "add", dataset_name, *args, *files], input="\n\nn\n")
+    assert result.exit_code == 0, format_result_exception(result)
+
+    assert instance_cloud_storage.get_hashes.call_count == len(files)
+    result = runner.invoke(cli, ["dataset", "ls-files"])
+
+    assert result.exit_code == 0, format_result_exception(result)
+    assert re.sub(r".*://", "", files[0]) in result.stdout, result.stdout
+    assert all([re.sub(r".*://", "", f) in result.stdout for f in files])
+
+
+@pytest.mark.integration
+@pytest.mark.shaky
+@pytest.mark.parametrize(
+    "storage, cmd_args, expected_error_msg",
     [
         (
+            "s3://s3.amazonaws.com/giab",
             ["s3://s3.amazonaws.com/giab", "--storage", "s3://s3.amazonaws.com/giab"],
             "Storage can be set only when creating a dataset",
         ),
         (
+            "s3://s3.amazonaws.com/giab",
             ["https://github.com/SwissDataScienceCenter/renku-python/raw/develop/README.rst"],
             "does not match the defined storage url",
         ),
         (
+            "s3://s3.amazonaws.com/giab",
             ["s3://s3.amazonaws.com/giab/*"],
-            "Wildcards like '*' or '?' are not supported for S3 URIs",
+            "Wildcards like '*' or '?' are not supported for cloud storage URIs",
         ),
         (
+            "s3://s3.amazonaws.com/giab",
             ["s3://s3.amazonaws.com/giab/test?.txt"],
-            "Wildcards like '*' or '?' are not supported for S3 URIs",
+            "Wildcards like '*' or '?' are not supported for cloud storage URIs",
         ),
         (
+            "s3://s3.amazonaws.com/giab",
             ["s3://s3.amazonaws.com/giab", "--source", "tools"],
+            "Cannot use '-s/--src/--source' with URLs or local files",
+        ),
+        (
+            "azure://renkupythontest1/test-private-1",
+            ["azure://renkupythontest1/test-private-1", "--storage", "azure://renkupythontest1/test-private-1"],
+            "Storage can be set only when creating a dataset",
+        ),
+        (
+            "azure://renkupythontest1/test-private-1",
+            ["https://github.com/SwissDataScienceCenter/renku-python/raw/develop/README.rst"],
+            "does not match the defined storage url",
+        ),
+        (
+            "azure://renkupythontest1/test-private-1",
+            ["azure://renkupythontest1/test-private-1/*"],
+            "Wildcards like '*' or '?' are not supported for cloud storage URIs",
+        ),
+        (
+            "azure://renkupythontest1/test-private-1",
+            ["azure://renkupythontest1/test-private-1/test?.txt"],
+            "Wildcards like '*' or '?' are not supported for cloud storage URIs",
+        ),
+        (
+            "azure://renkupythontest1/test-private-1",
+            ["azure://renkupythontest1/test-private-1", "--source", "tools"],
             "Cannot use '-s/--src/--source' with URLs or local files",
         ),
     ],
 )
-def test_invalid_s3_args(runner, project, create_s3_dataset, cmd_args, expected_error_msg, mocker):
+def test_invalid_cloud_storage_args(
+    runner, project, create_cloud_storage_dataset, storage, cmd_args, expected_error_msg, mocker
+):
     """Test invalid arguments for adding data to S3 dataset."""
-    mock_s3_storage = mocker.patch("renku.infrastructure.storage.factory.StorageFactory.get_storage", autospec=True)
-    storage_uri = "s3://s3.amazonaws.com/giab"
-    dataset_name = "test-s3-dataset"
+    mock_cloud_storage_storage = mocker.patch(
+        "renku.infrastructure.storage.factory.StorageFactory.get_storage", autospec=True
+    )
+    dataset_name = "test-cloud-dataset"
     if "--create" not in cmd_args:
-        instance_s3_storage = mock_s3_storage.return_value
-        res = create_s3_dataset(dataset_name, storage_uri)
+        instance_cloud_storage_storage = mock_cloud_storage_storage.return_value
+        res = create_cloud_storage_dataset(dataset_name, storage)
         assert res.exit_code == 0
-        instance_s3_storage.exists.assert_called_with(storage_uri)
+        instance_cloud_storage_storage.exists.assert_called_with(storage)
+
     res = runner.invoke(cli, ["dataset", "add", dataset_name, *cmd_args])
+
     assert res.exit_code != 0
     assert expected_error_msg in res.stderr
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
+@pytest.mark.serial
 @retry_failed
-def test_mount_unmount_data_from_s3_backend(runner, project):
-    """Test mounting/unmounting data for a dataset with an S3 backend."""
-    result = runner.invoke(
-        cli, ["dataset", "create", "s3-data", "--storage", "s3://s3.amazonaws.com/giab/"], input="\n\n\n"
-    )
+@pytest.mark.parametrize(
+    "storage, path",
+    [
+        ("s3://s3.amazonaws.com/giab/", "Aspera_download_from_ftp.README"),
+        ("azure://renkupythontest1/test-private-1", "file-1"),
+        (pytest.lazy_fixture("external_cloud_storage"), "file1"),
+    ],
+)
+def test_mount_unmount_data_from_cloud_storage(
+    runner, project, cloud_storage_credentials, external_cloud_storage, storage, path
+):
+    """Test mounting/unmounting data for a dataset with cloud storage backend."""
+    result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", storage], input="\n\n\n")
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    s3_data = project.path / "data" / "s3-data" / "Aspera_download_from_ftp.README"
-    assert not s3_data.exists()
+    cloud_data = project.path / "data" / "cloud-data" / path
+    assert not cloud_data.exists()
 
     # NOTE: Create some dummy files
-    dummy = project.path / "data" / "s3-data" / "dummy"
+    dummy = project.path / "data" / "cloud-data" / "dummy"
     dummy.parent.mkdir(exist_ok=True, parents=True)
     dummy.touch()
 
     try:
-        result = runner.invoke(cli, ["dataset", "mount", "s3-data"], input="y")
+        result = runner.invoke(cli, ["dataset", "mount", "cloud-data"], input="y")
         time.sleep(1)
 
         assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-        assert "Warning: Dataset's data directory will be removed: data/s3-data." in result.output
-        assert s3_data.exists()
+        assert "Warning: Dataset's data directory will be removed: data/cloud-data." in result.output
+        assert cloud_data.exists()
     finally:
-        result = runner.invoke(cli, ["dataset", "mount", "s3-data", "--unmount"])
+        result = runner.invoke(cli, ["dataset", "mount", "cloud-data", "--unmount"])
 
         assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-        assert not s3_data.exists()
+        assert not cloud_data.exists()
 
 
 @pytest.mark.integration
+@pytest.mark.shaky
+@pytest.mark.serial
 @retry_failed
-def test_mount_data_from_an_existing_mount_point(runner, project, tmp_path):
-    """Test get data for a dataset with an S3 backend from an existing mount-point."""
-    result = runner.invoke(
-        cli, ["dataset", "create", "s3-data", "--storage", "s3://s3.amazonaws.com/giab/"], input="\n\n\n"
-    )
+@pytest.mark.parametrize(
+    "storage, path, rclone_uri, env",
+    [
+        (
+            "s3://s3.amazonaws.com/giab/",
+            "Aspera_download_from_ftp.README",
+            "s3://giab/",
+            {"RCLONE_CONFIG_S3_TYPE": "s3", "RCLONE_CONFIG_S3_PROVIDER": "AWS"},
+        ),
+        (
+            "azure://renkupythontest1/test-private-1",
+            "file-1",
+            "azure://test-private-1/",
+            {
+                "RCLONE_CONFIG_AZURE_TYPE": "azureblob",
+                "RCLONE_CONFIG_AZURE_ACCOUNT": "renkupythontest1",
+                "RCLONE_CONFIG_AZURE_KEY": os.getenv("CLOUD_STORAGE_AZURE_KEY", ""),
+            },
+        ),
+        (
+            pytest.lazy_fixture("external_cloud_storage"),
+            "file1",
+            None,
+            {"RCLONE_CONFIG_FILE_TYPE": "local"},
+        ),
+    ],
+)
+def test_mount_data_from_an_existing_mount_point(
+    runner, project, tmp_path, cloud_storage_credentials, external_cloud_storage, storage, path, rclone_uri, env
+):
+    """Test get data for a dataset with cloud storage backend from an existing mount-point."""
+    result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", storage], input="\n\n\n")
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    s3_data = project.path / "data" / "s3-data" / "Aspera_download_from_ftp.README"
-    assert not s3_data.exists()
+    cloud_data = project.path / "data" / "cloud-data" / path
+    assert not cloud_data.exists()
 
     # NOTE: Create some dummy files
-    dummy = project.path / "data" / "s3-data" / "dummy"
+    dummy = project.path / "data" / "cloud-data" / "dummy"
     dummy.parent.mkdir(exist_ok=True, parents=True)
     dummy.touch()
 
-    mount_point = tmp_path / "s3-mount"
+    mount_point = tmp_path / "cloud-mount"
     mount_point.mkdir(exist_ok=True, parents=True)
-    env = os.environ.copy()
-    env["RCLONE_CONFIG_S3_TYPE"] = "s3"
-    env["RCLONE_CONFIG_S3_PROVIDER"] = "AWS"
+    os_env = os.environ.copy()
+    os_env.update(env)
+    rclone_uri = rclone_uri or f"file://{storage}"
     subprocess.run(
-        ["rclone", "mount", "--read-only", "--no-modtime", "--daemon", "s3://giab/", str(mount_point)], env=env
+        ["rclone", "mount", "--read-only", "--no-modtime", "--daemon", rclone_uri, str(mount_point)], env=os_env
     )
 
     try:
-        result = runner.invoke(cli, ["dataset", "mount", "s3-data", "--yes", "--existing", str(mount_point)])
+        result = runner.invoke(cli, ["dataset", "mount", "cloud-data", "--yes", "--existing", str(mount_point)])
 
         assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-        assert "Warning: Dataset's data directory will be removed: data/s3-data." not in result.output
-        assert s3_data.exists()
+        assert "Warning: Dataset's data directory will be removed: data/cloud-data." not in result.output
+        assert cloud_data.exists()
 
-        datadir = s3_data.parent
+        datadir = cloud_data.parent
         assert datadir.is_symlink()
         assert datadir.resolve() == mount_point.resolve()
 
-        result = runner.invoke(cli, ["dataset", "mount", "s3-data", "--unmount"])
+        result = runner.invoke(cli, ["dataset", "unmount", "cloud-data"])
 
         assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-        assert not s3_data.exists()
+        assert not cloud_data.exists()
         assert not datadir.exists()
 
-        s3_data = tmp_path / "s3-mount" / "Aspera_download_from_ftp.README"
-        assert s3_data.exists()
+        cloud_data = tmp_path / "cloud-mount" / path
+        assert cloud_data.exists()
     finally:
         unmount_path(mount_point)
+
+
+@pytest.mark.integration
+@pytest.mark.shaky
+@retry_failed
+@pytest.mark.parametrize(
+    "storage",
+    [
+        "s3://os.zhdk.cloud.switch.ch/renku-python-integration-test",
+        "azure://renkupythontest1/test-private-1/renku-python-test",
+        pytest.lazy_fixture("external_cloud_storage"),
+    ],
+)
+def test_add_data_to_mounted_cloud_storage(
+    runner, project, tmp_path, cloud_storage_credentials, external_cloud_storage, storage
+):
+    """Test add data to datasets with read-only mounted cloud storage."""
+    result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", storage], input="\n\n\n")
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    cloud_data = project.path / "data" / "cloud-data"
+
+    local_file = tmp_path / "local-file.txt"
+    random_data = str(random.random())
+    local_file.write_text(random_data)
+
+    try:
+        assert not cloud_data.exists()
+
+        result = runner.invoke(cli, ["dataset", "mount", "cloud-data", "--yes"])
+
+        assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+        assert cloud_data.exists()
+
+        result = runner.invoke(cli, ["dataset", "add", "--copy", "cloud-data", local_file])
+
+        assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+        # NOTE: It takes a while to sync; we unmount/mount to make changes visible
+        runner.invoke(cli, ["dataset", "mount", "cloud-data", "--unmount"])
+        runner.invoke(cli, ["dataset", "pull", "cloud-data"])
+
+        copied_data = cloud_data / "local-file.txt"
+        assert copied_data.exists()
+        assert random_data == copied_data.read_text()
+    finally:
+        result = runner.invoke(cli, ["dataset", "mount", "cloud-data", "--unmount"])
+
+        assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+
+@pytest.mark.integration
+@pytest.mark.shaky
+def test_add_data_from_local_cloud_storage(runner, project, external_cloud_storage):
+    """Test adding data from local cloud storage copies data to correct destination."""
+    result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", external_cloud_storage])
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    file_1 = f"{external_cloud_storage}/file1"
+    file_2 = f"{external_cloud_storage}/dir1/file2"
+
+    result = runner.invoke(cli, ["dataset", "add", "cloud-data", "--copy", file_1, file_2])
+
+    assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
+
+    file_1_destination = file_1
+    file_2_destination = f"{external_cloud_storage}/file2"
+
+    assert Path(file_1_destination).exists()
+    assert Path(file_2_destination).exists()

@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2022 Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,11 +21,11 @@ from renku.ui.cli import cli
 
 
 @pytest.fixture()
-def create_s3_dataset(runner):
+def create_cloud_storage_dataset(runner):
     """Fixture that creates a dataset given its name and uri."""
 
-    def _create_s3_dataset(name, uri):
+    def _create_cloud_storage_dataset(name, uri):
         res = runner.invoke(cli, ["dataset", "create", name, "--storage", uri])
         return res
 
-    yield _create_s3_dataset
+    yield _create_cloud_storage_dataset

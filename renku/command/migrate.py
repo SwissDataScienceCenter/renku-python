@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -16,6 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Migrate project to the latest Renku version."""
+
+from typing import List
+
+from pydantic import validate_arguments
 
 from renku.command.command_builder.command import Command
 from renku.domain_model.project_context import project_context
@@ -84,19 +87,23 @@ def _template_migration_check():
     Returns:
         Dictionary of template migration status.
     """
+    from renku.core.config import get_value
     from renku.core.template.usecase import check_for_template_update
 
     try:
         project = project_context.project
-    except ValueError:
+        template_source = project.template_metadata.template_source
+        template_ref = project.template_metadata.template_ref
+        template_id = project.template_metadata.template_id
+        ssh_supported = project.template_metadata.ssh_supported
+    except (ValueError, AttributeError):
         project = None
         template_source = None
         template_ref = None
         template_id = None
-    else:
-        template_source = project.template_source
-        template_ref = project.template_ref
-        template_id = project.template_id
+        ssh_supported = False
+
+    ssh_supported = get_value("renku", "ssh_supported") == "true" or ssh_supported
 
     update_available, update_allowed, current_version, new_version = check_for_template_update(project)
 
@@ -108,6 +115,7 @@ def _template_migration_check():
         "template_source": template_source,
         "template_ref": template_ref,
         "template_id": template_id,
+        "ssh_supported": ssh_supported,
     }
 
 
@@ -123,9 +131,9 @@ def _dockerfile_migration_check():
         Dictionary of Dockerfile migration status.
     """
     from renku import __version__
-    from renku.core.migration.migrate import is_docker_update_possible
+    from renku.core.migration.migrate import update_dockerfile
 
-    automated_dockerfile_update, newer_renku_available, dockerfile_renku_version = is_docker_update_possible()
+    automated_dockerfile_update, newer_renku_available, dockerfile_renku_version = update_dockerfile(check_only=True)
 
     return {
         "automated_dockerfile_update": automated_dockerfile_update,
@@ -168,13 +176,9 @@ def check_project():
 
 
 def _check_project():
-    from renku.core.migration.migrate import (
-        is_docker_update_possible,
-        is_migration_required,
-        is_project_unsupported,
-        is_renku_project,
-    )
+    from renku.core.migration.migrate import is_docker_update_possible, is_migration_required, is_project_unsupported
     from renku.core.template.usecase import check_for_template_update
+    from renku.core.util.metadata import is_renku_project
 
     if not is_renku_project():
         return NON_RENKU_REPOSITORY
@@ -185,31 +189,35 @@ def _check_project():
         _ = project_context.project
     except ValueError:
         return MIGRATION_REQUIRED
+    else:
+        if hasattr(project_context.project, "template_source"):
+            # NOTE: v10 migration not done
+            return MIGRATION_REQUIRED
 
-    # NOTE: ``project.automated_update`` is deprecated and we always allow template update for a project
+    # NOTE: ``project.automated_update`` is deprecated. We always allow template update for a project
     status = AUTOMATED_TEMPLATE_UPDATE_SUPPORTED
 
     if check_for_template_update(project_context.project)[0]:
         status |= TEMPLATE_UPDATE_POSSIBLE
-    if is_docker_update_possible()[0]:
+    if is_docker_update_possible():
         status |= DOCKERFILE_UPDATE_POSSIBLE
-
     if is_migration_required():
         return status | MIGRATION_REQUIRED
 
     return status | SUPPORTED_RENKU_PROJECT
 
 
-def _check_immutable_template_files(paths):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def _check_immutable_template_files(paths: List[str]):
     """Check paths and return a list of those that are marked immutable in the project template.
 
     Args:
-        paths: Paths to check.
+        paths(List[str]): Paths to check.
 
     Returns:
         List of immutable template files.
     """
-    immutable_template_files = project_context.project.immutable_template_files or []
+    immutable_template_files = project_context.project.template_metadata.immutable_template_files or []
 
     return [p for p in paths if str(p) in immutable_template_files]
 

@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -251,9 +250,9 @@ class Mapping(Parameter):
         self,
         name: str,
         value: Union[Path, str, bool, int, float],
-        default_value: Union[Path, str, bool, int, float] = None,
+        default_value: Optional[Union[Path, str, bool, int, float]] = None,
         description: Optional[str] = None,
-        parameters: List[Parameter] = None,
+        parameters: Optional[List[Parameter]] = None,
     ):
         super().__init__(name=name, value=value)
         self.default_value: Union[Path, str, bool, int, float] = default_value if default_value is not None else value

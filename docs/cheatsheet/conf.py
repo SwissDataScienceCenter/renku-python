@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -86,7 +86,7 @@ master_doc = "cheatsheet"
 
 # General information about the project.
 project = "Renku"
-copyright = "2017-2022, Swiss Data Science Center"
+copyright = "2017-2023, Swiss Data Science Center"
 author = "Swiss Data Science Center"
 
 # The version info for the project you're documenting, acts as replacement for
@@ -196,6 +196,7 @@ nitpick_ignore = [
     ("py:class", "OID_TYPE"),
     ("py:class", "Path"),
     ("py:class", "Persistent"),
+    ("py:class", "WorkflowFileCompositePlan"),
     ("py:class", "optional"),
     ("py:class", '"ValueResolver"'),
     ("py:exc", "errors.ParameterError"),

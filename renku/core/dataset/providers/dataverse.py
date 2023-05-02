@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +16,7 @@
 """Dataverse API integration."""
 
 import json
-import pathlib
+import posixpath
 import re
 import urllib
 from pathlib import Path
@@ -43,6 +41,7 @@ from renku.core.dataset.providers.dataverse_metadata_templates import (
 from renku.core.dataset.providers.doi import DOIProvider
 from renku.core.dataset.providers.repository import RepositoryImporter, make_request
 from renku.core.util import communication
+from renku.core.util.datetime8601 import fix_datetime
 from renku.core.util.doi import extract_doi, get_doi_url, is_doi
 from renku.core.util.urls import remove_credentials
 from renku.domain_model.project_context import project_context
@@ -83,7 +82,7 @@ class DataverseProvider(ProviderApi, ExportProviderInterface, ImportProviderInte
     priority = ProviderPriority.HIGH
     name = "Dataverse"
 
-    def __init__(self, uri: Optional[str], is_doi: bool = False):
+    def __init__(self, uri: str, is_doi: bool = False):
         super().__init__(uri=uri)
 
         self.is_doi = is_doi
@@ -145,8 +144,8 @@ class DataverseProvider(ProviderApi, ExportProviderInterface, ImportProviderInte
         dataset: "Dataset",
         *,
         tag: Optional["DatasetTag"],
-        dataverse_server: str = None,
-        dataverse_name: str = None,
+        dataverse_server: Optional[str] = None,
+        dataverse_name: Optional[str] = None,
         publish: bool = False,
         **kwargs,
     ) -> "ExporterApi":
@@ -223,7 +222,7 @@ class DataverseImporter(RepositoryImporter):
 
     def fetch_provider_dataset(self) -> "ProviderDataset":
         """Deserialize a ``Dataset``."""
-        from marshmallow import pre_load
+        from marshmallow import post_load, pre_load
 
         from renku.command.schema.agent import PersonSchema
         from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile, ProviderDatasetSchema
@@ -253,6 +252,16 @@ class DataverseImporter(RepositoryImporter):
                     data["license"] = license.get("url", "")
 
                 return data
+
+            @post_load
+            def fix_timezone(self, obj, **kwargs):
+                """Add timezone to datetime object."""
+                if obj.get("date_modified"):
+                    obj["date_modified"] = fix_datetime(obj["date_modified"])
+                if obj.get("date_published"):
+                    obj["date_published"] = fix_datetime(obj["date_published"])
+
+                return obj
 
         files = self.get_files()
         dataset = ProviderDataset.from_jsonld(data=self._json, schema_class=DataverseDatasetSchema)
@@ -473,10 +482,10 @@ class _DataverseDeposition:
     def _make_url(self, api_path, **query_params):
         """Create URL for creating a dataset."""
         url_parts = urlparse.urlparse(self.server_url)
-        path = pathlib.posixpath.join(DATAVERSE_API_PATH, api_path)
+        path = posixpath.join(DATAVERSE_API_PATH, api_path)
 
-        query_params = urllib.parse.urlencode(query_params)
-        url_parts = url_parts._replace(path=path, query=query_params)
+        query_params_str = urllib.parse.urlencode(query_params)
+        url_parts = url_parts._replace(path=path, query=query_params_str)
         return urllib.parse.urlunparse(url_parts)
 
     def _post(self, url, json=None, data=None, files=None):
@@ -515,7 +524,7 @@ def check_dataverse_uri(url):
     from renku.core.util import requests
 
     url_parts = list(urlparse.urlparse(url))
-    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSION_API)
+    url_parts[2] = posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSION_API)
 
     url_parts[3:6] = [""] * 3
     version_url = urlparse.urlunparse(url_parts)
@@ -551,7 +560,7 @@ def check_dataverse_doi(doi):
 def make_records_url(record_id, base_url):
     """Create URL to access record by ID."""
     url_parts = list(urlparse.urlparse(base_url))
-    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_METADATA_API)
+    url_parts[2] = posixpath.join(DATAVERSE_API_PATH, DATAVERSE_METADATA_API)
     args_dict = {"exporter": DATAVERSE_EXPORTER, "persistentId": record_id}
     url_parts[4] = urllib.parse.urlencode(args_dict)
     return urllib.parse.urlunparse(url_parts)
@@ -560,7 +569,7 @@ def make_records_url(record_id, base_url):
 def make_versions_url(record_id, base_url):
     """Create URL to access the versions of a record."""
     url_parts = list(urlparse.urlparse(base_url))
-    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSIONS_API)
+    url_parts[2] = posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSIONS_API)
     args_dict = {"exporter": DATAVERSE_EXPORTER, "persistentId": record_id}
     url_parts[4] = urllib.parse.urlencode(args_dict)
     return urllib.parse.urlunparse(url_parts)
@@ -569,7 +578,7 @@ def make_versions_url(record_id, base_url):
 def make_file_url(file_id, base_url):
     """Create URL to access record by ID."""
     url_parts = list(urlparse.urlparse(base_url))
-    url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_FILE_API)
+    url_parts[2] = posixpath.join(DATAVERSE_API_PATH, DATAVERSE_FILE_API)
     args_dict = {"persistentId": file_id}
     url_parts[4] = urllib.parse.urlencode(args_dict)
     return urllib.parse.urlunparse(url_parts)

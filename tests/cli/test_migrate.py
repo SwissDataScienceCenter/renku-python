@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -40,7 +39,7 @@ def test_migrate_datasets_with_old_repository(isolated_runner, old_project):
     """Test migrate on old repository."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not old_project.repository.is_dirty(untracked_files=True)
+    assert not old_project.repository.is_dirty()
 
 
 @pytest.mark.migration
@@ -48,7 +47,7 @@ def test_migrate_project(isolated_runner, old_project, with_injection):
     """Test migrate on old repository."""
     result = isolated_runner.invoke(cli, ["migrate", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert not old_project.repository.is_dirty(untracked_files=True)
+    assert not old_project.repository.is_dirty()
 
     with project_context.with_path(old_project.path), with_injection():
         assert project_context.project
@@ -89,6 +88,7 @@ def test_migration_check(isolated_runner, project):
         "latest_template_version",
         "template_ref",
         "template_id",
+        "ssh_supported",
     }
 
 
@@ -122,24 +122,6 @@ def test_correct_relative_path(isolated_runner, old_project, with_injection):
             datasets_provenance = DatasetsProvenance()
 
             assert len(list(datasets_provenance.datasets)) > 0
-
-
-@pytest.mark.migration
-def test_remove_committed_lock_file(isolated_runner, old_project):
-    """Check that renku lock file has been successfully removed from git."""
-    (old_project.path / ".renku.lock").write_text("lock")
-
-    old_project.repository.add(".renku.lock", force=True)
-    old_project.repository.commit("locked")
-
-    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    assert not (old_project.path / ".renku.lock").exists()
-    assert not old_project.repository.is_dirty(untracked_files=True)
-
-    ignored = (old_project.path / ".gitignore").read_text()
-    assert ".renku.lock" in ignored
 
 
 @pytest.mark.migration
@@ -211,7 +193,7 @@ def test_comprehensive_dataset_migration(isolated_runner, old_dataset_project):
     assert "Cornell University" == dataset.creators[0].affiliation
     assert "Rooth, Mats" == dataset.creators[0].name
     assert dataset.date_published is None
-    assert "2020-08-10T21:35:05+00:00" == dataset.date_created.isoformat("T")
+    assert "2020-08-10T21:35:05+00:00" == dataset.date_created.replace(microsecond=0).isoformat("T")
     assert "Replication material for a paper to be presented" in dataset.description
     assert "https://doi.org/10.7910/DVN/EV6KLF" == dataset.same_as.url
     assert "1" == tags[0].name
@@ -221,7 +203,7 @@ def test_comprehensive_dataset_migration(isolated_runner, old_dataset_project):
 
     file_ = dataset.find_file("data/dataverse/copy.sh")
     assert "https://dataverse.harvard.edu/api/access/datafile/3050656" == file_.source
-    assert "2020-08-10T21:35:10+00:00" == file_.date_added.isoformat("T")
+    assert "2020-08-10T21:35:10+00:00" == file_.date_added.replace(microsecond=0).isoformat("T")
     assert file_.based_on is None
     assert not hasattr(file_, "creators")
 
@@ -417,31 +399,34 @@ def test_migrate_can_preserve_dataset_ids(isolated_runner, old_dataset_project, 
 
 
 @pytest.mark.migration
-def test_migrate_preserves_creation_date_when_preserving_ids(isolated_runner, old_dataset_project):
-    """Test migrate doesn't change dataset's dateCreated when --preserve-identifiers is passed."""
+def test_migrate_preserves_date_when_preserving_ids(isolated_runner, old_dataset_project):
+    """Test migrate doesn't change dataset's dateCreated/Modified when --preserve-identifiers is passed."""
     assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict", "--preserve-identifiers"]).exit_code
 
     dataset = get_dataset_with_injection("mixed")
 
-    assert "2020-08-10 21:35:20+00:00" == dataset.date_created.isoformat(" ")
+    assert "2020-08-10 21:35:20+00:00" == dataset.date_created.replace(microsecond=0).isoformat(" ")
+    assert "2020-08-10 21:35:20+00:00" == dataset.date_modified.replace(microsecond=0).isoformat(" ")
 
 
 @pytest.mark.migration
 @pytest.mark.parametrize("old_dataset_project", ["old-datasets-v0.16.0.git"], indirect=True)
-def test_migrate_preserves_creation_date_for_mutated_datasets(isolated_runner, old_dataset_project):
-    """Test migration of datasets that were mutated keeps original dateCreated."""
+def test_migrate_preserves_date_for_mutated_datasets(isolated_runner, old_dataset_project):
+    """Test migration of datasets that were mutated keeps original dateCreated/Modified."""
     assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict"]).exit_code
 
     dataset = get_dataset_with_injection("local")
 
-    assert "2021-07-23 14:34:58+00:00" == dataset.date_created.isoformat(" ")
+    assert "2021-07-23 14:34:24+00:00" == dataset.date_created.replace(microsecond=0).isoformat(" ")
+    assert "2021-07-23 14:34:58+00:00" == dataset.date_modified.replace(microsecond=0).isoformat(" ")
 
 
 @pytest.mark.migration
-def test_migrate_sets_correct_creation_date_for_non_mutated_datasets(isolated_runner, old_dataset_project):
-    """Test migration of datasets that weren't mutated uses commit date as dateCreated."""
+def test_migrate_sets_correct_date_for_non_mutated_datasets(isolated_runner, old_dataset_project):
+    """Test migration of datasets that weren't mutated uses commit date as dateCreated/Modified."""
     assert 0 == isolated_runner.invoke(cli, ["migrate", "--strict"]).exit_code
 
     dataset = get_dataset_with_injection("mixed")
 
-    assert "2020-08-10 23:35:56+02:00" == dataset.date_created.isoformat(" ")
+    assert "2020-08-10 21:35:20+00:00" == dataset.date_created.replace(microsecond=0).isoformat(" ")
+    assert "2020-08-10 23:35:56+02:00" == dataset.date_modified.replace(microsecond=0).isoformat(" ")

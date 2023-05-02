@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -140,7 +138,7 @@ class ActivityGraphViewModel:
 
         components = networkx.weakly_connected_components(self.graph)
         subgraphs = [self.graph.subgraph(component).copy() for component in components]
-        subgraphs = filter(lambda s: any(isinstance(n, Activity) for n in s), subgraphs)
+        subgraphs = list(filter(lambda s: any(isinstance(n, Activity) for n in s), subgraphs))
         subgraphs = sorted(subgraphs, key=self._subgraph_order_key)
 
         for subgraph in subgraphs:

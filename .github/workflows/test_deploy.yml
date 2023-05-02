@@ -3,12 +3,18 @@ name: Test, Integration Tests and Deploy
 on:
   push:
     branches:
-      - "**"
+      - master
+      - develop
+      - "release/**" # Or else PRs created by the PR action don't execute tests
+      - "hotfix/**"
     tags:
       - "v*.*.*"
-env:
-  DEPENDENCY_CACHE_PREFIX: "v2"
-  NETWORK_CACHE_PREFIX: "v1"
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+    branches:
+      - "**"
+      - "!master"
+
 jobs:
   set-matrix:
     runs-on: ubuntu-latest
@@ -23,9 +29,9 @@ jobs:
         run: |
           if [ "$REF" == "refs/heads/$DEFAULT_BRANCH" ] || [[ "$REF" =~ ^refs/tags/.* ]]
           then
-              echo "::set-output name=matrix::{\"python-version\": [\"3.7\", \"3.10\"]}"
+              echo "matrix={\"python-version\": [\"3.8\", \"3.11\"]}" >> $GITHUB_OUTPUT
           else
-              echo "::set-output name=matrix::{\"python-version\": [\"3.9\"]}"
+              echo "matrix={\"python-version\": [\"3.10\"]}" >> $GITHUB_OUTPUT
           fi
 
   cleanup-runs:
@@ -36,47 +42,14 @@ jobs:
           GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
     if: "!startsWith(github.ref, 'refs/tags/') && !endsWith(github.ref, github.event.repository.default_branch)"
 
-  year-week:
-    runs-on: ubuntu-latest
-    outputs:
-      date: ${{ steps.year-week.outputs.date }}
-    steps:
-      - id: year-week
-        run: echo "::set-output name=date::$(date '+%Y-%V')"
-
   style-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.1.0
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.8"
-      - uses: actions/cache@master
-        id: dependency-cache
-        with:
-          path: |
-            ${{ env.pythonLocation }}
-            renku/templates
-          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
+      - uses: actions/checkout@v3.5.2
       - name: Install dependencies
-        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install coveralls poetry==1.1.15 wheel twine poetry-dynamic-versioning==0.17.1
-          poetry-dynamic-versioning
-          make download-templates
-          python -m pip install .[all]
-      - name: Install renku into cache
-        if: steps.dependency-cache.outputs.cache-hit == 'true'
-        run: |
-          poetry-dynamic-versioning
-          python -m pip install --no-deps .
-      - name: Set Git config
-        run: |
-          git config --global --add user.name "Renku Bot"
-          git config --global --add user.email "renku@datascience.ch"
+        uses: ./.github/actions/install-linux
+        with:
+          python-version: '3.10'
       - name: Test style
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -91,41 +64,10 @@ jobs:
 
   docs-linux:
     runs-on: ubuntu-latest
-    needs: [set-matrix]
-    strategy:
-      max-parallel: 3
-      matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
     steps:
-      - uses: actions/checkout@v3.1.0
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      - uses: actions/cache@master
-        id: dependency-cache
-        with:
-          path: |
-            ${{ env.pythonLocation }}
-            renku/templates
-          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
+      - uses: actions/checkout@v3.5.2
       - name: Install dependencies
-        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install coveralls poetry==1.1.15 wheel twine poetry-dynamic-versioning==0.17.1
-          poetry-dynamic-versioning
-          make download-templates
-          python -m pip install .[all]
-      - name: Install renku into cache
-        if: steps.dependency-cache.outputs.cache-hit == 'true'
-        run: |
-          poetry-dynamic-versioning
-          python -m pip install --no-deps .
-      - name: Set Git config
-        run: |
-          git config --global --add user.name "Renku Bot"
-          git config --global --add user.email "renku@datascience.ch"
+        uses: ./.github/actions/install-linux
       - name: Test docs
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -135,72 +77,24 @@ jobs:
   mypy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.1.0
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python 3.8
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v3.5.2
         with:
-          python-version: "3.8"
-      - uses: actions/cache@master
-        id: dependency-cache
-        with:
-          path: |
-            ${{ env.pythonLocation }}
-            renku/templates
-          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
+          fetch-depth: 0
       - name: Install dependencies
-        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install coveralls poetry==1.1.15 wheel twine poetry-dynamic-versioning==0.17.1
-          poetry-dynamic-versioning
-          make download-templates
-          python -m pip install .[all]
-      - name: Install renku into cache
-        if: steps.dependency-cache.outputs.cache-hit == 'true'
-        run: |
-          poetry-dynamic-versioning
-          python -m pip install --no-deps .
-      - name: Set Git config
-        run: |
-          git config --global --add user.name "Renku Bot"
-          git config --global --add user.email "renku@datascience.ch"
+        uses: ./.github/actions/install-linux
       - name: Test mypy
         env:
           POETRY_VIRTUALENVS_CREATE: false
-        run: mypy
+        run: mypy renku
 
   test-distro:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.1.0
+      - uses: actions/checkout@v3.5.2
         with:
           fetch-depth: 0
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.7"
-      - uses: actions/cache@master
-        id: dependency-cache
-        with:
-          path: |
-            ${{ env.pythonLocation }}
-            renku/templates
-          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
       - name: Install dependencies
-        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install coveralls poetry==1.1.15 wheel twine poetry-dynamic-versioning==0.17.1
-          poetry-dynamic-versioning
-          make download-templates
-          pip install .[all]
-      - name: Install renku into cache
-        if: steps.dependency-cache.outputs.cache-hit == 'true'
-        run: |
-          poetry-dynamic-versioning
-          python -m pip install --no-deps .
+        uses: ./.github/actions/install-linux
       - name: Build Package
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -210,56 +104,18 @@ jobs:
 
   test-linux-api:
     runs-on: ubuntu-latest
-    needs: [set-matrix]
+    needs: [ set-matrix ]
     strategy:
       max-parallel: 3
-      matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
+      matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3.1.0
+      - uses: actions/checkout@v3.5.2
         with:
           fetch-depth: 0
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - name: Install dependencies
+        uses: ./.github/actions/install-linux
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install system packages
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y libyaml-0-2 libyaml-dev
-      - uses: actions/cache@master
-        id: dependency-cache
-        with:
-          path: |
-            ${{ env.pythonLocation }}
-            renku/templates
-          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
-      - name: Install dependencies
-        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install coveralls poetry==1.1.15 wheel twine poetry-dynamic-versioning==0.17.1
-          poetry-dynamic-versioning
-          make download-templates
-          python -m pip install .[all]
-      - name: Install renku into cache
-        if: steps.dependency-cache.outputs.cache-hit == 'true'
-        run: |
-          poetry-dynamic-versioning
-          python -m pip install --no-deps .
-      - name: Set Git config
-        run: |
-          git config --global --add user.name "Renku Bot"
-          git config --global --add user.email "renku@datascience.ch"
-      - name: Set coveralls path mapping
-        run: |
-          echo "
-
-          [tool.coverage.paths]
-          source = [
-              \"renku/\",
-              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
-          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -278,63 +134,25 @@ jobs:
 
   test-linux-cli:
     runs-on: ubuntu-latest
-    needs: [set-matrix]
+    needs: [ set-matrix ]
     strategy:
       max-parallel: 3
-      matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
+      matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3.1.0
+      - uses: actions/checkout@v3.5.2
         with:
           fetch-depth: 0
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - name: Install dependencies
+        uses: ./.github/actions/install-linux
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install system packages
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y libyaml-0-2 libyaml-dev
-      - uses: actions/cache@master
-        id: dependency-cache
-        with:
-          path: |
-            ${{ env.pythonLocation }}
-            renku/templates
-          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
-      - name: Install dependencies
-        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install coveralls poetry==1.1.15 wheel twine poetry-dynamic-versioning==0.17.1
-          poetry-dynamic-versioning
-          make download-templates
-          python -m pip install .[all]
-      - name: Install renku into cache
-        if: steps.dependency-cache.outputs.cache-hit == 'true'
-        run: |
-          poetry-dynamic-versioning
-          python -m pip install --no-deps .
-      - name: Set Git config
-        run: |
-          git config --global --add user.name "Renku Bot"
-          git config --global --add user.email "renku@datascience.ch"
-      - name: Set coveralls path mapping
-        run: |
-          echo "
-
-          [tool.coverage.paths]
-          source = [
-              \"renku/\",
-              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
-          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
         run: pytest -v -m "not integration and not publish and not serial" -n auto  tests/cli
-      - name: Test with pytest(serial)
+      - name: Test with pytest (serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
           LANG: en_US.UTF-8
@@ -352,63 +170,25 @@ jobs:
 
   test-linux-core:
     runs-on: ubuntu-latest
-    needs: [set-matrix]
+    needs: [ set-matrix ]
     strategy:
       max-parallel: 3
-      matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
+      matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3.1.0
+      - uses: actions/checkout@v3.5.2
         with:
           fetch-depth: 0
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - name: Install dependencies
+        uses: ./.github/actions/install-linux
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install system packages
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y libyaml-0-2 libyaml-dev
-      - uses: actions/cache@master
-        id: dependency-cache
-        with:
-          path: |
-            ${{ env.pythonLocation }}
-            renku/templates
-          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
-      - name: Install dependencies
-        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install coveralls poetry==1.1.15 wheel twine poetry-dynamic-versioning==0.17.1
-          poetry-dynamic-versioning
-          make download-templates
-          python -m pip install .[all]
-      - name: Install renku into cache
-        if: steps.dependency-cache.outputs.cache-hit == 'true'
-        run: |
-          poetry-dynamic-versioning
-          python -m pip install --no-deps .
-      - name: Set Git config
-        run: |
-          git config --global --add user.name "Renku Bot"
-          git config --global --add user.email "renku@datascience.ch"
-      - name: Set coveralls path mapping
-        run: |
-          echo "
-
-          [tool.coverage.paths]
-          source = [
-              \"renku/\",
-              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
-          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
         run: pytest -v -m "not integration and not publish and not serial" -n auto tests/core
-      - name: Test with pytest(serial)
+      - name: Test with pytest (serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
           LANG: en_US.UTF-8
@@ -426,56 +206,18 @@ jobs:
 
   test-linux-service:
     runs-on: ubuntu-latest
-    needs: [set-matrix]
+    needs: [ set-matrix ]
     strategy:
       max-parallel: 3
-      matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
+      matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3.1.0
+      - uses: actions/checkout@v3.5.2
         with:
           fetch-depth: 0
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - name: Install dependencies
+        uses: ./.github/actions/install-linux
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install system packages
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y libyaml-0-2 libyaml-dev
-      - uses: actions/cache@master
-        id: dependency-cache
-        with:
-          path: |
-            ${{ env.pythonLocation }}
-            renku/templates
-          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
-      - name: Install dependencies
-        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install coveralls poetry==1.1.15 wheel twine poetry-dynamic-versioning==0.17.1
-          poetry-dynamic-versioning
-          make download-templates
-          python -m pip install .[all]
-      - name: Install renku into cache
-        if: steps.dependency-cache.outputs.cache-hit == 'true'
-        run: |
-          poetry-dynamic-versioning
-          python -m pip install --no-deps .
-      - name: Set Git config
-        run: |
-          git config --global --add user.name "Renku Bot"
-          git config --global --add user.email "renku@datascience.ch"
-      - name: Set coveralls path mapping
-        run: |
-          echo "
-
-          [tool.coverage.paths]
-          source = [
-              \"renku/\",
-              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
-          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -492,219 +234,20 @@ jobs:
         run: coveralls --service=github-actions
         continue-on-error: true
 
-  test-macos-api:
-    runs-on: macos-latest
-    needs: [set-matrix]
-    strategy:
-      max-parallel: 3
-      matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
-    steps:
-      - uses: actions/checkout@v3.1.0
-        with:
-          fetch-depth: 0
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: |
-          brew update || true
-          brew unlink git-lfs || true
-          curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
-          brew install shellcheck node || brew link --overwrite node
-          python -m pip install --upgrade pip
-          python -m pip install wheel poetry-dynamic-versioning==0.17.1
-          poetry-dynamic-versioning
-          make download-templates
-          python -m pip install .[all]
-          git config --global --add user.name "Renku Bot"
-          git config --global --add user.email "renku@datascience.ch"
-      - name: Test with pytest
-        env:
-          POETRY_VIRTUALENVS_CREATE: false
-          LANG: en_US.UTF-8
-          LC_ALL: en_US.UTF-8
-          RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -v -m "not integration and not publish and not serial" tests/api
-
-  test-macos-cli:
-    runs-on: macos-latest
-    needs: [set-matrix]
-    strategy:
-      max-parallel: 3
-      matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
-    steps:
-      - uses: actions/checkout@v3.1.0
-        with:
-          fetch-depth: 0
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: |
-          brew update || true
-          brew unlink git-lfs || true
-          curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
-          brew install shellcheck node || brew link --overwrite node
-          python -m pip install --upgrade pip
-          python -m pip install wheel poetry-dynamic-versioning==0.17.1
-          poetry-dynamic-versioning
-          make download-templates
-          python -m pip install .[all]
-          git config --global --add user.name "Renku Bot"
-          git config --global --add user.email "renku@datascience.ch"
-      - name: Test with pytest
-        env:
-          POETRY_VIRTUALENVS_CREATE: false
-          LANG: en_US.UTF-8
-          LC_ALL: en_US.UTF-8
-          RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -v -m "not integration and not publish and not serial" tests/cli
-      - name: Test with pytest(serial)
-        env:
-          POETRY_VIRTUALENVS_CREATE: false
-          LANG: en_US.UTF-8
-          LC_ALL: en_US.UTF-8
-          RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -v -m "not integration and not publish and serial" tests/cli
-
-  test-macos-core:
-    runs-on: macos-latest
-    needs: [set-matrix]
-    strategy:
-      max-parallel: 3
-      matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
-    steps:
-      - uses: actions/checkout@v3.1.0
-        with:
-          fetch-depth: 0
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: |
-          brew update || true
-          brew unlink git-lfs || true
-          curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
-          brew install shellcheck node || brew link --overwrite node
-          python -m pip install --upgrade pip
-          python -m pip install wheel poetry-dynamic-versioning==0.17.1
-          make download-templates
-          poetry-dynamic-versioning
-          python -m pip install .[all]
-          git config --global --add user.name "Renku Bot"
-          git config --global --add user.email "renku@datascience.ch"
-      - name: Test with pytest
-        env:
-          POETRY_VIRTUALENVS_CREATE: false
-          LANG: en_US.UTF-8
-          LC_ALL: en_US.UTF-8
-          RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -v -m "not integration and not publish and not serial" tests/core
-      - name: Test with pytest(serial)
-        env:
-          LANG: en_US.UTF-8
-          LC_ALL: en_US.UTF-8
-          RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -v -m "not integration and not publish and serial" tests/core
-
-  test-macos-service:
-    runs-on: macos-latest
-    needs: [set-matrix]
-    strategy:
-      max-parallel: 3
-      matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
-    steps:
-      - uses: actions/checkout@v3.1.0
-        with:
-          fetch-depth: 0
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: |
-          brew update || true
-          brew unlink git-lfs || true
-          curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
-          brew install shellcheck node || brew link --overwrite node
-          python -m pip install --upgrade pip
-          python -m pip install wheel
-          make download-templates
-          python -m pip install .[all]
-          git config --global --add user.name "Renku Bot"
-          git config --global --add user.email "renku@datascience.ch"
-      - name: Test with pytest
-        env:
-          POETRY_VIRTUALENVS_CREATE: false
-          LANG: en_US.UTF-8
-          LC_ALL: en_US.UTF-8
-          RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -v -m "not integration and not publish" tests/service
-
   test-linux-integration:
     runs-on: ubuntu-latest
-    needs: [set-matrix, year-week]
+    needs: [ set-matrix ]
     strategy:
       max-parallel: 3
-      matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
+      matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3.1.0
+      - uses: actions/checkout@v3.5.2
         with:
           fetch-depth: 0
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - name: Install dependencies
+        uses: ./.github/actions/install-linux
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install system packages
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y libyaml-0-2 libyaml-dev rclone fuse
-      - uses: actions/cache@master
-        id: dependency-cache
-        with:
-          path: |
-            ${{ env.pythonLocation }}
-            renku/templates
-          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
-      - name: Install dependencies
-        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install coveralls poetry==1.1.15 wheel twine poetry-dynamic-versioning==0.17.1
-          poetry-dynamic-versioning
-          make download-templates
-          python -m pip install .[all]
-      - name: Install renku into cache
-        if: steps.dependency-cache.outputs.cache-hit == 'true'
-        run: |
-          poetry-dynamic-versioning
-          python -m pip install --no-deps .
-      - name: Set Git config
-        run: |
-          git config --global --add user.name "Renku Bot"
-          git config --global --add user.email "renku@datascience.ch"
-      - uses: actions/cache@master
-        id: network-cache
-        with:
-          path: cassettes
-          key: ${{ env.NETWORK_CACHE_PREFIX }}-${{ needs.year-week.outputs.date }}-${{ hashFiles('tests') }}-${{ github.job }}
-      - name: Set coveralls path mapping
-        run: |
-          echo "
-
-          [tool.coverage.paths]
-          source = [
-              \"renku/\",
-              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
-          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -715,9 +258,12 @@ jobs:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -m "integration and not service and not serial" -v --timeout=600 -n auto
+          CLOUD_STORAGE_AZURE_KEY: ${{ secrets.CLOUD_STORAGE_AZURE_KEY }}
+          CLOUD_STORAGE_S3_ACCESS_KEY_ID: ${{ secrets.CLOUD_STORAGE_S3_ACCESS_KEY_ID }}
+          CLOUD_STORAGE_S3_SECRET_ACCESS_KEY: ${{ secrets.CLOUD_STORAGE_S3_SECRET_ACCESS_KEY }}
+        run: pytest -m "integration and not shaky and not service and not serial" -v --timeout=600 -n auto
       - name: Start Redis
-        uses: supercharge/redis-github-action@1.4.0
+        uses: supercharge/redis-github-action@1.5.0
       - name: Test with pytest (serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -728,7 +274,61 @@ jobs:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest --cov-append -m "integration and not service and serial" -v --timeout=600
+        run: pytest --cov-append -m "integration and not shaky and not service and serial" -v --timeout=600
+      - name: Coveralls
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+          GITHUB_TOKEN: $COVERALLS_REPO_TOKEN
+          RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          COVERALLS_PARALLEL: true
+        if: always()
+        run: coveralls --service=github-actions
+        continue-on-error: true
+
+  test-linux-integration-shaky:
+    runs-on: ubuntu-latest
+    needs: [ set-matrix ]
+    strategy:
+      max-parallel: 3
+      matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v3.5.2
+        with:
+          fetch-depth: 0
+      - name: Install dependencies
+        uses: ./.github/actions/install-linux
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Test with pytest
+        env:
+          POETRY_VIRTUALENVS_CREATE: false
+          LANG: en_US.UTF-8
+          LC_ALL: en_US.UTF-8
+          DATAVERSE_ACCESS_TOKEN: ${{ secrets.DATAVERSE_ACCESS_TOKEN }}
+          IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
+          ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
+          OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
+          RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          CLOUD_STORAGE_AZURE_KEY: ${{ secrets.CLOUD_STORAGE_AZURE_KEY }}
+          CLOUD_STORAGE_S3_ACCESS_KEY_ID: ${{ secrets.CLOUD_STORAGE_S3_ACCESS_KEY_ID }}
+          CLOUD_STORAGE_S3_SECRET_ACCESS_KEY: ${{ secrets.CLOUD_STORAGE_S3_SECRET_ACCESS_KEY }}
+        run: pytest -m "integration and shaky and not service and not serial" -v --timeout=600 -n auto
+      - name: Start Redis
+        uses: supercharge/redis-github-action@1.5.0
+      - name: Test with pytest (serial)
+        env:
+          POETRY_VIRTUALENVS_CREATE: false
+          LANG: en_US.UTF-8
+          LC_ALL: en_US.UTF-8
+          DATAVERSE_ACCESS_TOKEN: ${{ secrets.DATAVERSE_ACCESS_TOKEN }}
+          IT_OAUTH_GIT_TOKEN: ${{ secrets.IT_OAUTH_GIT_TOKEN }}
+          ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
+          OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
+          RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          CLOUD_STORAGE_AZURE_KEY: ${{ secrets.CLOUD_STORAGE_AZURE_KEY }}
+          CLOUD_STORAGE_S3_ACCESS_KEY_ID: ${{ secrets.CLOUD_STORAGE_S3_ACCESS_KEY_ID }}
+          CLOUD_STORAGE_S3_SECRET_ACCESS_KEY: ${{ secrets.CLOUD_STORAGE_S3_SECRET_ACCESS_KEY }}
+        run: pytest -m "integration and shaky and not service and serial" -v --timeout=600 -n auto
       - name: Coveralls
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
@@ -741,61 +341,18 @@ jobs:
 
   test-linux-integration-service:
     runs-on: ubuntu-latest
-    needs: [set-matrix, year-week]
+    needs: [ set-matrix ]
     strategy:
       max-parallel: 3
-      matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
+      matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3.1.0
+      - uses: actions/checkout@v3.5.2
         with:
           fetch-depth: 0
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - name: Install dependencies
+        uses: ./.github/actions/install-linux
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install system packages
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y libyaml-0-2 libyaml-dev rclone fuse
-      - uses: actions/cache@master
-        id: dependency-cache
-        with:
-          path: |
-            ${{ env.pythonLocation }}
-            renku/templates
-          key: ${{env.DEPENDENCY_CACHE_PREFIX}}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{hashFiles('poetry.lock')}}-${{hashFiles('Makefile')}}
-      - name: Install dependencies
-        if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install coveralls poetry==1.1.15 wheel twine poetry-dynamic-versioning==0.17.1
-          poetry-dynamic-versioning
-          make download-templates
-          python -m pip install .[all]
-      - name: Install renku into cache
-        if: steps.dependency-cache.outputs.cache-hit == 'true'
-        run: |
-          poetry-dynamic-versioning
-          python -m pip install --no-deps .
-      - name: Set Git config
-        run: |
-          git config --global --add user.name "Renku Bot"
-          git config --global --add user.email "renku@datascience.ch"
-      - uses: actions/cache@master
-        id: network-cache
-        with:
-          path: cassettes
-          key: ${{ env.NETWORK_CACHE_PREFIX }}-${{ needs.year-week.outputs.date }}-${{ hashFiles('tests') }}-${{ github.job }}
-      - name: Set coveralls path mapping
-        run: |
-          echo "
-
-          [tool.coverage.paths]
-          source = [
-              \"renku/\",
-              \"$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')/renku/\"
-          ]" >> pyproject.toml
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -828,35 +385,126 @@ jobs:
         run: coveralls --service=github-actions
         continue-on-error: true
 
-  test-macos-integration:
+  test-macos-api:
     runs-on: macos-latest
-    needs: [set-matrix]
+    needs: [ set-matrix ]
     strategy:
-      max-parallel: 1
-      matrix: ${{fromJson(needs.set-matrix.outputs.matrix)}}
-    if: "startsWith(github.ref, 'refs/tags/') || endsWith(github.ref, github.event.repository.default_branch)"
+      max-parallel: 3
+      matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3.1.0
+      - uses: actions/checkout@v3.5.2
         with:
           fetch-depth: 0
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - name: Install dependencies
+        uses: ./.github/actions/install-macos
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Test with pytest
+        env:
+          POETRY_VIRTUALENVS_CREATE: false
+          LANG: en_US.UTF-8
+          LC_ALL: en_US.UTF-8
+          RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+        run: pytest -v -m "not integration and not publish and not serial" tests/api
+
+  test-macos-cli:
+    runs-on: macos-latest
+    needs: [ set-matrix ]
+    strategy:
+      max-parallel: 3
+      matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v3.5.2
+        with:
+          fetch-depth: 0
       - name: Install dependencies
-        run: |
-          brew update || true
-          brew unlink git-lfs || true
-          curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
-          brew install shellcheck node || brew link --overwrite node
-          python -m pip install --upgrade pip
-          python -m pip install wheel
-          make download-templates
-          python -m pip install .[all]
-          git config --global --add user.name "Renku Bot"
-          git config --global --add user.email "renku@datascience.ch"
-          brew install rclone osxfuse
+        uses: ./.github/actions/install-macos
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Test with pytest
+        env:
+          POETRY_VIRTUALENVS_CREATE: false
+          LANG: en_US.UTF-8
+          LC_ALL: en_US.UTF-8
+          RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+        run: pytest -v -m "not integration and not publish and not serial" tests/cli
+      - name: Test with pytest (serial)
+        env:
+          POETRY_VIRTUALENVS_CREATE: false
+          LANG: en_US.UTF-8
+          LC_ALL: en_US.UTF-8
+          RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+        run: pytest -v -m "not integration and not publish and serial" tests/cli
+
+  test-macos-core:
+    runs-on: macos-latest
+    needs: [ set-matrix ]
+    strategy:
+      max-parallel: 3
+      matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v3.5.2
+        with:
+          fetch-depth: 0
+      - name: Install dependencies
+        uses: ./.github/actions/install-macos
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Test with pytest
+        env:
+          POETRY_VIRTUALENVS_CREATE: false
+          LANG: en_US.UTF-8
+          LC_ALL: en_US.UTF-8
+          RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+        run: pytest -v -m "not integration and not publish and not serial" tests/core
+      - name: Test with pytest (serial)
+        env:
+          LANG: en_US.UTF-8
+          LC_ALL: en_US.UTF-8
+          RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+        run: pytest -v -m "not integration and not publish and serial" tests/core
+
+  test-macos-service:
+    runs-on: macos-latest
+    needs: [ set-matrix ]
+    strategy:
+      max-parallel: 3
+      matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v3.5.2
+        with:
+          fetch-depth: 0
+      - name: Install dependencies
+        uses: ./.github/actions/install-macos
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Test with pytest
+        env:
+          POETRY_VIRTUALENVS_CREATE: false
+          LANG: en_US.UTF-8
+          LC_ALL: en_US.UTF-8
+          RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+        run: pytest -v -m "not integration and not publish" tests/service
+
+  test-macos-integration:
+    runs-on: macos-latest
+    needs: [ set-matrix ]
+    strategy:
+      max-parallel: 1
+      matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
+    if: "startsWith(github.ref, 'refs/tags/') || endsWith(github.ref, github.event.repository.default_branch)"
+    steps:
+      - uses: actions/checkout@v3.5.2
+        with:
+          fetch-depth: 0
+      - name: Install dependencies
+        uses: ./.github/actions/install-macos
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install RClone
+        env:
+          POETRY_VIRTUALENVS_CREATE: false
+        run: brew install rclone macfuse
       - name: Test with pytest
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -867,10 +515,13 @@ jobs:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
+          CLOUD_STORAGE_AZURE_KEY: ${{ secrets.CLOUD_STORAGE_AZURE_KEY }}
+          CLOUD_STORAGE_S3_ACCESS_KEY_ID: ${{ secrets.CLOUD_STORAGE_S3_ACCESS_KEY_ID }}
+          CLOUD_STORAGE_S3_SECRET_ACCESS_KEY: ${{ secrets.CLOUD_STORAGE_S3_SECRET_ACCESS_KEY }}
         run: pytest -m "integration and not serial" -v
       - name: Start Redis
-        uses: supercharge/redis-github-action@1.4.0
-      - name: Test with pytest(serial)
+        uses: supercharge/redis-github-action@1.5.0
+      - name: Test with pytest (serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
           LANG: en_US.UTF-8
@@ -886,56 +537,31 @@ jobs:
     runs-on: ubuntu-latest
     if: "startsWith(github.ref, 'refs/tags/')"
     steps:
-      - uses: actions/checkout@v3.1.0
+      - uses: actions/checkout@v3.5.2
         with:
           fetch-depth: 0
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.7"
       - name: Install dependencies
+        uses: ./.github/actions/install-linux
+        with:
+          python-version: '3.9'
+      - name: Calculate pre-release version
+        id: pre-release-version
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install poetry==1.1.15 poetry-dynamic-versioning==0.17.1 poetry-lock-package twine
-          python -m pip install .[all]
-          git config --global --add user.name "Renku Bot"
-          git config --global --add user.email "renku@datascience.ch"
-      - name: Tag if necessary
-        if: "!startsWith(github.ref, 'refs/tags/')"
-        run: |
-          renku --version
-          export GIT_TAG=$(renku --version)
-          git tag $GIT_TAG
+          renku_version=$(renku --version)
+          rc=$(curl -s https://pypi.org/pypi/renku/json | jq ".releases | keys_unsorted | map(select( . | startswith(\"$renku_version\"))) | map(match(\"[0-9]+\\\\.[0-9]+\\\\.[0-9]+(rc([0-9]+))?\").captures[1].string // 0) | max // 0 | tonumber + 1")
+          echo "RELEASE_VERSION=${renku_version}rc${rc}" >> "$GITHUB_OUTPUT"
       - name: Build and publish to pypi
         env:
           POETRY_VIRTUALENVS_CREATE: false
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+          POETRY_DYNAMIC_VERSIONING_BYPASS: ${{ steps.pre-release-version.outputs.RELEASE_VERSION }}
         run: make publish-package
       - name: Build and publish lock package
         env:
           POETRY_VIRTUALENVS_CREATE: false
           PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
+          POETRY_DYNAMIC_VERSIONING_BYPASS: ${{ steps.pre-release-version.outputs.RELEASE_VERSION  }}
         run: make publish-lock-package
-
-  update-develop-branch:
-    runs-on: ubuntu-latest
-    if: "startsWith(github.ref, 'refs/tags/')"
-    steps:
-      - uses: actions/checkout@v3.1.0
-        with:
-          fetch-depth: 0
-          ref: "develop"
-      - name: Set Git config
-        run: |
-          git config --global --add user.name "Renku Bot"
-          git config --global --add user.email "renku@datascience.ch"
-      - name: merge changes from master
-        env:
-          GITHUB_TOKEN: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
-        run: |
-          git merge origin/master --message "Merge branch 'master' into develop"
-          git push
 
   build-images:
     runs-on: ubuntu-latest
@@ -950,8 +576,10 @@ jobs:
         test-macos-service,
       ]
     steps:
-      - uses: actions/checkout@v3.1.0
-      - name: build images
+      - uses: actions/checkout@v3.5.2
+        with:
+          fetch-depth: 0
+      - name: Build images
         run: make docker-tag
       - name: Docker Login
         if: "startsWith(github.ref, 'refs/tags/') || endsWith(github.ref, github.event.repository.default_branch)"
@@ -959,7 +587,7 @@ jobs:
         with:
           username: ${{ secrets.RENKU_DOCKER_USERNAME }}
           password: ${{ secrets.RENKU_DOCKER_PASSWORD }}
-      - name: push images
+      - name: Push images
         if: "startsWith(github.ref, 'refs/tags/') ||  endsWith(github.ref, github.event.repository.default_branch)"
         run: |
           make docker-push
@@ -978,10 +606,10 @@ jobs:
       ]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - uses: actions/checkout@v3.1.0
+      - uses: actions/checkout@v3.5.2
         with:
           fetch-depth: 0
-      - name: set up environment variables
+      - name: Set up environment variables
         run: |
           echo "GIT_USER=Renku Bot" >> $GITHUB_ENV
           echo "GIT_EMAIL=renku@datascience.ch" >> $GITHUB_ENV
@@ -1009,6 +637,7 @@ jobs:
         test-linux-service,
         test-linux-api,
         test-linux-integration,
+        test-linux-integration-shaky,
         test-linux-integration-service,
       ]
     if: always()

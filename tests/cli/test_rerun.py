@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -126,11 +125,14 @@ def test_rerun_with_from(project, renku_cli, provider, source, content):
     write_and_commit_file(project.repository, input2, "input2 old")
 
     assert 0 == renku_cli("run", "cp", input1, intermediate1).exit_code
-    assert 0 == renku_cli("run", "cp", input2, intermediate2).exit_code
     assert 0 == renku_cli("run", "cp", intermediate1, final1).exit_code
+    time.sleep(1)
+    assert 0 == renku_cli("run", "cp", input2, intermediate2).exit_code
     assert 0 == renku_cli("run", "cp", intermediate2, final2).exit_code
+    time.sleep(1)
 
     assert 0 == renku_cli("run", "cat", final1, final2, stdout=output).exit_code
+    time.sleep(1)
 
     # Update both inputs
     write_and_commit_file(project.repository, input1, "input1 new-")
@@ -227,8 +229,7 @@ def test_output_directory(runner, project, run, no_lfs_size_limit, provider):
     project.repository.add(all=True)
     project.repository.commit("Created source directory", no_verify=True)
 
-    cmd = ["run", "cp", "-LRf", str(source), str(destination)]
-    result = runner.invoke(cli, cmd, catch_exceptions=False)
+    result = runner.invoke(cli, ["run", "cp", "-LRf", source, destination], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
     destination_source = destination / data.name
@@ -240,20 +241,20 @@ def test_output_directory(runner, project, run, no_lfs_size_limit, provider):
     assert str(destination.relative_to(cwd)) + "/**" in git_attr
     assert destination_source.name in subprocess.check_output(["git", "lfs", "ls-files"]).decode()
 
-    cmd = ["run", "wc"]
-    assert 0 == run(args=cmd, stdin=destination_source, stdout=source_wc)
+    assert 0 == run(args=["run", "wc"], stdin=destination_source, stdout=source_wc)
 
     # Make sure the output directory can be recreated
     assert 0 == run(args=("rerun", "-p", provider, str(source_wc)))
-    assert {data.name} == {path.name for path in destination.iterdir()}
+    if provider != "local":
+        # NOTE: For ``local`` provider, since the execution is in the current directory and the destination directory
+        # exists, a copy is made instead of a rename which makes this condition to fail
+        assert {data.name} == {path.name for path in destination.iterdir()}
 
-    cmd = ["graph", "export"]
-    result = runner.invoke(cli, cmd, catch_exceptions=False)
+    result = runner.invoke(cli, ["graph", "export"], catch_exceptions=False)
     destination_data = str(Path("destination") / "data.txt")
-    assert destination_data in result.output, cmd
+    assert destination_data in result.output
 
-    cmd = ["run", "cp", "-r", str(source), str(invalid_destination)]
-    result = runner.invoke(cli, cmd, catch_exceptions=False)
+    result = runner.invoke(cli, ["run", "cp", "-r", source, invalid_destination], catch_exceptions=False)
     assert 1 == result.exit_code
     assert not (invalid_destination / data.name).exists()
 

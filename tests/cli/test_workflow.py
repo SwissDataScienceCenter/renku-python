@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -22,8 +21,10 @@ import itertools
 import logging
 import os
 import re
+import shutil
 import sys
 import tempfile
+import time
 import uuid
 from pathlib import Path
 
@@ -35,6 +36,7 @@ from cwl_utils.parser import cwl_v1_2 as cwlgen
 from renku.core.plugin.provider import available_workflow_providers
 from renku.core.util.git import with_commit
 from renku.core.util.yaml import write_yaml
+from renku.domain_model.workflow.plan import Plan
 from renku.infrastructure.database import Database
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway
 from renku.infrastructure.gateway.plan_gateway import PlanGateway
@@ -427,17 +429,21 @@ def test_workflow_edit(runner, project):
     database = Database.from_path(project.database_path)
     test_plan = database["plans-by-name"][workflow_name]
 
+    time.sleep(2)
+
     cmd = ["workflow", "edit", workflow_name, "--name", "first"]
     result = runner.invoke(cli, cmd)
     assert 0 == result.exit_code, format_result_exception(result)
 
     workflow_name = "first"
     database = Database.from_path(project.database_path)
-    first_plan = database["plans-by-name"]["first"]
+    first_plan: Plan = database["plans-by-name"]["first"]
 
     assert first_plan
     assert first_plan.name == "first"
     assert first_plan.derived_from == test_plan.id
+    assert first_plan.date_created == test_plan.date_created
+    assert (first_plan.date_modified - first_plan.date_created).total_seconds() >= 1
 
     cmd = ["workflow", "edit", workflow_name, "--description", "Test workflow"]
     result = runner.invoke(cli, cmd)
@@ -626,7 +632,7 @@ def test_workflow_execute_command(
 
     if is_composite:
         composed_name = uuid.uuid4().hex
-        cmd = itertools.chain(["workflow", "compose", composed_name], map(lambda x: x[0], workflows))
+        cmd = ["workflow", "compose", composed_name] + [w[0] for w in workflows]
 
         result = runner.invoke(cli, cmd)
         assert 0 == result.exit_code, format_result_exception(result)
@@ -928,11 +934,11 @@ def test_workflow_visualize_dot(runner, project, workflow_graph):
     result = runner.invoke(cli, ["workflow", "visualize", "--format", "dot", "--revision", "HEAD^", "H", "S"])
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert '"Y" -> "bash -c \\"cat X Y | tee R S\\"";' in result.output
-    assert '"X" -> "bash -c \\"cat X Y | tee R S\\"";' in result.output
-    assert '"bash -c \\"cat X Y | tee R S\\"" -> "R";' in result.output
-    assert '"bash -c \\"cat X Y | tee R S\\"" -> "S";' in result.output
-    assert 4 == result.output.count('"bash -c \\"cat X Y | tee R S\\"')
+    assert '"Y" -> "bash -c \'cat X Y | tee R S\'";' in result.output
+    assert '"X" -> "bash -c \'cat X Y | tee R S\'";' in result.output
+    assert '"bash -c \'cat X Y | tee R S\'" -> "R";' in result.output
+    assert '"bash -c \'cat X Y | tee R S\'" -> "S";' in result.output
+    assert 4 == result.output.count("\"bash -c 'cat X Y | tee R S'")
 
     assert 1 == result.output.count('"echo other > H" -> "H"')
     assert 1 == result.output.count('-> "H"')
@@ -1467,3 +1473,23 @@ def test_plan_creation_date(runner, project, with_injection):
         activity = activity_gateway.get_all_activities()[0]
 
     assert plan.date_created <= activity.started_at_time
+
+
+@pytest.mark.parametrize("provider", available_workflow_providers())
+def test_outputs_in_sub_directories(runner, project, provider):
+    """Test parent directories for outputs is created."""
+    results = project.path / "results"
+    output = results / "2022" / "csv" / "output.csv"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    assert 0 == runner.invoke(cli, ["run", "--name", "r1", "--", "echo", "some-data"], stdout=output).exit_code
+
+    # NOTE: Delete output's parent directories
+    shutil.rmtree(results)
+    project.repository.add(all=True)
+    project.repository.commit("Deleted parents")
+    assert not output.exists()
+
+    result = runner.invoke(cli, ["workflow", "execute", "-p", provider, "r1"], catch_exceptions=False)
+
+    assert 0 == result.exit_code
+    assert output.exists()

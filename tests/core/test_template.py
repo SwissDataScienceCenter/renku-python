@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2019-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2019-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -29,9 +28,16 @@ from renku.core.template.template import (
     fetch_templates_source,
     get_file_actions,
 )
-from renku.core.template.usecase import check_for_template_update, update_template
+from renku.core.template.usecase import (
+    check_for_template_update,
+    does_dockerfile_contain_only_version_change,
+    is_dockerfile_updated_by_user,
+    update_template,
+)
+from renku.core.util.metadata import replace_renku_version_in_dockerfile
 from renku.domain_model.project_context import project_context
 from renku.domain_model.template import TEMPLATE_MANIFEST
+from tests.utils import write_and_commit_file
 
 TEMPLATES_URL = "https://github.com/SwissDataScienceCenter/renku-project-template"
 
@@ -176,32 +182,73 @@ def test_get_file_actions_for_update(project_with_template, rendered_template_wi
 
     identical_file = ".dummy"
     assert FileAction.IGNORE_IDENTICAL == actions[identical_file]
-    remotely_modified = "Dockerfile"
+    remotely_modified = ".gitignore"
     assert FileAction.OVERWRITE == actions[remotely_modified]
+    dockerfile = "Dockerfile"
+    assert FileAction.UPDATE_DOCKERFILE == actions[dockerfile]
 
 
-def test_update_with_locally_modified_file(project_with_template, rendered_template_with_update, with_injection):
-    """Test a locally modified file that is remotely updated won't change."""
+def test_template_set_with_locally_modified_dockerfile(
+    project_with_template, rendered_template_with_update, with_injection
+):
+    """Test setting template with a locally modified Dockerfile will overwrite the Dockerfile."""
     (project_context.path / "Dockerfile").write_text("Local modification")
 
     with with_injection():
         actions = get_file_actions(
-            rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
+            rendered_template=rendered_template_with_update, template_action=TemplateAction.SET, interactive=False
         )
 
-    assert FileAction.KEEP == actions["Dockerfile"]
+    assert FileAction.OVERWRITE == actions["Dockerfile"]
 
 
-def test_update_with_locally_deleted_file(project_with_template, rendered_template_with_update, with_injection):
-    """Test a locally deleted file that is remotely updated won't be re-created."""
-    (project_context.path / "Dockerfile").unlink()
+def test_update_with_locally_modified_file(project_with_template, rendered_template_with_update, with_injection):
+    """Test a locally modified file that is remotely updated won't change."""
+    (project_context.path / "requirements.txt").write_text("Local modification")
 
     with with_injection():
         actions = get_file_actions(
             rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
         )
 
-    assert FileAction.DELETED == actions["Dockerfile"]
+    assert FileAction.KEEP == actions["requirements.txt"]
+
+
+def test_update_with_locally_deleted_file(project_with_template, rendered_template_with_update, with_injection):
+    """Test a locally deleted file that is remotely updated won't be re-created."""
+    (project_context.path / "requirements.txt").unlink()
+
+    with with_injection():
+        actions = get_file_actions(
+            rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
+        )
+
+    assert FileAction.DELETED == actions["requirements.txt"]
+
+
+def test_update_with_unsafe_modified_dockerfile(project_with_template, rendered_template_with_update, with_injection):
+    """Test a locally modified Dockerfile that touches the Renku-specific section will raise an exception."""
+    (project_context.path / "Dockerfile").write_text("Local modification")
+
+    with pytest.raises(
+        errors.TemplateUpdateError, match="Can't update template as Dockerfile was locally changed."
+    ), with_injection():
+        get_file_actions(
+            rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
+        )
+
+
+def test_update_with_safe_modified_dockerfile(project_with_template, rendered_template_with_update, with_injection):
+    """Test a locally modified Dockerfile that doesn't touch the Renku-specific section updates the file."""
+    dockerfile = project_context.path / "Dockerfile"
+    dockerfile.write_text(f"{dockerfile.read_text()}\nLocal modification")
+
+    with with_injection():
+        actions = get_file_actions(
+            rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
+        )
+
+    assert FileAction.UPDATE_DOCKERFILE == actions["Dockerfile"]
 
 
 @pytest.mark.parametrize("delete", [False, True])
@@ -220,3 +267,24 @@ def test_update_with_locally_changed_immutable_file(
         get_file_actions(
             rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
         )
+
+
+def test_detect_dockerfile_version_update(project, with_injection):
+    """Test detecting a Dockerfile was only updated for changing Renku version."""
+    dockerfile = project_context.path / "Dockerfile"
+    new_content = replace_renku_version_in_dockerfile(dockerfile.read_text(), version="1.42.42")
+    write_and_commit_file(project.repository, dockerfile, new_content)
+
+    new_content = replace_renku_version_in_dockerfile(dockerfile.read_text(), version="2.42.42")
+    write_and_commit_file(project.repository, dockerfile, new_content)
+
+    with with_injection():
+        assert does_dockerfile_contain_only_version_change()
+        assert not is_dockerfile_updated_by_user()
+
+    new_content = dockerfile.read_text() + "\nRUN echo 'user modifications'"
+    write_and_commit_file(project.repository, dockerfile, new_content)
+
+    with with_injection():
+        assert not does_dockerfile_contain_only_version_change()
+        assert is_dockerfile_updated_by_user()

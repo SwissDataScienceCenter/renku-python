@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022- Swiss Data Science Center (SDSC)
+# Copyright 2017-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -17,8 +16,7 @@
 # limitations under the License.
 """Test project database gateways."""
 
-from datetime import datetime
-
+from renku.core.util.datetime8601 import local_now
 from renku.domain_model.project import Project
 from renku.domain_model.provenance.agent import Person
 from renku.infrastructure.gateway.project_gateway import ProjectGateway
@@ -32,7 +30,7 @@ def test_project_gateway_update(project_with_injection, monkeypatch):
         creator=Person(
             id=Person.generate_id("test@test.com", "Test tester"), email="test@test.com", name="Test tester"
         ),
-        date_created=datetime.utcnow(),
+        date_created=local_now(),
     )
 
     project_gateway = ProjectGateway()

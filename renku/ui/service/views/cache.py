@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -27,15 +26,14 @@ from renku.ui.service.controllers.cache_migrate_project import MigrateProjectCtr
 from renku.ui.service.controllers.cache_migrations_check import MigrationsCheckCtrl
 from renku.ui.service.controllers.cache_project_clone import ProjectCloneCtrl
 from renku.ui.service.gateways.gitlab_api_provider import GitlabAPIProvider
-from renku.ui.service.views.api_versions import ALL_VERSIONS, VERSIONS_FROM_V1_0, VERSIONS_FROM_V1_1, VersionedBlueprint
+from renku.ui.service.views.api_versions import ALL_VERSIONS, V2_0, VERSIONS_FROM_V1_1, VersionedBlueprint
 from renku.ui.service.views.decorators import accepts_json, optional_identity, requires_cache, requires_identity
 from renku.ui.service.views.error_handlers import (
     handle_common_except,
     handle_migration_read_errors,
     handle_migration_write_errors,
 )
-from renku.ui.service.views.v0_9.cache import add_v0_9_specific_endpoints
-from renku.ui.service.views.v1_0.cache import add_v1_0_specific_endpoints
+from renku.ui.service.views.v1.cache import add_v1_specific_endpoints
 
 CACHE_BLUEPRINT_TAG = "cache"
 cache_blueprint = VersionedBlueprint("cache", __name__, url_prefix=SERVICE_PREFIX)
@@ -125,7 +123,7 @@ def delete_file_chunks_view(user_data, cache):
       tags:
         - cache
     """
-    return DeleteFileChunksCtrl(cache, user_data, dict(request.json)).to_response()
+    return DeleteFileChunksCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
 @cache_blueprint.route("/cache.project_clone", methods=["POST"], provide_automatic_options=False, versions=ALL_VERSIONS)
@@ -154,7 +152,7 @@ def project_clone_view(user_data, cache):
       tags:
         - cache
     """
-    return ProjectCloneCtrl(cache, user_data, dict(request.json)).to_response()
+    return ProjectCloneCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
 @cache_blueprint.route("/cache.project_list", methods=["GET"], provide_automatic_options=False, versions=ALL_VERSIONS)
@@ -206,12 +204,10 @@ def migrate_project_view(user_data, cache):
       tags:
         - cache
     """
-    return MigrateProjectCtrl(cache, user_data, dict(request.json)).to_response()
+    return MigrateProjectCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
-@cache_blueprint.route(
-    "/cache.migrations_check", methods=["GET"], provide_automatic_options=False, versions=VERSIONS_FROM_V1_0
-)
+@cache_blueprint.route("/cache.migrations_check", methods=["GET"], provide_automatic_options=False, versions=[V2_0])
 @handle_common_except
 @handle_migration_read_errors
 @requires_cache
@@ -238,5 +234,4 @@ def migration_check_project_view(user_data, cache):
     return MigrationsCheckCtrl(cache, user_data, dict(request.args), GitlabAPIProvider()).to_response()
 
 
-cache_blueprint = add_v0_9_specific_endpoints(cache_blueprint)
-cache_blueprint = add_v1_0_specific_endpoints(cache_blueprint)
+cache_blueprint = add_v1_specific_endpoints(cache_blueprint)

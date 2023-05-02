@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -119,7 +118,7 @@ def add_file_to_dataset_view(user_data, cache):
       tags:
         - datasets
     """
-    return DatasetsAddFileCtrl(cache, user_data, dict(request.json)).to_response()
+    return DatasetsAddFileCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
 @dataset_blueprint.route("/datasets.create", methods=["POST"], provide_automatic_options=False, versions=ALL_VERSIONS)
@@ -148,7 +147,7 @@ def create_dataset_view(user_data, cache):
       tags:
         - datasets
     """
-    return DatasetsCreateCtrl(cache, user_data, dict(request.json)).to_response()
+    return DatasetsCreateCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
 @dataset_blueprint.route("/datasets.remove", methods=["POST"], provide_automatic_options=False, versions=ALL_VERSIONS)
@@ -176,7 +175,7 @@ def remove_dataset_view(user_data, cache):
       tags:
         - datasets
     """
-    return DatasetsRemoveCtrl(cache, user_data, dict(request.json)).to_response()
+    return DatasetsRemoveCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
 @dataset_blueprint.route("/datasets.import", methods=["POST"], provide_automatic_options=False, versions=ALL_VERSIONS)
@@ -204,7 +203,7 @@ def import_dataset_view(user_data, cache):
       tags:
         - datasets
     """
-    return DatasetsImportCtrl(cache, user_data, dict(request.json)).to_response()
+    return DatasetsImportCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
 @dataset_blueprint.route("/datasets.edit", methods=["POST"], provide_automatic_options=False, versions=ALL_VERSIONS)
@@ -235,7 +234,7 @@ def edit_dataset_view(user_data, cache):
       tags:
         - datasets
     """
-    return DatasetsEditCtrl(cache, user_data, dict(request.json)).to_response()
+    return DatasetsEditCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
 @dataset_blueprint.route("/datasets.unlink", methods=["POST"], provide_automatic_options=False, versions=ALL_VERSIONS)
@@ -264,4 +263,4 @@ def unlink_file_view(user_data, cache):
       tags:
         - datasets
     """
-    return DatasetsUnlinkCtrl(cache, user_data, dict(request.json)).to_response()
+    return DatasetsUnlinkCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore

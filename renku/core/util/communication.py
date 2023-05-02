@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -231,37 +229,37 @@ def ensure_manager(f):
 @ensure_manager
 def subscribe(listener):
     """Subscribe a communication listener."""
-    _thread_local.communication_manager.subscribe(listener)
+    _thread_local.communication_manager.subscribe(listener)  # type: ignore[union-attr]
 
 
 @ensure_manager
 def unsubscribe(listener):
     """Unsubscribe a communication listener."""
-    _thread_local.communication_manager.unsubscribe(listener)
+    _thread_local.communication_manager.unsubscribe(listener)  # type: ignore[union-attr]
 
 
 @ensure_manager
 def echo(msg, end="\n"):
     """Write a message to all listeners."""
-    _thread_local.communication_manager.echo(msg, end=end)
+    _thread_local.communication_manager.echo(msg, end=end)  # type: ignore[union-attr]
 
 
 @ensure_manager
 def info(msg):
     """Write an info message to all listeners."""
-    _thread_local.communication_manager.info(msg)
+    _thread_local.communication_manager.info(msg)  # type: ignore[union-attr]
 
 
 @ensure_manager
 def warn(msg):
     """Write a warning message to all listeners."""
-    _thread_local.communication_manager.warn(msg)
+    _thread_local.communication_manager.warn(msg)  # type: ignore[union-attr]
 
 
 @ensure_manager
 def error(msg):
     """Write an error message to all listeners."""
-    _thread_local.communication_manager.error(msg)
+    _thread_local.communication_manager.error(msg)  # type: ignore[union-attr]
 
 
 @ensure_manager
@@ -273,31 +271,31 @@ def has_prompt():
 @ensure_manager
 def confirm(msg, abort=False, warning=False, default=False):
     """Get confirmation for an action from all listeners."""
-    return _thread_local.communication_manager.confirm(msg, abort, warning, default)
+    return _thread_local.communication_manager.confirm(msg, abort, warning, default)  # type: ignore[union-attr]
 
 
 @ensure_manager
 def prompt(msg, type=None, default=None, **kwargs):
     """Show a message prompt."""
-    return _thread_local.communication_manager.prompt(msg, type, default, **kwargs)
+    return _thread_local.communication_manager.prompt(msg, type, default, **kwargs)  # type: ignore[union-attr]
 
 
 @ensure_manager
 def start_progress(name, total, **kwargs):
     """Start a progress tracker on all listeners."""
-    _thread_local.communication_manager.start_progress(name, total, **kwargs)
+    _thread_local.communication_manager.start_progress(name, total, **kwargs)  # type: ignore[union-attr]
 
 
 @ensure_manager
 def update_progress(name, amount):
     """Update a progress tracker on all listeners."""
-    _thread_local.communication_manager.update_progress(name, amount)
+    _thread_local.communication_manager.update_progress(name, amount)  # type: ignore[union-attr]
 
 
 @ensure_manager
 def finalize_progress(name):
     """End a progress tracker on all listeners."""
-    _thread_local.communication_manager.finalize_progress(name)
+    _thread_local.communication_manager.finalize_progress(name)  # type: ignore[union-attr]
 
 
 @ensure_manager
@@ -323,26 +321,26 @@ def progress(message, total: int):
 @contextmanager
 def busy(msg):
     """Indicate busy status to all listeners."""
-    with _thread_local.communication_manager.busy(msg):
+    with _thread_local.communication_manager.busy(msg):  # type: ignore[union-attr]
         yield
 
 
 @ensure_manager
 def get_listeners():
     """Return a list of subscribed listeners."""
-    return _thread_local.communication_manager.listeners
+    return _thread_local.communication_manager.listeners  # type: ignore[union-attr]
 
 
 @ensure_manager
 def disable():
     """Disable all outputs; by default everything is enabled."""
-    return _thread_local.communication_manager.disable()
+    return _thread_local.communication_manager.disable()  # type: ignore[union-attr]
 
 
 @ensure_manager
 def enable():
     """Enable all outputs."""
-    return _thread_local.communication_manager.enable()
+    return _thread_local.communication_manager.enable()  # type: ignore[union-attr]
 
 
 __all__ = [

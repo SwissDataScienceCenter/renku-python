@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -86,4 +85,4 @@ def set_config(user_data, cache):
       tags:
         - config
     """
-    return SetConfigCtrl(cache, user_data, dict(request.json)).to_response()
+    return SetConfigCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore

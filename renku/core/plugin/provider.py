@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022- Swiss Data Science Center (SDSC)
+# Copyright 2017-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -69,14 +68,14 @@ def available_workflow_providers() -> List[str]:
     return [p[1] for p in providers]
 
 
-def execute(dag: "nx.DiGraph", basedir: Path, config: Dict[str, Any], provider: str = "cwltool") -> List[str]:
+def execute(dag: "nx.DiGraph", basedir: Path, config: Dict[str, Any], provider: str = "toil") -> List[str]:
     """Executes a given workflow using the selected provider.
 
     Args:
         dag("nx.DiGraph"): The workflow graph to execute.
         basedir(Path): The root directory of the renku project.
         config(Dict[str, Any]): Configuration values for the workflow provider.
-        provider(str, optional): The workflow executor engine to be used (Default value = "cwltool").
+        provider(str, optional): The workflow executor engine to be used (Default value = "toil").
 
     Returns:
         List[str]: List of paths that has been modified.
@@ -90,6 +89,6 @@ def execute(dag: "nx.DiGraph", basedir: Path, config: Dict[str, Any], provider: 
         raise errors.ParameterError(f"The specified workflow executor '{provider}' is not available.")
 
     providers.remove(found_provider)
-    executor = pm.subset_hook_caller("workflow_execute", list(map(lambda x: x[0], providers)))
+    executor = pm.subset_hook_caller("workflow_execute", remove_plugins=list(map(lambda x: x[0], providers)))
 
     return executor(dag=dag, basedir=basedir, config=config)

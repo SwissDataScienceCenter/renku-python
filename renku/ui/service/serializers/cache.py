@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -50,7 +49,7 @@ def extract_file(request):
 
     file = files["file"]
     if file and not file.filename:
-        raise ValidationError("wrong filename: {0}".format(file.filename))
+        raise ValidationError(f"wrong filename: {file.filename}")
 
     if file:
         file.filename = secure_filename(file.filename)
@@ -182,7 +181,7 @@ class ProjectCloneContext(RepositoryCloneRequest):
         """Format url with auth."""
         git_url = urlparse(data["git_url"])
 
-        url = "oauth2:{0}@{1}".format(data["token"], git_url.netloc)
+        url = "oauth2:{}@{}".format(data["token"], git_url.netloc)
         return git_url._replace(netloc=url).geturl()
 
     @post_load
@@ -337,6 +336,10 @@ class TemplateStatusResponse(Schema):
     )
     latest_template_version = fields.String(
         allow_none=True, metadata={"description": "The current version of the template in the template repository."}
+    )
+
+    ssh_supported = fields.Boolean(
+        metadata={"description": "Whether this project supports ssh connections to sessions or not."}
     )
 
 

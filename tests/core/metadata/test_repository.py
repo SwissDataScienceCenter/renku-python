@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -21,7 +20,7 @@ from pathlib import Path
 import pytest
 
 from renku.core import errors
-from renku.infrastructure.repository import Repository
+from renku.infrastructure.repository import DiffChangeType, Repository
 
 FIRST_COMMIT_SHA = "d44be0700e7ad1d062544763fd55c6ccb6f456e1"
 LAST_COMMIT_SHA = "8853e0c1112e512c36db9cc76faff560b655e5d5"  # HEAD
@@ -74,7 +73,7 @@ def test_repository_get_changes_in_a_commit(git_repository):
 
     changes = {c.a_path: c for c in commit.get_changes()}
 
-    assert "M" == changes["A"].change_type
+    assert DiffChangeType.MODIFIED == changes["A"].change_type
     assert "A" == changes["A"].b_path
     assert not changes["A"].added
     assert not changes["A"].deleted
@@ -82,7 +81,7 @@ def test_repository_get_changes_in_a_commit(git_repository):
     assert changes["B"].deleted
     assert "B" == changes["B"].b_path
 
-    assert "R" == changes["C"].change_type
+    assert DiffChangeType.RENAMED == changes["C"].change_type
     assert "data/X" == changes["C"].b_path
     assert not changes["C"].added
     assert not changes["C"].deleted
@@ -95,12 +94,12 @@ def test_repository_get_changes_in_the_first_commit(git_repository):
 
     changes = {c.a_path: c for c in commit.get_changes()}
 
-    assert "A" == changes["A"].change_type
+    assert DiffChangeType.ADDED == changes["A"].change_type
     assert changes["A"].added
     assert not changes["A"].deleted
     assert "A" == changes["A"].b_path
 
-    assert "A" == changes["B"].change_type
+    assert DiffChangeType.ADDED == changes["B"].change_type
     assert changes["B"].added
     assert not changes["B"].deleted
     assert "B" == changes["B"].b_path
@@ -206,24 +205,22 @@ def test_hash_directories(git_repository):
     (git_repository.path / "X" / "A").write_text("modified")
 
     assert git_repository.get_object_hash("X", revision="HEAD") is None
-    assert git_repository.get_object_hash("X") is None
+    assert "676a99b0b045074417413e651294be8dcdcfdffd" == git_repository.get_object_hash("X")
 
     with pytest.raises(errors.GitCommandError):
         Repository.hash_object("X")
 
-    # NOTE: When staging a directory then the hash can be calculated
+    # NOTE: Staging a directory makes no difference in hash calculation
     git_repository.add("X")
 
-    directory_hash = git_repository.get_object_hash("X", revision="HEAD")
-
-    assert directory_hash is not None
-    assert directory_hash == git_repository.get_object_hash("X")
+    assert git_repository.get_object_hash("X", revision="HEAD") is None
+    assert "676a99b0b045074417413e651294be8dcdcfdffd" == git_repository.get_object_hash("X")
 
     # NOTE: Hash of the committed directory is the same as the staged hash
     git_repository.commit("Committed X")
 
-    assert directory_hash == git_repository.get_object_hash("X", revision="HEAD")
-    assert directory_hash == git_repository.get_object_hash("X")
+    assert "676a99b0b045074417413e651294be8dcdcfdffd" == git_repository.get_object_hash("X", revision="HEAD")
+    assert "676a99b0b045074417413e651294be8dcdcfdffd" == git_repository.get_object_hash("X")
 
     with pytest.raises(errors.GitCommandError):
         Repository.hash_object("X")

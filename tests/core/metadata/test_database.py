@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022- Swiss Data Science Center (SDSC)
+# Copyright 2017-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -22,6 +21,7 @@ from persistent import GHOST, UPTODATE
 from persistent.list import PersistentList
 from persistent.mapping import PersistentMapping
 
+from renku.core import errors
 from renku.domain_model.entity import Entity
 from renku.domain_model.provenance.activity import Activity, Usage
 from renku.domain_model.workflow.plan import Plan
@@ -415,3 +415,27 @@ def test_database_immutable_object(database):
 
     assert isinstance(usage_1, Usage)
     assert usage_1 is usage_2
+
+
+@pytest.mark.parametrize(
+    "content,error_message",
+    [
+        ("{'a':<' ' b}", ".*file' couldn't be loaded because it is corrupted.$"),
+        (
+            "{'name': \n<<<<<<< HEAD:file\n'a'\n=======\n'b'\n>>>>>>> abcdefg:file\n}",
+            ".*file' couldn't be loaded because it is corrupted.\n"
+            "This is likely due to an unresolved git merge conflict in the file.$",
+        ),
+    ],
+)
+def test_database_corrupt_metadata(tmpdir, content, error_message):
+    """Test raising correct error for corrupt metadata."""
+    from renku.infrastructure.database import Storage
+
+    storage = Storage(tmpdir)
+
+    with open(storage.path / "file", "w") as f:
+        f.write(content)
+
+    with pytest.raises(expected_exception=errors.MetadataCorruptError, match=error_message):
+        storage.load("file")

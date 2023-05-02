@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,10 +22,10 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from renku.command.login import read_renku_token
 from renku.core import errors
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.providers.api import ImporterApi, ImportProviderInterface, ProviderApi, ProviderPriority
+from renku.core.login import read_renku_token
 from renku.core.storage import pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.git import clone_renku_repository, get_cache_directory_for_repository, get_file_size
@@ -46,13 +44,13 @@ class RenkuProvider(ProviderApi, ImportProviderInterface):
     priority = ProviderPriority.HIGH
     name = "Renku"
 
-    def __init__(self, uri: Optional[str], **_):
+    def __init__(self, uri: str, **_):
         super().__init__(uri=uri)
 
         self._accept = "application/json"
-        self._authorization_header = None
+        self._authorization_header: Optional[Dict[str, str]] = None
         self._gitlab_token: Optional[str] = None
-        self._renku_token = None
+        self._renku_token: Optional[str] = None
         self._tag: Optional[str] = None
 
     @staticmethod
@@ -246,7 +244,7 @@ class RenkuImporter(ImporterApi):
 
         self._project_url = None
         self._remote_repository = None
-        self._remote_path = None
+        self._remote_path: Optional[Path] = None
 
     def fetch_provider_dataset(self) -> "ProviderDataset":
         """Return encapsulated dataset instance."""
@@ -442,6 +440,8 @@ class RenkuImporter(ImporterApi):
     @property
     def datadir_exists(self):
         """Whether the dataset data directory exists (might be missing in git if empty)."""
+        if self._remote_path is None:
+            raise errors.DatasetImportError("Dataset not fetched.")
         return (self._remote_path / self.provider_dataset.get_datadir()).exists()
 
     def _fetch_dataset(self):

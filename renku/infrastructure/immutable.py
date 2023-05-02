@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,6 +18,7 @@
 
 import threading
 import weakref
+from typing import Tuple, cast
 
 
 class Slots:
@@ -28,11 +28,16 @@ class Slots:
     """
 
     __slots__ = ("__weakref__",)
-    __all_slots__ = None
+    __all_slots__: Tuple[str, ...] = tuple()
+
+    def __new__(cls, *args, **kwargs):
+        """Create and return an empty instance of the class."""
+        if not cls.__all_slots__:
+            cls.__all_slots__ = cast(Tuple[str, ...], cls._get_all_slots())
+
+        return object.__new__(cls)
 
     def __init__(self, **kwargs):
-        if not self.__class__.__all_slots__:
-            self.__class__.__all_slots__ = self._get_all_slots()
         for key, value in kwargs.items():
             object.__setattr__(self, key, value)
 
@@ -42,20 +47,24 @@ class Slots:
         return cls(**kwargs)
 
     def __getstate__(self):
-        if not self.__class__.__all_slots__:
-            self.__class__.__all_slots__ = self._get_all_slots()
         return {name: getattr(self, name, None) for name in self.__class__.__all_slots__ if name != "__weakref__"}
 
     def __setstate__(self, state):
-        for name, value in state.items():
-            setattr(self, name, value)
+        new_attributes = set(self.__all_slots__) - set(state)
+        for name in new_attributes:
+            if name != "__weakref__":
+                object.__setattr__(self, name, None)
 
-    def _get_all_slots(self):
+        for name, value in state.items():
+            object.__setattr__(self, name, value)
+
+    @classmethod
+    def _get_all_slots(cls):
         all_slots = set()
-        for cls in self.__class__.mro():
-            if not hasattr(cls, "__slots__"):
+        for klass in cls.mro():
+            if not hasattr(klass, "__slots__"):
                 continue
-            slots = {cls.__slots__} if isinstance(cls.__slots__, str) else set(cls.__slots__)
+            slots = {klass.__slots__} if isinstance(klass.__slots__, str) else set(klass.__slots__)
             all_slots.update(slots)
         return tuple(all_slots)
 

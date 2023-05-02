@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +38,7 @@ class IWorkflowProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def workflow_execute(self, dag: "nx.DiGraph", basedir: Path, config: Dict[str, Any]):
+    def workflow_execute(self, dag: nx.DiGraph, basedir: Path, config: Dict[str, Any]):
         """Executes a given ``AbstractPlan`` using the provider.
 
         Returns:

@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,9 +93,14 @@ class ProjectContext(threading.local):
         return self.path / RENKU_HOME / DATASET_IMAGES
 
     @property
-    def docker_path(self):
+    def dockerfile_path(self) -> Path:
         """Path to the Dockerfile."""
         return self.path / DOCKERFILE
+
+    @property
+    def ssh_authorized_keys_path(self) -> Path:
+        """Path to SSH authorized keys."""
+        return self.path / ".ssh" / "authorized_keys"
 
     @property
     def global_config_dir(self) -> str:
@@ -192,7 +195,7 @@ class ProjectContext(threading.local):
         return self._top.repository
 
     @repository.setter
-    def repository(self, value: "Repository"):
+    def repository(self, value: Optional["Repository"]):
         """Set the current repository."""
         self._top.repository = value
 
@@ -215,11 +218,11 @@ class ProjectContext(threading.local):
         if self._context_stack:
             return self._context_stack[-1]
 
-        raise errors.ConfigurationError("No project context was pushed")
+        raise errors.ProjectContextError("No project context was pushed")
 
-    def has_context(self) -> bool:
-        """Return if at least one context is pushed."""
-        return bool(self._context_stack)
+    def has_context(self, path: Optional[Union[Path, str]] = None) -> bool:
+        """Return if at least one context which is equal to path (if not None) is pushed."""
+        return True if self._context_stack and (path is None or self.path == Path(path).resolve()) else False
 
     def clear(self) -> None:
         """Remove all contexts and reset the state without committing intermediate changes.
@@ -255,6 +258,7 @@ class ProjectContext(threading.local):
 
         Arguments:
             path(Union[Path, str]): The path to push.
+            save_changes(bool): Whether to save changes to the database or not.
         """
         path = Path(path).resolve()
         self._context_stack.append(ProjectProperties(path=path, save_changes=save_changes))
@@ -280,6 +284,7 @@ class ProjectContext(threading.local):
 
         Arguments:
             path(Union[Path, str]): The path to push.
+            save_changes(bool): Whether to save changes to the database or not.
         """
         with self.with_rollback():
             self.push_path(path=path, save_changes=save_changes)
@@ -306,7 +311,7 @@ class ProjectContext(threading.local):
                 self.pop_context()
 
             if not could_rollback and before_top is not None:
-                raise errors.ConfigurationError(f"Cannot rollback to {before_top.path}.")
+                raise errors.ProjectContextError(f"Cannot rollback to {before_top.path}.")
 
 
 project_context: ProjectContext = ProjectContext()

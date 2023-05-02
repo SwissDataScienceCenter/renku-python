@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -16,12 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service datasets edit controller."""
-from typing import Dict, cast
+from typing import Dict, List, Union, cast
 
 from renku.command.dataset import edit_dataset_command
 from renku.core.dataset.request_model import ImageRequestModel
 from renku.core.util.metadata import construct_creators
-from renku.core.util.util import NO_VALUE
+from renku.domain_model.constant import NO_VALUE, NoValueType
+from renku.domain_model.provenance.agent import Person
 from renku.ui.service.cache.models.job import Job
 from renku.ui.service.config import CACHE_UPLOADS_PATH, MESSAGE_PREFIX
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
@@ -42,7 +42,7 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
         self.ctx = cast(Dict, DatasetsEditCtrl.REQUEST_SERIALIZER.load(request_data))
         self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset edit {self.ctx['name']}"
 
-        super(DatasetsEditCtrl, self).__init__(cache, user_data, request_data, migrate_project=migrate_project)
+        super().__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
     @property
     def context(self):
@@ -51,7 +51,7 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        warnings = []
+        warnings: List[Union[str, Dict]] = []
 
         if "images" in self.ctx:
             images = self.ctx.get("images") or []
@@ -72,8 +72,9 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
         else:
             images = NO_VALUE
 
+        creators: Union[NoValueType, List[Person]]
         if "creators" in self.ctx:
-            creators, warnings = construct_creators(self.ctx.get("creators"))
+            creators, warnings = construct_creators(self.ctx.get("creators"))  # type: ignore
         else:
             creators = NO_VALUE
 

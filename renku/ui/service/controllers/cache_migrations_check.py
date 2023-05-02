@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -42,7 +41,7 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
         """Construct migration check controller."""
         self.ctx = MigrationsCheckCtrl.REQUEST_SERIALIZER.load(request_data)
         self.git_api_provider = git_api_provider
-        super(MigrationsCheckCtrl, self).__init__(cache, user_data, request_data)
+        super().__init__(cache, user_data, request_data)
 
     @property
     def context(self):
@@ -55,16 +54,22 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
             raise RenkuException("context does not contain `project_id` or `git_url`")
 
         with tempfile.TemporaryDirectory() as tempdir:
-            tempdir = Path(tempdir)
+            tempdir_path = Path(tempdir)
 
             self.git_api_provider.download_files_from_api(
-                [".renku/metadata/root", ".renku/metadata/project", ".renku/metadata.yml", "Dockerfile"],
-                tempdir,
+                [
+                    ".renku/metadata/root",
+                    ".renku/metadata/project",
+                    ".renku/metadata.yml",
+                    ".renku/renku.ini",
+                    "Dockerfile",
+                ],
+                tempdir_path,
                 remote=self.ctx["git_url"],
                 ref=self.request_data.get("ref", None),
                 token=self.user_data.get("token", None),
             )
-            with renku_project_context(tempdir):
+            with renku_project_context(tempdir_path):
                 return self.renku_op()
 
     def renku_op(self):

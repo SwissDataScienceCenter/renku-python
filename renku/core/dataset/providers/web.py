@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,20 +15,16 @@
 # limitations under the License.
 """Web dataset provider."""
 
-import concurrent.futures
-import os
 import urllib
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple
 from urllib.parse import urlparse
 
 from renku.core import errors
 from renku.core.constant import CACHE
 from renku.core.dataset.providers.api import AddProviderInterface, ProviderApi, ProviderPriority
-from renku.core.util import communication
-from renku.core.util.contexts import wait_for
-from renku.core.util.dataset import check_url
-from renku.core.util.urls import remove_credentials
+from renku.core.util.urls import check_url, remove_credentials
+from renku.core.util.util import parallel_execute
 from renku.domain_model.project_context import project_context
 
 if TYPE_CHECKING:
@@ -49,17 +43,17 @@ class WebProvider(ProviderApi, AddProviderInterface):
         is_remote, is_git = check_url(uri)
         return is_remote and not is_git
 
-    def add(
+    def get_metadata(
         self,
         uri: str,
         destination: Path,
         *,
         extract: bool = False,
-        filename: str = None,
+        filename: Optional[str] = None,
         multiple: bool = False,
         **kwargs,
     ) -> List["DatasetAddMetadata"]:
-        """Add files from a URI to a dataset."""
+        """Get metadata of files that will be added to a dataset."""
         dataset = kwargs.get("dataset")
         if dataset and dataset.storage and urlparse(dataset.storage).scheme != urlparse(uri).scheme:
             raise errors.ParameterError(
@@ -105,13 +99,13 @@ def _provider_check(url):
 
 
 def download_file(
-    project_path: Path,
     uri: str,
+    filename: Optional[str] = None,
+    *,
+    project_path: Path,
     destination: Path,
     extract: bool = False,
-    filename: str = None,
     multiple: bool = False,
-    delay: float = 0,
 ) -> List["DatasetAddMetadata"]:
     """Download a file from a URI and return its metadata."""
     from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
@@ -123,10 +117,9 @@ def download_file(
     with project_context.with_path(project_path):
         try:
             # NOTE: If execution time was less than the delay, block the request until delay seconds are passed
-            with wait_for(delay):
-                tmp_root, paths = requests.download_file(
-                    base_directory=project_context.metadata_path / CACHE, url=uri, filename=filename, extract=extract
-                )
+            tmp_root, paths = requests.download_file(
+                base_directory=project_context.metadata_path / CACHE, url=uri, filename=filename, extract=extract
+            )
         except errors.RequestError as e:  # pragma nocover
             raise errors.OperationError(f"Cannot download from {uri}") from e
 
@@ -164,37 +157,12 @@ def download_files(
 
     destination.mkdir(parents=True, exist_ok=True)
 
-    listeners = communication.get_listeners()
-
-    def subscribe_communication_listeners(function, **kwargs):
-        try:
-            for communicator in listeners:
-                communication.subscribe(communicator)
-            return function(**kwargs)
-        finally:
-            for communicator in listeners:
-                communication.unsubscribe(communicator)
-
-    files = []
-    n_cpus = os.cpu_count() or 1
-    max_workers = min(n_cpus + 4, 8)
-    with concurrent.futures.ThreadPoolExecutor(max_workers) as executor:
-        futures = {
-            executor.submit(
-                subscribe_communication_listeners,
-                download_file,
-                project_path=project_context.path,
-                uri=url,
-                destination=destination,
-                extract=extract,
-                filename=name,
-                multiple=True,
-                delay=max_workers,  # NOTE: Rate limit to 1 request/second
-            )
-            for url, name in zip(urls, names)
-        }
-
-        for future in concurrent.futures.as_completed(futures):
-            files.extend(future.result())
-
-    return files
+    return parallel_execute(
+        download_file,
+        urls,
+        names,
+        project_path=project_context.path,
+        destination=destination,
+        extract=extract,
+        multiple=True,
+    )

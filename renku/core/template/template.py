@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,14 +22,13 @@ import shutil
 import tempfile
 from enum import Enum, IntEnum, auto
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple
 
 from packaging.version import Version
 
 from renku.core import errors
 from renku.core.util import communication
 from renku.core.util.git import clone_repository
-from renku.core.util.os import hash_file
 from renku.core.util.util import to_semantic_version, to_string
 from renku.domain_model.project_context import project_context
 from renku.domain_model.template import (
@@ -42,16 +39,17 @@ from renku.domain_model.template import (
     TemplateParameter,
     TemplatesManifest,
     TemplatesSource,
+    hash_template_file,
+    update_dockerfile_content,
 )
 from renku.infrastructure.repository import Repository
 
 try:
-    import importlib_resources
+    import importlib_resources  # type:ignore
 except ImportError:
     import importlib.resources as importlib_resources  # type:ignore
 
-if TYPE_CHECKING:
-    from renku.domain_model.project import Project
+from renku.domain_model.project import Project, ProjectTemplateMetadata
 
 TEMPLATE_KEEP_FILES = ["readme.md", "readme.rst", "readme.txt", "readme"]
 TEMPLATE_INIT_APPEND_FILES = [".gitignore"]
@@ -76,6 +74,7 @@ class FileAction(IntEnum):
     KEEP = 6
     OVERWRITE = 7
     RECREATE = 8
+    UPDATE_DOCKERFILE = 9
 
 
 def fetch_templates_source(source: Optional[str], reference: Optional[str]) -> TemplatesSource:
@@ -106,7 +105,7 @@ def write_template_checksum(checksums: Dict):
 def read_template_checksum() -> Dict[str, str]:
     """Read templates checksum file for a project."""
     if has_template_checksum():
-        with open(project_context.template_checksums_path, "r") as checksum_file:
+        with open(project_context.template_checksums_path) as checksum_file:
             return json.load(checksum_file)
 
     return {}
@@ -126,13 +125,15 @@ def copy_template_to_project(
         """Update template-related metadata in a project."""
         write_template_checksum(rendered_template.checksums)
 
-        project.template_source = rendered_template.template.source
-        project.template_ref = rendered_template.template.reference
-        project.template_id = rendered_template.template.id
-        project.template_version = rendered_template.template.version
-        project.immutable_template_files = rendered_template.template.immutable_files.copy()
-        project.automated_update = rendered_template.template.allow_update
-        project.template_metadata = json.dumps(rendered_template.metadata)
+        project.template_metadata = ProjectTemplateMetadata(
+            template_id=rendered_template.template.id,
+            template_source=rendered_template.template.source,
+            template_ref=rendered_template.template.reference,
+            template_version=rendered_template.template.version,
+            immutable_template_files=rendered_template.template.immutable_files.copy(),
+            metadata=json.dumps(rendered_template.metadata),
+            ssh_supported=rendered_template.template.ssh_supported,
+        )
 
     actions_mapping: Dict[FileAction, Tuple[str, str]] = {
         FileAction.APPEND: ("append", "Appending to"),
@@ -143,6 +144,7 @@ def copy_template_to_project(
         FileAction.KEEP: ("", "Keeping"),
         FileAction.OVERWRITE: ("copy", "Overwriting"),
         FileAction.RECREATE: ("copy", "Recreating deleted file"),
+        FileAction.UPDATE_DOCKERFILE: ("dockerfile", "Updating"),
     }
 
     for relative_path, action in get_sorted_actions(actions=actions).items():
@@ -162,6 +164,10 @@ def copy_template_to_project(
                 shutil.copy(source, destination, follow_symlinks=False)
             elif operation == "append":
                 destination.write_text(destination.read_text() + "\n" + source.read_text())
+            elif operation == "dockerfile":
+                update_dockerfile_content(source=source, destination=destination)
+            else:
+                raise errors.TemplateUpdateError(f"Unknown operation '{operation}'")
         except OSError as e:
             # TODO: Use a general cleanup strategy: https://github.com/SwissDataScienceCenter/renku-python/issues/736
             if cleanup:
@@ -183,12 +189,14 @@ def get_file_actions(
     rendered_template: RenderedTemplate, template_action: TemplateAction, interactive
 ) -> Dict[str, FileAction]:
     """Render a template regarding files in a project."""
+    from renku.core.template.usecase import is_dockerfile_updated_by_user
+
     if interactive and not communication.has_prompt():
         raise errors.ParameterError("Cannot use interactive mode with no prompt")
 
     old_checksums = read_template_checksum()
     try:
-        immutable_files = project_context.project.immutable_template_files or []
+        immutable_files = project_context.project.template_metadata.immutable_template_files or []
     except (AttributeError, ValueError):  # NOTE: Project is not set
         immutable_files = []
 
@@ -210,7 +218,7 @@ def get_file_actions(
 
     def get_action_for_set(relative_path: str, destination: Path, new_checksum: Optional[str]) -> FileAction:
         """Decide what to do with a template file."""
-        current_checksum = hash_file(destination)
+        current_checksum = hash_template_file(relative_path=relative_path, absolute_path=destination)
 
         if not destination.exists():
             return FileAction.CREATE
@@ -228,7 +236,7 @@ def get_file_actions(
         relative_path: str, destination: Path, old_checksum: Optional[str], new_checksum: Optional[str]
     ) -> FileAction:
         """Decide what to do with a template file."""
-        current_checksum = hash_file(destination)
+        current_checksum = hash_template_file(relative_path=relative_path, absolute_path=destination)
         local_changes = current_checksum != old_checksum
         remote_changes = new_checksum != old_checksum
         file_exists = destination.exists()
@@ -247,6 +255,11 @@ def get_file_actions(
                 return FileAction.OVERWRITE if overwrite else FileAction.KEEP
         elif not remote_changes:
             return FileAction.IGNORE_UNCHANGED_REMOTE
+        elif relative_path == "Dockerfile":
+            if is_dockerfile_updated_by_user():
+                raise errors.TemplateUpdateError("Can't update template as Dockerfile was locally changed.")
+            else:
+                return FileAction.UPDATE_DOCKERFILE
         elif file_deleted or local_changes:
             if relative_path in immutable_files:
                 # NOTE: There are local changes in a file that should not be changed by users, and the file was
@@ -377,14 +390,14 @@ class EmbeddedTemplates(TemplatesSource):
         from renku import __template_version__
 
         template_path = importlib_resources.files("renku") / "templates"
-        with importlib_resources.as_file(template_path) as folder:
-            path = Path(folder)
+        with importlib_resources.as_file(template_path) as templates:
+            path = Path(templates)
 
         return cls(path=path, source="renku", reference=__template_version__, version=__template_version__)
 
     def get_all_references(self, id) -> List[str]:
         """Return all available references for a template id."""
-        template_exists = any(t.id == id for t in self.templates)
+        template_exists = any(id == t.id or id in t.aliases for t in self.templates)
         return [self.reference] if template_exists and self.reference is not None else []
 
     def get_latest_reference_and_version(
@@ -403,10 +416,10 @@ class EmbeddedTemplates(TemplatesSource):
         else:
             return (self.reference, self.version) if current_version < Version(self.version) else (reference, version)
 
-    def get_template(self, id, reference: Optional[str]) -> Optional["Template"]:
+    def get_template(self, id, reference: Optional[str]) -> "Template":
         """Return all available versions for a template id."""
         try:
-            return next(t for t in self.templates if t.id == id)
+            return next(t for t in self.templates if id == t.id or id in t.aliases)
         except StopIteration:
             raise errors.TemplateNotFoundError(f"The template with id '{id}' is not available.")
 
@@ -416,6 +429,9 @@ class RepositoryTemplates(TemplatesSource):
 
     A template repository is checked out at a specific Git reference if one is provided. However, it's still possible to
     get available versions of templates.
+
+    For these templates, ``reference`` is set to whatever user passed as a reference (defaults to remote HEAD if not
+    passed) and ``version`` is set to the commit SHA of the reference commit.
     """
 
     def __init__(self, path, source, reference, version, repository: Repository, skip_validation: bool = False):
@@ -482,16 +498,13 @@ class RepositoryTemplates(TemplatesSource):
         """Return if template id is available at a reference."""
         try:
             content = self.repository.get_content(TEMPLATE_MANIFEST, revision=reference)
-
-            if isinstance(content, bytes):
-                return False
-            manifest = TemplatesManifest.from_string(cast(str, content))
+            manifest = TemplatesManifest.from_string(content)
         except (errors.FileNotFound, errors.InvalidTemplateError):
             return False
         else:
-            return any(t.id == id for t in manifest.templates)
+            return any(id == t.id or id in t.aliases for t in manifest.templates)
 
-    def get_template(self, id, reference: Optional[str]) -> Optional["Template"]:
+    def get_template(self, id, reference: Optional[str]) -> "Template":
         """Return a template at a specific reference."""
         if reference is not None and reference != self.reference:
             try:
@@ -509,8 +522,9 @@ class RepositoryTemplates(TemplatesSource):
             else:
                 self.manifest = manifest
 
-        template = next((t for t in self.templates if t.id == id), None)
+        template = next((t for t in self.templates if id == t.id or id in t.aliases), None)
         if template is None:
+            reference = reference or "HEAD"
             raise errors.TemplateNotFoundError(f"The template with id '{id}' is not available at '{reference}'.")
 
         return template

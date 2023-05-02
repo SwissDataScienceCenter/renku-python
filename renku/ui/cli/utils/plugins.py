@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,11 +17,11 @@
 """Utility functions for plugins."""
 
 
-def supported_formats():
+def get_supported_formats():
     """Deferred import as plugins are slow."""
-    from renku.core.plugin.workflow import supported_formats
+    from renku.core.plugin.workflow import get_supported_formats
 
-    return supported_formats()
+    return get_supported_formats()
 
 
 def available_workflow_providers():
@@ -36,4 +35,4 @@ def get_supported_session_providers_names():
     """Deferred import as plugins are slow."""
     from renku.core.plugin.session import get_supported_session_providers
 
-    return [p.get_name() for p in get_supported_session_providers()]
+    return [p.name for p in get_supported_session_providers()]

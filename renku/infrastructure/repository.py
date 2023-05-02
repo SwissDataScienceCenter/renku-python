@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,10 +24,28 @@ import subprocess
 import tempfile
 from collections import defaultdict
 from datetime import datetime
+from enum import Enum
 from functools import lru_cache
 from itertools import zip_longest
 from pathlib import Path
-from typing import Any, Callable, Dict, Generator, List, NamedTuple, Optional, Set, Tuple, Type, TypeVar, Union, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    List,
+    Literal,
+    NamedTuple,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+    overload,
+)
 
 import git
 
@@ -120,7 +136,7 @@ class BaseRepository:
         return RemoteManager(self._repository)
 
     @property  # type: ignore
-    @lru_cache()
+    @lru_cache
     def submodules(self) -> "SubmoduleManager":
         """Return a list of submodules."""
         if self._repository is None:
@@ -227,8 +243,8 @@ class BaseRepository:
         message: str,
         *,
         amend: bool = False,
-        author: "Actor" = None,
-        committer: "Actor" = None,
+        author: Optional["Actor"] = None,
+        committer: Optional["Actor"] = None,
         no_verify: bool = False,
         no_edit: bool = False,
         paths: Optional[List[Union[Path, str]]] = None,
@@ -259,18 +275,18 @@ class BaseRepository:
 
         self.run_git_command("checkout", reference)
 
-    def clean(self, paths: List[Union[Path, str]] = None):
+    def clean(self, paths: Optional[Sequence[Union[Path, str]]] = None):
         """Remove untracked files."""
         self.run_git_command("clean", "-xdff", paths)
 
     def fetch(
         self,
-        remote: Union["Remote", str] = None,
-        refspec: Union["Branch", str] = None,
+        remote: Optional[Union["Remote", str]] = None,
+        refspec: Optional[Union["Branch", str]] = None,
         all: bool = False,
         tags: bool = False,
         unshallow: bool = False,
-        depth: int = None,
+        depth: Optional[int] = None,
     ):
         """Update a remote branches."""
         if all:
@@ -293,14 +309,14 @@ class BaseRepository:
         """Move source files to the destination."""
         self.run_git_command("mv", *sources, destination, force=force)
 
-    def pull(self, remote: Union["Remote", str] = None, refspec: Union["Branch", str] = None):
+    def pull(self, remote: Optional[Union["Remote", str]] = None, refspec: Optional[Union["Branch", str]] = None):
         """Update changes from remotes."""
         self.run_git_command("pull", _to_string(remote), _to_string(refspec))
 
     def push(
         self,
-        remote: Union["Remote", str] = None,
-        refspec: Union["Branch", str] = None,
+        remote: Optional[Union["Remote", str]] = None,
+        refspec: Optional[Union["Branch", str]] = None,
         *,
         no_verify: bool = False,
         set_upstream: bool = False,
@@ -329,7 +345,7 @@ class BaseRepository:
         """Remove paths from repository or index."""
         self.run_git_command("rm", "--", *paths, cached=index, ignore_unmatch=not_exists_ok, r=recursive, force=force)
 
-    def reset(self, reference: Union["Branch", "Commit", "Reference", str] = None, hard: bool = False):
+    def reset(self, reference: Optional[Union["Branch", "Commit", "Reference", str]] = None, hard: bool = False):
         """Reset a git repository to a given reference."""
         self.run_git_command("reset", _to_string(reference), hard=hard)
 
@@ -350,6 +366,7 @@ class BaseRepository:
         Args:
             path(Path): Target folder.
             reference(Union[Branch, Commit, Reference, str]): the reference to base the tree on.
+            branch(str, optional): Optional new branch to create in the worktree.
             checkout(bool, optional): Whether to perform a checkout of the reference (Default value = False).
             detach(bool, optional): Whether to detach HEAD in worktree (Default value = False).
         """
@@ -378,7 +395,7 @@ class BaseRepository:
         """
         self.run_git_command("worktree", "remove", path)
 
-    def is_dirty(self, untracked_files: bool = False) -> bool:
+    def is_dirty(self, untracked_files: bool = True) -> bool:
         """Return True if the repository has modified or untracked files ignoring submodules."""
         if self._repository is None:
             raise errors.ParameterError("Repository not set.")
@@ -529,6 +546,28 @@ class BaseRepository:
 
         return ignored
 
+    @overload
+    def get_content(
+        self,
+        path: Union[Path, str],
+        *,
+        revision: Optional[Union["Reference", str]] = None,
+        checksum: Optional[str] = None,
+        binary: Literal[False] = False,
+    ) -> str:
+        ...
+
+    @overload
+    def get_content(
+        self,
+        path: Union[Path, str],
+        *,
+        revision: Optional[Union["Reference", str]] = None,
+        checksum: Optional[str] = None,
+        binary: Literal[True],
+    ) -> bytes:
+        ...
+
     def get_content(
         self,
         path: Union[Path, str],
@@ -613,7 +652,7 @@ class BaseRepository:
                 return True
 
         def get_content_from_submodules():
-            for submodule in self.submodules:
+            for submodule in self.submodules:  # type: ignore[attr-defined]
                 try:
                     Path(absolute_path).relative_to(submodule.path)
                 except ValueError:
@@ -746,6 +785,7 @@ class BaseRepository:
         NOTE: path must be relative to the repo's root regardless if this function is called from a subdirectory or not.
         """
         absolute_path = get_absolute_path(path, self.path)
+        had_revision = bool(revision)
 
         # NOTE: If revision is not specified, we use hash-object to hash the (possibly) modified object
         if not revision:
@@ -759,11 +799,15 @@ class BaseRepository:
             if not os.path.isdir(absolute_path):
                 return None
 
-            stashed_revision = self.run_git_command("stash", "create")
-            if not stashed_revision:
-                return None
-
             try:
+                # NOTE: Stage the path. If the path is not staged then it won't be found in ``stashed_revision``
+                if not self.staged_changes:
+                    self.add(relative_path, force=True)
+
+                stashed_revision = self.run_git_command("stash", "create")
+                if not stashed_revision:
+                    return None
+
                 return self.run_git_command("rev-parse", f"{stashed_revision}:{relative_path}")
             except errors.GitCommandError:
                 return None
@@ -784,12 +828,14 @@ class BaseRepository:
         try:
             return self.run_git_command("rev-parse", f"{revision}:{relative_path}")
         except errors.GitCommandError:
-            # NOTE: The file can be in a submodule or it can be a directory which is staged but not committed yet.
-            # It's also possible that the file was not there when the command ran but was there when workflows were
-            # migrated (this can happen only for Usage); the project might be broken too.
-            staged_directory_hash = get_staged_directory_hash()
-            if staged_directory_hash:
-                return staged_directory_hash
+            # NOTE: If a revision was specified then don't look in the staging area
+            if not had_revision:
+                # NOTE: The file can be in a submodule or it can be a directory which is staged but not committed yet.
+                # It's also possible that the file was not there when the command ran but was there when workflows were
+                # migrated (this can happen only for Usage); the project might be broken too.
+                staged_directory_hash = get_staged_directory_hash()
+                if staged_directory_hash:
+                    return staged_directory_hash
 
             return get_object_hash_from_submodules()
 
@@ -840,7 +886,7 @@ class BaseRepository:
 
         return Actor(name=name, email=email)
 
-    def get_configuration(self, writable=False, scope: str = None) -> "Configuration":
+    def get_configuration(self, writable=False, scope: Optional[str] = None) -> "Configuration":
         """Return git configuration.
 
         NOTE: Scope can be "global" or "local".
@@ -853,7 +899,7 @@ class BaseRepository:
         return Configuration(repository=None, writable=writable)
 
     def get_existing_paths_in_revision(
-        self, paths: Union[List[Union[Path, str]], Set[Union[Path, str]]] = None, revision: str = "HEAD"
+        self, paths: Union[List[Union[Path, str]], Optional[Set[Union[Path, str]]]] = None, revision: str = "HEAD"
     ) -> List[str]:
         """List all paths that exist in a revision."""
 
@@ -927,15 +973,18 @@ class BaseRepository:
     def hash_string(content: str) -> str:
         """Calculate the object-hash for a blob with specified content."""
         content_bytes = content.encode("utf-8")
-        data = f"blob {len(content_bytes)}\0".encode("utf-8") + content_bytes
-        return hashlib.sha1(data).hexdigest()
+        data = f"blob {len(content_bytes)}\0".encode() + content_bytes
+        return hashlib.sha1(data).hexdigest()  # nosec
 
 
 class Repository(BaseRepository):
     """Abstract Base repository."""
 
     def __init__(
-        self, path: Union[Path, str] = ".", search_parent_directories: bool = False, repository: git.Repo = None
+        self,
+        path: Union[Path, str] = ".",
+        search_parent_directories: bool = False,
+        repository: Optional[git.Repo] = None,
     ):
         repo = repository or _create_repository(path, search_parent_directories)
 
@@ -947,13 +996,13 @@ class Repository(BaseRepository):
         url: Union[Path, str],
         path: Union[Path, str],
         *,
-        branch: str = None,
+        branch: Optional[str] = None,
         recursive: bool = False,
-        depth: int = None,
+        depth: Optional[int] = None,
         progress: Optional[Callable] = None,
         no_checkout: bool = False,
-        env: dict = None,
-        clone_options: List[str] = None,
+        env: Optional[dict] = None,
+        clone_options: Optional[List[str]] = None,
     ) -> "Repository":
         """Clone a remote repository and create an instance."""
         try:
@@ -980,7 +1029,7 @@ class Repository(BaseRepository):
             return cls(path=path, repository=repository)
 
     @classmethod
-    def initialize(cls, path: Union[Path, str], *, bare: bool = False, branch: str = None) -> "Repository":
+    def initialize(cls, path: Union[Path, str], *, bare: bool = False, branch: Optional[str] = None) -> "Repository":
         """Initialize a git repository."""
         try:
             Path(path).mkdir(parents=True, exist_ok=True)
@@ -1138,7 +1187,6 @@ class SubmoduleManager:
             raise errors.ParameterError("Repository not set.")
 
         for s in self._repository.submodules:
-
             yield self._get_submodule(s)
 
     def __len__(self) -> int:
@@ -1205,25 +1253,74 @@ class Actor(NamedTuple):
         return hash((self.name, self.email))
 
 
+class DiffLineChangeType(Enum):
+    """Type of change in a ``DiffLine``."""
+
+    ADDED = "A"
+    DELETED = "D"
+
+
+class DiffLine(NamedTuple):
+    """A single line in a patch."""
+
+    text: str
+    change_type: DiffLineChangeType
+
+    @property
+    def deleted(self) -> bool:
+        """True if line was deleted."""
+        return self.change_type == DiffLineChangeType.DELETED
+
+    @property
+    def added(self) -> bool:
+        """True if line was added."""
+        return self.change_type == DiffLineChangeType.ADDED
+
+
+class DiffChangeType(Enum):
+    """Type of change in a ``Diff``."""
+
+    ADDED = "A"
+    DELETED = "D"
+    RENAMED = "R"
+    MODIFIED = "M"
+    TYPE_CHANGED = "T"
+
+
 class Diff(NamedTuple):
     """A single diff object between two trees."""
 
     # NOTE: In case a rename, a_path and b_path have different values. Make sure to use the correct one.
     a_path: str
     b_path: str
-    """
-    Possible values:
-        A = Added
-        D = Deleted
-        R = Renamed
-        M = Modified
-        T = Changed in the type
-    """
-    change_type: str
+    change_type: DiffChangeType
+    diff: List[DiffLine]
 
     @classmethod
     def from_diff(cls, diff: git.Diff):
         """Create an instance from a git object."""
+
+        def process_diff_lines():
+            patch = diff.diff.decode("utf-8") if isinstance(diff.diff, bytes) else diff.diff
+            patch = patch or ""
+            lines = patch.splitlines()
+            last_index = len(lines) - 1
+
+            diff_lines = []
+
+            for index, line in enumerate(lines):
+                # NOTE: Ignore ``No newline at end of file`` message
+                if line.startswith("-") and index < last_index and lines[index + 1] == "\\ No newline at end of file":
+                    continue
+                elif line.startswith("+") and index > 0 and lines[index - 1] == "\\ No newline at end of file":
+                    continue
+                elif line.startswith("+"):
+                    diff_lines.append(DiffLine(text=line[1:], change_type=DiffLineChangeType.ADDED))
+                elif line.startswith("-"):
+                    diff_lines.append(DiffLine(text=line[1:], change_type=DiffLineChangeType.DELETED))
+
+            return diff_lines
+
         a_path = git_unicode_unescape(diff.a_path)
         b_path = git_unicode_unescape(diff.b_path)
 
@@ -1231,17 +1328,19 @@ class Diff(NamedTuple):
         a_path = a_path or b_path
         b_path = b_path or a_path
 
-        return cls(a_path=a_path, b_path=b_path, change_type=cast(str, diff.change_type))
+        return cls(
+            a_path=a_path, b_path=b_path, change_type=DiffChangeType(diff.change_type), diff=process_diff_lines()
+        )
 
     @property
     def deleted(self) -> bool:
         """True if file was deleted."""
-        return self.change_type == "D"
+        return self.change_type == DiffChangeType.DELETED
 
     @property
     def added(self) -> bool:
         """True if file was added."""
-        return self.change_type == "A"
+        return self.change_type == DiffChangeType.ADDED
 
 
 class Commit:
@@ -1317,23 +1416,50 @@ class Commit:
         """Return all objects in the commit's tree."""
         return {o.path: Object.from_object(o) for o in self._commit.tree.traverse()}
 
+    @property
+    def root(self) -> bool:
+        """Return True if this commit is the root commit."""
+        return len(self._commit.parents) == 0
+
     def get_changes(
-        self, paths: Union[Path, str, List[Union[Path, str]], None] = None, commit: Union[str, "Commit"] = None
+        self,
+        *paths: Optional[Union[Path, str]],
+        commit: Optional[Union[str, "Commit"]] = None,
+        patch: bool = False,
     ) -> List[Diff]:
         """Return list of changes in a commit.
 
         NOTE: This function can be implemented with ``git diff-tree``.
+        NOTE: When ``patch`` is False ``Diff.diff`` will be empty. We need to call ``Commit.diff`` twice when ``patch``
+        is True because GitPython won't set ``Diff.change_type`` in this case.
         """
+
+        def merge(diff, patch_diff):
+            for d, p_d in zip(sorted(diff), sorted(patch_diff)):
+                d.diff = p_d.diff
+
         if commit:
             if isinstance(commit, Commit):
                 commit = commit.hexsha
 
             diff = self._commit.diff(commit, paths=paths, ignore_submodules=True)
+            if patch:
+                patch_diff = self._commit.diff(commit, paths=paths, ignore_submodules=True, create_patch=True)
+                merge(diff, patch_diff)
+
         elif len(self._commit.parents) == 0:
             diff = self._commit.diff(git.NULL_TREE, paths=paths, ignore_submodules=True)
+            if patch:
+                patch_diff = self._commit.diff(git.NULL_TREE, paths=paths, ignore_submodules=True, create_patch=True)
+                merge(diff, patch_diff)
         elif len(self._commit.parents) == 1:
             # NOTE: Diff is reverse so we get the diff of the parent to the child
             diff = self._commit.parents[0].diff(self._commit, paths=paths, ignore_submodules=True)
+            if patch:
+                patch_diff = self._commit.parents[0].diff(
+                    self._commit, paths=paths, ignore_submodules=True, create_patch=True
+                )
+                merge(diff, patch_diff)
         else:
             # NOTE: A merge commit, so there is no clear diff
             return []
@@ -1684,7 +1810,7 @@ class TagManager:
 class Configuration:
     """Git configuration manager."""
 
-    def __init__(self, repository: git.Repo = None, scope: str = None, writable: bool = True):
+    def __init__(self, repository: Optional[git.Repo] = None, scope: Optional[str] = None, writable: bool = True):
         assert scope is None or scope in ("global", "local"), f"Invalid scope: '{scope}'"
 
         self._read_only = not writable

@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,7 +48,8 @@ class CompositePlan(AbstractPlan):
         description: Optional[str] = None,
         id: str,
         date_created: Optional[datetime] = None,
-        invalidated_at: Optional[datetime] = None,
+        date_modified: Optional[datetime] = None,
+        date_removed: Optional[datetime] = None,
         keywords: Optional[List[str]] = None,
         links: Optional[List[ParameterLink]] = None,
         mappings: Optional[List[ParameterMapping]] = None,
@@ -65,7 +64,8 @@ class CompositePlan(AbstractPlan):
             description=description,
             id=id,
             date_created=date_created,
-            invalidated_at=invalidated_at,
+            date_modified=date_modified,
+            date_removed=date_removed,
             keywords=keywords,
             name=name,
             project_id=project_id,
@@ -89,6 +89,25 @@ class CompositePlan(AbstractPlan):
                 existing[target].extend(found)
 
         return dict(existing)
+
+    def is_equal_to(self, other: "CompositePlan") -> bool:
+        """Return true if plan hasn't changed from the other plan."""
+
+        def are_equal_with_order(values, other_values):
+            return len(values) == len(other_values) and all(s.is_equal_to(o) for s, o in zip(values, other_values))
+
+        def are_equal(values, other_values):
+            return len(values) == len(other_values) and set(values) == set(other_values)
+
+        # TODO: Include ``annotations``, ``mappings``, and ``links`` if they are added to the workflow definition file
+        return (
+            self.name == other.name
+            and self.description == other.description
+            and self.project_id == other.project_id
+            and are_equal(self.keywords, other.keywords)
+            and are_equal(self.creators, other.creators)
+            and are_equal_with_order(self.plans, other.plans)
+        )
 
     def set_mappings_from_strings(self, mapping_strings: List[str]) -> None:
         """Set mappings by parsing mapping strings."""
@@ -377,7 +396,7 @@ class CompositePlan(AbstractPlan):
         """Create a new ``CompositePlan`` that is derived from self."""
         derived = copy.copy(self)
         derived.derived_from = self.id
-        derived.date_created = local_now()
+        derived.date_modified = local_now()
         derived.plans = self.plans.copy()
         derived.mappings = self.mappings.copy()
         derived.links = self.links.copy()

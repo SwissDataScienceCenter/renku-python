@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,25 +18,28 @@
 import stat
 from pathlib import Path
 
+from pydantic import validate_arguments
+
 from renku.core.util.git import get_hook_path
 from renku.domain_model.project_context import project_context
 
 try:
-    import importlib_resources
+    import importlib_resources  # type:ignore
 except ImportError:
     import importlib.resources as importlib_resources  # type: ignore
 
 HOOKS = ("pre-commit",)
 
 
-def install(force: bool, path: Path):
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def install_githooks(force: bool, path: Path):
     """Install Git hooks."""
     warning_messages = []
     for hook in HOOKS:
         hook_path = get_hook_path(name=hook, path=path)
         if hook_path.exists():
             if not force:
-                warning_messages.append("Hook already exists. Skipping {0}".format(str(hook_path)))
+                warning_messages.append(f"Hook already exists. Skipping {hook_path}")
                 continue
             else:
                 hook_path.unlink()
@@ -52,7 +53,7 @@ def install(force: bool, path: Path):
     return warning_messages
 
 
-def uninstall():
+def uninstall_githooks():
     """Uninstall Git hooks."""
     for hook in HOOKS:
         hook_path = get_hook_path(name=hook, path=project_context.path)

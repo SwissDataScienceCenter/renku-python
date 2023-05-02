@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -99,9 +97,9 @@ def remove_value(section, key, global_only=False):
 def load_config(config_filter=ConfigFilter.ALL):
     """Loads local, global or both configuration object."""
     try:
-        import importlib_resources
+        import importlib_resources  # type:ignore
     except ImportError:
-        import importlib.resources as importlib_resources
+        import importlib.resources as importlib_resources  # type:ignore
 
     # NOTE: Use RawConfigParser because ConfigParser does non-standard INI interpolation of some values
     config = configparser.RawConfigParser()

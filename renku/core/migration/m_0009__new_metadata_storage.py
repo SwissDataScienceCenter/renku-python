@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -25,8 +24,10 @@ from collections import defaultdict
 from hashlib import sha1
 from itertools import chain
 from pathlib import Path, PurePosixPath
-from typing import TYPE_CHECKING, List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union, cast
 from urllib.parse import urlparse
+
+import deal
 
 from renku.command.command_builder import inject
 from renku.core import errors
@@ -35,6 +36,7 @@ from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.migration.models import v9 as old_schema
+from renku.core.migration.models import v10 as new_schema
 from renku.core.migration.models.migration import DatasetMigrationContext, MigrationContext, MigrationType
 from renku.core.migration.utils import (
     OLD_DATASETS_PATH,
@@ -46,8 +48,8 @@ from renku.core.migration.utils import (
 from renku.core.migration.utils.conversion import convert_dataset
 from renku.core.util import communication
 from renku.core.util.yaml import load_yaml
-from renku.domain_model.entity import NON_EXISTING_ENTITY_CHECKSUM, Collection, Entity
-from renku.domain_model.project import Project
+from renku.domain_model.constant import NON_EXISTING_ENTITY_CHECKSUM
+from renku.domain_model.entity import Collection, Entity
 from renku.domain_model.project_context import has_graph_files, project_context
 from renku.domain_model.provenance.activity import Activity, Association, Generation, Usage
 from renku.domain_model.provenance.agent import Person, SoftwareAgent
@@ -96,7 +98,7 @@ def migrate(migration_context: MigrationContext):
 
 def _commit_previous_changes():
     repository = project_context.repository
-    if repository.is_dirty():
+    if repository.is_dirty(untracked_files=False):
         project_path = project_context.metadata_path.joinpath(OLD_METADATA_PATH)
         project = old_schema.Project.from_yaml(project_path)
         project.version = "8"
@@ -117,28 +119,28 @@ def _maybe_migrate_project_to_database(project_gateway: IProjectGateway):
     metadata_path = project_context.metadata_path.joinpath(OLD_METADATA_PATH)
 
     if metadata_path.exists():
-        old_project = old_schema.Project.from_yaml(metadata_path)
+        old_project = cast(old_schema.Project, old_schema.Project.from_yaml(metadata_path))
 
         id_path = urlparse(old_project._id).path
         id_path = id_path.replace("/projects/", "")
         id_path = Path(id_path)
         namespace, name = str(id_path.parent), id_path.name
-        id = Project.generate_id(namespace=namespace, name=name)
+        id = new_schema.Project.generate_id(namespace=namespace, name=name)
 
-        new_project = Project(
+        new_project = new_schema.Project(
             agent_version=old_project.agent_version,
-            automated_update=old_project.automated_update,
             creator=_old_agent_to_new_agent(old_project.creator),
             date_created=old_project.created,
             id=id,
-            immutable_template_files=old_project.immutable_template_files,
             name=old_project.name,
+            version=old_project.version,
             template_id=old_project.template_id,
             template_metadata=old_project.template_metadata,
             template_ref=old_project.template_ref,
             template_source=old_project.template_source,
             template_version=old_project.template_version,
-            version=old_project.version,
+            immutable_template_files=old_project.immutable_template_files,
+            automated_update=old_project.automated_update,
         )
 
         project_gateway.update_project(new_project)
@@ -348,37 +350,42 @@ def _get_process_runs(workflow_run: old_schema.WorkflowRun) -> List[old_schema.P
 def _process_workflows(
     migration_context: MigrationContext, activity_gateway: IActivityGateway, commit: "Commit", remove: bool
 ):
+    try:
+        deal.disable(warn=False)
+        for file in commit.get_changes(f"{project_context.metadata_path}/workflow/*.yaml"):
+            if file.deleted:
+                continue
 
-    for file in commit.get_changes(paths=f"{project_context.metadata_path}/workflow/*.yaml"):
-        if file.deleted:
-            continue
+            path: str = file.b_path
 
-        path: str = file.b_path
+            if not path.startswith(".renku/workflow") or not path.endswith(".yaml"):
+                continue
 
-        if not path.startswith(".renku/workflow") or not path.endswith(".yaml"):
-            continue
+            if not (project_context.path / path).exists():
+                communication.warn(f"Workflow file does not exists: '{path}'")
+                continue
 
-        if not (project_context.path / path).exists():
-            communication.warn(f"Workflow file does not exists: '{path}'")
-            continue
+            workflow = old_schema.Activity.from_yaml(path=path)
 
-        workflow = old_schema.Activity.from_yaml(path=path)
+            if isinstance(workflow, old_schema.WorkflowRun):
+                activities = _get_process_runs(workflow)
+            else:
+                activities = [workflow]
 
-        if isinstance(workflow, old_schema.WorkflowRun):
-            activities = _get_process_runs(workflow)
-        else:
-            activities = [workflow]
+            for old_activity in activities:
+                new_activities = _process_run_to_new_activity(
+                    migration_context=migration_context, process_run=old_activity
+                )
+                for new_activity in new_activities:
+                    activity_gateway.add(new_activity)
 
-        for old_activity in activities:
-            new_activities = _process_run_to_new_activity(migration_context=migration_context, process_run=old_activity)
-            for new_activity in new_activities:
-                activity_gateway.add(new_activity)
-
-        if remove:
-            try:
-                os.remove(file.b_path)
-            except FileNotFoundError:
-                pass
+            if remove:
+                try:
+                    os.remove(file.b_path)
+                except FileNotFoundError:
+                    pass
+    finally:
+        deal.enable()
 
 
 def _process_run_to_new_activity(
@@ -640,7 +647,7 @@ def _process_datasets(
     is_last_commit,
     preserve_identifiers,
 ):
-    changes = commit.get_changes(paths=".renku/datasets/*/*.yml")
+    changes = commit.get_changes(".renku/datasets/*/*.yml")
     changed_paths = [c.b_path for c in changes if not c.deleted]
     paths = [p for p in changed_paths if len(Path(p).parents) == 4]  # Exclude files that are not in the right place
     deleted_paths = [c.a_path for c in changes if c.deleted]
@@ -655,19 +662,16 @@ def _process_datasets(
 
     for dataset in datasets:
         dataset, tags = convert_dataset(dataset=dataset, revision=revision)
-        if is_last_commit:
-            datasets_provenance.update_during_migration(
-                dataset,
-                commit_sha=revision,
-                date=date,
-                tags=tags,
-                replace=True,
-                preserve_identifiers=preserve_identifiers,
-            )
-        else:
-            datasets_provenance.update_during_migration(
-                dataset, commit_sha=revision, date=date, tags=tags, preserve_identifiers=preserve_identifiers
-            )
+
+        datasets_provenance.update_during_migration(
+            dataset,
+            commit_sha=revision,
+            date=date,
+            tags=tags,
+            replace=True if is_last_commit else False,
+            preserve_identifiers=preserve_identifiers,
+        )
+
     for dataset in deleted_datasets:
         dataset, _ = convert_dataset(dataset=dataset, revision=revision)
         datasets_provenance.update_during_migration(

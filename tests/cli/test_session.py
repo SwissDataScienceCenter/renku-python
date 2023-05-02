@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2021 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -17,7 +16,10 @@
 # limitations under the License.
 """Test ``service`` command."""
 
-from unittest.mock import MagicMock
+import re
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from renku.ui.cli import cli
 from tests.utils import format_result_exception
@@ -25,41 +27,102 @@ from tests.utils import format_result_exception
 
 def test_session_up_down(runner, project, dummy_session_provider, monkeypatch):
     """Test starting a session."""
-    import renku.core.session.session
+    browser = dummy_session_provider
 
-    result = runner.invoke(cli, ["session", "ls", "-p", "dummy"])
+    result = runner.invoke(cli, ["session", "ls", "-p", "dummy", "--format", "tabular"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert 2 == len(result.output.splitlines())
 
     for _ in range(3):
         result = runner.invoke(cli, ["session", "start", "-p", "dummy"])
         assert 0 == result.exit_code, format_result_exception(result)
-        assert "successfully started" in result.output
+        assert "session-random-" in result.output
 
-    session_id = result.output.splitlines()[-1]
+    session_id = re.findall(r".*(session-random-.*-name).*", result.output, re.MULTILINE)[0]
 
-    result = runner.invoke(cli, ["session", "ls", "-p", "dummy"])
+    result = runner.invoke(cli, ["session", "ls", "-p", "dummy", "--format", "tabular"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert 5 == len(result.output.splitlines())
 
-    with monkeypatch.context() as monkey:
-        browser = MagicMock()
-        monkey.setattr(renku.core.session.session, "webbrowser", browser)
-        result = runner.invoke(cli, ["session", "open", "-p", "dummy", session_id])
-        assert 0 == result.exit_code, format_result_exception(result)
-        browser.open.assert_called_once_with("http://localhost/")
+    result = runner.invoke(cli, ["session", "open", "-p", "dummy", session_id])
+    assert 0 == result.exit_code, format_result_exception(result)
+    browser.open.assert_called_once_with("http://localhost/")
 
     result = runner.invoke(cli, ["session", "stop", "-p", "dummy", session_id])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "has been successfully stopped" in result.output
 
-    result = runner.invoke(cli, ["session", "ls", "-p", "dummy"])
+    result = runner.invoke(cli, ["session", "ls", "-p", "dummy", "--format", "tabular"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert 4 == len(result.output.splitlines())
 
     result = runner.invoke(cli, ["session", "stop", "-p", "dummy", "-a"])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["session", "ls", "-p", "dummy"])
+    result = runner.invoke(cli, ["session", "ls", "-p", "dummy", "--format", "tabular"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert 2 == len(result.output.splitlines())
+
+
+def test_session_start_config_requests(runner, project, dummy_session_provider, monkeypatch):
+    """Test session with configuration in the renku config."""
+    import docker
+
+    result = runner.invoke(cli, ["config", "set", "interactive.cpu_request", "0.5"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    result = runner.invoke(cli, ["config", "set", "interactive.disk_request", "100mb"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    result = runner.invoke(cli, ["config", "set", "interactive.mem_request", "100mb"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    with monkeypatch.context() as monkey:
+        docker_mock = MagicMock()
+        docker_mock.api.inspect_image.return_value = {}
+        monkey.setattr(docker, "from_env", lambda: docker_mock)
+        result = runner.invoke(cli, ["session", "start", "-p", "docker"], input="y\n")
+        assert 0 == result.exit_code, format_result_exception(result)
+        assert "successfully started" in result.output
+
+
+def test_session_ssh_setup(runner, project, dummy_session_provider, fake_home):
+    """Test starting a session."""
+    from renku.core.util.ssh import generate_ssh_keys
+
+    with patch("renku.core.util.ssh.get_renku_url", lambda: "https://renkulab.io/"):
+        result = runner.invoke(cli, ["session", "ssh-setup"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "Generating keys" in result.output
+    assert "Writing SSH config" in result.output
+
+    private_key, public_key = generate_ssh_keys()
+
+    private_path = fake_home / ".ssh" / "existing"
+    private_path.write_text(private_key)
+    (fake_home / ".ssh" / "existing.pub").write_text(public_key)
+
+    with patch("renku.core.util.ssh.get_renku_url", lambda: "https://renkulab.io/"):
+        result = runner.invoke(cli, ["session", "ssh-setup", "-k", str(private_path), "--force"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    assert "Linking existing keys" in result.output
+    assert "Writing SSH config" in result.output
+
+
+@pytest.mark.parametrize(
+    "format,output,length",
+    [
+        ("log", "Url: http://localhost/\nCommit: abcdefg\nBranch: master\nSSH enabled: no", 21),
+        ("tabular", "running   dummy       http://localhost/", 5),
+    ],
+)
+def test_session_list_format(runner, project, dummy_session_provider, format, output, length):
+    """Test session list formats."""
+    for _ in range(3):
+        result = runner.invoke(cli, ["session", "start", "-p", "dummy"])
+        assert 0 == result.exit_code, format_result_exception(result)
+        assert "session-random-" in result.output
+
+    result = runner.invoke(cli, ["session", "ls", "-p", "dummy", "--format", format])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert length == len(result.output.splitlines())
+    assert output in result.output

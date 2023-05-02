@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -138,6 +137,14 @@ Adding data to the dataset:
 This will copy the contents of ``data-url`` to the dataset and add it
 to the dataset metadata.
 
+.. note::
+
+   If the URL refers to a local directory, data is added differently depending
+   on if there is a trailing slash (``/``) or not. If the URL ends in a slash,
+   files inside the directory are added to the target directory. If it does
+   not end in a slash, then the directory itself will be added inside the
+   target directory.
+
 You can create a dataset when you add data to it for the first time by passing
 ``--create`` flag to add command:
 
@@ -210,19 +217,6 @@ To add a specific version of files, use ``--ref`` option for selecting a
 branch, commit, or tag. The value passed to this option must be a valid
 reference in the remote Git repository.
 
-Adding external data to the dataset:
-
-Sometimes you might want to add data to your dataset without copying the
-actual files to your repository. This is useful for example when external data
-is too large to store locally. The external data must exist (i.e. be mounted)
-on your filesystem. Renku creates a symbolic to your data and you can use this
-symbolic link in renku commands as a normal file. To add an external file pass
-``--external`` or ``-e`` when adding local data to a dataset:
-
-.. code-block:: console
-
-    $ renku dataset add my-dataset -e /path/to/external/file
-
 Updating a dataset:
 
 After adding files from a remote Git repository or importing a dataset from a
@@ -260,14 +254,6 @@ updates only CSV files from ``my-dataset``:
 
 Note that putting glob patterns in quotes is needed to tell Unix shell not
 to expand them.
-
-External data are also updated automatically. Since they require a checksum
-calculation which can take a long time when data is large, you can exclude them
-from an update by passing ``--no-external`` flag to the update command:
-
-.. code-block:: console
-
-    $ renku dataset update --all --no-external
 
 You can use ``--dry-run`` flag to get a preview of what files/datasets will be
 updated by an update operation.
@@ -523,6 +509,7 @@ Unlink all files from a dataset:
 import json
 import os
 from pathlib import Path
+from typing import List, Union, cast
 
 import click
 from lazy_object_proxy import Proxy
@@ -531,7 +518,7 @@ import renku.ui.cli.utils.color as color
 from renku.command.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FILES_FORMATS
 from renku.command.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.command.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
-from renku.core.util.util import NO_VALUE
+from renku.domain_model.constant import NO_VALUE, NoValueType
 
 
 def _complete_datasets(ctx, param, incomplete):
@@ -557,7 +544,7 @@ def dataset():
     "-c",
     "--columns",
     type=click.STRING,
-    default="id,name,title,version,datadir",
+    default="id,name,title,version,datadir,storage",
     metavar="<columns>",
     help="Comma-separated list of column to display: {}.".format(", ".join(DATASETS_COLUMNS.keys())),
     show_default=True,
@@ -594,7 +581,7 @@ def list_dataset(format, columns):
     help="Custom metadata to be associated with the dataset.",
 )
 @click.option("-k", "--keyword", default=None, multiple=True, type=click.STRING, help="List of keywords.")
-@click.option("-s", "--storage", default=None, type=click.STRING, help="URI of the storage backend.")
+@click.option("-s", "--storage", default=None, type=click.STRING, help="URI of the cloud storage backend.")
 @click.option(
     "--datadir",
     default=None,
@@ -689,7 +676,7 @@ def edit(name, title, description, creators, metadata, metadata_source, keywords
     from renku.core.util.metadata import construct_creators
     from renku.ui.cli.utils.callback import ClickCallback
 
-    images = NO_VALUE
+    images: Union[None, NoValueType] = NO_VALUE
 
     if list(creators) == [NO_VALUE]:
         creators = NO_VALUE
@@ -720,7 +707,7 @@ def edit(name, title, description, creators, metadata, metadata_source, keywords
     no_email_warnings = False
 
     if creators and creators is not NO_VALUE:
-        creators, no_email_warnings = construct_creators(creators, ignore_email=True)
+        creators, no_email_warnings = construct_creators(creators, ignore_email=True)  # type: ignore
 
     if metadata and metadata is not NO_VALUE:
         path = Path(metadata)
@@ -746,16 +733,16 @@ def edit(name, title, description, creators, metadata, metadata_source, keywords
 
     if not updated:
         click.echo(
-            (
-                "Nothing to update. "
-                "Check available fields with `renku dataset edit --help`\n\n"
-                'Hint: `renku dataset edit --title "new title"`'
-            )
+            "Nothing to update. "
+            "Check available fields with `renku dataset edit --help`\n\n"
+            'Hint: `renku dataset edit --title "new title"`'
         )
     else:
         click.echo("Successfully updated: {}.".format(", ".join(updated.keys())))
         if no_email_warnings:
-            click.echo(ClickCallback.WARNING + "No email or wrong format for: " + ", ".join(no_email_warnings))
+            click.echo(
+                ClickCallback.WARNING + "No email or wrong format for: " + ", ".join(cast(List[str], no_email_warnings))
+            )
 
 
 @dataset.command("show")
@@ -802,7 +789,7 @@ def add_provider_options(*param_decls, **attrs):
     from renku.core.dataset.providers.factory import ProviderFactory
     from renku.ui.cli.utils.click import create_options
 
-    providers = [p for p in ProviderFactory.get_add_providers() if p.get_add_parameters()]
+    providers = [p for p in ProviderFactory.get_add_providers() if p.get_add_parameters()]  # type: ignore
     return create_options(providers=providers, parameter_function="get_add_parameters")
 
 
@@ -813,6 +800,7 @@ def add_provider_options(*param_decls, **attrs):
 @click.option("-o", "--overwrite", is_flag=True, help="Overwrite existing files.")
 @click.option("-c", "--create", is_flag=True, help="Create dataset if it does not exist.")
 @click.option("-d", "--destination", default="", help="Destination directory within the dataset path")
+@click.option("--storage", default=None, type=click.STRING, help="URI of the cloud storage backend.")
 @click.option(
     "--datadir",
     default=None,
@@ -868,7 +856,7 @@ def add(name, urls, force, overwrite, create, destination, datadir, **kwargs):
     "-c",
     "--columns",
     type=click.STRING,
-    default="dataset_name,added,size,path,lfs",
+    default="dataset_name,path,size,added,lfs",
     metavar="<columns>",
     help="Comma-separated list of column to display: {}.".format(", ".join(DATASET_FILES_COLUMNS.keys())),
     show_default=True,
@@ -903,11 +891,9 @@ def unlink(name, include, exclude, yes):
 
     if not include and not exclude:
         raise errors.ParameterError(
-            (
-                "include or exclude filters not found.\n"
-                "Check available filters with 'renku dataset unlink --help'\n"
-                "Hint: 'renku dataset unlink my-dataset -I path'"
-            )
+            "include or exclude filters not found.\n"
+            "Check available filters with 'renku dataset unlink --help'\n"
+            "Hint: 'renku dataset unlink my-dataset -I path'"
         )
 
     communicator = ClickCallback()
@@ -973,7 +959,7 @@ def export_provider_argument(*param_decls, **attrs):
         def get_providers_names():
             from renku.core.dataset.providers.factory import ProviderFactory
 
-            return [p.name.lower() for p in ProviderFactory.get_export_providers()]
+            return [p.name.lower() for p in ProviderFactory.get_export_providers()]  # type: ignore
 
         return argument("provider", type=click.Choice(Proxy(get_providers_names)))(f)
 
@@ -985,7 +971,7 @@ def export_provider_options(*param_decls, **attrs):
     from renku.core.dataset.providers.factory import ProviderFactory
     from renku.ui.cli.utils.click import create_options
 
-    providers = [p for p in ProviderFactory.get_export_providers() if p.get_export_parameters()]
+    providers = [p for p in ProviderFactory.get_export_providers() if p.get_export_parameters()]  # type: ignore
     return create_options(providers=providers, parameter_function="get_export_parameters")
 
 
@@ -1006,7 +992,7 @@ def export(name, provider, tag, **kwargs):
             name=name, provider_name=provider, tag=tag, **kwargs
         )
     except (ValueError, errors.InvalidAccessToken, errors.DatasetNotFound, errors.RequestError) as e:
-        raise click.BadParameter(e)
+        raise click.BadParameter(str(e))
 
     click.secho("OK", fg=color.GREEN)
 
@@ -1016,7 +1002,7 @@ def import_provider_options(*param_decls, **attrs):
     from renku.core.dataset.providers.factory import ProviderFactory
     from renku.ui.cli.utils.click import create_options
 
-    providers = [p for p in ProviderFactory.get_import_providers() if p.get_import_parameters()]
+    providers = [p for p in ProviderFactory.get_import_providers() if p.get_import_parameters()]  # type: ignore
     return create_options(providers=providers, parameter_function="get_import_parameters")
 
 
@@ -1122,12 +1108,12 @@ def update(
             exclude=exclude,
             ref=ref,
             delete=delete,
-            no_external=no_external,
             no_local=no_local,
             no_remote=no_remote,
             check_data_directory=check_data_directory,
             update_all=update_all,
             dry_run=dry_run,
+            plain=plain,
         )
     )
 
@@ -1189,12 +1175,12 @@ def update(
     help="A directory to copy data to, instead of the dataset's data directory.",
 )
 def pull(name, location):
-    """Pull data from an external storage."""
-    from renku.command.dataset import pull_external_data_command
+    """Pull data from a cloud storage."""
+    from renku.command.dataset import pull_cloud_storage_command
     from renku.ui.cli.utils.callback import ClickCallback
 
     communicator = ClickCallback()
-    pull_external_data_command().with_communicator(communicator).build().execute(name=name, location=location)
+    pull_cloud_storage_command().with_communicator(communicator).build().execute(name=name, location=location)
 
 
 @dataset.command(hidden=True)
@@ -1206,16 +1192,26 @@ def pull(name, location):
     type=click.Path(exists=True, file_okay=False),
     help="Use an existing mount point instead of mounting the remote storage.",
 )
-@click.option("-u", "--unmount", is_flag=True, help="Unmount dataset's external storage.")
+@click.option("-u", "--unmount", is_flag=True, help="Unmount dataset's backend storage.")
 @click.option("-y", "--yes", is_flag=True, help="No prompt when removing non-empty dataset's data directory.")
 def mount(name, existing, unmount, yes):
-    """Mount an external storage in the dataset's data directory."""
-    from renku.command.dataset import mount_external_storage_command
+    """Mount a cloud storage in the dataset's data directory."""
+    from renku.command.dataset import mount_cloud_storage_command
     from renku.ui.cli.utils.callback import ClickCallback
 
-    command = mount_external_storage_command(unmount=unmount).with_communicator(ClickCallback()).build()
+    command = mount_cloud_storage_command(unmount=unmount).with_communicator(ClickCallback()).build()
 
     if unmount:
         command.execute(name=name)
     else:
         command.execute(name=name, existing=existing, yes=yes)
+
+
+@dataset.command(hidden=True)
+@click.argument("name", shell_complete=_complete_datasets)
+def unmount(name):
+    """Unmount a backend storage in the dataset's data directory."""
+    from renku.command.dataset import unmount_cloud_storage_command
+    from renku.ui.cli.utils.callback import ClickCallback
+
+    unmount_cloud_storage_command().with_communicator(ClickCallback()).build().execute(name=name)

@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -165,7 +164,7 @@ def migrate(migrate_all, paths):
             click.echo("Please specify paths to migrate or use the --all flag to migrate all large files.")
             exit(1)
 
-        lfs_paths = check_lfs_command().build().execute(everything=all).output
+        lfs_paths = check_lfs_command().build().execute(everything=migrate_all).output
 
         if not lfs_paths:
             click.echo("All files are already in LFS")

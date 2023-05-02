@@ -146,6 +146,8 @@ spec:
               value: {{ $.Values.gitLFSSkipSmudge | quote }}
             - name: RENKU_DOMAIN
               value: {{ $.Values.global.renku.domain }}
+            - name: RENKU_PROJECT_DEFAULT_CLI_VERSION
+              value: {{ $.Values.global.renku.cli_version | default "" | quote }}
             - name: METADATA_VERSIONS_LIST
               value: /svc/config/metadata-versions/metadata-versions.json
             {{- include "certificates.env.python" $ | nindent 12 }}

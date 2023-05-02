@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -86,21 +85,35 @@ the ``renku config`` command:
 +--------------------------------+-------------------------------------+-----------+
 | Name                           | Description                         | Default   |
 +================================+=====================================+===========+
-| ``show_lfs_message``           | Whether to show messages about      | ``True``  |
-|                                | files being added to git LFS or not |           |
-+--------------------------------+-------------------------------------+-----------+
-| ``lfs_threshold``              | Threshold file size below which     | ``100kb`` |
-|                                | files are not added to git LFS      |           |
-+--------------------------------+-------------------------------------+-----------+
 | ``data_directory``             | Path to the data directory          | ``data/`` |
 |                                | (read-only after project creation)  |           |
-+--------------------------------+-------------------------------------+-----------+
-| ``zenodo.access_token``        | Access token for Zenodo API         | ``None``  |
 +--------------------------------+-------------------------------------+-----------+
 | ``dataverse.access_token``     | Access token for Dataverse API      | ``None``  |
 +--------------------------------+-------------------------------------+-----------+
 | ``dataverse.server_url``       | URL for the Dataverse API server    | ``None``  |
 |                                | to use                              |           |
++--------------------------------+-------------------------------------+-----------+
+| ``default_dataset_add_action`` | Default action when adding files to | ``None``  |
+|                                | datasets. Can be either ``copy`` or |           |
+|                                | ``move``.                           |           |
++--------------------------------+-------------------------------------+-----------+
+| ``lfs_threshold``              | Threshold file size below which     | ``100kb`` |
+|                                | files are not added to git LFS      |           |
++--------------------------------+-------------------------------------+-----------+
+| ``show_lfs_message``           | Whether to show messages about      | ``true``  |
+|                                | files being added to git LFS or not |           |
++--------------------------------+-------------------------------------+-----------+
+| ``show_login_warning``         | Whether to warn when logging in to  | ``true``  |
+|                                | Renku inside a project that causes  |           |
+|                                | project's git remote to be changed. |           |
++--------------------------------+-------------------------------------+-----------+
+| ``ssh_supported``              | Whether the image in this project   | ``false`` |
+|                                | contains an SSH server on port 22   |           |
+|                                | for SSH connections. Used to        |           |
+|                                | override the corresponding project  |           |
+|                                | template setting.                   |           |
++--------------------------------+-------------------------------------+-----------+
+| ``zenodo.access_token``        | Access token for Zenodo API         | ``None``  |
 +--------------------------------+-------------------------------------+-----------+
 
 See the section on `renku.ini <https://renku.readthedocs.io/en/latest/reference/templates.html#renku>`_

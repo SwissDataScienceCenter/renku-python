@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -24,15 +23,15 @@ are sorted based on their lowercase name. Each migration file must define a
 public ``migrate`` function that accepts a ``MigrationContext`` as its argument.
 
 When executing a migration, the migration file is imported as a module and the
-``migrate`` function is executed. Migration version is checked against the Renku
-project version and any migration which has a higher version is applied to the
-project.
+``migrate`` function is executed. Renku checks project's metadata version and
+applies any migration that has a higher version to the project.
 """
 
 import importlib
 import re
 import shutil
 from pathlib import Path
+from typing import Optional, Tuple
 
 from packaging.version import Version
 
@@ -47,8 +46,15 @@ from renku.core.errors import (
 )
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.migration.models.migration import MigrationContext, MigrationType
-from renku.core.migration.utils import OLD_METADATA_PATH, is_using_temporary_datasets_path, read_project_version
+from renku.core.migration.utils import is_using_temporary_datasets_path, read_project_version
+from renku.core.template.usecase import calculate_dockerfile_checksum, update_dockerfile_checksum
 from renku.core.util import communication
+from renku.core.util.metadata import (
+    is_renku_project,
+    read_renku_version_from_dockerfile,
+    replace_renku_version_in_dockerfile,
+)
+from renku.domain_model.project import ProjectTemplateMetadata
 from renku.domain_model.project_context import project_context
 
 try:
@@ -56,7 +62,7 @@ try:
 except ImportError:
     import importlib.resources as importlib_resources  # type: ignore
 
-SUPPORTED_PROJECT_VERSION = 9
+SUPPORTED_PROJECT_VERSION = 10
 
 
 def check_for_migration():
@@ -77,9 +83,9 @@ def is_project_unsupported():
     return is_renku_project() and get_project_version() > SUPPORTED_PROJECT_VERSION
 
 
-def is_docker_update_possible():
+def is_docker_update_possible() -> bool:
     """Check if the Dockerfile can be updated to a new version of renku-python."""
-    return _update_dockerfile(check_only=True)
+    return update_dockerfile(check_only=True)[0]
 
 
 @inject.autoparams("project_gateway")
@@ -100,6 +106,7 @@ def migrate_project(
     NOTE: The project path must be pushed to the project_context before calling this function.
 
     Args:
+        project_gateway(IProjectGateway): The injected project gateway.
         force_template_update: Whether to force update the template  (Default value = False).
         skip_template_update: Whether to skip updating the template (Default value = False).
         skip_docker_update: Whether to skip updating the Dockerfile (Default value = False).
@@ -122,20 +129,26 @@ def migrate_project(
     except ValueError:
         project = None
 
-    if not skip_template_update and project and project.template_source:
+    if (
+        not skip_template_update
+        and project
+        and hasattr(project, "template_metadata")
+        and isinstance(project.template_metadata, ProjectTemplateMetadata)
+        and project.template_metadata.template_source
+    ):
         try:
             template_updated = _update_template()
         except TemplateUpdateError:
             raise
-        except (Exception, BaseException) as e:
+        except Exception as e:
             raise TemplateUpdateError("Couldn't update from template.") from e
 
     if not skip_docker_update:
         try:
-            docker_updated, _, _ = _update_dockerfile()
+            docker_updated, _, _ = update_dockerfile()
         except DockerfileUpdateError:
             raise
-        except (Exception, BaseException) as e:
+        except Exception as e:
             raise DockerfileUpdateError("Couldn't update renku version in Dockerfile.") from e
 
     if skip_migrations:
@@ -180,58 +193,59 @@ def _remove_untracked_renku_files(metadata_path):
         shutil.rmtree(path, ignore_errors=True)
 
 
-@inject.autoparams()
-def _update_template(project_gateway: IProjectGateway) -> bool:
+def _update_template() -> bool:
     """Update local files from the remote template."""
     from renku.core.template.usecase import update_template
 
     try:
-        project = project_gateway.get_project()
+        project = project_context.project
     except ValueError:
         # NOTE: Old project, we don't know the status until it is migrated
         return False
 
-    if not project.template_version:
+    if not hasattr(project, "template_metadata") or not project.template_metadata.template_version:
         return False
 
     return bool(update_template(interactive=False, force=False, dry_run=False))
 
 
-def _update_dockerfile(check_only=False):
+def update_dockerfile(*, check_only=False) -> Tuple[bool, Optional[bool], Optional[str]]:
     """Update the dockerfile to the newest version of renku."""
     from renku import __version__
 
-    if not project_context.docker_path.exists():
+    if not project_context.dockerfile_path.exists():
         return False, None, None
 
-    communication.echo("Updating dockerfile...")
-
-    with open(project_context.docker_path, "r") as f:
+    with open(project_context.dockerfile_path) as f:
         dockerfile_content = f.read()
 
-    current_version = Version(__version__)
-    m = re.search(r"^ARG RENKU_VERSION=(\d+\.\d+\.\d+)$", dockerfile_content, flags=re.MULTILINE)
-    if not m:
+    docker_version = read_renku_version_from_dockerfile()
+    if not docker_version:
         if check_only:
             return False, None, None
         raise DockerfileUpdateError(
             "Couldn't update renku-python version in Dockerfile, as it doesn't contain an 'ARG RENKU_VERSION=...' line."
         )
 
-    docker_version = Version(m.group(1))
-
+    current_version = Version(__version__)
     if docker_version >= current_version:
         return True, False, str(docker_version)
 
     if check_only:
         return True, True, str(docker_version)
 
-    dockerfile_content = re.sub(
-        r"^ARG RENKU_VERSION=\d+\.\d+\.\d+$", f"ARG RENKU_VERSION={__version__}", dockerfile_content, flags=re.MULTILINE
-    )
+    communication.echo("Updating dockerfile...")
 
-    with open(project_context.docker_path, "w") as f:
-        f.write(dockerfile_content)
+    new_content = replace_renku_version_in_dockerfile(dockerfile_content=dockerfile_content, version=__version__)
+    new_checksum = calculate_dockerfile_checksum(dockerfile_content=new_content)
+
+    try:
+        update_dockerfile_checksum(new_checksum=new_checksum)
+    except DockerfileUpdateError:
+        pass
+
+    with open(project_context.dockerfile_path, "w") as f:
+        f.write(new_content)
 
     communication.echo("Updated dockerfile.")
 
@@ -246,14 +260,6 @@ def get_project_version():
         return 1
 
 
-def is_renku_project() -> bool:
-    """Check if repository is a renku project."""
-    try:
-        return project_context.project is not None
-    except ValueError:  # NOTE: Error in loading due to an older schema
-        return project_context.metadata_path.joinpath(OLD_METADATA_PATH).exists()
-
-
 def get_migrations():
     """Return a sorted list of versions and migration modules."""
     migrations = []
@@ -264,7 +270,7 @@ def get_migrations():
             continue
 
         version = int(match.groups()[0])
-        path = "renku.core.migration.{}".format(Path(entry.name).stem)
+        path = f"renku.core.migration.{Path(entry.name).stem}"
         migrations.append((version, path))
 
     migrations = sorted(migrations, key=lambda v: v[1].lower())

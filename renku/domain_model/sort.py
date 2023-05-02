@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,12 +16,14 @@
 """Process Git repository."""
 
 from collections import deque
+from typing import Any, Deque
 
 GRAY, BLACK = 0, 1
 
 
 def topological(nodes):
     """Return nodes in a topological order."""
+    order: Deque[Any]
     order, enter, state = deque(), set(nodes), {}
 
     def dfs(node):

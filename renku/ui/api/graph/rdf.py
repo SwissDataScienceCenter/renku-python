@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -37,7 +36,6 @@ documentation <https://rdflib.readthedocs.io/en/stable/intro_to_graphs.html>`_.
 
 import json
 
-import pyld
 from rdflib import Graph
 
 from renku.command.graph import export_graph_command
@@ -60,6 +58,8 @@ class RDFGraph(Graph):
 
     def _build(self):
         """Construct the RDF graph representing this Renku project."""
+        import pyld
+
         data = json.dumps(
             pyld.jsonld.expand(
                 export_graph_command().build().execute(revision_or_range=self.revision_or_range).output._graph

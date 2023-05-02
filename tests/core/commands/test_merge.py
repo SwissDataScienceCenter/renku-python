@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022- Swiss Data Science Center (SDSC)
+# Copyright 2017-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -22,7 +21,7 @@ from uuid import uuid4
 from BTrees.OOBTree import BTree
 
 from renku.domain_model.dataset import Dataset
-from renku.domain_model.project import Project
+from renku.domain_model.project import Project, ProjectTemplateMetadata
 from renku.domain_model.provenance.agent import Person
 from renku.domain_model.workflow.plan import Plan
 from renku.infrastructure.database import Index
@@ -299,7 +298,7 @@ def test_merge_project_both_changed():
 
     result = GitMerger().merge_projects(local_project, remote_project, base_project)
 
-    assert set(result.keywords) == set(["datascience", "awesome"])
+    assert set(result.keywords) == {"datascience", "awesome"}
     assert "9" == result.version
     assert result.agent_version
 
@@ -309,45 +308,45 @@ def test_merge_project_both_template_changed(mocker):
     base_project = Project(
         creator=Person.from_string("John Doe <jd@example.com>"),
         name="my-project",
-        template_id="python-minimal",
-        template_source="renku",
-        template_ref="master",
-        template_version="abcdef",
+        template_metadata=ProjectTemplateMetadata(
+            template_id="python-minimal",
+            template_source="renku",
+            template_ref="master",
+            template_version="abcdef",
+        ),
     )
     local_project = Project(
         creator=Person.from_string("John Doe <jd@example.com>"),
         name="my-project",
-        template_id="python-minimal1",
-        template_source="renku1",
-        template_ref="master1",
-        template_version="12345",
+        template_metadata=ProjectTemplateMetadata(
+            template_id="python-minimal1",
+            template_source="renku1",
+            template_ref="master1",
+            template_version="12345",
+        ),
     )
     remote_project = Project(
         creator=Person.from_string("John Doe <jd@example.com>"),
         name="my-project",
-        template_id="python-minimal2",
-        template_source="renku2",
-        template_ref="master2",
-        template_version="78910",
+        template_metadata=ProjectTemplateMetadata(
+            template_id="python-minimal2",
+            template_source="renku2",
+            template_ref="master2",
+            template_version="78910",
+        ),
     )
 
     mocker.patch("renku.infrastructure.git_merger.communication.prompt", mocker.MagicMock(return_value="l"))
 
     result = GitMerger().merge_projects(local_project, remote_project, base_project)
 
-    assert result.template_version == local_project.template_version
-    assert result.template_source == local_project.template_source
-    assert result.template_ref == local_project.template_ref
-    assert result.template_id == local_project.template_id
+    assert result.template_metadata == local_project.template_metadata
 
     mocker.patch("renku.infrastructure.git_merger.communication.prompt", mocker.MagicMock(return_value="r"))
 
     result = GitMerger().merge_projects(local_project, remote_project, base_project)
 
-    assert result.template_version == remote_project.template_version
-    assert result.template_source == remote_project.template_source
-    assert result.template_ref == remote_project.template_ref
-    assert result.template_id == remote_project.template_id
+    assert result.template_metadata == remote_project.template_metadata
 
 
 def test_merge_project_local_template_changed():
@@ -355,34 +354,37 @@ def test_merge_project_local_template_changed():
     base_project = Project(
         creator=Person.from_string("John Doe <jd@example.com>"),
         name="my-project",
-        template_id="python-minimal",
-        template_source="renku",
-        template_ref="master",
-        template_version="abcdef",
+        template_metadata=ProjectTemplateMetadata(
+            template_id="python-minimal",
+            template_source="renku",
+            template_ref="master",
+            template_version="abcdef",
+        ),
     )
     local_project = Project(
         creator=Person.from_string("John Doe <jd@example.com>"),
         name="my-project",
-        template_id="python-minimal1",
-        template_source="renku1",
-        template_ref="master1",
-        template_version="12345",
+        template_metadata=ProjectTemplateMetadata(
+            template_id="python-minimal1",
+            template_source="renku1",
+            template_ref="master1",
+            template_version="12345",
+        ),
     )
     remote_project = Project(
         creator=Person.from_string("John Doe <jd@example.com>"),
         name="my-project",
-        template_id="python-minimal",
-        template_source="renku",
-        template_ref="master",
-        template_version="abcdef",
+        template_metadata=ProjectTemplateMetadata(
+            template_id="python-minimal",
+            template_source="renku",
+            template_ref="master",
+            template_version="abcdef",
+        ),
     )
 
     result = GitMerger().merge_projects(local_project, remote_project, base_project)
 
-    assert result.template_version == local_project.template_version
-    assert result.template_source == local_project.template_source
-    assert result.template_ref == local_project.template_ref
-    assert result.template_id == local_project.template_id
+    assert result.template_metadata == local_project.template_metadata
 
 
 def test_merge_project_remote_template_changed():
@@ -390,31 +392,34 @@ def test_merge_project_remote_template_changed():
     base_project = Project(
         creator=Person.from_string("John Doe <jd@example.com>"),
         name="my-project",
-        template_id="python-minimal",
-        template_source="renku",
-        template_ref="master",
-        template_version="abcdef",
+        template_metadata=ProjectTemplateMetadata(
+            template_id="python-minimal",
+            template_source="renku",
+            template_ref="master",
+            template_version="abcdef",
+        ),
     )
     local_project = Project(
         creator=Person.from_string("John Doe <jd@example.com>"),
         name="my-project",
-        template_id="python-minimal",
-        template_source="renku",
-        template_ref="master",
-        template_version="abcdef",
+        template_metadata=ProjectTemplateMetadata(
+            template_id="python-minimal",
+            template_source="renku",
+            template_ref="master",
+            template_version="abcdef",
+        ),
     )
     remote_project = Project(
         creator=Person.from_string("John Doe <jd@example.com>"),
         name="my-project",
-        template_id="python-minimal1",
-        template_source="renku1",
-        template_ref="master1",
-        template_version="12345",
+        template_metadata=ProjectTemplateMetadata(
+            template_id="python-minimal1",
+            template_source="renku1",
+            template_ref="master1",
+            template_version="12345",
+        ),
     )
 
     result = GitMerger().merge_projects(local_project, remote_project, base_project)
 
-    assert result.template_version == remote_project.template_version
-    assert result.template_source == remote_project.template_source
-    assert result.template_ref == remote_project.template_ref
-    assert result.template_id == remote_project.template_id
+    assert result.template_metadata == remote_project.template_metadata

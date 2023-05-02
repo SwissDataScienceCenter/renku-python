@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -24,7 +23,10 @@ from pathlib import Path
 import pytest
 from packaging.version import Version
 
+from renku.core.template.template import read_template_checksum
 from renku.core.util.contexts import chdir
+from renku.core.util.metadata import replace_renku_version_in_dockerfile
+from renku.core.util.os import hash_file
 from renku.core.util.yaml import write_yaml
 from renku.domain_model.project_context import project_context
 from renku.domain_model.template import TemplateMetadata, TemplateParameter
@@ -43,10 +45,13 @@ def test_template_list(isolated_runner):
     sys.argv = command
 
     try:
-        result = isolated_runner.invoke(cli, command)
+        result = isolated_runner.invoke(cli, command, replace_argv=False)
 
         assert 0 == result.exit_code, format_result_exception(result)
-        assert "python-minimal" in result.output
+        assert "python" in result.output
+        assert "R" in result.output
+        assert "bioc" in result.output
+        assert "julia" in result.output
     finally:
         sys.argv = argv
 
@@ -62,8 +67,10 @@ def test_template_list_from_source(isolated_runner):
         result = isolated_runner.invoke(cli, command + ["--source", TEMPLATES_URL])
 
         assert 0 == result.exit_code, format_result_exception(result)
-        assert "python-minimal" in result.output
-        assert "julia-minimal" in result.output
+        assert "python" in result.output
+        assert "R" in result.output
+        assert "bioc" in result.output
+        assert "julia" in result.output
 
         result = isolated_runner.invoke(cli, command + ["-s", TEMPLATES_URL, "--reference", "0.3.2"])
 
@@ -104,7 +111,7 @@ def test_template_show_no_id_outside_project(isolated_runner):
     sys.argv = command
 
     try:
-        result = isolated_runner.invoke(cli, command)
+        result = isolated_runner.invoke(cli, command, replace_argv=False)
 
         assert 2 == result.exit_code, format_result_exception(result)
         assert "No Renku project found" in result.output
@@ -135,7 +142,7 @@ def test_template_set_failure(runner, project, with_injection):
     assert 1 == result.exit_code, format_result_exception(result)
     assert "Project already has a template" in result.output
     with with_injection():
-        assert "python-minimal" == project_context.project.template_id
+        assert "python-minimal" == project_context.project.template_metadata.template_id
 
 
 def test_template_set(runner, project, with_injection):
@@ -146,9 +153,9 @@ def test_template_set(runner, project, with_injection):
 
     assert 0 == result.exit_code, format_result_exception(result)
     with with_injection():
-        assert "R-minimal" == project_context.project.template_id
-        assert __template_version__ == project_context.project.template_version
-        assert __template_version__ == project_context.project.template_ref
+        assert "R-minimal" == project_context.project.template_metadata.template_id
+        assert __template_version__ == project_context.project.template_metadata.template_version
+        assert __template_version__ == project_context.project.template_metadata.template_ref
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -162,9 +169,9 @@ def test_template_set_overwrites_modified(runner, project, with_injection):
 
     assert 0 == result.exit_code, format_result_exception(result)
     with with_injection():
-        assert "R-minimal" == project_context.project.template_id
+        assert "R-minimal" == project_context.project.template_metadata.template_id
     assert "my-modifications" not in (project.path / "Dockerfile").read_text()
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
 
 @pytest.mark.parametrize("overwrite, found", [["y", False], ["n", True]])
@@ -176,9 +183,9 @@ def test_template_set_interactive(runner, project, with_injection, overwrite, fo
 
     assert 0 == result.exit_code, format_result_exception(result)
     with with_injection():
-        assert "R-minimal" == project_context.project.template_id
+        assert "R-minimal" == project_context.project.template_metadata.template_id
     assert ("my-modifications" in (project.path / "Dockerfile").read_text()) is found
-    assert not project.repository.is_dirty(untracked_files=True)
+    assert not project.repository.is_dirty()
 
 
 def test_template_set_preserve_renku_version(runner, project):
@@ -210,11 +217,11 @@ def test_template_set_uses_renku_version_when_non_existing(tmpdir, runner):
     with project_context.with_path(path=repo_path), chdir(repo_path):
         assert 0 == runner.invoke(cli, ["migrate", "--strict"]).exit_code
 
-        assert "RENKU_VERSION" not in project_context.docker_path.read_text()
+        assert "RENKU_VERSION" not in project_context.dockerfile_path.read_text()
 
         assert 0 == runner.invoke(cli, ["template", "set", "python-minimal"]).exit_code
 
-        assert f"RENKU_VERSION={__version__}" in project_context.docker_path.read_text()
+        assert f"RENKU_VERSION={__version__}" in project_context.dockerfile_path.read_text()
 
 
 def test_template_set_dry_run(runner, project):
@@ -239,18 +246,18 @@ def test_template_update(runner, project, with_injection):
 
     assert 0 == result.exit_code, format_result_exception(result)
     with with_injection():
-        assert "python-minimal" == project_context.project.template_id
-        assert "0.3.2" == project_context.project.template_ref
-        assert "b9ab266fba136bdecfa91dc8d7b6d36b9d427012" == project_context.project.template_version
+        assert "python-minimal" == project_context.project.template_metadata.template_id
+        assert "0.3.2" == project_context.project.template_metadata.template_ref
+        assert "b9ab266fba136bdecfa91dc8d7b6d36b9d427012" == project_context.project.template_metadata.template_version
 
     result = runner.invoke(cli, ["template", "update"])
 
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Template is up-to-date" not in result.output
     with with_injection():
-        assert "python-minimal" == project_context.project.template_id
-        assert Version(project_context.project.template_ref) > Version("0.3.2")
-        assert "6c59d8863841baeca8f30062fd16c650cf67da3b" != project_context.project.template_version
+        assert "python-minimal" == project_context.project.template_metadata.template_id
+        assert Version(project_context.project.template_metadata.template_ref) > Version("0.3.2")
+        assert "6c59d8863841baeca8f30062fd16c650cf67da3b" != project_context.project.template_metadata.template_version
 
     result = runner.invoke(cli, ["template", "update"])
 
@@ -343,7 +350,7 @@ def test_template_update_with_parameters_with_defaults(runner, project_with_temp
 
 
 def test_template_set_with_parameters(runner, project_with_template, templates_source, with_injection):
-    """Test template set doesn't prompts for new template parameters when passed on command line."""
+    """Test template set doesn't prompt for new template parameters when passed on command line."""
     parameter = TemplateParameter(name="new-parameter", description="", type="", possible_values=[], default=None)
     templates_source.update(id="dummy", version="2.0.0", parameters=[parameter])
 
@@ -453,3 +460,59 @@ def test_template_validate_remote(runner):
         cli, ["template", "validate", "--source", "https://github.com/SwissDataScienceCenter/renku-project-template"]
     )
     assert 0 == result.exit_code, format_result_exception(result)
+
+
+def test_template_dockerfile_checksum_update(runner, project, with_injection):
+    """Test updating Renku version in the Dockerfile also updates its template checksum."""
+    from renku.version import __version__
+
+    dockerfile = project.path / "Dockerfile"
+    new_content = replace_renku_version_in_dockerfile(dockerfile.read_text(), version="0.0.1")
+    write_and_commit_file(project.repository, dockerfile, new_content)
+
+    result = runner.invoke(cli, ["migrate", "--strict"])
+    assert result.exit_code == 0, result.output
+
+    with with_injection():
+        checksums = read_template_checksum()
+        dockerfile_checksum = checksums.get("Dockerfile")
+        assert hash_file(dockerfile) == dockerfile_checksum
+
+        assert not project.repository.is_dirty()
+        assert __version__ in dockerfile.read_text()
+
+
+def test_template_update_with_renames(runner, project_with_template, templates_source, with_injection):
+    """Test updating a renamed template."""
+    templates_source.rename(id="dummy", new_name="new-name", version="2.2.42")
+
+    result = runner.invoke(cli, ["template", "update"])
+
+    assert result.exit_code == 0, result.output
+
+    with with_injection():
+        assert "2.2.42" == project_context.project.template_metadata.template_ref
+        assert "new-name" == project_context.project.template_metadata.template_id
+        assert not project_with_template.repository.is_dirty()
+
+
+@pytest.mark.parametrize("templates_source", ["renku"], indirect=True)
+def test_template_update_with_modified_dockerfile(runner, project_with_template, templates_source, with_injection):
+    """Test template update only updates Dockerfile's Renku-specific section."""
+    dockerfile = project_with_template.path / "Dockerfile"
+
+    write_and_commit_file(
+        project_with_template.repository,
+        "Dockerfile",
+        f"{dockerfile.read_text()}\nRUN local modification outside Renku reserved section",
+    )
+
+    templates_source.update(id="dummy", version="2.0.0")
+
+    result = runner.invoke(cli, ["template", "update"])
+
+    assert result.exit_code == 0, format_result_exception(result)
+
+    assert "RUN local modification outside Renku reserved section" in dockerfile.read_text()
+    assert "RUN updated specific commands" in dockerfile.read_text()
+    assert "RUN specific commands" not in dockerfile.read_text()

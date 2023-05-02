@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+    Copyright 2017-2023 - Swiss Data Science Center (SDSC)
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -74,6 +74,10 @@ Schema classes used to serialize domain models to JSON-LD.
    :show-inheritance:
 
 .. automodule:: renku.command.schema.project
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.command.schema.workflow_file
    :members:
    :show-inheritance:
 
@@ -178,7 +182,11 @@ Workflows
    :members:
    :show-inheritance:
 
-.. automodule:: renku.core.workflow.concrete_execution_graph
+.. automodule:: renku.core.workflow.model.concrete_execution_graph
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.workflow.model.workflow_file
    :members:
    :show-inheritance:
 
@@ -190,6 +198,10 @@ Workflows
    :members:
 
 .. automodule:: renku.core.workflow.value_resolution
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.workflow.workflow_file
    :members:
    :show-inheritance:
 
@@ -244,11 +256,11 @@ Utilities
    :members:
    :show-inheritance:
 
-.. automodule:: renku.core.util.file_size
+.. automodule:: renku.core.util.git
    :members:
    :show-inheritance:
 
-.. automodule:: renku.core.util.git
+.. automodule:: renku.core.util.jwt
    :members:
    :show-inheritance:
 
@@ -268,15 +280,19 @@ Utilities
    :members:
    :show-inheritance:
 
+.. automodule:: renku.core.util.ssh
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.core.util.tabulate
+   :members:
+   :show-inheritance:
+
 .. automodule:: renku.core.util.urls
    :members:
    :show-inheritance:
 
 .. automodule:: renku.core.util.util
-   :members:
-   :show-inheritance:
-
-.. automodule:: renku.core.util.uuid
    :members:
    :show-inheritance:
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2021 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -30,7 +29,7 @@ def dummy_pre_run_plugin_hook():
     """A dummy hook to be used with the renku run plugin."""
     from renku.core.plugin import hookimpl
 
-    class _PreRun(object):
+    class _PreRun:
         """CmdlineTool Hook implementation namespace."""
 
         called = 0
@@ -48,7 +47,7 @@ def dummy_plan_plugin_hook():
     """A dummy hook to be used with the renku run plugin for plans."""
     from renku.core.plugin import hookimpl
 
-    class _PlanPlugin(object):
+    class _PlanPlugin:
         """CmdlineTool Hook implementation namespace."""
 
         called = 0
@@ -68,7 +67,7 @@ def dummy_activity_plugin_hook():
     """A dummy hook to be used with the renku run plugin."""
     from renku.core.plugin import hookimpl
 
-    class _ActivityAnnotations(object):
+    class _ActivityAnnotations:
         """CmdlineTool Hook implementation namespace."""
 
         @hookimpl

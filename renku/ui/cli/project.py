@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -38,7 +37,7 @@ from pathlib import Path
 import click
 
 import renku.ui.cli.utils.color as color
-from renku.core.util.util import NO_VALUE
+from renku.domain_model.constant import NO_VALUE
 from renku.ui.cli.utils.callback import ClickCallback
 
 
@@ -149,6 +148,9 @@ def _print_project(project):
     click.echo(click.style("Renku Version: ", bold=True, fg=color.MAGENTA) + click.style(project.agent, bold=True))
     click.echo(
         click.style("Project Template: ", bold=True, fg=color.MAGENTA) + click.style(project.template_info, bold=True)
+    )
+    click.echo(
+        click.style("SSH Supported: ", bold=True, fg=color.MAGENTA) + click.style(project.ssh_supported, bold=True)
     )
 
     if project.annotations:

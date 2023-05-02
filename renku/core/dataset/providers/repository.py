@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,6 +60,6 @@ def make_request(url, accept: str = "application/json"):
 
     response = requests.get(url, headers={"Accept": accept})
     if response.status_code != 200:
-        raise LookupError("record not found. Status: {}".format(response.status_code))
+        raise LookupError(f"record not found. Status: {response.status_code}")
 
     return response

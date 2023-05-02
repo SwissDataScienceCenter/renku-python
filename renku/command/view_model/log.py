@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -197,10 +195,10 @@ class LogViewModel:
             descriptions.append("deleted")
             details.deleted = True
 
-        previous_dataset = None
+        previous_dataset: Optional[Dataset] = None
 
         if dataset.is_derivation():
-            previous_dataset = dataset_gateway.get_by_id(dataset.derived_from.url_id)  # type: ignore
+            previous_dataset = dataset_gateway.get_by_id(dataset.derived_from.value)  # type: ignore
 
         current_files = {f for f in dataset.dataset_files if not f.date_removed}
         previous_files = set()
@@ -222,7 +220,7 @@ class LogViewModel:
 
             descriptions.append(f"{len(new_files)} file(s) added")
             details.files_added = [str(f.entity.path) for f in new_files]
-            details.modified = True
+            details.modified = bool(previous_files)
 
         if previous_files and {f.id for f in previous_files}.difference({f.id for f in current_files}):
             # NOTE: Files removed
@@ -277,8 +275,8 @@ class LogViewModel:
                 details.keywords_removed = list(previous_keywords.difference(current_keywords))
                 modified = True
 
-            current_images = set(dataset.images)
-            previous_images = set(previous_dataset.images)
+            current_images = set(dataset.images) if dataset.images else set()
+            previous_images = set(previous_dataset.images) if previous_dataset.images else set()
 
             if current_images != previous_images:
                 details.images_changed_to = [i.content_url for i in current_images]

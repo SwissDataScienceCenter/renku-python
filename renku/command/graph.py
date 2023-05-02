@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,14 +17,17 @@
 """Knowledge graph building."""
 
 import json
-from typing import Dict, List, Set, Union
+from typing import Dict, List, Optional, Set, Union
+
+from pydantic import validate_arguments
 
 from renku.command.command_builder.command import Command, inject
-from renku.command.schema.activity import ActivitySchema
+from renku.command.schema.activity import ActivitySchema, WorkflowFileActivityCollectionSchema
 from renku.command.schema.composite_plan import CompositePlanSchema
 from renku.command.schema.dataset import DatasetSchema, DatasetTagSchema
 from renku.command.schema.plan import PlanSchema
 from renku.command.schema.project import ProjectSchema
+from renku.command.schema.workflow_file import WorkflowFileCompositePlanSchema, WorkflowFilePlanSchema
 from renku.command.view_model.graph import GraphViewModel
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
@@ -37,12 +39,13 @@ from renku.core.util.shacl import validate_graph
 from renku.core.util.urls import get_host
 from renku.domain_model.dataset import Dataset, DatasetTag
 from renku.domain_model.project import Project
-from renku.domain_model.provenance.activity import Activity
+from renku.domain_model.provenance.activity import Activity, WorkflowFileActivityCollection
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.plan import AbstractPlan, Plan
+from renku.domain_model.workflow.workflow_file import WorkflowFileCompositePlan, WorkflowFilePlan
 
 try:
-    import importlib_resources
+    import importlib_resources  # type: ignore[import]
 except ImportError:
     import importlib.resources as importlib_resources  # type: ignore
 
@@ -52,7 +55,10 @@ def export_graph_command():
     return Command().command(export_graph).with_database(write=False).require_migration()
 
 
-def export_graph(format: str = "json-ld", revision_or_range: str = None, strict: bool = False) -> GraphViewModel:
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def export_graph(
+    format: str = "json-ld", revision_or_range: Optional[str] = None, strict: bool = False
+) -> GraphViewModel:
     """Output graph in specific format.
 
     Args:
@@ -153,9 +159,14 @@ def get_graph_for_all_objects(
     """
     project = project_gateway.get_project()
     # NOTE: Include deleted activities when exporting graph
-    objects: List[Union[Project, Dataset, DatasetTag, Activity, AbstractPlan]] = activity_gateway.get_all_activities(
-        include_deleted=True
-    )
+    objects: List[Union[Project, Dataset, DatasetTag, Activity, AbstractPlan, WorkflowFileActivityCollection]]
+
+    objects = activity_gateway.get_all_activities(include_deleted=True)
+
+    workflow_file_executions = [
+        a for a in activity_gateway.get_all_activity_collections() if isinstance(a, WorkflowFileActivityCollection)
+    ]
+    objects.extend(workflow_file_executions)
 
     processed_plans = set()
 
@@ -184,7 +195,8 @@ def get_graph_for_all_objects(
 
 
 def _convert_entities_to_graph(
-    entities: List[Union[Project, Dataset, DatasetTag, Activity, AbstractPlan]], project: Project
+    entities: List[Union[Project, Dataset, DatasetTag, Activity, AbstractPlan, WorkflowFileActivityCollection]],
+    project: Project,
 ) -> List[Dict]:
     """Convert entities to JSON-LD graph.
 
@@ -201,8 +213,11 @@ def _convert_entities_to_graph(
         Dataset: DatasetSchema,
         DatasetTag: DatasetTagSchema,
         Activity: ActivitySchema,
+        WorkflowFilePlan: WorkflowFilePlanSchema,
         Plan: PlanSchema,
+        WorkflowFileCompositePlan: WorkflowFileCompositePlanSchema,
         CompositePlan: CompositePlanSchema,
+        WorkflowFileActivityCollection: WorkflowFileActivityCollectionSchema,
     }
 
     processed_plans = set()
@@ -211,18 +226,18 @@ def _convert_entities_to_graph(
     for entity in entities:
         if entity.id in processed_plans:
             continue
-        if isinstance(entity, (Dataset, Activity, AbstractPlan)):
+        if isinstance(entity, (Dataset, Activity, AbstractPlan, WorkflowFileActivityCollection)):
             # NOTE: Since the database is read-only, it's OK to modify objects; they won't be written back
             entity.unfreeze()
             entity.project_id = project_id
 
-            if isinstance(entity, Activity):
+            if isinstance(entity, (Activity, WorkflowFileActivityCollection)):
                 entity.association.plan.unfreeze()
                 entity.association.plan.project_id = project_id
         schema = next(s for t, s in schemas.items() if isinstance(entity, t))
         graph.extend(schema(flattened=True).dump(entity))
 
-        if not isinstance(entity, Activity):
+        if not isinstance(entity, (Activity, WorkflowFileActivityCollection)):
             continue
 
         # NOTE: mark activity plans as processed

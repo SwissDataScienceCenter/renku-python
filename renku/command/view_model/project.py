@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +19,7 @@ import json
 from datetime import datetime
 from typing import List, Optional
 
+from renku.core.config import get_value
 from renku.domain_model.project import Project
 from renku.domain_model.provenance.agent import Person
 
@@ -39,6 +38,7 @@ class ProjectViewModel:
         annotations: Optional[str],
         template_info: str,
         keywords: Optional[List[str]],
+        ssh_supported: bool = False,
     ):
         self.id = id
         self.name = name
@@ -52,6 +52,7 @@ class ProjectViewModel:
         self.template_info = template_info
         self.keywords = keywords
         self.keywords_str = ", ".join(keywords) if keywords else ""
+        self.ssh_supported = ssh_supported
 
     @classmethod
     def from_project(cls, project: Project):
@@ -65,11 +66,16 @@ class ProjectViewModel:
         """
         template_info = ""
 
-        if project.template_source:
-            if project.template_source == "renku":
-                template_info = f"{project.template_id} ({project.template_version})"
+        if project.template_metadata.template_source:
+            if project.template_metadata.template_source == "renku":
+                template_info = (
+                    f"{project.template_metadata.template_id} ({project.template_metadata.template_version})"
+                )
             else:
-                template_info = f"{project.template_source}@{project.template_ref}: {project.template_id}"
+                template_info = (
+                    f"{project.template_metadata.template_source}@"
+                    f"{project.template_metadata.template_ref}: {project.template_metadata.template_id}"
+                )
 
         return cls(
             id=project.id,
@@ -83,4 +89,5 @@ class ProjectViewModel:
             else None,
             template_info=template_info,
             keywords=project.keywords,
+            ssh_supported=get_value("renku", "ssh_supported") == "true" or project.template_metadata.ssh_supported,
         )

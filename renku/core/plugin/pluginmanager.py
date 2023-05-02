@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022- Swiss Data Science Center (SDSC)
+# Copyright 2017-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -16,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """pluggy Plugin setup."""
+
 from functools import lru_cache
 
 import pluggy
@@ -29,12 +29,14 @@ def get_plugin_manager():
     from renku.core.plugin import provider as provider_hook_specs
     from renku.core.plugin import run as run_hook_specs
     from renku.core.plugin import workflow as workflow_hook_specs
+    from renku.core.plugin import workflow_file_parser
 
     pm = pluggy.PluginManager("renku")
+    pm.add_hookspecs(dataset_provider)
     pm.add_hookspecs(provider_hook_specs)
     pm.add_hookspecs(run_hook_specs)
+    pm.add_hookspecs(workflow_file_parser)
     pm.add_hookspecs(workflow_hook_specs)
-    pm.add_hookspecs(dataset_provider)
     pm.load_setuptools_entrypoints("renku")
 
     for cls in default_implementations.__dict__.values():
@@ -44,4 +46,5 @@ def get_plugin_manager():
             pm.register(cls())
         except TypeError:
             pm.register(cls)
+
     return pm

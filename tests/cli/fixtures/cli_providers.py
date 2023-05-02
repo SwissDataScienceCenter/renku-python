@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2021 Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,10 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku CLI fixtures for providers testing."""
+
 import json
 import os
-import pathlib
+import posixpath
 import re
+import shutil
 import urllib
 import warnings
 
@@ -97,6 +97,41 @@ def dataverse_demo(project, dataverse_demo_cleanup):
 
 
 @pytest.fixture
+def cloud_storage_credentials(project):
+    """Set credentials for all cloud storages."""
+    # S3
+    s3_access_key_id = os.getenv("CLOUD_STORAGE_S3_ACCESS_KEY_ID", "")
+    s3_secret_access_key = os.getenv("CLOUD_STORAGE_S3_SECRET_ACCESS_KEY", "")
+    s3_section = "renku-python-test-public.os.zhdk.cloud.switch.ch"
+    set_value(section=s3_section, key="access-key-id", value=s3_access_key_id, global_only=True)
+    set_value(section=s3_section, key="secret-access-key", value=s3_secret_access_key, global_only=True)
+    s3_section = "renku-python-integration-test.os.zhdk.cloud.switch.ch"
+    set_value(section=s3_section, key="access-key-id", value=s3_access_key_id, global_only=True)
+    set_value(section=s3_section, key="secret-access-key", value=s3_secret_access_key, global_only=True)
+
+    # Azure
+    azure_account = "renkupythontest1"
+    azure_key = os.getenv("CLOUD_STORAGE_AZURE_KEY", "")
+    azure_section = f"{azure_account}.blob.core.windows.net"
+    set_value(section=azure_section, key="account", value=azure_account, global_only=True)
+    set_value(section=azure_section, key="key", value=azure_key, global_only=True)
+
+
+@pytest.fixture
+def external_cloud_storage(directory_tree, fake_home) -> str:
+    """Path to a directory to be used with an external cloud storage provider."""
+    external_storage = fake_home / "external" / "cloud" / "storage"
+
+    shutil.rmtree(external_storage, ignore_errors=True)
+    shutil.copytree(directory_tree, external_storage)
+
+    try:
+        yield external_storage.as_posix()
+    finally:
+        shutil.rmtree(external_storage, ignore_errors=True)
+
+
+@pytest.fixture
 def doi_responses():
     """Responses for doi.org requests."""
     import responses
@@ -129,9 +164,7 @@ def doi_responses():
                 ),
             )
 
-        response.add_callback(
-            method="GET", url=re.compile("{base_url}/.*".format(base_url=DOI_BASE_URL)), callback=doi_callback
-        )
+        response.add_callback(method="GET", url=re.compile(f"{DOI_BASE_URL}/.*"), callback=doi_callback)
 
         def version_callback(_):
             return (
@@ -143,8 +176,8 @@ def doi_responses():
         base_url = "https://dataverse.harvard.edu"
 
         url_parts = list(urllib.parse.urlparse(base_url))
-        url_parts[2] = pathlib.posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSION_API)
-        pattern = "{url}.*".format(url=urllib.parse.urlunparse(url_parts))
+        url_parts[2] = posixpath.join(DATAVERSE_API_PATH, DATAVERSE_VERSION_API)
+        pattern = f"{urllib.parse.urlunparse(url_parts)}.*"
 
         response.add_callback(method="GET", url=re.compile(pattern), callback=version_callback)
         yield response

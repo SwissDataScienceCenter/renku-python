@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
+# Copyright 2018-2023- Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -19,13 +18,15 @@
 
 from typing import List, Optional
 
+from pydantic import validate_arguments
+
 from renku.command.command_builder.command import Command, inject
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.util.os import get_relative_paths
 from renku.core.workflow.activity import get_activities_until_paths, sort_activities
-from renku.core.workflow.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.execute import execute_workflow_graph
+from renku.core.workflow.model.concrete_execution_graph import ExecutionGraph
 from renku.domain_model.project_context import project_context
 
 
@@ -40,6 +41,7 @@ def rerun_command(skip_metadata_update: bool):
 
 
 @inject.autoparams()
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
 def _rerun(
     dry_run: bool,
     sources: List[str],

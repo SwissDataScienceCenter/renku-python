@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2021 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -40,7 +39,7 @@ def mock_redis():
     with monkey_patch.context() as m:
         import fakeredis
 
-        fake_redis = fakeredis.FakeRedis()
+        fake_redis = fakeredis.FakeRedis(server=fakeredis.FakeServer())
         from walrus import Database
 
         fake_model_db = Database(connection_pool=fake_redis.connection_pool)

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2021 Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -17,7 +16,9 @@
 # limitations under the License.
 """Renku session fixtures."""
 
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -35,8 +36,12 @@ def dummy_session_provider():
     class _DummySessionProvider(ISessionProvider):
         sessions = list()
 
-        def get_name(self):
+        @property
+        def name(self):
             return "dummy"
+
+        def is_remote_provider(self):
+            return False
 
         def build_image(self, image_descriptor: Path, image_name: str, config: Optional[Dict[str, Any]]):
             pass
@@ -49,7 +54,18 @@ def dummy_session_provider():
             return self
 
         def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
-            return [Session(id=n, status="running", url="http://localhost/") for n in self.sessions]
+            return [
+                Session(
+                    id=n,
+                    status="running",
+                    url="http://localhost/",
+                    start_time=datetime.now(),
+                    provider="dummy",
+                    commit="abcdefg",
+                    branch="master",
+                )
+                for n in self.sessions
+            ]
 
         def session_start(
             self,
@@ -60,10 +76,11 @@ def dummy_session_provider():
             mem_request: Optional[str] = None,
             disk_request: Optional[str] = None,
             gpu_request: Optional[str] = None,
-        ) -> str:
-            name = uuid4().hex
+            **kwargs,
+        ) -> Tuple[str, str]:
+            name = f"session-random-{uuid4().hex}-name"
             self.sessions.append(name)
-            return name
+            return name, ""
 
         def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> bool:
             if stop_all:
@@ -76,13 +93,25 @@ def dummy_session_provider():
         def session_url(self, session_name: str) -> Optional[str]:
             return "http://localhost/"
 
-        def pre_start_checks(self):
+        def pre_start_checks(self, **kwargs):
             pass
+
+        def get_start_parameters(self):
+            return []
+
+        def get_open_parameters(self):
+            return []
+
+        def session_open(self, project_name: str, session_name: str, **kwargs) -> bool:
+            browser.open(self.session_url(session_name))
+            return True
 
     plugin = _DummySessionProvider()
     pm = plugin_manager.get_plugin_manager()
     pm.register(plugin)
 
-    yield
+    browser = MagicMock()
+
+    yield browser
 
     pm.unregister(plugin)

@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2020-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2020-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -194,7 +193,7 @@ def test_create_project_from_template_failures(svc_client_templates_creation):
     response = svc_client.post("/templates.create_project", data=json.dumps(payload_missing_project), headers=headers)
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert UserProjectCreationError.code == response.json["error"]["code"]
+    assert UserProjectCreationError.code == response.json["error"]["code"], response.json
     assert "project name" in response.json["error"]["devMessage"].lower()
 
     # NOTE: fail on wrong git url - unexpected when invoked from the UI
@@ -204,7 +203,7 @@ def test_create_project_from_template_failures(svc_client_templates_creation):
     response = svc_client.post("/templates.create_project", data=json.dumps(payload_wrong_repo), headers=headers)
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert UserProjectCreationError.code == response.json["error"]["code"]
+    assert UserProjectCreationError.code == response.json["error"]["code"], response.json
     assert "git_url" in response.json["error"]["devMessage"]
 
     # NOTE: missing fields -- unlikely to happen. If that is the case, we should determine if it's a user error or not
@@ -225,7 +224,7 @@ def test_create_project_from_template_failures(svc_client_templates_creation):
     response = svc_client.post("/templates.create_project", data=json.dumps(payload_fake_id), headers=headers)
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
-    assert UserProjectCreationError.code == response.json["error"]["code"]
+    assert UserProjectCreationError.code == response.json["error"]["code"], response.json
     assert "does not exist" in response.json["error"]["devMessage"]
     assert fake_identifier in response.json["error"]["devMessage"]
 
@@ -239,6 +238,6 @@ def test_create_project_from_template_failures(svc_client_templates_creation):
 
         assert 200 == response.status_code
         assert {"error"} == set(response.json.keys())
-        assert UserProjectCreationError.code == response.json["error"]["code"]
+        assert UserProjectCreationError.code == response.json["error"]["code"], response.json
         assert "does not exist" in response.json["error"]["devMessage"]
         assert fake_identifier in response.json["error"]["devMessage"]

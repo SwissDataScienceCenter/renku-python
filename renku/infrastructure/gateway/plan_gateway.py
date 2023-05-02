@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -18,6 +17,8 @@
 """Renku plan database gateway implementation."""
 
 from typing import Dict, List, Optional, cast
+
+import deal
 
 from renku.core import errors
 from renku.core.interface.plan_gateway import IPlanGateway
@@ -44,7 +45,7 @@ class PlanGateway(IPlanGateway):
             raise errors.WorkflowNotFoundError(name_or_id)
         return workflow
 
-    def list_by_name(self, starts_with: str, ends_with: str = None) -> List[str]:
+    def list_by_name(self, starts_with: str, ends_with: Optional[str] = None) -> List[str]:
         """Search plans by name."""
         return [
             name
@@ -63,6 +64,10 @@ class PlanGateway(IPlanGateway):
         """Get all plans in project."""
         return list(project_context.database["plans"].values())
 
+    @deal.pre(lambda _: _.plan.date_created is not None)
+    @deal.pre(lambda _: _.plan.date_created >= project_context.project.date_created)
+    @deal.pre(lambda _: _.plan.date_modified is None or _.plan.date_modified >= project_context.project.date_created)
+    @deal.pre(lambda _: _.plan.date_removed is None or _.plan.date_removed >= project_context.project.date_created)
     def add(self, plan: AbstractPlan) -> None:
         """Add a plan to the database."""
         database = project_context.database

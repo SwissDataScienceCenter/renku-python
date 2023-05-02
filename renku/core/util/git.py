@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +17,7 @@
 
 import contextlib
 import os
-import pathlib
+import posixpath
 import re
 import shutil
 import sys
@@ -32,13 +30,13 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union, cast
 from uuid import uuid4
 
 from renku.core import errors
+from renku.infrastructure.repository import DiffChangeType
 
 if TYPE_CHECKING:
     from renku.domain_model.entity import Collection, Entity
     from renku.domain_model.git import GitURL
     from renku.domain_model.provenance.agent import Person, SoftwareAgent
     from renku.infrastructure.repository import Commit, Remote, Repository
-
 
 COMMIT_DIFF_STRATEGY = "DIFF"
 STARTED_AT = int(time.time() * 1e3)
@@ -96,7 +94,7 @@ def is_valid_git_repository(repository: Optional["Repository"]) -> bool:
         repository(Optional[Repository]): The repository to check.
 
     Returns:
-        bool: Whether or not this is a valid Git repository.
+        bool: Whether this is a valid Git repository.
 
     """
     return repository is not None and repository.head.is_valid()
@@ -196,7 +194,6 @@ def get_renku_repo_url(remote_url, deployment_hostname=None, access_token=None):
         remote_url: The repository URL.
         deployment_hostname: The host name used by this deployment (Default value = None).
         access_token: The OAuth2 access token (Default value = None).
-
     Returns:
         The Renku repository URL with credentials.
     """
@@ -204,7 +201,8 @@ def get_renku_repo_url(remote_url, deployment_hostname=None, access_token=None):
     path = parsed_remote.path.strip("/")
     if path.startswith("gitlab/"):
         path = path.replace("gitlab/", "")
-    path = pathlib.posixpath.join(CLI_GITLAB_ENDPOINT, path)
+    if not path.startswith(f"{CLI_GITLAB_ENDPOINT}/"):
+        path = posixpath.join(CLI_GITLAB_ENDPOINT, path)
 
     credentials = f"renku:{access_token}@" if access_token else ""
     hostname = deployment_hostname or parsed_remote.hostname
@@ -241,6 +239,12 @@ def create_backup_remote(repository: "Repository", remote_name: str, url: str) -
         return backup_remote_name, False, remote
 
 
+def set_git_credential_helper(repository: "Repository", hostname):
+    """Set up credential helper for renku git."""
+    with repository.get_configuration(writable=True) as config:
+        config.set_value("credential", "helper", f"!renku credentials --hostname {hostname}")
+
+
 def get_full_repository_path(url: Optional[str]) -> str:
     """Extract hostname/path of a git repository from its URL.
 
@@ -250,11 +254,11 @@ def get_full_repository_path(url: Optional[str]) -> str:
     Returns:
         The hostname plus path extracted from the URL.
     """
-    if str is None:
+    if url is None:
         return ""
 
     parsed_url = parse_git_url(url)
-    return pathlib.posixpath.join(parsed_url.hostname, parsed_url.path)  # type:ignore
+    return posixpath.join(parsed_url.hostname, parsed_url.path)  # type:ignore
 
 
 def get_repository_name(url: str) -> str:
@@ -365,7 +369,11 @@ def is_path_safe(path: Union[Path, str]) -> bool:
 
 
 def get_entity_from_revision(
-    repository: "Repository", path: Union[Path, str], revision: Optional[str] = None, bypass_cache: bool = False
+    repository: "Repository",
+    path: Union[Path, str],
+    revision: Optional[str] = None,
+    bypass_cache: bool = False,
+    checksum: Optional[str] = None,
 ) -> "Entity":
     """Return an Entity instance from given path and revision.
 
@@ -374,11 +382,12 @@ def get_entity_from_revision(
         path(Union[Path, str]): The path of the entity.
         revision(str, optional): The revision to check at (Default value = None).
         bypass_cache(bool): Whether to ignore cached entries and get information from disk (Default value = False).
-
+        checksum(str, optional): Pre-calculated checksum for performance reasons, will be calculated if not set.
     Returns:
         Entity: The Entity for the given path and revision.
 
     """
+    from renku.domain_model.constant import NON_EXISTING_ENTITY_CHECKSUM
     from renku.domain_model.entity import Collection, Entity
 
     def get_directory_members(absolute_path: Path) -> List[Entity]:
@@ -407,10 +416,13 @@ def get_entity_from_revision(
         return cached_entry
 
     # NOTE: For untracked directory the hash is None; make sure to stage them first before calling this function.
-    checksum = repository.get_object_hash(revision=revision, path=path)
+    if not checksum:
+        checksum = repository.get_object_hash(revision=revision, path=path)
     # NOTE: If object was not found at a revision it's either removed or exists in a different revision; keep the
     # entity and use revision as checksum
-    checksum = checksum or revision or "HEAD"
+    if isinstance(revision, str) and revision == "HEAD":
+        revision = repository.head.commit.hexsha
+    checksum = checksum or revision or NON_EXISTING_ENTITY_CHECKSUM
     id = Entity.generate_id(checksum=checksum, path=path)
 
     absolute_path = repository.path / path
@@ -478,7 +490,8 @@ def commit_changes(*paths: Union[Path, str], repository: "Repository", message=N
         if saved_paths:
             if not message:
                 # Show saved files in message
-                max_len = 100
+                max_line_len = 100
+                max_total_len = 100000
                 message = "Saved changes to: "
                 paths_with_lens = cast(
                     List[Tuple[str, int]],
@@ -489,7 +502,10 @@ def commit_changes(*paths: Union[Path, str], repository: "Repository", message=N
                     )[1:],
                 )
                 # limit first line to max_len characters
-                message += " ".join(p if l < max_len else "\n\t" + p for p, l in paths_with_lens)
+                message += " ".join(p if l < max_line_len else "\n\t" + p for p, l in paths_with_lens)
+
+                if len(message) > max_total_len:
+                    message = message[: max_total_len - 3] + "..."
 
             repository.commit(message)
     except errors.GitCommandError as e:
@@ -602,7 +618,7 @@ def push_changes(repository: "Repository", remote: Optional[str] = None, reset: 
 
 def clone_renku_repository(
     url: str,
-    path: Union[Path, str],
+    path: Optional[Union[Path, str]],
     gitlab_token=None,
     deployment_hostname=None,
     depth: Optional[int] = None,
@@ -632,13 +648,15 @@ def clone_renku_repository(
         progress: The GitProgress object (Default value = None).
         config(Optional[dict], optional): Set configuration for the project (Default value = None).
         raise_git_except: Whether to raise git exceptions (Default value = False).
-        checkout_revision: The revision to checkout after clone (Default value = None).
+        checkout_revision: The revision to check out after clone (Default value = None).
         use_renku_credentials(bool, optional): Whether to use Renku provided credentials (Default value = False).
         reuse_existing_repository(bool, optional): Whether to clone over an existing repository (Default value = False).
 
     Returns:
         The cloned repository.
     """
+    from renku.core.login import has_credentials_for_hostname
+
     parsed_url = parse_git_url(url)
 
     clone_options = None
@@ -649,7 +667,11 @@ def clone_renku_repository(
         git_url = str(absolute_path)
     elif parsed_url.scheme in ["http", "https"] and gitlab_token:
         git_url = get_oauth_url(url, gitlab_token)
-    elif parsed_url.scheme in ["http", "https"] and use_renku_credentials:
+    elif (
+        parsed_url.scheme in ["http", "https"]
+        and use_renku_credentials
+        and has_credentials_for_hostname(parsed_url.hostname)  # NOTE: Don't change remote URL if no credentials exist
+    ):
         clone_options = [f"--config credential.helper='!renku credentials --hostname {parsed_url.hostname}'"]
         deployment_hostname = deployment_hostname or parsed_url.hostname
         git_url = get_renku_repo_url(url, deployment_hostname=deployment_hostname, access_token=None)
@@ -675,13 +697,16 @@ def clone_renku_repository(
 
     if create_backup:
         create_backup_remote(repository=repository, remote_name="origin", url=url)
+        set_git_credential_helper(
+            repository=cast("Repository", repository), hostname=deployment_hostname or parsed_url.hostname
+        )
 
     return repository
 
 
 def clone_repository(
     url,
-    path: Union[Path, str] = None,
+    path: Optional[Union[Path, str]] = None,
     install_githooks=True,
     install_lfs=True,
     skip_smudge=True,
@@ -693,7 +718,7 @@ def clone_repository(
     checkout_revision=None,
     no_checkout: bool = False,
     clean: bool = False,
-    clone_options: List[str] = None,
+    clone_options: Optional[List[str]] = None,
 ) -> "Repository":
     """Clone a Git repository and install Git hooks and LFS.
 
@@ -708,7 +733,7 @@ def clone_repository(
         progress: The GitProgress object (Default value = None).
         config(Optional[dict], optional): Set configuration for the project (Default value = None).
         raise_git_except: Whether to raise git exceptions (Default value = False).
-        checkout_revision: The revision to checkout after clone (Default value = None).
+        checkout_revision: The revision to check out after clone (Default value = None).
         no_checkout(bool, optional): Whether to perform a checkout (Default value = False).
         clean(bool, optional): Whether to require the target folder to be clean (Default value = False).
         clone_options(List[str], optional): Additional clone options (Default value = None).
@@ -716,8 +741,10 @@ def clone_repository(
     Returns:
         The cloned repository.
     """
-    from renku.core.githooks import install
+    from renku.core.githooks import install_githooks as install_githooks_function
     from renku.infrastructure.repository import Repository
+
+    path = Path(path) if path else Path(get_repository_name(url))
 
     def handle_git_exception():
         """Handle git exceptions."""
@@ -734,7 +761,7 @@ def clone_repository(
         raise errors.GitError(message)
 
     def clean_directory():
-        if not clean:
+        if not clean or not path:
             return
         try:
             shutil.rmtree(path)
@@ -754,7 +781,7 @@ def clone_repository(
             if remote and have_same_remote(remote.url, url):
                 repository.reset(hard=True)
                 repository.fetch(all=True, tags=True)
-                # NOTE: By default we checkout remote repository's HEAD since the local HEAD might not point to
+                # NOTE: By default we check out remote repository's HEAD since the local HEAD might not point to
                 # the default branch.
                 default_checkout_revision = checkout_revision or "origin/HEAD"
                 repository.checkout(default_checkout_revision)
@@ -778,7 +805,7 @@ def clone_repository(
 
         return Repository.clone_from(
             url,
-            path,
+            cast(Path, path),
             branch=branch,
             recursive=recursive,
             depth=depth,
@@ -788,8 +815,6 @@ def clone_repository(
         )
 
     assert config is None or isinstance(config, dict), f"Config should be a dict not '{type(config)}'"
-
-    path = Path(path) if path else Path(get_repository_name(url))
 
     existing_repository = check_and_reuse_existing_repository()
     if existing_repository is not None:
@@ -829,7 +854,7 @@ def clone_repository(
                 config_writer.set_value(section, option, value)
 
     if install_githooks:
-        install(force=True, path=repository.path)
+        install_githooks_function(force=True, path=repository.path)
 
     if install_lfs:
         repository.lfs.install(skip_smudge=skip_smudge)
@@ -853,7 +878,7 @@ def get_git_progress_instance():
             """Callback for printing Git operation status."""
             self._clear_line()
             print(self._cur_line, end="\r")
-            self._previous_line_length = len(self._cur_line)
+            self._previous_line_length = len(self._cur_line) if self._cur_line else 0
             if (op_code & RemoteProgress.END) != 0:
                 print()
 
@@ -871,7 +896,7 @@ def get_file_size(repository_path: Path, path: str) -> Optional[int]:
             ("git", "lfs", "ls-files", "--name-only", "--size"),
             stdout=PIPE,
             cwd=repository_path,
-            universal_newlines=True,
+            text=True,
         )
     except SubprocessError:
         pass
@@ -1094,7 +1119,7 @@ def finalize_commit(
     if isinstance(commit_only, list):
         for path_ in commit_only:
             p = repository.path / path_
-            if p.exists() or change_types.get(str(path_)) == "D":
+            if p.exists() or change_types.get(str(path_)) == DiffChangeType.DELETED:
                 repository.add(path_)
 
     if not commit_only:

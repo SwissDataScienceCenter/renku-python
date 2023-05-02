@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,27 +27,29 @@ class TemplateViewModel:
 
     def __init__(
         self,
+        aliases: List[str],
         description: str,
         icon: Optional[str],
         id: str,
         immutable_files: Optional[List[str]],
         name: str,
+        parameters: List[TemplateParameter],
         reference: Optional[str],
         source: Optional[str],
-        parameters: List[TemplateParameter],
         version: Optional[str],
         versions: List[str],
     ):
+        self.aliases: List[str] = aliases
         self.description: str = description
         self.icon = icon
         self.id: str = id
         self.immutable_files: Optional[List[str]] = immutable_files
         self.name: str = name
-        self.reference = reference
-        self.source = source
         self.parameters: List[TemplateParameterViewModel] = [
             TemplateParameterViewModel.from_template_parameter(p) for p in parameters
         ]
+        self.reference = reference
+        self.source = source
         self.version = version
         self.versions = versions
 
@@ -64,15 +64,16 @@ class TemplateViewModel:
             TemplateViewModel: View model for a template.
         """
         return cls(
-            source=template.source,
-            reference=template.reference,
-            version=template.version,
-            id=template.id,
-            name=template.name,
+            aliases=template.aliases,
             description=template.description,
-            parameters=template.parameters,
             icon=template.icon,
+            id=template.id,
             immutable_files=template.immutable_files,
+            name=template.name,
+            parameters=template.parameters,
+            reference=template.reference,
+            source=template.source,
+            version=template.version,
             versions=template.get_all_references(),
         )
 
@@ -117,21 +118,31 @@ class TemplateChangeViewModel:
     """A view model for resulting changes from a template set/update."""
 
     def __init__(
-        self, id: str, source: Optional[str], reference: Optional[str], version: Optional[str], file_changes: List[str]
+        self,
+        file_changes: List[str],
+        id: str,
+        old_id: Optional[str],
+        reference: Optional[str],
+        source: Optional[str],
+        version: Optional[str],
     ):
-        self.id: str = id
-        self.source = source
-        self.reference = reference
-        self.version = version
         self.file_changes = file_changes
+        self.id: str = id
+        self.old_id: Optional[str] = old_id if old_id != id else ""
+        self.reference = reference
+        self.source = source
+        self.version = version
 
     @classmethod
-    def from_template(cls, template: RenderedTemplate, actions: Dict[str, FileAction]) -> "TemplateChangeViewModel":
+    def from_template(
+        cls, template: RenderedTemplate, actions: Dict[str, FileAction], old_id: Optional[str] = None
+    ) -> "TemplateChangeViewModel":
         """Create view model from ``Template``.
 
         Args:
             template(RenderedTemplate): Input rendered template.
             actions(Dict[str, FileAction]): Mapping of paths to actions taken when rendering the template.
+            old_id(Optional[str]: Current template Id.
 
         Returns:
             TemplateChangeViewModel: View model for the template change.
@@ -145,6 +156,7 @@ class TemplateChangeViewModel:
             FileAction.KEEP: "Keep",
             FileAction.OVERWRITE: "Overwrite",
             FileAction.RECREATE: "Recreate deleted file",
+            FileAction.UPDATE_DOCKERFILE: "Update",
         }
 
         file_changes = [
@@ -153,9 +165,10 @@ class TemplateChangeViewModel:
         ]
 
         return cls(
-            id=template.template.id,
-            source=template.template.source,
-            reference=template.template.reference,
-            version=template.template.version,
             file_changes=file_changes,
+            id=template.template.id,
+            old_id=old_id,
+            reference=template.template.reference,
+            source=template.template.source,
+            version=template.template.version,
         )

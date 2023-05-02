@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +16,7 @@
 """Tag management for dataset."""
 
 import re
-from typing import List, Optional
+from typing import List, Optional, cast
 
 from renku.command.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.core import errors
@@ -70,7 +68,7 @@ def list_dataset_tags(dataset_name, format):
 
     tags = datasets_provenance.get_all_tags(dataset)
     tags = sorted(tags, key=lambda t: t.date_created)
-    tags = [DynamicProxy(t) for t in tags]
+    tags = [cast(Dataset, DynamicProxy(t)) for t in tags]
     for tag in tags:
         tag.dataset = dataset.title
 
@@ -120,7 +118,7 @@ def prompt_access_token(exporter):
     Returns:
         The new access token
     """
-    text_prompt = f"You must configure an access token\nCreate one at: {exporter.access_token_url()}\nAccess token: "
+    text_prompt = f"You must configure an access token\nCreate one at: {exporter.get_access_token_url()}\nAccess token"
     return communication.prompt(text_prompt, type=str)
 
 

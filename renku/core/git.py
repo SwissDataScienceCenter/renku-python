@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +21,7 @@ import tempfile
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Tuple
+from typing import Any, Optional, Tuple, Type
 
 from renku.core import errors
 from renku.core.storage import checkout_paths_from_storage
@@ -124,7 +122,7 @@ def prepare_worktree(path=None, branch_name=None, commit=None) -> Tuple[Reposito
 
 def finalize_worktree(isolation, path, branch_name, delete, new_branch, merge_args=("--ff-only",), exception=None):
     """Cleanup and merge a previously created Git worktree."""
-    exc_info = (None, None, None)
+    exc_info: Tuple[Optional[Type[Any]], Any, Any] = (None, None, None)
 
     if exception:
         exc_info = (type(exception), exception, exception.__traceback__)
@@ -207,6 +205,6 @@ def ensure_clean(ignore_std_streams=False):
         if dirty_paths - set(mapped_streams.values()):
             _clean_streams(repository, mapped_streams)
             raise errors.DirtyRepository(repository)
-    elif repository.is_dirty():
+    elif repository.is_dirty(untracked_files=False):
         _clean_streams(repository, mapped_streams)
         raise errors.DirtyRepository(repository)

@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
 #
-# Copyright 2017-2022 - Swiss Data Science Center (SDSC)
+# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -89,7 +88,7 @@ from click_plugins import with_plugins
 
 from renku.command.options import option_external_storage_requested
 from renku.command.util import WARNING
-from renku.command.version import check_version, print_version
+from renku.command.version import print_version
 from renku.core import errors
 from renku.core.constant import DATABASE_PATH
 from renku.core.util.git import get_git_path
@@ -103,7 +102,7 @@ from renku.ui.cli.exception_handler import IssueFromTraceback
 from renku.ui.cli.gc import gc
 from renku.ui.cli.githooks import githooks as githooks_command
 from renku.ui.cli.graph import graph
-from renku.ui.cli.init import init as init_command
+from renku.ui.cli.init import init
 from renku.ui.cli.log import log
 from renku.ui.cli.login import credentials, login, logout
 from renku.ui.cli.mergetool import mergetool
@@ -218,15 +217,6 @@ def is_allowed_command(ctx):
     "--path", show_default=True, metavar="<path>", default=get_git_path, help="Location of a Renku repository."
 )
 @option_external_storage_requested
-@click.option(
-    "--disable-version-check",
-    envvar="RENKU_DISABLE_VERSION_CHECK",
-    is_flag=True,
-    default=False,
-    callback=check_version,
-    expose_value=False,
-    help="Do not periodically check PyPI for a new version of renku.",
-)
 @click.pass_context
 def cli(ctx, path, external_storage_requested):
     """Check common Renku commands used in various situations."""
@@ -267,7 +257,7 @@ cli.add_command(env)
 cli.add_command(gc)
 cli.add_command(githooks_command)
 cli.add_command(graph)
-cli.add_command(init_command)
+cli.add_command(init)
 cli.add_command(log)
 cli.add_command(login)
 cli.add_command(logout)
