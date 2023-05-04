@@ -80,7 +80,6 @@ resources:
   datasetsWorkers: {}
   managementWorkers: {}
   scheduler: {}
-  traefik: {}
 
 # nodeSelector: {}
 
@@ -120,12 +119,6 @@ podSecurityContext:
   fsGroup: 100
 securityContext:
   allowPrivilegeEscalation: false
-
-traefik:
-  image:
-    name: renku/core-traefik
-    tag: v1.8.0
-    pullPolicy: IfNotPresent
 
 horizontalPodAutoscaling:
   minReplicas: 2

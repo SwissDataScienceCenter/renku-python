@@ -50,9 +50,6 @@ spec:
         - name: metadata-versions
           configMap:
             name: {{ include "renku-core.fullname" $ }}-metadata-versions
-        - name: traefik-config
-          configMap:
-            name: {{ include "renku-core.fullname" $ }}-traefik
         {{- include "certificates.volumes" $ | nindent 8 }}
       initContainers:
         {{- include "certificates.initContainer" $ | nindent 8 }}
@@ -326,32 +323,6 @@ spec:
             {{- include "certificates.volumeMounts.system" $ | nindent 12 }}
           resources:
             {{- toYaml $.Values.resources.scheduler | nindent 12 }}
-
-        - name: traefik
-          image: "{{ $.Values.traefik.image.name }}:{{ $.Values.traefik.image.tag }}"
-          imagePullPolicy: {{ $.Values.traefik.image.pullPolicy }}
-          securityContext:
-            allowPrivilegeEscalation: false
-            runAsNonRoot: true
-            runAsUser: 1000
-            runAsGroup: 1000
-          args:
-            - --entryPoints.web.address=:4180
-            - --providers.file.filename=/config/traefik-config.yaml
-            - --providers.file.watch=true
-            - --pilot.dashboard=false
-            - --api.dashboard=false
-            - --accesslog=true
-            - --experimental.localPlugins.cookiefilter.moduleName=github.com/SwissDataScienceCenter/cookiefilter
-          ports:
-            - containerPort: 4180
-              name: traefik
-          volumeMounts:
-            - name: traefik-config
-              mountPath: /config
-          resources:
-            {{- toYaml $.Values.resources.traefik | nindent 12 }}
-
       {{- with $.Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
