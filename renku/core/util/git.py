@@ -94,7 +94,7 @@ def is_valid_git_repository(repository: Optional["Repository"]) -> bool:
         repository(Optional[Repository]): The repository to check.
 
     Returns:
-        bool: Whether or not this is a valid Git repository.
+        bool: Whether this is a valid Git repository.
 
     """
     return repository is not None and repository.head.is_valid()
@@ -648,13 +648,15 @@ def clone_renku_repository(
         progress: The GitProgress object (Default value = None).
         config(Optional[dict], optional): Set configuration for the project (Default value = None).
         raise_git_except: Whether to raise git exceptions (Default value = False).
-        checkout_revision: The revision to checkout after clone (Default value = None).
+        checkout_revision: The revision to check out after clone (Default value = None).
         use_renku_credentials(bool, optional): Whether to use Renku provided credentials (Default value = False).
         reuse_existing_repository(bool, optional): Whether to clone over an existing repository (Default value = False).
 
     Returns:
         The cloned repository.
     """
+    from renku.core.login import has_credentials_for_hostname
+
     parsed_url = parse_git_url(url)
 
     clone_options = None
@@ -665,7 +667,11 @@ def clone_renku_repository(
         git_url = str(absolute_path)
     elif parsed_url.scheme in ["http", "https"] and gitlab_token:
         git_url = get_oauth_url(url, gitlab_token)
-    elif parsed_url.scheme in ["http", "https"] and use_renku_credentials:
+    elif (
+        parsed_url.scheme in ["http", "https"]
+        and use_renku_credentials
+        and has_credentials_for_hostname(parsed_url.hostname)  # NOTE: Don't change remote URL if no credentials exist
+    ):
         clone_options = [f"--config credential.helper='!renku credentials --hostname {parsed_url.hostname}'"]
         deployment_hostname = deployment_hostname or parsed_url.hostname
         git_url = get_renku_repo_url(url, deployment_hostname=deployment_hostname, access_token=None)
@@ -727,7 +733,7 @@ def clone_repository(
         progress: The GitProgress object (Default value = None).
         config(Optional[dict], optional): Set configuration for the project (Default value = None).
         raise_git_except: Whether to raise git exceptions (Default value = False).
-        checkout_revision: The revision to checkout after clone (Default value = None).
+        checkout_revision: The revision to check out after clone (Default value = None).
         no_checkout(bool, optional): Whether to perform a checkout (Default value = False).
         clean(bool, optional): Whether to require the target folder to be clean (Default value = False).
         clone_options(List[str], optional): Additional clone options (Default value = None).
@@ -775,7 +781,7 @@ def clone_repository(
             if remote and have_same_remote(remote.url, url):
                 repository.reset(hard=True)
                 repository.fetch(all=True, tags=True)
-                # NOTE: By default we checkout remote repository's HEAD since the local HEAD might not point to
+                # NOTE: By default we check out remote repository's HEAD since the local HEAD might not point to
                 # the default branch.
                 default_checkout_revision = checkout_revision or "origin/HEAD"
                 repository.checkout(default_checkout_revision)

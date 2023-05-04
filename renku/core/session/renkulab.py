@@ -19,6 +19,7 @@
 import pty
 import urllib
 import webbrowser
+from datetime import datetime
 from pathlib import Path
 from time import monotonic, sleep
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
@@ -300,9 +301,13 @@ class RenkulabSessionProvider(ISessionProvider):
             name = self._project_name_from_full_project_name(project_name)
             sessions = [
                 Session(
-                    session["name"],
-                    session.get("status", {}).get("state", "unknown"),
-                    self.session_url(session["name"]),
+                    id=session["name"],
+                    status=session.get("status", {}).get("state", "unknown"),
+                    url=self.session_url(session["name"]),
+                    start_time=datetime.fromisoformat(session.get("started")),
+                    commit=session.get("annotations", {}).get("renku.io/commit-sha"),
+                    branch=session.get("annotations", {}).get("renku.io/branch"),
+                    provider="renkulab",
                     ssh_enabled=system_config.session_config_path(name, session["name"]).exists(),
                 )
                 for session in sessions_res.json().get("servers", {}).values()
@@ -366,6 +371,7 @@ class RenkulabSessionProvider(ISessionProvider):
             "image": image_name,
             "commit_sha": session_commit,
             "serverOptions": server_options,
+            "branch": repository.active_branch.name if repository.active_branch else "master",
             **self._get_renku_project_name_parts(),
         }
         res = self._send_renku_request(

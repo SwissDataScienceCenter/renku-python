@@ -33,11 +33,12 @@ from renku.core.workflow.parser.renku import convert_to_workflow_file
 from renku.core.workflow.workflow_file import run_workflow_file
 
 
-def test_load_valid_renku_workflow_file():
+def test_load_valid_renku_workflow_file(project, with_injection):
     """Test loading a valid workflow file."""
     path = Path(__file__).parent / ".." / ".." / "data" / "workflow-file.yml"
 
-    workflow = read_workflow_file(path)
+    with with_injection():
+        workflow = read_workflow_file(path)
 
     assert "workflow-file" == workflow.name
     assert "workflow-file" == workflow.qualified_name
@@ -65,11 +66,12 @@ def test_load_valid_renku_workflow_file():
     assert workflow.steps[1].outputs[0].persist is True
 
 
-def test_load_valid_renku_workflow_file_simple():
+def test_load_valid_renku_workflow_file_simple(project, with_injection):
     """Test loading a valid workflow file with a simple format."""
     path = Path(__file__).parent / ".." / ".." / "data" / "workflow-file-simple.yml"
 
-    workflow = read_workflow_file(path)
+    with with_injection():
+        workflow = read_workflow_file(path)
 
     assert "workflow-file" == workflow.name
     assert {"workflow file", "v1"} == set(workflow.keywords)
@@ -89,7 +91,7 @@ def test_load_valid_renku_workflow_file_simple():
     assert ["-n", "5"] == [p.value for p in workflow.steps[1].parameters]
 
 
-def test_parse_position_in_renku_workflow_file():
+def test_parse_position_in_renku_workflow_file(project, with_injection):
     """Test parsing correct position for a command's parameters."""
     workflow_file = textwrap.dedent(
         """
@@ -112,7 +114,8 @@ def test_parse_position_in_renku_workflow_file():
         """
     )
 
-    workflow = convert_to_workflow_file(data=load_yaml(workflow_file), path="")
+    with with_injection():
+        workflow = convert_to_workflow_file(data=load_yaml(workflow_file), path="")
 
     step = workflow.steps[0]
 
@@ -407,7 +410,7 @@ def test_step_command_parser():
     assert "-no-value" == step.inputs[10].path
 
 
-def test_validation_error_invalid_names():
+def test_validation_error_invalid_names(project, with_injection):
     """Test validating a workflow file with invalid names raises desired errors."""
     WorkflowFile = functools.partial(renku.core.workflow.workflow_file.WorkflowFile, path="")
     Step = functools.partial(
@@ -434,17 +437,18 @@ def test_validation_error_invalid_names():
         WorkflowFile(name="workflow", steps=[Step(name="step", parameters=[Parameter(name="parameters", value=42)])])
 
     with pytest.raises(errors.ParseError, match="Duplicate input, output or parameter names found: same-1, same-2"):
-        WorkflowFile(
-            name="workflow",
-            steps=[
-                Step(
-                    name="step",
-                    parameters=[Parameter(name="same-1", value=42)],
-                    inputs=[Input(name="same-1", path="42"), Input(name="same-2", path="42")],
-                    outputs=[Output(name="same-2", path="42")],
-                )
-            ],
-        )
+        with with_injection():
+            WorkflowFile(
+                name="workflow",
+                steps=[
+                    Step(
+                        name="step",
+                        parameters=[Parameter(name="same-1", value=42)],
+                        inputs=[Input(name="same-1", path="42"), Input(name="same-2", path="42")],
+                        outputs=[Output(name="same-2", path="42")],
+                    )
+                ],
+            )
 
 
 def test_parse_error_workflow_file_with_no_step():
@@ -615,7 +619,7 @@ def test_parse_error_missing_required_attributes():
         convert_to_workflow_file(data=load_yaml(workflow_file), path="")
 
 
-def test_warning_for_unused_arguments(mock_communication):
+def test_warning_for_unused_arguments(mock_communication, project, with_injection):
     """Test a warning is printed if an input/output/parameter is not used in a step's command."""
     workflow_file = textwrap.dedent(
         """
@@ -636,8 +640,8 @@ def test_warning_for_unused_arguments(mock_communication):
                 value: 10
         """
     )
-
-    convert_to_workflow_file(data=load_yaml(workflow_file), path="")
+    with with_injection():
+        convert_to_workflow_file(data=load_yaml(workflow_file), path="")
 
     assert (
         "The following inputs/outputs/parameters didn't appear in the command of step 'head': 'ls'"
@@ -649,7 +653,7 @@ def test_warning_for_unused_arguments(mock_communication):
     assert "n" in mock_communication.stdout_lines
 
 
-def test_no_warning_for_implicit_unused_arguments(mock_communication):
+def test_no_warning_for_implicit_unused_arguments(mock_communication, project, with_injection):
     """Test no warning is printed if an unused input/output/parameter has ``implicit`` attribute set."""
     workflow_file = textwrap.dedent(
         """
@@ -674,7 +678,8 @@ def test_no_warning_for_implicit_unused_arguments(mock_communication):
         """
     )
 
-    convert_to_workflow_file(data=load_yaml(workflow_file), path="")
+    with with_injection():
+        convert_to_workflow_file(data=load_yaml(workflow_file), path="")
 
     assert (
         "The following inputs/outputs/parameters didn't appear in the command of step 'head': 'ls'"
@@ -842,7 +847,7 @@ def test_parse_error_invalid_command():
         convert_to_workflow_file(data=load_yaml(workflow_file), path="")
 
 
-def test_no_parse_error_for_non_required_attributes():
+def test_no_parse_error_for_non_required_attributes(project, with_injection):
     """Test no parse error is raised when a non-required field has ``None`` value."""
     workflow_file = textwrap.dedent(
         """
@@ -872,8 +877,8 @@ def test_no_parse_error_for_non_required_attributes():
                 prefix:
         """
     )
-
-    assert convert_to_workflow_file(data=load_yaml(workflow_file), path="") is not None
+    with with_injection():
+        assert convert_to_workflow_file(data=load_yaml(workflow_file), path="") is not None
 
 
 def test_parse_error_when_cannot_match_part_of_command():
@@ -896,7 +901,7 @@ def test_parse_error_when_cannot_match_part_of_command():
         convert_to_workflow_file(data=load_yaml(workflow_file), path="")
 
 
-def test_command_is_parsed_correctly_when_ends_with_prefix_like_word():
+def test_command_is_parsed_correctly_when_ends_with_prefix_like_word(project, with_injection):
     """Test that parsing works correctly if commands end with a token that is similar to a command prefix."""
     workflow_file = textwrap.dedent(
         """
@@ -909,7 +914,8 @@ def test_command_is_parsed_correctly_when_ends_with_prefix_like_word():
         """
     )
 
-    workflow = convert_to_workflow_file(data=load_yaml(workflow_file), path="")
+    with with_injection():
+        workflow = convert_to_workflow_file(data=load_yaml(workflow_file), path="")
 
     assert "cmd -option" == workflow.steps[0].command
 

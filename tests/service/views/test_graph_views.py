@@ -33,9 +33,9 @@ def test_graph_export_view(svc_client_cache, it_remote_repo_url):
 
     payload = {
         "git_url": it_remote_repo_url,
-        "revision": "HEAD",
         "callback_url": "https://webhook.site",
         "migrate_project": True,
+        "revision": None,
     }
 
     response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
@@ -80,7 +80,7 @@ def test_graph_export_view_failures(it_non_renku_repo_url, svc_client_cache):
 def test_graph_export_no_callback(svc_client_cache, it_remote_repo_url):
     """Try to create a new graph export job."""
     svc_client, headers, _ = svc_client_cache
-    payload = {"git_url": it_remote_repo_url, "revision": "HEAD", "migrate_project": True}
+    payload = {"git_url": it_remote_repo_url, "revision": None, "migrate_project": True}
 
     response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
 
@@ -99,11 +99,16 @@ def test_graph_export_no_callback(svc_client_cache, it_remote_repo_url):
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
-def test_graph_export_no_revision(svc_client_cache, it_remote_repo_url):
+def test_graph_export_with_revision(svc_client_cache, it_remote_repo_url):
     """Create a new graph export job successfully."""
     svc_client, headers, _ = svc_client_cache
 
-    payload = {"git_url": it_remote_repo_url, "callback_url": "https://webhook.site", "migrate_project": True}
+    payload = {
+        "git_url": it_remote_repo_url,
+        "callback_url": "https://webhook.site",
+        "revision": "2b031fdac1ad6b8fe926297001f92b63716c042e",
+        "migrate_project": True,
+    }
 
     response = svc_client.get("/graph.export", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response)

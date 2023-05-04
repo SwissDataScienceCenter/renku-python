@@ -15,13 +15,16 @@
 # limitations under the License.
 """Serializers for sessions."""
 
+from typing import List, Optional
+
 from renku.command.format.tabulate import tabulate
+from renku.domain_model.session import Session
 
 
-def tabular(sessions, *, columns=None):
-    """Format workflows with a tabular output."""
+def tabular(sessions: List[Session], *, columns: Optional[str] = None):
+    """Format sessions with a tabular output."""
     if not columns:
-        columns = "id,status,url"
+        columns = "id,start_time,status,provider,url"
 
         if any(s.ssh_enabled for s in sessions):
             columns += ",ssh"
@@ -29,7 +32,24 @@ def tabular(sessions, *, columns=None):
     return tabulate(collection=sessions, columns=columns, columns_mapping=SESSION_COLUMNS)
 
 
-SESSION_FORMATS = {"tabular": tabular}
+def log(sessions: List[Session], *, columns: Optional[str] = None):
+    """Format sessions in a log like output."""
+    from renku.ui.cli.utils.terminal import style_header, style_key
+
+    output = []
+
+    for session in sessions:
+        output.append(style_header(f"Session {session.id} ({session.status}, {session.provider})"))
+        output.append(style_key("Started: ") + session.start_time.isoformat())
+        output.append(style_key("Url: ") + session.url)
+        output.append(style_key("Commit: ") + session.commit)
+        output.append(style_key("Branch: ") + session.branch)
+        output.append(style_key("SSH enabled: ") + ("yes" if session.ssh_enabled else "no"))
+        output.append("")
+    return "\n".join(output)
+
+
+SESSION_FORMATS = {"tabular": tabular, "log": log}
 """Valid formatting options."""
 
 SESSION_COLUMNS = {
@@ -37,4 +57,8 @@ SESSION_COLUMNS = {
     "status": ("status", "status"),
     "url": ("url", "url"),
     "ssh": ("ssh_enabled", "SSH enabled"),
+    "start_time": ("start_time", "start_time"),
+    "commit": ("commit", "commit"),
+    "branch": ("branch", "branch"),
+    "provider": ("provider", "provider"),
 }

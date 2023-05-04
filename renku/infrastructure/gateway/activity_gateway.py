@@ -212,9 +212,13 @@ def reindex_catalog(database):
     """Clear and re-create database's activity-catalog and its relations."""
     activity_catalog = database["activity-catalog"]
     relations = database["_downstream_relations"]
+    by_usage = database["activities-by-usage"]
+    by_generation = database["activities-by-generation"]
 
     activity_catalog.clear()
     relations.clear()
+    by_usage.clear()
+    by_generation.clear()
 
     for activity in database["activities"].values():
         _index_activity(activity=activity, database=database)

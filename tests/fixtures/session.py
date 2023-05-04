@@ -16,6 +16,7 @@
 # limitations under the License.
 """Renku session fixtures."""
 
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import MagicMock
 
@@ -53,7 +54,18 @@ def dummy_session_provider():
             return self
 
         def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
-            return [Session(id=n, status="running", url="http://localhost/") for n in self.sessions]
+            return [
+                Session(
+                    id=n,
+                    status="running",
+                    url="http://localhost/",
+                    start_time=datetime.now(),
+                    provider="dummy",
+                    commit="abcdefg",
+                    branch="master",
+                )
+                for n in self.sessions
+            ]
 
         def session_start(
             self,

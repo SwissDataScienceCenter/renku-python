@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +29,6 @@ from packaging.version import Version
 from renku.core import errors
 from renku.core.util import communication
 from renku.core.util.git import clone_repository
-from renku.core.util.os import hash_file
 from renku.core.util.util import to_semantic_version, to_string
 from renku.domain_model.project_context import project_context
 from renku.domain_model.template import (
@@ -41,6 +39,8 @@ from renku.domain_model.template import (
     TemplateParameter,
     TemplatesManifest,
     TemplatesSource,
+    hash_template_file,
+    update_dockerfile_content,
 )
 from renku.infrastructure.repository import Repository
 
@@ -74,6 +74,7 @@ class FileAction(IntEnum):
     KEEP = 6
     OVERWRITE = 7
     RECREATE = 8
+    UPDATE_DOCKERFILE = 9
 
 
 def fetch_templates_source(source: Optional[str], reference: Optional[str]) -> TemplatesSource:
@@ -143,6 +144,7 @@ def copy_template_to_project(
         FileAction.KEEP: ("", "Keeping"),
         FileAction.OVERWRITE: ("copy", "Overwriting"),
         FileAction.RECREATE: ("copy", "Recreating deleted file"),
+        FileAction.UPDATE_DOCKERFILE: ("dockerfile", "Updating"),
     }
 
     for relative_path, action in get_sorted_actions(actions=actions).items():
@@ -162,6 +164,10 @@ def copy_template_to_project(
                 shutil.copy(source, destination, follow_symlinks=False)
             elif operation == "append":
                 destination.write_text(destination.read_text() + "\n" + source.read_text())
+            elif operation == "dockerfile":
+                update_dockerfile_content(source=source, destination=destination)
+            else:
+                raise errors.TemplateUpdateError(f"Unknown operation '{operation}'")
         except OSError as e:
             # TODO: Use a general cleanup strategy: https://github.com/SwissDataScienceCenter/renku-python/issues/736
             if cleanup:
@@ -212,7 +218,7 @@ def get_file_actions(
 
     def get_action_for_set(relative_path: str, destination: Path, new_checksum: Optional[str]) -> FileAction:
         """Decide what to do with a template file."""
-        current_checksum = hash_file(destination)
+        current_checksum = hash_template_file(relative_path=relative_path, absolute_path=destination)
 
         if not destination.exists():
             return FileAction.CREATE
@@ -221,8 +227,6 @@ def get_file_actions(
         elif interactive:
             overwrite = communication.confirm(f"Overwrite {relative_path}?", default=True)
             return FileAction.OVERWRITE if overwrite else FileAction.KEEP
-        elif relative_path == "Dockerfile" and not is_dockerfile_updated_by_user():
-            return FileAction.OVERWRITE
         elif should_keep(relative_path):
             return FileAction.KEEP
         else:
@@ -232,7 +236,7 @@ def get_file_actions(
         relative_path: str, destination: Path, old_checksum: Optional[str], new_checksum: Optional[str]
     ) -> FileAction:
         """Decide what to do with a template file."""
-        current_checksum = hash_file(destination)
+        current_checksum = hash_template_file(relative_path=relative_path, absolute_path=destination)
         local_changes = current_checksum != old_checksum
         remote_changes = new_checksum != old_checksum
         file_exists = destination.exists()
@@ -251,8 +255,11 @@ def get_file_actions(
                 return FileAction.OVERWRITE if overwrite else FileAction.KEEP
         elif not remote_changes:
             return FileAction.IGNORE_UNCHANGED_REMOTE
-        elif relative_path == "Dockerfile" and not is_dockerfile_updated_by_user():
-            return FileAction.OVERWRITE
+        elif relative_path == "Dockerfile":
+            if is_dockerfile_updated_by_user():
+                raise errors.TemplateUpdateError("Can't update template as Dockerfile was locally changed.")
+            else:
+                return FileAction.UPDATE_DOCKERFILE
         elif file_deleted or local_changes:
             if relative_path in immutable_files:
                 # NOTE: There are local changes in a file that should not be changed by users, and the file was
@@ -383,14 +390,14 @@ class EmbeddedTemplates(TemplatesSource):
         from renku import __template_version__
 
         template_path = importlib_resources.files("renku") / "templates"
-        with importlib_resources.as_file(template_path) as folder:
-            path = Path(folder)
+        with importlib_resources.as_file(template_path) as templates:
+            path = Path(templates)
 
         return cls(path=path, source="renku", reference=__template_version__, version=__template_version__)
 
     def get_all_references(self, id) -> List[str]:
         """Return all available references for a template id."""
-        template_exists = any(t.id == id for t in self.templates)
+        template_exists = any(id == t.id or id in t.aliases for t in self.templates)
         return [self.reference] if template_exists and self.reference is not None else []
 
     def get_latest_reference_and_version(
@@ -412,7 +419,7 @@ class EmbeddedTemplates(TemplatesSource):
     def get_template(self, id, reference: Optional[str]) -> "Template":
         """Return all available versions for a template id."""
         try:
-            return next(t for t in self.templates if t.id == id)
+            return next(t for t in self.templates if id == t.id or id in t.aliases)
         except StopIteration:
             raise errors.TemplateNotFoundError(f"The template with id '{id}' is not available.")
 
@@ -495,7 +502,7 @@ class RepositoryTemplates(TemplatesSource):
         except (errors.FileNotFound, errors.InvalidTemplateError):
             return False
         else:
-            return any(t.id == id for t in manifest.templates)
+            return any(id == t.id or id in t.aliases for t in manifest.templates)
 
     def get_template(self, id, reference: Optional[str]) -> "Template":
         """Return a template at a specific reference."""
@@ -515,8 +522,9 @@ class RepositoryTemplates(TemplatesSource):
             else:
                 self.manifest = manifest
 
-        template = next((t for t in self.templates if t.id == id), None)
+        template = next((t for t in self.templates if id == t.id or id in t.aliases), None)
         if template is None:
+            reference = reference or "HEAD"
             raise errors.TemplateNotFoundError(f"The template with id '{id}' is not available at '{reference}'.")
 
         return template

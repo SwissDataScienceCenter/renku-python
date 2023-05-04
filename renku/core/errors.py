@@ -708,7 +708,19 @@ class NotebookSessionImageNotExistError(RenkuException):
 
 
 class MetadataMergeError(RenkuException):
-    """Raise when merging of metadata failed."""
+    """Raised when merging of metadata failed."""
+
+
+class MetadataCorruptError(RenkuException):
+    """Raised when metadata is corrupt and couldn't be loaded."""
+
+    def __init__(self, path: Union[str, Path]) -> None:
+        message = f"Metadata file '{path}' couldn't be loaded because it is corrupted."
+        with open(path) as f:
+            content = f.read()
+        if all(pattern in content for pattern in ["<<<<<<<", "=======", ">>>>>>>"]):
+            message += "\nThis is likely due to an unresolved git merge conflict in the file."
+        super().__init__(message)
 
 
 class MinimumVersionError(RenkuException):
