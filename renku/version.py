@@ -16,7 +16,7 @@
 """Version information for Renku."""
 
 import re
-from typing import cast
+from typing import Optional, cast
 
 try:
     from importlib.metadata import distribution, version
@@ -28,9 +28,12 @@ __template_version__ = "0.5.0"
 __minimum_project_version__ = "2.4.0"
 
 
-def is_release():
+def is_release(version: Optional[str] = None):
     """Check if current version is a release semver."""
-    if re.match(r"\d+.\d+.\d+$", __version__):
+    if not version:
+        version = __version__
+
+    if re.match(r"\d+.\d+.\d+(rc\d+)?$", version):
         return True
     return False
 

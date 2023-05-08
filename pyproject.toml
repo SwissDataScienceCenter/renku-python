@@ -53,7 +53,7 @@ Changelog = "https://github.com/swissdatasciencecenter/renku-python/blob/master/
 [tool.poetry.dependencies]
 python = "^3.8.1"
 appdirs = "<=1.4.4,>=1.4.3"
-attrs = ">=21.1.0,<22.2.0"
+attrs = ">=21.1.0,<23.2.0"
 bashlex = ">=0.16,<0.17"
 calamus = ">=0.3.13,<0.5"
 click = ">=8.0,<8.1.4"
@@ -67,7 +67,7 @@ deal = ">=4.24.0,<5.0.0"
 deepdiff = "^5.8.0"
 deepmerge = "==1.0.1"
 docker = "<6,>=3.7.2"
-filelock = ">=3.3.0,<3.8.1"
+filelock = ">=3.3.0,<3.12.1"
 gitpython = "==3.1.27"
 grandalf = "==0.7"
 humanize = ">=3.0.0,<4.1.0"
@@ -80,7 +80,7 @@ packaging = "<24.0,>=23.0"
 pathspec = "<1.0.0,>=0.8.0"
 patool = "==1.12"
 pluggy = "==1.0.0"
-portalocker = ">=2.2.1,<2.5"
+portalocker = ">=2.2.1,<2.8"
 poetry-dynamic-versioning = "0.21.3"
 psutil = ">=5.4.7,<5.9.2"
 pydantic = "==1.10.2"
@@ -94,33 +94,33 @@ python-gitlab = ">=2.10.1,<3.8.2"
 pyyaml = "<6.1.0,>=5.4"
 rdflib = "<7.0,>=6.0.0"
 requests = ">=2.23.0,<2.28.2"
-rich = ">=9.3.0,<12.6.0"
+rich = ">=9.3.0,<13.4.0"
 shellingham = "1.5.0.post1"
-tabulate = ">=0.7.7,<0.8.11"
+tabulate = ">=0.7.7,<0.9.1"
 toil = "==5.7.1"
 tqdm = "<4.62.4,>=4.48.1"
 werkzeug = ">=1.0.0,<2.2.4"
 yagup = ">=0.1.1"
 yaspin = "==2.1.0"
-"zc.relation" = "<1.2,>=1.1"
-zodb = "==5.6.0"
-zstandard = ">=0.16.0,<0.18.0"
+"zc.relation" = ">=1.1,<2.1"
+zodb = "==5.8.0"
+zstandard = ">=0.16.0,<0.22.0"
 
 # service dependencies:
 apispec = { version = ">=6.3.0,<6.4.0", optional = true }
 apispec-oneofschema = { version = ">=3.0.0,<4.0.0", optional = true}
 apispec-webframeworks = { version = "<0.6,>=0.5.2", optional = true }
-circus = { version = "==0.17.1", optional = true }
-flask = { version = "==2.1.1", optional = true }
+circus = { version = "==0.18.0", optional = true }
+flask = { version = "==2.2.5", optional = true }
 gunicorn = { version = "*", optional = true }
 marshmallow = { version = ">=3.18.0,<3.20.0", optional = true }
 marshmallow-oneofschema = { version = ">=3.0.1,<4.0.0", optional = true }
 pillow = { version = ">=9.0.0,<9.4", optional = true }
 python-dotenv = { version = ">=0.19.0,<0.21.0", optional = true }
-redis = { version = ">=3.5.3,<4.2.0", optional = true }
-rq = { version = "==1.11.0", optional = true }
+redis = { version = ">=3.5.3,<4.6.0", optional = true }
+rq = { version = "==1.13.0", optional = true }
 rq-scheduler = { version = "==0.11.0", optional = true }
-sentry-sdk = { version = ">=1.5.11,<1.14.1", extras = ["flask"],  optional = true }
+sentry-sdk = { version = ">=1.5.11,<1.20.1", extras = ["flask"],  optional = true }
 walrus = { version = ">=0.8.2,<0.10.0", optional = true }
 
 [tool.poetry.group.dev.dependencies]
@@ -128,13 +128,13 @@ black = "==23.1.0"
 flake8 = ">=6.0.0,<7.0.0"
 Flake8-pyproject = "==1.2.2"
 isort = "<5.10.2,>=5.3.2"
-mypy = ">=0.942,<1.0"
+mypy = ">=1.2.0,<2.0"
 poetry-lock-package = "^0.5.0"
-pre-commit = "^2.20.0"
+pre-commit = ">=2.20,<4.0"
 types-PyYAML = "<6.1.0,>=5.4"
 types-python-dateutil = "^2.8.10"
 types-redis = ">=3.5.3,<4.1.0"
-types-requests = "<2.27.2,>=2.23.0"
+types-requests = ">=2.23.0,<2.28.12"
 types-tabulate = "<0.8.10,>=0.7.7"
 
 [tool.poetry.group.tests]
@@ -142,7 +142,7 @@ optional = true
 
 [tool.poetry.group.tests.dependencies]
 coverage = { version = "<6.5,>=4.5.3", extras=["toml"] }
-fakeredis = { version = ">=1.4.1,<1.7.2", extras = ["lua"]}
+fakeredis = { version = ">=1.4.1,<2.11.2", extras = ["lua"]}
 flaky = "==3.7.0"
 pexpect = "<4.9.0,>=4.8.0"
 pydocstyle = "<6.1.2,>=4.0.1"
@@ -153,12 +153,12 @@ pytest-cache = "==1.0"
 pytest-cov = "<3.1.0,>=2.5.1"
 pytest-flake8 = ">=1.0.6,<1.1.1"
 pytest-lazy-fixture = ">=0.6.3,<0.7.0"
-pytest-mock = ">=3.2.0,<3.9.0"
+pytest-mock = ">=3.2.0,<3.11.0"
 pytest-pep8 = "==1.0.6"
 pytest-recording = "==0.12.1"
 pytest-timeout = "==2.1.0"
 pytest-xdist = ">=1.34.0,<2.6.0"
-responses = ">=0.22.0,<0.23.0"
+responses = ">=0.22.0,<0.24.0"
 
 [tool.poetry.group.docs]
 optional = true
@@ -169,7 +169,7 @@ renku-sphinx-theme = ">=0.2.0"
 sphinx-click = "^4.3.0"
 sphinx-rtd-theme = "<1.1,>=0.5.0"
 sphinx-tabs = "==3.2.0"
-sphinxcontrib-spelling = "7.*"
+sphinxcontrib-spelling = ">=7,<9"
 
 [tool.poetry.extras]
 service = [
@@ -269,7 +269,7 @@ filterwarnings = [
 ]
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.10"
 files = [
     "renku/**/*.py",
     "tests/**/*.py"
