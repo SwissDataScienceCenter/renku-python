@@ -21,7 +21,13 @@ jobs:
         with:
           fetch-depth: 0
           token: "${{ secrets.RENKUBOT_GITHUB_TOKEN }}"
-          ref: ${{ inputs.branch_name }}
+          ref: develop
+      - name: Setup local branch and merge tool
+        run: |
+          git checkout -b "${{ inputs.branch_name }}" || ( git checkout "${{ inputs.branch_name }}" && git branch -u "origin/${{ inputs.branch_name }}" && git pull && git merge develop)
+          echo "poetry.lock merge=ours" >> .git/info/attributes
+          git config merge.ours.driver true
+          git merge --no-edit "origin/${{ inputs.target_branch }}"
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -38,13 +44,6 @@ jobs:
         run: |
           git config --global --add user.name "Renku Bot"
           git config --global --add user.email "renku@datascience.ch"
-      - name: Setup local branch and merge tool
-        run: |
-          git branch --track "${{ inputs.branch_name }}"  "origin/${{ inputs.branch_name }}" || ( git checkout "${{ inputs.branch_name }}" && git branch -u "origin/${{ inputs.branch_name }}" )
-          git pull
-          echo "poetry.lock merge=ours" >> .git/info/attributes
-          git config merge.ours.driver true
-          git merge --no-edit "origin/${{ inputs.target_branch }}"
       - name: Merge PRs
         id: merge_prs
         env:
@@ -63,6 +62,9 @@ jobs:
             if git merge --no-edit "origin/${branch_arr[0]}"; then
               pr_body="$pr_body\n- #${branch_arr[1]}"
             else
+              git merge --abort
+              git clean -fdx
+              git reset --hard
               failed+=(${branch_arr[1]})
             fi
           done
@@ -78,7 +80,7 @@ jobs:
           git add -A
           git commit -m "update lock file" --no-verify
           git status
-          git push
+          git push origin "${{ inputs.branch_name }}"
           echo "pr_body=$pr_body" >> $GITHUB_OUTPUT
       - name: Create Pull Request
         uses: actions/github-script@v6
