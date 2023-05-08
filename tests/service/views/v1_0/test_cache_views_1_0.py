@@ -53,7 +53,7 @@ def test_check_migrations_local_1_0(svc_client_setup):
     response = svc_client.get("/1.0/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
     assert 200 == response.status_code
 
-    assert response.json["result"]["core_compatibility_status"]["migration_required"]
+    assert not response.json["result"]["core_compatibility_status"]["migration_required"]
     assert not response.json["result"]["template_status"]["newer_template_available"]
     assert not response.json["result"]["dockerfile_renku_status"]["automated_dockerfile_update"]
     assert response.json["result"]["project_supported"]

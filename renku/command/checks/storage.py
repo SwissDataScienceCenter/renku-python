@@ -29,19 +29,19 @@ def check_lfs_info(**_):
         Tuple of whether project structure is valid and string of found problems.
     """
     if not check_external_storage():
-        return True, None
+        return True, False, None
 
     files = check_lfs_migrate_info()
 
     if not files:
-        return True, None
+        return True, False, None
 
     message = (
         WARNING
         + "Git history contains large files - consider moving them "
-        + "to external storage like git LFS\n\t"
+        + "to external storage like git LFS using 'renku storage migrate'\n\t"
         + "\n\t".join(files)
         + "\n"
     )
 
-    return False, message
+    return False, False, message

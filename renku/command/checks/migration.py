@@ -35,6 +35,6 @@ def check_migration(**_):
             ERROR + "Project version is not supported by your version of Renku.\n" + "  (upgrade your Renku version)\n"
         )
     else:
-        return True, None
+        return True, False, None
 
-    return False, problems
+    return False, False, problems
