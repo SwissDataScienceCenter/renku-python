@@ -1,7 +1,6 @@
-#
-# Copyright 2018-2023- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
-# Eidgenössische Technische Hochschule Zürich (ETHZ).
+#  Copyright Swiss Data Science Center (SDSC). A partnership between
+#  École Polytechnique Fédérale de Lausanne (EPFL) and
+#  Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,9 +15,26 @@
 # limitations under the License.
 """Renku session commands."""
 
-
 from renku.command.command_builder.command import Command
-from renku.core.session.session import session_list, session_open, session_start, session_stop, ssh_setup
+from renku.core.session.session import (
+    search_session_providers,
+    search_sessions,
+    session_list,
+    session_open,
+    session_start,
+    session_stop,
+    ssh_setup,
+)
+
+
+def search_sessions_command():
+    """Get all the session names that match a pattern."""
+    return Command().command(search_sessions).require_migration().with_database(write=False)
+
+
+def search_session_providers_command():
+    """Get all the session provider names that match a pattern."""
+    return Command().command(search_session_providers).require_migration().with_database(write=False)
 
 
 def session_list_command():

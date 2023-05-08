@@ -53,7 +53,7 @@ def dummy_session_provider():
         def session_provider(self) -> ISessionProvider:
             return self
 
-        def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
+        def session_list(self, project_name: str) -> List[Session]:
             return [
                 Session(
                     id=n,

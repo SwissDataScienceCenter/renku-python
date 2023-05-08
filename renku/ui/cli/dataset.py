@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -186,7 +185,7 @@ them.
 
 You can use ``--destination`` or ``-d`` flag to set the location where the new
 data is copied to. This location be will under the dataset's data directory and
-will be created if does not exists.
+will be created if it does not exists.
 
 .. code-block:: console
 
@@ -374,7 +373,7 @@ Exporting data to an external provider:
 
 This will export the dataset ``my-dataset`` to ``zenodo.org`` as a draft,
 allowing for publication later on. If the dataset has any tags set, you
-can chose if the repository `HEAD` version or one of the tags should be
+can choose if the repository `HEAD` version or one of the tags should be
 exported. The remote version will be set to the local tag that is being
 exported.
 
@@ -519,16 +518,7 @@ from renku.command.format.dataset_files import DATASET_FILES_COLUMNS, DATASET_FI
 from renku.command.format.dataset_tags import DATASET_TAGS_FORMATS
 from renku.command.format.datasets import DATASETS_COLUMNS, DATASETS_FORMATS
 from renku.domain_model.constant import NO_VALUE, NoValueType
-
-
-def _complete_datasets(ctx, param, incomplete):
-    from renku.command.dataset import search_datasets_command
-
-    try:
-        result = search_datasets_command().build().execute(name=incomplete)
-        return result.output
-    except Exception:
-        return []
+from renku.ui.cli.utils.click import shell_complete_datasets
 
 
 @click.group()
@@ -628,7 +618,7 @@ def create(name, title, description, creators, metadata, keyword, storage, datad
 
 
 @dataset.command()
-@click.argument("name", shell_complete=_complete_datasets)
+@click.argument("name", shell_complete=shell_complete_datasets)
 @click.option("-t", "--title", default=NO_VALUE, type=click.UNPROCESSED, help="Title of the dataset.")
 @click.option("-d", "--description", default=NO_VALUE, type=click.UNPROCESSED, help="Dataset's description.")
 @click.option(
@@ -747,7 +737,7 @@ def edit(name, title, description, creators, metadata, metadata_source, keywords
 
 @dataset.command("show")
 @click.option("-t", "--tag", default=None, type=click.STRING, help="Tag for which to show dataset metadata.")
-@click.argument("name", shell_complete=_complete_datasets)
+@click.argument("name", shell_complete=shell_complete_datasets)
 def show(tag, name):
     """Show metadata of a dataset."""
     from renku.command.dataset import show_dataset_command
@@ -794,7 +784,7 @@ def add_provider_options(*param_decls, **attrs):
 
 
 @dataset.command()
-@click.argument("name", shell_complete=_complete_datasets)
+@click.argument("name", shell_complete=shell_complete_datasets)
 @click.argument("urls", type=click.Path(), nargs=-1)
 @click.option("-f", "--force", is_flag=True, help="Allow adding otherwise ignored files.")
 @click.option("-o", "--overwrite", is_flag=True, help="Overwrite existing files.")
@@ -838,7 +828,7 @@ def add(name, urls, force, overwrite, create, destination, datadir, **kwargs):
 
 
 @dataset.command("ls-files")
-@click.argument("names", nargs=-1, shell_complete=_complete_datasets)
+@click.argument("names", nargs=-1, shell_complete=shell_complete_datasets)
 @click.option("-t", "--tag", default=None, type=click.STRING, help="Tag for which to show dataset files.")
 @click.option(
     "--creators",
@@ -879,7 +869,7 @@ def ls_files(names, tag, creators, include, exclude, format, columns):
 
 
 @dataset.command()
-@click.argument("name", shell_complete=_complete_datasets)
+@click.argument("name", shell_complete=shell_complete_datasets)
 @click.option("-I", "--include", multiple=True, help="Include files matching given pattern.")
 @click.option("-X", "--exclude", multiple=True, help="Exclude files matching given pattern.")
 @click.option("-y", "--yes", is_flag=True, help="Confirm unlinking of all files.")
@@ -914,7 +904,7 @@ def remove(name):
 
 
 @dataset.command("tag")
-@click.argument("name", shell_complete=_complete_datasets)
+@click.argument("name", shell_complete=shell_complete_datasets)
 @click.argument("tag")
 @click.option("-d", "--description", default="", help="A description for this tag")
 @click.option("-f", "--force", is_flag=True, help="Allow overwriting existing tags.")
@@ -927,7 +917,7 @@ def tag(name, tag, description, force):
 
 
 @dataset.command("rm-tags")
-@click.argument("name", shell_complete=_complete_datasets)
+@click.argument("name", shell_complete=shell_complete_datasets)
 @click.argument("tags", nargs=-1)
 def remove_tags(name, tags):
     """Remove tags from a dataset."""
@@ -938,7 +928,7 @@ def remove_tags(name, tags):
 
 
 @dataset.command("ls-tags")
-@click.argument("name", shell_complete=_complete_datasets)
+@click.argument("name", shell_complete=shell_complete_datasets)
 @click.option(
     "--format", type=click.Choice(list(DATASET_TAGS_FORMATS.keys())), default="tabular", help="Choose an output format."
 )
@@ -976,7 +966,7 @@ def export_provider_options(*param_decls, **attrs):
 
 
 @dataset.command()
-@click.argument("name", shell_complete=_complete_datasets)
+@click.argument("name", shell_complete=shell_complete_datasets)
 @export_provider_argument()
 @click.option("-t", "--tag", help="Dataset tag to export")
 @export_provider_options()
@@ -1037,7 +1027,7 @@ def import_(uri, name, extract, yes, datadir, **kwargs):
 
 @dataset.command()
 @click.pass_context
-@click.argument("names", nargs=-1, shell_complete=_complete_datasets)
+@click.argument("names", nargs=-1, shell_complete=shell_complete_datasets)
 @click.option(
     "--creators",
     help="Filter files which where authored by specific creators. Multiple creators are specified by comma.",
@@ -1166,7 +1156,7 @@ def update(
 
 
 @dataset.command(hidden=True)
-@click.argument("name", shell_complete=_complete_datasets)
+@click.argument("name", shell_complete=shell_complete_datasets)
 @click.option(
     "-l",
     "--location",
@@ -1184,7 +1174,7 @@ def pull(name, location):
 
 
 @dataset.command(hidden=True)
-@click.argument("name", shell_complete=_complete_datasets)
+@click.argument("name", shell_complete=shell_complete_datasets)
 @click.option(
     "-e",
     "--existing",
@@ -1208,7 +1198,7 @@ def mount(name, existing, unmount, yes):
 
 
 @dataset.command(hidden=True)
-@click.argument("name", shell_complete=_complete_datasets)
+@click.argument("name", shell_complete=shell_complete_datasets)
 def unmount(name):
     """Unmount a backend storage in the dataset's data directory."""
     from renku.command.dataset import unmount_cloud_storage_command

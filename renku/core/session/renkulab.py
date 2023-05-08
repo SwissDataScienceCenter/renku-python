@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
 from renku.core import errors
 from renku.core.config import get_value
+from renku.core.constant import ProviderPriority
 from renku.core.login import read_renku_token
 from renku.core.plugin import hookimpl
 from renku.core.session.utils import get_renku_project_name, get_renku_url
@@ -44,6 +45,8 @@ class RenkulabSessionProvider(ISessionProvider):
     """A session provider that uses the notebook service API to launch sessions."""
 
     DEFAULT_TIMEOUT_SECONDS = 300
+    # NOTE: Give the renkulab provider the lowest priority so that it's checked last
+    priority: ProviderPriority = ProviderPriority.LOWEST
 
     def __init__(self):
         self.__renku_url: Optional[str] = None
@@ -187,7 +190,7 @@ class RenkulabSessionProvider(ISessionProvider):
                 gotten from the server.
         """
         if not running_sessions:
-            running_sessions = self.session_list("", None, ssh_garbage_collection=False)
+            running_sessions = self.session_list(project_name="", ssh_garbage_collection=False)
 
         system_config = SystemSSHConfig()
 
@@ -199,7 +202,8 @@ class RenkulabSessionProvider(ISessionProvider):
             if path not in session_config_paths:
                 path.unlink()
 
-    def _remote_head_hexsha(self):
+    @staticmethod
+    def _remote_head_hexsha():
         remote = get_remote(repository=project_context.repository)
 
         if remote is None:
@@ -221,7 +225,8 @@ class RenkulabSessionProvider(ISessionProvider):
             )
         return res
 
-    def _project_name_from_full_project_name(self, project_name: str) -> str:
+    @staticmethod
+    def _project_name_from_full_project_name(project_name: str) -> str:
         """Get just project name of project name if in owner/name form."""
         if "/" not in project_name:
             return project_name
@@ -282,9 +287,7 @@ class RenkulabSessionProvider(ISessionProvider):
             ProviderParameter("ssh", help="Open a remote terminal through SSH.", is_flag=True),
         ]
 
-    def session_list(
-        self, project_name: str, config: Optional[Dict[str, Any]], ssh_garbage_collection: bool = True
-    ) -> List[Session]:
+    def session_list(self, project_name: str, ssh_garbage_collection: bool = True) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
 
         Returns:
@@ -402,7 +405,7 @@ class RenkulabSessionProvider(ISessionProvider):
         """Stops all sessions (for the given project) or a specific interactive session."""
         responses = []
         if stop_all:
-            sessions = self.session_list(project_name=project_name, config=None)
+            sessions = self.session_list(project_name=project_name)
             for session in sessions:
                 responses.append(
                     self._send_renku_request(
@@ -410,6 +413,15 @@ class RenkulabSessionProvider(ISessionProvider):
                     )
                 )
                 self._wait_for_session_status(session.id, "stopping")
+        elif not session_name:
+            sessions = self.session_list(project_name=project_name)
+            if len(sessions) == 1:
+                responses.append(
+                    self._send_renku_request(
+                        "delete", f"{self._notebooks_url()}/servers/{sessions[0].id}", headers=self._auth_header()
+                    )
+                )
+                self._wait_for_session_status(sessions[0].id, "stopping")
         else:
             responses.append(
                 self._send_renku_request(
@@ -422,21 +434,27 @@ class RenkulabSessionProvider(ISessionProvider):
 
         return all([response.status_code == 204 for response in responses]) if responses else False
 
-    def session_open(self, project_name: str, session_name: str, ssh: bool = False, **kwargs) -> bool:
+    def session_open(self, project_name: str, session_name: Optional[str], ssh: bool = False, **kwargs) -> bool:
         """Open a given interactive session.
 
         Args:
             project_name(str): Renku project name.
-            session_name(str): The unique id of the interactive session.
+            session_name(Optional[str]): The unique id of the interactive session.
             ssh(bool): Whether to open an SSH connection or a normal browser interface.
         """
-        sessions = self.session_list("", None)
+        sessions = self.session_list(project_name="")
         system_config = SystemSSHConfig()
         name = self._project_name_from_full_project_name(project_name)
         ssh_prefix = f"{system_config.renku_host}-{name}-"
 
+        if not session_name:
+            if len(sessions) == 1:
+                session_name = sessions[0].id
+            else:
+                return False
+
         if session_name.startswith(ssh_prefix):
-            # NOTE: use passed in ssh connection name instead of session id by accident
+            # NOTE: User passed in ssh connection name instead of session id by accident
             session_name = session_name.replace(ssh_prefix, "", 1)
 
         if not any(s.id == session_name for s in sessions):

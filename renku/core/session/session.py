@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,27 +49,57 @@ class SessionList(NamedTuple):
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
-def session_list(config_path: Optional[str], provider: Optional[str] = None) -> SessionList:
+def search_sessions(name: str, provider: Optional[str] = None) -> List[str]:
+    """Get all sessions that their name starts with the given name.
+
+    Args:
+        name(str): The name to search for.
+        provider(Optional[str]): Name of the session provider to use (Default value = None).
+
+    Returns:
+        All sessions whose name starts with ``name``.
+    """
+    sessions = session_list(provider=provider).sessions
+    name = name.lower()
+    return [s.id for s in sessions if s.id.lower().startswith(name)]
+
+
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def search_session_providers(name: str) -> List[str]:
+    """Get all session providers that their name starts with the given name.
+
+    Args:
+        name(str): The name to search for.
+
+    Returns:
+        All session providers whose name starts with ``name``.
+    """
+    from renku.core.plugin.session import get_supported_session_providers
+
+    name = name.lower()
+    return [p.name for p in get_supported_session_providers() if p.name.lower().startswith(name)]
+
+
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def session_list(*, provider: Optional[str] = None) -> SessionList:
     """List interactive sessions.
 
     Args:
-        config_path(str, optional): Path to config YAML.
-        provider(str, optional): Name of the session provider to use.
+        provider(Optional[str]): Name of the session provider to use (Default value = None).
+
     Returns:
         The list of sessions, whether they're all local sessions and potential warnings raised.
     """
 
     def list_sessions(session_provider: ISessionProvider) -> List[Session]:
         try:
-            return session_provider.session_list(config=config, project_name=project_name)
+            return session_provider.session_list(project_name=project_name)
         except errors.RenkulabSessionGetUrlError:
             if provider:
                 raise
             return []
 
     project_name = get_renku_project_name()
-    config = safe_read_yaml(config_path) if config_path else dict()
-
     providers = [_safe_get_provider(provider)] if provider else get_supported_session_providers()
 
     all_sessions = []
@@ -179,9 +208,9 @@ def session_stop(session_name: Optional[str], stop_all: bool = False, provider: 
     """Stop interactive session.
 
     Args:
-        session_name(str): Name of the session to open.
+        session_name(Optional[str]): Name of the session to open.
         stop_all(bool): Whether to stop all sessions or just the specified one.
-        provider(str, optional): Name of the session provider to use.
+        provider(Optional[str]): Name of the session provider to use.
     """
 
     def stop_sessions(session_provider: ISessionProvider) -> bool:
@@ -194,7 +223,7 @@ def session_stop(session_name: Optional[str], stop_all: bool = False, provider: 
                 raise
             return False
 
-    session_detail = "all sessions" if stop_all else f"session {session_name}"
+    session_detail = "all sessions" if stop_all else f"session {session_name}" if session_name else "session"
     project_name = get_renku_project_name()
 
     providers = [_safe_get_provider(provider)] if provider else get_supported_session_providers()
@@ -208,7 +237,7 @@ def session_stop(session_name: Optional[str], stop_all: bool = False, provider: 
             except errors.RenkuException as e:
                 warning_messages.append(f"Cannot stop sessions in provider '{session_provider.name}': {e}")
 
-            if is_stopped and session_name:
+            if is_stopped and not stop_all:
                 break
 
     if warning_messages:
@@ -216,31 +245,35 @@ def session_stop(session_name: Optional[str], stop_all: bool = False, provider: 
             communication.warn(message)
 
     if not is_stopped:
-        if not session_name:
+        if stop_all:
             raise errors.ParameterError("There are no running sessions.")
-        raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")
+        elif session_name:
+            raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")
+        elif not warning_messages:
+            raise errors.ParameterError("Session name is missing")
+        else:
+            raise errors.ParameterError("Cannot stop sessions")
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
-def session_open(session_name: str, provider: Optional[str] = None, **kwargs):
+def session_open(session_name: Optional[str], provider: Optional[str] = None, **kwargs):
     """Open interactive session in the browser.
 
     Args:
-        session_name(str): Name of the session to open.
-        provider(str, optional): Name of the session provider to use.
+        session_name(Optional[str]): Name of the session to open.
+        provider(Optional[str]): Name of the session provider to use.
     """
-
     providers = [_safe_get_provider(provider)] if provider else get_supported_session_providers()
     project_name = get_renku_project_name()
 
-    found = False
     for session_provider in providers:
         if session_provider.session_open(project_name, session_name, **kwargs):
-            found = True
-            break
+            return
 
-    if not found:
+    if session_name:
         raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")
+    else:
+        raise errors.ParameterError("Session name is missing")
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))

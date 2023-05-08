@@ -39,4 +39,6 @@ def get_supported_session_providers() -> List[ISessionProvider]:
     from renku.core.plugin.pluginmanager import get_plugin_manager
 
     pm = get_plugin_manager()
-    return pm.hook.session_provider()
+    providers = pm.hook.session_provider()
+
+    return sorted(providers, key=lambda p: p.priority)

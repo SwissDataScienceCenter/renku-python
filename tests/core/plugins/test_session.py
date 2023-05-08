@@ -60,7 +60,7 @@ def fake_build_image(self, image_descriptor, image_name, config):
     return
 
 
-def fake_session_list(self, project_name, config):
+def fake_session_list(self, project_name):
     return ["0xdeadbeef"]
 
 
@@ -187,9 +187,9 @@ def test_session_list(
 
             if not isinstance(result, list) and issubclass(result, Exception):
                 with pytest.raises(result):
-                    session_list(provider=provider, config_path=None)
+                    session_list(provider=provider)
             else:
-                output = session_list(provider=provider, config_path=None)
+                output = session_list(provider=provider)
                 assert output.sessions == result
 
 
