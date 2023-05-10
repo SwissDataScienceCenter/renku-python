@@ -16,7 +16,7 @@
 """API for providers."""
 
 import abc
-from collections import UserDict
+from collections import UserDict, defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Protocol, Tuple, Type, Union
 
@@ -30,7 +30,6 @@ from renku.domain_model.constant import NO_VALUE, NoValueType
 from renku.domain_model.dataset import RemoteEntity
 from renku.domain_model.dataset_provider import IDatasetProviderPlugin
 from renku.domain_model.project_context import project_context
-from renku.infrastructure.immutable import DynamicProxy
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import (
@@ -42,6 +41,7 @@ if TYPE_CHECKING:
     )
     from renku.core.interface.storage import IStorage
     from renku.domain_model.dataset import Dataset, DatasetTag
+    from renku.infrastructure.immutable import DynamicProxy
 
 
 class ProviderApi(IDatasetProviderPlugin):
@@ -95,7 +95,7 @@ class AddProviderInterface(abc.ABC):
 
     @abc.abstractmethod
     def update_files(
-        self, files: List[DynamicProxy], dry_run: bool, delete: bool, context: Dict[str, Any], **kwargs
+        self, files: List["DynamicProxy"], dry_run: bool, delete: bool, context: Dict[str, Any], **kwargs
     ) -> List["DatasetUpdateMetadata"]:
         """Update dataset files from the remote provider."""
         raise NotImplementedError
@@ -160,7 +160,7 @@ class StorageProviderInterface(abc.ABC):
 
     def update_files(
         self,
-        files: List[DynamicProxy],
+        files: List["DynamicProxy"],
         dry_run: bool,
         delete: bool,
         context: Dict[str, Any],
@@ -177,39 +177,52 @@ class StorageProviderInterface(abc.ABC):
             communication.start_progress(progress_text, len(files))
 
             storage = self.get_storage()
-            hashes = storage.get_hashes(uri=files[0].dataset.storage)
+
+            # group files by storage to efficiently compute hashes
+            storage_files_dict: Dict[str, List["DynamicProxy"]] = defaultdict(list)
+
             for file in files:
-                communication.update_progress(progress_text, 1)
-                if not file.based_on:
-                    continue
-
-                dst = project_context.metadata_path.parent / file.entity.path
-
-                hash = next((h for h in hashes if h.uri == file.based_on.url), None)
-
-                if hash:
-                    if not dry_run and (
-                        not file.dataset.storage
-                        or not is_uri_subfolder(resolve_uri(file.dataset.storage), file.based_on.url)
-                    ):
-                        # Redownload downloaded (not mounted) file
-                        download_storage = self.get_storage()
-                        download_storage.download(file.based_on.url, dst)
-                    file.based_on = RemoteEntity(checksum=hash.hash if hash.hash else "", url=hash.uri, path=hash.path)
-                    results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.UPDATE))
+                if file.dataset.storage:
+                    storage_files_dict[file.dataset.storage].append(file)
                 else:
-                    if (
-                        not dry_run
-                        and not delete
-                        and (
+                    storage_files_dict[file.based_on.url].append(file)
+
+            for file_storage, files in storage_files_dict.items():
+                hashes = storage.get_hashes(uri=file_storage)
+                for file in files:
+                    communication.update_progress(progress_text, 1)
+                    if not file.based_on:
+                        continue
+
+                    dst = project_context.metadata_path.parent / file.entity.path
+
+                    hash = next((h for h in hashes if h.uri == file.based_on.url), None)
+
+                    if hash:
+                        if not dry_run and (
                             not file.dataset.storage
                             or not is_uri_subfolder(resolve_uri(file.dataset.storage), file.based_on.url)
+                        ):
+                            # Redownload downloaded (not mounted) file
+                            download_storage = self.get_storage()
+                            download_storage.download(file.based_on.url, dst)
+                        file.based_on = RemoteEntity(
+                            checksum=hash.hash if hash.hash else "", url=hash.uri, path=hash.path
                         )
-                    ):
-                        # Delete downloaded (not mounted) file
-                        delete_dataset_file(dst, follow_symlinks=True)
-                        project_context.repository.add(dst, force=True)
-                    results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.DELETE))
+                        results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.UPDATE))
+                    else:
+                        if (
+                            not dry_run
+                            and delete
+                            and (
+                                not file.dataset.storage
+                                or not is_uri_subfolder(resolve_uri(file.dataset.storage), file.based_on.url)
+                            )
+                        ):
+                            # Delete downloaded (not mounted) file
+                            delete_dataset_file(dst, follow_symlinks=True)
+                            project_context.repository.add(dst, force=True)
+                        results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.DELETE))
 
         finally:
             communication.finalize_progress(progress_text)
