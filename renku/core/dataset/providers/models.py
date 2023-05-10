@@ -147,6 +147,7 @@ class ProviderDataset(Dataset):
             same_as=dataset.same_as,
             title=dataset.title,
             version=dataset.version,
+            storage=dataset.storage,
         )
 
     @property

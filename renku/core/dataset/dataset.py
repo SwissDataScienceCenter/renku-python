@@ -568,6 +568,7 @@ def import_dataset(
         total_size=calculate_total_size(importer.provider_dataset_files),
         clear_files_before=True,
         datadir=datadir,
+        storage=provider_dataset.storage,
     )
 
     new_dataset.update_metadata_from(provider_dataset)
