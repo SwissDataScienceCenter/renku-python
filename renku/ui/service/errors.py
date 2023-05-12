@@ -301,6 +301,21 @@ class UserNonRenkuProjectError(ServiceError):
         super().__init__(exception=exception)
 
 
+class UserProjectMetadataCorruptError(ServiceError):
+    """The metadata in the project os corrupt and couldn't be loaded."""
+
+    code = SVC_ERROR_USER + 120
+    userMessage = "The Renku metadata in the project is corrupt and couldn't be loaded: {error_message}"
+    devMessage = "Couldn't parse project metadata due to a JSON parsing error: {error_message}"
+
+    def __init__(self, exception=None, error_message=ERROR_NOT_AVAILABLE):
+        super().__init__(
+            userMessage=self.userMessage.format(error_message=error_message),
+            devMessage=self.devMessage.format(error_message=error_message),
+            exception=exception,
+        )
+
+
 class UserDatasetsMultipleImagesError(ServiceError):
     """Multiple images dataset have the same priority."""
 

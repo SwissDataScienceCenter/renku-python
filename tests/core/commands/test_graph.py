@@ -256,7 +256,7 @@ def test_graph_export_full():
     """Test getting full graph."""
 
     dataset_gateway = MagicMock(spec=IDatasetGateway)
-    dataset_gateway.get_all_active_datasets.return_value = [
+    dataset_gateway.get_provenance_tails.return_value = [
         MagicMock(
             spec=Dataset,
             id="/datasets/abcdefg12345",

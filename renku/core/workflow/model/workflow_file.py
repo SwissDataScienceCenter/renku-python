@@ -33,10 +33,11 @@ from renku.core.interface.plan_gateway import IPlanGateway
 from renku.core.interface.project_gateway import IProjectGateway
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
-from renku.core.util.os import are_paths_equal
+from renku.core.util.os import are_paths_equal, is_subpath
 from renku.core.util.util import to_string
 from renku.core.workflow.plan import get_latest_plan, is_plan_removed
 from renku.core.workflow.run import get_valid_parameter_name, get_valid_plan_name
+from renku.domain_model.project_context import project_context
 from renku.domain_model.workflow.parameter import (
     CommandInput,
     CommandOutput,
@@ -119,6 +120,14 @@ class WorkflowFile:
                             "Names 'inputs', 'outputs', and 'parameters' are reserved and cannot be used as parameter "
                             f"name in step '{step.name}'"
                         )
+
+            for parameter in itertools.chain(step.inputs, step.outputs):
+                if not is_subpath(parameter.path, project_context.path):
+                    raise errors.UsageError(
+                        "The input/output file or directory is not in the repository. Only files in the repository are "
+                        "currently supported.\nHint: Specify it as a parameter instead."
+                        "\n\n\t" + str(parameter.path) + "\n\n"
+                    )
 
             duplicates = get_duplicate_arguments_names(plan=step)
             if duplicates:

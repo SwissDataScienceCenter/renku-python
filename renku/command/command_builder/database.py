@@ -92,7 +92,7 @@ class DatabaseCommand(Command):
 
         current_version = Version(__version__)
 
-        if current_version < minimum_renku_version:
+        if Version(current_version.base_version) < minimum_renku_version:
             raise errors.MinimumVersionError(current_version, minimum_renku_version)
 
     def _post_hook(self, builder: Command, context: dict, result: CommandResult, *args, **kwargs) -> None:
