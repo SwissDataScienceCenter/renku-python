@@ -41,7 +41,7 @@ Features
 -  **cli:** pretty session list output with additional fields
    (`#3397 <https://github.com/SwissDataScienceCenter/renku-python/issues/3397>`__)
    (`d8feb83 <https://github.com/SwissDataScienceCenter/renku-python/commit/d8feb8395052382018e0ad6c6a0f57bed77bde1d>`__)
--  **core:** do not update template if dockerfile is modified
+-  **core:** do not update template if Dockerfile is modified
    (`#3396 <https://github.com/SwissDataScienceCenter/renku-python/issues/3396>`__)
    (`00a1963 <https://github.com/SwissDataScienceCenter/renku-python/commit/00a1963fe190f583e2b4a41935b7761a8ec588ed>`__)
 -  **core:** raise proper errors when Renku metadata is corrupt
