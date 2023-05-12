@@ -18,6 +18,42 @@
 Changes
 =======
 
+`2.4.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.4.0...v2.4.1>`__ (2023-05-12)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** export removed datasets in graph export –full
+   (`#3422 <https://github.com/SwissDataScienceCenter/renku-python/issues/3422>`__)
+   (`59771e5 <https://github.com/SwissDataScienceCenter/renku-python/commit/59771e5993d2a35de38e2407d47e9684b5361f0d>`__)
+-  **core:** fix error in metadata loading and v10 migration
+   (`#3399 <https://github.com/SwissDataScienceCenter/renku-python/issues/3399>`__)
+   (`5c2cfb4 <https://github.com/SwissDataScienceCenter/renku-python/commit/5c2cfb40d8212a05e319967b4c206eeae4a4dde5>`__)
+-  **core:** fix trying to pull external files from LFS, prohibit
+   external files in workflows
+   (`#3390 <https://github.com/SwissDataScienceCenter/renku-python/issues/3390>`__)
+   (`0aac292 <https://github.com/SwissDataScienceCenter/renku-python/commit/0aac292e45df62489d92db142e8f843a05c06b80>`__)
+
+Features
+~~~~~~~~
+
+-  **cli:** pretty session list output with additional fields
+   (`#3397 <https://github.com/SwissDataScienceCenter/renku-python/issues/3397>`__)
+   (`d8feb83 <https://github.com/SwissDataScienceCenter/renku-python/commit/d8feb8395052382018e0ad6c6a0f57bed77bde1d>`__)
+-  **core:** do not update template if dockerfile is modified
+   (`#3396 <https://github.com/SwissDataScienceCenter/renku-python/issues/3396>`__)
+   (`00a1963 <https://github.com/SwissDataScienceCenter/renku-python/commit/00a1963fe190f583e2b4a41935b7761a8ec588ed>`__)
+-  **core:** raise proper errors when Renku metadata is corrupt
+   (`#3393 <https://github.com/SwissDataScienceCenter/renku-python/issues/3393>`__)
+   (`bb0a39a <https://github.com/SwissDataScienceCenter/renku-python/commit/bb0a39a60502688a9962876aac91f19e20900854>`__)
+-  **dataset:** default dataset add action in configuration
+   (`#3398 <https://github.com/SwissDataScienceCenter/renku-python/issues/3398>`__)
+   (`4f10d5f <https://github.com/SwissDataScienceCenter/renku-python/commit/4f10d5faec461152be4cc790c0cfc780593fc2c4>`__)
+-  **service:** allow setting default CLI version for project creation
+   (`#3415 <https://github.com/SwissDataScienceCenter/renku-python/issues/3415>`__)
+   (`9f16b0a <https://github.com/SwissDataScienceCenter/renku-python/commit/9f16b0a3fffaa3887ee869e104e9cebaa85de2b2>`__)
+
 `2.4.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.3.2...v2.4.0>`__ (2023-04-10)
 -------------------------------------------------------------------------------------------------------
 
