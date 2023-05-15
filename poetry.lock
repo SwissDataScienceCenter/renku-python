@@ -724,14 +724,14 @@ setuptools = "*"
 
 [[package]]
 name = "cwl-utils"
-version = "0.25"
+version = "0.17"
 description = ""
 category = "main"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "cwl-utils-0.25.tar.gz", hash = "sha256:26351558a862ec8ccfe2b12c2c08862ada203176f32d8c57aafa5d0627e687d3"},
-    {file = "cwl_utils-0.25-py3-none-any.whl", hash = "sha256:23b481e7e86e1db47b1ee6a19cf1d84125746416eb046f819d4f9934a43b447c"},
+    {file = "cwl-utils-0.17.tar.gz", hash = "sha256:479b7d189dc16e03b607dfe17046e943fc695ebeefba51408f37ca11292fe469"},
+    {file = "cwl_utils-0.17-py3-none-any.whl", hash = "sha256:0ce3fb5b91eeb89d007870ca93b717a7321f33b89195663139fb02a64f9b4072"},
 ]
 
 [package.dependencies]
@@ -740,7 +740,6 @@ cwl-upgrader = ">=1.2.3"
 packaging = "*"
 rdflib = "*"
 requests = "*"
-"ruamel.yaml" = {version = ">=0.17.6,<0.17.23", markers = "python_version >= \"3.7\""}
 schema-salad = ">=8.3.20220825114525,<9"
 
 [package.extras]
@@ -748,27 +747,26 @@ pretty = ["cwlformat"]
 
 [[package]]
 name = "cwltool"
-version = "3.1.20221201130942"
+version = "3.1.20220628170238"
 description = "Common workflow language reference implementation"
 category = "main"
 optional = false
 python-versions = ">=3.6, <4"
 files = [
-    {file = "cwltool-3.1.20221201130942-py3-none-any.whl", hash = "sha256:8a816169cc97c9b6afe1b33df597351a060ea6c788b40762ea8de6ea6470b8a4"},
-    {file = "cwltool-3.1.20221201130942.tar.gz", hash = "sha256:0152d8cdf6acaf3620f557b442941f577bff2851d9e2e866e6051ea48a37bdbe"},
+    {file = "cwltool-3.1.20220628170238-py3-none-any.whl", hash = "sha256:37b8ce96a72a40a232a04c0f49e8053703aafbe885a239eff57512c66fcfb4c3"},
+    {file = "cwltool-3.1.20220628170238.tar.gz", hash = "sha256:fbac3fa443109fcbb48e7174e02963fddb16542f1b43fa54c72dd000e102296b"},
 ]
 
 [package.dependencies]
 argcomplete = "*"
 bagit = ">=1.6.4"
 coloredlogs = "*"
-cwl-utils = ">=0.19"
 mypy-extensions = "*"
 prov = "1.5.1"
 psutil = ">=5.6.6"
 pydot = ">=1.4.1"
 pyparsing = "!=3.0.2"
-rdflib = ">=4.2.2,<6.3.0"
+rdflib = ">=4.2.2,<6.2.0"
 requests = ">=2.6.1"
 "ruamel.yaml" = ">=0.15,<0.17.22"
 schema-salad = ">=8.2.20211104054942,<9"
@@ -777,7 +775,7 @@ shellescape = ">=3.4.1,<3.9"
 typing-extensions = "*"
 
 [package.extras]
-deps = ["galaxy-tool-util (>=22.1.2,<23)"]
+deps = ["galaxy-tool-util (>=21.1.0)"]
 
 [[package]]
 name = "deal"
@@ -2781,17 +2779,6 @@ files = [
 diagrams = ["jinja2", "railroad-diagrams"]
 
 [[package]]
-name = "pypubsub"
-version = "4.0.3"
-description = "Python Publish-Subscribe Package"
-category = "main"
-optional = false
-python-versions = ">=3.3, <4"
-files = [
-    {file = "Pypubsub-4.0.3-py3-none-any.whl", hash = "sha256:7f716bae9388afe01ff82b264ba8a96a8ae78b42bb1f114f2716ca8f9e404e2a"},
-]
-
-[[package]]
 name = "pyreadline3"
 version = "3.4.1"
 description = "A python implementation of GNU readline."
@@ -3289,14 +3276,14 @@ cffi = {version = "*", markers = "implementation_name == \"pypy\""}
 
 [[package]]
 name = "rdflib"
-version = "6.2.0"
+version = "6.1.1"
 description = "RDFLib is a Python library for working with RDF, a simple yet powerful language for representing information."
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "rdflib-6.2.0-py3-none-any.whl", hash = "sha256:85c34a86dfc517a41e5f2425a41a0aceacc23983462b32e68610b9fad1383bca"},
-    {file = "rdflib-6.2.0.tar.gz", hash = "sha256:62dc3c86d1712db0f55785baf8047f63731fa59b2682be03219cb89262065942"},
+    {file = "rdflib-6.1.1-py3-none-any.whl", hash = "sha256:fc81cef513cd552d471f2926141396b633207109d0154c8e77926222c70367fe"},
+    {file = "rdflib-6.1.1.tar.gz", hash = "sha256:8dbfa0af2990b98471dacbc936d6494c997ede92fd8ed693fb84ee700ef6f754"},
 ]
 
 [package.dependencies]
@@ -3305,12 +3292,9 @@ pyparsing = "*"
 setuptools = "*"
 
 [package.extras]
-berkeleydb = ["berkeleydb"]
-dev = ["black (==22.6.0)", "flake8", "flakeheaven", "isort", "mypy", "pep8-naming", "types-setuptools"]
-docs = ["myst-parser", "sphinx (<6)", "sphinx-autodoc-typehints", "sphinxcontrib-apidoc", "sphinxcontrib-kroki"]
+docs = ["sphinx (<5)", "sphinxcontrib-apidoc"]
 html = ["html5lib"]
-networkx = ["networkx"]
-tests = ["html5lib", "pytest", "pytest-cov"]
+tests = ["berkeleydb", "html5lib", "networkx", "pytest", "pytest-cov", "pytest-subtests"]
 
 [[package]]
 name = "redis"
@@ -3962,14 +3946,14 @@ files = [
 
 [[package]]
 name = "toil"
-version = "5.9.2"
+version = "5.7.1"
 description = "Pipeline management software for clusters."
 category = "main"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "toil-5.9.2-py3-none-any.whl", hash = "sha256:a59adac6081d39e7c83db0c92fe4130297479bddf84877f8531b2b3c7f30b5ce"},
-    {file = "toil-5.9.2.tar.gz", hash = "sha256:15018c0215448890c4a6ea4e4a122791bab7ab200424831c0a4eacaa57df0120"},
+    {file = "toil-5.7.1-py3-none-any.whl", hash = "sha256:81041ba89867a3a37e265a5e073c60a6dfe9ed03342fb3a53bb48f7c04ef1b4b"},
+    {file = "toil-5.7.1.tar.gz", hash = "sha256:99a11bb1d138068861013f78f72489ff6ed9af02ceed8a551879a73738c9ebe7"},
 ]
 
 [package.dependencies]
@@ -3979,20 +3963,18 @@ docker = ">=3.7.2,<6"
 enlighten = ">=1.5.2,<2"
 psutil = ">=3.0.1,<6"
 py-tes = ">=0.4.2,<1"
-PyPubSub = ">=4.0.3,<5"
 python-dateutil = "*"
 pytz = ">=2012"
 requests = ">=2,<3"
-typing-extensions = "*"
 
 [package.extras]
-all = ["CacheControl[filecache]", "apache-libcloud (>=2.2.1,<3)", "boto (>=2.48.0,<3)", "boto3 (>=1.20.46,<2)", "boto3-stubs[iam,s3,sdb] (==1.24.0)", "celery (>=5.1.0,<6)", "connexion[swagger-ui] (>=2.10.0,<3)", "cwltool (==3.1.20221201130942)", "flask (>=2.0,<3)", "flask-cors (==3.0.10)", "galaxy-tool-util", "google-cloud-storage (>=2,<=2.5.0)", "gunicorn (==20.1.0)", "idna (>=2)", "kubernetes (>=12.0.1,<22)", "kubernetes-stubs (==v22.6.0post1)", "mypy-boto3-iam (==1.24.90)", "mypy-boto3-s3 (==1.24.94)", "mypy-boto3-sdb (==1.24.0)", "mypy-boto3-sts (==1.26.57)", "networkx (>=2,<2.8.9)", "pymesos (>=0.3.15,<0.4)", "pynacl (>=1.4.0,<2)", "ruamel.yaml (>=0.15,<0.17.22)", "ruamel.yaml (>=0.15,<=0.17.21)", "ruamel.yaml.clib (>=0.2.6)", "schema-salad (>=8.4.20230128170514,<9)", "types-PyYAML", "types-urllib3", "wdlparse (==0.1.0)", "werkzeug (>=2.0,<3)", "wes-service (>=4.0.0,<5)"]
-aws = ["boto (>=2.48.0,<3)", "boto3 (>=1.20.46,<2)", "boto3-stubs[iam,s3,sdb] (==1.24.0)", "mypy-boto3-iam (==1.24.90)", "mypy-boto3-s3 (==1.24.94)", "mypy-boto3-sdb (==1.24.0)", "mypy-boto3-sts (==1.26.57)"]
-cwl = ["CacheControl[filecache]", "cwltool (==3.1.20221201130942)", "galaxy-tool-util", "networkx (>=2,<2.8.9)", "ruamel.yaml (>=0.15,<=0.17.21)", "ruamel.yaml.clib (>=0.2.6)", "schema-salad (>=8.4.20230128170514,<9)"]
+all = ["apache-libcloud (>=2.2.1,<3)", "boto (>=2.48.0,<3)", "boto3 (>=1.20.46,<2)", "boto3-stubs[iam,s3,sdb] (==1.24.0)", "celery (>=5.1.0,<6)", "connexion[swagger-ui] (>=2.10.0,<3)", "cwltool (==3.1.20220628170238)", "flask (>=2.0,<3)", "flask-cors (==3.0.10)", "galaxy-tool-util", "google-cloud-storage (>=1.6.0,<2)", "gunicorn (==20.1.0)", "idna (>=2)", "kubernetes (>=12.0.1,<22)", "mypy-boto3-iam (==1.24.0)", "mypy-boto3-s3 (==1.24.0)", "mypy-boto3-sdb (==1.24.0)", "networkx (>=2,<2.8.5)", "pymesos (>=0.3.15,<0.4)", "pynacl (>=1.4.0,<2)", "ruamel.yaml (>=0.15,<0.17.22)", "ruamel.yaml (>=0.15,<=0.17.21)", "ruamel.yaml.clib (>=0.2.6)", "wdlparse (==0.1.0)", "werkzeug (>=2.0,<3)", "wes-service (>=4.0.0,<5)"]
+aws = ["boto (>=2.48.0,<3)", "boto3 (>=1.20.46,<2)", "boto3-stubs[iam,s3,sdb] (==1.24.0)", "mypy-boto3-iam (==1.24.0)", "mypy-boto3-s3 (==1.24.0)", "mypy-boto3-sdb (==1.24.0)"]
+cwl = ["cwltool (==3.1.20220628170238)", "galaxy-tool-util", "networkx (>=2,<2.8.5)", "ruamel.yaml (>=0.15,<=0.17.21)", "ruamel.yaml.clib (>=0.2.6)"]
 encryption = ["pynacl (>=1.4.0,<2)"]
-google = ["apache-libcloud (>=2.2.1,<3)", "google-cloud-storage (>=2,<=2.5.0)"]
-htcondor = ["htcondor (>=10.2.0.post1,<11)"]
-kubernetes = ["idna (>=2)", "kubernetes (>=12.0.1,<22)", "kubernetes-stubs (==v22.6.0post1)", "types-PyYAML", "types-urllib3"]
+google = ["apache-libcloud (>=2.2.1,<3)", "google-cloud-storage (>=1.6.0,<2)"]
+htcondor = ["htcondor (>=8.6.0,<9)"]
+kubernetes = ["idna (>=2)", "kubernetes (>=12.0.1,<22)"]
 mesos = ["pymesos (>=0.3.15,<0.4)"]
 server = ["celery (>=5.1.0,<6)", "connexion[swagger-ui] (>=2.10.0,<3)", "flask (>=2.0,<3)", "flask-cors (==3.0.10)", "gunicorn (==20.1.0)", "ruamel.yaml (>=0.15,<0.17.22)", "werkzeug (>=2.0,<3)", "wes-service (>=4.0.0,<5)"]
 wdl = ["wdlparse (==0.1.0)"]
@@ -4776,4 +4758,4 @@ service = ["apispec", "apispec-webframeworks", "circus", "flask", "gunicorn", "m
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.1,<3.12"
-content-hash = "8a9a9d9ca6293d24deb8967b32362f45c69c841b92d72c9e4059a470e17aaa19"
+content-hash = "5fd9703ff48c7fdc1a6eab028b41494001406638de820830a4617341cc26968a"
