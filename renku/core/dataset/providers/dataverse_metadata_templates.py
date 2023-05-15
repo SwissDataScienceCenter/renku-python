@@ -39,6 +39,12 @@ DATASET_METADATA_TEMPLATE = """
                         "typeName": "datasetContact"
                     },
                     {
+                        "value": ${keywords},
+                        "typeClass": "compound",
+                        "multiple": true,
+                        "typeName": "keyword"
+                    },
+                    {
                         "value": [
                             {
                                 "dsDescriptionValue": {
@@ -96,6 +102,17 @@ CONTACT_METADATA_TEMPLATE = """
         "multiple": false,
         "typeName": "datasetContactName",
         "value": "${name}"
+    }
+}
+"""
+
+KEYWORDS_METADATA_TEMPLATE = """
+{
+    "keywordValue": {
+        "typeName": "keywordValue",
+        "multiple": false,
+        "typeClass": "primitive",
+        "value": "${keyword}"
     }
 }
 """

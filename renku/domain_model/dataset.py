@@ -500,7 +500,7 @@ class Dataset(Persistent):
     @property
     def keywords_csv(self):
         """Comma-separated list of keywords associated with dataset."""
-        return ", ".join(self.keywords)
+        return ", ".join(self.keywords or [])
 
     def get_datadir(self) -> Path:
         """Return dataset's data directory relative to project's root."""
