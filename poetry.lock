@@ -1145,13 +1145,14 @@ gitdb = ">=4.0.1,<5"
 
 [[package]]
 name = "grandalf"
-version = "0.7"
+version = "0.8"
 description = "Graph and drawing algorithms framework"
 category = "main"
 optional = false
 python-versions = "*"
 files = [
-    {file = "grandalf-0.7-py3-none-any.whl", hash = "sha256:0ba234b8962420a093af39de82e89b22e9152d54b05d2fa30953ce39fa52aea3"},
+    {file = "grandalf-0.8-py3-none-any.whl", hash = "sha256:793ca254442f4a79252ea9ff1ab998e852c1e071b863593e5383afee906b4185"},
+    {file = "grandalf-0.8.tar.gz", hash = "sha256:2813f7aab87f0d20f334a3162ccfbcbf085977134a17a5b516940a93a77ea974"},
 ]
 
 [package.dependencies]
@@ -4758,4 +4759,4 @@ service = ["apispec", "apispec-webframeworks", "circus", "flask", "gunicorn", "m
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.1,<3.12"
-content-hash = "5fd9703ff48c7fdc1a6eab028b41494001406638de820830a4617341cc26968a"
+content-hash = "f3a4b72b94799a80e9de7f65b2eb19ac4057aa31e94bc1e0e93223f00aa4b2ff"
