@@ -747,26 +747,27 @@ pretty = ["cwlformat"]
 
 [[package]]
 name = "cwltool"
-version = "3.1.20220628170238"
+version = "3.1.20220907141119"
 description = "Common workflow language reference implementation"
 category = "main"
 optional = false
 python-versions = ">=3.6, <4"
 files = [
-    {file = "cwltool-3.1.20220628170238-py3-none-any.whl", hash = "sha256:37b8ce96a72a40a232a04c0f49e8053703aafbe885a239eff57512c66fcfb4c3"},
-    {file = "cwltool-3.1.20220628170238.tar.gz", hash = "sha256:fbac3fa443109fcbb48e7174e02963fddb16542f1b43fa54c72dd000e102296b"},
+    {file = "cwltool-3.1.20220907141119-py3-none-any.whl", hash = "sha256:7680e48c13956bb2779a05a79c082d9f37c8049cabfcb06a2f6db0dd78e7d615"},
+    {file = "cwltool-3.1.20220907141119.tar.gz", hash = "sha256:b322be0ebe0df0c14e38e16d7c8d86458f280f4f3d7717d615b132065efa5b66"},
 ]
 
 [package.dependencies]
 argcomplete = "*"
 bagit = ">=1.6.4"
 coloredlogs = "*"
+cwl-utils = ">=0.15"
 mypy-extensions = "*"
 prov = "1.5.1"
 psutil = ">=5.6.6"
 pydot = ">=1.4.1"
 pyparsing = "!=3.0.2"
-rdflib = ">=4.2.2,<6.2.0"
+rdflib = ">=4.2.2,<6.3.0"
 requests = ">=2.6.1"
 "ruamel.yaml" = ">=0.15,<0.17.22"
 schema-salad = ">=8.2.20211104054942,<9"
@@ -775,7 +776,7 @@ shellescape = ">=3.4.1,<3.9"
 typing-extensions = "*"
 
 [package.extras]
-deps = ["galaxy-tool-util (>=21.1.0)"]
+deps = ["galaxy-tool-util (>=22.1.2,<23)"]
 
 [[package]]
 name = "deal"
@@ -4758,4 +4759,4 @@ service = ["apispec", "apispec-webframeworks", "circus", "flask", "gunicorn", "m
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.1,<3.12"
-content-hash = "5fd9703ff48c7fdc1a6eab028b41494001406638de820830a4617341cc26968a"
+content-hash = "2920718a28e509381680dc12d5f045da8b8ca895adc336299712e101181546ce"
