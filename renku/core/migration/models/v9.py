@@ -1544,7 +1544,7 @@ class Dataset(Entity, CreatorMixin):
     @property
     def keywords_csv(self):
         """Comma-separated list of keywords associated with dataset."""
-        return ", ".join(self.keywords)
+        return ", ".join(self.keywords or [])
 
     @property
     def tags_csv(self):
