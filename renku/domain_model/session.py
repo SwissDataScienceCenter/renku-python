@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from datetime import datetime
+from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
@@ -26,6 +27,15 @@ from renku.core.constant import ProviderPriority
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderParameter
+
+
+class SessionStopStatus(Enum):
+    """Status code returned when stopping sessions."""
+
+    NO_ACTIVE_SESSION = auto()
+    SUCCESSFUL = auto()
+    FAILED = auto()  # When all or some of (requested) sessions can't be stopped
+    NAME_NEEDED = auto()
 
 
 class Session:
@@ -152,7 +162,7 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> bool:
+    def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> SessionStopStatus:
         """Stops all or a given interactive session.
 
         Args:
@@ -162,7 +172,7 @@ class ISessionProvider(metaclass=ABCMeta):
 
 
         Returns:
-            bool: True in case session(s) has been successfully stopped
+            bool: The status of running and stopped sessions
         """
         pass
 

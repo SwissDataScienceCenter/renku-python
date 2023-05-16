@@ -1,7 +1,6 @@
-#
-# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
-# Eidgenössische Technische Hochschule Zürich (ETHZ).
+#  Copyright Swiss Data Science Center (SDSC). A partnership between
+#  École Polytechnique Fédérale de Lausanne (EPFL) and
+#  Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,7 +34,7 @@ from renku.core.util.git import get_remote
 from renku.core.util.jwt import is_token_expired
 from renku.core.util.ssh import SystemSSHConfig
 from renku.domain_model.project_context import project_context
-from renku.domain_model.session import ISessionProvider, Session
+from renku.domain_model.session import ISessionProvider, Session, SessionStopStatus
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderParameter
@@ -401,11 +400,16 @@ class RenkulabSessionProvider(ISessionProvider):
             )
         raise errors.RenkulabSessionError("Cannot start session via the notebook service because " + res.text)
 
-    def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> bool:
+    def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> SessionStopStatus:
         """Stops all sessions (for the given project) or a specific interactive session."""
         responses = []
+        sessions = self.session_list(project_name=project_name)
+        n_sessions = len(sessions)
+
+        if n_sessions == 0:
+            return SessionStopStatus.NO_ACTIVE_SESSION
+
         if stop_all:
-            sessions = self.session_list(project_name=project_name)
             for session in sessions:
                 responses.append(
                     self._send_renku_request(
@@ -413,26 +417,28 @@ class RenkulabSessionProvider(ISessionProvider):
                     )
                 )
                 self._wait_for_session_status(session.id, "stopping")
-        elif not session_name:
-            sessions = self.session_list(project_name=project_name)
-            if len(sessions) == 1:
-                responses.append(
-                    self._send_renku_request(
-                        "delete", f"{self._notebooks_url()}/servers/{sessions[0].id}", headers=self._auth_header()
-                    )
-                )
-                self._wait_for_session_status(sessions[0].id, "stopping")
-        else:
+        elif session_name:
             responses.append(
                 self._send_renku_request(
                     "delete", f"{self._notebooks_url()}/servers/{session_name}", headers=self._auth_header()
                 )
             )
             self._wait_for_session_status(session_name, "stopping")
+        elif n_sessions == 1:
+            responses.append(
+                self._send_renku_request(
+                    "delete", f"{self._notebooks_url()}/servers/{sessions[0].id}", headers=self._auth_header()
+                )
+            )
+            self._wait_for_session_status(sessions[0].id, "stopping")
+        else:
+            return SessionStopStatus.NAME_NEEDED
 
         self._cleanup_ssh_connection_configs(project_name)
 
-        return all([response.status_code == 204 for response in responses]) if responses else False
+        n_successfully_stopped = len([r for r in responses if r.status_code == 204])
+
+        return SessionStopStatus.SUCCESSFUL if n_successfully_stopped == n_sessions else SessionStopStatus.FAILED
 
     def session_open(self, project_name: str, session_name: Optional[str], ssh: bool = False, **kwargs) -> bool:
         """Open a given interactive session.

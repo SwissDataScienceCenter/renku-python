@@ -1,7 +1,6 @@
-#
-# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
-# Eidgenössische Technische Hochschule Zürich (ETHZ).
+#  Copyright Swiss Data Science Center (SDSC). A partnership between
+#  École Polytechnique Fédérale de Lausanne (EPFL) and
+#  Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +32,7 @@ from renku.core.constant import ProviderPriority
 from renku.core.plugin import hookimpl
 from renku.core.util import communication
 from renku.domain_model.project_context import project_context
-from renku.domain_model.session import ISessionProvider, Session
+from renku.domain_model.session import ISessionProvider, Session, SessionStopStatus
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderParameter
@@ -297,7 +296,7 @@ class DockerSessionProvider(ISessionProvider):
         else:
             return result, ""
 
-    def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> bool:
+    def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> SessionStopStatus:
         """Stops all or a given interactive session."""
         try:
             docker_containers = (
@@ -308,13 +307,18 @@ class DockerSessionProvider(ISessionProvider):
                 else self.docker_client().containers.list()
             )
 
-            if len(docker_containers) == 0 or (not session_name and len(docker_containers) > 1):
-                return False
+            n_docker_containers = len(docker_containers)
+
+            if n_docker_containers == 0:
+                return SessionStopStatus.FAILED if session_name else SessionStopStatus.NO_ACTIVE_SESSION
+            elif not session_name and len(docker_containers) > 1:
+                return SessionStopStatus.NAME_NEEDED
 
             [c.stop() for c in docker_containers]
-            return True
         except docker.errors.APIError as error:
             raise errors.DockerError(error.msg)
+        else:
+            return SessionStopStatus.SUCCESSFUL
 
     def session_open(self, project_name: str, session_name: Optional[str], **kwargs) -> bool:
         """Open a given interactive session.

@@ -22,6 +22,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from renku.domain_model.session import SessionStopStatus
+
 
 @pytest.fixture()
 def dummy_session_provider():
@@ -82,13 +84,13 @@ def dummy_session_provider():
             self.sessions.append(name)
             return name, ""
 
-        def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> bool:
+        def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> SessionStopStatus:
             if stop_all:
                 self.sessions.clear()
-                return True
+                return SessionStopStatus.SUCCESSFUL
 
             self.sessions.remove(session_name)
-            return True
+            return SessionStopStatus.SUCCESSFUL
 
         def session_url(self, session_name: str) -> Optional[str]:
             return "http://localhost/"

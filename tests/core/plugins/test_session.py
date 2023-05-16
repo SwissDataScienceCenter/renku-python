@@ -28,6 +28,7 @@ from renku.core.session.docker import DockerSessionProvider
 from renku.core.session.renkulab import RenkulabSessionProvider
 from renku.core.session.session import session_list, session_start, session_stop, ssh_setup
 from renku.core.util.ssh import SystemSSHConfig
+from renku.domain_model.session import SessionStopStatus
 
 
 def fake_start(
@@ -46,8 +47,8 @@ def fake_start(
 
 def fake_stop(self, project_name, session_name, stop_all):
     if session_name == "missing_session":
-        return False
-    return True
+        return SessionStopStatus.FAILED
+    return SessionStopStatus.SUCCESSFUL
 
 
 def fake_find_image(self, image_name, config):
@@ -139,14 +140,7 @@ def test_session_start(
     ],
 )
 def test_session_stop(
-    run_shell,
-    project,
-    session_provider,
-    provider_name,
-    parameters,
-    provider_patches,
-    result,
-    with_injection,
+    run_shell, project, with_injection, session_provider, provider_name, parameters, provider_patches, result
 ):
     """Test stopping sessions."""
     with patch.multiple(session_provider, session_stop=fake_stop, **provider_patches):

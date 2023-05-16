@@ -30,7 +30,7 @@ from renku.core.session.utils import get_image_repository_host, get_renku_projec
 from renku.core.util import communication
 from renku.core.util.os import safe_read_yaml
 from renku.core.util.ssh import SystemSSHConfig, generate_ssh_keys
-from renku.domain_model.session import ISessionProvider, Session
+from renku.domain_model.session import ISessionProvider, Session, SessionStopStatus
 
 
 def _safe_get_provider(provider: str) -> ISessionProvider:
@@ -213,7 +213,7 @@ def session_stop(session_name: Optional[str], stop_all: bool = False, provider: 
         provider(Optional[str]): Name of the session provider to use.
     """
 
-    def stop_sessions(session_provider: ISessionProvider) -> bool:
+    def stop_sessions(session_provider: ISessionProvider) -> SessionStopStatus:
         try:
             return session_provider.session_stop(
                 project_name=project_name, session_name=session_name, stop_all=stop_all
@@ -221,38 +221,42 @@ def session_stop(session_name: Optional[str], stop_all: bool = False, provider: 
         except errors.RenkulabSessionGetUrlError:
             if provider:
                 raise
-            return False
+            return SessionStopStatus.FAILED
 
     session_detail = "all sessions" if stop_all else f"session {session_name}" if session_name else "session"
     project_name = get_renku_project_name()
 
     providers = [_safe_get_provider(provider)] if provider else get_supported_session_providers()
 
-    is_stopped = False
+    statues = []
     warning_messages = []
     with communication.busy(msg=f"Waiting for {session_detail} to stop..."):
         for session_provider in sorted(providers, key=lambda p: p.priority):
             try:
-                is_stopped = stop_sessions(session_provider)
+                status = stop_sessions(session_provider)
             except errors.RenkuException as e:
                 warning_messages.append(f"Cannot stop sessions in provider '{session_provider.name}': {e}")
+            else:
+                statues.append(status)
 
-            if is_stopped and not stop_all:
+            # NOTE: The given session name was stopped; don't continue
+            if session_name and not stop_all and status == SessionStopStatus.SUCCESSFUL:
                 break
 
     if warning_messages:
         for message in warning_messages:
             communication.warn(message)
 
-    if not is_stopped:
-        if stop_all:
-            raise errors.ParameterError("There are no running sessions.")
-        elif session_name:
-            raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")
-        elif not warning_messages:
-            raise errors.ParameterError("Session name is missing")
-        else:
-            raise errors.ParameterError("Cannot stop sessions")
+    if not statues:
+        return
+    elif all(s == SessionStopStatus.NO_ACTIVE_SESSION for s in statues):
+        raise errors.ParameterError("There are no running sessions.")
+    elif session_name and not any(s == SessionStopStatus.SUCCESSFUL for s in statues):
+        raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")
+    elif any(s == SessionStopStatus.FAILED for s in statues):
+        raise errors.ParameterError("Cannot stop some sessions")
+    elif not session_name and not any(s == SessionStopStatus.SUCCESSFUL for s in statues):
+        raise errors.ParameterError("Session name is missing")
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
