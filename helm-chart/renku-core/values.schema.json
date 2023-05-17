@@ -101,16 +101,6 @@
           },
           "type": "object"
       },
-      "ingress": {
-        "description": "Kubernetes ingress definition",
-        "properties": {
-            "enabled": {
-                "description": "whether to enable the ingress or not",
-                "type": "boolean"
-            }
-        },
-        "type": "object"
-      },
       "metrics": {
           "description": "Definition of Redis Queue metrics",
           "properties": {
@@ -259,7 +249,6 @@
         "gitLFSSkipSmudge",
         "jwtTokenSecret",
         "service",
-        "ingress",
         "metrics",
         "sentry",
         "versions"
