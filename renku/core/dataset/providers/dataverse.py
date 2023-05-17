@@ -37,6 +37,7 @@ from renku.core.dataset.providers.dataverse_metadata_templates import (
     AUTHOR_METADATA_TEMPLATE,
     CONTACT_METADATA_TEMPLATE,
     DATASET_METADATA_TEMPLATE,
+    KEYWORDS_METADATA_TEMPLATE,
 )
 from renku.core.dataset.providers.doi import DOIProvider
 from renku.core.dataset.providers.repository import RepositoryImporter, make_request
@@ -311,6 +312,7 @@ class DataverseFileSerializer:
         name=None,
         parent_url=None,
         type=None,
+        encoding_format=None,
     ):
         self.content_size = content_size
         self.content_url = content_url
@@ -321,6 +323,7 @@ class DataverseFileSerializer:
         self.name = name
         self.parent_url = parent_url
         self.type = type
+        self.encoding_format = encoding_format
 
     @property
     def remote_url(self):
@@ -384,6 +387,7 @@ class DataverseExporter(ExporterApi):
     def _get_dataset_metadata(self):
         authors, contacts = self._get_creators()
         subject = self._get_subject()
+        keywords = self._get_keywords()
         metadata_template = Template(DATASET_METADATA_TEMPLATE)
         metadata = metadata_template.substitute(
             name=_escape_json_string(self.dataset.title),
@@ -391,6 +395,7 @@ class DataverseExporter(ExporterApi):
             contacts=json.dumps(contacts),
             description=_escape_json_string(self.dataset.description),
             subject=subject,
+            keywords=json.dumps(keywords),
         )
         return json.loads(metadata)
 
@@ -424,6 +429,16 @@ class DataverseExporter(ExporterApi):
             contacts.append(json.loads(contact))
 
         return authors, contacts
+
+    def _get_keywords(self):
+        keywords = []
+
+        for keyword in self.dataset.keywords:
+            keyword_template = Template(KEYWORDS_METADATA_TEMPLATE)
+            keyword_str = keyword_template.substitute(keyword=_escape_json_string(keyword))
+            keywords.append(json.loads(keyword_str))
+
+        return keywords
 
 
 class _DataverseDeposition:
