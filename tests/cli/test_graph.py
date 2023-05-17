@@ -111,6 +111,21 @@ def test_graph_export_strict_dataset(tmpdir, runner, project, subdirectory):
     # check that all datasets are exported
     assert 2 == result.output.count("http://schema.org/Dataset")
 
+    # remove and readd dataset
+    result = runner.invoke(cli, ["dataset", "rm", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["graph", "export", "--strict", "--format=json-ld"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert all(p in result.output for p in test_paths), result.output
+
+    # check that all datasets are exported
+    assert 4 == result.output.count("http://schema.org/Dataset")
+    assert 1 == result.output.count("invalidatedAtTime")
+
 
 def test_graph_export_dataset_mutability(runner, project_with_datasets, with_injection):
     """Test export validation fails for datasets that have both same_as and derived_from."""

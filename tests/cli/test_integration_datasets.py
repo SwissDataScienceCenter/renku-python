@@ -61,12 +61,20 @@ from tests.utils import (
             "name": "pyndl_naive_discr_v0.6.4",
             "creator": "Konstantin Sering, Marc Weitz, David-Elias Künstle, Lennart Schneider",
             "version": "v0.6.4",
+            "keywords": {
+                "naive discriminative learning",
+                "linguistics",
+                "python",
+                "cognitive science",
+                "machine learning",
+            },
         },
         {
             "doi": "10.7910/DVN/F4NUMR",
             "name": "replication_data_for_2.2",
             "creator": "James Druckman, Martin Kifer, Michael Parkin",
             "version": "2",
+            "keywords": {"Social Sciences"},
         },
     ],
 )
@@ -104,6 +112,7 @@ def test_dataset_import_real_doi(runner, project, doi, prefix, sleep_after):
     assert doi["doi"] in dataset.same_as.url
     assert dataset.date_created is None
     assert dataset.date_published is not None
+    assert doi["keywords"] == set(dataset.keywords)
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -825,10 +834,10 @@ def test_dataset_export_upload_failure(runner, tmpdir, project, zenodo_sandbox):
     [("zenodo", [], "zenodo.org/record"), ("dataverse", ["--dataverse-name", "sdsc-published-test-dataverse"], "doi:")],
 )
 def test_dataset_export_published_url(
-    runner, tmpdir, project, zenodo_sandbox, dataverse_demo, provider, params, output
+    runner, tmpdir, project, zenodo_sandbox, dataverse_demo, with_injection, provider, params, output
 ):
     """Test publishing of dataset."""
-    result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
+    result = runner.invoke(cli, ["dataset", "create", "my-dataset", "-k", "keyword", "-k", "data"])
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "OK" in result.output
@@ -841,7 +850,7 @@ def test_dataset_export_published_url(
     result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(new_file)])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    with with_dataset(name="my-dataset", commit_database=True) as dataset:
+    with with_injection(), with_dataset(name="my-dataset", commit_database=True) as dataset:
         dataset.description = "awesome dataset"
         dataset.creators[0].affiliation = "eth"
 
@@ -853,6 +862,14 @@ def test_dataset_export_published_url(
     assert 0 == result.exit_code, format_result_exception(result)
     assert "Exported to:" in result.output
     assert output in result.output
+
+    m = re.search(r"Exported to:\s*(\S*)$", result.output, flags=re.MULTILINE)
+    doi = m.group(1)
+    result = runner.invoke(cli, ["dataset", "import", doi, "--name", "imported"], input="y")
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("imported")
+    assert {"data", "keyword"} == set(dataset.keywords)
 
 
 @pytest.mark.integration
