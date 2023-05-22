@@ -302,7 +302,7 @@ def test_delay_add_file_job(svc_client_cache, it_remote_repo_url_temp_branch, vi
     context = DatasetAddRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": branch,
+            "branch": branch,
             "name": uuid.uuid4().hex,
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
@@ -346,7 +346,7 @@ def test_delay_add_file_job_failure(svc_client_cache, it_remote_repo_url_temp_br
     context = DatasetAddRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": branch,
+            "branch": branch,
             "name": uuid.uuid4().hex,
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
@@ -414,7 +414,7 @@ def test_delay_create_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
     context = DatasetCreateRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": branch,
+            "branch": branch,
             "name": uuid.uuid4().hex,
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
@@ -451,7 +451,7 @@ def test_delay_create_dataset_failure(svc_client_cache, it_remote_repo_url_temp_
     context = DatasetCreateRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": branch,
+            "branch": branch,
             "name": uuid.uuid4().hex,
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
@@ -487,7 +487,7 @@ def test_delay_remove_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
 
     request_payload = {
         "git_url": it_remote_repo_url,
-        "ref": branch,
+        "branch": branch,
         "name": "mydata",
         "migrate_project": True,
     }
@@ -521,7 +521,7 @@ def test_delay_remove_dataset_job_failure(svc_client_cache, it_remote_repo_url_t
 
     request_payload = {
         "git_url": it_remote_repo_url,
-        "ref": ref,
+        "branch": ref,
         "name": dataset_name,
     }
 
@@ -549,7 +549,7 @@ def test_delay_edit_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch
     context = DatasetEditRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": branch,
+            "branch": branch,
             "name": "mydata",
             "title": f"new title => {uuid.uuid4().hex}",
             # NOTE: We test with this only to check that recursive invocation is being prevented.
@@ -588,7 +588,7 @@ def test_delay_edit_dataset_job_failure(svc_client_cache, it_remote_repo_url_tem
     context = DatasetEditRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": branch,
+            "branch": branch,
             "name": "mydata",
             "title": f"new title => {uuid.uuid4().hex}",
             "migrate_project": False,
@@ -621,7 +621,7 @@ def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
     context = DatasetUnlinkRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": branch,
+            "branch": branch,
             "name": "ds1",
             "include_filters": ["data1"],
             # NOTE: We test with this only to check that recursive invocation is being prevented.
@@ -658,7 +658,7 @@ def test_delay_unlink_dataset_job_failure(svc_client_cache, it_remote_repo_url_t
     it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
     context = DatasetUnlinkRequest().load(
-        {"git_url": it_remote_repo_url, "ref": branch, "name": "ds1", "include_filters": ["data1"]}
+        {"git_url": it_remote_repo_url, "branch": branch, "name": "ds1", "include_filters": ["data1"]}
     )
 
     _, _, cache = svc_client_cache
@@ -687,7 +687,7 @@ def test_unlink_dataset_sync(svc_client_cache, it_remote_repo_url_temp_branch, v
     context = DatasetUnlinkRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": branch,
+            "branch": branch,
             "name": "ds1",
             "include_filters": ["data1"],
             "migrate_project": True,

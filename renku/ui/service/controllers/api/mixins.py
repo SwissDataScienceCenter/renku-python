@@ -169,8 +169,8 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                     "git_url": self.request_data["git_url"],
                 }
 
-                if "ref" in self.request_data:
-                    clone_context["ref"] = self.request_data["ref"]
+                if "branch" in self.request_data:
+                    clone_context["ref"] = self.request_data["branch"]
 
                 # NOTE: If we want to migrate project, then we need to do full clone.
                 # This operation can take very long time, and as such is expected
@@ -185,27 +185,27 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                 if not project.initialized:
                     raise UninitializedProject(project.abs_path)
             else:
-                ref = self.request_data.get("ref", None)
+                branch = self.request_data.get("branch", None)
 
-                if ref:
+                if branch:
                     with Repository(project.abs_path) as repository:
-                        if ref != repository.active_branch.name:
+                        if branch != repository.active_branch.name:
                             # NOTE: Command called for different branch than the one used in cache, change branch
                             if len(repository.remotes) != 1:
                                 raise RenkuException("Couldn't find remote for project in cache.")
                             origin = repository.remotes[0]
-                            remote_branch = f"{origin}/{ref}"
+                            remote_branch = f"{origin}/{branch}"
 
                             with project.write_lock():
-                                # NOTE: Add new ref to remote branches
-                                repository.run_git_command("remote", "set-branches", "--add", origin, ref)
+                                # NOTE: Add new branch to remote branches
+                                repository.run_git_command("remote", "set-branches", "--add", origin, branch)
                                 if self.migrate_project or self.clone_depth == PROJECT_CLONE_NO_DEPTH:
-                                    repository.fetch(origin, ref)
+                                    repository.fetch(origin, branch)
                                 else:
-                                    repository.fetch(origin, ref, depth=self.clone_depth)
+                                    repository.fetch(origin, branch, depth=self.clone_depth)
 
                                 # NOTE: Switch to new ref
-                                repository.run_git_command("checkout", "--track", "-f", "-b", ref, remote_branch)
+                                repository.run_git_command("checkout", "--track", "-f", "-b", branch, remote_branch)
 
                                 # NOTE: cleanup remote branches in case a remote was deleted (fetch fails otherwise)
                                 repository.run_git_command("remote", "prune", origin)

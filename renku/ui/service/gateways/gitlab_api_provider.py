@@ -47,11 +47,11 @@ class GitlabAPIProvider(IGitAPIProvider):
         target_folder: Union[Path, str],
         remote: str,
         token: str,
-        ref: Optional[str] = None,
+        branch: Optional[str] = None,
     ):
         """Download files through a remote Git API."""
-        if not ref:
-            ref = "HEAD"
+        if not branch:
+            branch = "HEAD"
 
         target_folder = Path(target_folder)
 
@@ -82,7 +82,7 @@ class GitlabAPIProvider(IGitAPIProvider):
 
             try:
                 with open(full_path, "wb") as f:
-                    project.files.raw(file_path=str(path), ref=ref, streamed=True, action=f.write)
+                    project.files.raw(file_path=str(path), ref=branch, streamed=True, action=f.write)
 
                 result_paths.append(full_path)
             except gitlab.GitlabGetError:
