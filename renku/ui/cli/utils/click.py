@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +21,54 @@ import click
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderParameter
+
+
+def shell_complete_datasets(ctx, param, incomplete) -> List[str]:
+    """Shell completion for dataset names."""
+    from renku.command.dataset import search_datasets_command
+
+    try:
+        result = search_datasets_command().build().execute(name=incomplete)
+    except Exception:
+        return []
+    else:
+        return result.output
+
+
+def shell_complete_workflows(ctx, param, incomplete) -> List[str]:
+    """Shell completion for plan names."""
+    from renku.command.workflow import search_workflows_command
+
+    try:
+        result = search_workflows_command().build().execute(name=incomplete)
+    except Exception:
+        return []
+    else:
+        return [n for n in result.output if n.startswith(incomplete)]
+
+
+def shell_complete_sessions(ctx, param, incomplete) -> List[str]:
+    """Shell completion for session names."""
+    from renku.command.session import search_sessions_command
+
+    try:
+        result = search_sessions_command().build().execute(name=incomplete)
+    except Exception:
+        return []
+    else:
+        return result.output
+
+
+def shell_complete_session_providers(ctx, param, incomplete) -> List[str]:
+    """Shell completion for session providers names."""
+    from renku.command.session import search_session_providers_command
+
+    try:
+        result = search_session_providers_command().build().execute(name=incomplete)
+    except Exception:
+        return []
+    else:
+        return result.output
 
 
 class CaseInsensitiveChoice(click.Choice):
