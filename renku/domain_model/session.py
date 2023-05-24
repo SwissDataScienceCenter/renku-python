@@ -172,7 +172,7 @@ class ISessionProvider(metaclass=ABCMeta):
 
 
         Returns:
-            bool: The status of running and stopped sessions
+            SessionStopStatus: The status of running and stopped sessions
         """
         pass
 
