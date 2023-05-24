@@ -184,7 +184,12 @@ class StorageProviderInterface(abc.ABC):
             for file in files:
                 if file.dataset.storage:
                     storage_files_dict[file.dataset.storage].append(file)
-                else:
+                elif file.based_on:
+                    if not self.supports_storage(file.based_on.url):
+                        raise ValueError(
+                            f"Called {getattr(self, 'name', 'Storage')} provider with file {file.entity.path} "
+                            "which is not supported by this provider"
+                        )
                     storage_files_dict[file.based_on.url].append(file)
 
             for file_storage, files in storage_files_dict.items():
