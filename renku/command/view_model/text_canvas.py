@@ -435,7 +435,6 @@ class TextCanvas:
                 )
         self.x_offset = -extent[0].x
         size = Size(extent[1].x - extent[0].x + 30, extent[1].y - extent[0].y + 2)
-        print(size)
         self._canvas = TextMatrix(size, x_offset=self.x_offset, y_offset=-extent[0].y)
 
         for layer in layers:
