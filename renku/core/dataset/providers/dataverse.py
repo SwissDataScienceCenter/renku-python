@@ -82,6 +82,7 @@ class DataverseProvider(ProviderApi, ExportProviderInterface, ImportProviderInte
 
     priority = ProviderPriority.HIGH
     name = "Dataverse"
+    is_remote = True
 
     def __init__(self, uri: str, is_doi: bool = False):
         super().__init__(uri=uri)

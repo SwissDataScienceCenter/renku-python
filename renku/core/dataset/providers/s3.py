@@ -45,6 +45,7 @@ class S3Provider(ProviderApi, StorageProviderInterface, AddProviderInterface):
 
     priority = ProviderPriority.HIGHEST
     name = "S3"
+    is_remote = True
 
     def __init__(self, uri: str):
         super().__init__(uri=uri)

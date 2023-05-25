@@ -47,6 +47,7 @@ class ExternalProvider(ProviderApi, StorageProviderInterface, AddProviderInterfa
 
     priority = ProviderPriority.HIGHEST
     name = "External"
+    is_remote = True
 
     def __init__(self, uri: str):
         super().__init__(uri=get_uri_absolute_path(uri).rstrip("/"))
