@@ -1,7 +1,6 @@
-#
-# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
-# Eidgenössische Technische Hochschule Zürich (ETHZ).
+#  Copyright Swiss Data Science Center (SDSC). A partnership between
+#  École Polytechnique Fédérale de Lausanne (EPFL) and
+#  Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,7 +32,7 @@ from renku.core.constant import ProviderPriority
 from renku.core.plugin import hookimpl
 from renku.core.util import communication
 from renku.domain_model.project_context import project_context
-from renku.domain_model.session import ISessionProvider, Session
+from renku.domain_model.session import ISessionProvider, Session, SessionStopStatus
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderParameter
@@ -43,7 +42,7 @@ class DockerSessionProvider(ISessionProvider):
     """A docker based interactive session provider."""
 
     JUPYTER_PORT = 8888
-    # NOTE: Give the docker provider a higher priority so that it's checked first
+    # NOTE: Give the docker provider the highest priority so that it's checked first
     priority: ProviderPriority = ProviderPriority.HIGHEST
 
     def __init__(self):
@@ -54,7 +53,7 @@ class DockerSessionProvider(ISessionProvider):
 
         Note:
             This is not a @property, even though it should be, because ``pluggy``
-            will call it in that case in unrelated parts of the code that will
+            will call it in that case in unrelated parts of the code.
         Raises:
             errors.DockerError: Exception when docker is not available.
         Returns:
@@ -133,7 +132,7 @@ class DockerSessionProvider(ISessionProvider):
         """Returns parameters that can be set for session open."""
         return []
 
-    def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
+    def session_list(self, project_name: str) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
 
         Returns:
@@ -297,29 +296,36 @@ class DockerSessionProvider(ISessionProvider):
         else:
             return result, ""
 
-    def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> bool:
+    def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> SessionStopStatus:
         """Stops all or a given interactive session."""
         try:
             docker_containers = (
                 self._get_docker_containers(project_name)
                 if stop_all
                 else self.docker_client().containers.list(filters={"id": session_name})
+                if session_name
+                else self.docker_client().containers.list()
             )
 
-            if len(docker_containers) == 0:
-                return False
+            n_docker_containers = len(docker_containers)
+
+            if n_docker_containers == 0:
+                return SessionStopStatus.FAILED if session_name else SessionStopStatus.NO_ACTIVE_SESSION
+            elif not session_name and len(docker_containers) > 1:
+                return SessionStopStatus.NAME_NEEDED
 
             [c.stop() for c in docker_containers]
-            return True
         except docker.errors.APIError as error:
             raise errors.DockerError(error.msg)
+        else:
+            return SessionStopStatus.SUCCESSFUL
 
-    def session_open(self, project_name: str, session_name: str, **kwargs) -> bool:
+    def session_open(self, project_name: str, session_name: Optional[str], **kwargs) -> bool:
         """Open a given interactive session.
 
         Args:
             project_name(str): Renku project name.
-            session_name(str): The unique id of the interactive session.
+            session_name(Optional[str]): The unique id of the interactive session.
         """
         url = self.session_url(session_name)
 
@@ -329,10 +335,14 @@ class DockerSessionProvider(ISessionProvider):
         webbrowser.open(url)
         return True
 
-    def session_url(self, session_name: str) -> Optional[str]:
+    def session_url(self, session_name: Optional[str]) -> Optional[str]:
         """Get the URL of the interactive session."""
-        for c in self.docker_client().containers.list():
-            if c.short_id == session_name and f"{DockerSessionProvider.JUPYTER_PORT}/tcp" in c.ports:
+        sessions = self.docker_client().containers.list()
+
+        for c in sessions:
+            if (
+                c.short_id == session_name or (not session_name and len(sessions) == 1)
+            ) and f"{DockerSessionProvider.JUPYTER_PORT}/tcp" in c.ports:
                 host = c.ports[f"{DockerSessionProvider.JUPYTER_PORT}/tcp"][0]
                 return f'http://{host["HostIp"]}:{host["HostPort"]}/?token={c.labels["jupyter_token"]}'
         return None

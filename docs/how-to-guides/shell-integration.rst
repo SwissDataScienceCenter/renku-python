@@ -35,6 +35,7 @@ To activate tab completion for your supported shell run the following command af
 
       $ eval "$(_RENKU_COMPLETE=zsh_source renku)"
 
+You can put the same command in your shell's startup script to enable completion by default.
 After this not only sub-commands of ``renku`` will be auto-completed using tab, but for example
 in case of ``renku workflow execute`` the available ``Plans`` are going to be listed.
 

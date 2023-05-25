@@ -190,6 +190,7 @@ from renku.command.format.session import SESSION_COLUMNS, SESSION_FORMATS
 from renku.command.util import WARNING
 from renku.core import errors
 from renku.ui.cli.utils.callback import ClickCallback
+from renku.ui.cli.utils.click import shell_complete_session_providers, shell_complete_sessions
 from renku.ui.cli.utils.plugins import get_supported_session_providers_names
 
 
@@ -205,6 +206,7 @@ def session():
     "-p",
     "--provider",
     type=click.Choice(Proxy(get_supported_session_providers_names)),
+    shell_complete=shell_complete_session_providers,
     default=None,
     help="Backend to use for listing interactive sessions.",
 )
@@ -212,6 +214,7 @@ def session():
     "config",
     "-c",
     "--config",
+    hidden=True,
     type=click.Path(exists=True, dir_okay=False),
     metavar="<config file>",
     help="YAML file containing configuration for the provider.",
@@ -231,7 +234,7 @@ def list_sessions(provider, config, columns, format):
     """List interactive sessions."""
     from renku.command.session import session_list_command
 
-    result = session_list_command().build().execute(provider=provider, config_path=config)
+    result = session_list_command().build().execute(provider=provider)
 
     click.echo(SESSION_FORMATS[format](result.output.sessions, columns=columns))
 
@@ -258,6 +261,7 @@ def session_start_provider_options(*param_decls, **attrs):
     "-p",
     "--provider",
     type=click.Choice(Proxy(get_supported_session_providers_names)),
+    shell_complete=shell_complete_session_providers,
     default="docker",
     show_default=True,
     help="Backend to use for creating an interactive session.",
@@ -294,13 +298,14 @@ def start(provider, config, image, cpu, disk, gpu, memory, **kwargs):
 
 
 @session.command("stop")
-@click.argument("session_name", metavar="<name>", required=False)
+@click.argument("session_name", metavar="<name>", required=False, default=None, shell_complete=shell_complete_sessions)
 @click.option(
     "provider",
     "-p",
     "--provider",
     type=click.Choice(Proxy(get_supported_session_providers_names)),
     default=None,
+    shell_complete=shell_complete_session_providers,
     help="Session provider to use.",
 )
 @click.option("stop_all", "-a", "--all", is_flag=True, help="Stops all the running containers.")
@@ -308,9 +313,7 @@ def stop(session_name, stop_all, provider):
     """Stop an interactive session."""
     from renku.command.session import session_stop_command
 
-    if not stop_all and session_name is None:
-        raise errors.ParameterError("Please specify either a session ID or the '-a/--all' flag.")
-    elif stop_all and session_name:
+    if stop_all and session_name:
         raise errors.ParameterError("Cannot specify a session ID with the '-a/--all' flag.")
 
     communicator = ClickCallback()
@@ -319,8 +322,10 @@ def stop(session_name, stop_all, provider):
     )
     if stop_all:
         click.echo("All running interactive sessions for this project have been stopped.")
-    else:
+    elif session_name:
         click.echo(f"Interactive session '{session_name}' has been successfully stopped.")
+    else:
+        click.echo("Interactive session has been successfully stopped.")
 
 
 def session_open_provider_options(*param_decls, **attrs):
@@ -333,12 +338,13 @@ def session_open_provider_options(*param_decls, **attrs):
 
 
 @session.command("open")
-@click.argument("session_name", metavar="<name>", required=True)
+@click.argument("session_name", metavar="<name>", required=False, default=None, shell_complete=shell_complete_sessions)
 @click.option(
     "provider",
     "-p",
     "--provider",
     type=click.Choice(Proxy(get_supported_session_providers_names)),
+    shell_complete=shell_complete_session_providers,
     default=None,
     help="Session provider to use.",
 )

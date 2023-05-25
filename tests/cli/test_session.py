@@ -1,7 +1,6 @@
-#
-# Copyright 2021 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
-# Eidgenössische Technische Hochschule Zürich (ETHZ).
+#  Copyright Swiss Data Science Center (SDSC). A partnership between
+#  École Polytechnique Fédérale de Lausanne (EPFL) and
+#  Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +24,7 @@ from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
-def test_session_up_down(runner, project, dummy_session_provider, monkeypatch):
+def test_session_up_down(runner, project, dummy_session_provider):
     """Test starting a session."""
     browser = dummy_session_provider
 
