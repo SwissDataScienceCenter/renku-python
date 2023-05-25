@@ -91,7 +91,9 @@ def composite_plan():
 
 
 @pytest.fixture
-def project_with_runs(project_with_creation_date, with_injection) -> Generator[RenkuProject, None, None]:
+def project_with_runs(
+    project_with_creation_date, with_injection, cache_test_project
+) -> Generator[RenkuProject, None, None]:
     """A project with runs."""
     from renku.domain_model.provenance.activity import Activity
     from renku.infrastructure.gateway.activity_gateway import ActivityGateway
@@ -106,44 +108,47 @@ def project_with_runs(project_with_creation_date, with_injection) -> Generator[R
             ended_at_time=date + timedelta(seconds=1),
         )
 
-    date_1 = datetime(2022, 5, 20, 0, 42, 0, tzinfo=timezone.utc)
-    date_2 = datetime(2022, 5, 20, 0, 43, 0, tzinfo=timezone.utc)
+    cache_test_project.set_name("project_with_runs_fixture")
+    if not cache_test_project.setup():
+        date_1 = datetime(2022, 5, 20, 0, 42, 0, tzinfo=timezone.utc)
+        date_2 = datetime(2022, 5, 20, 0, 43, 0, tzinfo=timezone.utc)
 
-    plan_1 = create_dummy_plan(
-        command="command-1",
-        date_created=date_1,
-        description="First plan",
-        index=1,
-        inputs=["input"],
-        keywords=["plans", "1"],
-        name="plan-1",
-        outputs=[("intermediate", "stdout")],
-        parameters=[("parameter-1", "42", "-n ")],
-        success_codes=[0, 1],
-    )
+        plan_1 = create_dummy_plan(
+            command="command-1",
+            date_created=date_1,
+            description="First plan",
+            index=1,
+            inputs=["input"],
+            keywords=["plans", "1"],
+            name="plan-1",
+            outputs=[("intermediate", "stdout")],
+            parameters=[("parameter-1", "42", "-n ")],
+            success_codes=[0, 1],
+        )
 
-    plan_2 = create_dummy_plan(
-        command="command-2",
-        date_created=date_2,
-        description="Second plan",
-        index=2,
-        inputs=["intermediate"],
-        keywords=["plans", "2"],
-        name="plan-2",
-        outputs=[("output", "stdout")],
-        parameters=[("int-parameter", 43, "-n "), ("str-parameter", "some value", None)],
-    )
+        plan_2 = create_dummy_plan(
+            command="command-2",
+            date_created=date_2,
+            description="Second plan",
+            index=2,
+            inputs=["intermediate"],
+            keywords=["plans", "2"],
+            name="plan-2",
+            outputs=[("output", "stdout")],
+            parameters=[("int-parameter", 43, "-n "), ("str-parameter", "some value", None)],
+        )
 
-    with with_injection():
-        activity_1 = create_activity(plan_1, date_1, index=1)
-        activity_2 = create_activity(plan_2, date_2, index=2)
+        with with_injection():
+            activity_1 = create_activity(plan_1, date_1, index=1)
+            activity_2 = create_activity(plan_2, date_2, index=2)
 
-        activity_gateway = ActivityGateway()
+            activity_gateway = ActivityGateway()
 
-        activity_gateway.add(activity_1)
-        activity_gateway.add(activity_2)
+            activity_gateway.add(activity_1)
+            activity_gateway.add(activity_2)
 
-    project_with_creation_date.repository.add(all=True)
-    project_with_creation_date.repository.commit("Add runs")
+        project_with_creation_date.repository.add(all=True)
+        project_with_creation_date.repository.commit("Add runs")
+        cache_test_project.save()
 
     yield project_with_creation_date

@@ -216,15 +216,18 @@ def test_move_to_existing_destination_in_a_dataset(runner, project_with_datasets
     assert not project_with_datasets.repository.is_dirty()
 
 
-def test_move_between_datasets(runner, project, directory_tree, large_file, directory_tree_files):
+def test_move_between_datasets(runner, project, directory_tree, large_file, directory_tree_files, cache_test_project):
     """Test move files between datasets."""
-    shutil.copy(large_file, directory_tree / "file1")
-    shutil.copy(large_file, directory_tree / "dir1" / "file2")
-    result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "dataset-1", str(directory_tree)])
-    assert 0 == result.exit_code, format_result_exception(result)
-    file1 = Path("data") / "dataset-1" / directory_tree.name / "file1"
-    assert 0 == runner.invoke(cli, ["dataset", "add", "--copy", "-c", "dataset-2", str(file1)]).exit_code
-    assert 0 == runner.invoke(cli, ["dataset", "create", "dataset-3"]).exit_code
+    if not cache_test_project.setup():
+        shutil.copy(large_file, directory_tree / "file1")
+        shutil.copy(large_file, directory_tree / "dir1" / "file2")
+        result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "dataset-1", str(directory_tree)])
+        assert 0 == result.exit_code, format_result_exception(result)
+        file1 = Path("data") / "dataset-1" / directory_tree.name / "file1"
+        assert 0 == runner.invoke(cli, ["dataset", "add", "--copy", "-c", "dataset-2", str(file1)]).exit_code
+        assert 0 == runner.invoke(cli, ["dataset", "create", "dataset-3"]).exit_code
+
+        cache_test_project.save()
 
     source = Path("data") / "dataset-1"
     destination = Path("data") / "dataset-3"

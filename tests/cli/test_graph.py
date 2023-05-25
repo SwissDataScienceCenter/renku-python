@@ -27,14 +27,16 @@ from tests.utils import format_result_exception, modified_environ, with_dataset
 
 
 @pytest.mark.parametrize("revision", ["", "HEAD", "HEAD^", "HEAD^..HEAD"])
-def test_graph_export_validation(runner, project, directory_tree, run, revision):
+def test_graph_export_validation(runner, project, directory_tree, run, revision, cache_test_project):
     """Test graph validation when exporting."""
-    assert 0 == runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-data", str(directory_tree)]).exit_code
+    if not cache_test_project.setup():
+        assert 0 == runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-data", str(directory_tree)]).exit_code
 
-    file1 = project.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
-    file2 = project.path / DATA_DIR / "my-data" / directory_tree.name / "dir1" / "file2"
-    assert 0 == run(["run", "head", str(file1)], stdout="out1")
-    assert 0 == run(["run", "tail", str(file2)], stdout="out2")
+        file1 = project.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
+        file2 = project.path / DATA_DIR / "my-data" / directory_tree.name / "dir1" / "file2"
+        assert 0 == run(["run", "head", str(file1)], stdout="out1")
+        assert 0 == run(["run", "tail", str(file2)], stdout="out2")
+        cache_test_project.save()
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict", "--revision", revision])
 
@@ -57,12 +59,14 @@ def test_graph_export_validation(runner, project, directory_tree, run, revision)
 
 @pytest.mark.serial
 @pytest.mark.shelled
-def test_graph_export_strict_run(runner, project, run_shell):
+def test_graph_export_strict_run(runner, project, run_shell, cache_test_project):
     """Test graph export output of run command."""
-    # Run a shell command with pipe.
-    assert run_shell('renku run --name run1 echo "my input string" > my_output_file')[1] is None
-    assert run_shell("renku run --name run2 cp my_output_file my_output_file2")[1] is None
-    assert run_shell("renku workflow compose my-composite-plan run1 run2")[1] is None
+    if not cache_test_project.setup():
+        # Run a shell command with pipe.
+        assert run_shell('renku run --name run1 echo "my input string" > my_output_file')[1] is None
+        assert run_shell("renku run --name run2 cp my_output_file my_output_file2")[1] is None
+        assert run_shell("renku workflow compose my-composite-plan run1 run2")[1] is None
+        cache_test_project.save()
 
     # Assert created output file.
     result = runner.invoke(cli, ["graph", "export", "--full", "--strict", "--format=json-ld"])
@@ -80,21 +84,25 @@ def test_graph_export_strict_run(runner, project, run_shell):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_graph_export_strict_dataset(tmpdir, runner, project, subdirectory):
+def test_graph_export_strict_dataset(tmpdir, runner, project, subdirectory, cache_test_project):
     """Test output of graph export for dataset add."""
-    result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code, format_result_exception(result)
-    paths = []
-    test_paths = []
-    for i in range(3):
-        new_file = tmpdir.join(f"file_{i}")
-        new_file.write(str(i))
-        paths.append(str(new_file))
-        test_paths.append(os.path.relpath(str(new_file), str(project.path)))
+    if not cache_test_project.setup():
+        result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
+        assert 0 == result.exit_code, format_result_exception(result)
+        paths = []
+        test_paths = []
+        for i in range(3):
+            new_file = tmpdir.join(f"file_{i}")
+            new_file.write(str(i))
+            paths.append(str(new_file))
+            test_paths.append(os.path.relpath(str(new_file), str(project.path)))
 
-    # add data
-    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset"] + paths)
-    assert 0 == result.exit_code, format_result_exception(result)
+        # add data
+        result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset"] + paths)
+        assert 0 == result.exit_code, format_result_exception(result)
+        cache_test_project.save()
+    else:
+        test_paths = [f"../file_{i}" for i in range(3)]
 
     result = runner.invoke(cli, ["graph", "export", "--strict", "--format=json-ld", "--revision", "HEAD"])
     assert 0 == result.exit_code, format_result_exception(result)

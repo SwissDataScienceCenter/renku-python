@@ -24,96 +24,98 @@ from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
-def test_mergetool(runner, project, directory_tree, run_shell, with_injection):
+def test_mergetool(runner, project, directory_tree, run_shell, with_injection, cache_test_project):
     """Test that merge tool can merge renku metadata."""
-    result = runner.invoke(cli, ["mergetool", "install"])
+    if not cache_test_project.setup():
+        result = runner.invoke(cli, ["mergetool", "install"])
 
-    assert 0 == result.exit_code, format_result_exception(result)
+        assert 0 == result.exit_code, format_result_exception(result)
 
-    # create a common dataset
-    result = runner.invoke(
-        cli, ["dataset", "add", "--copy", "--create", "shared-dataset", str(directory_tree)], catch_exceptions=False
-    )
-    assert 0 == result.exit_code, format_result_exception(result)
+        # create a common dataset
+        result = runner.invoke(
+            cli, ["dataset", "add", "--copy", "--create", "shared-dataset", str(directory_tree)], catch_exceptions=False
+        )
+        assert 0 == result.exit_code, format_result_exception(result)
 
-    # Create a common workflow
-    output = run_shell('renku run --name "shared-workflow" echo "a unique string" > my_output_file')
+        # Create a common workflow
+        output = run_shell('renku run --name "shared-workflow" echo "a unique string" > my_output_file')
 
-    assert b"" == output[0]
-    assert output[1] is None
+        assert b"" == output[0]
+        assert output[1] is None
 
-    # switch to a new branch
-    output = run_shell("git checkout -b remote-branch")
+        # switch to a new branch
+        output = run_shell("git checkout -b remote-branch")
 
-    assert b"Switched to a new branch 'remote-branch'\n" == output[0]
-    assert output[1] is None
+        assert b"Switched to a new branch 'remote-branch'\n" == output[0]
+        assert output[1] is None
 
-    # edit the dataset
-    result = runner.invoke(cli, ["dataset", "edit", "-d", "remote description", "shared-dataset"])
-    assert 0 == result.exit_code, format_result_exception(result)
+        # edit the dataset
+        result = runner.invoke(cli, ["dataset", "edit", "-d", "remote description", "shared-dataset"])
+        assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(
-        cli, ["dataset", "add", "--copy", "--create", "remote-dataset", str(directory_tree)], catch_exceptions=False
-    )
-    assert 0 == result.exit_code, format_result_exception(result)
+        result = runner.invoke(
+            cli, ["dataset", "add", "--copy", "--create", "remote-dataset", str(directory_tree)], catch_exceptions=False
+        )
+        assert 0 == result.exit_code, format_result_exception(result)
 
-    # Create a new workflow
-    output = run_shell('renku run --name "remote-workflow" echo "a unique string" > remote_output_file')
+        # Create a new workflow
+        output = run_shell('renku run --name "remote-workflow" echo "a unique string" > remote_output_file')
 
-    assert b"" == output[0]
-    assert output[1] is None
+        assert b"" == output[0]
+        assert output[1] is None
 
-    # Create a downstream workflow
-    output = run_shell('renku run --name "remote-downstream-workflow" cp my_output_file my_remote_downstream')
+        # Create a downstream workflow
+        output = run_shell('renku run --name "remote-downstream-workflow" cp my_output_file my_remote_downstream')
 
-    assert b"" == output[0]
-    assert output[1] is None
+        assert b"" == output[0]
+        assert output[1] is None
 
-    # Create another downstream workflow
-    output = run_shell('renku run --name "remote-downstream-workflow2" cp remote_output_file my_remote_downstream2')
+        # Create another downstream workflow
+        output = run_shell('renku run --name "remote-downstream-workflow2" cp remote_output_file my_remote_downstream2')
 
-    assert b"" == output[0]
-    assert output[1] is None
+        assert b"" == output[0]
+        assert output[1] is None
 
-    # Edit the project metadata
-    result = runner.invoke(cli, ["project", "edit", "-k", "remote"])
+        # Edit the project metadata
+        result = runner.invoke(cli, ["project", "edit", "-k", "remote"])
 
-    assert 0 == result.exit_code, format_result_exception(result)
+        assert 0 == result.exit_code, format_result_exception(result)
 
-    # Switch back to master
-    output = run_shell("git checkout master")
+        # Switch back to master
+        output = run_shell("git checkout master")
 
-    assert b"Switched to branch 'master'\n" == output[0]
-    assert output[1] is None
+        assert b"Switched to branch 'master'\n" == output[0]
+        assert output[1] is None
 
-    # Add a new dataset
-    result = runner.invoke(
-        cli, ["dataset", "add", "--copy", "--create", "local-dataset", str(directory_tree)], catch_exceptions=False
-    )
-    assert 0 == result.exit_code, format_result_exception(result)
+        # Add a new dataset
+        result = runner.invoke(
+            cli, ["dataset", "add", "--copy", "--create", "local-dataset", str(directory_tree)], catch_exceptions=False
+        )
+        assert 0 == result.exit_code, format_result_exception(result)
 
-    # Create a local workflow
-    output = run_shell('renku run --name "local-workflow" echo "a unique string" > local_output_file')
+        # Create a local workflow
+        output = run_shell('renku run --name "local-workflow" echo "a unique string" > local_output_file')
 
-    assert b"" == output[0]
-    assert output[1] is None
+        assert b"" == output[0]
+        assert output[1] is None
 
-    # Create a local downstream workflow
-    output = run_shell('renku run --name "local-downstream-workflow" cp my_output_file my_local_downstream')
+        # Create a local downstream workflow
+        output = run_shell('renku run --name "local-downstream-workflow" cp my_output_file my_local_downstream')
 
-    assert b"" == output[0]
-    assert output[1] is None
+        assert b"" == output[0]
+        assert output[1] is None
 
-    # Create another local downstream workflow
-    output = run_shell('renku run --name "local-downstream-workflow2" cp local_output_file my_local_downstream2')
+        # Create another local downstream workflow
+        output = run_shell('renku run --name "local-downstream-workflow2" cp local_output_file my_local_downstream2')
 
-    assert b"" == output[0]
-    assert output[1] is None
+        assert b"" == output[0]
+        assert output[1] is None
 
-    # Edit the project in master as well
-    result = runner.invoke(cli, ["project", "edit", "-k", "local"])
+        # Edit the project in master as well
+        result = runner.invoke(cli, ["project", "edit", "-k", "local"])
 
-    assert 0 == result.exit_code, format_result_exception(result)
+        assert 0 == result.exit_code, format_result_exception(result)
+        cache_test_project.save()
 
     # Merge branches
     output = run_shell("git merge --no-edit remote-branch")
@@ -146,32 +148,34 @@ def test_mergetool(runner, project, directory_tree, run_shell, with_injection):
     assert "remote description" == shared_dataset.description
 
 
-def test_mergetool_workflow_conflict(runner, project, run_shell, with_injection):
+def test_mergetool_workflow_conflict(runner, project, run_shell, with_injection, cache_test_project):
     """Test that merge tool can merge conflicting workflows."""
-    result = runner.invoke(cli, ["mergetool", "install"])
+    if not cache_test_project.setup():
+        result = runner.invoke(cli, ["mergetool", "install"])
 
-    assert 0 == result.exit_code, format_result_exception(result)
+        assert 0 == result.exit_code, format_result_exception(result)
 
-    output = run_shell('renku run --name "shared-workflow" echo "a unique string" > my_output_file')
+        output = run_shell('renku run --name "shared-workflow" echo "a unique string" > my_output_file')
 
-    assert b"" == output[0]
-    assert output[1] is None
+        assert b"" == output[0]
+        assert output[1] is None
 
-    # Switch to a new branch and create some workflows
-    output = run_shell("git checkout -b remote-branch")
+        # Switch to a new branch and create some workflows
+        output = run_shell("git checkout -b remote-branch")
 
-    assert b"Switched to a new branch 'remote-branch'\n" == output[0]
-    assert output[1] is None
+        assert b"Switched to a new branch 'remote-branch'\n" == output[0]
+        assert output[1] is None
 
-    output = run_shell('renku run --name "remote-workflow" cp my_output_file out1')
+        output = run_shell('renku run --name "remote-workflow" cp my_output_file out1')
 
-    assert b"" == output[0]
-    assert output[1] is None
+        assert b"" == output[0]
+        assert output[1] is None
 
-    output = run_shell('renku run --name "common-name" cp my_output_file out2')
+        output = run_shell('renku run --name "common-name" cp my_output_file out2')
 
-    assert b"" == output[0]
-    assert output[1] is None
+        assert b"" == output[0]
+        assert output[1] is None
+        cache_test_project.save()
 
     with with_injection():
         plan_gateway = PlanGateway()
@@ -237,30 +241,33 @@ def test_mergetool_workflow_conflict(runner, project, run_shell, with_injection)
     assert len(plans) == 4
 
 
-def test_mergetool_workflow_complex_conflict(runner, project, run_shell, with_injection):
+def test_mergetool_workflow_complex_conflict(runner, project, run_shell, with_injection, cache_test_project):
     """Test that merge tool can merge complex conflicts in workflows."""
-    result = runner.invoke(cli, ["mergetool", "install"])
+    if not cache_test_project.setup():
+        result = runner.invoke(cli, ["mergetool", "install"])
 
-    assert 0 == result.exit_code, format_result_exception(result)
+        assert 0 == result.exit_code, format_result_exception(result)
 
-    output = run_shell('renku run --name "shared-workflow" echo "a unique string" > my_output_file')
+        output = run_shell('renku run --name "shared-workflow" echo "a unique string" > my_output_file')
 
-    assert b"" == output[0]
-    assert output[1] is None
+        assert b"" == output[0]
+        assert output[1] is None
 
-    # Switch to a new branch and create some workflows
-    output = run_shell("git checkout -b remote-branch")
+        # Switch to a new branch and create some workflows
+        output = run_shell("git checkout -b remote-branch")
 
-    assert b"Switched to a new branch 'remote-branch'\n" == output[0]
-    assert output[1] is None
+        assert b"Switched to a new branch 'remote-branch'\n" == output[0]
+        assert output[1] is None
 
-    output = run_shell('renku run --name "intermediate-workflow" cp my_output_file intermediate')
+        output = run_shell('renku run --name "intermediate-workflow" cp my_output_file intermediate')
 
-    assert b"" == output[0]
+        assert b"" == output[0]
 
-    output = run_shell('renku run --name "final-workflow" cp intermediate final')
+        output = run_shell('renku run --name "final-workflow" cp intermediate final')
 
-    assert b"" == output[0]
+        assert b"" == output[0]
+
+        cache_test_project.save()
 
     with with_injection():
         plan_gateway = PlanGateway()

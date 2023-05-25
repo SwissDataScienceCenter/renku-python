@@ -46,21 +46,28 @@ def dataset_responses():
 
 
 @pytest.fixture
-def project_with_datasets(project, directory_tree, with_injection) -> Generator[RenkuProject, None, None]:
+def project_with_datasets(
+    project, directory_tree, with_injection, cache_test_project
+) -> Generator[RenkuProject, None, None]:
     """A project with datasets."""
     from renku.domain_model.provenance.agent import Person
 
-    person_1 = Person.from_string("P1 <p1@example.com> [IANA]")
-    person_2 = Person.from_string("P2 <p2@example.com>")
+    cache_test_project.set_name("project_with_datasets_fixture")
+    if not cache_test_project.setup():
+        person_1 = Person.from_string("P1 <p1@example.com> [IANA]")
+        person_2 = Person.from_string("P2 <p2@example.com>")
 
-    with with_injection():
-        create_dataset(name="dataset-1", keywords=["dataset", "1"], creators=[person_1])
+        with with_injection():
+            create_dataset(name="dataset-1", keywords=["dataset", "1"], creators=[person_1])
 
-        dataset = add_to_dataset("dataset-2", urls=[str(p) for p in directory_tree.glob("*")], create=True, copy=True)
-        dataset.keywords = ["dataset", "2"]
-        dataset.creators = [person_1, person_2]
+            dataset = add_to_dataset(
+                "dataset-2", urls=[str(p) for p in directory_tree.glob("*")], create=True, copy=True
+            )
+            dataset.keywords = ["dataset", "2"]
+            dataset.creators = [person_1, person_2]
 
-    project.repository.add(all=True)
-    project.repository.commit("add files to datasets")
+        project.repository.add(all=True)
+        project.repository.commit("add files to datasets")
+        cache_test_project.save()
 
     yield project

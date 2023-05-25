@@ -24,24 +24,29 @@ from tests.utils import format_result_exception
 
 
 @pytest.mark.parametrize("datadir_option,datadir", [([], f"{DATA_DIR}/testing"), (["--datadir", "my-dir"], "my-dir")])
-def test_remove_dataset_file(isolated_runner, project, tmpdir, subdirectory, datadir_option, datadir):
+def test_remove_dataset_file(
+    isolated_runner, project, tmpdir, subdirectory, datadir_option, datadir, cache_test_project
+):
     """Test remove of a file that belongs to a dataset."""
-    # create a dataset
-    result = isolated_runner.invoke(cli, ["dataset", "create", "testing"] + datadir_option)
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "OK" in result.output
+    if not cache_test_project.setup():
+        # create a dataset
+        result = isolated_runner.invoke(cli, ["dataset", "create", "testing"] + datadir_option)
+        assert 0 == result.exit_code, format_result_exception(result)
+        assert "OK" in result.output
 
-    source = tmpdir.join("remove_dataset.file")
-    source.write(DATA_DIR)
+        source = tmpdir.join("remove_dataset.file")
+        source.write(DATA_DIR)
 
-    result = isolated_runner.invoke(cli, ["dataset", "add", "--copy", "testing", source.strpath])
-    assert 0 == result.exit_code, format_result_exception(result)
+        result = isolated_runner.invoke(cli, ["dataset", "add", "--copy", "testing", source.strpath])
+        assert 0 == result.exit_code, format_result_exception(result)
+
+        result = isolated_runner.invoke(cli, ["doctor"])
+        assert 0 == result.exit_code, format_result_exception(result)
+
+        cache_test_project.save()
 
     path = project.path / datadir / "remove_dataset.file"
     assert path.exists()
-
-    result = isolated_runner.invoke(cli, ["doctor"])
-    assert 0 == result.exit_code, format_result_exception(result)
 
     result = isolated_runner.invoke(cli, ["rm", str(project.path / datadir)])
     assert 0 == result.exit_code, format_result_exception(result)
