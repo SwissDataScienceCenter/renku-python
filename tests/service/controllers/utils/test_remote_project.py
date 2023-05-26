@@ -55,13 +55,13 @@ def test_project_metadata_custom_remote():
 
     request_data = {
         "git_url": "https://gitlab.dev.renku.ch/renku-python-integration-tests/import-me",
-        "ref": "my-branch",
+        "branch": "my-branch",
     }
 
     ctrl = RemoteProject(user_data, request_data)
-    ref = ctrl.ctx["ref"]
+    branch = ctrl.ctx["branch"]
 
-    assert request_data["ref"] == ref
+    assert request_data["branch"] == branch
 
 
 def test_project_metadata_remote_err():

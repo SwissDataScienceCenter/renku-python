@@ -19,7 +19,7 @@ import uuid
 from datetime import datetime
 
 import yagup
-from marshmallow import Schema, fields, validates
+from marshmallow import Schema, fields, pre_load, validates
 
 from renku.ui.service.errors import UserRepoUrlInvalidError
 from renku.ui.service.serializers.rpc import JsonRPCResponse
@@ -52,7 +52,18 @@ class RemoteRepositoryBaseSchema(Schema):
 class RemoteRepositorySchema(RemoteRepositoryBaseSchema):
     """Schema for tracking a remote repository and branch."""
 
-    branch = fields.String(metadata={"description": "Remote git branch."})
+    branch = fields.String(load_default=None, metadata={"description": "Remote git branch (or tag or commit SHA)."})
+
+    @pre_load
+    def set_branch_from_ref(self, data, **kwargs):
+        """Set `branch` field from `ref` if present."""
+        if "ref" in data and not data.get("branch"):
+            # Backward compatibility: branch and ref were both used. Let's keep branch as the exposed field
+            # even if internally it gets converted to "ref" later.
+            data["branch"] = data["ref"]
+            del data["ref"]
+
+        return data
 
 
 class AsyncSchema(Schema):
