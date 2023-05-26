@@ -170,7 +170,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                 }
 
                 if "branch" in self.request_data:
-                    clone_context["ref"] = self.request_data["branch"]
+                    clone_context["branch"] = self.request_data["branch"]
 
                 # NOTE: If we want to migrate project, then we need to do full clone.
                 # This operation can take very long time, and as such is expected

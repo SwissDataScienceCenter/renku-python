@@ -59,7 +59,7 @@ class RemoteRepositorySchema(RemoteRepositoryBaseSchema):
         """Set `branch` field from `ref` if present."""
         if "ref" in data and not data.get("branch"):
             # Backward compatibility: branch and ref were both used. Let's keep branch as the exposed field
-            # even if interally it gets converted to "ref" later.
+            # even if internally it gets converted to "ref" later.
             data["branch"] = data["ref"]
             del data["ref"]
 
