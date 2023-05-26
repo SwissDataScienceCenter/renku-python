@@ -131,7 +131,6 @@ class RepositoryCloneRequest(RemoteRepositorySchema):
     """Request schema for repository clone."""
 
     depth = fields.Integer(metadata={"description": "Git fetch depth"}, load_default=PROJECT_CLONE_DEPTH_DEFAULT)
-    ref = fields.String(metadata={"description": "Repository reference (branch, commit or tag)"}, load_default=None)
 
 
 class ProjectCloneContext(RepositoryCloneRequest):
@@ -239,18 +238,6 @@ class ProjectMigrateRequest(AsyncSchema, LocalRepositorySchema, RemoteRepository
     skip_template_update = fields.Boolean(dump_default=False)
     skip_docker_update = fields.Boolean(dump_default=False)
     skip_migrations = fields.Boolean(dump_default=False)
-
-    @pre_load()
-    def handle_ref(self, data, **kwargs):
-        """Handle ref and branch."""
-
-        # Backward compatibility: branch and ref were both used. Let's keep branch as the exposed field
-        # even if interally it gets converted to "ref" later.
-        if data.get("ref"):
-            data["branch"] = data["ref"]
-            del data["ref"]
-
-        return data
 
 
 class ProjectMigrateResponse(RenkuSyncSchema):

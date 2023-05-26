@@ -43,6 +43,7 @@ class Job(Model):
     state = TextField()
     extras = JSONField()
     client_extras = TextField()
+    branch = TextField()
 
     ctrl_context = JSONField()
     ctrl_result = JSONField()
