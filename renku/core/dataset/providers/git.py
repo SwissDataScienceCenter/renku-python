@@ -17,22 +17,26 @@
 
 import glob
 import os
+import shutil
 from collections import defaultdict
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
 
 from renku.core import errors
+from renku.core.dataset.pointer_file import create_external_file
 from renku.core.dataset.providers.api import AddProviderInterface, ProviderApi, ProviderPriority
 from renku.core.storage import pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository
-from renku.core.util.os import get_files, is_subpath
+from renku.core.util.metadata import is_linked_file
+from renku.core.util.os import delete_dataset_file, get_files, is_subpath
 from renku.core.util.urls import check_url, remove_credentials
 from renku.domain_model.dataset import RemoteEntity
 from renku.domain_model.project_context import project_context
+from renku.infrastructure.immutable import DynamicProxy
 
 if TYPE_CHECKING:
-    from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderParameter
+    from renku.core.dataset.providers.models import DatasetAddMetadata, DatasetUpdateMetadata, ProviderParameter
 
 
 class GitProvider(ProviderApi, AddProviderInterface):
@@ -40,6 +44,7 @@ class GitProvider(ProviderApi, AddProviderInterface):
 
     priority = ProviderPriority.NORMAL
     name = "Git"
+    is_remote = True
 
     @staticmethod
     def supports(uri: str) -> bool:
@@ -176,5 +181,71 @@ class GitProvider(ProviderApi, AddProviderInterface):
             files = {str(p) for paths in duplicates for p in paths}
             files_str = "/n/t".join(sorted(files))
             communication.warn(f"The following files overwrite each other in the destination project:/n/t{files_str}")
+
+        return results
+
+    def update_files(
+        self,
+        files: List[DynamicProxy],
+        dry_run: bool,
+        delete: bool,
+        context: Dict[str, Any],
+        ref: Optional[str] = None,
+        **kwargs,
+    ) -> List["DatasetUpdateMetadata"]:
+        """Update dataset files from the remote provider."""
+        from renku.core.dataset.providers.models import DatasetUpdateAction, DatasetUpdateMetadata
+
+        if "visited_repos" not in context:
+            context["visited_repos"] = {}
+
+        progress_text = "Checking git files for updates"
+
+        results: List[DatasetUpdateMetadata] = []
+
+        try:
+            communication.start_progress(progress_text, len(files))
+            for file in files:
+                communication.update_progress(progress_text, 1)
+                if not file.based_on:
+                    continue
+
+                based_on = file.based_on
+                url = based_on.url
+                if url in context["visited_repos"]:
+                    remote_repository = context["visited_repos"][url]
+                else:
+                    communication.echo(msg="Cloning remote repository...")
+                    path = get_cache_directory_for_repository(url=url)
+                    remote_repository = clone_repository(url=url, path=path, checkout_revision=ref)
+                    context["visited_repos"][url] = remote_repository
+
+                checksum = remote_repository.get_object_hash(path=based_on.path, revision="HEAD")
+                found = checksum is not None
+                changed = found and based_on.checksum != checksum
+
+                src = remote_repository.path / based_on.path
+                dst = project_context.metadata_path.parent / file.entity.path
+
+                if not found:
+                    if not dry_run and delete:
+                        delete_dataset_file(dst, follow_symlinks=True)
+                        project_context.repository.add(dst, force=True)
+                    results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.DELETE))
+                elif changed:
+                    if not dry_run:
+                        # Fetch file if it is tracked by Git LFS
+                        pull_paths_from_storage(remote_repository, remote_repository.path / based_on.path)
+                        if is_linked_file(path=src, project_path=remote_repository.path):
+                            delete_dataset_file(dst, follow_symlinks=True)
+                            create_external_file(target=src.resolve(), path=dst)
+                        else:
+                            shutil.copy(src, dst)
+                        file.based_on = RemoteEntity(
+                            checksum=checksum, path=based_on.path, url=based_on.url  # type: ignore
+                        )
+                    results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.UPDATE))
+        finally:
+            communication.finalize_progress(progress_text)
 
         return results
