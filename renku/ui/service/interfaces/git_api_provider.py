@@ -31,7 +31,7 @@ class IGitAPIProvider(ABC):
         target_folder: Union[Path, str],
         remote: str,
         token: str,
-        ref: Optional[str] = None,
+        branch: Optional[str] = None,
     ):
         """Download files through a remote Git API."""
         raise NotImplementedError()

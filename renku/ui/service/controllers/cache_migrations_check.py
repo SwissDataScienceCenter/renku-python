@@ -62,7 +62,7 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
                 folders=[".renku"],
                 target_folder=tempdir_path,
                 remote=self.ctx["git_url"],
-                ref=self.request_data.get("ref", None),
+                branch=self.request_data.get("branch", None),
                 token=self.user_data.get("token", None),
             )
             with renku_project_context(tempdir_path):

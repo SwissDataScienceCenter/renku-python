@@ -50,7 +50,7 @@ class GitlabAPIProvider(IGitAPIProvider):
         target_folder: Union[Path, str],
         remote: str,
         token: str,
-        ref: Optional[str] = None,
+        branch: Optional[str] = None,
     ):
         """Download files through a remote Git API.
 
@@ -60,10 +60,10 @@ class GitlabAPIProvider(IGitAPIProvider):
             target_folder(Union[Path, str]): Destination to save downloads to.
             remote(str): Git remote URL.
             token(str): Gitlab API token.
-            ref(Optional[str]): Git reference (Default value = None).
+            branch(Optional[str]): Git reference (Default value = None).
         """
-        if not ref:
-            ref = "HEAD"
+        if not branch:
+            branch = "HEAD"
 
         target_folder = Path(target_folder)
 
@@ -92,14 +92,14 @@ class GitlabAPIProvider(IGitAPIProvider):
 
             try:
                 with open(full_path, "wb") as f:
-                    project.files.raw(file_path=str(file), ref=ref, streamed=True, action=f.write)
+                    project.files.raw(file_path=str(file), ref=branch, streamed=True, action=f.write)
             except gitlab.GitlabGetError:
                 delete_dataset_file(full_path)
                 continue
 
         for folder in folders:
             with tempfile.NamedTemporaryFile() as f:
-                project.repository_archive(path=str(folder), sha=ref, streamed=True, action=f.write, format="tar.gz")
+                project.repository_archive(path=str(folder), sha=branch, streamed=True, action=f.write, format="tar.gz")
                 f.seek(0)
                 with tarfile.open(fileobj=f) as archive:
                     archive.extractall(

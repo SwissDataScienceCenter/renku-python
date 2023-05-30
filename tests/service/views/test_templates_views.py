@@ -75,7 +75,7 @@ def test_compare_manifests(svc_client_with_templates):
     assert {"result"} == set(response.json.keys())
     assert response.json["result"]["templates"]
 
-    templates_source = fetch_templates_source(source=template_params["url"], reference=template_params["ref"])
+    templates_source = fetch_templates_source(source=template_params["url"], reference=template_params["branch"])
     manifest_file = templates_source.path / TEMPLATE_MANIFEST
 
     manifest = TemplatesManifest.from_path(manifest_file).get_raw_content()
