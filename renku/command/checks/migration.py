@@ -26,7 +26,7 @@ def check_migration(**_):
         _: keyword arguments.
 
     Returns:
-        Tuple of whether project metadata is up to date and string of found problems.
+        Tuple of whether project metadata is up to date, if an automated fix is available and string of found problems.
     """
     if is_migration_required():
         problems = WARNING + "Project requires migration.\n" + '  (use "renku migrate" to fix this issue)\n'

@@ -69,7 +69,7 @@ def check_project_structure(**_):
         _: keyword arguments.
 
     Returns:
-        Tuple of whether project structure is valid and string of found problems.
+        Tuple of whether project structure is valid, if an automated fix is available and string of found problems.
     """
     data = ProjectSchema().dump(project_context.project)
 
@@ -92,7 +92,8 @@ def check_datasets_structure(dataset_gateway: IDatasetGateway, **_):
         _: keyword arguments.
 
     Returns:
-        Tuple[bool, str]: Tuple of whether structure is valid and of problems that might have been found.
+        Tuple[bool, str]: Tuple of whether structure is valid, if an automated fix is available and of problems
+            that might have been found.
     """
     ok = True
 

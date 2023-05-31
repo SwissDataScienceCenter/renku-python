@@ -26,7 +26,7 @@ def check_lfs_info(**_):
         _: keyword arguments.
 
     Returns:
-        Tuple of whether project structure is valid and string of found problems.
+        Tuple of whether project structure is valid, if an automated fix is available and string of found problems.
     """
     if not check_external_storage():
         return True, False, None

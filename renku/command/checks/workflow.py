@@ -35,7 +35,8 @@ def check_activity_catalog(fix, force, **_) -> Tuple[bool, bool, Optional[str]]:
         _: keyword arguments.
 
     Returns:
-        Tuple of whether the activity-catalog needs to be rebuilt and a string of found problems.
+        Tuple of whether the activity-catalog needs to be rebuilt, if an automated fix is available and a string of
+            found problems.
     """
     database = project_context.database
     activity_catalog = database["activity-catalog"]
@@ -71,7 +72,8 @@ def check_plan_modification_date(fix, plan_gateway: IPlanGateway, **_) -> Tuple[
         _: keyword arguments.
 
     Returns:
-        Tuple[bool, Optional[str]]: Tuple of whether there are plans without modification date and a string of their IDs
+        Tuple[bool, Optional[str]]: Tuple of whether there are plans without modification date, if an automated fix is
+            available and a string of their IDs
     """
     plans: List[AbstractPlan] = plan_gateway.get_all_plans()
 

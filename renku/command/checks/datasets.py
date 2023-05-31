@@ -38,7 +38,8 @@ def check_dataset_old_metadata_location(**_):
         _: keyword arguments.
 
     Returns:
-        Tuple of whether dataset metadata location is valid and string of found problems.
+        Tuple of whether dataset metadata location is valid, if an automated fix is available and string of
+            found problems.
     """
     old_metadata = get_pre_0_3_4_datasets_metadata()
 
@@ -64,7 +65,7 @@ def check_missing_files(dataset_gateway: IDatasetGateway, **_):
         _: keyword arguments.
 
     Returns:
-        Tuple of whether all dataset files are there and string of found problems.
+        Tuple of whether all dataset files are there, if an automated fix is available and string of found problems.
     """
     missing = defaultdict(list)
 
@@ -104,7 +105,7 @@ def check_invalid_datasets_derivation(fix, dataset_gateway: IDatasetGateway, **_
         _: keyword arguments.
 
     Returns:
-        Tuple of whether dataset derivations are valid and string of found problems.
+        Tuple of whether dataset derivations are valid, if an automated fix is available and string of found problems.
     """
     invalid_datasets = []
 
@@ -208,7 +209,7 @@ def check_external_files(fix, dataset_gateway: IDatasetGateway, **_):
         _: keyword arguments.
 
     Returns:
-        Tuple of whether no external files are found and string of found problems.
+        Tuple of whether no external files are found, if an automated fix is available and string of found problems.
     """
     from renku.core.dataset.dataset import file_unlink
 

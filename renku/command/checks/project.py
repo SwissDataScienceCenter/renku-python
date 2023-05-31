@@ -33,7 +33,7 @@ def check_project_id_group(fix, project_gateway: IProjectGateway, **_):
         _: keyword arguments.
 
     Returns:
-        Tuple of whether project id is valid.
+        Tuple of whether project id is valid, if an automated fix is available and string of found problems.
     """
     current_project = project_gateway.get_project()
 

@@ -81,7 +81,8 @@ def check_activity_dates(fix, activity_gateway: IActivityGateway, **_):
         _: keyword arguments.
 
     Returns:
-        Tuple[bool, Optional[str]]: Tuple of whether there are activities with invalid dates a string of the problem.
+        Tuple[bool, Optional[str]]: Tuple of whether there are activities with invalid dates, if they can be
+            automatically fixed and a string of the problem.
     """
     invalid_activities = []
 

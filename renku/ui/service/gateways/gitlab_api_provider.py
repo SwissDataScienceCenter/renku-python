@@ -102,16 +102,4 @@ class GitlabAPIProvider(IGitAPIProvider):
                 project.repository_archive(path=str(folder), sha=branch, streamed=True, action=f.write, format="tar.gz")
                 f.seek(0)
                 with tarfile.open(fileobj=f) as archive:
-                    archive.extractall(
-                        path=target_folder, members=self._set_tarfile_members_path_relative_to_base(archive)
-                    )
-
-    def _set_tarfile_members_path_relative_to_base(self, archive: tarfile.TarFile):
-        """Changes member paths in a tar file from `folder/*` to `./*`."""
-        if not archive.getmembers():
-            return
-        base_path = archive.getmembers()[0].path.split("/")[0]
-        path_len = len(base_path)
-        for member in archive.getmembers():
-            if member.path.startswith(base_path):
-                member.path = "." + member.path[path_len:]
+                    archive.extractall(path=target_folder)
