@@ -38,27 +38,45 @@ files = [
 
 [[package]]
 name = "apispec"
-version = "5.2.2"
+version = "6.3.0"
 description = "A pluggable API specification generator. Currently supports the OpenAPI Specification (f.k.a. the Swagger specification)."
 category = "main"
 optional = true
 python-versions = ">=3.7"
 files = [
-    {file = "apispec-5.2.2-py3-none-any.whl", hash = "sha256:f5f0d6b452c3e4a0e0922dce8815fac89dc4dbc758acef21fb9e01584d6602a5"},
-    {file = "apispec-5.2.2.tar.gz", hash = "sha256:6ea6542e1ebffe9fd95ba01ef3f51351eac6c200a974562c7473059b9cd20aa7"},
+    {file = "apispec-6.3.0-py3-none-any.whl", hash = "sha256:95a0b9355785df998bb0e9b939237a30ee4c7428fd6ef97305eae3da06b9b339"},
+    {file = "apispec-6.3.0.tar.gz", hash = "sha256:6cb08d92ce73ff0b3bf46cb2ea5c00d57289b0f279fb0256a3df468182ba5344"},
 ]
 
 [package.dependencies]
+packaging = ">=21.3"
 PyYAML = {version = ">=3.10", optional = true, markers = "extra == \"yaml\""}
 
 [package.extras]
-dev = ["PyYAML (>=3.10)", "flake8 (==4.0.1)", "flake8-bugbear (==22.4.25)", "marshmallow (>=3.13.0)", "mock", "mypy (==0.950)", "prance[osv] (>=0.11)", "pre-commit (>=2.4,<3.0)", "pytest", "tox", "types-PyYAML"]
-docs = ["marshmallow (>=3.13.0)", "pyyaml (==6.0)", "sphinx (==4.5.0)", "sphinx-issues (==3.0.1)", "sphinx-rtd-theme (==1.0.0)"]
-lint = ["flake8 (==4.0.1)", "flake8-bugbear (==22.4.25)", "mypy (==0.950)", "pre-commit (>=2.4,<3.0)", "types-PyYAML"]
-marshmallow = ["marshmallow (>=3.13.0)"]
-tests = ["PyYAML (>=3.10)", "marshmallow (>=3.13.0)", "mock", "prance[osv] (>=0.11)", "pytest"]
-validation = ["prance[osv] (>=0.11)"]
+dev = ["PyYAML (>=3.10)", "flake8 (==5.0.4)", "flake8-bugbear (==22.9.23)", "marshmallow (>=3.13.0)", "mypy (==0.982)", "openapi-spec-validator (<0.5)", "prance[osv] (>=0.11)", "pre-commit (>=2.4,<3.0)", "pytest", "tox", "types-PyYAML"]
+docs = ["marshmallow (>=3.13.0)", "pyyaml (==6.0)", "sphinx (==5.2.3)", "sphinx-issues (==3.0.1)", "sphinx-rtd-theme (==1.0.0)"]
+lint = ["flake8 (==5.0.4)", "flake8-bugbear (==22.9.23)", "mypy (==0.982)", "pre-commit (>=2.4,<3.0)", "types-PyYAML"]
+marshmallow = ["marshmallow (>=3.18.0)"]
+tests = ["PyYAML (>=3.10)", "marshmallow (>=3.13.0)", "openapi-spec-validator (<0.5)", "prance[osv] (>=0.11)", "pytest"]
+validation = ["openapi-spec-validator (<0.5)", "prance[osv] (>=0.11)"]
 yaml = ["PyYAML (>=3.10)"]
+
+[[package]]
+name = "apispec-oneofschema"
+version = "3.0.0"
+description = "Plugin for apispec providing support for Marshmallow-OneOfSchema schemas"
+category = "main"
+optional = true
+python-versions = "*"
+files = [
+    {file = "apispec-oneofschema-3.0.0.tar.gz", hash = "sha256:56a84492d2105340df059d477f28e67f63e38d14e40364229b68d7d512495664"},
+    {file = "apispec_oneofschema-3.0.0-py2.py3-none-any.whl", hash = "sha256:8f106bcb394e764d532f1d43c658034e986aaa526a6ec1d20d1d7063aa1f0a86"},
+]
+
+[package.dependencies]
+apispec = ">=3.0.0"
+marshmallow = "<4.0.0"
+marshmallow-oneofschema = "*"
 
 [[package]]
 name = "apispec-webframeworks"
@@ -4809,7 +4827,7 @@ cffi = {version = ">=1.11", markers = "platform_python_implementation == \"PyPy\
 cffi = ["cffi (>=1.11)"]
 
 [extras]
-service = ["apispec", "apispec-webframeworks", "circus", "flask", "gunicorn", "marshmallow", "marshmallow-oneofschema", "pillow", "python-dotenv", "redis", "rq", "rq-scheduler", "sentry-sdk", "walrus"]
+service = ["apispec", "apispec-oneofschema", "apispec-webframeworks", "circus", "flask", "gunicorn", "marshmallow", "marshmallow-oneofschema", "pillow", "python-dotenv", "redis", "rq", "rq-scheduler", "sentry-sdk", "walrus"]
 
 [metadata]
 lock-version = "2.0"
