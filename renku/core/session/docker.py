@@ -20,7 +20,7 @@ import platform
 import webbrowser
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, Union, cast
 from uuid import uuid4
 
 import docker
@@ -253,7 +253,7 @@ class DockerSessionProvider(ISessionProvider):
         cpu_request: Optional[float] = None,
         mem_request: Optional[str] = None,
         disk_request: Optional[str] = None,
-        gpu_request: Optional[str] = None,
+        gpu_request: Optional[Union[str, int]] = None,
         **kwargs,
     ) -> Tuple[str, str]:
         """Creates an interactive session.
@@ -264,6 +264,8 @@ class DockerSessionProvider(ISessionProvider):
         show_non_standard_user_warning = True
 
         def session_start_helper(consider_disk_request: bool):
+            nonlocal gpu_request
+
             try:
                 docker_is_running = self.docker_client().ping()
                 if not docker_is_running:
@@ -292,8 +294,15 @@ class DockerSessionProvider(ISessionProvider):
                             docker.types.DeviceRequest(count=-1, capabilities=[["compute", "utility"]])
                         ]
                     else:
+                        if not isinstance(gpu_request, int):
+                            try:
+                                gpu_request = int(gpu_request)
+                            except ValueError:
+                                raise errors.ParameterError(
+                                    f"Invalid value for 'gpu': '{gpu_request}'. Valid values are integers or 'all'"
+                                )
                         resource_requests["device_requests"] = [
-                            docker.types.DeviceRequest(count=[gpu_request], capabilities=[["compute", "utility"]])
+                            docker.types.DeviceRequest(count=gpu_request, capabilities=[["compute", "utility"]])
                         ]
 
                 # NOTE: set git user
