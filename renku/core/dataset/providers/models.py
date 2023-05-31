@@ -103,6 +103,7 @@ class ProviderParameter(NamedTuple):
     is_flag: bool = False
     multiple: bool = False
     type: Optional[Type] = None
+    metavar: Optional[str] = None
 
 
 class ProviderDataset(Dataset):

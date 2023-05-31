@@ -20,7 +20,7 @@ import platform
 import webbrowser
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, Union, cast
 from uuid import uuid4
 
 import docker
@@ -126,6 +126,97 @@ class DockerSessionProvider(ISessionProvider):
         return [
             ProviderParameter("port", help="Local port to use (random if not specified).", type=int),
             ProviderParameter("force-build", help="Always build image and don't check if it exists.", is_flag=True),
+            ProviderParameter(
+                "blkio-weight", help="Block IO (relative weight), between 10 and 1000, or 0 to disable.", type=int
+            ),
+            ProviderParameter("cap-add", help="Add Linux capabilities.", multiple=True),
+            ProviderParameter("cap-drop", help="Drop Linux capabilities.", multiple=True),
+            ProviderParameter("cgroup-parent", help="Override the default parent cgroup.", type=str),
+            ProviderParameter("cpu-count", help="Number of usable CPUs.", type=int),
+            ProviderParameter("cpu-percent", help="Usable percentage of the available CPUs.", type=int),
+            ProviderParameter("cpu-period", help="The length of a CPU period in microseconds.", type=int),
+            ProviderParameter(
+                "cpu-quota", help="Microseconds of CPU time that the container can get in a CPU period.", type=int
+            ),
+            ProviderParameter("cpu-rt-period", help="Limit CPU real-time period in microseconds.", type=int),
+            ProviderParameter("cpu-rt-runtime", help="Limit CPU real-time runtime in microseconds.", type=int),
+            ProviderParameter("cpu-shares", help="CPU shares (relative weight).", type=int),
+            ProviderParameter("cpuset-cpus", help="CPUs in which to allow execution ('0-3', '0,1').", type=str),
+            ProviderParameter(
+                "cpuset-mems", help="Memory nodes (MEMs) in which to allow execution ('0-3', '0,1').", type=str
+            ),
+            ProviderParameter(
+                "device-cgroup-rules",
+                help="A list of cgroup rules to apply to the container.",
+                multiple=True,
+                flags=["device-cgroup-rule"],
+            ),
+            ProviderParameter("devices", help="Expose host devices to the container.", multiple=True, flags=["device"]),
+            ProviderParameter("dns", help="Set custom DNS servers.", multiple=True),
+            ProviderParameter(
+                "dns-opt",
+                help="Additional options to be added to the container's ``resolv.conf`` file.",
+                type=str,
+                flags=["dns-opt", "dns-option"],
+            ),
+            ProviderParameter("dns-search", help="DNS search domains.", multiple=True),
+            ProviderParameter("domainname", help="Container NIS domain name.", type=str),
+            ProviderParameter("entrypoint", help="The entrypoint for the container.", type=str),
+            ProviderParameter(
+                "environment",
+                help="Environment variables to set inside the container, in the format 'VAR=VAL'",
+                multiple=True,
+                flags=["env"],
+            ),
+            ProviderParameter(
+                "group-add",
+                help="List of additional group names and/or IDs that the container process will run as.",
+                multiple=True,
+            ),
+            ProviderParameter("hostname", help="Optional hostname for the container.", type=str),
+            ProviderParameter(
+                "init", help="Run an init inside the container that forwards signals and reaps processes", is_flag=True
+            ),
+            ProviderParameter("isolation", help="Isolation technology to use.", type=str),
+            ProviderParameter("kernel-memory", help="Kernel memory limit (bytes).", type=int, metavar="<bytes>"),
+            ProviderParameter("mac-address", help="MAC address to assign to the container.", type=str),
+            ProviderParameter("mem-reservation", help="Memory soft limit.", type=int, flags=["memory-reservation"]),
+            ProviderParameter(
+                "mem-swappiness",
+                help="Tune container memory swappiness (0 to 100).",
+                type=int,
+                flags=["memory-swappiness"],
+            ),
+            ProviderParameter("memswap-limit", help="Swap limit equal to memory plus swap.", flags=["memory-swap"]),
+            ProviderParameter("name", help="The name for this container.", type=str),
+            ProviderParameter("network", help="Connect a container to a network.", type=str),
+            ProviderParameter("oom-kill-disable", help="Disable OOM Killer.", is_flag=True),
+            ProviderParameter("oom-score-adj", help="Tune host's OOM preferences (-1000 to 1000).", type=int),
+            ProviderParameter("pids-limit", help="Tune a container's PIDs limit.", type=int),
+            ProviderParameter("platform", help="Set platform if server is multi-platform capable.", type=str),
+            ProviderParameter("privileged", help="Give extended privileges to this container.", is_flag=True),
+            ProviderParameter(
+                "publish-all-ports", help="Publish all ports to the host.", is_flag=True, flags=["publish-all"]
+            ),
+            ProviderParameter("read-only", help="Mount the container's root filesystem as read-only", is_flag=True),
+            ProviderParameter("remove", help="Automatically remove the container when it exits.", flags=["rm"]),
+            ProviderParameter("runtime", help="Runtime to use with this container.", type=str),
+            ProviderParameter("security-opt", help="Security Options.", multiple=True),
+            ProviderParameter("shm-size", help="Size of /dev/shm (bytes).", type=int, metavar="<bytes>"),
+            ProviderParameter(
+                "stdin-open", help="Keep STDIN open even if not attached.", is_flag=True, flags=["interactive"]
+            ),
+            ProviderParameter("stop-signal", help="Signal to stop the container.", type=str),
+            ProviderParameter("tty", help="Allocate a pseudo-TTY.", is_flag=True),
+            ProviderParameter("user", help="Username or UID", type=str),
+            ProviderParameter("volume-driver", help="The name of a volume driver/plugin.", type=str),
+            ProviderParameter(
+                "volumes",
+                help="A list of volume mounts (e.g. '/host/path/:/mount/path/in/container')",
+                multiple=True,
+                flags=["volume"],
+            ),
+            ProviderParameter("volumes-from", help="Mount volumes from the specified container(s)", multiple=True),
         ]
 
     def get_open_parameters(self) -> List["ProviderParameter"]:
@@ -162,7 +253,7 @@ class DockerSessionProvider(ISessionProvider):
         cpu_request: Optional[float] = None,
         mem_request: Optional[str] = None,
         disk_request: Optional[str] = None,
-        gpu_request: Optional[str] = None,
+        gpu_request: Optional[Union[str, int]] = None,
         **kwargs,
     ) -> Tuple[str, str]:
         """Creates an interactive session.
@@ -173,6 +264,8 @@ class DockerSessionProvider(ISessionProvider):
         show_non_standard_user_warning = True
 
         def session_start_helper(consider_disk_request: bool):
+            nonlocal gpu_request
+
             try:
                 docker_is_running = self.docker_client().ping()
                 if not docker_is_running:
@@ -201,8 +294,15 @@ class DockerSessionProvider(ISessionProvider):
                             docker.types.DeviceRequest(count=-1, capabilities=[["compute", "utility"]])
                         ]
                     else:
+                        if not isinstance(gpu_request, int):
+                            try:
+                                gpu_request = int(gpu_request)
+                            except ValueError:
+                                raise errors.ParameterError(
+                                    f"Invalid value for 'gpu': '{gpu_request}'. Valid values are integers or 'all'"
+                                )
                         resource_requests["device_requests"] = [
-                            docker.types.DeviceRequest(count=[gpu_request], capabilities=[["compute", "utility"]])
+                            docker.types.DeviceRequest(count=gpu_request, capabilities=[["compute", "utility"]])
                         ]
 
                 # NOTE: set git user
@@ -214,15 +314,27 @@ class DockerSessionProvider(ISessionProvider):
 
                 work_dir = Path(working_dir) / "work" / project_name.split("/")[-1]
 
-                volumes = [f"{str(project_context.path.resolve())}:{work_dir}"]
+                volumes = kwargs.pop("volumes", [])
+                volumes = list(volumes)
+                volumes.append(f"{str(project_context.path.resolve())}:{work_dir}")
+
+                environment = {}
+                passed_env_vars = kwargs.pop("environment", [])
+                for env_var in passed_env_vars:
+                    var, _, value = env_var.partition("=")
+                    if not var:
+                        raise errors.ParameterError(f"Invalid environment variable: '{env_var}'")
+                    environment[var] = value
 
                 user = project_context.repository.get_user()
-                environment = {
-                    "GIT_AUTHOR_NAME": user.name,
-                    "GIT_AUTHOR_EMAIL": user.email,
-                    "GIT_COMMITTER_EMAIL": user.email,
-                    "EMAIL": user.email,
-                }
+                environment.update(
+                    {
+                        "GIT_AUTHOR_NAME": user.name,
+                        "GIT_AUTHOR_EMAIL": user.email,
+                        "GIT_COMMITTER_EMAIL": user.email,
+                        "EMAIL": user.email,
+                    }
+                )
 
                 additional_options: Dict[str, Any] = {}
 
@@ -239,7 +351,7 @@ class DockerSessionProvider(ISessionProvider):
                         )
                         show_non_standard_user_warning = False
 
-                    additional_options["user"] = "root"
+                    additional_options["user"] = kwargs.pop("user", "root")
                     environment["NB_UID"] = str(os.getuid())
                     environment["CHOWN_HOME"] = "yes"
                     environment["CHOWN_HOME_OPTS"] = "-R"
@@ -267,6 +379,7 @@ class DockerSessionProvider(ISessionProvider):
                     working_dir=str(work_dir),
                     **resource_requests,
                     **additional_options,
+                    **kwargs,
                 )
 
                 if not container.ports:

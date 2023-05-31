@@ -26,6 +26,7 @@ blog
 BMP
 bugfix
 Calamus
+cgroup
 chartpress
 Chartpress
 checksum
@@ -51,9 +52,9 @@ CWL
 datadir
 dataset
 datasets
-datetimes
 dataverse
 Dataverse
+datetimes
 deployer
 deserialization
 deserialize
@@ -61,6 +62,7 @@ Deserialize
 deserialized
 Deserialized
 deserializing
+dev
 discoverable
 Dockerfile
 dockerfiles
@@ -79,10 +81,6 @@ filesystem
 FilterFlights
 findable
 Fortran
-GitLab
-GitPython
-GraphQL
-graphviz
 gapped
 git-lfs
 gitattributes
@@ -91,8 +89,12 @@ github
 gitignore
 gitignored
 gitkeep
+GitLab
 gitlab
 gitlabClientSecret
+GitPython
+GraphQL
+graphviz
 hexsha
 Homebrew
 hostname
@@ -138,6 +140,7 @@ Matlab
 md5
 mergetool
 metadata
+metavar
 microservices
 middleware
 migrationscheck
@@ -162,11 +165,12 @@ OpenID
 openssl
 papermill
 param
-params
 parameterizable
 parametrization
 parametrize
 parametrized
+params
+PIDs
 pipenv
 PNG
 Postgresql
@@ -193,8 +197,8 @@ refactored
 Renga
 renku
 Renku
-renkulab
 renku-mls
+renkulab
 renv
 repo
 reproducibility
@@ -218,6 +222,7 @@ scala
 serializer
 sha
 shacl
+shm
 Slurm
 Snyk
 SPARQL
@@ -252,6 +257,7 @@ subsubcommands
 sudo
 supertype
 supertypes
+swappiness
 symlink
 symlinks
 templated
@@ -260,11 +266,11 @@ Tensorflow
 timestamp
 tinkerpop
 toolchain
+TTY
 tutorialLink
 txt
 typesystem
 Ubuntu
-Unmount
 ui
 Unescape
 unhandled
@@ -274,12 +280,13 @@ Unlink
 unlinking
 unmapped
 unmerged
+Unmount
 unpushed
 untracked
 untracked
 updatable
-url
 uri
+url
 urls
 username
 validator
