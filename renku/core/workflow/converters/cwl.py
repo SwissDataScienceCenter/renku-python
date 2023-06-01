@@ -148,7 +148,7 @@ class CWLExporter(IWorkflowConverter):
                     step_filename = Path(f"{uuid4()}.cwl")
                     step_path = (tmpdir / step_filename).resolve()
                     write_yaml(step_path, step.run.save())
-                    step.run = str(step_path)
+                    step.run = f"file://{step_path}"
             if filename is None:
                 filename = Path(f"parent_{uuid4()}.cwl")
         else:
