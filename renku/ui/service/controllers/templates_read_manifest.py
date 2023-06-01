@@ -50,7 +50,7 @@ class TemplatesReadManifestCtrl(ServiceCtrl, RenkuOperationMixin):
         """Reads template manifest."""
         from PIL import Image
 
-        templates_source = fetch_templates_source(source=self.ctx["git_url"], reference=self.ctx["ref"])
+        templates_source = fetch_templates_source(source=self.ctx["git_url"], reference=self.ctx["branch"])
         manifest = templates_source.manifest.get_raw_content()
 
         # NOTE: convert icons to base64

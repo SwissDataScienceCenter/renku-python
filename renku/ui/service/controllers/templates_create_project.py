@@ -65,7 +65,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
 
         metadata = {
             "__template_source__": self.ctx["git_url"],
-            "__template_ref__": self.ctx["ref"],
+            "__template_ref__": self.ctx["branch"],
             "__template_id__": self.ctx["identifier"],
             "__namespace__": self.ctx["project_namespace"],
             "__repository__": self.ctx["project_repository"],
@@ -115,7 +115,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def setup_template(self):
         """Reads template manifest."""
-        templates_source = fetch_templates_source(source=self.ctx["git_url"], reference=self.ctx["ref"])
+        templates_source = fetch_templates_source(source=self.ctx["git_url"], reference=self.ctx["branch"])
         identifier = self.ctx["identifier"]
         try:
             self.template = templates_source.get_template(id=identifier, reference=None)

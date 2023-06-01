@@ -33,13 +33,7 @@ from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.agent import Person
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.repository import Repository
-from renku.ui.service.errors import (
-    IntermittentFileExistsError,
-    IntermittentProjectTemplateUnavailable,
-    UserAnonymousError,
-    UserProjectTemplateReferenceError,
-    UserRepoUrlInvalidError,
-)
+from renku.ui.service.errors import IntermittentFileExistsError, UserAnonymousError, UserRepoUrlInvalidError
 from renku.ui.service.jobs.cleanup import cache_files_cleanup
 from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET
 from tests.utils import assert_rpc_response, retry_failed
@@ -947,8 +941,12 @@ def test_migrate_wrong_template_source(svc_client_setup, monkeypatch):
 
         response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
 
-        assert_rpc_response(response, "error")
-        assert IntermittentProjectTemplateUnavailable.code == response.json["error"]["code"]
+        assert_rpc_response(response)
+
+        assert response.json["result"].get("template_status", {}).get("code") == 3140
+        assert "Error accessing the project template" in response.json["result"].get("template_status", {}).get(
+            "devMessage"
+        )
 
 
 @pytest.mark.service
@@ -965,8 +963,12 @@ def test_migrate_wrong_template_ref(svc_client_setup, template, monkeypatch):
 
         response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
 
-        assert_rpc_response(response, "error")
-        assert UserProjectTemplateReferenceError.code == response.json["error"]["code"]
+        assert_rpc_response(response)
+
+        assert response.json["result"].get("template_status", {}).get("code") == 1141
+        assert "Cannot find the reference 'FAKE_REF' in the template repository" in response.json["result"].get(
+            "template_status", {}
+        ).get("devMessage")
 
 
 @pytest.mark.service
