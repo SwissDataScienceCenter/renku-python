@@ -58,7 +58,7 @@ def check_migrated_activity_ids(fix, activity_gateway: IActivityGateway, **_):
         wrong_activities = []
 
     if not wrong_activities:
-        return True, None
+        return True, False, None
 
     problems = (
         WARNING
@@ -68,7 +68,7 @@ def check_migrated_activity_ids(fix, activity_gateway: IActivityGateway, **_):
         + "\n"
     )
 
-    return False, problems
+    return False, True, problems
 
 
 @inject.autoparams("activity_gateway")
@@ -81,7 +81,8 @@ def check_activity_dates(fix, activity_gateway: IActivityGateway, **_):
         _: keyword arguments.
 
     Returns:
-        Tuple[bool, Optional[str]]: Tuple of whether there are activities with invalid dates a string of the problem.
+        Tuple[bool, Optional[str]]: Tuple of whether there are activities with invalid dates, if they can be
+            automatically fixed and a string of the problem.
     """
     invalid_activities = []
 
@@ -95,7 +96,7 @@ def check_activity_dates(fix, activity_gateway: IActivityGateway, **_):
             invalid_activities.append(activity)
 
     if not invalid_activities:
-        return True, None
+        return True, False, None
     if not fix:
         ids = [a.id for a in invalid_activities]
         message = (
@@ -104,13 +105,13 @@ def check_activity_dates(fix, activity_gateway: IActivityGateway, **_):
             + "\n\t"
             + "\n\t".join(ids)
         )
-        return False, message
+        return False, True, message
 
     fix_activity_dates(activities=invalid_activities)
     project_context.database.commit()
     communication.info("Activity dates were fixed")
 
-    return True, None
+    return True, False, None
 
 
 def fix_activity_dates(activities):

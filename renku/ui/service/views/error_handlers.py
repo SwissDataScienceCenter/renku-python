@@ -454,3 +454,15 @@ def handle_graph_errors(f):
             raise ProgramGraphCorruptError(e)
 
     return decorated_function
+
+
+def pretty_print_error(error: Exception):
+    """Use error handlers to pretty print an exception."""
+
+    @handle_common_except
+    @handle_migration_read_errors
+    def _fake_error_source():
+        raise error
+
+    response = _fake_error_source()
+    return response.json["error"]
