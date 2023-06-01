@@ -16,7 +16,7 @@
 # limitations under the License.
 """Renku service apispec views."""
 from apispec import APISpec, yaml_utils
-from apispec.ext.marshmallow import MarshmallowPlugin
+from apispec_oneofschema import MarshmallowPlugin
 from apispec_webframeworks.flask import FlaskPlugin
 from flask import Blueprint, current_app, jsonify
 from flask.views import MethodView

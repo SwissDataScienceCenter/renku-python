@@ -179,6 +179,9 @@ def service(ctx, env):
     import rq  # noqa: F401
     from dotenv import load_dotenv
 
+    if ctx.invoked_subcommand in ["apispec", "logs", "api"]:
+        return  # Redis not needed
+
     try:
         from renku.ui.service.cache.base import BaseCache
 

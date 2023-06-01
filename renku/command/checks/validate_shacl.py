@@ -16,7 +16,6 @@
 """Check KG structure using SHACL."""
 
 import pyld
-import yaml
 
 from renku.command.command_builder import inject
 from renku.command.schema.dataset import dump_dataset_as_jsonld
@@ -24,7 +23,6 @@ from renku.command.schema.project import ProjectSchema
 from renku.command.util import WARNING
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.util.shacl import validate_graph
-from renku.core.util.yaml import NoDatesSafeLoader
 from renku.domain_model.project_context import project_context
 
 
@@ -71,18 +69,18 @@ def check_project_structure(**_):
         _: keyword arguments.
 
     Returns:
-        Tuple of whether project structure is valid and string of found problems.
+        Tuple of whether project structure is valid, if an automated fix is available and string of found problems.
     """
     data = ProjectSchema().dump(project_context.project)
 
     conform, graph, t = _check_shacl_structure(data)
 
     if conform:
-        return True, None
+        return True, False, None
 
     problems = f"{WARNING}Invalid structure of project metadata\n\t{_shacl_graph_to_string(graph)}"
 
-    return False, problems
+    return False, False, problems
 
 
 @inject.autoparams("dataset_gateway")
@@ -94,7 +92,8 @@ def check_datasets_structure(dataset_gateway: IDatasetGateway, **_):
         _: keyword arguments.
 
     Returns:
-        Tuple[bool, str]: Tuple of whether structure is valid and of problems that might have been found.
+        Tuple[bool, str]: Tuple of whether structure is valid, if an automated fix is available and of problems
+            that might have been found.
     """
     ok = True
 
@@ -116,16 +115,9 @@ def check_datasets_structure(dataset_gateway: IDatasetGateway, **_):
         problems.append(f"{dataset.name}\n\t{_shacl_graph_to_string(graph)}\n")
 
     if ok:
-        return True, None
+        return True, False, None
 
-    return False, "\n".join(problems)
-
-
-def _check_shacl_structure_for_path(path):
-    with path.open(mode="r") as fp:
-        data = yaml.load(fp, Loader=NoDatesSafeLoader) or {}
-
-    return _check_shacl_structure(data)
+    return False, False, "\n".join(problems)
 
 
 def _check_shacl_structure(data):

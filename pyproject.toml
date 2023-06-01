@@ -107,7 +107,8 @@ zodb = "==5.8.0"
 zstandard = ">=0.16.0,<0.22.0"
 
 # service dependencies:
-apispec = { version = ">=4.0.0,<5.3.0", optional = true }
+apispec = { version = ">=6.3.0,<6.4.0", optional = true }
+apispec-oneofschema = { version = ">=3.0.0,<4.0.0", optional = true}
 apispec-webframeworks = { version = "<0.6,>=0.5.2", optional = true }
 circus = { version = "==0.18.0", optional = true }
 flask = { version = "==2.2.5", optional = true }
@@ -173,6 +174,7 @@ sphinxcontrib-spelling = ">=7,<9"
 [tool.poetry.extras]
 service = [
     "apispec",
+    "apispec-oneofschema",
     "apispec-webframeworks",
     "circus",
     "flask",
@@ -282,6 +284,7 @@ check_untyped_defs = true
 [[tool.mypy.overrides]]
 module = [
     "apispec.*",
+    "apispec_oneofschema.*",
     "apispec_webframeworks.*",
     "appdirs",
     "BTrees.*",

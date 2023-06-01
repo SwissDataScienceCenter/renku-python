@@ -129,7 +129,7 @@ def create_options(providers, parameter_function: str):
                 param_help = f"\b\n{param.help}\n " if j == 0 else param.help  # NOTE: add newline after a group
 
                 args = (
-                    [f"-{a}" if len(a) == 1 else f"--{a}" for a in param.flags if a] + [param.name]
+                    [f"-{a}" if len(a) == 1 else f"--{a}" for a in param.flags if a] + [param.name.replace("-", "_")]
                     if param.flags
                     else [f"--{param.name}"]
                 )
@@ -141,6 +141,7 @@ def create_options(providers, parameter_function: str):
                     is_flag=param.is_flag,
                     default=param.default,
                     multiple=param.multiple,
+                    metavar=param.metavar,
                 )(f)
 
             name = f"{provider.name} configuration"

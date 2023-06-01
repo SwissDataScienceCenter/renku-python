@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,6 +58,11 @@ searches the remote Renku deployment (if any) and pulls the image if it exists.
 Finally, it prompts the user to build the image locally if no image is found. You
 can force the image to always be built by using the ``--force-build`` flag.
 
+This command accepts a subset of arguments of the ``docker run`` command. See
+its help for the list of supported arguments: ``renku session start --help``.
+Accepted values are the same as the ``docker run`` command unless stated
+otherwise.
+
 Renkulab provider
 ~~~~~~~~~~~~~~~~~
 
@@ -109,7 +113,8 @@ You can start a session with SSH support using:
     $ renku session start -p renkulab --ssh
     Your system is not set up for SSH connections to Renkulab. Would you like to set it up? [y/N]: y
     [...]
-    Session sessionid successfully started, use 'renku session open --ssh sessionid' or 'ssh sessionid' to connect to it
+    Session <session-id> successfully started, use 'renku session open --ssh <session-id>' or 'ssh <session-id>' to
+    connect to it
 
 This will create SSH keys for you and setup SSH configuration for connecting to the renku deployment.
 You can then use the SSH connection name (``ssh renkulab.io-myproject-sessionid`` in the example)
@@ -277,12 +282,19 @@ def session_start_provider_options(*param_decls, **attrs):
 @click.option("--image", type=click.STRING, metavar="<image_name>", help="Docker image to use for the session.")
 @click.option("--cpu", type=click.FLOAT, metavar="<cpu quota>", help="CPUs quota for the session.")
 @click.option("--disk", type=click.STRING, metavar="<disk size>", help="Amount of disk space required for the session.")
-@click.option("--gpu", type=click.STRING, metavar="<GPU quota>", help="GPU quota for the session.")
+@click.option(
+    "--gpu",
+    type=click.STRING,
+    metavar="<GPU quota>",
+    help="Number of GPU devices to add to the container ('all' to pass all GPUs).",
+)
 @click.option("--memory", type=click.STRING, metavar="<memory size>", help="Amount of memory required for the session.")
 @session_start_provider_options()
 def start(provider, config, image, cpu, disk, gpu, memory, **kwargs):
     """Start an interactive session."""
     from renku.command.session import session_start_command
+
+    kwargs = {k: v for k, v in kwargs.items() if v is not None}
 
     communicator = ClickCallback()
     session_start_command().with_communicator(communicator).build().execute(
