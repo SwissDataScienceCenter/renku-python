@@ -32,12 +32,6 @@ from renku.ui.service.serializers.common import (
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
 
-class DatasetRefSchema(Schema):
-    """Schema for specifying a reference."""
-
-    ref = fields.String(metadata={"description": "Target reference."})
-
-
 class DatasetNameSchema(Schema):
     """Schema for dataset name."""
 
@@ -53,7 +47,7 @@ class DatasetDetailsRequest(DatasetDetails):
 
 
 class DatasetCreateRequest(
-    AsyncSchema, DatasetDetailsRequest, DatasetRefSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
+    AsyncSchema, DatasetDetailsRequest, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
 ):
     """Request schema for a dataset create view."""
 
@@ -75,7 +69,7 @@ class DatasetCreateResponseRPC(JsonRPCResponse):
 
 
 class DatasetRemoveRequest(
-    AsyncSchema, DatasetNameSchema, DatasetRefSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
+    AsyncSchema, DatasetNameSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
 ):
     """Request schema for a dataset remove."""
 
@@ -99,9 +93,7 @@ class DatasetAddFile(Schema):
     job_id = fields.String()
 
 
-class DatasetAddRequest(
-    AsyncSchema, DatasetNameSchema, DatasetRefSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
-):
+class DatasetAddRequest(AsyncSchema, DatasetNameSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema):
     """Request schema for a dataset add file view."""
 
     files = fields.List(fields.Nested(DatasetAddFile), required=True)
@@ -203,7 +195,6 @@ class DatasetEditRequest(
     AsyncSchema,
     DatasetDetailsRequest,
     DatasetNameSchema,
-    DatasetRefSchema,
     LocalRepositorySchema,
     RemoteRepositorySchema,
     MigrateSchema,
@@ -240,7 +231,7 @@ class DatasetEditResponseRPC(JsonRPCResponse):
 
 
 class DatasetUnlinkRequest(
-    AsyncSchema, DatasetNameSchema, DatasetRefSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
+    AsyncSchema, DatasetNameSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
 ):
     """Dataset unlink file request."""
 

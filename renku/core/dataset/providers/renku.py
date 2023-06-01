@@ -43,6 +43,7 @@ class RenkuProvider(ProviderApi, ImportProviderInterface):
 
     priority = ProviderPriority.HIGH
     name = "Renku"
+    is_remote = True
 
     def __init__(self, uri: str, **_):
         super().__init__(uri=uri)

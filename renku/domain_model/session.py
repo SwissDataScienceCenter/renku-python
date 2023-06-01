@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from datetime import datetime
+from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
@@ -26,6 +27,15 @@ from renku.core.constant import ProviderPriority
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderParameter
+
+
+class SessionStopStatus(Enum):
+    """Status code returned when stopping sessions."""
+
+    NO_ACTIVE_SESSION = auto()
+    SUCCESSFUL = auto()
+    FAILED = auto()  # When all or some of (requested) sessions can't be stopped
+    NAME_NEEDED = auto()
 
 
 class Session:
@@ -53,7 +63,7 @@ class Session:
 
 
 class ISessionProvider(metaclass=ABCMeta):
-    """Abstract class for a interactive session provider."""
+    """Abstract class for an interactive session provider."""
 
     priority: ProviderPriority = ProviderPriority.NORMAL
 
@@ -112,12 +122,11 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
+    def session_list(self, project_name: str) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
 
         Args:
             project_name(str): Renku project name.
-            config(Dict[str, Any], optional): Path to the session provider specific configuration YAML.
 
         Returns:
             a list of sessions.
@@ -153,27 +162,27 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> bool:
+    def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> SessionStopStatus:
         """Stops all or a given interactive session.
 
         Args:
             project_name(str): Project's name.
             session_name(str, optional): The unique id of the interactive session.
-            stop_all(bool): Specifies whether or not to stop all the running interactive sessions.
+            stop_all(bool): Specifies whether to stop all the running interactive sessions.
 
 
         Returns:
-            bool: True in case session(s) has been successfully stopped
+            SessionStopStatus: The status of running and stopped sessions
         """
         pass
 
     @abstractmethod
-    def session_open(self, project_name: str, session_name: str, **kwargs) -> bool:
+    def session_open(self, project_name: str, session_name: Optional[str], **kwargs) -> bool:
         """Open a given interactive session.
 
         Args:
             project_name(str): Renku project name.
-            session_name(str): The unique id of the interactive session.
+            session_name(Optional[str]): The unique id of the interactive session.
         """
         pass
 
@@ -194,7 +203,7 @@ class ISessionProvider(metaclass=ABCMeta):
 
         The expectation is that this method will abort the
         session start if the checks are not successful or will take corrective actions to
-        make sure that the session launches successfully. By default this method does not do any checks.
+        make sure that the session launches successfully. By default, this method does not do any checks.
         """
         return None
 

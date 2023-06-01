@@ -30,7 +30,9 @@ def test_delay_migration_job(svc_client_cache, it_remote_old_repo_url_temp_branc
 
     it_remote_repo_url, branch = it_remote_old_repo_url_temp_branch
 
-    context = ProjectMigrateRequest().load({"git_url": it_remote_repo_url, "ref": branch, "skip_docker_update": True})
+    context = ProjectMigrateRequest().load(
+        {"git_url": it_remote_repo_url, "branch": branch, "skip_docker_update": True}
+    )
 
     _, _, cache = svc_client_cache
     renku_module = "renku.ui.service.controllers.cache_migrate_project"

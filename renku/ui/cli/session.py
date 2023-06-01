@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,6 +58,11 @@ searches the remote Renku deployment (if any) and pulls the image if it exists.
 Finally, it prompts the user to build the image locally if no image is found. You
 can force the image to always be built by using the ``--force-build`` flag.
 
+This command accepts a subset of arguments of the ``docker run`` command. See
+its help for the list of supported arguments: ``renku session start --help``.
+Accepted values are the same as the ``docker run`` command unless stated
+otherwise.
+
 Renkulab provider
 ~~~~~~~~~~~~~~~~~
 
@@ -109,7 +113,8 @@ You can start a session with SSH support using:
     $ renku session start -p renkulab --ssh
     Your system is not set up for SSH connections to Renkulab. Would you like to set it up? [y/N]: y
     [...]
-    Session sessionid successfully started, use 'renku session open --ssh sessionid' or 'ssh sessionid' to connect to it
+    Session <session-id> successfully started, use 'renku session open --ssh <session-id>' or 'ssh <session-id>' to
+    connect to it
 
 This will create SSH keys for you and setup SSH configuration for connecting to the renku deployment.
 You can then use the SSH connection name (``ssh renkulab.io-myproject-sessionid`` in the example)
@@ -190,6 +195,7 @@ from renku.command.format.session import SESSION_COLUMNS, SESSION_FORMATS
 from renku.command.util import WARNING
 from renku.core import errors
 from renku.ui.cli.utils.callback import ClickCallback
+from renku.ui.cli.utils.click import shell_complete_session_providers, shell_complete_sessions
 from renku.ui.cli.utils.plugins import get_supported_session_providers_names
 
 
@@ -205,6 +211,7 @@ def session():
     "-p",
     "--provider",
     type=click.Choice(Proxy(get_supported_session_providers_names)),
+    shell_complete=shell_complete_session_providers,
     default=None,
     help="Backend to use for listing interactive sessions.",
 )
@@ -212,6 +219,7 @@ def session():
     "config",
     "-c",
     "--config",
+    hidden=True,
     type=click.Path(exists=True, dir_okay=False),
     metavar="<config file>",
     help="YAML file containing configuration for the provider.",
@@ -231,7 +239,7 @@ def list_sessions(provider, config, columns, format):
     """List interactive sessions."""
     from renku.command.session import session_list_command
 
-    result = session_list_command().build().execute(provider=provider, config_path=config)
+    result = session_list_command().build().execute(provider=provider)
 
     click.echo(SESSION_FORMATS[format](result.output.sessions, columns=columns))
 
@@ -258,6 +266,7 @@ def session_start_provider_options(*param_decls, **attrs):
     "-p",
     "--provider",
     type=click.Choice(Proxy(get_supported_session_providers_names)),
+    shell_complete=shell_complete_session_providers,
     default="docker",
     show_default=True,
     help="Backend to use for creating an interactive session.",
@@ -273,12 +282,19 @@ def session_start_provider_options(*param_decls, **attrs):
 @click.option("--image", type=click.STRING, metavar="<image_name>", help="Docker image to use for the session.")
 @click.option("--cpu", type=click.FLOAT, metavar="<cpu quota>", help="CPUs quota for the session.")
 @click.option("--disk", type=click.STRING, metavar="<disk size>", help="Amount of disk space required for the session.")
-@click.option("--gpu", type=click.STRING, metavar="<GPU quota>", help="GPU quota for the session.")
+@click.option(
+    "--gpu",
+    type=click.STRING,
+    metavar="<GPU quota>",
+    help="Number of GPU devices to add to the container ('all' to pass all GPUs).",
+)
 @click.option("--memory", type=click.STRING, metavar="<memory size>", help="Amount of memory required for the session.")
 @session_start_provider_options()
 def start(provider, config, image, cpu, disk, gpu, memory, **kwargs):
     """Start an interactive session."""
     from renku.command.session import session_start_command
+
+    kwargs = {k: v for k, v in kwargs.items() if v is not None}
 
     communicator = ClickCallback()
     session_start_command().with_communicator(communicator).build().execute(
@@ -294,13 +310,14 @@ def start(provider, config, image, cpu, disk, gpu, memory, **kwargs):
 
 
 @session.command("stop")
-@click.argument("session_name", metavar="<name>", required=False)
+@click.argument("session_name", metavar="<name>", required=False, default=None, shell_complete=shell_complete_sessions)
 @click.option(
     "provider",
     "-p",
     "--provider",
     type=click.Choice(Proxy(get_supported_session_providers_names)),
     default=None,
+    shell_complete=shell_complete_session_providers,
     help="Session provider to use.",
 )
 @click.option("stop_all", "-a", "--all", is_flag=True, help="Stops all the running containers.")
@@ -308,9 +325,7 @@ def stop(session_name, stop_all, provider):
     """Stop an interactive session."""
     from renku.command.session import session_stop_command
 
-    if not stop_all and session_name is None:
-        raise errors.ParameterError("Please specify either a session ID or the '-a/--all' flag.")
-    elif stop_all and session_name:
+    if stop_all and session_name:
         raise errors.ParameterError("Cannot specify a session ID with the '-a/--all' flag.")
 
     communicator = ClickCallback()
@@ -319,8 +334,10 @@ def stop(session_name, stop_all, provider):
     )
     if stop_all:
         click.echo("All running interactive sessions for this project have been stopped.")
-    else:
+    elif session_name:
         click.echo(f"Interactive session '{session_name}' has been successfully stopped.")
+    else:
+        click.echo("Interactive session has been successfully stopped.")
 
 
 def session_open_provider_options(*param_decls, **attrs):
@@ -333,12 +350,13 @@ def session_open_provider_options(*param_decls, **attrs):
 
 
 @session.command("open")
-@click.argument("session_name", metavar="<name>", required=True)
+@click.argument("session_name", metavar="<name>", required=False, default=None, shell_complete=shell_complete_sessions)
 @click.option(
     "provider",
     "-p",
     "--provider",
     type=click.Choice(Proxy(get_supported_session_providers_names)),
+    shell_complete=shell_complete_session_providers,
     default=None,
     help="Session provider to use.",
 )

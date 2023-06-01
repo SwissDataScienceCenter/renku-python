@@ -160,10 +160,9 @@ class ISessionProvider:
         """
         pass
 
-    def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
+    def session_list(self, project_name: str) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
         :param project_name: Renku project name.
-        :param config: Path to the session provider specific configuration YAML.
         :returns: a list of sessions.
         """
         pass

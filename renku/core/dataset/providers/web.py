@@ -17,18 +17,22 @@
 
 import urllib
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
 
 from renku.core import errors
 from renku.core.constant import CACHE
+from renku.core.dataset.dataset_add import copy_file
 from renku.core.dataset.providers.api import AddProviderInterface, ProviderApi, ProviderPriority
+from renku.core.util import communication
+from renku.core.util.os import delete_dataset_file
 from renku.core.util.urls import check_url, remove_credentials
 from renku.core.util.util import parallel_execute
 from renku.domain_model.project_context import project_context
+from renku.infrastructure.immutable import DynamicProxy
 
 if TYPE_CHECKING:
-    from renku.core.dataset.providers.models import DatasetAddMetadata
+    from renku.core.dataset.providers.models import DatasetAddMetadata, DatasetUpdateMetadata
 
 
 class WebProvider(ProviderApi, AddProviderInterface):
@@ -36,6 +40,7 @@ class WebProvider(ProviderApi, AddProviderInterface):
 
     priority = ProviderPriority.LOWEST
     name = "Web"
+    is_remote = True
 
     @staticmethod
     def supports(uri: str) -> bool:
@@ -68,6 +73,80 @@ class WebProvider(ProviderApi, AddProviderInterface):
             filename=filename,
             multiple=multiple,
         )
+
+    def update_files(
+        self,
+        files: List[DynamicProxy],
+        dry_run: bool,
+        delete: bool,
+        context: Dict[str, Any],
+        **kwargs,
+    ) -> List["DatasetUpdateMetadata"]:
+        """Update dataset files from the remote provider."""
+        from renku.core.dataset.providers.models import DatasetAddMetadata, DatasetUpdateAction, DatasetUpdateMetadata
+
+        progress_text = "Checking for local updates"
+        results: List[DatasetUpdateMetadata] = []
+
+        download_cache: Dict[str, DatasetAddMetadata] = {}
+        potential_updates: List[Tuple[DatasetAddMetadata, DynamicProxy]] = []
+
+        try:
+            communication.start_progress(progress_text, len(files))
+            for file in files:
+                if not file.source:
+                    continue
+                destination = project_context.path / file.dataset.get_datadir()
+                try:
+                    if file.entity.path not in download_cache:
+                        downloaded_files = download_file(
+                            project_path=project_context.path, uri=file.source, destination=destination
+                        )
+
+                        if not any(f.entity_path == file.entity.path for f in downloaded_files):
+                            # File probably comes from an extracted download
+                            downloaded_files = download_file(
+                                project_path=project_context.path,
+                                uri=file.source,
+                                destination=destination,
+                                extract=True,
+                            )
+
+                        download_cache.update({str(f.entity_path): f for f in downloaded_files})
+                except errors.OperationError:
+                    results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.DELETE))
+                else:
+                    metadata = download_cache.get(file.entity.path)
+
+                    if not metadata:
+                        results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.DELETE))
+
+                        if not dry_run and delete:
+                            delete_dataset_file(file.entity.path, follow_symlinks=True)
+                            project_context.repository.add(file.entity.path, force=True)
+                    else:
+                        potential_updates.append((metadata, file))
+
+        finally:
+            communication.finalize_progress(progress_text)
+
+        if not potential_updates:
+            return results
+
+        check_paths: List[Union[Path, str]] = [
+            str(u[0].source.relative_to(project_context.path)) for u in potential_updates
+        ]
+        # Stage files temporarily so we can get hashes
+        project_context.repository.add(*check_paths, force=True)
+        hashes = project_context.repository.get_object_hashes(check_paths)
+        project_context.repository.remove(*check_paths, index=True)
+
+        for metadata, file in potential_updates:
+            if file.entity.checksum != hashes.get(metadata.source):
+                results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.UPDATE))
+                if not dry_run:
+                    copy_file(metadata, file.dataset, storage=None)
+        return results
 
 
 def _ensure_dropbox(url):

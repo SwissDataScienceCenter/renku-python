@@ -527,6 +527,7 @@ class ProgramUpdateProjectError(ServiceError):
     code = SVC_ERROR_USER + 140
     userMessage = "Our servers could not update the project succesfully. You could try doing it manually in a session."
     devMessage = "Updating the target project failed. Check the Sentry exception for further details."
+    userReference = "https://renku.readthedocs.io/en/stable/how-to-guides/general/upgrading-renku.html"
 
     def __init__(self, exception=None):
         super().__init__(exception=exception)

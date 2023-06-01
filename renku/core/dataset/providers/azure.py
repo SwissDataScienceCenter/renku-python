@@ -45,6 +45,7 @@ class AzureProvider(ProviderApi, StorageProviderInterface, AddProviderInterface)
 
     priority = ProviderPriority.HIGHEST
     name = "Azure"
+    is_remote = True
 
     def __init__(self, uri: str):
         super().__init__(uri=uri)

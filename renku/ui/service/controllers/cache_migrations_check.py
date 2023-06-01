@@ -17,18 +17,18 @@
 """Renku service migrations check controller."""
 
 import tempfile
+from dataclasses import asdict
 from pathlib import Path
 
-from renku.command.migrate import migrations_check
+from renku.command.doctor import doctor_check_command
+from renku.command.migrate import MigrationCheckResult, migrations_check
 from renku.core.errors import AuthenticationError, MinimumVersionError, ProjectNotFound, RenkuException
-from renku.core.migration.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.util.contexts import renku_project_context
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
 from renku.ui.service.interfaces.git_api_provider import IGitAPIProvider
 from renku.ui.service.serializers.cache import ProjectMigrationCheckRequest, ProjectMigrationCheckResponseRPC
 from renku.ui.service.views import result_response
-from renku.version import __version__
 
 
 class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
@@ -55,18 +55,14 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
 
         with tempfile.TemporaryDirectory() as tempdir:
             tempdir_path = Path(tempdir)
-
             self.git_api_provider.download_files_from_api(
-                [
-                    ".renku/metadata/root",
-                    ".renku/metadata/project",
-                    ".renku/metadata.yml",
-                    ".renku/renku.ini",
+                files=[
                     "Dockerfile",
                 ],
-                tempdir_path,
+                folders=[".renku"],
+                target_folder=tempdir_path,
                 remote=self.ctx["git_url"],
-                ref=self.request_data.get("ref", None),
+                branch=self.request_data.get("branch", None),
                 token=self.user_data.get("token", None),
             )
             with renku_project_context(tempdir_path):
@@ -75,36 +71,18 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
     def renku_op(self):
         """Renku operation for the controller."""
         try:
-            return migrations_check().build().execute().output
+            migrations_check_result = migrations_check().build().execute().output
+            doctor_result = doctor_check_command(with_fix=False).build().execute(fix=False, force=False).output
+            migrations_check_result.core_compatibility_status.fixes_available = doctor_result[1]
+            migrations_check_result.core_compatibility_status.issues_found = doctor_result[2]
+            return migrations_check_result
         except MinimumVersionError as e:
-            return {
-                "project_supported": False,
-                "core_renku_version": e.current_version,
-                "project_renku_version": f">={e.minimum_version}",
-                "core_compatibility_status": {
-                    "migration_required": False,
-                    "project_metadata_version": f">={SUPPORTED_PROJECT_VERSION}",
-                    "current_metadata_version": SUPPORTED_PROJECT_VERSION,
-                },
-                "dockerfile_renku_status": {
-                    "dockerfile_renku_version": "unknown",
-                    "latest_renku_version": __version__,
-                    "newer_renku_available": False,
-                    "automated_dockerfile_update": False,
-                },
-                "template_status": {
-                    "automated_template_update": False,
-                    "newer_template_available": False,
-                    "template_source": "unknown",
-                    "template_ref": "unknown",
-                    "template_id": "unknown",
-                    "project_template_version": "unknown",
-                    "latest_template_version": "unknown",
-                },
-            }
+            return MigrationCheckResult.from_minimum_version_error(e)
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
+        from renku.ui.service.views.error_handlers import pretty_print_error
+
         if "project_id" in self.context:
             result = self.execute_op()
         else:
@@ -116,4 +94,16 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
             except BaseException:
                 result = self.execute_op()
 
-        return result_response(self.RESPONSE_SERIALIZER, result)
+        result_dict = asdict(result)
+
+        # NOTE: Pretty-print errors for the UI
+        if isinstance(result.template_status, Exception):
+            result_dict["template_status"] = pretty_print_error(result.template_status)
+
+        if isinstance(result.dockerfile_renku_status, Exception):
+            result_dict["dockerfile_renku_status"] = pretty_print_error(result.dockerfile_renku_status)
+
+        if isinstance(result.core_compatibility_status, Exception):
+            result_dict["core_compatibility_status"] = pretty_print_error(result.core_compatibility_status)
+
+        return result_response(self.RESPONSE_SERIALIZER, result_dict)
