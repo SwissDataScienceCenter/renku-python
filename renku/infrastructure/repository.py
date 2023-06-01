@@ -917,8 +917,10 @@ class BaseRepository:
                 if files:
                     # NOTE: check existing files
                     for batch in split_paths(*files):
-                        existing_paths = git.Git(working_dir=self.path).ls_tree(*batch, r=revision, name_only=True)
-                        result.extend(existing_paths.splitlines())
+                        existing_paths = git.Git(working_dir=self.path).ls_tree(
+                            *batch, r=revision, name_only=True, z=True
+                        )
+                        result.extend(existing_paths.strip("\x00").split("\x00"))
 
                 if dirs:
                     # NOTE: check existing dirs
@@ -930,7 +932,7 @@ class BaseRepository:
 
                 return result
             else:
-                existing_files = git.Git().ls_tree(r=revision, name_only=True).splitlines()
+                existing_files = git.Git().ls_tree(r=revision, name_only=True, z=True).strip("\x00").split("\x00")
                 existing_dirs = git.Git().ls_tree(r=revision, name_only=True, d=True).splitlines()
                 return existing_dirs + existing_files
         except git.GitCommandError as e:

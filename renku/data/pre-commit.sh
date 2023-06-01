@@ -21,10 +21,17 @@
 
 # Find all modified or added files, and do nothing if there aren't any.
 export RENKU_DISABLE_VERSION_CHECK=true
-IFS=$'\n' read -r -d '' -a MODIFIED_FILES \
-  <<< "$(git diff --name-only --cached --diff-filter=M)"
-IFS=$'\n' read -r -d '' -a ADDED_FILES \
-  <<< "$(git diff --name-only --cached --diff-filter=A)"
+
+declare -a MODIFIED_FILES=()
+while IFS= read -r -d '' file; do
+  MODIFIED_FILES+=( "$file" )
+done < <(git diff -z --name-only --cached --diff-filter=M)
+
+declare -a ADDED_FILES=()
+while IFS= read -r -d '' file; do
+  ADDED_FILES+=( "$file" )
+done < <(git diff -z --name-only --cached --diff-filter=A)
+
 
 if [ ${#MODIFIED_FILES[@]} -ne 0 ] || [ ${#ADDED_FILES[@]} -ne 0 ]; then
   # Verify that renku is installed; if not, warn and exit.

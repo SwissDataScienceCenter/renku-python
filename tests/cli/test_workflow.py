@@ -711,7 +711,7 @@ def test_workflow_execute_command(
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
-def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, project, capsys, transaction_id, provider):
+def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, project, transaction_id, provider):
     """Test executing a workflow with --set for a renku.ui.api.Parameter."""
     script = project.path / "script.py"
     output = project.path / "output"
@@ -740,7 +740,7 @@ def test_workflow_execute_command_with_api_parameter_set(runner, run_shell, proj
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
-def test_workflow_execute_command_with_api_input_set(runner, run_shell, project, capsys, transaction_id, provider):
+def test_workflow_execute_command_with_api_input_set(runner, run_shell, project, transaction_id, provider):
     """Test executing a workflow with --set for a renku.ui.api.Input."""
     script = project.path / "script.py"
     output = project.path / "output"
@@ -775,7 +775,7 @@ def test_workflow_execute_command_with_api_input_set(runner, run_shell, project,
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
-def test_workflow_execute_command_with_api_output_set(runner, run_shell, project, capsys, transaction_id, provider):
+def test_workflow_execute_command_with_api_output_set(runner, run_shell, project, transaction_id, provider):
     """Test executing a workflow with --set for a renku.ui.api.Output."""
     script = project.path / "script.py"
     output = project.path / "output"
@@ -806,7 +806,7 @@ def test_workflow_execute_command_with_api_output_set(runner, run_shell, project
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_workflow_execute_command_with_api_duplicate_output(runner, run_shell, project, capsys, transaction_id):
+def test_workflow_execute_command_with_api_duplicate_output(run_shell, project, transaction_id):
     """Test executing a workflow with duplicate output with differing path."""
     script = project.path / "script.py"
     output = project.path / "output"
@@ -824,7 +824,7 @@ def test_workflow_execute_command_with_api_duplicate_output(runner, run_shell, p
     assert b"Error: Invalid parameter value - Duplicate input/output name found: my-output\n" in result[0]
 
 
-def test_workflow_execute_command_with_api_valid_duplicate_output(runner, run_shell, project, capsys, transaction_id):
+def test_workflow_execute_command_with_api_valid_duplicate_output(run_shell, project, transaction_id):
     """Test executing a workflow with duplicate output with same path."""
     script = project.path / "script.py"
     output = project.path / "output"
@@ -844,7 +844,7 @@ def test_workflow_execute_command_with_api_valid_duplicate_output(runner, run_sh
     assert result[1] is None
 
 
-def test_workflow_execute_command_with_api_duplicate_input(runner, run_shell, project, capsys, transaction_id):
+def test_workflow_execute_command_with_api_duplicate_input(run_shell, project, transaction_id):
     """Test executing a workflow with duplicate input with differing path."""
     script = project.path / "script.py"
     input = project.path / "input"
@@ -862,7 +862,7 @@ def test_workflow_execute_command_with_api_duplicate_input(runner, run_shell, pr
     assert b"Error: Invalid parameter value - Duplicate input/output name found: my-input\n" in result[0]
 
 
-def test_workflow_execute_command_with_api_valid_duplicate_input(runner, run_shell, project, capsys, transaction_id):
+def test_workflow_execute_command_with_api_valid_duplicate_input(run_shell, project, transaction_id):
     """Test executing a workflow with duplicate input with same path."""
     script = project.path / "script.py"
     input = project.path / "input"
