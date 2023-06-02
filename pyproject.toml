@@ -117,7 +117,7 @@ marshmallow-oneofschema = { version = ">=3.0.1,<4.0.0", optional = true }
 pillow = { version = ">=9.0.0,<9.6", optional = true }
 python-dotenv = { version = ">=0.19.0,<0.21.0", optional = true }
 redis = { version = ">=3.5.3,<4.6.0", optional = true }
-rq = { version = "==1.14.1", optional = true }
+rq = { version = "==1.15.0", optional = true }
 rq-scheduler = { version = "==0.13.1", optional = true }
 sentry-sdk = { version = ">=1.5.11,<1.24.0", extras = ["flask"],  optional = true }
 walrus = { version = ">=0.8.2,<0.10.0", optional = true }
