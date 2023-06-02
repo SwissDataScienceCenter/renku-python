@@ -14,13 +14,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku service cache views."""
+"""Renku service cache views for v1."""
+from dataclasses import asdict
+
 from flask import request
 
+from renku.core.errors import AuthenticationError, ProjectNotFound
 from renku.ui.service.controllers.cache_migrate_project import MigrateProjectCtrl
 from renku.ui.service.controllers.cache_migrations_check import MigrationsCheckCtrl
 from renku.ui.service.gateways.gitlab_api_provider import GitlabAPIProvider
 from renku.ui.service.serializers.v1.cache import ProjectMigrateResponseRPC_1_0, ProjectMigrationCheckResponseRPC_1_5
+from renku.ui.service.views import result_response
 from renku.ui.service.views.api_versions import V1_0, V1_1, V1_2, V1_3, V1_4, V1_5
 from renku.ui.service.views.decorators import accepts_json, optional_identity, requires_cache, requires_identity
 from renku.ui.service.views.error_handlers import (
@@ -83,9 +87,35 @@ def migration_check_project_view_1_5(user_data, cache):
       tags:
         - cache
     """
+
+    from flask import jsonify
+
+    from renku.ui.service.serializers.rpc import JsonRPCResponse
+    from renku.ui.service.views.error_handlers import pretty_print_error
+
     ctrl = MigrationsCheckCtrl(cache, user_data, dict(request.args), GitlabAPIProvider())
-    ctrl.RESPONSE_SERIALIZER = ProjectMigrationCheckResponseRPC_1_5()  # type: ignore
-    return ctrl.to_response()
+
+    if "project_id" in ctrl.context:  # type: ignore
+        result = ctrl.execute_op()
+    else:
+        # NOTE: use quick flow but fallback to regular flow in case of unexpected exceptions
+        try:
+            result = ctrl._fast_op_without_cache()
+        except (AuthenticationError, ProjectNotFound):
+            raise
+        except BaseException:
+            result = ctrl.execute_op()
+
+    if isinstance(result.core_compatibility_status, Exception):
+        return jsonify(JsonRPCResponse().dump({"error": pretty_print_error(result.core_compatibility_status)}))
+
+    if isinstance(result.template_status, Exception):
+        return jsonify(JsonRPCResponse().dump({"error": pretty_print_error(result.template_status)}))
+
+    if isinstance(result.dockerfile_renku_status, Exception):
+        return jsonify(JsonRPCResponse().dump({"error": pretty_print_error(result.dockerfile_renku_status)}))
+
+    return result_response(ProjectMigrationCheckResponseRPC_1_5(), asdict(result))
 
 
 def add_v1_specific_endpoints(cache_blueprint):

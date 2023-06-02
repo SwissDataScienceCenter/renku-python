@@ -15,16 +15,15 @@
 # limitations under the License.
 """Activity graph view model."""
 
+import abc
+import math
 from collections import defaultdict
 from copy import deepcopy
-from io import StringIO
-from typing import TYPE_CHECKING, Any, Dict, List, NamedTuple, Optional, Tuple
+from dataclasses import dataclass
+from functools import partial
+from typing import Any, Callable, Dict, Generator, NamedTuple, Optional, Tuple
 
-import numpy as np
 from click import style
-
-if TYPE_CHECKING:
-    import numpy.typing as npt
 
 
 class Point(NamedTuple):
@@ -34,23 +33,162 @@ class Point(NamedTuple):
     y: int
 
 
+class Size(NamedTuple):
+    """A size for a two dimensional matrix."""
+
+    width: int
+    height: int
+
+
+class EdgeSet(NamedTuple):
+    """A collection of edge characters for rendering boxes."""
+
+    top_left: str
+    bottom_left: str
+    top_right: str
+    bottom_right: str
+
+
+@dataclass
+class CharacterSet:
+    """A rendering character set for rendering Ascii content."""
+
+    edge: EdgeSet
+    horizontal: str
+    vertical: str
+
+    def style(self, transform: Callable[[str], str]) -> None:
+        """Apply a style to this character set (like bold).
+
+        Args:
+            transform(Callable[[str], str]): Function that applies a style to a string.
+        """
+        self.horizontal = transform(self.horizontal)
+        self.vertical = transform(self.vertical)
+
+        self.edge = EdgeSet(
+            transform(self.edge.top_left),
+            transform(self.edge.bottom_left),
+            transform(self.edge.top_right),
+            transform(self.edge.bottom_right),
+        )
+
+
 MAX_NODE_LENGTH = 40
 
 
-class Shape:
-    """basic shape class that all shapes inherit from."""
+def line_points(start: Point, end: Point) -> Generator[Point, None, None]:
+    """Return all (discrete) points of a line from start to end.
 
-    pass
+    Args:
+        start(Point): Starting point of the line.
+        end(Point): End point of the line.
+    Returns:
+        Generator[Point, None, None]: All discrete points part of the line.
+    """
+    x_extent = end.x - start.x
+    y_extent = end.y - start.y
+
+    length = max(abs(x_extent), abs(y_extent)) + 1
+    assert length > 0
+    for i in range(length):
+        position = i / length
+        yield Point(math.ceil(start.x + position * x_extent), math.ceil(start.y + position * y_extent))
+
+
+class TextMatrix:
+    """A two dimensional matrix of strings.
+
+    Indices need to be positive. To support handling negative indices, you can set x/y-offset to the lowest
+    negative index you want to pass and indices will be shifted by this amount internally.
+
+    Args:
+        size(Tuple[int,int]): The width and height of the matrix.
+        x_offset(int): Offset to apply to x indices.
+        y_offset(int): Offset to apply to y indices.
+    """
+
+    def __init__(self, size: Size, x_offset: int = 0, y_offset: int = 0) -> None:
+        assert size.width > 0
+        assert size.height > 0
+        self._size = size
+        self.x_offset = x_offset
+        self.y_offset = y_offset
+        self._content = []
+
+        for _ in range(self.size.height):
+            row = []
+            for _ in range(self.size.width):
+                row.append(" ")
+            self._content.append(row)
+
+    @property
+    def size(self) -> Size:
+        """The size of the matrix."""
+        return self._size
+
+    def __getitem__(self, index: Tuple[int, int]) -> str:
+        """Get element at width,height position."""
+        pos = (index[0] + self.x_offset, index[1] + self.y_offset)
+        assert 0 <= pos[0] < self.size.width
+        assert 0 <= pos[1] < self.size.height
+        return self._content[pos[1]][pos[0]]
+
+    def __setitem__(self, index: Tuple[int, int], value: str) -> None:
+        """Set element at width,height position."""
+        pos = (index[0] + self.x_offset, index[1] + self.y_offset)
+        assert 0 <= pos[0] < self.size.width
+        assert 0 <= pos[1] < self.size.height
+        self._content[pos[1]][pos[0]] = value
+
+    def __str__(self) -> str:
+        return "\n".join(["".join(row) for row in self._content])
+
+    def draw_line(self, start: Point, end: Point, value: str) -> None:
+        """Fill a line from start to end with value.
+
+        Args:
+            start(Point): The starting point.
+            end(Point): The end point.
+            value(str): The value (character) to use for representing the line.
+        """
+        for point in line_points(start, end):
+            self[point.x, point.y] = value
+
+    def draw(self, start: Point, value: "TextMatrix") -> None:
+        """Write content from value with start being upper-left corner.
+
+        Args:
+            start(Point): The upper-left corner for where to place the content.
+            value(TextMatrix): The content text matrix to place into this one.
+        """
+        for y in range(start.y, start.y + value.size.height):
+            for x in range(start.x, start.x + value.size.width):
+                self[x, y] = value[x - start.x, y - start.y]
+
+
+class Shape(abc.ABC):
+    """Basic shape class that all shapes inherit from."""
+
+    def draw(self, matrix: TextMatrix, color: bool = True, ascii=False) -> None:
+        """Draw self onto a text matrix..
+
+        Args:
+            matrix(TextMatrix): The text matrix to draw on.
+            color(bool, optional): Whether or not to render in color (Default value = True).
+            ascii:  Whether to use ascii characters only or with UTF8 (Default value = False).
+        """
+        raise NotImplementedError()
 
 
 class RectangleShape(Shape):
     """A rectangle shape."""
 
-    ASCII_CHARACTERS = {"edge": ["+"] * 4, "horizontal": "-", "vertical": "|"}
+    ASCII_CHARACTERS = CharacterSet(edge=EdgeSet("+", "+", "+", "+"), horizontal="-", vertical="|")
 
-    UNICODE_CHARACTERS = {"edge": ["┌", "└", "┐", "┘"], "horizontal": "─", "vertical": "│"}
+    UNICODE_CHARACTERS = CharacterSet(edge=EdgeSet("┌", "└", "┐", "┘"), horizontal="─", vertical="│")
 
-    UNICODE_CHARACTERS_DOUBLE = {"edge": ["╔", "╚", "╗", "╝"], "horizontal": "═", "vertical": "║"}
+    UNICODE_CHARACTERS_DOUBLE = CharacterSet(edge=EdgeSet("╔", "╚", "╗", "╝"), horizontal="═", vertical="║")
 
     def __init__(self, start: Point, end: Point, double_border=False, color: Optional[str] = None):
         self.start = start
@@ -58,19 +196,13 @@ class RectangleShape(Shape):
         self.double_border = double_border
         self.color = color
 
-    def draw(
-        self, color: bool = True, ascii=False
-    ) -> Tuple["npt.NDArray[np.int32]", "npt.NDArray[np.int32]", "npt.NDArray[np.str_]"]:
-        """Return the indices and values to draw this shape onto the canvas.
+    def draw(self, matrix: TextMatrix, color: bool = True, ascii=False) -> None:
+        """Draw self onto a text matrix..
 
         Args:
+            matrix(TextMatrix): The text matrix to draw on.
             color(bool, optional): Whether or not to render in color (Default value = True).
             ascii:  Whether to use ascii characters only or with UTF8 (Default value = False).
-
-        Returns:
-            Tuple[List[Tuple[int]],List[str]]: Tuple of list of coordinates and list if characters
-                at those coordinates.
-
         """
         if not ascii and self.double_border:
             characters = deepcopy(self.UNICODE_CHARACTERS_DOUBLE)
@@ -79,44 +211,26 @@ class RectangleShape(Shape):
 
         if color and self.color:
             # NOTE: Add color to border characters
-            for key, value in list(characters.items()):
-                if isinstance(value, list):
-                    characters[key] = [style(v, fg=self.color) for v in value]
-                else:
-                    characters[key] = style(value, fg=self.color)
-
-        # first set corners
-        xs = np.array([self.start.x, self.start.x, self.end.x - 1, self.end.x - 1])
-        ys = np.array([self.start.y, self.end.y, self.start.y, self.end.y])
-        vals = np.array(characters["edge"])
-
+            characters.style(partial(style, fg=self.color))
         # horizontal lines
-        line_xs = np.arange(self.start.x + 1, self.end.x - 1)
-        xs = np.append(xs, line_xs)
-        ys = np.append(ys, np.array([self.start.y] * line_xs.size))
-        vals = np.append(vals, np.array([characters["horizontal"]] * line_xs.size))
-        xs = np.append(xs, line_xs)
-        ys = np.append(ys, np.array([self.end.y] * line_xs.size))
-        vals = np.append(vals, np.array([characters["horizontal"]] * line_xs.size))
+        matrix.draw_line(
+            Point(self.start.x + 1, self.start.y), Point(self.end.x - 1, self.start.y), characters.horizontal
+        )
+        matrix.draw_line(Point(self.start.x + 1, self.end.y), Point(self.end.x - 1, self.end.y), characters.horizontal)
 
         # vertical lines
-        line_ys = np.arange(self.start.y + 1, self.end.y)
-        xs = np.append(xs, np.array([self.start.x] * line_ys.size))
-        ys = np.append(ys, line_ys)
-        vals = np.append(vals, np.array([characters["vertical"]] * line_ys.size))
-        xs = np.append(xs, np.array([self.end.x - 1] * line_ys.size))
-        ys = np.append(ys, line_ys)
-        vals = np.append(vals, np.array([characters["vertical"]] * line_ys.size))
+        matrix.draw_line(Point(self.start.x, self.start.y + 1), Point(self.start.x, self.end.y), characters.vertical)
+        matrix.draw_line(Point(self.end.x, self.start.y + 1), Point(self.end.x, self.end.y), characters.vertical)
+
+        # set corners
+        matrix[self.start.x, self.start.y] = characters.edge.top_left
+        matrix[self.start.x, self.end.y] = characters.edge.bottom_left
+        matrix[self.end.x, self.start.y] = characters.edge.top_right
+        matrix[self.end.x, self.end.y] = characters.edge.bottom_right
 
         # fill with whitespace to force overwriting underlying text
-        fill_xs, fill_ys = np.meshgrid(
-            np.arange(self.start.x + 1, self.end.x - 1), np.arange(self.start.y + 1, self.end.y - 1)
-        )
-        xs = np.append(xs, fill_xs)
-        ys = np.append(ys, fill_ys)
-        vals = np.append(vals, np.array([" "] * fill_xs.size))
-
-        return xs.astype(int), ys.astype(int), vals
+        content = TextMatrix(Size(self.end.x - self.start.x - 1, self.end.y - self.start.y - 1))
+        matrix.draw(Point(self.start.x + 1, self.start.y + 1), content)
 
     @property
     def extent(self) -> Tuple[Point, Point]:
@@ -137,30 +251,17 @@ class TextShape(Shape):
         self.bold = bold
         self.color = color
 
-    def draw(
-        self, color: bool = True, ascii=False
-    ) -> Tuple["npt.NDArray[np.int32]", "npt.NDArray[np.int32]", "npt.NDArray[np.str_]"]:
-        """Return the indices and values to draw this shape onto the canvas.
+    def draw(self, matrix: TextMatrix, color: bool = True, ascii=False) -> None:
+        """Draw self onto a text matrix..
 
         Args:
+            matrix(TextMatrix): The text matrix to draw on.
             color(bool, optional): Whether or not to render in color (Default value = True).
             ascii:  Whether to use ascii characters only or with UTF8 (Default value = False).
-
-        Returns:
-            Tuple[List[Tuple[int]],List[str]]: Tuple of list of coordinates and list if characters
-                at those coordinates.
         """
-        xs: List[int] = []
-        ys: List[int] = []
-        vals = []
 
-        current_x = self.point.x
-        current_y = self.point.y
-
-        for line in self.text:
-            for char in line:
-                xs.append(current_x)
-                ys.append(current_y)
+        for y, line in enumerate(self.text):
+            for x, char in enumerate(line):
                 kwargs: Dict[str, Any] = dict()
                 if self.bold:
                     kwargs["bold"] = True
@@ -168,15 +269,9 @@ class TextShape(Shape):
                     kwargs["fg"] = self.color
 
                 if kwargs:
-                    vals.append(style(char, **kwargs))
-                else:
-                    vals.append(char)
+                    char = style(char, **kwargs)
 
-                current_x += 1
-            current_x = self.point.x
-            current_y += 1
-
-        return np.array(xs), np.array(ys), np.array(vals)
+                matrix[self.point.x + x, self.point.y + y] = char
 
     @property
     def extent(self) -> Tuple[Point, Point]:
@@ -187,47 +282,34 @@ class TextShape(Shape):
         """
         max_line_len = max(len(line) for line in self.text)
         num_lines = len(self.text)
-        return (self.point, Point(self.point.x + max_line_len, self.point.y + num_lines - 1))
+        return (self.point, Point(self.point.x + max_line_len - 1, self.point.y + num_lines - 1))
 
 
 class NodeShape(Shape):
     """An activity node shape."""
 
     def __init__(self, text: str, point: Point, double_border=False, color: Optional[str] = None):
-        self.point = Point(round(point.x), round(point.y - len(text.splitlines())))
-        self.text_shape = TextShape(text, self.point, bold=double_border, color=color)
-
+        self.point = point
+        self.text_shape = TextShape(text, Point(self.point.x + 1, self.point.y + 1), bold=double_border, color=color)
         text_extent = self.text_shape.extent
         self.box_shape = RectangleShape(
-            Point(text_extent[0].x - 1, text_extent[0].y - 1),
+            self.point,
             Point(text_extent[1].x + 1, text_extent[1].y + 1),
             double_border=double_border,
             color=color,
         )
 
-        # move width/2 to the left to center on coordinate
-        self.x_offset = round((text_extent[1].x - text_extent[0].x) / 2)
-
-    def draw(
-        self, color: bool = True, ascii=False
-    ) -> Tuple["npt.NDArray[np.int32]", "npt.NDArray[np.int32]", "npt.NDArray[np.str_]"]:
-        """Return the indices and values to draw this shape onto the canvas.
+    def draw(self, matrix: TextMatrix, color: bool = True, ascii=False) -> None:
+        """Draw self onto a text matrix..
 
         Args:
+            matrix(TextMatrix): The text matrix to draw on.
             color(bool, optional): Whether or not to render in color (Default value = True).
             ascii:  Whether to use ascii characters only or with UTF8 (Default value = False).
-
-        Returns:
-            Tuple[List[Tuple[int]],List[str]]: Tuple of list of coordinates and list if characters
-                at those coordinates.
         """
-        xs, ys, vals = self.box_shape.draw(color, ascii)
-
-        text_xs, text_ys, text_vals = self.text_shape.draw(color, ascii)
-
-        self.actual_extent = (Point(xs.min() - self.x_offset, ys.min()), Point(xs.max() - self.x_offset, ys.max()))
-
-        return np.append(xs, text_xs) - self.x_offset, np.append(ys, text_ys), np.append(vals, text_vals)
+        self.actual_extent = self.extent
+        self.box_shape.draw(matrix, color=color, ascii=ascii)
+        self.text_shape.draw(matrix, color=color, ascii=ascii)
 
     @property
     def extent(self) -> Tuple[Point, Point]:
@@ -237,8 +319,8 @@ class NodeShape(Shape):
             Bounds of this shape.
         """
         box_extent = self.box_shape.extent
-        return Point(box_extent[0].x - self.x_offset, box_extent[0].y), Point(
-            box_extent[1].x - self.x_offset,
+        return Point(box_extent[0].x, box_extent[0].y), Point(
+            box_extent[1].x,
             box_extent[1].y,
         )
 
@@ -253,7 +335,6 @@ class EdgeShape(Shape):
         self.start = Point(round(start.x), round(start.y))
         self.end = Point(round(end.x), round(end.y))
         self.color = color
-        self.line_indices = self._line_indices(start, end)
 
     @staticmethod
     def next_color() -> str:
@@ -265,30 +346,6 @@ class EdgeShape(Shape):
         EdgeShape.CURRENT_COLOR = (EdgeShape.CURRENT_COLOR + 1) % len(EdgeShape.COLORS)
         return EdgeShape.COLORS[EdgeShape.CURRENT_COLOR]
 
-    def _line_indices(self, start: Point, end: Point):
-        """Interpolate a line.
-
-        Args:
-            start(Point): Starting point of line.
-            end(Point): Ending point of line.
-
-        Returns:
-            Tuple of all x,y coordinates of points in this line.
-        """
-        if abs(end.y - start.y) < abs(end.x - start.x):
-            # swap x and y, then swap back
-            xs, ys = self._line_indices(Point(start.y, start.x), Point(end.y, end.x))
-            return (ys, xs)
-
-        if start.y > end.y:
-            # swap start and end
-            return self._line_indices(end, start)
-
-        x = np.arange(start.y, end.y + 1, dtype=float)
-        y = x * (end.x - start.x) / (end.y - start.y) + (end.y * start.x - start.y * end.x) / (end.y - start.y)
-
-        return (np.floor(y).astype(int), x.astype(int))
-
     def intersects_with(self, other_edge: "EdgeShape") -> bool:
         """Checks whether this edge intersects with other edges.
 
@@ -298,32 +355,22 @@ class EdgeShape(Shape):
         Returns:
             bool: True if this edge intersects ``other_edge``, False otherwise.
         """
-        coordinates = set(map(tuple, np.column_stack(self.line_indices)))
-        other_coordinates = set(map(tuple, np.column_stack(other_edge.line_indices)))
+        return not set(line_points(self.start, self.end)).intersection(set(line_points(self.start, self.end)))
 
-        return coordinates.intersection(other_coordinates) is not None
-
-    def draw(
-        self, color: bool = True, ascii=False
-    ) -> Tuple["npt.NDArray[np.int32]", "npt.NDArray[np.int32]", "npt.NDArray[np.str_]"]:
-        """Return the indices and values to draw this shape onto the canvas.
+    def draw(self, matrix: TextMatrix, color: bool = True, ascii=False) -> None:
+        """Draw self onto a text matrix..
 
         Args:
+            matrix(TextMatrix): The text matrix to draw on.
             color(bool, optional): Whether or not to render in color (Default value = True).
             ascii:  Whether to use ascii characters only or with UTF8 (Default value = False).
-
-        Returns:
-            Tuple[List[Tuple[int]],List[str]]: Tuple of list of coordinates and list if characters
-                at those coordinates.
-
         """
-        xs, ys = self.line_indices
         char = "*"
 
         if color:
             char = style(char, fg=self.color)
 
-        return xs, ys, np.array(len(xs) * [char])
+        matrix.draw_line(self.start, self.end, char)
 
     @property
     def extent(self) -> Tuple[Point, Point]:
@@ -362,7 +409,7 @@ class TextCanvas:
         Returns:
             Point: Coordinates in parent coordinate system.
         """
-        return Point(point.x - self.offset[1], point.y - self.offset[0])
+        return Point(point.x + self.x_offset, point.y)
 
     def render(self, color: bool = True, ascii=False):
         """Render contained shapes onto canvas.
@@ -379,19 +426,20 @@ class TextCanvas:
             for shape in self.shapes[layer]:
                 shape_extent = shape.extent
                 extent = (
-                    Point(min(extent[0].x, shape_extent[0].x), min(extent[0].y, shape_extent[0].y)),
-                    Point(max(extent[1].x, shape_extent[1].x), max(extent[1].y, shape_extent[1].y)),
+                    Point(
+                        math.floor(min(extent[0].x, shape_extent[0].x)), math.floor(min(extent[0].y, shape_extent[0].y))
+                    ),
+                    Point(
+                        math.ceil(max(extent[1].x, shape_extent[1].x)), math.ceil(max(extent[1].y, shape_extent[1].y))
+                    ),
                 )
-
-        self.offset = (extent[0].y, extent[0].x)
-        size = (extent[1].y - extent[0].y + 2, extent[1].x - extent[0].x + 2)
-        self._canvas = np.chararray(size, unicode=True, itemsize=10)
-        self._canvas[:] = " "
+        self.x_offset = -extent[0].x
+        size = Size(extent[1].x - extent[0].x + 30, extent[1].y - extent[0].y + 2)
+        self._canvas = TextMatrix(size, x_offset=self.x_offset, y_offset=-extent[0].y)
 
         for layer in layers:
             for shape in self.shapes[layer]:
-                xs, ys, vals = shape.draw(color=color, ascii=ascii)
-                self._canvas[ys - self.offset[0], xs - self.offset[1]] = vals
+                shape.draw(self._canvas, color=color, ascii=ascii)
 
     @property
     def text(self) -> str:
@@ -402,6 +450,5 @@ class TextCanvas:
         """
         if self._canvas is None:
             raise ValueError("Call render() before getting text.")
-        string_buffer = StringIO()
-        np.savetxt(string_buffer, self._canvas, fmt="%1s", delimiter="")
-        return string_buffer.getvalue()
+
+        return str(self._canvas)

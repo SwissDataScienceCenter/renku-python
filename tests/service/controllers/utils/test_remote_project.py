@@ -98,15 +98,9 @@ def test_remote_project_context():
     with ctrl.remote() as project_path:
         assert project_path
         result = migrations_check().build().execute().output
-        assert result["core_renku_version"] == renku.__version__
-        assert result["project_renku_version"] == "pre-0.11.0"
-        assert result["core_compatibility_status"]["migration_required"] is True
-        assert result["template_status"]["newer_template_available"] is False
-        assert result["template_status"]["project_template_version"] is None
-        assert result["template_status"]["latest_template_version"] is None
-        assert result["template_status"]["template_source"] is None
-        assert result["template_status"]["template_ref"] is None
-        assert result["template_status"]["template_id"] is None
-        assert result["template_status"]["automated_template_update"] is True
-        assert result["dockerfile_renku_status"]["automated_dockerfile_update"] is False
-        assert result["project_supported"] is True
+        assert result.core_renku_version == renku.__version__
+        assert result.project_renku_version == "pre-0.11.0"
+        assert result.core_compatibility_status.migration_required is True
+        assert isinstance(result.template_status, ValueError)
+        assert result.dockerfile_renku_status.automated_dockerfile_update is False
+        assert result.project_supported is True
