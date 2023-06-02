@@ -27,13 +27,13 @@ Bug Fixes
 -  **cli:** fix dataset update with external files
    (`#3379 <https://github.com/SwissDataScienceCenter/renku-python/issues/3379>`__)
    (`e02e5bf <https://github.com/SwissDataScienceCenter/renku-python/commit/e02e5bf846f8e63e3e2b116edb1bc7ee54bacdbc>`__)
--  **cli:** fix special paths in workflow files and bump toil/cwltool
+-  **cli:** fix special paths in workflow files and bump `toil` / `cwltool`
    (`#3489 <https://github.com/SwissDataScienceCenter/renku-python/issues/3489>`__)
    (`28086cf <https://github.com/SwissDataScienceCenter/renku-python/commit/28086cf1361c86109c8e0e1c59c5704a5a663f30>`__)
--  **service:** fix working on branches in the core-svc
+-  **service:** fix working with branches
    (`#3472 <https://github.com/SwissDataScienceCenter/renku-python/issues/3472>`__)
    (`0eaf204 <https://github.com/SwissDataScienceCenter/renku-python/commit/0eaf204365d38bbf82bd2d0df357abbf61c18548>`__)
--  **service:** return proper errors on migrations check
+-  **service:** return proper errors on migrations check endpoint
    (`#3334 <https://github.com/SwissDataScienceCenter/renku-python/issues/3334>`__)
    (`6237dc7 <https://github.com/SwissDataScienceCenter/renku-python/commit/6237dc71eb894cfef2b013d2c3fd5dd7defd6499>`__)
 
