@@ -19,6 +19,7 @@
 import os
 import sys
 from collections import defaultdict
+from io import UnsupportedOperation
 from pathlib import Path
 from subprocess import call
 from typing import Dict, List, NamedTuple, Optional, Set, Union, cast
@@ -290,6 +291,24 @@ def run_command_line(
                     sys.stdout = old_stdout
                 if stderr_redirected:
                     sys.stderr = old_stderr
+
+                if "stdout" not in mapped_std:
+                    try:
+                        sys.stdout.fileno()
+                    except UnsupportedOperation:
+                        # Pytest capsys creates a pseudo device that doesn't have fileno and would fail if passed
+                        pass
+                    else:
+                        mapped_std["stdout"] = sys.stdout
+
+                if "stderr" not in mapped_std:
+                    try:
+                        sys.stderr.fileno()
+                    except UnsupportedOperation:
+                        # Pytest capsys creates a pseudo device that doesn't have fileno and would fail if passed
+                        pass
+                    else:
+                        mapped_std["stderr"] = sys.stderr
 
             started_at_time = local_now()
 
