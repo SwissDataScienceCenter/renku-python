@@ -20,11 +20,12 @@ import html
 import io
 import json
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, Iterator, List, Optional, cast
 
 import pyld
 import rdflib
 from rdflib import ConjunctiveGraph, Graph
+from rdflib.query import ResultRow
 from rdflib.tools.rdf2dot import LABEL_PROPERTIES, NODECOLOR, rdf2dot
 
 
@@ -189,7 +190,7 @@ class GraphViewModel:
         }
         """
 
-        for s, p, o in graph.query(sparql):
+        for s, p, o in cast(Iterator[ResultRow], graph.query(sparql)):
             sn = node(s)
             if p == rdflib.RDFS.label:
                 continue

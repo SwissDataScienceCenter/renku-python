@@ -44,22 +44,25 @@ def _doctor_check(fix: bool, force: bool):
     from renku.command import checks
 
     is_ok = True
+    fixes_available = False
     problems = []
 
     for check in checks.__all__:
         try:
-            ok, problems_ = getattr(checks, check)(fix=fix, force=force)
+            ok, has_fix, problems_ = getattr(checks, check)(fix=fix, force=force)
         except Exception:
             ok = False
+            has_fix = False
             tb = "\n\t".join(traceback.format_exc().split("\n"))
             problems_ = f"{ERROR}Exception raised when running {check}\n\t{tb}"
 
         is_ok &= ok
+        fixes_available |= has_fix
 
         if problems_:
             problems.append(problems_)
 
-    return is_ok, "\n".join(problems)
+    return is_ok, fixes_available, "\n".join(problems)
 
 
 def doctor_check_command(with_fix):

@@ -1,7 +1,6 @@
-#
-# Copyright 2021 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
-# Eidgenössische Technische Hochschule Zürich (ETHZ).
+#  Copyright Swiss Data Science Center (SDSC). A partnership between
+#  École Polytechnique Fédérale de Lausanne (EPFL) and
+#  Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Test ``service`` command."""
+"""Test ``session`` command."""
 
 import re
 from unittest.mock import MagicMock, patch
@@ -25,7 +24,7 @@ from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
-def test_session_up_down(runner, project, dummy_session_provider, monkeypatch):
+def test_session_up_down(runner, project, dummy_session_provider):
     """Test starting a session."""
     browser = dummy_session_provider
 
@@ -66,7 +65,7 @@ def test_session_up_down(runner, project, dummy_session_provider, monkeypatch):
 
 def test_session_start_config_requests(runner, project, dummy_session_provider, monkeypatch):
     """Test session with configuration in the renku config."""
-    import docker
+    import renku.core.session.docker
 
     result = runner.invoke(cli, ["config", "set", "interactive.cpu_request", "0.5"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -76,12 +75,62 @@ def test_session_start_config_requests(runner, project, dummy_session_provider, 
     assert 0 == result.exit_code, format_result_exception(result)
 
     with monkeypatch.context() as monkey:
-        docker_mock = MagicMock()
-        docker_mock.api.inspect_image.return_value = {}
-        monkey.setattr(docker, "from_env", lambda: docker_mock)
+        docker_client = MagicMock()
+        docker_client.api.inspect_image.return_value = {}
+        monkey.setattr(renku.core.session.docker.DockerSessionProvider, "docker_client", lambda _: docker_client)
+
         result = runner.invoke(cli, ["session", "start", "-p", "docker"], input="y\n")
+
         assert 0 == result.exit_code, format_result_exception(result)
         assert "successfully started" in result.output
+
+
+def test_session_start_with_docker_args(runner, project, dummy_session_provider, monkeypatch):
+    """Test passing docker run arguments to session start."""
+    import renku.core.session.docker
+
+    with monkeypatch.context() as monkey:
+        docker_client = MagicMock()
+        docker_client.api.inspect_image.return_value = {}
+        monkey.setattr(renku.core.session.docker.DockerSessionProvider, "docker_client", lambda _: docker_client)
+
+        result = runner.invoke(
+            cli,
+            [
+                "session",
+                "start",
+                "-p",
+                "docker",
+                "--cpu-rt-period",
+                "100",
+                "--cap-add",
+                "SYS_ADMIN",
+                "--cap-add",
+                "SYS_NICE",
+                "--env",
+                "ENV1=value1",
+                "--env",
+                "ENV2=value2",
+                "--read-only",
+                "--volume",
+                "/host/path:/container/path",
+            ],
+            input="y\n",
+        )
+
+        assert 0 == result.exit_code, format_result_exception(result)
+
+        kwargs = docker_client.containers.run.call_args.kwargs
+
+        assert ("SYS_ADMIN", "SYS_NICE") == kwargs["cap_add"]
+        assert 100 == kwargs["cpu_rt_period"]
+        assert kwargs["read_only"] is True
+        assert "ENV1" in kwargs["environment"]
+        assert "value1" == kwargs["environment"]["ENV1"]
+        assert "ENV2" in kwargs["environment"]
+        assert "value2" == kwargs["environment"]["ENV2"]
+        assert 2 == len(kwargs["volumes"])
+        assert "/host/path:/container/path" in kwargs["volumes"]
 
 
 def test_session_ssh_setup(runner, project, dummy_session_provider, fake_home):

@@ -45,7 +45,7 @@ class RemoteProject:
         self.ctx = ProjectCloneContext().load({**user_data, **request_data}, unknown=EXCLUDE)
 
         self.git_url = self.ctx["url_with_auth"]
-        self.branch = self.ctx["ref"]
+        self.branch = self.ctx["branch"]
 
     @property
     def remote_url(self):

@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +39,7 @@ class CursesActivityGraphViewer:
     }
 
     ACTIVITY_OVERLAY_WIDTH = 60
-    ACTIVITY_OVERLAY_HEIGHT = 40
+    ACTIVITY_OVERLAY_HEIGHT = 35
     HELP_OVERLAY_WIDTH = 60
     HELP_OVERLAY_HEIGHT = 6
     DATE_FORMAT = "%Y-%m-%d %H:%M:S"
