@@ -100,7 +100,15 @@ def protected_git_repository(tmp_path):
 
     repository = Repository.clone_from(url=parsed_url, path=tmp_path)
 
+    branches_before = set(b.name for b in repository.branches)
+
     with repository.get_configuration(writable=True) as config:
         config.set_value("pull", "rebase", "false")
 
     yield repository
+
+    branches_after = set(b.name for b in repository.branches)
+
+    for branch in branches_after - branches_before:
+        # delete created branches
+        repository.push("origin", branch, delete=True)
