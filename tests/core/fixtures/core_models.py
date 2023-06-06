@@ -93,6 +93,8 @@ def git_repository_with_multiple_remotes(git_repository_with_remote):
 @pytest.fixture
 def protected_git_repository(tmp_path):
     """A Git repository with remote."""
+    from renku.core import errors
+
     parsed_url = urllib.parse.urlparse(IT_PROTECTED_REMOTE_REPO_URL)
 
     url = f"oauth2:{os.getenv('IT_OAUTH_GIT_TOKEN')}@{parsed_url.netloc}"
@@ -100,15 +102,18 @@ def protected_git_repository(tmp_path):
 
     repository = Repository.clone_from(url=parsed_url, path=tmp_path)
 
-    branches_before = set(b.name for b in repository.branches)
+    branches_before = set(repository.branches)
 
     with repository.get_configuration(writable=True) as config:
         config.set_value("pull", "rebase", "false")
 
     yield repository
 
-    branches_after = set(b.name for b in repository.branches)
+    branches_after = set(repository.branches)
 
     for branch in branches_after - branches_before:
         # delete created branches
-        repository.push("origin", branch, delete=True)
+        try:
+            repository.branches.remove(branch, force=True, remote=True)
+        except errors.GitCommandError:
+            continue
