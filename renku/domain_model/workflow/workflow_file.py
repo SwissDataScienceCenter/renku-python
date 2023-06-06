@@ -81,7 +81,7 @@ class WorkflowFilePlan(Plan):
         path: Optional[Union[Path, str]] = None,
         name: Optional[str] = None,
         sequence: Optional[int] = None,
-        uuid_only: bool = True,
+        uuid_only: bool = False,
         **_,
     ) -> str:
         """Generate an identifier for Plan."""
