@@ -69,7 +69,7 @@ class DatasetGateway(IDatasetGateway):
         for t in tags:
             if t.name == tag.name:
                 tags.remove(t)
-                project_context.database._cache.pop(t._p_oid)
+                project_context.database.remove_from_cache(t)
                 break
 
     # NOTE: Enable this again once we properly deal with `date_created` on imported Renku datasets

@@ -1547,31 +1547,19 @@ def test_dataset_tag(tmpdir, runner, project, subdirectory):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_dataset_overwrite_tag(tmpdir, runner, project):
+def test_dataset_overwrite_tag(runner, project_with_datasets):
     """Test that dataset tags can be overwritten."""
-    result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-    assert 0 == result.exit_code, format_result_exception(result)
-    assert "OK" in result.output
-
-    # create some data
-    new_file = tmpdir.join("file")
-    new_file.write("test")
-
-    # add data to dataset
-    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(new_file)], catch_exceptions=False)
-    assert 0 == result.exit_code, format_result_exception(result)
-
     # tag dataset
-    result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "1.0"], catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "tag", "dataset-1", "1.0"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
     # retag
-    result = runner.invoke(cli, ["dataset", "tag", "my-dataset", "1.0"], catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "tag", "dataset-1", "1.0"], catch_exceptions=False)
     assert 2 == result.exit_code, format_result_exception(result)
     assert "Tag '1.0' already exists" in result.output
 
     # force overwrite
-    result = runner.invoke(cli, ["dataset", "tag", "--force", "my-dataset", "1.0"], catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "tag", "--force", "dataset-1", "1.0"], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
