@@ -37,7 +37,9 @@ class WorkflowFileCompositePlan(CompositePlan):
         self.path: str = str(path)
 
     @staticmethod
-    def generate_id(path: Optional[Union[Path, str]] = None, sequence: Optional[int] = None, **_) -> str:
+    def generate_id(
+        path: Optional[Union[Path, str]] = None, sequence: Optional[int] = None, uuid_only: bool = False, **_
+    ) -> str:
         """Generate an identifier for Plan."""
         assert path, "Path is needed to generate id for WorkflowFileCompositePlan"
 
@@ -45,11 +47,20 @@ class WorkflowFileCompositePlan(CompositePlan):
         # changed later if the plan is a derivative
         key = f"{path}" if sequence is None else f"{path}::{sequence}"
         key_bytes = key.encode("utf-8")
-        return CompositePlan.generate_id(uuid=hashlib.md5(key_bytes).hexdigest()[:32])  # nosec
+
+        uuid = hashlib.md5(key_bytes).hexdigest()[:32]  # nosec
+
+        if uuid_only:
+            return uuid
+        return CompositePlan.generate_id(uuid=uuid)
 
     def assign_new_id(self, *, sequence: Optional[int] = None, **_) -> str:
         """Assign a new UUID or a deterministic."""
-        new_id = uuid.uuid4().hex if sequence is None else self.generate_id(path=self.path, sequence=sequence)
+        new_id = (
+            uuid.uuid4().hex
+            if sequence is None
+            else self.generate_id(path=self.path, sequence=sequence, uuid_only=True)
+        )
         return super().assign_new_id(uuid=new_id)
 
     def is_equal_to(self, other: WorkflowFileCompositePlan) -> bool:
@@ -67,7 +78,11 @@ class WorkflowFilePlan(Plan):
 
     @staticmethod
     def generate_id(
-        path: Optional[Union[Path, str]] = None, name: Optional[str] = None, sequence: Optional[int] = None, **_
+        path: Optional[Union[Path, str]] = None,
+        name: Optional[str] = None,
+        sequence: Optional[int] = None,
+        uuid_only: bool = False,
+        **_,
     ) -> str:
         """Generate an identifier for Plan."""
         assert path, "Path is needed to generate id for WorkflowFilePlan"
@@ -75,7 +90,10 @@ class WorkflowFilePlan(Plan):
 
         key = f"{path}::{name}" if sequence is None else f"{path}::{name}::{sequence}"
         key_bytes = key.encode("utf-8")
-        return Plan.generate_id(uuid=hashlib.md5(key_bytes).hexdigest()[:32])  # nosec
+        uuid = hashlib.md5(key_bytes).hexdigest()[:32]  # nosec
+        if uuid_only:
+            return uuid
+        return Plan.generate_id(uuid=uuid)
 
     @staticmethod
     def validate_name(name: str):
@@ -92,7 +110,7 @@ class WorkflowFilePlan(Plan):
         new_id = (
             uuid.uuid4().hex
             if sequence is None
-            else self.generate_id(path=self.path, name=self.name, sequence=sequence)
+            else self.generate_id(path=self.path, name=self.name, sequence=sequence, uuid_only=True)
         )
         return super().assign_new_id(uuid=new_id)
 

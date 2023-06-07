@@ -30,6 +30,8 @@ Bug Fixes
 -  **cli:** fix special paths in workflow files and bump `toil` / `cwltool`
    (`#3489 <https://github.com/SwissDataScienceCenter/renku-python/issues/3489>`__)
    (`28086cf <https://github.com/SwissDataScienceCenter/renku-python/commit/28086cf1361c86109c8e0e1c59c5704a5a663f30>`__)
+- **cli:**: fix wrong plan ids in plans coming from workflow files
+   (`#3511 <https://github.com/SwissDataScienceCenter/renku-python/pull/3511>`__)
 -  **service:** fix working with branches
    (`#3472 <https://github.com/SwissDataScienceCenter/renku-python/issues/3472>`__)
    (`0eaf204 <https://github.com/SwissDataScienceCenter/renku-python/commit/0eaf204365d38bbf82bd2d0df357abbf61c18548>`__)
