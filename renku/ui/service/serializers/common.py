@@ -141,3 +141,14 @@ class DelayedResponseRPC(JsonRPCResponse):
     """RPC response schema for project migrate."""
 
     result = fields.Nested(JobDetailsResponse)
+
+
+class ErrorResponse(Schema):
+    """Renku Service Error Response."""
+
+    code = fields.Integer(required=True)
+    userMessage = fields.String(required=True)
+    devMessage = fields.String(required=True)
+    userReference = fields.String()
+    devReference = fields.String()
+    sentry = fields.String()

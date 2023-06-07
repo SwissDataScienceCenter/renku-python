@@ -1155,7 +1155,7 @@ def update(
         ctx.exit(1)
 
 
-@dataset.command(hidden=True)
+@dataset.command()
 @click.argument("name", shell_complete=shell_complete_datasets)
 @click.option(
     "-l",
@@ -1173,7 +1173,7 @@ def pull(name, location):
     pull_cloud_storage_command().with_communicator(communicator).build().execute(name=name, location=location)
 
 
-@dataset.command(hidden=True)
+@dataset.command()
 @click.argument("name", shell_complete=shell_complete_datasets)
 @click.option(
     "-e",
@@ -1197,7 +1197,7 @@ def mount(name, existing, unmount, yes):
         command.execute(name=name, existing=existing, yes=yes)
 
 
-@dataset.command(hidden=True)
+@dataset.command()
 @click.argument("name", shell_complete=shell_complete_datasets)
 def unmount(name):
     """Unmount a backend storage in the dataset's data directory."""

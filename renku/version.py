@@ -16,14 +16,14 @@
 """Version information for Renku."""
 
 import re
-from typing import Optional
+from typing import Optional, cast
 
 try:
     from importlib.metadata import distribution, version
 except ImportError:
     from importlib_metadata import distribution, version  # type: ignore
 
-__version__ = version("renku")
+__version__ = cast(str, version("renku"))
 __template_version__ = "0.5.0"
 __minimum_project_version__ = "2.4.0"
 
