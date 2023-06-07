@@ -405,7 +405,7 @@ jobs:
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -v -m "not integration and not publish and not serial" tests/api
+        run: pytest -v -m "not integration and not publish and not serial and not service" tests/api
 
   test-macos-cli:
     runs-on: macos-latest
@@ -427,14 +427,14 @@ jobs:
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -v -m "not integration and not publish and not serial" tests/cli
+        run: pytest -v -m "not integration and not publish and not serial and not service" tests/cli
       - name: Test with pytest (serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -v -m "not integration and not publish and serial" tests/cli
+        run: pytest -v -m "not integration and not publish and serial and not service" tests/cli
 
   test-macos-core:
     runs-on: macos-latest
@@ -456,35 +456,13 @@ jobs:
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -v -m "not integration and not publish and not serial" tests/core
+        run: pytest -v -m "not integration and not publish and not serial and not service" tests/core
       - name: Test with pytest (serial)
         env:
           LANG: en_US.UTF-8
           LC_ALL: en_US.UTF-8
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -v -m "not integration and not publish and serial" tests/core
-
-  test-macos-service:
-    runs-on: macos-latest
-    needs: [ set-matrix ]
-    strategy:
-      max-parallel: 3
-      matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
-    steps:
-      - uses: actions/checkout@v3.5.2
-        with:
-          fetch-depth: 0
-      - name: Install dependencies
-        uses: ./.github/actions/install-macos
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Test with pytest
-        env:
-          POETRY_VIRTUALENVS_CREATE: false
-          LANG: en_US.UTF-8
-          LC_ALL: en_US.UTF-8
-          RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -v -m "not integration and not publish" tests/service
+        run: pytest -v -m "not integration and not publish and serial and not service" tests/core
 
   test-macos-integration:
     runs-on: macos-latest
@@ -518,7 +496,7 @@ jobs:
           CLOUD_STORAGE_AZURE_KEY: ${{ secrets.CLOUD_STORAGE_AZURE_KEY }}
           CLOUD_STORAGE_S3_ACCESS_KEY_ID: ${{ secrets.CLOUD_STORAGE_S3_ACCESS_KEY_ID }}
           CLOUD_STORAGE_S3_SECRET_ACCESS_KEY: ${{ secrets.CLOUD_STORAGE_S3_SECRET_ACCESS_KEY }}
-        run: pytest -m "integration and not serial" -v
+        run: pytest -m "integration and not serial and not service" -v
       - name: Start Redis
         uses: supercharge/redis-github-action@1.5.0
       - name: Test with pytest (serial)
@@ -531,7 +509,7 @@ jobs:
           ZENODO_ACCESS_TOKEN: ${{ secrets.ZENODO_ACCESS_TOKEN }}
           OLOS_ACCESS_TOKEN: ${{ secrets.OLOS_ACCESS_TOKEN }}
           RENKU_REQUESTS_TIMEOUT_SECONDS: 120
-        run: pytest -m "integration and serial" -v
+        run: pytest -m "integration and serial and not service" -v
 
   publish-pypi:
     runs-on: ubuntu-latest
@@ -573,7 +551,6 @@ jobs:
         test-linux-service,
         test-macos-cli,
         test-macos-core,
-        test-macos-service,
       ]
     steps:
       - uses: actions/checkout@v3.5.2
@@ -602,7 +579,6 @@ jobs:
         test-linux-service,
         test-macos-cli,
         test-macos-core,
-        test-macos-service,
       ]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
