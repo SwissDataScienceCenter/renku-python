@@ -22,39 +22,37 @@ from tests.utils import format_result_exception
 
 def test_rollback(runner, project, cache_test_project):
     """Test renku rollback."""
-    if not cache_test_project.setup():
-        result = runner.invoke(cli, ["run", "--name", "run1", "touch", "foo"])
-        assert 0 == result.exit_code, format_result_exception(result)
+    result = runner.invoke(cli, ["run", "--name", "run1", "touch", "foo"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
-        result = runner.invoke(cli, ["run", "--name", "run2", "cp", "foo", "bar"])
-        assert 0 == result.exit_code, format_result_exception(result)
+    result = runner.invoke(cli, ["run", "--name", "run2", "cp", "foo", "bar"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
-        metadata_path = project.path / "input"
-        metadata_path.write_text("input")
+    metadata_path = project.path / "input"
+    metadata_path.write_text("input")
 
-        project.repository.add("input")
-        project.repository.commit("add input")
+    project.repository.add("input")
+    project.repository.commit("add input")
 
-        result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
-        assert 0 == result.exit_code, format_result_exception(result)
+    result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
-        result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", "foo"])
-        assert 0 == result.exit_code, format_result_exception(result)
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", "foo"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
-        result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", "bar"])
-        assert 0 == result.exit_code, format_result_exception(result)
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", "bar"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
-        result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", "input"])
-        assert 0 == result.exit_code, format_result_exception(result)
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", "input"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
-        metadata_path.write_text("changed input")
+    metadata_path.write_text("changed input")
 
-        project.repository.add("input")
-        project.repository.commit("change input")
+    project.repository.add("input")
+    project.repository.commit("change input")
 
-        result = runner.invoke(cli, ["run", "--name", "run3", "cp", "input", "output"])
-        assert 0 == result.exit_code, format_result_exception(result)
-        cache_test_project.save()
+    result = runner.invoke(cli, ["run", "--name", "run3", "cp", "input", "output"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(cli, ["rollback"], input="q")
     assert 0 == result.exit_code, format_result_exception(result)

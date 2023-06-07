@@ -24,7 +24,9 @@ import pytest
 
 from renku.core.config import set_value
 from renku.infrastructure.repository import Repository
+from renku.ui.cli import cli
 from tests.fixtures.repository import RenkuProject
+from tests.utils import format_result_exception
 
 
 @pytest.fixture()
@@ -131,3 +133,99 @@ def workflow_file_project(project, request) -> Generator[RenkuWorkflowFileProjec
     (project.path / "data" / "collection" / "colors.csv").write_text("\n".join(f"color-{i}" for i in range(99)))
 
     yield workflow_file_project
+
+
+@pytest.fixture
+def project_with_merge_conflict(runner, project, directory_tree, run_shell, cache_test_project):
+    """Project with a merge conflict."""
+    if not cache_test_project.setup():
+        result = runner.invoke(cli, ["mergetool", "install"])
+
+        assert 0 == result.exit_code, format_result_exception(result)
+
+        # create a common dataset
+        result = runner.invoke(
+            cli, ["dataset", "add", "--copy", "--create", "shared-dataset", str(directory_tree)], catch_exceptions=False
+        )
+        assert 0 == result.exit_code, format_result_exception(result)
+
+        # Create a common workflow
+        output = run_shell('renku run --name "shared-workflow" echo "a unique string" > my_output_file')
+
+        assert b"" == output[0]
+        assert output[1] is None
+
+        # switch to a new branch
+        output = run_shell("git checkout -b remote-branch")
+
+        assert b"Switched to a new branch 'remote-branch'\n" == output[0]
+        assert output[1] is None
+
+        # edit the dataset
+        result = runner.invoke(cli, ["dataset", "edit", "-d", "remote description", "shared-dataset"])
+        assert 0 == result.exit_code, format_result_exception(result)
+
+        result = runner.invoke(
+            cli, ["dataset", "add", "--copy", "--create", "remote-dataset", str(directory_tree)], catch_exceptions=False
+        )
+        assert 0 == result.exit_code, format_result_exception(result)
+
+        # Create a new workflow
+        output = run_shell('renku run --name "remote-workflow" echo "a unique string" > remote_output_file')
+
+        assert b"" == output[0]
+        assert output[1] is None
+
+        # Create a downstream workflow
+        output = run_shell('renku run --name "remote-downstream-workflow" cp my_output_file my_remote_downstream')
+
+        assert b"" == output[0]
+        assert output[1] is None
+
+        # Create another downstream workflow
+        output = run_shell('renku run --name "remote-downstream-workflow2" cp remote_output_file my_remote_downstream2')
+
+        assert b"" == output[0]
+        assert output[1] is None
+
+        # Edit the project metadata
+        result = runner.invoke(cli, ["project", "edit", "-k", "remote"])
+
+        assert 0 == result.exit_code, format_result_exception(result)
+
+        # Switch back to master
+        output = run_shell("git checkout master")
+
+        assert b"Switched to branch 'master'\n" == output[0]
+        assert output[1] is None
+
+        # Add a new dataset
+        result = runner.invoke(
+            cli, ["dataset", "add", "--copy", "--create", "local-dataset", str(directory_tree)], catch_exceptions=False
+        )
+        assert 0 == result.exit_code, format_result_exception(result)
+
+        # Create a local workflow
+        output = run_shell('renku run --name "local-workflow" echo "a unique string" > local_output_file')
+
+        assert b"" == output[0]
+        assert output[1] is None
+
+        # Create a local downstream workflow
+        output = run_shell('renku run --name "local-downstream-workflow" cp my_output_file my_local_downstream')
+
+        assert b"" == output[0]
+        assert output[1] is None
+
+        # Create another local downstream workflow
+        output = run_shell('renku run --name "local-downstream-workflow2" cp local_output_file my_local_downstream2')
+
+        assert b"" == output[0]
+        assert output[1] is None
+
+        # Edit the project in master as well
+        result = runner.invoke(cli, ["project", "edit", "-k", "local"])
+
+        assert 0 == result.exit_code, format_result_exception(result)
+        cache_test_project.save()
+    yield project

@@ -466,7 +466,7 @@ def test_update_multiple_paths_common_output(project, renku_cli, runner):
 
 @pytest.mark.serial
 @pytest.mark.parametrize("provider", available_workflow_providers())
-def test_update_with_execute(runner, project, renku_cli, provider, cache_test_project):
+def test_update_with_execute(runner, project, renku_cli, provider):
     """Test output is updated when source changes."""
     source1 = Path("source.txt")
     output1 = Path("output.txt")
@@ -474,38 +474,36 @@ def test_update_with_execute(runner, project, renku_cli, provider, cache_test_pr
     output2 = Path("output2.txt")
     script = Path("cp.sh")
 
-    if not cache_test_project.setup():
-        write_and_commit_file(project.repository, source1, "content_a")
-        write_and_commit_file(project.repository, source2, "content_b")
-        write_and_commit_file(project.repository, script, "cp $1 $2")
+    write_and_commit_file(project.repository, source1, "content_a")
+    write_and_commit_file(project.repository, source2, "content_b")
+    write_and_commit_file(project.repository, script, "cp $1 $2")
 
-        result = runner.invoke(cli, ["run", "--name", "test", "bash", str(script), str(source1), str(output1)])
-        assert 0 == result.exit_code, format_result_exception(result)
-        time.sleep(1)
+    result = runner.invoke(cli, ["run", "--name", "test", "bash", str(script), str(source1), str(output1)])
+    assert 0 == result.exit_code, format_result_exception(result)
+    time.sleep(1)
 
-        assert (
-            0
-            == renku_cli(
-                "workflow",
-                "execute",
-                "-p",
-                provider,
-                "--set",
-                f"input-2={source2}",
-                "--set",
-                f"output-3={output2}",
-                "test",
-            ).exit_code
-        )
+    assert (
+        0
+        == renku_cli(
+            "workflow",
+            "execute",
+            "-p",
+            provider,
+            "--set",
+            f"input-2={source2}",
+            "--set",
+            f"output-3={output2}",
+            "test",
+        ).exit_code
+    )
 
-        assert "content_a" == (project.path / output1).read_text()
-        assert "content_b" == (project.path / output2).read_text()
+    assert "content_a" == (project.path / output1).read_text()
+    assert "content_b" == (project.path / output2).read_text()
 
-        result = runner.invoke(cli, ["status"])
-        assert 0 == result.exit_code, format_result_exception(result)
+    result = runner.invoke(cli, ["status"])
+    assert 0 == result.exit_code, format_result_exception(result)
 
-        write_and_commit_file(project.repository, script, "cp $1 $2\necho '_modified' >> $2")
-        cache_test_project.save()
+    write_and_commit_file(project.repository, script, "cp $1 $2\necho '_modified' >> $2")
 
     result = runner.invoke(cli, ["status"])
     assert 1 == result.exit_code

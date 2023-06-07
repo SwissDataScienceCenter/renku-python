@@ -626,17 +626,14 @@ def test_workflow_execute_command(
     skip_metadata_update,
     workflows,
     parameters,
-    cache_test_project,
 ):
     """Test workflow execute."""
-    if not cache_test_project.setup():
-        for wf in workflows:
-            output = run_shell(f"renku run --name {wf[0]} -- {wf[1]}")
-            # Assert expected empty stdout.
-            assert b"" == output[0]
-            # Assert not allocated stderr.
-            assert output[1] is None
-        cache_test_project.save()
+    for wf in workflows:
+        output = run_shell(f"renku run --name {wf[0]} -- {wf[1]}")
+        # Assert expected empty stdout.
+        assert b"" == output[0]
+        # Assert not allocated stderr.
+        assert output[1] is None
 
     is_composite = True if len(workflows) > 1 else False
 
@@ -1056,41 +1053,39 @@ def test_workflow_visualize_interactive(runner, project, workflow_graph):
     assert not child.isalive()
 
 
-def test_workflow_compose_execute(runner, project, run_shell, cache_test_project):
+def test_workflow_compose_execute(runner, project, run_shell):
     """Test renku workflow compose with execute."""
-    if not cache_test_project.setup():
-        # Run a shell command with pipe.
-        output = run_shell('renku run --name run1 -- echo "a" > output1')
+    # Run a shell command with pipe.
+    output = run_shell('renku run --name run1 -- echo "a" > output1')
 
-        # Assert expected empty stdout.
-        assert b"" == output[0]
-        # Assert not allocated stderr.
-        assert output[1] is None
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
 
-        # Run a shell command with pipe.
-        output = run_shell("renku run --name run2 -- cp output1 output2")
+    # Run a shell command with pipe.
+    output = run_shell("renku run --name run2 -- cp output1 output2")
 
-        # Assert expected empty stdout.
-        assert b"" == output[0]
-        # Assert not allocated stderr.
-        assert output[1] is None
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
 
-        # Run a shell command with pipe.
-        output = run_shell('renku run --name run3 -- echo "b" > output3')
+    # Run a shell command with pipe.
+    output = run_shell('renku run --name run3 -- echo "b" > output3')
 
-        # Assert expected empty stdout.
-        assert b"" == output[0]
-        # Assert not allocated stderr.
-        assert output[1] is None
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
 
-        # Run a shell command with pipe.
-        output = run_shell("renku run --name run4 -- cp output3 output4")
+    # Run a shell command with pipe.
+    output = run_shell("renku run --name run4 -- cp output3 output4")
 
-        # Assert expected empty stdout.
-        assert b"" == output[0]
-        # Assert not allocated stderr.
-        assert output[1] is None
-        cache_test_project.save()
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
 
     # we need to run in a subprocess to ensure the execute below uses a clean Database, to test against
     # issues with cached parameters
@@ -1159,20 +1154,17 @@ def test_workflow_iterate(
     num_iterations,
     provider,
     skip_metadata_update,
-    cache_test_project,
 ):
     """Test renku workflow iterate."""
 
     workflow_name = "foobar"
 
-    if not cache_test_project.setup():
-        # Run a shell command with pipe.
-        output = run_shell(f"renku run --name {workflow_name} -- {workflow}")
-        # Assert expected empty stdout.
-        assert b"" == output[0]
-        # Assert not allocated stderr.
-        assert output[1] is None
-        cache_test_project.save()
+    # Run a shell command with pipe.
+    output = run_shell(f"renku run --name {workflow_name} -- {workflow}")
+    # Assert expected empty stdout.
+    assert b"" == output[0]
+    # Assert not allocated stderr.
+    assert output[1] is None
 
     iteration_cmd = ["renku", "workflow", "iterate", "-p", provider]
     outputs = []
@@ -1225,32 +1217,29 @@ def test_workflow_iterate(
 
 
 @pytest.mark.parametrize("provider", available_workflow_providers())
-def test_workflow_iterate_command_with_parameter_set(
-    runner, run_shell, project, capsys, transaction_id, provider, cache_test_project
-):
+def test_workflow_iterate_command_with_parameter_set(runner, run_shell, project, capsys, transaction_id, provider):
     """Test executing a workflow with --set float value for a renku.ui.api.Parameter."""
     script = project.path / "script.py"
     output = project.path / "output"
-    if not cache_test_project.setup():
-        with with_commit(repository=project.repository, transaction_id=transaction_id):
-            script.write_text("import sys\nprint(sys.argv[1])\n")
 
-        result = run_shell(f"renku run --name run1 -- python {script} 3.98 > {output}")
+    with with_commit(repository=project.repository, transaction_id=transaction_id):
+        script.write_text("import sys\nprint(sys.argv[1])\n")
 
-        # Assert expected empty stdout.
-        assert b"" == result[0]
-        # Assert not allocated stderr.
-        assert result[1] is None
+    result = run_shell(f"renku run --name run1 -- python {script} 3.98 > {output}")
 
-        assert "3.98\n" == output.read_text()
+    # Assert expected empty stdout.
+    assert b"" == result[0]
+    # Assert not allocated stderr.
+    assert result[1] is None
 
-        result = run_shell(f"renku workflow execute -p {provider} --set parameter-2=2.0 run1")
+    assert "3.98\n" == output.read_text()
 
-        # Assert not allocated stderr.
-        assert result[1] is None
+    result = run_shell(f"renku workflow execute -p {provider} --set parameter-2=2.0 run1")
 
-        assert "2.0\n" == output.read_text()
-        cache_test_project.save()
+    # Assert not allocated stderr.
+    assert result[1] is None
+
+    assert "2.0\n" == output.read_text()
 
     result = run_shell(f"renku workflow iterate -p {provider} --map parameter-2=[0.1,0.3,0.95] run1")
 
