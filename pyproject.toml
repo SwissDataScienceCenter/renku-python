@@ -60,7 +60,7 @@ click = ">=8.0,<8.1.4"
 click-option-group = "<0.6.0,>=0.5.2"
 click-plugins = "==1.1.1"
 coverage = { version = "<6.5,>=4.5.3", extras=["toml"], optional = true }
-cryptography = ">=38.0.0,<41.0.0"
+cryptography = ">=38.0.0,<42.0.0"
 cwl-utils = ">=0.27,<0.28"
 cwltool = "==3.1.20230425144158"
 deal = ">=4.24.0,<5.0.0"
@@ -97,7 +97,7 @@ rich = ">=9.3.0,<13.4.0"
 shellingham = "1.5.0.post1"
 tabulate = ">=0.7.7,<0.9.1"
 toil = "==5.10.0"
-tqdm = "<4.62.4,>=4.48.1"
+tqdm = ">=4.48.1,<4.65.1"
 werkzeug = ">=1.0.0,<2.2.4"
 yagup = ">=0.1.1"
 yaspin = "==2.1.0"
@@ -117,9 +117,9 @@ marshmallow-oneofschema = { version = ">=3.0.1,<4.0.0", optional = true }
 pillow = { version = ">=9.0.0,<9.6", optional = true }
 python-dotenv = { version = ">=0.19.0,<0.21.0", optional = true }
 redis = { version = ">=3.5.3,<4.6.0", optional = true }
-rq = { version = "==1.14.1", optional = true }
+rq = { version = "==1.15.0", optional = true }
 rq-scheduler = { version = "==0.13.1", optional = true }
-sentry-sdk = { version = ">=1.5.11,<1.24.0", extras = ["flask"],  optional = true }
+sentry-sdk = { version = ">=1.5.11,<1.26.0", extras = ["flask"],  optional = true }
 walrus = { version = ">=0.8.2,<0.10.0", optional = true }
 
 [tool.poetry.group.dev.dependencies]
