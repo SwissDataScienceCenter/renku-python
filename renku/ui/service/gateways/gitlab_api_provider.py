@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +26,7 @@ from renku.core import errors
 from renku.core.util.os import delete_dataset_file
 from renku.domain_model.git import GitURL
 from renku.ui.service.interfaces.git_api_provider import IGitAPIProvider
+from renku.ui.service.logger import service_log
 
 
 class GitlabAPIProvider(IGitAPIProvider):
@@ -80,6 +80,7 @@ class GitlabAPIProvider(IGitAPIProvider):
                 raise errors.AuthenticationError from e
             except gitlab.GitlabGetError as e:
                 # NOTE: better to re-raise this as a core error since it's a common case
+                service_log.warn(f"fast project clone didn't work: {e}")
                 if "project not found" in getattr(e, "error_message", "").lower():
                     raise errors.ProjectNotFound from e
                 else:

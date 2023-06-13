@@ -17,6 +17,7 @@
 """Renku service fixtures for integration testing."""
 import contextlib
 import json
+import os
 import shutil
 import uuid
 from copy import deepcopy
@@ -36,21 +37,21 @@ def _mock_cache_sync(repository: Repository):
     We don't want to undo that temporary migration with an actual cache sync, as it would break tests with
     repeat service calls, if the migration was just done locally in the fixture.
     """
-    from renku.ui.service.controllers.api import mixins
+    from renku.ui.service.gateways.repository_cache import LocalRepositoryCache
 
     current_reference = repository.head.reference if repository.head.is_valid() else repository.head.commit
 
-    def _mocked_repo_reset(self, project):
+    def _mocked_repo_reset(self, project, user):
         """Mock repo reset to work with mocked renku save."""
         repository.reset(current_reference, hard=True)
 
-    reset_repo_function = mixins.RenkuOperationMixin.reset_local_repo
-    mixins.RenkuOperationMixin.reset_local_repo = _mocked_repo_reset  # type: ignore
+    reset_repo_function = LocalRepositoryCache._maybe_update_cache
+    LocalRepositoryCache._maybe_update_cache = _mocked_repo_reset  # type: ignore
 
     try:
         yield
     finally:
-        mixins.RenkuOperationMixin.reset_local_repo = reset_repo_function  # type: ignore
+        LocalRepositoryCache._maybe_update_cache = reset_repo_function  # type: ignore
 
 
 def integration_repo_path(headers, project_id, url_components):
@@ -102,6 +103,9 @@ def integration_lifecycle(
 ):
     """Setup and teardown steps for integration tests."""
     from renku.domain_model.git import GitURL
+    from renku.ui.service.cache import cache
+    from renku.ui.service.gateways.repository_cache import LocalRepositoryCache
+    from renku.ui.service.serializers.headers import RequiredIdentityHeaders
 
     marker = request.node.get_closest_marker("remote_repo")
 
@@ -118,20 +122,16 @@ def integration_lifecycle(
 
     url_components = GitURL.parse(remote_repo)
 
-    payload = {"git_url": remote_repo, "depth": -1}
+    user_data = RequiredIdentityHeaders().load(identity_headers)
+    user = cache.ensure_user(user_data)
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
-    assert response
-    assert {"result"} == set(response.json.keys())
+    project = LocalRepositoryCache().get(cache, remote_repo, branch=None, user=user, shallow=False)
 
-    project_id = response.json["result"]["project_id"]
-    assert isinstance(uuid.UUID(project_id), uuid.UUID)
-
-    yield svc_client, identity_headers, project_id, url_components
+    yield svc_client, identity_headers, project.project_id, url_components
 
     # Teardown step: Delete all branches except master (if needed).
-    if integration_repo_path(identity_headers, project_id, url_components).exists():
-        with integration_repo(identity_headers, project_id, url_components) as repository:
+    if integration_repo_path(identity_headers, project.project_id, url_components).exists():
+        with integration_repo(identity_headers, project.project_id, url_components) as repository:
             try:
                 repository.push(remote="origin", refspec=f":{repository.active_branch.name}")
             except errors.GitCommandError:
@@ -170,7 +170,7 @@ def svc_client_with_repo(svc_client_setup):
     svc_client, headers, project_id, url_components, repo = svc_client_setup
 
     response = svc_client.post(
-        "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
+        "/cache.migrate", data=json.dumps(dict(git_url=url_components.href, skip_docker_update=True)), headers=headers
     )
 
     assert response.json["result"]
@@ -182,17 +182,17 @@ def svc_client_with_repo(svc_client_setup):
 @pytest.fixture
 def svc_protected_old_repo(svc_synced_client, it_protected_repo_url):
     """Service client with remote protected repository."""
+    from renku.ui.service.cache import cache as redis_cache
+    from renku.ui.service.gateways.repository_cache import LocalRepositoryCache
+
     svc_client, identity_headers, cache, user = svc_synced_client
 
-    payload = {
-        "git_url": it_protected_repo_url,
-        "depth": 1,
-    }
+    user_data = {"fullname": "Renkubot", "email": "renkubot@datascience.ch", "token": os.getenv("IT_OAUTH_GIT_TOKEN")}
+    user = redis_cache.ensure_user(user_data)
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
-    project_id = response.json["result"]["project_id"]
+    project = LocalRepositoryCache().get(redis_cache, it_protected_repo_url, branch=None, user=user, shallow=False)
 
-    yield svc_client, identity_headers, project_id, cache, user
+    yield svc_client, identity_headers, project.project_id, cache, user, it_protected_repo_url
 
 
 @pytest.fixture()
@@ -202,7 +202,8 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
 
     from renku.core.util.contexts import chdir
     from renku.ui.cli import cli
-    from renku.ui.service.config import PROJECT_CLONE_NO_DEPTH
+    from renku.ui.service.cache import cache as redis_cache
+    from renku.ui.service.gateways.repository_cache import LocalRepositoryCache
     from renku.ui.service.serializers import cache
     from tests.fixtures.runners import RenkuRunner
 
@@ -258,17 +259,20 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
             except OSError:
                 pass
 
-            payload = {"git_url": f"file://{remote_repo_path}", "depth": PROJECT_CLONE_NO_DEPTH}
-            response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
+            user_data = {
+                "fullname": "Renkubot",
+                "email": "renkubot@datascience.ch",
+                "token": os.getenv("IT_OAUTH_GIT_TOKEN"),
+            }
+            user = redis_cache.ensure_user(user_data)
+            remote_url = f"file://{remote_repo_path}"
 
-            assert response
-            assert {"result"} == set(response.json.keys()), response.json
+            project = LocalRepositoryCache().get(redis_cache, remote_url, branch=None, user=user, shallow=False)
 
-            project_id = response.json["result"]["project_id"]
-            assert isinstance(uuid.UUID(project_id), uuid.UUID)
+            project_id = project.project_id
 
     try:
-        yield svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout
+        yield svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout, remote_url
     finally:
         cache.ProjectCloneContext.format_url = orig_format_url
         cache.ProjectCloneContext.set_owner_name = orig_set_owner

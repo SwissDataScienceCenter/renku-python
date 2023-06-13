@@ -108,12 +108,15 @@ def handle_validation_except(f):
         try:
             return f(*args, **kwargs)
         except ValidationError as e:
-            items = squash(e.messages).items()
-            reasons = []
-            for key, value in items:
-                if key == "project_id":
-                    raise IntermittentProjectIdError(e)
-                reasons.append(f"'{key}': {', '.join(value)}")
+            if isinstance(e.messages, dict):
+                items = squash(e.messages).items()
+                reasons = []
+                for key, value in items:
+                    if key == "project_id":
+                        raise IntermittentProjectIdError(e)
+                    reasons.append(f"'{key}': {', '.join(value)}")
+            else:
+                reasons = e.messages
 
             error_message = f"{'; '.join(reasons)}"
             if "Invalid `git_url`" in error_message:
@@ -176,7 +179,11 @@ def handle_git_except(f):
             error_message_safe = re.sub("^(.+oauth2:)[^@]+(@.+)$", r"\1<token-hidden>\2", error_message_safe)
             if "access denied" in error_message:
                 raise UserRepoNoAccessError(e, error_message_safe)
-            elif "is this a git repository?" in error_message or "not found" in error_message:
+            elif (
+                "is this a git repository?" in error_message
+                or "not found" in error_message
+                or "ailed to connect to" in error_message  # Sometimes the 'f' is capitalized, sometimes not
+            ):
                 raise UserRepoUrlInvalidError(e, error_message_safe)
             elif "connection timed out" in error_message:
                 raise IntermittentTimeoutError(e)

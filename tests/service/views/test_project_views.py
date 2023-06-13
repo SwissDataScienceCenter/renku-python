@@ -31,10 +31,10 @@ from tests.utils import retry_failed
 @retry_failed
 def test_show_project_view(svc_client_with_repo):
     """Test show project metadata."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     show_payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
     response = svc_client.post("/project.show", data=json.dumps(show_payload), headers=headers)
 
@@ -85,10 +85,10 @@ def test_show_project_view(svc_client_with_repo):
 @retry_failed
 def test_edit_project_view(svc_client_with_repo, custom_metadata, custom_metadata_source):
     """Test editing project metadata."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     edit_payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
         "description": "my new title",
         "creator": {"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"},
         "custom_metadata": custom_metadata,
@@ -106,7 +106,7 @@ def test_edit_project_view(svc_client_with_repo, custom_metadata, custom_metadat
     } == response.json["result"]["edited"]
 
     edit_payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
     response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
 
@@ -120,10 +120,10 @@ def test_edit_project_view(svc_client_with_repo, custom_metadata, custom_metadat
 @retry_failed
 def test_edit_project_view_unset(svc_client_with_repo):
     """Test editing project metadata by unsetting values."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     edit_payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
         "description": "my new title",
         "creator": {"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"},
         "keywords": ["keyword1", "keyword2"],
@@ -138,7 +138,7 @@ def test_edit_project_view_unset(svc_client_with_repo):
     }
     response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
 
-    edit_payload = {"project_id": project_id, "custom_metadata": None, "keywords": None}
+    edit_payload = {"git_url": url_components.href, "custom_metadata": None, "keywords": None}
     response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
 
     assert_rpc_response(response)
@@ -156,10 +156,10 @@ def test_edit_project_view_unset(svc_client_with_repo):
 @retry_failed
 def test_edit_project_view_failures(svc_client_with_repo):
     """Test failures when editing project metadata providing wrong data."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
         "description": "my new title",
         "creator": {"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"},
         "custom_metadata": [
@@ -198,11 +198,11 @@ def test_remote_edit_view(svc_client, it_remote_repo_url, identity_headers):
 @pytest.mark.service
 def test_get_lock_status_unlocked(svc_client_setup):
     """Test getting lock status for an unlocked project."""
-    svc_client, headers, project_id, _, _ = svc_client_setup
+    svc_client, headers, project_id, url_components, _ = svc_client_setup
 
     response = svc_client.get(
         "/1.1/project.lock_status",
-        query_string={"project_id": project_id, "timeout": 1.0},
+        query_string={"git_url": url_components.href, "timeout": 1.0},
         headers=headers,
         content_type="text/xml",
     )
@@ -216,7 +216,7 @@ def test_get_lock_status_unlocked(svc_client_setup):
 @pytest.mark.service
 def test_get_lock_status_locked(svc_client_setup):
     """Test getting lock status for a locked project."""
-    svc_client, headers, project_id, _, repository = svc_client_setup
+    svc_client, headers, project_id, url_components, repository = svc_client_setup
 
     def mock_lock():
         return portalocker.Lock(f"{repository.path}.lock", flags=portalocker.LOCK_EX, timeout=0)
@@ -224,7 +224,7 @@ def test_get_lock_status_locked(svc_client_setup):
     with mock_lock():
         start = time.monotonic()
         response = svc_client.get(
-            "/1.1/project.lock_status", query_string={"project_id": project_id, "timeout": 1.0}, headers=headers
+            "/1.1/project.lock_status", query_string={"git_url": url_components.href, "timeout": 1.0}, headers=headers
         )
         assert time.monotonic() - start >= 1.0
 
@@ -235,10 +235,11 @@ def test_get_lock_status_locked(svc_client_setup):
 
 @pytest.mark.integration
 @pytest.mark.service
-@pytest.mark.parametrize("query_params", [{"project_id": "dummy"}, {"git_url": "https://example.com/repo.git"}])
-def test_get_lock_status_for_project_not_in_cache(svc_client, identity_headers, query_params):
+def test_get_lock_status_for_project_not_in_cache(svc_client, identity_headers):
     """Test getting lock status for an unlocked project which is not cached."""
-    response = svc_client.get("/1.1/project.lock_status", query_string=query_params, headers=identity_headers)
+    response = svc_client.get(
+        "/1.1/project.lock_status", query_string={"git_url": "https://example.com/repo.git"}, headers=identity_headers
+    )
 
     assert_rpc_response(response)
     assert {"locked"} == set(response.json["result"].keys())

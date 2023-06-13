@@ -87,19 +87,6 @@ services:
       - traefik.http.routers.swagger.rule=PathPrefix(`/api/docs`)
       - traefik.http.services.my-service.loadbalancer.server.port=8080
 
-  renku-scheduler:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        BUILD_CORE_SERVICE: 1
-    command: ["service", "scheduler"]
-    depends_on:
-      - redis
-    networks:
-      - net
-    env_file: .env
-
   renku-worker:
     build:
       context: .

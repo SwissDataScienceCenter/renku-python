@@ -20,7 +20,7 @@ from flask import request
 from renku.ui.service.config import SERVICE_PREFIX
 from renku.ui.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
 from renku.ui.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
-from renku.ui.service.views.api_versions import ALL_VERSIONS, V2_0, VersionedBlueprint
+from renku.ui.service.views.api_versions import ALL_VERSIONS, V2_0, V2_1, VersionedBlueprint
 from renku.ui.service.views.decorators import accepts_json, requires_cache, requires_identity
 from renku.ui.service.views.error_handlers import (
     handle_common_except,
@@ -34,7 +34,7 @@ templates_blueprint = VersionedBlueprint(TEMPLATES_BLUEPRINT_TAG, __name__, url_
 
 
 @templates_blueprint.route(
-    "/templates.read_manifest", methods=["GET"], provide_automatic_options=False, versions=[V2_0]
+    "/templates.read_manifest", methods=["GET"], provide_automatic_options=False, versions=[V2_0, V2_1]
 )
 @handle_common_except
 @handle_templates_read_errors
