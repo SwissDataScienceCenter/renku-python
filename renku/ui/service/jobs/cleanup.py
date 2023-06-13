@@ -60,24 +60,3 @@ def cache_files_cleanup():
 
         for chunk_folder in chunk_folders:
             shutil.rmtree(chunk_folder, ignore_errors=True)
-
-
-def cache_project_cleanup():
-    """Cache project a cleanup job."""
-    cache = ServiceCache()
-    worker_log.debug("executing cache projects cleanup")
-
-    for user, projects in cache.user_projects():
-        jobs = [
-            job for job in cache.get_jobs(user) if job.state in [USER_JOB_STATE_ENQUEUED, USER_JOB_STATE_IN_PROGRESS]
-        ]
-
-        for project in projects:
-            if project.is_locked(jobs):
-                continue
-
-            if project.exists() and project.ttl_expired():
-                worker_log.debug(f"purging project {project.project_id}:{project.name}")
-                project.purge()
-            elif not project.exists():
-                project.delete()

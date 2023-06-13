@@ -62,7 +62,7 @@ def raises(error):
         return not_raises()
 
 
-def make_dataset_add_payload(project_id, urls, name=None):
+def make_dataset_add_payload(git_url, urls, name=None):
     """Make dataset add request payload."""
     files = []
     for url in urls:
@@ -73,7 +73,7 @@ def make_dataset_add_payload(project_id, urls, name=None):
             files.append({"file_url": url})
 
     return {
-        "project_id": project_id,
+        "git_url": git_url,
         "name": name or uuid.uuid4().hex,
         "create_dataset": True,
         "force": False,
