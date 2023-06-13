@@ -27,6 +27,7 @@ from renku.core.util.contexts import renku_project_context
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
 from renku.ui.service.interfaces.git_api_provider import IGitAPIProvider
+from renku.ui.service.logger import service_log
 from renku.ui.service.serializers.cache import ProjectMigrationCheckRequest, ProjectMigrationCheckResponseRPC
 from renku.ui.service.views import result_response
 
@@ -51,7 +52,7 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
     def _fast_op_without_cache(self):
         """Execute renku_op with only necessary files, without cloning the whole repo."""
         if "git_url" not in self.context:
-            raise RenkuException("context does not contain `project_id` or `git_url`")
+            raise RenkuException("context does not contain `git_url`")
 
         with tempfile.TemporaryDirectory() as tempdir:
             tempdir_path = Path(tempdir)
@@ -63,9 +64,10 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
                 target_folder=tempdir_path,
                 remote=self.ctx["git_url"],
                 branch=self.request_data.get("branch", None),
-                token=self.user_data.get("token", None),
+                token=self.user.token,
             )
             with renku_project_context(tempdir_path):
+                self.project_path = tempdir_path
                 return self.renku_op()
 
     def renku_op(self):
@@ -83,16 +85,14 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
         """Execute controller flow and serialize to service response."""
         from renku.ui.service.views.error_handlers import pretty_print_error
 
-        if "project_id" in self.context:
+        # NOTE: use quick flow but fallback to regular flow in case of unexpected exceptions
+        try:
+            result = self._fast_op_without_cache()
+        except (AuthenticationError, ProjectNotFound):
+            raise
+        except BaseException as e:
+            service_log.info(f"fast gitlab checkout didnt work: {e}")
             result = self.execute_op()
-        else:
-            # NOTE: use quick flow but fallback to regular flow in case of unexpected exceptions
-            try:
-                result = self._fast_op_without_cache()
-            except (AuthenticationError, ProjectNotFound):
-                raise
-            except BaseException:
-                result = self.execute_op()
 
         result_dict = asdict(result)
 

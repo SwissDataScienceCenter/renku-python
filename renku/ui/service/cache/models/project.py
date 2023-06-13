@@ -18,6 +18,7 @@
 import os
 import shutil
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 import portalocker
@@ -44,18 +45,16 @@ class Project(Model):
 
     clone_depth = IntegerField()
     git_url = TextField(index=True)
+    branch = TextField(index=True)
 
     name = TextField()
     slug = TextField()
-    fullname = TextField()
     description = TextField()
-    email = TextField()
     owner = TextField()
-    token = TextField()
     initialized = BooleanField()
 
     @property
-    def abs_path(self):
+    def abs_path(self) -> Path:
         """Full path of cached project."""
         return CACHE_PROJECTS_PATH / self.user_id / self.owner / self.slug
 
@@ -109,7 +108,8 @@ class Project(Model):
 
     def purge(self):
         """Removes project from file system and cache."""
-        shutil.rmtree(str(self.abs_path))
+        if self.exists():
+            shutil.rmtree(str(self.abs_path))
         self.delete()
 
     def is_locked(self, jobs):

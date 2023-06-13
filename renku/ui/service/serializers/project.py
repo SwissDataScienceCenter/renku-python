@@ -21,7 +21,6 @@ from marshmallow.schema import Schema
 from renku.domain_model.dataset import DatasetCreatorsJson as DatasetCreators
 from renku.ui.service.serializers.common import (
     AsyncSchema,
-    LocalRepositorySchema,
     MigrateSchema,
     RemoteRepositoryBaseSchema,
     RemoteRepositorySchema,
@@ -30,7 +29,7 @@ from renku.ui.service.serializers.common import (
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
 
-class ProjectShowRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema):
+class ProjectShowRequest(AsyncSchema, RemoteRepositorySchema, MigrateSchema):
     """Project show metadata request."""
 
 
@@ -66,7 +65,7 @@ class ProjectShowResponseRPC(RenkuSyncSchema):
     result = fields.Nested(ProjectShowResponse)
 
 
-class ProjectEditRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema):
+class ProjectEditRequest(AsyncSchema, RemoteRepositorySchema, MigrateSchema):
     """Project edit metadata request."""
 
     description = fields.String(metadata={"description": "New description for the project"})
@@ -94,7 +93,7 @@ class ProjectEditResponseRPC(JsonRPCResponse):
     result = fields.Nested(ProjectEditResponse)
 
 
-class ProjectLockStatusRequest(LocalRepositorySchema, RemoteRepositoryBaseSchema):
+class ProjectLockStatusRequest(RemoteRepositoryBaseSchema):
     """Project lock status request."""
 
     timeout = fields.Float(

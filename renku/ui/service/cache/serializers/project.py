@@ -37,10 +37,7 @@ class ProjectSchema(CreationSchema, MandatoryUserSchema):
     name = fields.String(required=True)
     slug = fields.String(required=True)
     description = fields.String(load_default=None)
-    fullname = fields.String(required=True)
-    email = fields.String(required=True)
     owner = fields.String(required=True)
-    token = fields.String(required=True)
     initialized = fields.Boolean(dump_default=False)
 
     @post_load
