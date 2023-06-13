@@ -15,6 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dataset jobs."""
+import os
 import urllib
 
 from urllib3.exceptions import HTTPError
@@ -87,7 +88,7 @@ def dataset_import(
 
 def _is_safe_to_pass_gitlab_token(project_git_url, dataset_uri):
     """Passing token is safe if project and dataset belong to the same deployment."""
-    project_host = GitURL.parse(project_git_url).hostname
+    project_host = os.environ.get("RENKU_DOMAIN") or GitURL.parse(project_git_url).hostname
     dataset_host = urllib.parse.urlparse(dataset_uri).netloc
 
     # NOTE: URLs changed from domain/gitlab to gitlab.domain when moving to cloud native gitlab
