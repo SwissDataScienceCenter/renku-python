@@ -18,6 +18,40 @@
 Changes
 =======
 
+`2.5.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.4.1...v2.5.0>`__ (2023-06-02)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** fix dataset update with external files
+   (`#3379 <https://github.com/SwissDataScienceCenter/renku-python/issues/3379>`__)
+   (`e02e5bf <https://github.com/SwissDataScienceCenter/renku-python/commit/e02e5bf846f8e63e3e2b116edb1bc7ee54bacdbc>`__)
+-  **cli:** fix special paths in workflow files and bump `toil` / `cwltool`
+   (`#3489 <https://github.com/SwissDataScienceCenter/renku-python/issues/3489>`__)
+   (`28086cf <https://github.com/SwissDataScienceCenter/renku-python/commit/28086cf1361c86109c8e0e1c59c5704a5a663f30>`__)
+- **cli:**: fix wrong plan ids in plans coming from workflow files
+   (`#3511 <https://github.com/SwissDataScienceCenter/renku-python/pull/3511>`__)
+-  **service:** fix working with branches
+   (`#3472 <https://github.com/SwissDataScienceCenter/renku-python/issues/3472>`__)
+   (`0eaf204 <https://github.com/SwissDataScienceCenter/renku-python/commit/0eaf204365d38bbf82bd2d0df357abbf61c18548>`__)
+-  **service:** return proper errors on migrations check endpoint
+   (`#3334 <https://github.com/SwissDataScienceCenter/renku-python/issues/3334>`__)
+   (`6237dc7 <https://github.com/SwissDataScienceCenter/renku-python/commit/6237dc71eb894cfef2b013d2c3fd5dd7defd6499>`__)
+
+Features
+~~~~~~~~
+
+-  **core:** pass docker run args to session start
+   (`#3487 <https://github.com/SwissDataScienceCenter/renku-python/issues/3487>`__)
+   (`9cbb465 <https://github.com/SwissDataScienceCenter/renku-python/commit/9cbb46591a48720e04d0adc03e0305855f3fe836>`__)
+-  **core:** shell completion for sessions
+   (`#3450 <https://github.com/SwissDataScienceCenter/renku-python/issues/3450>`__)
+   (`9fa63dd <https://github.com/SwissDataScienceCenter/renku-python/commit/9fa63dd869f4424b076e12c9ed351c6e0e7c7c47>`__)
+-  **dataset:** export dataset keywords
+   (`#3454 <https://github.com/SwissDataScienceCenter/renku-python/issues/3454>`__)
+   (`feb3f14 <https://github.com/SwissDataScienceCenter/renku-python/commit/feb3f1435e9de0e75a6e01075c13b1bc58f70989>`__)
+
 `2.4.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.4.0...v2.4.1>`__ (2023-05-12)
 -------------------------------------------------------------------------------------------------------
 
