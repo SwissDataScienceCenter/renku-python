@@ -80,11 +80,18 @@ class GitlabAPIProvider(IGitAPIProvider):
                 raise errors.AuthenticationError from e
             except gitlab.GitlabGetError as e:
                 # NOTE: better to re-raise this as a core error since it's a common case
-                service_log.warn(f"fast project clone didn't work: {e}")
+                service_log.warn(f"fast project clone didn't work: {e}", exc_info=e)
                 if "project not found" in getattr(e, "error_message", "").lower():
                     raise errors.ProjectNotFound from e
                 else:
                     raise
+        except gitlab.GitlabGetError as e:
+            # NOTE: better to re-raise this as a core error since it's a common case
+            service_log.warn(f"fast project clone didn't work: {e}", exc_info=e)
+            if "project not found" in getattr(e, "error_message", "").lower():
+                raise errors.ProjectNotFound from e
+            else:
+                raise
 
         for file in files:
             full_path = target_folder / file
