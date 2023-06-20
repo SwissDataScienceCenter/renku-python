@@ -227,8 +227,8 @@ def update_dockerfile(*, check_only=False) -> Tuple[bool, Optional[bool], Option
             "Couldn't update renku-python version in Dockerfile, as it doesn't contain an 'ARG RENKU_VERSION=...' line."
         )
 
-    current_version = Version(__version__)
-    if docker_version >= current_version:
+    current_version = Version(Version(__version__).base_version)
+    if Version(docker_version.base_version) >= current_version:
         return True, False, str(docker_version)
 
     if check_only:
