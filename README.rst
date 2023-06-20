@@ -15,6 +15,8 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 
+change some dummy value
+
 ======================================
  Renku Python Library, CLI and Service
 ======================================
