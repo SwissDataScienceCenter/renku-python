@@ -32,7 +32,7 @@ Bug Fixes
 Features
 ~~~~~~~~
 
--  **service:** horizontal scaling
+-  **service:** add support for horizontal scaling
    (`#3178 <https://github.com/SwissDataScienceCenter/renku-python/issues/3178>`__)
    (`fab2b58 <https://github.com/SwissDataScienceCenter/renku-python/commit/fab2b583f3c36fa179b6388ca7a28fa68b2aad8b>`__)
 
