@@ -1,5 +1,5 @@
 #
-# Copyright 2020 - Swiss Data Science Center (SDSC)
+# Copyright 2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
@@ -78,3 +78,6 @@ MESSAGE_PREFIX = os.environ.get("RENKU_DOMAIN", "service") + ":"
 # Sentry configuration
 SENTRY_ENABLED = os.getenv("SENTRY_ENABLED", "false").lower() == "true"
 SENTRY_SAMPLERATE = float(os.getenv("SENTRY_SAMPLE_RATE", 0.2))
+
+# List of all available metadata versions
+METADATA_VERSIONS_LIST = os.getenv("METADATA_VERSIONS_LIST", "/svc/config/metadata-versions/metadata-versions.json")
