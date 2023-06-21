@@ -20,6 +20,7 @@ spec:
             imagePullPolicy: IfNotPresent
             args:
             - {{ $version.name | quote}}
+            - {{ $.Release.Namespace }}
           restartPolicy: OnFailure
           serviceAccountName: {{ include "renku-core.fullname" $ }}-cleanup
 {{ end }}

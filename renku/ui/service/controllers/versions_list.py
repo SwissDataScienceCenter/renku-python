@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+#
 # Copyright 2022 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
@@ -13,20 +15,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku service version serializers."""
-from marshmallow import Schema, fields
+"""Renku service version controller."""
+import json
+
+from renku.ui.service import config
+from renku.ui.service.controllers.api.abstract import ServiceCtrl
+from renku.ui.service.serializers.versions_list import VersionsListResponseRPC
+from renku.ui.service.views import result_response
 
 
-class VersionResponse(Schema):
-    """Version response schema."""
+class VersionsListCtrl(ServiceCtrl):
+    """Versions list controller."""
 
-    latest_version = fields.String()
-    supported_project_version = fields.Number()
-    minimum_api_version = fields.String()
-    maximum_api_version = fields.String()
+    RESPONSE_SERIALIZER = VersionsListResponseRPC()
 
+    def to_response(self):
+        """Serialize to service version response."""
 
-class VersionResponseRPC(Schema):
-    """Version response RPC schema."""
-
-    result = fields.Nested(VersionResponse)
+        with open(config.METADATA_VERSIONS_LIST, "r") as f:
+            return result_response(self.RESPONSE_SERIALIZER, json.load(f))

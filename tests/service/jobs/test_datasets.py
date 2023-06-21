@@ -677,3 +677,22 @@ def test_unlink_dataset_sync(svc_client_cache, it_remote_repo_url_temp_branch, v
     assert updated_job
     assert {"unlinked", "remote_branch"} == updated_job.ctrl_result["result"].keys()
     assert ["data/data1"] == updated_job.ctrl_result["result"]["unlinked"]
+
+
+@pytest.mark.parametrize(
+    "renku_domain,dataset_url,result",
+    [
+        ("renkulab.io", "https://renkulab.io/datasets/abcdefg", True),
+        ("gitlab.renkulab.io", "https://renkulab.io/datasets/abcdefg", True),
+        ("renkulab.io", "https://dev.renku.ch/datasets/abcdefg", False),
+        ("dev.renku.ch", "https://ci-9999.dev.renku.ch/datasets/abcdefg", False),
+    ],
+)
+def test_dataset_gitlab_token_logic(renku_domain, dataset_url, result, monkeypatch):
+    """Test that logic for forwarding gitlab tokens works correctly."""
+    from renku.ui.service.jobs.datasets import _is_safe_to_pass_gitlab_token
+
+    with monkeypatch.context() as monkey:
+        monkey.setenv("RENKU_DOMAIN", renku_domain)
+
+        assert _is_safe_to_pass_gitlab_token("", dataset_url) == result

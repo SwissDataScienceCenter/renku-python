@@ -49,6 +49,7 @@ from renku.ui.service.views.jobs import jobs_blueprint
 from renku.ui.service.views.project import project_blueprint
 from renku.ui.service.views.templates import templates_blueprint
 from renku.ui.service.views.version import version_blueprint
+from renku.ui.service.views.versions_list import versions_list_blueprint
 from renku.ui.service.views.workflow_plans import workflow_plans_blueprint
 
 logging.basicConfig(level=os.getenv("SERVICE_LOG_LEVEL", "WARNING"))
@@ -153,6 +154,7 @@ def build_routes(app):
     app.register_blueprint(templates_blueprint)
     app.register_blueprint(version_blueprint)
     app.register_blueprint(apispec_blueprint)
+    app.register_blueprint(versions_list_blueprint)
 
 
 app = create_app()

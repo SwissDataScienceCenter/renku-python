@@ -3,8 +3,9 @@
 set -e
 
 core_version=$1
+namespace=$2
 
-mapfile -t pod_ips < <(kubectl -n renku get pods --selector="app.kubernetes.io/name=core" --selector="app.kubernetes.io/deploymentVersion=$core_version" -o=jsonpath="{.items[*].status.podIP}" )
+mapfile -t pod_ips < <(kubectl -n "$namespace" get pods --selector="app.kubernetes.io/name=core" --selector="app.kubernetes.io/deploymentVersion=$core_version" -o=jsonpath="{.items[*].status.podIP}" )
 
 success=true
 

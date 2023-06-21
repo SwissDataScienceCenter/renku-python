@@ -17,7 +17,10 @@ metadata:
 spec:
   replicas: {{ $.Values.replicaCount }}
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "renku-core.name" $ }}
@@ -44,6 +47,9 @@ spec:
       volumes:
         - name: shared-volume
           emptyDir: {}
+        - name: metadata-versions
+          configMap:
+            name: {{ include "renku-core.fullname" $ }}-metadata-versions
         {{- include "certificates.volumes" $ | nindent 8 }}
       initContainers:
         {{- include "certificates.initContainer" $ | nindent 8 }}
@@ -139,10 +145,14 @@ spec:
               value: {{ $.Values.global.renku.domain }}
             - name: RENKU_PROJECT_DEFAULT_CLI_VERSION
               value: {{ $.Values.global.renku.cli_version | default "" | quote }}
+            - name: METADATA_VERSIONS_LIST
+              value: /svc/config/metadata-versions/metadata-versions.json
             {{- include "certificates.env.python" $ | nindent 12 }}
           volumeMounts:
             - name: shared-volume
               mountPath: {{ $.Values.cacheDirectory }}
+            - name: metadata-versions
+              mountPath: /svc/config/metadata-versions
             {{- include "certificates.volumeMounts.system" $ | nindent 12 }}
           ports:
             - name: http
@@ -157,7 +167,7 @@ spec:
               path: /health
               port: http
           resources:
-            {{- toYaml $.Values.resources | nindent 12 }}
+            {{- toYaml $.Values.resources.core | nindent 12 }}
         - name: {{ $.Chart.Name }}-datasets-workers
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
           imagePullPolicy: {{ $version.image.pullPolicy }}
@@ -213,6 +223,8 @@ spec:
             - name: shared-volume
               mountPath: {{ $.Values.cacheDirectory }}
             {{- include "certificates.volumeMounts.system" $ | nindent 12 }}
+          resources:
+            {{- toYaml $.Values.resources.datasetsWorkers | nindent 12 }}
 
         - name: {{ $.Chart.Name }}-management-workers
           image: "{{ $version.image.repository }}:{{ $version.image.tag }}"
@@ -267,6 +279,8 @@ spec:
             - name: shared-volume
               mountPath: {{ $.Values.cacheDirectory }}
             {{- include "certificates.volumeMounts.system" $ | nindent 12 }}
+          resources:
+            {{- toYaml $.Values.resources.scheduler | nindent 12 }}
       {{- with $.Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
