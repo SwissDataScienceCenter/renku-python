@@ -102,6 +102,15 @@ class CreationSchema(Schema):
     )
 
 
+class AccessSchema(Schema):
+    """Schema for access date."""
+
+    accessed_at = fields.DateTime(
+        load_default=datetime.utcnow,
+        metadata={"description": "Access date."},
+    )
+
+
 class FileDetailsSchema(ArchiveSchema, CreationSchema):
     """Schema for file details."""
 

@@ -21,10 +21,10 @@ from datetime import datetime
 from marshmallow import fields, post_load
 
 from renku.ui.service.cache.models.project import Project
-from renku.ui.service.serializers.common import CreationSchema, MandatoryUserSchema
+from renku.ui.service.serializers.common import AccessSchema, CreationSchema, MandatoryUserSchema
 
 
-class ProjectSchema(CreationSchema, MandatoryUserSchema):
+class ProjectSchema(CreationSchema, AccessSchema, MandatoryUserSchema):
     """Context schema for project clone."""
 
     last_fetched_at = fields.DateTime(load_default=datetime.utcnow)

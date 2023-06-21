@@ -38,6 +38,7 @@ class Project(Model):
     __namespace__ = BaseCache.namespace
 
     created_at = DateTimeField()
+    accessed_at = DateTimeField(default=datetime.utcnow())
     last_fetched_at = DateTimeField()
 
     project_id = TextField(primary_key=True, index=True)
@@ -86,6 +87,11 @@ class Project(Model):
         return int((datetime.utcnow() - self.created_at).total_seconds())
 
     @property
+    def time_since_access(self):
+        """Returns time since last access."""
+        return int((datetime.utcnow() - self.accessed_at).total_seconds())
+
+    @property
     def fetch_age(self):
         """Returns project's fetch age in seconds."""
         return int((datetime.utcnow() - self.last_fetched_at).total_seconds())
@@ -104,7 +110,7 @@ class Project(Model):
 
         # NOTE: time to live measured in seconds
         ttl = ttl or int(os.getenv("RENKU_SVC_CLEANUP_TTL_PROJECTS", 1800))
-        return self.age >= ttl
+        return self.time_since_access >= ttl
 
     def purge(self):
         """Removes project from file system and cache."""

@@ -71,6 +71,8 @@ class LocalRepositoryCache(IRepositoryCache):
         if not project.initialized:
             raise errors.UninitializedProject(project.git_url)
 
+        self._update_project_access_date(project)
+
         return project
 
     def evict(self, project: Project):
@@ -87,6 +89,11 @@ class LocalRepositoryCache(IRepositoryCache):
         for project in Project.all():
             if project.ttl_expired():
                 self.evict(project)
+
+    def _update_project_access_date(self, project: Project):
+        """Update the access date of the project to current datetime."""
+        project.accessed_at = datetime.utcnow()
+        project.save()
 
     def _clone_project(
         self, cache: ServiceCache, git_url: str, branch: Optional[str], user: User, shallow: bool = True
@@ -133,6 +140,7 @@ class LocalRepositoryCache(IRepositoryCache):
                 else:
                     if found_project.abs_path.exists():
                         service_log.debug(f"project already cloned, skipping clone: {git_url}")
+                        self._update_project_access_date(found_project)
                         return found_project
 
                 # clean directory in case of previous failed state
