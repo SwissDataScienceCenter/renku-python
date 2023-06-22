@@ -91,7 +91,7 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
         except (AuthenticationError, ProjectNotFound):
             raise
         except BaseException as e:
-            service_log.info(f"fast gitlab checkout didnt work: {e}")
+            service_log.info(f"fast gitlab checkout didnt work: {e}", exc_info=e)
             result = self.execute_op()
 
         result_dict = asdict(result)

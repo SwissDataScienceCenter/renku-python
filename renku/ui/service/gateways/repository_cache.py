@@ -81,6 +81,8 @@ class LocalRepositoryCache(IRepositoryCache):
             with project.write_lock():
                 service_log.debug(f"purging project {project.project_id}:{project.name}")
                 project.purge()
+        except FileNotFoundError:
+            project.delete()
         except Exception as e:
             service_log.error(f"Couldn't purge project {project.project_id}:{project.name} from cache", exc_info=e)
 

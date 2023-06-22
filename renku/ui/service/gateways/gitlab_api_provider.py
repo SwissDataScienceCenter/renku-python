@@ -18,7 +18,7 @@
 import tarfile
 import tempfile
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Generator, List, Optional, Union
 
 import gitlab
 
@@ -101,7 +101,8 @@ class GitlabAPIProvider(IGitAPIProvider):
             try:
                 with open(full_path, "wb") as f:
                     project.files.raw(file_path=str(file), ref=branch, streamed=True, action=f.write)
-            except gitlab.GitlabGetError:
+            except gitlab.GitlabGetError as e:
+                service_log.info("Gitlab get error", exc_info=e)
                 delete_dataset_file(full_path)
                 continue
 
@@ -110,4 +111,11 @@ class GitlabAPIProvider(IGitAPIProvider):
                 project.repository_archive(path=str(folder), sha=branch, streamed=True, action=f.write, format="tar.gz")
                 f.seek(0)
                 with tarfile.open(fileobj=f) as archive:
-                    archive.extractall(path=target_folder)
+                    archive.extractall(path=target_folder, members=tar_members_without_top_folder(archive, 1))
+
+
+def tar_members_without_top_folder(tar: tarfile.TarFile, strip: int) -> Generator[tarfile.TarInfo, None, None]:
+    """Gets tar members, ignoring the top folder."""
+    for member in tar.getmembers():
+        member.path = member.path.split("/", strip)[-1]
+        yield member
