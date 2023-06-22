@@ -84,11 +84,15 @@ class Project(Model):
     def age(self):
         """Returns project's age in seconds."""
         # NOTE: `created_at` field is aligned to UTC timezone.
+        if not self.created_at:
+            return None
         return int((datetime.utcnow() - self.created_at).total_seconds())
 
     @property
     def time_since_access(self):
         """Returns time since last access."""
+        if not self.accessed_at:
+            return None
         return int((datetime.utcnow() - self.accessed_at).total_seconds())
 
     @property
@@ -102,7 +106,7 @@ class Project(Model):
 
     def ttl_expired(self, ttl=None):
         """Check if project time to live has expired."""
-        if not self.created_at:
+        if not self.time_since_access:
             # If record does not contain created_at,
             # it means its an old record, and
             # we should mark it for deletion.
