@@ -17,7 +17,6 @@
 """Renku service fixtures for integration testing."""
 import contextlib
 import json
-import os
 import shutil
 import uuid
 from copy import deepcopy
@@ -184,10 +183,11 @@ def svc_protected_old_repo(svc_synced_client, it_protected_repo_url):
     """Service client with remote protected repository."""
     from renku.ui.service.cache import cache as redis_cache
     from renku.ui.service.gateways.repository_cache import LocalRepositoryCache
+    from renku.ui.service.serializers.headers import RequiredIdentityHeaders
 
     svc_client, identity_headers, cache, user = svc_synced_client
 
-    user_data = {"fullname": "Renkubot", "email": "renkubot@datascience.ch", "token": os.getenv("IT_OAUTH_GIT_TOKEN")}
+    user_data = RequiredIdentityHeaders().load(identity_headers)
     user = redis_cache.ensure_user(user_data)
 
     project = LocalRepositoryCache().get(redis_cache, it_protected_repo_url, branch=None, user=user, shallow=False)
@@ -198,33 +198,13 @@ def svc_protected_old_repo(svc_synced_client, it_protected_repo_url):
 @pytest.fixture()
 def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, real_sync):
     """Client with a local remote to test pushes."""
-    from marshmallow import pre_load
-
     from renku.core.util.contexts import chdir
+    from renku.domain_model import git
     from renku.ui.cli import cli
     from renku.ui.service.cache import cache as redis_cache
     from renku.ui.service.gateways.repository_cache import LocalRepositoryCache
-    from renku.ui.service.serializers import cache
+    from renku.ui.service.serializers.headers import RequiredIdentityHeaders
     from tests.fixtures.runners import RenkuRunner
-
-    # NOTE: prevent service from adding an auth token as it doesn't work with local repos
-    def _no_auth_format(self, data, **kwargs):
-        return data["git_url"]
-
-    orig_format_url = cache.ProjectCloneContext.format_url
-    cache.ProjectCloneContext.format_url = _no_auth_format
-
-    # NOTE: mock owner/project so service is happy
-    def _mock_owner(self, data, **kwargs):
-        data["owner"] = "dummy"
-
-        data["name"] = "project"
-        data["slug"] = "project"
-
-        return data
-
-    orig_set_owner = cache.ProjectCloneContext.set_owner_name
-    cache.ProjectCloneContext.set_owner_name = pre_load(_mock_owner)
 
     remote_repo_path = tmp_path / "remote_repo"
 
@@ -233,6 +213,13 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
     remote_repo_checkout_path.mkdir()
 
     remote_repo_checkout = Repository.clone_from(url=remote_repo_path, path=remote_repo_checkout_path)
+
+    # NOTE: Mock GitURL parsing for local URL
+    def _parse(href):
+        return git.GitURL(href=href, regex="", owner="dummy", name="project", slug="project", path=remote_repo_path)
+
+    original_giturl_parse = git.GitURL.parse
+    git.GitURL.parse = _parse
 
     home = tmp_path / "user_home"
     home.mkdir()
@@ -259,11 +246,7 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
             except OSError:
                 pass
 
-            user_data = {
-                "fullname": "Renkubot",
-                "email": "renkubot@datascience.ch",
-                "token": os.getenv("IT_OAUTH_GIT_TOKEN"),
-            }
+            user_data = RequiredIdentityHeaders().load(identity_headers)
             user = redis_cache.ensure_user(user_data)
             remote_url = f"file://{remote_repo_path}"
 
@@ -274,8 +257,7 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
     try:
         yield svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout, remote_url
     finally:
-        cache.ProjectCloneContext.format_url = orig_format_url
-        cache.ProjectCloneContext.set_owner_name = orig_set_owner
+        git.GitURL.parse = original_giturl_parse
 
         try:
             shutil.rmtree(remote_repo_path)

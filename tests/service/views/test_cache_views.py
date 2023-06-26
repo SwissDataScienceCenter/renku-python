@@ -895,7 +895,7 @@ def test_cache_is_reset_after_failing_push(svc_protected_old_repo):
 @retry_failed
 def test_migrating_protected_branch(svc_protected_old_repo):
     """Check migrating on a protected branch does not change cache state."""
-    svc_client, headers, project_id, _, url = svc_protected_old_repo
+    svc_client, headers, project_id, _, _, url = svc_protected_old_repo
 
     response = svc_client.get("/cache.migrations_check", query_string=dict(git_url=url), headers=headers)
     assert 200 == response.status_code

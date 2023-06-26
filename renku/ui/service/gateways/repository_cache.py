@@ -207,7 +207,13 @@ class LocalRepositoryCache(IRepositoryCache):
             with project.write_lock(), Repository(project.abs_path) as repository:
                 try:
                     # NOTE: it rarely happens that origin is not reachable. Try again if it fails.
-                    repository.fetch("origin", repository.active_branch, depth=project.clone_depth)
+                    repository.fetch(
+                        "origin",
+                        repository.active_branch,
+                        depth=project.clone_depth
+                        if project.clone_depth is not None and project.clone_depth > 0
+                        else None,
+                    )
                     repository.reset(f"origin/{repository.active_branch}", hard=True)
                 except errors.GitCommandError as e:
                     project.purge()
