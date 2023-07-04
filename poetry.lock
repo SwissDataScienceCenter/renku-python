@@ -3459,13 +3459,13 @@ pycodegen = ["black"]
 
 [[package]]
 name = "sentry-sdk"
-version = "1.25.0"
+version = "1.27.0"
 description = "Python client for Sentry (https://sentry.io)"
 optional = true
 python-versions = "*"
 files = [
-    {file = "sentry-sdk-1.25.0.tar.gz", hash = "sha256:5be3296fc574fa8a4d9b213b4dcf8c8d0246c08f8bd78315c6286f386c37555a"},
-    {file = "sentry_sdk-1.25.0-py2.py3-none-any.whl", hash = "sha256:fe85cf5d0b3d0aa3480df689f9f6dc487de783defb0a95043368375dc893645e"},
+    {file = "sentry-sdk-1.27.0.tar.gz", hash = "sha256:eb2a5080912dc9b397925657669e3761d95d62c8aa4c0c6d6a73d5a31edaafe9"},
+    {file = "sentry_sdk-1.27.0-py2.py3-none-any.whl", hash = "sha256:8c0ba7a0ed4e39635d335fdac7c00840b14ce4319bb8629b934243d6306fee7d"},
 ]
 
 [package.dependencies]
@@ -4588,4 +4588,4 @@ service = ["apispec", "apispec-oneofschema", "apispec-webframeworks", "circus", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.1,<3.12"
-content-hash = "ed850d0da9ff45f44bcfe5081c7c3d59fba8631e294e065345b8267274ff1460"
+content-hash = "2c285d24390ee435cb8cfd8ce67cc4bea71ec6f61252b4a56f491559b75a7876"
