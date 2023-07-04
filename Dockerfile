@@ -2,7 +2,7 @@ FROM python:3.9-slim as base
 
 # hadolint ignore=DL3008,DL3009,DL3013
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y git git-lfs=2.* python3-dev tini bash curl && \
+    apt-get install --no-install-recommends -y git git-lfs=3.* python3-dev tini bash curl && \
     pip install --no-cache-dir --upgrade pip
 
 FROM base as builder

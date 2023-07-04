@@ -15,3 +15,4 @@ charts:
         buildArgs:
           CLEAN_INSTALL: "1"
           BUILD_CORE_SERVICE: "1"
+
