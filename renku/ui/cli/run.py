@@ -498,6 +498,7 @@ from renku.ui.cli.utils.terminal import print_workflow_file
 @click.option("--no-output", is_flag=True, default=False, help="Allow command without output files.")
 @click.option("--no-input-detection", is_flag=True, default=False, help="Disable auto-detection of inputs.")
 @click.option("--no-output-detection", is_flag=True, default=False, help="Disable auto-detection of outputs.")
+@click.option("--no-parameter-detection", is_flag=True, default=False, help="Disable auto-detection of parameters.")
 @click.option(
     "--success-code",
     "success_codes",
@@ -537,6 +538,7 @@ def run(
     no_output,
     no_input_detection,
     no_output_detection,
+    no_parameter_detection,
     success_codes,
     isolation,
     file,
@@ -587,6 +589,7 @@ def run(
             or no_output
             or no_input_detection
             or no_output_detection
+            or no_parameter_detection
             or success_codes
             or isolation
             or creators
@@ -653,6 +656,7 @@ def run(
                 no_output=no_output,
                 no_input_detection=no_input_detection,
                 no_output_detection=no_output_detection,
+                no_parameter_detection=no_parameter_detection,
                 success_codes=success_codes,
                 command_line=command_line,
                 creators=creators,

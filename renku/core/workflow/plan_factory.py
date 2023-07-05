@@ -71,6 +71,7 @@ class PlanFactory:
         working_dir: Optional[Union[Path, str]] = None,
         no_input_detection: bool = False,
         no_output_detection: bool = False,
+        no_parameter_detection: bool = False,
         success_codes: Optional[List[int]] = None,
         stdin: Optional[str] = None,
         stdout: Optional[str] = None,
@@ -80,6 +81,7 @@ class PlanFactory:
 
         self.no_input_detection = no_input_detection
         self.no_output_detection = no_output_detection
+        self.no_parameter_detection = no_parameter_detection
 
         if not command_line:
             raise errors.UsageError("Command line can not be empty. Please specify a command to execute.")
@@ -392,22 +394,47 @@ class PlanFactory:
 
         mapped_stream = self.get_stream_mapping_for_value(default_value)
 
-        self.inputs.append(
-            CommandInput(
-                id=CommandInput.generate_id(
-                    plan_id=self.plan_id,
-                    position=position,
-                    postfix=mapped_stream.stream_type if mapped_stream else postfix,
-                ),
-                default_value=default_value,
-                prefix=prefix,
+        inp_param = CommandInput(
+            id=CommandInput.generate_id(
+                plan_id=self.plan_id,
                 position=position,
-                mapped_to=mapped_stream,
-                encoding_format=encoding_format,
-                postfix=postfix,
-                name=name,
-            )
+                postfix=mapped_stream.stream_type if mapped_stream else postfix,
+            ),
+            default_value=default_value,
+            prefix=prefix,
+            position=position,
+            mapped_to=mapped_stream,
+            encoding_format=encoding_format,
+            postfix=postfix,
+            name=name,
         )
+
+        existing_parameter = next((p for p in self.inputs if p.name == inp_param.name), None)
+
+        if existing_parameter is not None and existing_parameter.default_value == inp_param.default_value:
+            # merge with new parameter
+            if existing_parameter.prefix is None:
+                existing_parameter.prefix = inp_param.prefix
+
+            if existing_parameter.position is None:
+                existing_parameter.position = inp_param.position
+
+            if existing_parameter.postfix is None:
+                existing_parameter.postfix = inp_param.postfix
+
+            if existing_parameter.encoding_format is None:
+                existing_parameter.encoding_format = inp_param.encoding_format
+
+            if existing_parameter.mapped_to is None:
+                existing_parameter.mapped_to = inp_param.mapped_to
+        elif existing_parameter is not None:
+            # duplicate with different values!
+            raise errors.ParameterError(
+                f"Duplicate input '{inp_param.name}' found with differing values ('{inp_param.default_value}'"
+                f" vs. '{existing_parameter.default_value}')"
+            )
+        else:
+            self.inputs.append(inp_param)
 
     def add_command_output(
         self,
@@ -447,19 +474,47 @@ class PlanFactory:
             postfix=mapped_stream.stream_type if mapped_stream else postfix,
         )
 
-        self.outputs.append(
-            CommandOutput(
-                id=id,
-                default_value=default_value,
-                prefix=prefix,
-                position=position,
-                mapped_to=mapped_stream,
-                encoding_format=encoding_format,
-                postfix=postfix,
-                create_folder=create_folder,
-                name=name,
-            )
+        out_param = CommandOutput(
+            id=id,
+            default_value=default_value,
+            prefix=prefix,
+            position=position,
+            mapped_to=mapped_stream,
+            encoding_format=encoding_format,
+            postfix=postfix,
+            create_folder=create_folder,
+            name=name,
         )
+
+        existing_parameter = next((p for p in self.outputs if p.name == out_param.name), None)
+
+        if existing_parameter is not None and existing_parameter.default_value == out_param.default_value:
+            # merge with new parameter
+            if existing_parameter.prefix is None:
+                existing_parameter.prefix = out_param.prefix
+
+            if existing_parameter.position is None:
+                existing_parameter.position = out_param.position
+
+            if existing_parameter.postfix is None:
+                existing_parameter.postfix = out_param.postfix
+
+            if existing_parameter.encoding_format is None:
+                existing_parameter.encoding_format = out_param.encoding_format
+
+            if existing_parameter.mapped_to is None:
+                existing_parameter.mapped_to = out_param.mapped_to
+
+            if not existing_parameter.create_folder:
+                existing_parameter.create_folder = out_param.create_folder
+        elif existing_parameter is not None:
+            # duplicate with different values!
+            raise errors.ParameterError(
+                f"Duplicate output '{out_param.name}' found with differing values ('{out_param.default_value}'"
+                f" vs. '{existing_parameter.default_value}')"
+            )
+        else:
+            self.outputs.append(out_param)
 
     def add_command_output_from_input(self, input: CommandInput, name):
         """Create a CommandOutput from an input."""
@@ -496,15 +551,34 @@ class PlanFactory:
         name: Optional[str] = None,
     ):
         """Create a CommandParameter."""
-        self.parameters.append(
-            CommandParameter(
-                id=CommandParameter.generate_id(plan_id=self.plan_id, position=position),
-                default_value=default_value,
-                prefix=prefix,
-                position=position,
-                name=name,
-            )
+        if self.no_parameter_detection and all(default_value != v for v, _ in self.explicit_parameters):
+            return
+
+        parameter = CommandParameter(
+            id=CommandParameter.generate_id(plan_id=self.plan_id, position=position),
+            default_value=default_value,
+            prefix=prefix,
+            position=position,
+            name=name,
         )
+
+        existing_parameter = next((p for p in self.parameters if p.name == parameter.name), None)
+
+        if existing_parameter is not None and existing_parameter.default_value == parameter.default_value:
+            # merge with new parameter
+            if not existing_parameter.prefix:
+                existing_parameter.prefix = parameter.prefix
+
+            if not existing_parameter.position:
+                existing_parameter.position = parameter.position
+        elif existing_parameter is not None:
+            # duplicate with different values!
+            raise errors.ParameterError(
+                f"Duplicate parameter '{parameter.name}' found with differing values ('{parameter.default_value}'"
+                f" vs. '{existing_parameter.default_value}')"
+            )
+        else:
+            self.parameters.append(parameter)
 
     def add_explicit_inputs(self):
         """Add explicit inputs ."""

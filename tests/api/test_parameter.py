@@ -121,6 +121,8 @@ def test_parameters(project):
 
     assert (42, "42", 42.42) == (p1.value, p2.value, p3.value)
 
+    _ = Parameter("parameter_3", 42.42)
+
     data = read_indirect_parameters(project.path)
 
     assert {"parameter-1", "param-2", "parameter_3"} == set(data.keys())
