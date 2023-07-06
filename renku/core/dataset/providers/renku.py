@@ -122,7 +122,8 @@ class RenkuProvider(ProviderApi, ImportProviderInterface):
             identifier = None
             dataset_info = None
         else:
-            dataset_name = dataset_info.get("name")
+            # name was renamed to slug, name kept for backwards compatibility
+            dataset_name = dataset_info.get("slug", dataset_info.get("name"))
             identifier = dataset_info["identifier"]
 
         if project_id:
