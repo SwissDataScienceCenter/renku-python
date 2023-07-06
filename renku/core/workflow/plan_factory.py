@@ -412,21 +412,7 @@ class PlanFactory:
         existing_parameter = next((p for p in self.inputs if p.name == inp_param.name), None)
 
         if existing_parameter is not None and existing_parameter.default_value == inp_param.default_value:
-            # merge with new parameter
-            if existing_parameter.prefix is None:
-                existing_parameter.prefix = inp_param.prefix
-
-            if existing_parameter.position is None:
-                existing_parameter.position = inp_param.position
-
-            if existing_parameter.postfix is None:
-                existing_parameter.postfix = inp_param.postfix
-
-            if existing_parameter.encoding_format is None:
-                existing_parameter.encoding_format = inp_param.encoding_format
-
-            if existing_parameter.mapped_to is None:
-                existing_parameter.mapped_to = inp_param.mapped_to
+            existing_parameter.update_from(inp_param)
         elif existing_parameter is not None:
             # duplicate with different values!
             raise errors.ParameterError(
@@ -489,24 +475,7 @@ class PlanFactory:
         existing_parameter = next((p for p in self.outputs if p.name == out_param.name), None)
 
         if existing_parameter is not None and existing_parameter.default_value == out_param.default_value:
-            # merge with new parameter
-            if existing_parameter.prefix is None:
-                existing_parameter.prefix = out_param.prefix
-
-            if existing_parameter.position is None:
-                existing_parameter.position = out_param.position
-
-            if existing_parameter.postfix is None:
-                existing_parameter.postfix = out_param.postfix
-
-            if existing_parameter.encoding_format is None:
-                existing_parameter.encoding_format = out_param.encoding_format
-
-            if existing_parameter.mapped_to is None:
-                existing_parameter.mapped_to = out_param.mapped_to
-
-            if not existing_parameter.create_folder:
-                existing_parameter.create_folder = out_param.create_folder
+            existing_parameter.update_from(out_param)
         elif existing_parameter is not None:
             # duplicate with different values!
             raise errors.ParameterError(
@@ -565,12 +534,7 @@ class PlanFactory:
         existing_parameter = next((p for p in self.parameters if p.name == parameter.name), None)
 
         if existing_parameter is not None and existing_parameter.default_value == parameter.default_value:
-            # merge with new parameter
-            if not existing_parameter.prefix:
-                existing_parameter.prefix = parameter.prefix
-
-            if not existing_parameter.position:
-                existing_parameter.position = parameter.position
+            existing_parameter.update_from(parameter)
         elif existing_parameter is not None:
             # duplicate with different values!
             raise errors.ParameterError(
