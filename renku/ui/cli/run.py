@@ -132,6 +132,14 @@ The detection might not work as expected if:
     This only affects files and directories; command options and flags are
     still treated as inputs.
 
+.. topic:: Disabling parameter detection (``--no-parameter-detection``)
+
+    Inputs that aren't files or directories are automatically detected as
+    parameters in ``renku run``. You can disable this feature by passing the
+    ``--no-parameter-detection`` flag. You can still manually specify
+    parameters using ``--param`` arguments mentioned above or using the
+    ``renku.api.Parameter`` class in Python code.
+
 .. note:: ``renku run`` prints the generated plan after execution if you pass
     ``--verbose`` to it. You can check the generated plan to verify that the
     execution was done as you intended. The plan will always be printed to
