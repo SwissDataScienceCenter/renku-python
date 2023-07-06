@@ -38,7 +38,7 @@ class Project(Model):
     __namespace__ = BaseCache.namespace
 
     created_at = DateTimeField()
-    accessed_at = DateTimeField(default=datetime.utcnow())
+    accessed_at = DateTimeField(default=datetime.utcnow)
     last_fetched_at = DateTimeField()
 
     project_id = TextField(primary_key=True, index=True)
@@ -99,6 +99,11 @@ class Project(Model):
     def fetch_age(self):
         """Returns project's fetch age in seconds."""
         return int((datetime.utcnow() - self.last_fetched_at).total_seconds())
+
+    @property
+    def is_shallow(self) -> bool:
+        """Returns whether the project is checked out shallow or not."""
+        return self.clone_depth is not None and self.clone_depth > 0
 
     def exists(self):
         """Ensure a project exists on file system."""

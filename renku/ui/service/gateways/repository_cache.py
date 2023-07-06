@@ -63,7 +63,7 @@ class LocalRepositoryCache(IRepositoryCache):
             project.delete()
             return self._clone_project(cache, git_url, branch, user, shallow)
 
-        if not shallow and project.clone_depth is not None and project.clone_depth <= 1:
+        if not shallow and project.is_shallow:
             self._unshallow_project(project, user)
 
         self._maybe_update_cache(project, user)
@@ -146,6 +146,7 @@ class LocalRepositoryCache(IRepositoryCache):
                         return found_project
 
                 # clean directory in case of previous failed state
+                # NOTE: we only want to delete the contents, NOT the folder itself, in case it's still referenced
                 for root, dirs, files in os.walk(project.abs_path):
                     for f in files:
                         os.unlink(os.path.join(root, f))
