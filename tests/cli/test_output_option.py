@@ -279,12 +279,21 @@ def test_no_output_and_disabled_detection(renku_cli):
 def test_disabled_detection(renku_cli):
     """Test disabled auto-detection of inputs and outputs."""
     exit_code, activity = renku_cli(
-        "run", "--no-input-detection", "--no-output-detection", "--output", "README.md", "touch", "some-files"
+        "run",
+        "--no-input-detection",
+        "--no-output-detection",
+        "--no-parameter-detection",
+        "--output",
+        "README.md",
+        "touch",
+        "some-files",
+        "-f",
     )
 
     assert 0 == exit_code
     plan = activity.association.plan
     assert 0 == len(plan.inputs)
+    assert 0 == len(plan.parameters)
     assert 1 == len(plan.outputs)
     assert "README.md" == str(plan.outputs[0].default_value)
 

@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +18,7 @@
 import tarfile
 import tempfile
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import Generator, List, Optional, Union
 
 import gitlab
 
@@ -27,6 +26,7 @@ from renku.core import errors
 from renku.core.util.os import delete_dataset_file
 from renku.domain_model.git import GitURL
 from renku.ui.service.interfaces.git_api_provider import IGitAPIProvider
+from renku.ui.service.logger import service_log
 
 
 class GitlabAPIProvider(IGitAPIProvider):
@@ -80,10 +80,18 @@ class GitlabAPIProvider(IGitAPIProvider):
                 raise errors.AuthenticationError from e
             except gitlab.GitlabGetError as e:
                 # NOTE: better to re-raise this as a core error since it's a common case
+                service_log.warn(f"fast project clone didn't work: {e}", exc_info=e)
                 if "project not found" in getattr(e, "error_message", "").lower():
                     raise errors.ProjectNotFound from e
                 else:
                     raise
+        except gitlab.GitlabGetError as e:
+            # NOTE: better to re-raise this as a core error since it's a common case
+            service_log.warn(f"fast project clone didn't work: {e}", exc_info=e)
+            if "project not found" in getattr(e, "error_message", "").lower():
+                raise errors.ProjectNotFound from e
+            else:
+                raise
 
         for file in files:
             full_path = target_folder / file
@@ -93,7 +101,8 @@ class GitlabAPIProvider(IGitAPIProvider):
             try:
                 with open(full_path, "wb") as f:
                     project.files.raw(file_path=str(file), ref=branch, streamed=True, action=f.write)
-            except gitlab.GitlabGetError:
+            except gitlab.GitlabGetError as e:
+                service_log.info("Gitlab get error", exc_info=e)
                 delete_dataset_file(full_path)
                 continue
 
@@ -102,4 +111,11 @@ class GitlabAPIProvider(IGitAPIProvider):
                 project.repository_archive(path=str(folder), sha=branch, streamed=True, action=f.write, format="tar.gz")
                 f.seek(0)
                 with tarfile.open(fileobj=f) as archive:
-                    archive.extractall(path=target_folder)
+                    archive.extractall(path=target_folder, members=tar_members_without_top_folder(archive, 1))
+
+
+def tar_members_without_top_folder(tar: tarfile.TarFile, strip: int) -> Generator[tarfile.TarInfo, None, None]:
+    """Gets tar members, ignoring the top folder."""
+    for member in tar.getmembers():
+        member.path = member.path.split("/", strip)[-1]
+        yield member

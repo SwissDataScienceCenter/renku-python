@@ -25,7 +25,6 @@ from werkzeug.utils import secure_filename
 
 from renku.core.errors import DatasetExistsError, DatasetNotFound, ParameterError
 from renku.infrastructure.repository import Repository
-from renku.ui.service.jobs.cleanup import cache_project_cleanup
 from renku.ui.service.jobs.datasets import dataset_add_remote_file, dataset_import
 from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET, encode_b64
 from renku.ui.service.utils import make_project_path
@@ -50,7 +49,7 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
     }
 
     payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
         "dataset_uri": url,
     }
 
@@ -98,7 +97,7 @@ def test_dataset_import_job(doi, svc_client_with_repo):
     user = {"user_id": user_id}
 
     payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
         "dataset_uri": doi,
     }
     response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
@@ -153,7 +152,7 @@ def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
     user = {"user_id": user_id}
 
     payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
         "dataset_uri": doi,
     }
     response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
@@ -202,7 +201,7 @@ def test_dataset_import_twice_job(doi, svc_client_with_repo):
     user = {"user_id": user_id}
 
     payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
         "dataset_uri": doi,
     }
     response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
@@ -257,7 +256,12 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
     user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = {"user_id": user_id}
 
-    payload = {"project_id": project_id, "name": uuid.uuid4().hex, "create_dataset": True, "files": [{"file_url": url}]}
+    payload = {
+        "git_url": url_components.href,
+        "name": uuid.uuid4().hex,
+        "create_dataset": True,
+        "files": [{"file_url": url}],
+    }
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
@@ -363,43 +367,6 @@ def test_delay_add_file_job_failure(svc_client_cache, it_remote_repo_url_temp_br
     from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
     delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
-
-
-@pytest.mark.parametrize("doi", ["10.5281/zenodo.3761586"])
-@pytest.mark.integration
-@pytest.mark.service
-def test_dataset_project_lock(doi, svc_client_with_repo):
-    """Test dataset project lock."""
-    svc_client, headers, project_id, url_components = svc_client_with_repo
-    user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
-    user = {"user_id": user_id}
-
-    payload = {
-        "project_id": project_id,
-        "dataset_uri": doi,
-    }
-    response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
-
-    assert_rpc_response(response)
-    assert {"job_id", "created_at"} == set(response.json["result"].keys())
-
-    dest = make_project_path(
-        user,
-        {
-            "owner": url_components.owner,
-            "name": url_components.name,
-            "slug": url_components.slug,
-            "project_id": project_id,
-        },
-    )
-
-    old_commit = Repository(dest).head.commit
-
-    cache_project_cleanup()
-
-    new_commit = Repository(dest).head.commit
-    assert old_commit.hexsha == new_commit.hexsha
-    assert dest.exists() and [file for file in dest.glob("*")]
 
 
 @pytest.mark.service

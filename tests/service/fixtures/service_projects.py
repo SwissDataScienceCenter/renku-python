@@ -41,7 +41,7 @@ def project_metadata(project) -> Generator[Tuple["RenkuProject", Dict[str, Any]]
         "email": "my@email.com",
         "owner": "me",
         "token": "awesome token",
-        "git_url": "git@gitlab.com",
+        "git_url": "https://example.com/a/b.git",
         "initialized": True,
     }
 

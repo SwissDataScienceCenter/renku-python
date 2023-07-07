@@ -22,7 +22,6 @@ import pytest
 
 from renku.ui.service.config import SVC_ERROR_PROGRAMMING
 from renku.ui.service.errors import (
-    IntermittentProjectIdError,
     IntermittentTimeoutError,
     ProgramContentTypeError,
     UserAnonymousError,
@@ -79,11 +78,11 @@ def test_auth_headers_exc(service_allowed_endpoint):
 def test_content_type_headers_exc(svc_client_with_repo):
     """Verify exceptions are triggered when missing data."""
 
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
     headers["Content-Type"] = "Fake"
 
     payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
         "config": {
             "lfs_threshold": "1b",
             "renku.autocommit_lfs": "true",
@@ -103,10 +102,10 @@ def test_content_type_headers_exc(svc_client_with_repo):
 @retry_failed
 def test_migration_required_flag(svc_client_setup):
     """Check migration required failure."""
-    svc_client, headers, project_id, _, _ = svc_client_setup
+    svc_client, headers, project_id, url_components, _ = svc_client_setup
 
     payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
         "name": uuid.uuid4().hex,
     }
 
@@ -150,21 +149,13 @@ def test_project_uninitialized(svc_client, it_non_renku_repo_url, identity_heade
     """Check migration required failure."""
     payload = {"git_url": it_non_renku_repo_url}
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
+    response = svc_client.post("/project.show", data=json.dumps(payload), headers=identity_headers)
 
     assert response
-    assert "result" in response.json
-    assert "error" not in response.json
+    assert "error" in response.json
+    assert response.json["error"]["code"] == 1110
 
-    project_id = response.json["result"]["project_id"]
-    initialized = response.json["result"]["initialized"]
-
-    assert not initialized
-
-    payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
-    }
+    payload["name"] = uuid.uuid4().hex
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers)
 
@@ -178,17 +169,13 @@ def test_project_uninitialized(svc_client, it_non_renku_repo_url, identity_heade
 def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers):
     """Check migration required failure."""
     payload = {"git_url": it_no_commit_repo_url}
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
+    response = svc_client.post("/project.show", data=json.dumps(payload), headers=identity_headers)
 
-    assert_rpc_response(response)
-    project_id = response.json["result"]["project_id"]
-    initialized = response.json["result"]["initialized"]
-    assert not initialized
+    assert response
+    assert "error" in response.json
+    assert response.json["error"]["code"] == 1110
 
-    payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
-    }
+    payload["name"] = uuid.uuid4().hex
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers)
 
     assert_rpc_response(response, "error")
@@ -197,7 +184,7 @@ def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers)
 
 @pytest.mark.service
 @pytest.mark.integration
-@retry_failed
+# @retry_failed
 @pytest.mark.parametrize(
     "git_url",
     [
@@ -219,22 +206,6 @@ def test_invalid_git_remote(git_url, svc_client_with_user):
     response_code = response.json["error"]["code"]
     # NOTE: depending on local git client settings, timeout may occur for non valid repos
     assert response_code == code_invalid or response_code == code_timeout
-
-
-@pytest.mark.service
-@pytest.mark.integration
-@retry_failed
-def test_invalid_project_id(svc_client_with_repo):
-    """Test error on wrong project_id while showing project metadata."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
-
-    show_payload = {
-        "project_id": project_id + "12345",
-    }
-    response = svc_client.post("/project.show", data=json.dumps(show_payload), headers=headers)
-
-    assert_rpc_response(response, "error")
-    assert IntermittentProjectIdError.code == response.json["error"]["code"]
 
 
 @pytest.mark.integration

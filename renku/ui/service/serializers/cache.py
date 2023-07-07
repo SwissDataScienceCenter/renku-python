@@ -32,7 +32,6 @@ from renku.ui.service.serializers.common import (
     AsyncSchema,
     ErrorResponse,
     FileDetailsSchema,
-    LocalRepositorySchema,
     RemoteRepositorySchema,
     RenkuSyncSchema,
 )
@@ -233,7 +232,7 @@ class ProjectListResponseRPC(JsonRPCResponse):
     result = fields.Nested(ProjectListResponse)
 
 
-class ProjectMigrateRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySchema):
+class ProjectMigrateRequest(AsyncSchema, RemoteRepositorySchema):
     """Request schema for project migrate."""
 
     force_template_update = fields.Boolean(dump_default=False)
@@ -259,7 +258,7 @@ class ProjectMigrateResponseRPC(JsonRPCResponse):
     result = fields.Nested(ProjectMigrateResponse)
 
 
-class ProjectMigrationCheckRequest(LocalRepositorySchema, RemoteRepositorySchema):
+class ProjectMigrationCheckRequest(RemoteRepositorySchema):
     """Request schema for project migration check."""
 
 

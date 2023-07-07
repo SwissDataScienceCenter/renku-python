@@ -18,6 +18,7 @@
 import os
 import shutil
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 import portalocker
@@ -37,6 +38,7 @@ class Project(Model):
     __namespace__ = BaseCache.namespace
 
     created_at = DateTimeField()
+    accessed_at = DateTimeField(default=datetime.utcnow)
     last_fetched_at = DateTimeField()
 
     project_id = TextField(primary_key=True, index=True)
@@ -44,18 +46,16 @@ class Project(Model):
 
     clone_depth = IntegerField()
     git_url = TextField(index=True)
+    branch = TextField(index=True)
 
     name = TextField()
     slug = TextField()
-    fullname = TextField()
     description = TextField()
-    email = TextField()
     owner = TextField()
-    token = TextField()
     initialized = BooleanField()
 
     @property
-    def abs_path(self):
+    def abs_path(self) -> Path:
         """Full path of cached project."""
         return CACHE_PROJECTS_PATH / self.user_id / self.owner / self.slug
 
@@ -84,12 +84,26 @@ class Project(Model):
     def age(self):
         """Returns project's age in seconds."""
         # NOTE: `created_at` field is aligned to UTC timezone.
+        if not self.created_at:
+            return None
         return int((datetime.utcnow() - self.created_at).total_seconds())
+
+    @property
+    def time_since_access(self):
+        """Returns time since last access."""
+        if not self.accessed_at:
+            return None
+        return int((datetime.utcnow() - self.accessed_at).total_seconds())
 
     @property
     def fetch_age(self):
         """Returns project's fetch age in seconds."""
         return int((datetime.utcnow() - self.last_fetched_at).total_seconds())
+
+    @property
+    def is_shallow(self) -> bool:
+        """Returns whether the project is checked out shallow or not."""
+        return self.clone_depth is not None and self.clone_depth > 0
 
     def exists(self):
         """Ensure a project exists on file system."""
@@ -97,7 +111,7 @@ class Project(Model):
 
     def ttl_expired(self, ttl=None):
         """Check if project time to live has expired."""
-        if not self.created_at:
+        if not self.time_since_access:
             # If record does not contain created_at,
             # it means its an old record, and
             # we should mark it for deletion.
@@ -105,11 +119,12 @@ class Project(Model):
 
         # NOTE: time to live measured in seconds
         ttl = ttl or int(os.getenv("RENKU_SVC_CLEANUP_TTL_PROJECTS", 1800))
-        return self.age >= ttl
+        return self.time_since_access >= ttl
 
     def purge(self):
         """Removes project from file system and cache."""
-        shutil.rmtree(str(self.abs_path))
+        if self.exists():
+            shutil.rmtree(str(self.abs_path))
         self.delete()
 
     def is_locked(self, jobs):
