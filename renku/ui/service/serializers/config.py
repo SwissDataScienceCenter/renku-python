@@ -18,17 +18,11 @@
 
 from marshmallow import Schema, fields
 
-from renku.ui.service.serializers.common import (
-    AsyncSchema,
-    LocalRepositorySchema,
-    MigrateSchema,
-    RemoteRepositorySchema,
-    RenkuSyncSchema,
-)
+from renku.ui.service.serializers.common import AsyncSchema, MigrateSchema, RemoteRepositorySchema, RenkuSyncSchema
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
 
-class ConfigShowRequest(LocalRepositorySchema, RemoteRepositorySchema):
+class ConfigShowRequest(RemoteRepositorySchema):
     """Request schema for config show."""
 
 
@@ -50,7 +44,7 @@ class ConfigShowResponseRPC(JsonRPCResponse):
     result = fields.Nested(ConfigShowResponse)
 
 
-class ConfigSetRequest(AsyncSchema, ConfigShowSchema, LocalRepositorySchema, MigrateSchema, RemoteRepositorySchema):
+class ConfigSetRequest(AsyncSchema, ConfigShowSchema, MigrateSchema, RemoteRepositorySchema):
     """Request schema for config set."""
 
 
