@@ -1547,6 +1547,26 @@ def test_dataset_tag(tmpdir, runner, project, subdirectory):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
+def test_dataset_overwrite_tag(runner, project_with_datasets):
+    """Test that dataset tags can be overwritten."""
+    # tag dataset
+    result = runner.invoke(cli, ["dataset", "tag", "dataset-1", "1.0"], catch_exceptions=False)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    # retag
+    result = runner.invoke(cli, ["dataset", "tag", "dataset-1", "1.0"], catch_exceptions=False)
+    assert 2 == result.exit_code, format_result_exception(result)
+    assert "Tag '1.0' already exists" in result.output
+
+    # force overwrite
+    result = runner.invoke(cli, ["dataset", "tag", "--force", "dataset-1", "1.0"], catch_exceptions=False)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert 1 == result.output.count('"@id": "https://localhost/dataset-tags/1.0%40')
+
+
 @pytest.mark.parametrize("form", ["tabular", "json-ld"])
 def test_dataset_ls_tags(tmpdir, runner, project, form):
     """Test listing of dataset tags."""
