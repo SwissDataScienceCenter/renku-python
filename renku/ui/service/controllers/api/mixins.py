@@ -162,6 +162,11 @@ class RenkuOperationMixin(metaclass=ABCMeta):
                 project = Project.get(
                     (Project.user_id == self.user_data["user_id"]) & (Project.git_url == self.context["git_url"])
                 )
+
+                if not project.abs_path.exists():
+                    project.delete()
+                    raise ValueError("Project found in redis but missing on disk.")
+
             except ValueError:
                 from renku.ui.service.controllers.cache_project_clone import ProjectCloneCtrl
 
