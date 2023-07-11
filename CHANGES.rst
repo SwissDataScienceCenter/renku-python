@@ -18,6 +18,15 @@
 Changes
 =======
 
+`1.11.4 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.11.3...v1.11.4>`__ (2023-07-11)
+----------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+- **svc:** isolate redis namespace per service instance
+- **svc:** properly check if a project is in cache
+
 `1.11.3 <https://github.com/SwissDataScienceCenter/renku-python/compare/v1.11.2...v1.11.3>`__ (2023-03-07)
 ----------------------------------------------------------------------------------------------------------
 

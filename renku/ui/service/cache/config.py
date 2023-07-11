@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2020 - Swiss Data Science Center (SDSC)
 # A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
@@ -17,13 +16,14 @@
 # limitations under the License.
 """Renku service cache configuration."""
 import os
+import platform
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 REDIS_DATABASE = int(os.getenv("REDIS_DATABASE", 0))
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
 
-REDIS_NAMESPACE = os.getenv("REDIS_NAMESPACE")
+REDIS_NAMESPACE = os.getenv("REDIS_NAMESPACE", "") + platform.node()
 
 REDIS_IS_SENTINEL = os.environ.get("REDIS_IS_SENTINEL", "") == "true"
 REDIS_MASTER_SET = os.environ.get("REDIS_MASTER_SET", "mymaster")
