@@ -126,9 +126,10 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
         self.template_version = repository.head.commit.hexsha
 
         # Verify missing parameters
-        template_parameters = set(p.name for p in self.template.parameters)
+        template_parameters = {p.name: p for p in self.template.parameters}
         provided_parameters = {p["key"]: p["value"] for p in self.ctx["parameters"]}
-        missing_keys = list(template_parameters - provided_parameters.keys())
+        missing_keys = list(template_parameters.keys() - provided_parameters.keys())
+        missing_keys = [k for k in missing_keys if not template_parameters[k].has_default]
         if len(missing_keys) > 0:
             raise UserProjectCreationError(error_message=f"the template requires a value for '${missing_keys[0]}'")
 
