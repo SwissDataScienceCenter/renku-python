@@ -24,6 +24,7 @@ from rq import Worker
 from sentry_sdk.integrations.rq import RqIntegration
 
 from renku.core.errors import ConfigurationError, UsageError
+from renku.ui.service.cache.config import REDIS_NAMESPACE
 from renku.ui.service.config import SENTRY_ENABLED, SENTRY_SAMPLERATE
 from renku.ui.service.jobs.queues import QUEUES, WorkerQueues
 from renku.ui.service.logger import DEPLOYMENT_LOG_LEVEL, worker_log
@@ -64,7 +65,7 @@ def check_queues(queue_list):
 
 def start_worker(queue_list):
     """Start worker."""
-    q = [q.strip() for q in queue_list if q.strip()]
+    q = [f"{REDIS_NAMESPACE}.{q.strip()}" for q in queue_list if q.strip()]
     check_queues(q)
 
     worker_log.info(f"working on queues: {queue_list}")
