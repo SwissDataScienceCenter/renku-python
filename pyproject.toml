@@ -422,5 +422,5 @@ pylint = ["+F*", "+E*", "-E121", "-E126", "-E203", "-E226", "-E231", "-W503", "-
 
 
 [build-system]
-requires = ["poetry>=1.1.11,<1.2.0", "poetry-dynamic-versioning", "gitpython==3.1.24"]
+requires = ["poetry>=1.1.11,<1.2.0", "poetry-dynamic-versioning>=0.14,<0.18", "poetry.core<1.6.0", "gitpython==3.1.24"]
 build-backend = "poetry.masonry.api"
