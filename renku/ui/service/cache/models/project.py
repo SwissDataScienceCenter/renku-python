@@ -57,7 +57,10 @@ class Project(Model):
     @property
     def abs_path(self) -> Path:
         """Full path of cached project."""
-        return CACHE_PROJECTS_PATH / self.user_id / self.owner / self.slug
+        branch = self.branch
+        if not self.branch:
+            branch = "__default__"
+        return CACHE_PROJECTS_PATH / self.user_id / self.owner / self.slug / branch
 
     def read_lock(self, timeout: Optional[float] = None):
         """Shared read lock on the project."""
