@@ -67,9 +67,9 @@ def start_worker(queue_list):
     q = [f"{REDIS_NAMESPACE}.{q.strip()}" for q in queue_list if q.strip()]
     check_queues(q)
 
-    worker_log.info(f"working on queues: {queue_list}")
+    worker_log.info(f"working on queues: {q}")
 
-    with worker(queue_list) as rq_worker:
+    with worker(q) as rq_worker:
         worker_log.info("running worker")
         rq_worker.work(logging_level=DEPLOYMENT_LOG_LEVEL)
 
@@ -83,4 +83,4 @@ if __name__ == "__main__":
             "Worker queues not specified. Please, set RENKU_SVC_WORKER_QUEUES environment variable."
         )
 
-    start_worker([queue_name.strip() for queue_name in queues.strip().split(",")])
+    start_worker([f"{REDIS_NAMESPACE}.{queue_name.strip()}" for queue_name in queues.strip().split(",")])
