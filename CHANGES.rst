@@ -18,6 +18,24 @@
 Changes
 =======
 
+`2.6.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.5.0...v2.6.0>`__ (2023-06-20)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **service:** fixes importing private datasets in deployments with
+   external gitlab
+   (`#3523 <https://github.com/SwissDataScienceCenter/renku-python/issues/3523>`__)
+   (`d64c179 <https://github.com/SwissDataScienceCenter/renku-python/commit/d64c179857d0f1faa08c11a0cf0149eec97b4e46>`__)
+
+Features
+~~~~~~~~
+
+-  **service:** add support for horizontal scaling
+   (`#3178 <https://github.com/SwissDataScienceCenter/renku-python/issues/3178>`__)
+   (`fab2b58 <https://github.com/SwissDataScienceCenter/renku-python/commit/fab2b583f3c36fa179b6388ca7a28fa68b2aad8b>`__)
+
 `2.5.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.4.1...v2.5.0>`__ (2023-06-02)
 -------------------------------------------------------------------------------------------------------
 
