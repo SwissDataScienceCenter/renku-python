@@ -1,11 +1,4 @@
 {{- range $version := .Values.versions }}
-{{- $queuesWithVersion := dict "datasetqueues" (list) "managementqueues" (list) -}}
-{{- range $queue := (split "," $.Values.datasetsWorkerQueues) -}}
-{{- $var := printf "%s.%s" $version.name $queue | append $queuesWithVersion.datasetqueues | set $queuesWithVersion "datasetqueues" -}}
-{{- end }}
-{{- range $queue := (split "," $.Values.managementWorkerQueues) -}}
-{{- $var := printf "%s.%s" $version.name $queue | append $queuesWithVersion.managementqueues | set $queuesWithVersion "managementqueues" -}}
-{{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -199,7 +192,7 @@ spec:
             - name: RENKU_SVC_CLEANUP_INTERVAL
               value: {{ $.Values.cleanupInterval | quote }}
             - name: RENKU_SVC_WORKER_QUEUES
-              value: {{ join "," $queuesWithVersion.datasetqueues }}
+              value: {{ $.Values.datasetsWorkerQueues}}
             - name: RENKU_SVC_CLEANUP_TTL_FILES
               value: {{ $.Values.cleanupFilesTTL | quote }}
             - name: RENKU_SVC_CLEANUP_TTL_PROJECTS
@@ -255,7 +248,7 @@ spec:
             - name: RENKU_SVC_CLEANUP_INTERVAL
               value: {{ $.Values.cleanupInterval | quote }}
             - name: RENKU_SVC_WORKER_QUEUES
-              value: {{ join "," $queuesWithVersion.managementqueues }}
+              value: {{ $.Values.managementWorkerQueues }}
             - name: RENKU_SVC_CLEANUP_TTL_FILES
               value: {{ $.Values.cleanupFilesTTL | quote }}
             - name: RENKU_SVC_CLEANUP_TTL_PROJECTS

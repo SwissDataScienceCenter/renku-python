@@ -98,7 +98,7 @@ versions:
     fullnameOverride: ""
     image:
       repository: renku/renku-core
-      tag: "v1.11.3"
+      tag: "v1.11.4"
       pullPolicy: IfNotPresent
 podSecurityContext:
   runAsUser: 1000
