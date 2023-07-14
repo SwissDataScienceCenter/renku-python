@@ -124,6 +124,7 @@ def test_read_manifest_from_wrong_template(svc_client_with_templates, template_u
 @retry_failed
 def test_create_project_from_template(svc_client_templates_creation, with_injection):
     """Check creating project from a valid template."""
+    from renku.ui.service.cache.models.project import NO_BRANCH_FOLDER
     from renku.ui.service.serializers.headers import RenkuHeaders
     from renku.ui.service.utils import CACHE_PROJECTS_PATH
 
@@ -142,7 +143,9 @@ def test_create_project_from_template(svc_client_templates_creation, with_inject
 
     # NOTE: assert correct git user is set on new project
     user_data = RenkuHeaders.decode_user(headers["Renku-User"])
-    project_path = CACHE_PROJECTS_PATH / user_data["user_id"] / payload["project_namespace"] / stripped_name
+    project_path = (
+        CACHE_PROJECTS_PATH / user_data["user_id"] / payload["project_namespace"] / stripped_name / NO_BRANCH_FOLDER
+    )
     reader = Repository(project_path).get_configuration()
     assert reader.get_value("user", "email") == user_data["email"]
     assert reader.get_value("user", "name") == user_data["name"]

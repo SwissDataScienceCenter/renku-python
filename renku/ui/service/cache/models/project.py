@@ -29,6 +29,7 @@ from renku.ui.service.config import CACHE_PROJECTS_PATH
 
 MAX_CONCURRENT_PROJECT_REQUESTS = 10
 LOCK_TIMEOUT = 15
+NO_BRANCH_FOLDER = "__default_branch__"
 
 
 class Project(Model):
@@ -59,7 +60,7 @@ class Project(Model):
         """Full path of cached project."""
         branch = self.branch
         if not self.branch:
-            branch = "__default__"
+            branch = NO_BRANCH_FOLDER
         return CACHE_PROJECTS_PATH / self.user_id / self.owner / self.slug / branch
 
     def read_lock(self, timeout: Optional[float] = None):
