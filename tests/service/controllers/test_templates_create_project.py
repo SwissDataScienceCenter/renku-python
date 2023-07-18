@@ -39,7 +39,7 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
 
     # Check ctrl_mock.
     assert ctrl_mock.call_count == 1
-    assert response.json["result"]["slug"] == ctrl_mock.call_args[0][0].name
+    assert response.json["result"]["slug"] == ctrl_mock.call_args[0][0].parent.name
 
     # Ctrl state.
     expected_context = {
@@ -165,6 +165,8 @@ def test_template_create_project_with_custom_cli_ctrl(
     ctrl_init, svc_cache_dir, svc_client_templates_creation, mocker, monkeypatch
 ):
     """Test template create project controller."""
+    from renku.ui.service.cache.models.project import NO_BRANCH_FOLDER
+
     monkeypatch.setenv("RENKU_PROJECT_DEFAULT_CLI_VERSION", "9.9.9rc9")
     from renku.ui.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
 
@@ -182,7 +184,11 @@ def test_template_create_project_with_custom_cli_ctrl(
     cache_dir, _ = svc_cache_dir
 
     project_path = (
-        cache_dir / user_data["user_id"] / response.json["result"]["namespace"] / response.json["result"]["slug"]
+        cache_dir
+        / user_data["user_id"]
+        / response.json["result"]["namespace"]
+        / response.json["result"]["slug"]
+        / NO_BRANCH_FOLDER
     )
 
     with open(project_path / "Dockerfile") as f:
