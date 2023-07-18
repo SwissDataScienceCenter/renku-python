@@ -150,17 +150,6 @@ files = [
 pytz = {version = ">=2015.7", markers = "python_version < \"3.9\""}
 
 [[package]]
-name = "bagit"
-version = "1.8.1"
-description = "Create and validate BagIt packages"
-optional = false
-python-versions = "*"
-files = [
-    {file = "bagit-1.8.1-py2.py3-none-any.whl", hash = "sha256:d14dd7e373dd24d41f6748c42f123f7db77098dfa4a0125dbacb4c8bdf767c09"},
-    {file = "bagit-1.8.1.tar.gz", hash = "sha256:37df1330d2e8640c8dee8ab6d0073ac701f0614d25f5252f9e05263409cee60c"},
-]
-
-[[package]]
 name = "bashlex"
 version = "0.16"
 description = "Python parser for bash"
@@ -744,9 +733,9 @@ files = [
 
 [package.dependencies]
 "ruamel.yaml" = [
-    {version = ">=0.16.0,<0.18", markers = "python_version >= \"3.10\""},
     {version = ">=0.15.78,<0.18", markers = "python_version >= \"3.8\""},
     {version = ">=0.15.98,<0.18", markers = "python_version >= \"3.9\""},
+    {version = ">=0.16.0,<0.18", markers = "python_version >= \"3.10\""},
 ]
 schema-salad = "*"
 setuptools = "*"
@@ -777,20 +766,20 @@ pretty = ["cwlformat"]
 
 [[package]]
 name = "cwltool"
-version = "3.1.20230425144158"
+version = "3.1.20230624081518"
 description = "Common workflow language reference implementation"
 optional = false
 python-versions = ">=3.6, <4"
 files = [
-    {file = "cwltool-3.1.20230425144158-py3-none-any.whl", hash = "sha256:a4fcf698924d8108be4c0ab459923080b3ad42b27e2c9e8d77ee602b48dd8e0b"},
-    {file = "cwltool-3.1.20230425144158.tar.gz", hash = "sha256:b6307c536ec94a94cb9215a26057ea792b907144ca57b015699cb180ca309086"},
+    {file = "cwltool-3.1.20230624081518-py3-none-any.whl", hash = "sha256:7399ad5ffb22e742136a26dc048cd0cf606a1bc8bd97b53b6e02e836bb966b1e"},
+    {file = "cwltool-3.1.20230624081518.tar.gz", hash = "sha256:7adb9fc0bc0fd68b940c96bef6b72772f0d5f27399024cc912804c09de475847"},
 ]
 
 [package.dependencies]
 argcomplete = "*"
-bagit = ">=1.6.4"
 coloredlogs = "*"
 cwl-utils = ">=0.22"
+importlib-resources = ">=1.4"
 mypy-extensions = "*"
 prov = "1.5.1"
 psutil = ">=5.6.6"
@@ -798,14 +787,17 @@ pydot = ">=1.4.1"
 pyparsing = "!=3.0.2"
 rdflib = ">=4.2.2,<6.4.0"
 requests = ">=2.6.1"
-"ruamel.yaml" = ">=0.15,<0.17.22"
+"ruamel.yaml" = [
+    {version = ">=0.15,<0.18", markers = "python_version < \"3.10\""},
+    {version = ">=0.16.0,<0.18", markers = "python_version >= \"3.10\""},
+]
 schema-salad = ">=8.4,<9"
 setuptools = "*"
 shellescape = ">=3.4.1,<3.9"
 typing-extensions = "*"
 
 [package.extras]
-deps = ["galaxy-tool-util (>=22.1.2,<23)"]
+deps = ["galaxy-tool-util (>=22.1.2,<23)", "galaxy-util (<23)"]
 
 [[package]]
 name = "deal"
@@ -4517,4 +4509,4 @@ service = ["apispec", "apispec-oneofschema", "apispec-webframeworks", "circus", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.1,<3.12"
-content-hash = "08a56129ca412392a83dd9663e9756ea24f983bdaaa7b2a9636c7237001a589a"
+content-hash = "f0697d7e465340ae6376d92f00ace83651d42a496d4a094a11cc0bc1ba3d8cfe"
