@@ -9,16 +9,13 @@ on:
       - reopened
       - closed
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  cleanup-previous-runs:
-    runs-on: ubuntu-latest
-    if: github.event.action != 'closed'
-    steps:
-      - uses: rokroskar/workflow-run-cleanup-action@v0.3.3
-        env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
   check-deploy:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     outputs:
       pr-contains-string: ${{ steps.deploy-comment.outputs.pr-contains-string }}
       renku: ${{ steps.deploy-comment.outputs.renku}}
@@ -27,6 +24,7 @@ jobs:
       renku-notebooks: ${{ steps.deploy-comment.outputs.renku-notebooks}}
       renku-ui: ${{ steps.deploy-comment.outputs.renku-ui}}
       test-enabled: ${{ steps.deploy-comment.outputs.test-enabled}}
+      test-cypress-enabled: ${{ steps.deploy-comment.outputs.test-cypress-enabled}}
       extra-values: ${{ steps.deploy-comment.outputs.extra-values}}
       persist: ${{ steps.deploy-comment.outputs.persist}}
     steps:
@@ -35,15 +33,16 @@ jobs:
         with:
           string: /deploy
           pr_ref: ${{ github.event.number }}
+
   deploy-pr:
     needs: check-deploy
     if: github.event.action != 'closed' && needs.check-deploy.outputs.pr-contains-string == 'true'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     environment:
       name: renku-ci-rp-${{ github.event.number }}
     steps:
       - name: deploy-pr
-        uses: SwissDataScienceCenter/renku-actions/deploy-renku@v1.4.5
+        uses: SwissDataScienceCenter/renku-actions/deploy-renku@v1.5.0
         env:
           DOCKER_PASSWORD: ${{ secrets.RENKU_DOCKER_PASSWORD }}
           DOCKER_USERNAME: ${{ secrets.RENKU_DOCKER_USERNAME }}
@@ -83,12 +82,12 @@ jobs:
           body: |
             You can access the deployment of this PR at https://renku-ci-rp-${{ github.event.number }}.dev.renku.ch
 
-  test-pr:
-    runs-on: ubuntu-20.04
-    if: ${{ github.event.action != 'closed' && needs.check-deploy.outputs.pr-contains-string == 'true' && needs.check-deploy.outputs.test-enabled == 'true' }}
+  selenium-acceptance-tests:
     needs: [check-deploy, deploy-pr]
+    if: github.event.action != 'closed' && needs.check-deploy.outputs.pr-contains-string == 'true' && needs.check-deploy.outputs.test-enabled == 'true'
+    runs-on: ubuntu-22.04
     steps:
-      - uses: SwissDataScienceCenter/renku-actions/test-renku@v1.4.5
+      - uses: SwissDataScienceCenter/renku-actions/test-renku@v1.5.0
         with:
           kubeconfig: ${{ secrets.RENKUBOT_DEV_KUBECONFIG }}
           renku-release: renku-ci-rp-${{ github.event.number }}
@@ -96,11 +95,36 @@ jobs:
           persist: "${{ needs.check-deploy.outputs.persist }}"
           s3-results-access-key: ${{ secrets.ACCEPTANCE_TESTS_BUCKET_ACCESS_KEY }}
           s3-results-secret-key: ${{ secrets.ACCEPTANCE_TESTS_BUCKET_SECRET_KEY }}
+          test-timeout-mins: "60"
+
+  cypress-acceptance-tests:
+    if: |
+      github.event.action != 'closed' &&
+      needs.check-deploy.outputs.pr-contains-string == 'true' &&
+      (needs.check-deploy.outputs.test-cypress-enabled == 'true' || needs.check-deploy.outputs.test-cypress-enabled == 'true')
+    needs: [check-deploy, deploy-pr]
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        tests: [publicProject, updateProjects, useSession]
+
+    steps:
+      - name: Extract Renku repository reference
+        run: echo "RENKU_REFERENCE=`echo '${{ needs.check-deploy.outputs.renku }}' | cut -d'@' -f2`" >> $GITHUB_ENV
+      - uses: SwissDataScienceCenter/renku-actions/test-renku-cypress@v1.5.0
+        with:
+          e2e-target: ${{ matrix.tests }}
+          renku-reference: ${{ env.RENKU_REFERENCE }}
+          renku-release: renku-ci-rp-${{ github.event.number }}
+          test-user-password: ${{ secrets.RENKU_BOT_DEV_PASSWORD }}
 
   cleanup:
     needs: check-deploy
     if: github.event.action == 'closed' && needs.check-deploy.outputs.pr-contains-string == 'true'
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     steps:
       - name: renku teardown
         uses: SwissDataScienceCenter/renku-actions/cleanup-renku-ci-deployments@v1.4.5
