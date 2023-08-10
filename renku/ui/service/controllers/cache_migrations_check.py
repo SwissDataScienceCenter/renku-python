@@ -54,6 +54,12 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
         if "git_url" not in self.context:
             raise RenkuException("context does not contain `git_url`")
 
+        token = self.user.token if hasattr(self, "user") else self.user_data.get("token")
+
+        if not token:
+            # User isn't logged in, fast op doesn't work
+            return None
+
         with tempfile.TemporaryDirectory() as tempdir:
             tempdir_path = Path(tempdir)
             self.git_api_provider.download_files_from_api(
@@ -93,6 +99,9 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
         except BaseException as e:
             service_log.info(f"fast gitlab checkout didnt work: {e}", exc_info=e)
             result = self.execute_op()
+        else:
+            if result is None:
+                result = self.execute_op()
 
         result_dict = asdict(result)
 
