@@ -2881,19 +2881,22 @@ pytest-cache = "*"
 
 [[package]]
 name = "pytest-recording"
-version = "0.12.2"
+version = "0.13.0"
 description = "A pytest plugin that allows you recording of network interactions via VCR.py"
 optional = false
-python-versions = ">=3.5"
+python-versions = ">=3.7"
 files = [
-    {file = "pytest-recording-0.12.2.tar.gz", hash = "sha256:7c8949c24e5546a699f8fbbff0c5d6896cd09463378ac3d3f1ebb110d2186847"},
-    {file = "pytest_recording-0.12.2-py3-none-any.whl", hash = "sha256:f055f97eb98bbefd0453a7796aa3a6833502c173421928b9d878cf1420b36406"},
+    {file = "pytest_recording-0.13.0-py3-none-any.whl", hash = "sha256:679b0ae6eb3337b981f6a4d590a30c28c43855bfac5b9ad87070ad6d08b05dbc"},
+    {file = "pytest_recording-0.13.0.tar.gz", hash = "sha256:b24b707af843341457d9d340328f361eceb0efe980e388341941b4fada3745ca"},
 ]
 
 [package.dependencies]
-attrs = "*"
 pytest = ">=3.5.0"
 vcrpy = ">=2.0.1"
+
+[package.extras]
+dev = ["pytest-recording[tests]"]
+tests = ["pytest-httpbin", "pytest-mock", "requests", "werkzeug (==2.3.6)"]
 
 [[package]]
 name = "pytest-timeout"
@@ -4579,4 +4582,4 @@ service = ["apispec", "apispec-oneofschema", "apispec-webframeworks", "circus", 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8.1,<3.12"
-content-hash = "c344a58eda7d487b4d097eb5fd1e6a87e103a22e8744386c4c9f871e287a8dc3"
+content-hash = "a75f7197bf53bde1db069a16c1192aa982dbdf84d6c864bb032f8f764c34f154"
