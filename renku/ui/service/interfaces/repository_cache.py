@@ -13,24 +13,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Git APi provider interface."""
+"""Repository cache interface."""
 
 from abc import ABC
-from pathlib import Path
-from typing import List, Optional, Union
+from typing import Optional
+
+from renku.ui.service.cache import ServiceCache
+from renku.ui.service.cache.models.project import Project
+from renku.ui.service.cache.models.user import User
 
 
-class IGitAPIProvider(ABC):
-    """Interface a Git API Provider."""
+class IRepositoryCache(ABC):
+    """Interface for repository cache manager."""
 
-    def download_files_from_api(
-        self,
-        files: List[Union[Path, str]],
-        folders: List[Union[Path, str]],
-        target_folder: Union[Path, str],
-        remote: str,
-        token: str,
-        branch: Optional[str] = None,
-    ):
-        """Download files through a remote Git API."""
+    def get(
+        self, cache: ServiceCache, git_url: str, branch: Optional[str], user: User, shallow: bool = True
+    ) -> Project:
+        """Get a project from cache (clone if necessary)."""
+        raise NotImplementedError()
+
+    def evict(self, project: Project):
+        """Evict a project from cache."""
+        raise NotImplementedError()
+
+    def evict_expired(self):
+        """Evict expired projects from cache."""
         raise NotImplementedError()

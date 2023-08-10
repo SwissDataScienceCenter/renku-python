@@ -40,20 +40,6 @@ gitlab_token_scheme = {"type": "apiKey", "name": "Authorization", "in": "header"
 TOP_LEVEL_DESCRIPTION = """
 This is the API specification of the renku core service.
 
-The basic API is low-level and requires that the client handles project
-(repository) state in the service cache by invoking the `cache.project_clone`
-method. This returns a `project_id` that is required for many of the other API
-calls. Note that the `project_id` identifies a combination of `git_url` and
-`ref` - i.e. each combination of `git_url` and `ref` receives a different
-`project_id`.
-
-## Higher-level interface
-
-Some API methods allow the client to defer repository management to the service.
-In these cases, the API documentation will include `project_id` _and_
-`git_url`+`ref` in the spec. Note that for such methods, _either_ `project_id`
-_or_ `git_url` (and optionally `ref`) should be passed in the request body.
-
 ## Responses
 
 Loosely following the JSON-RPC 2.0 Specification, the methods all return with

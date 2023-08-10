@@ -25,13 +25,6 @@ from renku.ui.service.errors import UserRepoUrlInvalidError
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
 
-class LocalRepositorySchema(Schema):
-    """Schema for identifying a locally stored repository."""
-
-    # In the long term, the id should be used only for internal operations
-    project_id = fields.String(metadata={"description": "Reference to access the project in the local cache."})
-
-
 class RemoteRepositoryBaseSchema(Schema):
     """Schema for tracking a remote repository."""
 
@@ -106,6 +99,15 @@ class CreationSchema(Schema):
     created_at = fields.DateTime(
         load_default=datetime.utcnow,
         metadata={"description": "Creation date."},
+    )
+
+
+class AccessSchema(Schema):
+    """Schema for access date."""
+
+    accessed_at = fields.DateTime(
+        load_default=datetime.utcnow,
+        metadata={"description": "Access date."},
     )
 
 

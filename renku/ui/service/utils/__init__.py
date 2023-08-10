@@ -17,6 +17,7 @@
 """Renku service utility functions."""
 
 from renku.core.util.git import push_changes
+from renku.ui.service.cache.models.project import NO_BRANCH_FOLDER
 from renku.ui.service.config import CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH
 
 
@@ -26,7 +27,13 @@ def make_project_path(user, project):
     valid_project = project and "owner" in project and "name" in project and "project_id" in project
 
     if valid_user and valid_project:
-        return CACHE_PROJECTS_PATH / user["user_id"] / project["owner"] / project["slug"]
+        return (
+            CACHE_PROJECTS_PATH
+            / user["user_id"]
+            / project["owner"]
+            / project["slug"]
+            / project.get("branch", NO_BRANCH_FOLDER)
+        )
 
 
 def make_file_path(user, cached_file):

@@ -1625,8 +1625,14 @@ class BranchManager:
         else:
             return Branch.from_head(repository=self._repository, head=head)
 
-    def remove(self, branch: Union[Branch, str], force: bool = False):
+    def remove(self, branch: Union[Branch, str], force: bool = False, remote: bool = False):
         """Remove an existing branch."""
+        if isinstance(branch, str):
+            branch = self[branch]
+
+        if remote and branch.remote_branch is not None:
+            _run_git_command(self._repository, branch.remote_branch.remote.name, branch, delete=True)
+
         _run_git_command(self._repository, "branch", branch, delete=True, force=force)
 
 

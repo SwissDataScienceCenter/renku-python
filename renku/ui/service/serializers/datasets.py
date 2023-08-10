@@ -24,7 +24,6 @@ from renku.domain_model.dataset import ImageObjectRequestJson as ImageObjectRequ
 from renku.ui.service.serializers.common import (
     AsyncSchema,
     JobDetailsResponse,
-    LocalRepositorySchema,
     MigrateSchema,
     RemoteRepositorySchema,
     RenkuSyncSchema,
@@ -46,9 +45,7 @@ class DatasetDetailsRequest(DatasetDetails):
     custom_metadata: fields.Field = fields.Dict()
 
 
-class DatasetCreateRequest(
-    AsyncSchema, DatasetDetailsRequest, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
-):
+class DatasetCreateRequest(AsyncSchema, DatasetDetailsRequest, RemoteRepositorySchema, MigrateSchema):
     """Request schema for a dataset create view."""
 
     # NOTE: Override field in DatasetDetails
@@ -68,9 +65,7 @@ class DatasetCreateResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetCreateResponse)
 
 
-class DatasetRemoveRequest(
-    AsyncSchema, DatasetNameSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
-):
+class DatasetRemoveRequest(AsyncSchema, DatasetNameSchema, RemoteRepositorySchema, MigrateSchema):
     """Request schema for a dataset remove."""
 
 
@@ -93,7 +88,7 @@ class DatasetAddFile(Schema):
     job_id = fields.String()
 
 
-class DatasetAddRequest(AsyncSchema, DatasetNameSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema):
+class DatasetAddRequest(AsyncSchema, DatasetNameSchema, RemoteRepositorySchema, MigrateSchema):
     """Request schema for a dataset add file view."""
 
     files = fields.List(fields.Nested(DatasetAddFile), required=True)
@@ -126,7 +121,7 @@ class DatasetAddResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetAddResponse)
 
 
-class DatasetListRequest(LocalRepositorySchema, RemoteRepositorySchema):
+class DatasetListRequest(RemoteRepositorySchema):
     """Request schema for dataset list view."""
 
 
@@ -148,7 +143,7 @@ class DatasetListResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetListResponse)
 
 
-class DatasetFilesListRequest(DatasetNameSchema, LocalRepositorySchema, RemoteRepositorySchema):
+class DatasetFilesListRequest(DatasetNameSchema, RemoteRepositorySchema):
     """Request schema for dataset files list view."""
 
 
@@ -172,7 +167,7 @@ class DatasetFilesListResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetFilesListResponse)
 
 
-class DatasetImportRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema):
+class DatasetImportRequest(AsyncSchema, RemoteRepositorySchema, MigrateSchema):
     """Dataset import request."""
 
     dataset_uri = fields.String(required=True)
@@ -195,7 +190,6 @@ class DatasetEditRequest(
     AsyncSchema,
     DatasetDetailsRequest,
     DatasetNameSchema,
-    LocalRepositorySchema,
     RemoteRepositorySchema,
     MigrateSchema,
 ):
@@ -230,9 +224,7 @@ class DatasetEditResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetEditResponse)
 
 
-class DatasetUnlinkRequest(
-    AsyncSchema, DatasetNameSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema
-):
+class DatasetUnlinkRequest(AsyncSchema, DatasetNameSchema, RemoteRepositorySchema, MigrateSchema):
     """Dataset unlink file request."""
 
     include_filters = fields.List(fields.String())

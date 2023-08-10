@@ -19,16 +19,7 @@ loggers:
       - console
     level: DEBUG
     propagate: false
-  renku.scheduler:
-    handlers:
-      - console
-    level: DEBUG
-    propagate: false
   rq.worker:
-    level: INFO
-  rq_scheduler.scheduler:
-    handlers:
-      - console
     level: INFO
 root:
   handlers:
