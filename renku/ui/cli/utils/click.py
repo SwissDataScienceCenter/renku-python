@@ -93,7 +93,7 @@ class MutuallyExclusiveOption(click.Option):
         self.mutually_exclusive_names = []
 
         for mutex in mutually_exclusive:
-            if type(mutex) == tuple:
+            if isinstance(mutex, tuple):
                 self.mutually_exclusive.add(mutex[0])
                 self.mutually_exclusive_names.append(mutex[1])
             else:
