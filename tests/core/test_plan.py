@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from renku.command.checks import check_plan_modification_date
+from renku.command.checks import check_plan_id, check_plan_modification_date
 from renku.core import errors
 from renku.core.workflow.plan import (
     get_activities,
@@ -189,3 +189,13 @@ def test_modification_date_fix(project_with_injection):
     assert dummy_date == plan.date_modified
     assert unrelated.date_created == unrelated.date_modified
     assert date_created == plan.date_created
+
+
+def test_plan_id_fix(project_with_injection):
+    """Check that plans with incorrect IDs are fixed."""
+    _, _, plan, _, _, unrelated = create_dummy_plans()
+
+    plan.id = "/plans/" + plan.id
+    assert plan.id.startswith("/plans//plans")
+    check_plan_id(fix=True)
+    assert not plan.id.startswith("/plans//plans")
