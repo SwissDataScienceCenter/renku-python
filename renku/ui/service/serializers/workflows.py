@@ -17,7 +17,7 @@
 """Renku service workflow serializers."""
 from enum import Enum
 
-from marshmallow import Schema, fields
+from marshmallow import Schema, fields, pre_dump
 from marshmallow_oneofschema import OneOfSchema
 
 from renku.domain_model.dataset import DatasetCreatorsJson
@@ -42,6 +42,23 @@ class AbstractPlanResponse(Schema):
     keywords = fields.List(fields.String())
     touches_existing_files = fields.Boolean()
     duration = fields.Integer(dump_default=None)
+
+    @pre_dump(pass_many=True)
+    def fix_ids(self, objs, many, **kwargs):
+        """Renku up to 2.4.1 had a bug that created wrong ids for workflow file entities, this fixes those on export."""
+
+        def _replace_id(obj):
+            obj.unfreeze()
+            obj.id = obj.id.replace("//plans/", "/")
+            obj.freeze()
+
+        if many:
+            for obj in objs:
+                _replace_id(obj)
+            return objs
+
+        _replace_id(objs)
+        return objs
 
 
 class WorflowPlanEntryResponse(AbstractPlanResponse):
