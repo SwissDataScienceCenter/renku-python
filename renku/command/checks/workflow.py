@@ -127,3 +127,44 @@ def fix_plan_dates(plans: List[AbstractPlan], plan_gateway):
             if plan.date_removed and plan.date_removed < plan.date_created:
                 plan.date_removed = plan.date_created + timedelta(seconds=1)
             plan.freeze()
+
+
+@inject.autoparams("plan_gateway")
+def check_plan_id(fix, plan_gateway: IPlanGateway, **_) -> Tuple[bool, bool, Optional[str]]:
+    """Check if all plans have correct IDs.
+
+    Args:
+        fix(bool): Whether to fix found issues.
+        plan_gateway(IPlanGateway): Injected PlanGateway.
+        _: keyword arguments.
+
+    Returns:
+        Tuple[bool, Optional[str]]: Tuple of whether there are plans with invalid IDs, if an automated fix is
+            available and a string of their IDs
+    """
+    plans: List[AbstractPlan] = plan_gateway.get_all_plans()
+
+    to_be_processed = []
+    for plan in plans:
+        if isinstance(plan.id, str) and plan.id.startswith("/plans//plans"):
+            to_be_processed.append(plan)
+
+    if not to_be_processed:
+        return True, False, None
+    if not fix:
+        ids = [plan.id for plan in to_be_processed]
+        message = (
+            WARNING
+            + "The following workflows have incorrect IDs (use 'renku doctor --fix' to fix them):\n\t"
+            + "\n\t".join(ids)
+        )
+        return False, True, message
+
+    for plan in to_be_processed:
+        plan.unfreeze()
+        plan.id = plan.id.replace("//plans/", "/")
+        plan.freeze()
+    project_context.database.commit()
+    communication.info("Workflow IDs were fixed")
+
+    return True, False, None

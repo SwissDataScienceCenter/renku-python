@@ -126,7 +126,7 @@ class GitMerger:
 
     def merge_objects(self, local: Persistent, remote: Persistent, base: Optional[Persistent]) -> Persistent:
         """Merge two database objects."""
-        if type(local) != type(remote):
+        if not isinstance(local, type(remote)):
             raise errors.MetadataMergeError(f"Cannot merge {local} and {remote}: disparate types.")
         if isinstance(local, (BTree, Index, Bucket)):
             return self.merge_btrees(local, remote)
