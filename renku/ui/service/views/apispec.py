@@ -78,7 +78,7 @@ spec = APISpec(
     openapi_version=OPENAPI_VERSION,
     version=API_VERSION,
     plugins=[MultiURLFlaskPlugin(), MarshmallowPlugin()],
-    servers=[{"url": SERVICE_API_BASE_PATH}],
+    servers=[{"url": SERVICE_API_BASE_PATH}, {"url": "/ui-server"+SERVICE_API_BASE_PATH}],
     security=[{"oidc": []}, {"JWT": [], "gitlab-token": []}],
     info={"description": TOP_LEVEL_DESCRIPTION},
 )
