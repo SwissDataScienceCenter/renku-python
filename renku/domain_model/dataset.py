@@ -652,6 +652,13 @@ class Dataset(Persistent):
         if self.date_published is not None:
             self.date_created = None
 
+        # NOTE: Fix image IDs, in some cases the image IDs set by the providers can be malformed
+        # and not match the SHACL definition for Renku. This cannot be addressed in the dataset
+        # providers because the dataset providers do not have access to the dataset ID which is needed
+        # for setting the dataset image ID.
+        for image_ind in range(len(self.images)):
+            self.images[image_ind].id = f"{self.id}/images/{image_ind}"
+
     def update_metadata(self, **kwargs):
         """Updates metadata."""
         editable_attributes = ["creators", "description", "keywords", "title"]
