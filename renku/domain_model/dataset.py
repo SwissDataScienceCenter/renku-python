@@ -657,7 +657,7 @@ class Dataset(Persistent):
         # providers because the dataset providers do not have access to the dataset ID which is needed
         # for setting the dataset image ID.
         for image_ind in range(len(self.images)):
-            self.images[image_ind].id = self.images[image_ind].generate_id(self.id, image_ind)
+            self.images[image_ind].id = ImageObject.generate_id(self.id, self.images[image_ind].position)
 
     def update_metadata(self, **kwargs):
         """Updates metadata."""
