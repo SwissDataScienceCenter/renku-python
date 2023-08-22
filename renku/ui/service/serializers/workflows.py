@@ -48,9 +48,7 @@ class AbstractPlanResponse(Schema):
         """Renku up to 2.4.1 had a bug that created wrong ids for workflow file entities, this fixes those on export."""
 
         def _replace_id(obj):
-            obj.unfreeze()
             obj.id = obj.id.replace("//plans/", "/")
-            obj.freeze()
 
         if many:
             for obj in objs:
