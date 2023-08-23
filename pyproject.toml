@@ -58,7 +58,7 @@ calamus = ">=0.3.13,<0.5"
 click = ">=8.0,<8.1.4"
 click-option-group = "<0.6.0,>=0.5.2"
 click-plugins = "==1.1.1"
-coverage = { version = "<6.5,>=4.5.3", extras=["toml"], optional = true }
+coverage = { version = ">=4.5.3,<7.4", extras=["toml"], optional = true }
 cryptography = ">=38.0.0,<42.0.0"
 cwl-utils = ">=0.27,<0.28"
 cwltool = "==3.1.20230425144158"
@@ -135,7 +135,7 @@ types-tabulate = ">=0.7.7,<0.9.1"
 optional = true
 
 [tool.poetry.group.tests.dependencies]
-coverage = { version = "<6.5,>=4.5.3", extras=["toml"] }
+coverage = { version = ">=4.5.3,<7.4", extras=["toml"] }
 fakeredis = { version = ">=1.4.1,<2.11.2", extras = ["lua"]}
 flaky = "==3.7.0"
 pexpect = "<4.9.0,>=4.8.0"
