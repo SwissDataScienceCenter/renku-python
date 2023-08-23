@@ -18,7 +18,7 @@
 Changes
 =======
 
-`2.7.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.6.1...v2.7.0>`__ (2023-08-09)
+`2.7.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.6.2...v2.7.0>`__ (2023-08-09)
 -------------------------------------------------------------------------------------------------------
 
 Bug Fixes
@@ -48,7 +48,7 @@ Features
    (`#3534 <https://github.com/SwissDataScienceCenter/renku-python/issues/3534>`__)
    (`a9994a8 <https://github.com/SwissDataScienceCenter/renku-python/commit/a9994a8cb2541527ca9be731037cc60b03d62cea>`__)
 
-`2.6.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.6.0...v2.6.1>`__ (2023-08-23)
+`2.6.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.6.1...v2.6.2>`__ (2023-08-23)
 -------------------------------------------------------------------------------------------------------
 
 Bug Fixes
@@ -78,6 +78,16 @@ Bug Fixes
 -  **service:** return project version as int
    (`#3591 <https://github.com/SwissDataScienceCenter/renku-python/issues/3591>`__)
    (`5624573 <https://github.com/SwissDataScienceCenter/renku-python/commit/5624573160c2820770093f8752d1975a18e785e6>`__)
+
+`2.6.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.6.1...v2.6.2>`__ (2023-07-13)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+- **service:** fixes issues with the scaling of the core service
+  (`#3555 <https://github.com/SwissDataScienceCenter/renku-python/pull/3555>`__)
+  (`4288ada <https://github.com/SwissDataScienceCenter/renku-python/commit/4288ada0b4ec658089b25d12add8a1d16955498a>`__)
 
 `2.6.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.5.0...v2.6.0>`__ (2023-06-20)
 -------------------------------------------------------------------------------------------------------
