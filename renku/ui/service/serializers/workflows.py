@@ -21,6 +21,7 @@ from marshmallow import Schema, fields, pre_dump
 from marshmallow_oneofschema import OneOfSchema
 
 from renku.domain_model.dataset import DatasetCreatorsJson
+from renku.infrastructure.persistent import Persistent
 from renku.ui.cli.utils.plugins import get_supported_formats
 from renku.ui.service.serializers.common import RemoteRepositorySchema
 from renku.ui.service.serializers.rpc import JsonRPCResponse
@@ -48,9 +49,13 @@ class AbstractPlanResponse(Schema):
         """Renku up to 2.4.1 had a bug that created wrong ids for workflow file entities, this fixes those on export."""
 
         def _replace_id(obj):
-            obj.unfreeze()
+            if isinstance(obj, Persistent):
+                obj.unfreeze()
+
             obj.id = obj.id.replace("//plans/", "/")
-            obj.freeze()
+
+            if isinstance(obj, Persistent):
+                obj.freeze()
 
         if many:
             for obj in objs:
