@@ -57,22 +57,19 @@ Bug Fixes
 -  **cli:** correct bad plan ID format
    (`#3594 <https://github.com/SwissDataScienceCenter/renku-python/issues/3594>`__)
    (`c418c17 <https://github.com/SwissDataScienceCenter/renku-python/commit/c418c178d03a5caac126d14cc089064ee13f2747>`__)
--  **cli:** do not freeze/unfreeze plan view model
-   (`#3599 <https://github.com/SwissDataScienceCenter/renku-python/issues/3599>`__)
-   (`dab2688 <https://github.com/SwissDataScienceCenter/renku-python/commit/dab26884170b0277767bb0ad5aa1d7e3472243bf>`__)
 -  **cli:** fix overwriting dataset tags
    (`#3497 <https://github.com/SwissDataScienceCenter/renku-python/issues/3497>`__)
    (`ef6d214 <https://github.com/SwissDataScienceCenter/renku-python/commit/ef6d214e165ba877b5acc26427d5663366aaaa29>`__)
--  **cli:** parse security_opt as list not tuple
+-  **cli:** parse security_opt as list not tuple so that session launches from the CLI work
    (`#3587 <https://github.com/SwissDataScienceCenter/renku-python/issues/3587>`__)
    (`d74d35f <https://github.com/SwissDataScienceCenter/renku-python/commit/d74d35ff3428118945a1df1b2f52eebcfcf31132>`__)
 -  **core:** properly formatted dataset image IDs
    (`#3596 <https://github.com/SwissDataScienceCenter/renku-python/issues/3596>`__)
    (`f624b2b <https://github.com/SwissDataScienceCenter/renku-python/commit/f624b2bf261d97b07c88243f674f544613753e28>`__)
--  **service:** remove doctor check from cache.migrations_check
+-  **service:** speed up cache.migration_check endpoint
    (`#3597 <https://github.com/SwissDataScienceCenter/renku-python/issues/3597>`__)
    (`20b5589 <https://github.com/SwissDataScienceCenter/renku-python/commit/20b5589ea2639b4ff017fc390a9b685842c9685d>`__)
--  **service:** return project version as int
+-  **service:** serialize project versions as integer
    (`#3591 <https://github.com/SwissDataScienceCenter/renku-python/issues/3591>`__)
    (`5624573 <https://github.com/SwissDataScienceCenter/renku-python/commit/5624573160c2820770093f8752d1975a18e785e6>`__)
 
