@@ -180,7 +180,7 @@ class ImageObject(Slots):
 
     id: str
     content_url: str
-    position: str
+    position: int
 
     def __init__(self, *, content_url: str, id: str, position: int):
         id = get_path(id)
@@ -651,6 +651,14 @@ class Dataset(Persistent):
 
         if self.date_published is not None:
             self.date_created = None
+
+        # NOTE: Fix image IDs, in some cases the image IDs set by the providers can be malformed
+        # and not match the SHACL definition for Renku. This cannot be addressed in the dataset
+        # providers because the dataset providers do not have access to the dataset ID which is needed
+        # for setting the dataset image ID.
+        if isinstance(self.images, list):
+            for image_ind in range(len(self.images)):
+                self.images[image_ind].id = ImageObject.generate_id(self.id, self.images[image_ind].position)
 
     def update_metadata(self, **kwargs):
         """Updates metadata."""
