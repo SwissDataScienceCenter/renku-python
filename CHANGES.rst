@@ -18,7 +18,7 @@
 Changes
 =======
 
-`2.7.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.6.1...v2.7.0>`__ (2023-08-09)
+`2.7.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.6.2...v2.7.0>`__ (2023-08-09)
 -------------------------------------------------------------------------------------------------------
 
 Bug Fixes
@@ -47,6 +47,41 @@ Features
 -  **service:** replace/refactor internal repository cache
    (`#3534 <https://github.com/SwissDataScienceCenter/renku-python/issues/3534>`__)
    (`a9994a8 <https://github.com/SwissDataScienceCenter/renku-python/commit/a9994a8cb2541527ca9be731037cc60b03d62cea>`__)
+
+`2.6.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.6.1...v2.6.2>`__ (2023-08-23)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** correct bad plan ID format
+   (`#3594 <https://github.com/SwissDataScienceCenter/renku-python/issues/3594>`__)
+   (`c418c17 <https://github.com/SwissDataScienceCenter/renku-python/commit/c418c178d03a5caac126d14cc089064ee13f2747>`__)
+-  **cli:** fix overwriting dataset tags
+   (`#3497 <https://github.com/SwissDataScienceCenter/renku-python/issues/3497>`__)
+   (`ef6d214 <https://github.com/SwissDataScienceCenter/renku-python/commit/ef6d214e165ba877b5acc26427d5663366aaaa29>`__)
+-  **cli:** parse security_opt as list not tuple so that session launches from the CLI work
+   (`#3587 <https://github.com/SwissDataScienceCenter/renku-python/issues/3587>`__)
+   (`d74d35f <https://github.com/SwissDataScienceCenter/renku-python/commit/d74d35ff3428118945a1df1b2f52eebcfcf31132>`__)
+-  **core:** properly formatted dataset image IDs
+   (`#3596 <https://github.com/SwissDataScienceCenter/renku-python/issues/3596>`__)
+   (`f624b2b <https://github.com/SwissDataScienceCenter/renku-python/commit/f624b2bf261d97b07c88243f674f544613753e28>`__)
+-  **service:** speed up cache.migration_check endpoint
+   (`#3597 <https://github.com/SwissDataScienceCenter/renku-python/issues/3597>`__)
+   (`20b5589 <https://github.com/SwissDataScienceCenter/renku-python/commit/20b5589ea2639b4ff017fc390a9b685842c9685d>`__)
+-  **service:** serialize project versions as integer
+   (`#3591 <https://github.com/SwissDataScienceCenter/renku-python/issues/3591>`__)
+   (`5624573 <https://github.com/SwissDataScienceCenter/renku-python/commit/5624573160c2820770093f8752d1975a18e785e6>`__)
+
+`2.6.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.6.1...v2.6.2>`__ (2023-07-13)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+- **service:** fixes issues with the scaling of the core service
+  (`#3555 <https://github.com/SwissDataScienceCenter/renku-python/pull/3555>`__)
+  (`4288ada <https://github.com/SwissDataScienceCenter/renku-python/commit/4288ada0b4ec658089b25d12add8a1d16955498a>`__)
 
 `2.6.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.5.0...v2.6.0>`__ (2023-06-20)
 -------------------------------------------------------------------------------------------------------
