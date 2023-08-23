@@ -54,9 +54,6 @@ Features
 Bug Fixes
 ~~~~~~~~~
 
--  **cli:** adapt to changes in KG api for importing datasets
-   (`#3549 <https://github.com/SwissDataScienceCenter/renku-python/issues/3549>`__)
-   (`020434a <https://github.com/SwissDataScienceCenter/renku-python/commit/020434a7dd6449755644a2e9ca849b8821900f72>`__)
 -  **cli:** correct bad plan ID format
    (`#3594 <https://github.com/SwissDataScienceCenter/renku-python/issues/3594>`__)
    (`c418c17 <https://github.com/SwissDataScienceCenter/renku-python/commit/c418c178d03a5caac126d14cc089064ee13f2747>`__)
