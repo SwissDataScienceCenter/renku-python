@@ -31,7 +31,7 @@ class ProjectManagementCache(BaseCache):
 
     project_schema = ProjectSchema()
 
-    def make_project(self, user, project_data, persist=True):
+    def make_project(self, user, project_data, persist=True) -> Project:
         """Store user project metadata."""
         project_data.update({"user_id": user.user_id})
 
