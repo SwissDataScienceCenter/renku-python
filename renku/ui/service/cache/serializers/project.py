@@ -18,7 +18,7 @@
 import uuid
 from datetime import datetime
 
-from marshmallow import fields, post_load
+from marshmallow import ValidationError, fields, post_load, validates_schema
 
 from renku.ui.service.cache.models.project import Project
 from renku.ui.service.serializers.common import AccessSchema, CreationSchema, MandatoryUserSchema
@@ -39,8 +39,16 @@ class ProjectSchema(CreationSchema, AccessSchema, MandatoryUserSchema):
     description = fields.String(load_default=None)
     owner = fields.String(required=True)
     initialized = fields.Boolean(dump_default=False)
+    commit_sha = fields.String(required=False, load_default=None, dump_default=None)
+    branch = fields.String(required=False, load_default=None, dump_default=None)
 
     @post_load
     def make_project(self, data, **options):
         """Construct project object."""
         return Project(**data)
+
+    @validates_schema
+    def ensure_only_commit_sha_or_branch(self, data, **kwargs):
+        """Checks that only a commit SHA or branch is set and not both."""
+        if data.get("commit_sha") and data.get("branch"):
+            raise ValidationError("You cannot specify a commit SHA and a branch, only one or the other")

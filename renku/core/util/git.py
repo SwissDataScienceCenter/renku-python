@@ -29,6 +29,8 @@ from subprocess import PIPE, SubprocessError, run
 from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union, cast
 from uuid import uuid4
 
+import git
+
 from renku.core import errors
 from renku.infrastructure.repository import DiffChangeType
 
@@ -712,7 +714,7 @@ def clone_repository(
     skip_smudge=True,
     recursive=True,
     depth=None,
-    progress=None,
+    progress: Optional[git.RemoteProgress] = None,
     config: Optional[dict] = None,
     raise_git_except=False,
     checkout_revision=None,
@@ -746,10 +748,8 @@ def clone_repository(
 
     path = Path(path) if path else Path(get_repository_name(url))
 
-    def handle_git_exception():
-        """Handle git exceptions."""
-        if raise_git_except:
-            return
+    def error_from_progress(progress: git.RemoteProgress, url: str) -> errors.GitError:
+        """Format a Git command error into a more user-friendly format."""
 
         message = f"Cannot clone repo from {url}"
 
@@ -758,7 +758,7 @@ def clone_repository(
             error = "".join([f"\n\t{line}" for line in lines if line.strip()])
             message += f" - error message:\n {error}"
 
-        raise errors.GitError(message)
+        return errors.GitError(message)
 
     def clean_directory():
         if not clean or not path:
@@ -823,17 +823,27 @@ def clone_repository(
     try:
         # NOTE: Try to clone, assuming checkout_revision is a branch or a tag (if it is set)
         repository = clone(branch=checkout_revision, depth=depth)
-    except errors.GitCommandError:
+    except errors.GitCommandError as err:
         if not checkout_revision:
-            handle_git_exception()
-            raise
+            if raise_git_except:
+                raise
+            raise error_from_progress(progress, url)
 
         # NOTE: clone without branch set, in case checkout_revision was not a branch or a tag but a commit
         try:
             repository = clone(branch=None, depth=None)
         except errors.GitCommandError:
-            handle_git_exception()
-            raise
+            if re.match("^.* destination path .* already exists and is not an empty directory", err.stderr):
+                clean_directory()
+                try:
+                    repository = clone(branch=None, depth=None)
+                except errors.GitCommandError:
+                    if raise_git_except:
+                        raise
+                    raise error_from_progress(progress, url)
+            if raise_git_except:
+                raise
+            raise error_from_progress(progress, url)
 
     if checkout_revision is not None and not no_checkout:
         try:

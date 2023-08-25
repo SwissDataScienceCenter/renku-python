@@ -18,11 +18,17 @@
 
 from marshmallow import Schema, fields
 
-from renku.ui.service.serializers.common import AsyncSchema, MigrateSchema, RemoteRepositorySchema, RenkuSyncSchema
+from renku.ui.service.serializers.common import (
+    AsyncSchema,
+    GitCommitSHA,
+    MigrateSchema,
+    RemoteRepositorySchema,
+    RenkuSyncSchema,
+)
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
 
-class ConfigShowRequest(RemoteRepositorySchema):
+class ConfigShowRequest(RemoteRepositorySchema, GitCommitSHA):
     """Request schema for config show."""
 
 

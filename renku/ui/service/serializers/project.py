@@ -21,6 +21,7 @@ from marshmallow.schema import Schema
 from renku.domain_model.dataset import DatasetCreatorsJson as DatasetCreators
 from renku.ui.service.serializers.common import (
     AsyncSchema,
+    GitCommitSHA,
     MigrateSchema,
     RemoteRepositoryBaseSchema,
     RemoteRepositorySchema,
@@ -29,7 +30,7 @@ from renku.ui.service.serializers.common import (
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
 
-class ProjectShowRequest(AsyncSchema, RemoteRepositorySchema, MigrateSchema):
+class ProjectShowRequest(AsyncSchema, RemoteRepositorySchema, MigrateSchema, GitCommitSHA):
     """Project show metadata request."""
 
 

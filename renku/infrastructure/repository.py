@@ -1006,12 +1006,16 @@ class Repository(BaseRepository):
         env: Optional[dict] = None,
         clone_options: Optional[List[str]] = None,
     ) -> "Repository":
-        """Clone a remote repository and create an instance."""
+        """Clone a remote repository and create an instance.
+
+        Since this is just a thin wrapper around GitPython note that the branch parameter
+        can work and accept either a branch name or a tag. But it will not work with a commit SHA.
+        """
         try:
             repository = git.Repo.clone_from(
                 url=url,
                 to_path=path,
-                branch=branch,
+                branch=branch,  # NOTE: Git python will accept tag or branch here but not SHA
                 recursive=recursive,
                 depth=depth,
                 progress=progress,

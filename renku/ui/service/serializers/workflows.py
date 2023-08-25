@@ -23,11 +23,11 @@ from marshmallow_oneofschema import OneOfSchema
 from renku.domain_model.dataset import DatasetCreatorsJson
 from renku.infrastructure.persistent import Persistent
 from renku.ui.cli.utils.plugins import get_supported_formats
-from renku.ui.service.serializers.common import RemoteRepositorySchema
+from renku.ui.service.serializers.common import GitCommitSHA, RemoteRepositorySchema
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
 
-class WorkflowPlansListRequest(RemoteRepositorySchema):
+class WorkflowPlansListRequest(RemoteRepositorySchema, GitCommitSHA):
     """Request schema for plan list view."""
 
 
@@ -86,7 +86,7 @@ class WorkflowPlansListResponseRPC(JsonRPCResponse):
     result = fields.Nested(WorkflowPlansListResponse)
 
 
-class WorkflowPlansShowRequest(RemoteRepositorySchema):
+class WorkflowPlansShowRequest(RemoteRepositorySchema, GitCommitSHA):
     """Request schema for plan show view."""
 
     plan_id = fields.String(required=True)
@@ -223,7 +223,7 @@ WorkflowExportFormatEnum = Enum(  # type: ignore
 )
 
 
-class WorkflowPlansExportRequest(RemoteRepositorySchema):
+class WorkflowPlansExportRequest(RemoteRepositorySchema, GitCommitSHA):
     """Request schema for exporting a plan."""
 
     plan_id = fields.String(required=True)
