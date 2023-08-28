@@ -63,7 +63,7 @@ class Project(Model):
         """Full path of cached project."""
         folder_name = self.branch
         if not self.branch:
-            if not self.commit_sha:
+            if self.commit_sha:
                 # NOTE: Detached head state
                 folder_name = f"{DETACHED_HEAD_FOLDER_PREFIX}{self.commit_sha}"
             else:
