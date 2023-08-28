@@ -748,7 +748,7 @@ def clone_repository(
 
     path = Path(path) if path else Path(get_repository_name(url))
 
-    def error_from_progress(progress: git.RemoteProgress, url: str) -> errors.GitError:
+    def error_from_progress(progress: Optional[git.RemoteProgress], url: str) -> errors.GitError:
         """Format a Git command error into a more user-friendly format."""
 
         message = f"Cannot clone repo from {url}"

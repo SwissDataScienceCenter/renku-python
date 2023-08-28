@@ -30,7 +30,6 @@ from itertools import zip_longest
 from pathlib import Path
 from typing import (
     Any,
-    Callable,
     Dict,
     Generator,
     List,
@@ -1001,7 +1000,7 @@ class Repository(BaseRepository):
         branch: Optional[str] = None,
         recursive: bool = False,
         depth: Optional[int] = None,
-        progress: Optional[Callable] = None,
+        progress: Optional[git.RemoteProgress] = None,
         no_checkout: bool = False,
         env: Optional[dict] = None,
         clone_options: Optional[List[str]] = None,
@@ -1018,7 +1017,7 @@ class Repository(BaseRepository):
                 branch=branch,  # NOTE: Git python will accept tag or branch here but not SHA
                 recursive=recursive,
                 depth=depth,
-                progress=progress,
+                progress=progress,  # type: ignore[arg-type]
                 no_checkout=no_checkout,
                 env=env,
                 multi_options=clone_options,
