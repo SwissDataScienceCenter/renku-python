@@ -1,6 +1,6 @@
 import pytest
 
-from renku.ui.service.cache.models.project import Project, NO_BRANCH_FOLDER, DETACHED_HEAD_FOLDER_PREFIX
+from renku.ui.service.cache.models.project import DETACHED_HEAD_FOLDER_PREFIX, NO_BRANCH_FOLDER, Project
 
 
 @pytest.mark.parametrize(

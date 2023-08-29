@@ -1,5 +1,3 @@
-from typing import cast
-
 import pytest
 from marshmallow.exceptions import ValidationError
 
