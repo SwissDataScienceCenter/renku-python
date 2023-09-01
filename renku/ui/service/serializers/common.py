@@ -23,12 +23,21 @@ from marshmallow import Schema, fields, pre_load, validates
 
 from renku.ui.service.errors import UserRepoUrlInvalidError
 from renku.ui.service.serializers.rpc import JsonRPCResponse
+from renku.ui.service.utils import normalize_git_url
 
 
 class RemoteRepositoryBaseSchema(Schema):
     """Schema for tracking a remote repository."""
 
     git_url = fields.String(metadata={"description": "Remote git repository url."})
+
+    @pre_load
+    def normalize_url(self, data, **_):
+        """Remove ``.git`` extension from the git url."""
+        if "git_url" in data and data["git_url"]:
+            data["git_url"] = normalize_git_url(data["git_url"])
+
+        return data
 
     @validates("git_url")
     def validate_git_url(self, value):
@@ -48,7 +57,7 @@ class RemoteRepositorySchema(RemoteRepositoryBaseSchema):
     branch = fields.String(load_default=None, metadata={"description": "Remote git branch (or tag or commit SHA)."})
 
     @pre_load
-    def set_branch_from_ref(self, data, **kwargs):
+    def set_branch_from_ref(self, data, **_):
         """Set `branch` field from `ref` if present."""
         if "ref" in data and not data.get("branch"):
             # Backward compatibility: branch and ref were both used. Let's keep branch as the exposed field

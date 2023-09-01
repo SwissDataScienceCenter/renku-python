@@ -18,6 +18,7 @@ import contextlib
 from abc import ABCMeta, abstractmethod
 from functools import wraps
 from pathlib import Path
+from typing import Optional, Union
 
 import portalocker
 
@@ -41,6 +42,7 @@ from renku.ui.service.gateways.repository_cache import LocalRepositoryCache
 from renku.ui.service.jobs.contexts import enqueue_retry
 from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 from renku.ui.service.serializers.common import DelayedResponseRPC
+from renku.ui.service.utils import normalize_git_url
 
 PROJECT_FETCH_TIME = 30
 
@@ -96,14 +98,29 @@ class RenkuOperationMixin(metaclass=ABCMeta):
             self.migrate_project = self.request_data.get("migrate_project", False)
 
         # NOTE: This is absolute project path and its set before invocation of `renku_op`,
-        # so its safe to use it in controller operations. Its type will always be `pathlib.Path`.
-        self.project_path = None
+        # so it's safe to use it in controller operations. Its type will always be `pathlib.Path`.
+        self._project_path = None
 
     @property
     @abstractmethod
     def context(self):
         """Operation context."""
         raise NotImplementedError
+
+    @property
+    def project_path(self) -> Optional[Path]:
+        """Absolute project's path."""
+        return self._project_path
+
+    @project_path.setter
+    def project_path(self, path: Optional[Union[str, Path]]):
+        """Set absolute project's path."""
+        if not path:
+            self._project_path = None
+            return
+
+        path = normalize_git_url(str(path))
+        self._project_path = Path(path)
 
     @abstractmethod
     def renku_op(self):
@@ -138,7 +155,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
         if self.context.get("is_delayed", False) and "user_id" in self.user_data:
             # NOTE: After pushing the controller to delayed execution,
-            # its important to remove the delayed mark,
+            # it's important to remove the delayed mark,
             # otherwise job will keep recursively enqueuing itself.
             self.context.pop("is_delayed")
 
@@ -149,13 +166,12 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
             return job
 
-        if "git_url" in self.context and "user_id" not in self.user_data:
-            # NOTE: Anonymous session support.
-            return self.remote()
-
-        elif "git_url" in self.context and "user_id" in self.user_data:
-            return self.local()
-
+        if "git_url" in self.context:
+            if "user_id" not in self.user_data:
+                # NOTE: Anonymous session support.
+                return self.remote()
+            else:
+                return self.local()
         else:
             raise RenkuException("context does not contain `project_id` or `git_url`")
 
