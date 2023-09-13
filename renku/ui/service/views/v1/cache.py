@@ -20,9 +20,9 @@ from dataclasses import asdict
 from flask import request
 
 from renku.core.errors import AuthenticationError, ProjectNotFound
+from renku.infrastructure.gitlab_api_provider import GitlabAPIProvider
 from renku.ui.service.controllers.cache_migrate_project import MigrateProjectCtrl
 from renku.ui.service.controllers.cache_migrations_check import MigrationsCheckCtrl
-from renku.ui.service.gateways.gitlab_api_provider import GitlabAPIProvider
 from renku.ui.service.serializers.v1.cache import ProjectMigrateResponseRPC_1_0, ProjectMigrationCheckResponseRPC_1_5
 from renku.ui.service.views import result_response
 from renku.ui.service.views.api_versions import V1_0, V1_1, V1_2, V1_3, V1_4, V1_5

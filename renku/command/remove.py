@@ -28,7 +28,7 @@ from renku.command.command_builder.command import Command
 from renku.core import errors
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.interface.dataset_gateway import IDatasetGateway
-from renku.core.storage import check_external_storage, untrack_paths_from_storage
+from renku.core.lfs import check_external_storage, untrack_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.git import get_git_user
 from renku.core.util.os import delete_dataset_file, expand_directories

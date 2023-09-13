@@ -13,58 +13,97 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-r"""Manage an cloud storage.
+r"""Manage an external storage.
 
 Commands and options
 ~~~~~~~~~~~~~~~~~~~~
 
 .. rst-class:: cli-reference-commands
 
-.. click:: renku.ui.cli.storage:storage
-   :prog: renku storage
+.. click:: renku.ui.cli.lfs:lfs
+   :prog: renku lfs
    :nested: full
 
+Pulling files from git LFS
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+LFS works by checking small pointer files into git and saving the actual
+contents of a file in LFS. If instead of your file content, you see
+something like this, it means the file is stored in git LFS and its
+contents are not currently available locally (they are not pulled):
+
+.. code-block:: console
+
+    version https://git-lfs.github.com/spec/v1
+    oid sha256:42b5c7fb2acd54f6d3cd930f18fee3bdcb20598764ca93bdfb38d7989c054bcf
+    size 12
+
+You can manually pull contents of file(s) you want with:
+
+.. code-block:: console
+
+    $ renku lfs pull file1 file2
+
+.. cheatsheet::
+   :group: Misc
+   :command: $ renku lfs pull <path>...
+   :description: Pull <path>'s from external storage (LFS).
+   :target: rp
+
+Removing local content of files stored in git LFS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you want to restore a file back to its pointer file state, for instance
+to free up space locally, you can run:
+
+.. code-block:: console
+
+    $ renku lfs clean file1 file2
+
+This removes any data cached locally for files tracked in in git LFS.
+
+Migrate large files to git LFS
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you accidentally checked a large file into git or are moving a non-LFS
+renku repo to git LFS, you can use the following command to migrate the files
+to LFS:
+
+.. code-block:: console
+
+    $ renku lfs migrate --all
+
+This will move all files that are not excluded by `.renkulfsignore` into git
+LFS.
+
+.. note::
+
+    Recent versions of Git LFS don't support filtering files based on their
+    size. Therefore, Renku ignores `lfs_threshold` config value when migrating
+    files to LFS using this command.
+
+To only migrate specific files, you can also pass their paths to the command
+like:
+
+.. code-block:: console
+
+    $ renku lfs migrate big_file other_big_file
 """
 import os
 
 import click
 
 import renku.ui.cli.utils.color as color
-from renku.command.format.storage import CLOUD_STORAGE_COLUMNS, CLOUD_STORAGE_FORMATS
 from renku.command.util import WARNING
 from renku.ui.cli.utils.callback import ClickCallback
 
 
 @click.group()
-def storage():
-    """Manage storage."""
+def lfs():
+    """Manage lfs."""
 
 
-@storage.command()
-@click.option(
-    "--columns",
-    type=click.STRING,
-    default=None,
-    metavar="<columns>",
-    help="Comma-separated list of column to display: {}.".format(", ".join(CLOUD_STORAGE_COLUMNS.keys())),
-    show_default=True,
-)
-@click.option(
-    "--format", type=click.Choice(list(CLOUD_STORAGE_FORMATS.keys())), default="log", help="Choose an output format."
-)
-def ls(columns, format):
-    """List configured cloud storage for a project."""
-    from renku.command.storage import list_storage_command
-
-    storages = list_storage_command().build().execute()
-
-    click.echo(STORAGE_FORMATS[format](storages.output, columns=columns))
-
-
-# =============================================
-#  Deprecated LFS commands below, see lfs.py
-# =============================================
-@storage.command(hidden=True, deprecated=True)
+@lfs.command()
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True)
 def pull(paths):
     """Pull the specified paths from external storage."""
@@ -73,7 +112,7 @@ def pull(paths):
     pull_command().build().execute(paths=paths)
 
 
-@storage.command(hidden=True, deprecated=True)
+@lfs.command()
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True)
 def clean(paths):
     """Remove files from lfs cache/turn them back into pointer files."""
@@ -85,7 +124,7 @@ def clean(paths):
     click.secho("OK", fg=color.GREEN)
 
 
-@storage.command("check-lfs-hook", hidden=True, deprecated=True)
+@lfs.command("check-lfs-hook", hidden=True)
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1, required=True)
 def check_lfs_hook(paths):
     """Check specified paths are tracked in external storage."""
@@ -97,7 +136,7 @@ def check_lfs_hook(paths):
         exit(1)
 
 
-@storage.command(hidden=True, deprecated=True)
+@lfs.command()
 @click.option("--all", is_flag=True, help="Include all branches.")
 def check(all):
     """Check if large files are committed to Git history."""
@@ -112,7 +151,7 @@ def check(all):
         click.secho("OK", fg=color.GREEN)
 
 
-@storage.command(hidden=True, deprecated=True)
+@lfs.command()
 @click.option("--all", "-a", "migrate_all", is_flag=True, default=False, help="Migrate all large files not in git LFS.")
 @click.argument("paths", type=click.Path(exists=True, dir_okay=True), nargs=-1)
 def migrate(migrate_all, paths):

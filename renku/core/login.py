@@ -195,7 +195,7 @@ def _set_renku_url_for_remote(repository: "Repository", remote_name: str, remote
         raise errors.GitError(f"Cannot change remote url for '{remote_name}' to '{new_remote_url}'") from e
 
 
-def read_renku_token(endpoint: str, get_endpoint_from_remote=False) -> str:
+def read_renku_token(endpoint: Optional[str], get_endpoint_from_remote=False) -> str:
     """Read renku token from renku config file.
 
     Args:
@@ -287,3 +287,10 @@ def credentials(command: str, hostname: Optional[str]):
 
     communication.echo("username=renku")
     communication.echo(f"password={token}")
+
+
+def ensure_login():
+    """Ensure a user is logged in."""
+    token = read_renku_token(None, True)
+    if not token:
+        raise errors.NotLoggedIn("You are not logged into to a Renku platform. Use 'renku login <url>' to log in.")

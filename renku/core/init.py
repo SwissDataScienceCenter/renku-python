@@ -31,8 +31,8 @@ from renku.core.constant import DATA_DIR_CONFIG_KEY, RENKU_HOME
 from renku.core.git import with_worktree
 from renku.core.githooks import install_githooks
 from renku.core.interface.database_gateway import IDatabaseGateway
+from renku.core.lfs import init_external_storage, storage_installed
 from renku.core.migration.utils import OLD_METADATA_PATH
-from renku.core.storage import init_external_storage, storage_installed
 from renku.core.template.template import (
     FileAction,
     RenderedTemplate,
@@ -356,6 +356,7 @@ def create_from_template_local(
         description(Optional[str]): Project description (Default value = None).
         keywords(Optional[List[str]]): Project keywords (Default value = None).
         data_dir(Optional[str]): Project base data directory (Default value = None).
+        ssh_supported(bool): Whether the template supports ssh connections (Default value = None).
     """
     metadata = metadata or {}
     default_metadata = default_metadata or {}

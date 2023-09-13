@@ -28,8 +28,8 @@ from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.plan_gateway import IPlanGateway
+from renku.core.lfs import check_external_storage, pull_paths_from_storage
 from renku.core.plugin.provider import execute
-from renku.core.storage import check_external_storage, pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.os import is_subpath, safe_read_yaml

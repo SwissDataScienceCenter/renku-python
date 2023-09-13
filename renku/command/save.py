@@ -21,7 +21,7 @@ from pydantic import validate_arguments
 
 from renku.command.command_builder.command import Command
 from renku.core import errors
-from renku.core.storage import track_paths_in_storage
+from renku.core.lfs import track_paths_in_storage
 from renku.domain_model.project_context import project_context
 
 

@@ -17,7 +17,7 @@
 """Renku doctor tests."""
 
 from renku.core.constant import RENKU_LFS_IGNORE_PATH
-from renku.core.storage import get_minimum_lfs_file_size
+from renku.core.lfs import get_minimum_lfs_file_size
 from renku.domain_model.dataset import DatasetFile, Url
 from renku.domain_model.project_context import project_context
 from renku.infrastructure.gateway.activity_gateway import ActivityGateway

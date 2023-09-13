@@ -25,8 +25,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from renku.core import errors
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.dataset.providers.api import ImporterApi, ImportProviderInterface, ProviderApi, ProviderPriority
+from renku.core.lfs import pull_paths_from_storage
 from renku.core.login import read_renku_token
-from renku.core.storage import pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.git import clone_renku_repository, get_cache_directory_for_repository, get_file_size
 from renku.core.util.metadata import is_external_file, make_project_temp_dir

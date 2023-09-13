@@ -33,8 +33,8 @@ from renku.command.command_builder.command import inject
 from renku.core import errors
 from renku.core.constant import RENKU_HOME, RENKU_TMP
 from renku.core.interface.project_gateway import IProjectGateway
+from renku.core.lfs import check_external_storage, track_paths_in_storage
 from renku.core.plugin.pluginmanager import get_plugin_manager
-from renku.core.storage import check_external_storage, track_paths_in_storage
 from renku.core.util.git import is_path_safe
 from renku.core.util.metadata import is_external_file
 from renku.core.util.os import get_absolute_path, get_relative_path, is_subpath

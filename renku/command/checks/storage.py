@@ -16,7 +16,7 @@
 """Check for large files in Git history."""
 
 from renku.command.util import WARNING
-from renku.core.storage import check_external_storage, check_lfs_migrate_info
+from renku.core.lfs import check_external_storage, check_lfs_migrate_info
 
 
 def check_lfs_info(**_):

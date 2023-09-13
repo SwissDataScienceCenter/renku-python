@@ -19,6 +19,7 @@
 import tempfile
 from dataclasses import asdict
 from pathlib import Path
+from typing import Type
 
 from renku.command.migrate import MigrationCheckResult, migrations_check
 from renku.core.errors import AuthenticationError, MinimumVersionError, ProjectNotFound, RenkuException
@@ -37,11 +38,11 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
     REQUEST_SERIALIZER = ProjectMigrationCheckRequest()
     RESPONSE_SERIALIZER = ProjectMigrationCheckResponseRPC()
 
-    def __init__(self, cache, user_data, request_data, git_api_provider: IGitAPIProvider):
+    def __init__(self, cache, user_data, request_data, git_api_provider: Type[IGitAPIProvider]):
         """Construct migration check controller."""
         self.ctx = MigrationsCheckCtrl.REQUEST_SERIALIZER.load(request_data)
-        self.git_api_provider = git_api_provider
         super().__init__(cache, user_data, request_data)
+        self.git_api_provider = git_api_provider(token=self.user.token)
 
     @property
     def context(self):

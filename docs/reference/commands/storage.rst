@@ -3,4 +3,4 @@
 renku storage
 *************
 
-.. automodule:: renku.ui.cli.storage
+.. automodule:: renku.ui.cli.lfs

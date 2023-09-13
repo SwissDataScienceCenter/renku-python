@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union
 from renku.core import errors
 from renku.core.dataset.pointer_file import create_external_file
 from renku.core.dataset.providers.api import AddProviderInterface, ProviderApi, ProviderPriority
-from renku.core.storage import pull_paths_from_storage
+from renku.core.lfs import pull_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.git import clone_repository, get_cache_directory_for_repository
 from renku.core.util.metadata import is_linked_file

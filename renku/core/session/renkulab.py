@@ -23,9 +23,11 @@ from pathlib import Path
 from time import monotonic, sleep
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
 
+from renku.command.command_builder.command import inject
 from renku.core import errors
 from renku.core.config import get_value
 from renku.core.constant import ProviderPriority
+from renku.core.interface.storage_service_gateway import IStorageService
 from renku.core.login import read_renku_token
 from renku.core.plugin import hookimpl
 from renku.core.session.utils import get_renku_project_name, get_renku_url
@@ -261,6 +263,33 @@ class RenkulabSessionProvider(ISessionProvider):
             == 200
         )
 
+    def get_cloudstorage(self):
+        """Get cloudstorage configured for the project."""
+        storage_service: IStorageService = inject.instance(IStorageService)
+        storages = storage_service.list(storage_service.project_id)
+
+        if not storages:
+            return []
+
+        storages_to_mount = []
+        for storage, private_fields in storages:
+            if not communication.confirm(f"Do you want to mount storage '{storage.name}'({storage.storage_type})?"):
+                continue
+            if storage.private:
+                # check for credentials for user
+                private_field_names = [f["name"] for f in private_fields]
+                for name, value in storage.configuration.items():
+                    if name not in private_field_names:
+                        continue
+                    field = next(f for f in private_fields if f["name"] == name)
+
+                    secret = communication.prompt(f"{field['help']}\nPlease provide a value for secret '{name}':")
+                    storage.configuration[name] = secret
+
+            storages_to_mount.append({"storage_id": storage.storage_id, "configuration": storage.configuration})
+
+        return storages_to_mount
+
     @hookimpl
     def session_provider(self) -> ISessionProvider:
         """Supported session provider.
@@ -374,6 +403,7 @@ class RenkulabSessionProvider(ISessionProvider):
             "commit_sha": session_commit,
             "serverOptions": server_options,
             "branch": repository.active_branch.name if repository.active_branch else "master",
+            "cloudstorage": self.get_cloudstorage(),
             **self._get_renku_project_name_parts(),
         }
         res = self._send_renku_request(

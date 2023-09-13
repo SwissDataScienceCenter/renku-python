@@ -28,7 +28,7 @@ from renku.core import errors
 from renku.core.dataset.dataset import move_files
 from renku.core.dataset.datasets_provenance import DatasetsProvenance
 from renku.core.interface.dataset_gateway import IDatasetGateway
-from renku.core.storage import track_paths_in_storage, untrack_paths_from_storage
+from renku.core.lfs import track_paths_in_storage, untrack_paths_from_storage
 from renku.core.util import communication
 from renku.core.util.metadata import is_protected_path
 from renku.core.util.os import get_relative_path, is_subpath

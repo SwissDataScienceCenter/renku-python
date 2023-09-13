@@ -34,7 +34,7 @@ from renku.core.config import get_value
 from renku.core.git import get_mapped_std_streams
 from renku.core.interface.activity_gateway import IActivityGateway
 from renku.core.interface.plan_gateway import IPlanGateway
-from renku.core.storage import check_external_storage, pull_paths_from_storage
+from renku.core.lfs import check_external_storage, pull_paths_from_storage
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.git import get_git_user
 from renku.core.util.os import get_relative_path_to_cwd, get_relative_paths

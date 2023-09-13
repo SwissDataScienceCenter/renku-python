@@ -29,8 +29,11 @@ class IGitAPIProvider(ABC):
         folders: List[Union[Path, str]],
         target_folder: Union[Path, str],
         remote: str,
-        token: str,
         branch: Optional[str] = None,
     ):
         """Download files through a remote Git API."""
+        raise NotImplementedError()
+
+    def get_project_id(self, gitlab_url: str, namespace: str, name: str) -> str:
+        """Get a gitlab project id from namespace/name."""
         raise NotImplementedError()

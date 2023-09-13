@@ -23,7 +23,7 @@ from typing import Generator, List
 import pytest
 
 from renku.core.config import set_value
-from renku.core.storage import get_minimum_lfs_file_size
+from renku.core.lfs import get_minimum_lfs_file_size
 
 
 @pytest.fixture

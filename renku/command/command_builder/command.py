@@ -17,6 +17,7 @@
 
 import contextlib
 import functools
+import shutil
 import threading
 from collections import defaultdict
 from pathlib import Path
@@ -456,6 +457,13 @@ class Command:
         return RequireClean(self)
 
     @check_finalized
+    def require_login(self) -> "Command":
+        """Check that the user is logged in."""
+        from renku.command.command_builder.repo import RequireLogin
+
+        return RequireLogin(self)
+
+    @check_finalized
     def with_communicator(self, communicator: CommunicationCallback) -> "Command":
         """Create a communicator.
 
@@ -479,6 +487,20 @@ class Command:
 
         return DatabaseCommand(self, write, path, create)
 
+    @check_finalized
+    def with_gitlab_api(self) -> "Command":
+        """Inject gitlab api client."""
+        from renku.command.command_builder.gitlab import GitlabApiCommand
+
+        return GitlabApiCommand(self)
+
+    @check_finalized
+    def with_storage_api(self) -> "Command":
+        """Inject storage api client."""
+        from renku.command.command_builder.storage import StorageApiCommand
+
+        return StorageApiCommand(self)
+
 
 class CommandResult:
     """The result of a command.
@@ -496,3 +518,26 @@ class CommandResult:
         self.output = output
         self.error = error
         self.status = status
+
+
+class RequireExecutable(Command):
+    """Builder to check if an executable is installed."""
+
+    HOOK_ORDER = 4
+
+    def __init__(self, builder: Command, executable: str) -> None:
+        """__init__ of RequireExecutable."""
+        self._builder = builder
+        self._executable = executable
+
+    def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
+        """Check if an executable exists on the system.
+
+        Args:
+            builder(Command): Current ``CommandBuilder``.
+            context(dict): Current context.
+        """
+        if not shutil.which(self._executable):
+            raise errors.ExecutableNotFound(
+                f"Couldn't find the executable '{self._executable}' on this system. Please make sure it's installed"
+            )

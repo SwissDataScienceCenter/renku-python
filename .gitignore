@@ -94,6 +94,7 @@ helm-chart/renku-core/charts
 renku/templates/
 temp/
 tmp/
+.ropeproject/
 
 # pytest-recording cache
 cassettes

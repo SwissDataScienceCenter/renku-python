@@ -38,7 +38,7 @@ from renku.core.dataset.providers.models import DatasetUpdateAction, ProviderDat
 from renku.core.dataset.request_model import ImageRequestModel
 from renku.core.dataset.tag import get_dataset_by_tag, prompt_access_token, prompt_tag_selection
 from renku.core.interface.dataset_gateway import IDatasetGateway
-from renku.core.storage import check_external_storage, track_paths_in_storage
+from renku.core.lfs import check_external_storage, track_paths_in_storage
 from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.core.util.git import get_git_user

@@ -59,6 +59,14 @@ class NotFound(RenkuException):
     """Raise when an object is not found in KG."""
 
 
+class NotLoggedIn(RenkuException):
+    """Raised when a user is not logged in to a Renku platform."""
+
+
+class ExecutableNotFound(RenkuException):
+    """Raised when an executable wasn't found on the system."""
+
+
 class ParameterError(RenkuException):
     """Raise in case of invalid parameter."""
 
