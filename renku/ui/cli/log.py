@@ -54,7 +54,7 @@ Examples
     Dataset testset
     Date: 2022-02-03T11:26:55+01:00
     Changes: created
-    Title set to: testset
+    Name set to: testset
     Creators modified:
             + John Doe <John.Doe@example.com>
 
@@ -148,8 +148,8 @@ def _print_dataset_log(log_entry: DatasetLogViewModel) -> str:
     if log_entry.details.source:
         results.append(style_key("Source: ") + log_entry.details.source)
 
-    if log_entry.details.title_changed:
-        results.append(style_key("Title set to: ") + log_entry.details.title_changed)
+    if log_entry.details.name_changed:
+        results.append(style_key("Name set to: ") + log_entry.details.name_changed)
 
     if log_entry.details.description_changed:
         results.append(style_key("Description set to: ") + log_entry.details.description_changed)

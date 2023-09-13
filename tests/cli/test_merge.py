@@ -142,7 +142,7 @@ def test_mergetool(runner, project, directory_tree, run_shell, with_injection):
     assert len(activities) == 7
     assert len(plans) == 7
 
-    shared_dataset = next(d for d in datasets if d.name == "shared-dataset")
+    shared_dataset = next(d for d in datasets if d.slug == "shared-dataset")
     assert "remote description" == shared_dataset.description
 
 

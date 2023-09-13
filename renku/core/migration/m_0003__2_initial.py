@@ -36,7 +36,7 @@ from renku.core.migration.utils import (
 from renku.core.util.contexts import with_project_metadata
 from renku.core.util.git import get_in_submodules
 from renku.core.util.urls import url_to_string
-from renku.domain_model.dataset import generate_default_name
+from renku.domain_model.dataset import generate_default_slug
 from renku.domain_model.project_context import project_context
 
 
@@ -88,7 +88,7 @@ def _migrate_datasets_pre_v0_3():
 
         dataset = Dataset.from_yaml(old_path)
         dataset.title = name
-        dataset.name = generate_default_name(name)
+        dataset.name = generate_default_slug(name)
         new_path = get_datasets_path() / dataset.identifier / OLD_METADATA_PATH
         new_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -123,9 +123,9 @@ def _migrate_broken_dataset_paths(migration_context):
     """Ensure all paths are using correct directory structure."""
     for dataset in get_project_datasets():
         if not dataset.name:
-            dataset.name = generate_default_name(dataset.title, dataset.version)
+            dataset.name = generate_default_slug(dataset.title, dataset.version)
         else:
-            dataset.name = generate_default_name(dataset.name)
+            dataset.name = generate_default_slug(dataset.name)
 
         expected_path = get_datasets_path() / dataset.identifier
 

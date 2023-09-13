@@ -31,7 +31,7 @@ from renku.domain_model.dataset import (
     Language,
     RemoteEntity,
     Url,
-    is_dataset_name_valid,
+    is_dataset_slug_valid,
 )
 from renku.domain_model.image import ImageObject
 from renku.domain_model.project_context import project_context
@@ -184,7 +184,7 @@ def convert_dataset(dataset: old_datasets.Dataset, revision: str) -> Tuple[Datas
         return str(license)
 
     tags = [_convert_dataset_tag(tag) for tag in (dataset.tags or [])]
-    name = get_slug(dataset.name) if not is_dataset_name_valid(dataset.name) else dataset.name
+    slug = get_slug(dataset.name) if not is_dataset_slug_valid(dataset.name) else dataset.name
 
     identifier = _convert_dataset_identifier(dataset.identifier)
     id = Dataset.generate_id(identifier=identifier)
@@ -205,11 +205,11 @@ def convert_dataset(dataset: old_datasets.Dataset, revision: str) -> Tuple[Datas
             in_language=_convert_language(dataset.in_language),
             keywords=dataset.keywords,
             license=convert_license(dataset.license),
-            name=name,
+            slug=slug,
             project_id=project_context.project.id,
             initial_identifier=_convert_dataset_identifier(dataset.initial_identifier),
             same_as=_convert_same_as(dataset.same_as),
-            title=dataset.title,
+            name=dataset.title,
             version=dataset.version,
         ),
         tags,

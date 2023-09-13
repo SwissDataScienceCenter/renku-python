@@ -43,9 +43,9 @@ def test_merge_dataset_tree_non_conflict_dataset():
 
 def test_merge_dataset_tree_local_modified_dataset(mocker):
     """Test merging dataset tree with local modifications."""
-    dataset = Dataset(id=Dataset.generate_id(uuid4().hex), name="dataset", title="First")
+    dataset = Dataset(id=Dataset.generate_id(uuid4().hex), slug="dataset", name="First")
     modified_dataset = dataset.copy()
-    modified_dataset.update_metadata(title="Modified title")
+    modified_dataset.update_metadata(name="Modified name")
     modified_dataset.derive_from(dataset, creator=None)
 
     local = BTree({"dataset": modified_dataset})
@@ -59,14 +59,14 @@ def test_merge_dataset_tree_local_modified_dataset(mocker):
 
     merged = merger.merge_btrees(local, remote)
     assert "dataset" in merged.keys()
-    assert "Modified title" == merged["dataset"].title
+    assert "Modified name" == merged["dataset"].name
 
 
 def test_merge_dataset_tree_remote_modified_dataset(mocker):
     """Test merging dataset tree with remote modifications."""
-    dataset = Dataset(id=Dataset.generate_id(uuid4().hex), name="dataset", title="First")
+    dataset = Dataset(id=Dataset.generate_id(uuid4().hex), slug="dataset", name="First")
     modified_dataset = dataset.copy()
-    modified_dataset.update_metadata(title="Modified title")
+    modified_dataset.update_metadata(name="Modified name")
     modified_dataset.derive_from(dataset, creator=None)
 
     local = BTree({"dataset": dataset})
@@ -80,20 +80,20 @@ def test_merge_dataset_tree_remote_modified_dataset(mocker):
 
     merged = merger.merge_btrees(local, remote)
     assert "dataset" in merged.keys()
-    assert "Modified title" == merged["dataset"].title
+    assert "Modified name" == merged["dataset"].name
 
 
 def test_merge_dataset_tree_both_modified_dataset(mocker):
     """Test merging dataset tree with remote and local modifications."""
-    dataset = Dataset(id=Dataset.generate_id(uuid4().hex), name="dataset", title="First")
+    dataset = Dataset(id=Dataset.generate_id(uuid4().hex), slug="dataset", name="First")
     modified_local_dataset = dataset.copy()
-    modified_local_dataset.update_metadata(title="Modified local title")
+    modified_local_dataset.update_metadata(name="Modified local name")
     modified_local_dataset.derive_from(dataset, creator=None)
     modified_remote_dataset = dataset.copy()
-    modified_remote_dataset.update_metadata(title="Modified remote title")
+    modified_remote_dataset.update_metadata(name="Modified remote name")
     modified_remote_dataset.derive_from(dataset, creator=None)
 
-    unrelated_dataset = Dataset(id=Dataset.generate_id(uuid4().hex), name="unrelated_dataset", title="unrelated")
+    unrelated_dataset = Dataset(id=Dataset.generate_id(uuid4().hex), slug="unrelated_dataset", name="unrelated")
 
     all_datasets = [dataset, modified_local_dataset, modified_remote_dataset, unrelated_dataset]
 
@@ -109,16 +109,16 @@ def test_merge_dataset_tree_both_modified_dataset(mocker):
     mocker.patch("renku.infrastructure.git_merger.communication.prompt", mocker.MagicMock(return_value="l"))
     merged = merger.merge_btrees(local, remote)
     assert "dataset" in merged.keys()
-    assert "Modified local title" == merged["dataset"].title
+    assert "Modified local name" == merged["dataset"].name
     assert "unrelated_dataset" in merged.keys()
-    assert "unrelated" == merged["unrelated_dataset"].title
+    assert "unrelated" == merged["unrelated_dataset"].name
 
     mocker.patch("renku.infrastructure.git_merger.communication.prompt", mocker.MagicMock(return_value="r"))
     merged = merger.merge_btrees(local, remote)
     assert "dataset" in merged.keys()
-    assert "Modified remote title" == merged["dataset"].title
+    assert "Modified remote name" == merged["dataset"].name
     assert "unrelated_dataset" in merged.keys()
-    assert "unrelated" == merged["unrelated_dataset"].title
+    assert "unrelated" == merged["unrelated_dataset"].name
 
 
 def test_merge_plan_tree_non_conflict_plan():

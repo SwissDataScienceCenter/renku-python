@@ -61,7 +61,7 @@ class DatasetsImportCtrl(ServiceCtrl, RenkuOpSyncMixin):
                 job.job_id,
                 self.ctx["project_id"],
                 self.ctx["dataset_uri"],
-                name=self.ctx.get("name"),
+                slug=self.ctx.get("slug"),
                 extract=self.ctx.get("extract", False),
                 tag=self.ctx.get("tag", None),
                 job_timeout=int(os.getenv("WORKER_DATASET_JOBS_TIMEOUT", 1800)),

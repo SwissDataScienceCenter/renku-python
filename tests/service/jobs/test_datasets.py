@@ -258,14 +258,14 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
 
     payload = {
         "git_url": url_components.href,
-        "name": uuid.uuid4().hex,
+        "slug": uuid.uuid4().hex,
         "create_dataset": True,
         "files": [{"file_url": url}],
     }
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"files", "name", "project_id", "remote_branch"} == set(response.json["result"].keys())
+    assert {"files", "slug", "project_id", "remote_branch"} == set(response.json["result"].keys())
 
     dest = make_project_path(
         user,
@@ -280,7 +280,7 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
     job_id = response.json["result"]["files"][0]["job_id"]
     commit_message = "service: dataset add remote file"
 
-    dataset_add_remote_file(user, job_id, project_id, True, commit_message, payload["name"], url)
+    dataset_add_remote_file(user, job_id, project_id, True, commit_message, payload["slug"], url)
 
     new_commit = Repository(dest).head.commit
 
@@ -307,7 +307,7 @@ def test_delay_add_file_job(svc_client_cache, it_remote_repo_url_temp_branch, vi
         {
             "git_url": it_remote_repo_url,
             "branch": branch,
-            "name": uuid.uuid4().hex,
+            "slug": uuid.uuid4().hex,
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
             "migrate_project": True,
@@ -325,7 +325,7 @@ def test_delay_add_file_job(svc_client_cache, it_remote_repo_url_temp_branch, vi
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
     assert updated_job
-    assert {"remote_branch", "project_id", "files", "name"} == updated_job.ctrl_result["result"].keys()
+    assert {"remote_branch", "project_id", "files", "slug"} == updated_job.ctrl_result["result"].keys()
 
 
 @pytest.mark.service
@@ -351,7 +351,7 @@ def test_delay_add_file_job_failure(svc_client_cache, it_remote_repo_url_temp_br
         {
             "git_url": it_remote_repo_url,
             "branch": branch,
-            "name": uuid.uuid4().hex,
+            "slug": uuid.uuid4().hex,
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
             "migrate_project": False,
@@ -382,7 +382,7 @@ def test_delay_create_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
         {
             "git_url": it_remote_repo_url,
             "branch": branch,
-            "name": uuid.uuid4().hex,
+            "slug": uuid.uuid4().hex,
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
             "migrate_project": True,
@@ -403,7 +403,7 @@ def test_delay_create_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
     assert updated_job
-    assert {"name", "remote_branch"} == updated_job.ctrl_result["result"].keys()
+    assert {"slug", "remote_branch"} == updated_job.ctrl_result["result"].keys()
 
 
 @pytest.mark.service
@@ -419,7 +419,7 @@ def test_delay_create_dataset_failure(svc_client_cache, it_remote_repo_url_temp_
         {
             "git_url": it_remote_repo_url,
             "branch": branch,
-            "name": uuid.uuid4().hex,
+            "slug": uuid.uuid4().hex,
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
         }
@@ -455,7 +455,7 @@ def test_delay_remove_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
     request_payload = {
         "git_url": it_remote_repo_url,
         "branch": branch,
-        "name": "mydata",
+        "slug": "mydata",
         "migrate_project": True,
     }
 
@@ -470,7 +470,7 @@ def test_delay_remove_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
     updated_job = delayed_ctrl_job(context, view_user_data, delete_job.job_id, renku_module, renku_ctrl)
 
     assert updated_job
-    assert {"name", "remote_branch"} == updated_job.ctrl_result["result"].keys()
+    assert {"slug", "remote_branch"} == updated_job.ctrl_result["result"].keys()
 
 
 @pytest.mark.service
@@ -484,12 +484,12 @@ def test_delay_remove_dataset_job_failure(svc_client_cache, it_remote_repo_url_t
     it_remote_repo_url, ref = it_remote_repo_url_temp_branch
     _, _, cache = svc_client_cache
     user = cache.ensure_user(view_user_data)
-    dataset_name = uuid.uuid4().hex
+    dataset_slug = uuid.uuid4().hex
 
     request_payload = {
         "git_url": it_remote_repo_url,
         "branch": ref,
-        "name": dataset_name,
+        "slug": dataset_slug,
     }
 
     context = DatasetRemoveRequest().load(request_payload)
@@ -517,8 +517,8 @@ def test_delay_edit_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch
         {
             "git_url": it_remote_repo_url,
             "branch": branch,
-            "name": "mydata",
-            "title": f"new title => {uuid.uuid4().hex}",
+            "slug": "mydata",
+            "name": f"new name => {uuid.uuid4().hex}",
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
             "migrate_project": True,
@@ -540,7 +540,7 @@ def test_delay_edit_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch
 
     assert updated_job
     assert {"warnings", "remote_branch", "edited"} == updated_job.ctrl_result["result"].keys()
-    assert {"title"} == updated_job.ctrl_result["result"]["edited"].keys()
+    assert {"name"} == updated_job.ctrl_result["result"]["edited"].keys()
 
 
 @pytest.mark.service
@@ -556,8 +556,8 @@ def test_delay_edit_dataset_job_failure(svc_client_cache, it_remote_repo_url_tem
         {
             "git_url": it_remote_repo_url,
             "branch": branch,
-            "name": "mydata",
-            "title": f"new title => {uuid.uuid4().hex}",
+            "slug": "mydata",
+            "name": f"new name => {uuid.uuid4().hex}",
             "migrate_project": False,
         }
     )
@@ -589,7 +589,7 @@ def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
         {
             "git_url": it_remote_repo_url,
             "branch": branch,
-            "name": "ds1",
+            "slug": "ds1",
             "include_filters": ["data1"],
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
@@ -625,7 +625,7 @@ def test_delay_unlink_dataset_job_failure(svc_client_cache, it_remote_repo_url_t
     it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
     context = DatasetUnlinkRequest().load(
-        {"git_url": it_remote_repo_url, "branch": branch, "name": "ds1", "include_filters": ["data1"]}
+        {"git_url": it_remote_repo_url, "branch": branch, "slug": "ds1", "include_filters": ["data1"]}
     )
 
     _, _, cache = svc_client_cache
@@ -655,7 +655,7 @@ def test_unlink_dataset_sync(svc_client_cache, it_remote_repo_url_temp_branch, v
         {
             "git_url": it_remote_repo_url,
             "branch": branch,
-            "name": "ds1",
+            "slug": "ds1",
             "include_filters": ["data1"],
             "migrate_project": True,
         }

@@ -933,7 +933,7 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_
                 transaction_id=project_context.transaction_id,
                 commit_message="Create dataset",
             ):
-                with DatasetContext(name="my_dataset", create=True, commit_database=True) as dataset:
+                with DatasetContext(slug="my_dataset", create=True, commit_database=True) as dataset:
                     dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
 
     remote_repo_checkout.push()
@@ -950,14 +950,14 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_
 
     payload = {
         "git_url": remote_url,
-        "name": uuid.uuid4().hex,
+        "slug": uuid.uuid4().hex,
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert 200 == response.status_code
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
+    assert {"slug", "remote_branch"} == set(response.json["result"].keys())
 
     remote_repo_checkout.pull()
 
@@ -965,8 +965,8 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_
         datasets = DatasetGateway().get_all_active_datasets()
         assert 2 == len(datasets)
 
-    assert any(d.name == "my_dataset" for d in datasets)
-    assert any(d.name == payload["name"] for d in datasets)
+    assert any(d.slug == "my_dataset" for d in datasets)
+    assert any(d.slug == payload["slug"] for d in datasets)
 
 
 @pytest.mark.service

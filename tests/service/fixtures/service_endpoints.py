@@ -100,7 +100,7 @@ def unlink_file_setup(svc_client_with_repo):
 
     unlink_payload = {
         "git_url": url_components.href,
-        "name": response.json["result"]["name"],
+        "slug": response.json["result"]["slug"],
         "include_filters": [response.json["result"]["files"][0]["file_path"]],
     }
 

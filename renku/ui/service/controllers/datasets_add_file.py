@@ -41,7 +41,7 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets add controller."""
         self.ctx = DatasetsAddFileCtrl.REQUEST_SERIALIZER.load(request_data)
-        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset add {self.ctx['name']}"
+        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset add {self.ctx['slug']}"
 
         super().__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
@@ -77,7 +77,7 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
                         self.ctx["project_id"],
                         self.ctx["create_dataset"],
                         commit_message,
-                        self.ctx["name"],
+                        self.ctx["slug"],
                         _file["file_url"],
                         job_timeout=int(os.getenv("WORKER_DATASET_JOBS_TIMEOUT", 1800)),
                         result_ttl=int(os.getenv("WORKER_DATASET_JOBS_RESULT_TTL", 500)),
@@ -111,7 +111,7 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
         if local_paths:
             add_to_dataset_command().with_commit_message(self.ctx["commit_message"]).build().execute(
-                dataset_name=self.ctx["name"],
+                dataset_slug=self.ctx["slug"],
                 urls=local_paths,
                 create=self.ctx["create_dataset"],
                 force=self.ctx["force"],

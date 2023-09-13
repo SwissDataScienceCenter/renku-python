@@ -54,7 +54,7 @@ def project_with_datasets(project, directory_tree, with_injection) -> Generator[
     person_2 = Person.from_string("P2 <p2@example.com>")
 
     with with_injection():
-        create_dataset(name="dataset-1", keywords=["dataset", "1"], creators=[person_1])
+        create_dataset(slug="dataset-1", keywords=["dataset", "1"], creators=[person_1])
 
         dataset = add_to_dataset("dataset-2", urls=[str(p) for p in directory_tree.glob("*")], create=True, copy=True)
         dataset.keywords = ["dataset", "2"]

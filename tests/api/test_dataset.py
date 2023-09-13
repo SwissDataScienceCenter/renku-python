@@ -28,9 +28,9 @@ def test_list_datasets(project_with_datasets):
     with Project():
         datasets = Dataset.list()
 
-        assert {"dataset-1", "dataset-2"} == {d.name for d in datasets}
+        assert {"dataset-1", "dataset-2"} == {d.slug for d in datasets}
 
-        dataset = next(d for d in Dataset.list() if d.name == "dataset-2")
+        dataset = next(d for d in Dataset.list() if d.slug == "dataset-2")
         assert {"P1", "P2"} == {c.name for c in dataset.creators}
 
 
@@ -38,7 +38,7 @@ def test_list_datasets_outside_a_context(project_with_datasets):
     """Test listing datasets outside a project context."""
     datasets = Dataset.list()
 
-    assert {"dataset-1", "dataset-2"} == {d.name for d in datasets}
+    assert {"dataset-1", "dataset-2"} == {d.slug for d in datasets}
 
 
 def test_list_datasets_outside_a_renku_project(directory_tree):
@@ -58,7 +58,7 @@ def test_list_datasets_outside_a_renku_project(directory_tree):
 def test_list_dataset_files(project_with_datasets, dataset, files_paths):
     """Test listing datasets files."""
     with Project() as project:
-        dataset = next(d for d in Dataset.list() if d.name == dataset)
+        dataset = next(d for d in Dataset.list() if d.slug == dataset)
 
         assert set(files_paths) == {f.path for f in dataset.files}
         assert {project.path / p for p in files_paths} == {d.full_path for d in dataset.files}

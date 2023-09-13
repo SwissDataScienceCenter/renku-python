@@ -74,7 +74,7 @@ def make_dataset_add_payload(git_url, urls, name=None):
 
     return {
         "git_url": git_url,
-        "name": name or uuid.uuid4().hex,
+        "slug": name or uuid.uuid4().hex,
         "create_dataset": True,
         "force": False,
         "files": files,
@@ -156,7 +156,7 @@ def load_dataset(name: str) -> Optional["Dataset"]:
 
     datasets_provenance = DatasetsProvenance()
 
-    return datasets_provenance.get_by_name(name)
+    return datasets_provenance.get_by_slug(name)
 
 
 def get_test_bindings() -> Tuple[Dict, Dict[Type, Callable[[], Any]]]:
@@ -213,7 +213,7 @@ def with_dataset(
     """Yield an editable metadata object for a dataset."""
     from renku.core.dataset.datasets_provenance import DatasetsProvenance
 
-    dataset = DatasetsProvenance().get_by_name(name=name, strict=True, immutable=True)
+    dataset = DatasetsProvenance().get_by_slug(slug=name, strict=True, immutable=True)
 
     if not dataset:
         return None

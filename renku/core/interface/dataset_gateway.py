@@ -30,8 +30,8 @@ class IDatasetGateway(ABC):
         """Get a dataset by id."""
         raise NotImplementedError
 
-    def get_by_name(self, name: str) -> Optional["Dataset"]:
-        """Get a dataset by id."""
+    def get_by_slug(self, slug: str) -> Optional["Dataset"]:
+        """Get a dataset by slug."""
         raise NotImplementedError
 
     def get_all_active_datasets(self) -> List["Dataset"]:

@@ -67,7 +67,7 @@ from renku.core.util.datetime8601 import fix_datetime, parse_date
 from renku.core.util.doi import extract_doi, is_doi
 from renku.core.util.git import get_in_submodules
 from renku.core.util.urls import get_host, get_slug
-from renku.domain_model.dataset import generate_default_name
+from renku.domain_model.dataset import generate_default_slug
 from renku.domain_model.project_context import project_context
 from renku.infrastructure.repository import Commit
 from renku.version import __version__, version_url
@@ -1691,7 +1691,7 @@ class Dataset(Entity, CreatorMixin):
                 pass
 
         if not self.name:
-            self.name = generate_default_name(self.title, self.version)
+            self.name = generate_default_slug(self.title, self.version)
 
     @classmethod
     def from_yaml(cls, path, commit=None):

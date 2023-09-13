@@ -42,7 +42,7 @@ class DatasetsFilesListCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def renku_op(self):
         """Renku operation for the controller."""
-        result = list_files_command().build().execute(datasets=[self.ctx["name"]])
+        result = list_files_command().build().execute(datasets=[self.ctx["slug"]])
         return result.output
 
     def to_response(self):

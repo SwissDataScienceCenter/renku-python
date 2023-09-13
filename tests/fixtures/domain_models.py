@@ -27,12 +27,12 @@ def empty_dataset_model():
     """Dataset without files."""
     from renku.domain_model.dataset import Dataset
 
-    def _create_dataset(name="my-dataset", identifier="5e77e63037614ea89309e21befe91dbb"):
+    def _create_dataset(slug="my-dataset", identifier="5e77e63037614ea89309e21befe91dbb"):
         return Dataset(
             id=Dataset.generate_id(identifier),
             identifier=identifier,
             initial_identifier=identifier,
-            name=name,
+            slug=slug,
             date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
         )
 
@@ -45,10 +45,10 @@ def dataset_model():
     from renku.domain_model.dataset import Dataset, DatasetFile
     from renku.domain_model.entity import Entity
 
-    def _create_dataset(name="my-dataset", num_files=2, identifier="14249f1571fb4a2786ddeb7f706b9833"):
+    def _create_dataset(slug="my-dataset", num_files=2, identifier="14249f1571fb4a2786ddeb7f706b9833"):
         files = []
         for i in range(num_files):
-            path = f"data/{name}/{i}"
+            path = f"data/{slug}/{i}"
             files.append(
                 DatasetFile(
                     id=DatasetFile.generate_id(),
@@ -60,7 +60,7 @@ def dataset_model():
             id=Dataset.generate_id(identifier),
             identifier=identifier,
             initial_identifier=identifier,
-            name=name,
+            slug=slug,
             dataset_files=files,
             date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
             date_modified=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
@@ -73,9 +73,9 @@ def dataset_model():
 def derived_dataset_model(empty_dataset_model, dataset_model):
     """Dataset with modification."""
 
-    def _create_dataset(name="my-dataset", identifier="5d8e5f72ef21441291cbf19db5a417ce"):
-        source_dataset = empty_dataset_model(name)
-        new_dataset = dataset_model(name)
+    def _create_dataset(slug="my-dataset", identifier="5d8e5f72ef21441291cbf19db5a417ce"):
+        source_dataset = empty_dataset_model(slug)
+        new_dataset = dataset_model(slug)
         new_dataset.derive_from(source_dataset, identifier=identifier)
         return new_dataset
 

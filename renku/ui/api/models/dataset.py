@@ -27,7 +27,7 @@ To get a list of available datasets in a Renku project use ``list`` method:
 
     datasets = Dataset.list()
 
-You can then access metadata of a dataset like ``name``, ``title``,
+You can then access metadata of a dataset like ``name``, ``slug``,
 ``keywords``, etc. To get the list of files inside a dataset use ``files``
 property:
 
@@ -62,7 +62,7 @@ class Dataset:
         "keywords",
         "license",
         "name",
-        "title",
+        "slug",
         "url",
         "version",
     ]
