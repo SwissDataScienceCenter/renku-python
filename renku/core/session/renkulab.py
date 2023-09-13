@@ -299,8 +299,6 @@ class RenkulabSessionProvider(ISessionProvider):
             params=self._get_renku_project_name_parts(),
         )
         if sessions_res.status_code == 200:
-            system_config = SystemSSHConfig()
-            name = self._project_name_from_full_project_name(project_name)
             sessions = [
                 Session(
                     id=session["name"],
