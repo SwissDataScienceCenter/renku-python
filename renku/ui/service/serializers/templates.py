@@ -26,6 +26,7 @@ from renku.core.util.os import normalize_to_ascii
 from renku.ui.service.config import TEMPLATE_CLONE_DEPTH_DEFAULT
 from renku.ui.service.serializers.cache import ProjectCloneContext, RepositoryCloneRequest
 from renku.ui.service.serializers.rpc import JsonRPCResponse
+from renku.ui.service.utils import normalize_git_url
 
 
 class ManifestTemplatesRequest(RepositoryCloneRequest):
@@ -74,6 +75,7 @@ class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
     def add_required_fields(self, data, **kwargs):
         """Add necessary fields."""
         project_name_stripped = normalize_to_ascii(data["project_name"])
+        project_name_stripped = normalize_git_url(project_name_stripped)
         if len(project_name_stripped) == 0:
             raise ValidationError("Project name contains only unsupported characters")
         new_project_url = f"{data['project_repository']}/{data['project_namespace']}/{project_name_stripped}"

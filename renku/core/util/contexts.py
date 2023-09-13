@@ -26,6 +26,7 @@ from renku.command.command_builder import inject
 from renku.core import errors
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.interface.project_gateway import IProjectGateway
+from renku.ui.service.utils import normalize_git_url
 
 
 @contextlib.contextmanager
@@ -113,6 +114,8 @@ def renku_project_context(path, check_git_path=True):
 
     if check_git_path:
         path = get_git_path(path)
+
+    path = normalize_git_url(str(path))
 
     with project_context.with_path(path=path):
         project_context.external_storage_requested = True
