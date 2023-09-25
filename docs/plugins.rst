@@ -37,15 +37,13 @@ renku-graph-vis
 ---------
 
 `renku-graph-vis <https://github.com/oda-hub/renku-graph-vis/>`_ is a plugin that
-provides a graphical representation of the renku repository's knowledge graph
-from within the renku session. It provides two CLI commands:
+provides a graphical representation of the renku repository's knowledge graph. 
+In particular, the plugin enables an interactive graph visualization feature 
+for real-time monitoring during a renku session introducing the ability to have 
+a live overview of the ongoing development. It also provides two CLI commands:
 
 * ``display`` to generate a representation of the graph over a png output image
 * ``show-graph`` to start an interactive visualization of the graph over the browser
-
-Furthermore, the plugin enables an interactive graph visualization feature 
-for real-time monitoring during a renku session introducing the ability to have 
-a live overview of the ongoing development.
 
 renku-aqs-annotation
 ---------
