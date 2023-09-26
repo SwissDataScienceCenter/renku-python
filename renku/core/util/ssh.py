@@ -177,6 +177,12 @@ class SystemSSHConfig:
                 ServerAliveCountMax 3
                 ProxyJump  jumphost-{self.renku_host}
                 IdentityFile {self.keyfile}
+                IdentityFile ~/.ssh/id_rsa
+                IdentityFile ~/.ssh/id_ecdsa
+                IdentityFile ~/.ssh/id_ecdsa_sk
+                IdentityFile ~/.ssh/id_ed25519
+                IdentityFile ~/.ssh/id_ed25519_sk
+                IdentityFile ~/.ssh/id_dsa
                 User jovyan
                 StrictHostKeyChecking no
             """
