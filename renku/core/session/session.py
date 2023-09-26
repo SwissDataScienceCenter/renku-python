@@ -355,6 +355,6 @@ def ssh_setup(existing_key: Optional[Path] = None, force: bool = False):
         f.write(content)
 
     communication.warn(
-        "This command does not add any public SSH keys into your project. "
-        "Keys have to be added manually or by using the renku session start command with the --ssh flag."
+        "This command does not add any public SSH keys to your project. "
+        "Keys have to be added manually or by using the 'renku session start' command with the '--ssh' flag."
     )
