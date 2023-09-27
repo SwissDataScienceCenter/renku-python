@@ -20,7 +20,7 @@ import json
 
 import pytest
 
-from renku.ui.service.errors import IntermittentSettingExistsError, ProgramProjectCorruptError, UserNonRenkuProjectError
+from renku.ui.service.errors import ProgramProjectCorruptError, UserNonRenkuProjectError
 from tests.utils import retry_failed
 
 
@@ -134,11 +134,10 @@ def test_config_view_set(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
-def test_config_view_set_failures(svc_client_with_repo):
-    """Check errors triggered while invoking config set."""
+def test_config_view_set_nonexising_key_removal(svc_client_with_repo):
+    """Check that removing a non-existing key (i.e. setting to None) is allowed."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
 
-    # NOTE: remove a non existing value
     non_existing_param = "NON_EXISTING"
     payload = {
         "git_url": url_components.href,
@@ -150,9 +149,9 @@ def test_config_view_set_failures(svc_client_with_repo):
     response = svc_client.post("/config.set", data=json.dumps(payload), headers=headers)
 
     assert 200 == response.status_code
-    assert {"error"} == set(response.json.keys())
-    assert IntermittentSettingExistsError.code == response.json["error"]["code"]
-    assert non_existing_param in response.json["error"]["devMessage"]
+    assert {"error"} != set(response.json.keys())
+    assert {"result"} == set(response.json.keys())
+    assert response.json["result"]["config"][non_existing_param] is None
 
 
 @pytest.mark.service

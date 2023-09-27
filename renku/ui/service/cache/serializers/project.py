@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +21,7 @@ from marshmallow import fields, post_load
 
 from renku.ui.service.cache.models.project import Project
 from renku.ui.service.serializers.common import AccessSchema, CreationSchema, MandatoryUserSchema
+from renku.ui.service.utils import normalize_git_url
 
 
 class ProjectSchema(CreationSchema, AccessSchema, MandatoryUserSchema):
@@ -43,4 +43,7 @@ class ProjectSchema(CreationSchema, AccessSchema, MandatoryUserSchema):
     @post_load
     def make_project(self, data, **options):
         """Construct project object."""
+        data["git_url"] = normalize_git_url(data["git_url"])
+        data["name"] = normalize_git_url(data["name"])
+        data["slug"] = normalize_git_url(data["slug"])
         return Project(**data)
