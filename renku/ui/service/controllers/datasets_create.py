@@ -16,7 +16,7 @@
 # limitations under the License.
 """Renku service datasets create controller."""
 from renku.command.dataset import create_dataset_command
-from renku.core.dataset.request_model import ImageRequestModel
+from renku.core.image import ImageObjectRequest
 from renku.core.util.metadata import construct_creators
 from renku.ui.service.cache.models.job import Job
 from renku.ui.service.config import CACHE_UPLOADS_PATH, MESSAGE_PREFIX
@@ -53,7 +53,7 @@ class DatasetsCreateCtrl(ServiceCtrl, RenkuOpSyncMixin):
             set_url_for_uploaded_images(images=images, cache=self.cache, user=self.user)
 
             images = [
-                ImageRequestModel(
+                ImageObjectRequest(
                     content_url=img["content_url"],
                     position=img["position"],
                     mirror_locally=img.get("mirror_locally", False),

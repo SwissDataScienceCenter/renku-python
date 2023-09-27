@@ -336,7 +336,10 @@ def test_graph_export_full():
 
     project_gateway = MagicMock(spec=IProjectGateway)
     project_gateway.get_project.return_value = MagicMock(
-        spec=Project, id="/projects/my-project", date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00")
+        spec=Project,
+        id="/projects/my-project",
+        date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
+        image=None,
     )
 
     result = get_graph_for_all_objects(

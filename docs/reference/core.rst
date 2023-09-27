@@ -65,6 +65,10 @@ Schema classes used to serialize domain models to JSON-LD.
    :members:
    :show-inheritance:
 
+.. automodule:: renku.command.schema.image
+   :members:
+   :show-inheritance:
+
 .. automodule:: renku.command.schema.parameter
    :members:
    :show-inheritance:
@@ -102,10 +106,6 @@ Datasets
    :show-inheritance:
 
 .. automodule:: renku.core.dataset.pointer_file
-   :members:
-   :show-inheritance:
-
-.. automodule:: renku.core.dataset.request_model
    :members:
    :show-inheritance:
 
@@ -236,6 +236,17 @@ Errors that can be raised by ``renku.core``.
 .. automodule:: renku.core.errors
    :members:
    :show-inheritance:
+
+Project/Dataset Images
+----------------------
+
+.. automodule:: renku.core.image
+   :members:
+   :show-inheritance:
+
+.. automodule:: renku.domain_model.image
+   :members:
+
 
 Utilities
 ---------

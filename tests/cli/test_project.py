@@ -17,6 +17,7 @@
 """Test ``project`` command."""
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -68,16 +69,20 @@ def test_project_edit(runner, project, subdirectory, with_injection):
             "keyword1",
             "-k",
             "keyword2",
+            "--image",
+            Path(__file__).parent / ".." / "data" / "renku.png",
         ],
     )
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Successfully updated: creator, description, keywords, custom_metadata." in result.output
+    assert "Successfully updated: creator, description, keywords, custom_metadata, image." in result.output
     assert "Warning: No email or wrong format for: Forename Surname" in result.output
 
     assert project.repository.is_dirty()
     commit_sha_after = project.repository.head.commit.hexsha
     assert commit_sha_before != commit_sha_after
+
+    assert (project.path / ".renku" / "images" / "project" / "0.png").exists()
 
     with with_injection():
         project_gateway = ProjectGateway()
@@ -98,6 +103,9 @@ def test_project_edit(runner, project, subdirectory, with_injection):
     assert "Creator:" in result.output
     assert "Renku Version:" in result.output
     assert "Keywords:" in result.output
+
+    assert ".renku/images/project/0.png" == project.image.content_url
+    assert 0 == project.image.position
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
@@ -148,26 +156,32 @@ def test_project_edit_unset(runner, project, subdirectory, with_injection):
             "keyword1",
             "-k",
             "keyword2",
+            "--image",
+            Path(__file__).parent / ".." / "data" / "renku.png",
         ],
     )
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Successfully updated: creator, description, keywords, custom_metadata." in result.output
+    assert "Successfully updated: creator, description, keywords, custom_metadata, image." in result.output
     assert "Warning: No email or wrong format for: Forename Surname" in result.output
 
     commit_sha_before = project.repository.head.commit.hexsha
 
+    assert (project.path / ".renku" / "images" / "project" / "0.png").exists()
+
     result = runner.invoke(
         cli,
-        ["project", "edit", "-u", "keywords", "-u", "metadata"],
+        ["project", "edit", "-u", "keywords", "-u", "metadata", "-u", "image"],
     )
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Successfully updated: keywords, custom_metadata." in result.output
+    assert "Successfully updated: keywords, custom_metadata, image." in result.output
 
     assert project.repository.is_dirty()
     commit_sha_after = project.repository.head.commit.hexsha
     assert commit_sha_before != commit_sha_after
+
+    assert not (project.path / ".renku" / "images" / "project" / "0.png").exists()
 
     with with_injection():
         project_gateway = ProjectGateway()
@@ -184,6 +198,8 @@ def test_project_edit_unset(runner, project, subdirectory, with_injection):
     assert "Creator:" in result.output
     assert "Renku Version:" in result.output
     assert "Keywords:" in result.output
+
+    assert project.image is None
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)

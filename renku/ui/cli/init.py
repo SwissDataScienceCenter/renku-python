@@ -231,6 +231,7 @@ def resolve_data_directory(data_dir, path):
     type=click.Path(writable=True, file_okay=False),
     help="Data directory within the project",
 )
+@click.option("-i", "--image", default=None, type=str, help="Path or URL to project's avatar/image.")
 @click.option("-t", "--template-id", help="Provide the id of the template to use.")
 @click.option("-s", "--template-source", help="Provide the templates repository url or path.")
 @click.option(
@@ -268,6 +269,7 @@ def init(
     path,
     name,
     description,
+    image,
     keyword,
     template_id,
     template_source,
@@ -282,6 +284,8 @@ def init(
 ):
     """Initialize a project in PATH. Default is the current path."""
     from renku.command.init import init_project_command
+    from renku.core.constant import FILESYSTEM_ROOT
+    from renku.core.image import ImageObjectRequest
     from renku.core.util.git import check_global_git_user_is_configured
     from renku.ui.cli.utils.callback import ClickCallback
 
@@ -300,6 +304,8 @@ def init(
     if metadata:
         custom_metadata = json.loads(Path(metadata).read_text())
 
+    image_request = ImageObjectRequest(content_url=image, safe_image_paths=[FILESYSTEM_ROOT]) if image else None
+
     communicator = ClickCallback()
     init_project_command().with_communicator(communicator).build().execute(
         external_storage_requested=external_storage_requested,
@@ -307,6 +313,7 @@ def init(
         name=name,
         description=description,
         keywords=keyword,
+        image_request=image_request,
         template_id=template_id,
         template_source=template_source,
         template_ref=template_ref,

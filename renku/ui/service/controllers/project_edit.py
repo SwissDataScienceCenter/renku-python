@@ -15,13 +15,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service project edit controller."""
-from typing import Dict, cast
+
+from typing import Dict, Optional, Union, cast
 
 from renku.command.project import edit_project_command
-from renku.domain_model.constant import NO_VALUE
+from renku.core.image import ImageObjectRequest
+from renku.domain_model.constant import NO_VALUE, NoValueType
 from renku.ui.service.cache.models.job import Job
+from renku.ui.service.config import CACHE_UPLOADS_PATH
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOpSyncMixin
+from renku.ui.service.controllers.utils.datasets import set_url_for_uploaded_images
 from renku.ui.service.serializers.project import ProjectEditRequest, ProjectEditResponseRPC
 from renku.ui.service.views import result_response
 
@@ -76,6 +80,24 @@ class ProjectEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
         else:
             keywords = NO_VALUE
 
+        if "image" not in self.ctx:
+            image_request: Optional[Union[ImageObjectRequest, NoValueType]] = NO_VALUE
+        elif self.ctx["image"] is None:
+            image_request = None
+        else:
+            image: Dict = self.ctx.get("image")  # type: ignore
+
+            user_cache_dir = CACHE_UPLOADS_PATH / self.user.user_id
+
+            set_url_for_uploaded_images(images=[image], cache=self.cache, user=self.user)
+
+            image_request = ImageObjectRequest(
+                content_url=image["content_url"],
+                position=0,
+                mirror_locally=image.get("mirror_locally", False),
+                safe_image_paths=[user_cache_dir],
+            )
+
         result = (
             edit_project_command()
             .with_commit_message(self.ctx["commit_message"])
@@ -86,6 +108,7 @@ class ProjectEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
                 custom_metadata=custom_metadata,
                 custom_metadata_source=custom_metadata_source,
                 keywords=keywords,
+                image_request=image_request,
             )
         )
 

@@ -360,7 +360,7 @@ def handle_datasets_write_errors(f):
             error_message = str(e)
             if "Duplicate dataset image" in error_message:
                 raise UserDatasetsMultipleImagesError(e)
-            elif "couldn't be mirrored" in error_message:
+            elif "Cannot download image with url" in error_message:
                 raise UserDatasetsUnreachableImageError(e)
             raise
         except ValidationError as e:

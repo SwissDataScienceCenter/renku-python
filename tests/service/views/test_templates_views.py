@@ -131,6 +131,10 @@ def test_create_project_from_template(svc_client_templates_creation, with_inject
     svc_client, headers, payload, rm_remote = svc_client_templates_creation
 
     payload["data_directory"] = "my-folder/"
+    payload["image"] = {
+        "content_url": "https://en.wikipedia.org/static/images/icons/wikipedia.png",
+        "mirror_locally": True,
+    }
 
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=headers)
 
@@ -162,6 +166,8 @@ def test_create_project_from_template(svc_client_templates_creation, with_inject
     old_metadata_path = project_path / ".renku/metadata.yml"
     assert old_metadata_path.exists()
     assert "'http://schema.org/schemaVersion': '9'" in old_metadata_path.read_text()
+
+    assert (project_path / ".renku" / "images" / "project" / "0.png").exists()
 
     # NOTE:  successfully re-use old name after cleanup
     assert rm_remote() is True

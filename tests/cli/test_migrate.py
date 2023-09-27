@@ -371,7 +371,7 @@ def test_commands_fail_on_old_repository(isolated_runner, old_repository_with_su
         ["doctor"],
         ["githooks", "install"],
         ["help"],
-        ["init", "-i", "1", "--force"],
+        ["init", "-t", "python-minimal", "--force"],
         ["storage", "check"],
     ],
 )

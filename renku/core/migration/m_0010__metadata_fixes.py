@@ -238,7 +238,7 @@ def migrate_project_template_data(project_gateway: IProjectGateway):
 
 @inject.autoparams("plan_gateway")
 def fix_plan_times(plan_gateway: IPlanGateway):
-    """Add timezone to plan invalidations."""
+    """Rename plan's date-related attributes and add timezone to invalidation time."""
     plans: List[AbstractPlan] = plan_gateway.get_all_plans()
 
     for plan in plans:
@@ -248,6 +248,8 @@ def fix_plan_times(plan_gateway: IPlanGateway):
             del plan.invalidated_at
         elif not hasattr(plan, "date_removed"):
             plan.date_removed = None
+        if not hasattr(plan, "date_created"):
+            plan.date_created = getattr(plan, "date_modified", None) or plan.date_removed or local_now()
 
         if plan.date_removed is not None:
             if plan.date_removed.tzinfo is None:
