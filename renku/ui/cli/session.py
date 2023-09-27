@@ -379,7 +379,11 @@ def open(session_name, provider, **kwargs):
 )
 @click.option("--force", is_flag=True, help="Overwrite existing keys/config.")
 def ssh_setup(existing_key, force):
-    """Setup keys for SSH connections into sessions."""
+    """Generate keys and configuration for SSH connections into sessions.
+
+    Note that this will not add any keys to a specific project, adding keys to a project
+    has to be done manually or through the renku session start command by using the --ssh flag.
+    """
     from renku.command.session import ssh_setup_command
 
     communicator = ClickCallback()

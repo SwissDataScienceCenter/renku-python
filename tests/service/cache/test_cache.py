@@ -22,6 +22,7 @@ import uuid
 
 import pytest
 
+from renku.ui.service.utils import normalize_git_url
 from tests.utils import modified_environ
 
 
@@ -252,9 +253,9 @@ def test_service_cache_make_project(svc_client_cache):
     user = cache.ensure_user({"user_id": uuid.uuid4().hex})
     project_data = {
         "name": "renku-project-template",
-        "slug": "renku-project-template",
+        "slug": "renku-project-template.git",
         "depth": 1,
-        "git_url": "https://github.com/SwissDataScienceCenter/renku-project-template",
+        "git_url": "https://github.com/SwissDataScienceCenter/renku-project-template.git",
         "email": "contact@renkulab.io",
         "fullname": "renku the frog",
         "token": "None",
@@ -265,7 +266,30 @@ def test_service_cache_make_project(svc_client_cache):
     assert project.age == 1
     assert not project.ttl_expired()
 
+    assert not str(project.abs_path).endswith(".git")
+    assert not project.slug.endswith(".git")
+    assert not project.git_url.endswith(".git")
+
     with modified_environ(RENKU_SVC_CLEANUP_TTL_PROJECTS="1"):
         time.sleep(1)
         assert project.age == 2
         assert project.ttl_expired()
+
+
+@pytest.mark.parametrize(
+    "git_url, expected_git_url",
+    [
+        ("", ""),
+        ("already-normalized", "already-normalized"),
+        ("ends-with.git", "ends-with"),
+        ("ends-with-variation-of.GiT", "ends-with-variation-of"),
+        ("has.git-in-the-middle", "has.git-in-the-middle"),
+        (None, None),
+        ("trailing-slashes-are-removed/////", "trailing-slashes-are-removed"),
+        ("ends-with-multiple.gIt.git.Git.GIT", "ends-with-multiple"),
+        ("ends-with-slash.git/", "ends-with-slash"),
+    ],
+)
+def test_git_url_normalization(git_url, expected_git_url):
+    """Test git url normalization function."""
+    assert expected_git_url == normalize_git_url(git_url)

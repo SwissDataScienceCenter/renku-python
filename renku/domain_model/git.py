@@ -25,6 +25,7 @@ import attr
 
 from renku.core import errors
 from renku.core.util.os import is_ascii, normalize_to_ascii
+from renku.ui.service.utils import normalize_git_url
 
 _RE_SCHEME = r"(?P<scheme>(git\+)?(https?|git|ssh|rsync))\://"
 
@@ -70,13 +71,6 @@ _REPOSITORY_URLS = [
 ]
 
 
-def filter_repo_name(repo_name: str) -> str:
-    """Remove the .git extension from the repo name."""
-    if repo_name is not None and repo_name.endswith(".git"):
-        return repo_name[: -len(".git")]
-    return repo_name
-
-
 @attr.s()
 class GitURL:
     """Parser for common Git URLs."""
@@ -90,14 +84,14 @@ class GitURL:
     password = attr.ib(default=None)
     port = attr.ib(default=None)
     owner = attr.ib(default=None)
-    name: Optional[str] = attr.ib(default=None, converter=filter_repo_name)
+    name: Optional[str] = attr.ib(default=None, converter=normalize_git_url)
     slug = attr.ib(default=None)
     _regex = attr.ib(default=None, eq=False, order=False)
 
     def __attrs_post_init__(self):
         """Derive basic information."""
         if not self.name and self.path:
-            self.name = filter_repo_name(Path(self.path).name)
+            self.name = normalize_git_url(Path(self.path).name)
 
         self.slug = normalize_to_ascii(self.name)
 

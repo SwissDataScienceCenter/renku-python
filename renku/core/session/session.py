@@ -142,6 +142,11 @@ def session_start(
     """
     from renku.domain_model.project_context import project_context
 
+    # NOTE: The Docker client in Python requires the parameters below to be a list and will fail with a tuple.
+    # Click will convert parameters with the flag "many" set to True to tuples.
+    kwargs["security_opt"] = list(kwargs.get("security_opt", []))
+    kwargs["device_cgroup_rules"] = list(kwargs.get("device_cgroup_rules", []))
+
     pinned_image = get_value("interactive", "image")
     if pinned_image and image_name is None:
         image_name = pinned_image
@@ -348,3 +353,8 @@ def ssh_setup(existing_key: Optional[Path] = None, force: bool = False):
             """
         )
         f.write(content)
+
+    communication.warn(
+        "This command does not add any public SSH keys to your project. "
+        "Keys have to be added manually or by using the 'renku session start' command with the '--ssh' flag."
+    )
