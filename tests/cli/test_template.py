@@ -91,7 +91,7 @@ def test_template_show(isolated_runner):
         result = isolated_runner.invoke(cli, command + ["R-minimal"])
 
         assert 0 == result.exit_code, format_result_exception(result)
-        assert re.search("^Name: Basic R (.*) Project$", result.output, re.MULTILINE) is not None
+        assert re.search("^Name: R (.*) Project$", result.output, re.MULTILINE) is not None
     finally:
         sys.argv = argv
 
@@ -101,7 +101,7 @@ def test_template_show_no_id(runner, project):
     result = runner.invoke(cli, ["template", "show"])
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert re.search("^Name: Basic Python (.*) Project$", result.output, re.MULTILINE) is not None
+    assert re.search("^Name: Python (.*) Project$", result.output, re.MULTILINE) is not None
 
 
 def test_template_show_no_id_outside_project(isolated_runner):

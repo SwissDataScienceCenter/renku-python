@@ -332,8 +332,6 @@ class RenkulabSessionProvider(ISessionProvider):
             params=self._get_renku_project_name_parts(),
         )
         if sessions_res.status_code == 200:
-            system_config = SystemSSHConfig()
-            name = self._project_name_from_full_project_name(project_name)
             sessions = [
                 Session(
                     id=session["name"],
@@ -343,7 +341,8 @@ class RenkulabSessionProvider(ISessionProvider):
                     commit=session.get("annotations", {}).get("renku.io/commit-sha"),
                     branch=session.get("annotations", {}).get("renku.io/branch"),
                     provider="renkulab",
-                    ssh_enabled=system_config.session_config_path(name, session["name"]).exists(),
+                    ssh_enabled=get_value("renku", "ssh_supported") == "true"
+                    or project_context.project.template_metadata.ssh_supported,
                 )
                 for session in sessions_res.json().get("servers", {}).values()
             ]

@@ -39,7 +39,7 @@ def search_session_providers_command():
 
 def session_list_command():
     """List all the running interactive sessions."""
-    return Command().command(session_list)
+    return Command().command(session_list).with_database(write=False)
 
 
 def session_start_command():
