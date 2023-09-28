@@ -23,6 +23,10 @@ from typing import List, Optional, Union
 class IGitAPIProvider(ABC):
     """Interface a Git API Provider."""
 
+    def __init__(self, token: str):
+        """Initialize class."""
+        raise NotImplementedError()
+
     def download_files_from_api(
         self,
         files: List[Union[Path, str]],
@@ -34,6 +38,6 @@ class IGitAPIProvider(ABC):
         """Download files through a remote Git API."""
         raise NotImplementedError()
 
-    def get_project_id(self, gitlab_url: str, namespace: str, name: str) -> str:
+    def get_project_id(self, gitlab_url: str, namespace: str, name: str) -> Optional[str]:
         """Get a gitlab project id from namespace/name."""
         raise NotImplementedError()

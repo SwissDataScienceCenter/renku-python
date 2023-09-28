@@ -70,6 +70,10 @@ class GitlabAPIProvider(IGitAPIProvider):
         target_folder = Path(target_folder)
 
         git_data = GitURL.parse(remote)
+
+        if git_data.name is None:
+            raise errors.InvalidGitURL("Couldn't parse repo name from git url")
+
         project = self._get_project(git_data.instance_url, git_data.owner, git_data.name)
 
         for file in files:

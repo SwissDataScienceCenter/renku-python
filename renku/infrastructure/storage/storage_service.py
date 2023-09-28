@@ -47,7 +47,7 @@ class StorageService(IStorageService):
         self.base_url = f"{renku_url}api/data"
 
     @cached_property
-    def project_id(self) -> str:
+    def project_id(self) -> Optional[str]:
         """Get the current gitlab project id.
 
         Note: This is mostly a workaround since storage service is already done to only accept

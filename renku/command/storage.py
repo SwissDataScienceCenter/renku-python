@@ -13,6 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Cloud storage commands."""
 from renku.command.command_builder.command import Command
 
 
@@ -20,4 +21,4 @@ def list_storage_command():
     """Command to list configured cloud storage."""
     from renku.core.storage import list_storage
 
-    return Command().command(list_storage).require_login().with_database()
+    return Command().command(list_storage).with_database().require_login().with_gitlab_api().with_storage_api()

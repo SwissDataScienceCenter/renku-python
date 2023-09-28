@@ -56,9 +56,11 @@ def ls(columns, format):
     """List configured cloud storage for a project."""
     from renku.command.storage import list_storage_command
 
-    storages = list_storage_command().build().execute()
+    result = list_storage_command().build().execute()
 
-    click.echo(STORAGE_FORMATS[format](storages.output, columns=columns))
+    storages = [s.storage for s in result.output]
+
+    click.echo(CLOUD_STORAGE_FORMATS[format](storages, columns=columns))
 
 
 # =============================================

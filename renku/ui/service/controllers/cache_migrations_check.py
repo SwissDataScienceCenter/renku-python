@@ -23,10 +23,10 @@ from typing import Type
 
 from renku.command.migrate import MigrationCheckResult, migrations_check
 from renku.core.errors import AuthenticationError, MinimumVersionError, ProjectNotFound, RenkuException
+from renku.core.interface.git_api_provider import IGitAPIProvider
 from renku.core.util.contexts import renku_project_context
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
-from renku.ui.service.interfaces.git_api_provider import IGitAPIProvider
 from renku.ui.service.logger import service_log
 from renku.ui.service.serializers.cache import ProjectMigrationCheckRequest, ProjectMigrationCheckResponseRPC
 from renku.ui.service.views import result_response
@@ -70,7 +70,6 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
                 target_folder=tempdir_path,
                 remote=self.ctx["git_url"],
                 branch=self.request_data.get("branch", None),
-                token=self.user.token,
             )
             with renku_project_context(tempdir_path):
                 self.project_path = tempdir_path

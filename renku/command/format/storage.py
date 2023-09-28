@@ -25,12 +25,8 @@ from renku.domain_model.cloud_storage import CloudStorage
 def tabular(cloud_storages: List[CloudStorage], *, columns: Optional[str] = None):
     """Format cloud_storages with a tabular output."""
     if not columns:
-        columns = "id,start_time,status,provider,url"
-
-        if any(s.ssh_enabled for s in cloud_storages):
-            columns += ",ssh"
-
-    return tabulate(collection=cloud_storages, columns=columns, columns_mapping=cloud_storage_COLUMNS)
+        columns = "id,name,private,type"
+    return tabulate(collection=cloud_storages, columns=columns, columns_mapping=CLOUD_STORAGE_COLUMNS)
 
 
 def log(cloud_storages: List[CloudStorage], *, columns: Optional[str] = None):
@@ -41,7 +37,7 @@ def log(cloud_storages: List[CloudStorage], *, columns: Optional[str] = None):
 
     for cloud_storage in cloud_storages:
         output.append(style_header(f"CloudStorage {cloud_storage.name}"))
-        output.append(style_key("Id: ") + cloud_storage.storage_id)
+        output.append(style_key("Id: ") + cloud_storage.storage_id)  # type: ignore
         output.append(style_key("Source Path: ") + cloud_storage.source_path)
         output.append(style_key("Target path: ") + cloud_storage.target_path)
         output.append(style_key("Private: ") + "Yes" if cloud_storage.private else "No")
@@ -54,12 +50,10 @@ CLOUD_STORAGE_FORMATS = {"tabular": tabular, "log": log}
 """Valid formatting options."""
 
 CLOUD_STORAGE_COLUMNS = {
-    "id": ("id", "id"),
-    "status": ("status", "status"),
-    "url": ("url", "url"),
-    "ssh": ("ssh_enabled", "SSH enabled"),
-    "start_time": ("start_time", "start_time"),
-    "commit": ("commit", "commit"),
-    "branch": ("branch", "branch"),
-    "provider": ("provider", "provider"),
+    "id": ("storage_id", "id"),
+    "name": ("name", "name"),
+    "source_path": ("source_path", "source path"),
+    "target_path": ("target_path", "target path"),
+    "private": ("private", "private"),
+    "type": ("storage_type", "type"),
 }

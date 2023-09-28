@@ -21,7 +21,7 @@ import webbrowser
 from datetime import datetime
 from pathlib import Path
 from time import monotonic, sleep
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
 
 from renku.command.command_builder.command import inject
 from renku.core import errors
@@ -265,8 +265,12 @@ class RenkulabSessionProvider(ISessionProvider):
 
     def get_cloudstorage(self):
         """Get cloudstorage configured for the project."""
-        storage_service: IStorageService = inject.instance(IStorageService)
-        storages = storage_service.list(storage_service.project_id)
+        storage_service = cast(IStorageService, inject.instance(IStorageService))
+        project_id = storage_service.project_id
+        if not project_id:
+            communication.warn("Couldn't get project ID from Gitlab, skipping mounting cloudstorage")
+
+        storages = storage_service.list(project_id)
 
         if not storages:
             return []
@@ -283,7 +287,7 @@ class RenkulabSessionProvider(ISessionProvider):
                         continue
                     field = next(f for f in private_fields if f["name"] == name)
 
-                    secret = communication.prompt(f"{field['help']}\nPlease provide a value for secret '{name}':")
+                    secret = communication.prompt(f"{field['help']}\nPlease provide a value for secret '{name}'")
                     storage.configuration[name] = secret
 
             storages_to_mount.append({"storage_id": storage.storage_id, "configuration": storage.configuration})

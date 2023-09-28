@@ -93,7 +93,7 @@ def migration_check_project_view_1_5(user_data, cache):
     from renku.ui.service.serializers.rpc import JsonRPCResponse
     from renku.ui.service.views.error_handlers import pretty_print_error
 
-    ctrl = MigrationsCheckCtrl(cache, user_data, dict(request.args), GitlabAPIProvider())
+    ctrl = MigrationsCheckCtrl(cache, user_data, dict(request.args), GitlabAPIProvider)
 
     if "project_id" in ctrl.context:  # type: ignore
         result = ctrl.execute_op()

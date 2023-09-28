@@ -26,5 +26,5 @@ from renku.core.interface.storage_service_gateway import IStorageService
 def list_storage(storage_service: IStorageService):
     """List configured cloud storage for project."""
     project_id = storage_service.project_id
-    storages = storage_service.ls(project_id)
+    storages = storage_service.list(project_id)
     return storages

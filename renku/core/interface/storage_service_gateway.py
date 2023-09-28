@@ -15,7 +15,7 @@
 # limitations under the License.
 """Interface for a remote storage service."""
 
-from typing import List, Protocol
+from typing import List, Optional, Protocol
 
 from renku.domain_model.cloud_storage import CloudStorage, CloudStorageWithSensitiveFields
 
@@ -24,7 +24,7 @@ class IStorageService(Protocol):
     """Interface for a storage service."""
 
     @property
-    def project_id(self) -> str:
+    def project_id(self) -> Optional[str]:
         """Get the current gitlab project id.
 
         Note: This is mostly a workaround since storage service is already done to only accept
