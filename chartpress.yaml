@@ -11,7 +11,7 @@ charts:
       renku-core:
         contextPath: .
         dockerfilePath: Dockerfile
-        valuesPath: core.versions.latest.image
+        valuesPath: global.core.versions.latest.image
         buildArgs:
           CLEAN_INSTALL: "1"
           BUILD_CORE_SERVICE: "1"

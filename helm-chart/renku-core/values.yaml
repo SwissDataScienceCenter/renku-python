@@ -1,7 +1,7 @@
-core:
-  versions:
-    latest:
-      image:
-        repository: renku/renku-core
-        tag: "v2.7.0"
-        pullPolicy: IfNotPresent
+global:
+  core:
+    versions:
+      latest:
+        image:
+          repository: renku/renku-core
+          tag: "v2.7.0"

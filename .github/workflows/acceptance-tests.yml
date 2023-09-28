@@ -43,7 +43,7 @@ jobs:
       name: renku-ci-rp-${{ github.event.number }}
     steps:
       - name: deploy-pr
-        uses: SwissDataScienceCenter/renku-actions/deploy-renku@v1.4.5
+        uses: SwissDataScienceCenter/renku-actions/deploy-renku@feat-combined-helm-charts
         env:
           DOCKER_PASSWORD: ${{ secrets.RENKU_DOCKER_PASSWORD }}
           DOCKER_USERNAME: ${{ secrets.RENKU_DOCKER_USERNAME }}
