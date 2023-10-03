@@ -34,7 +34,7 @@ data science pipeline.
 `Example Project <https://renkulab.io/projects/learn-renku/plugins/renku-mls-plugin>`_
 
 renku-graph-vis
----------
+---------------
 
 `renku-graph-vis <https://github.com/oda-hub/renku-graph-vis/>`_ is a plugin that
 provides a graphical representation of the renku repository's knowledge graph. 
@@ -46,7 +46,7 @@ a live overview of the ongoing development. It also provides two CLI commands:
 * ``show-graph`` to start an interactive visualization of the graph over the browser
 
 renku-aqs-annotation
----------
+--------------------
 
 `renku-aqs-annotation <https://github.com/oda-hub/renku-aqs-annotation/>`_ is a plugin that
 intercepts several key astroquery methods and stores a number of dedicated annotations 
