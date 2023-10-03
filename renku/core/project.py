@@ -64,11 +64,11 @@ def edit_project(
         "description": description,
         "keywords": keywords,
         "custom_metadata": custom_metadata,
-        "image": NO_VALUE
-        if image_request is NO_VALUE
-        else None
-        if image_request is None
-        else ImageObjectRequestJson().dump(image_request),
+        "image": (
+            image_request
+            if image_request is NO_VALUE or image_request is None
+            else ImageObjectRequestJson().dump(image_request)
+        ),
     }
 
     no_email_warnings: Optional[Union[Dict, str]] = None
