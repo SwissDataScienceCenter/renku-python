@@ -39,7 +39,7 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets add controller."""
-        self.ctx = DatasetsAddFileCtrl.REQUEST_SERIALIZER.load(request_data)
+        self.ctx = self.REQUEST_SERIALIZER.load(request_data)
         self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset add {self.ctx['slug']}"
 
         super().__init__(cache, user_data, request_data, migrate_project=migrate_project)
@@ -132,4 +132,4 @@ class DatasetsAddFileCtrl(ServiceCtrl, RenkuOpSyncMixin):
             **{"local_paths": local_paths, "enqueued_paths": enqueued_paths, "remote_branch": remote_branch},
         }
 
-        return result_response(DatasetsAddFileCtrl.RESPONSE_SERIALIZER, response)
+        return result_response(self.RESPONSE_SERIALIZER, response)

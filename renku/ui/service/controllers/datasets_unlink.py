@@ -31,7 +31,7 @@ class DatasetsUnlinkCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets unlink list controller."""
-        self.ctx = DatasetsUnlinkCtrl.REQUEST_SERIALIZER.load(request_data)
+        self.ctx = self.REQUEST_SERIALIZER.load(request_data)
 
         self.include = self.ctx.get("include_filter")
         self.exclude = self.ctx.get("exclude_filter")
@@ -79,4 +79,4 @@ class DatasetsUnlinkCtrl(ServiceCtrl, RenkuOpSyncMixin):
             "remote_branch": remote_branch,
         }
 
-        return result_response(DatasetsUnlinkCtrl.RESPONSE_SERIALIZER, response)
+        return result_response(self.RESPONSE_SERIALIZER, response)

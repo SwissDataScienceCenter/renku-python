@@ -24,7 +24,7 @@ from renku.ui.service.controllers.cache_migrations_check import MigrationsCheckC
 from renku.ui.service.gateways.gitlab_api_provider import GitlabAPIProvider
 from renku.ui.service.serializers.v1.cache import ProjectMigrateResponseRPC_1_0, ProjectMigrationCheckResponseRPC_1_5
 from renku.ui.service.views import result_response
-from renku.ui.service.views.api_versions import V1_0, V1_1, V1_2, V1_3, V1_4, V1_5
+from renku.ui.service.views.api_versions import VERSIONS_BEFORE_1_1, VERSIONS_BEFORE_2_0
 from renku.ui.service.views.decorators import accepts_json, optional_identity, requires_cache, requires_identity
 from renku.ui.service.views.error_handlers import (
     handle_common_except,
@@ -117,15 +117,12 @@ def migration_check_project_view_1_5(user_data, cache):
     return result_response(ProjectMigrationCheckResponseRPC_1_5(), asdict(result))
 
 
-def add_v1_specific_endpoints(cache_blueprint):
+def add_v1_specific_cache_endpoints(cache_blueprint):
     """Add v1 only endpoints to blueprint."""
-    cache_blueprint.route("/cache.migrate", methods=["POST"], provide_automatic_options=False, versions=[V1_0])(
-        migrate_project_view_1_0
-    )
     cache_blueprint.route(
-        "/cache.migrations_check",
-        methods=["GET"],
-        provide_automatic_options=False,
-        versions=[V1_0, V1_1, V1_2, V1_3, V1_4, V1_5],
+        "/cache.migrate", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_BEFORE_1_1
+    )(migrate_project_view_1_0)
+    cache_blueprint.route(
+        "/cache.migrations_check", methods=["GET"], provide_automatic_options=False, versions=VERSIONS_BEFORE_2_0
     )(migration_check_project_view_1_5)
     return cache_blueprint

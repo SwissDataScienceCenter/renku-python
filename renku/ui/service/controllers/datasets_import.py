@@ -34,7 +34,7 @@ class DatasetsImportCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets import controller."""
-        self.ctx = DatasetsImportCtrl.REQUEST_SERIALIZER.load(request_data)
+        self.ctx = self.REQUEST_SERIALIZER.load(request_data)
         self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset import of {self.ctx['dataset_uri']}"
 
         super().__init__(cache, user_data, request_data, migrate_project=migrate_project)
@@ -73,4 +73,4 @@ class DatasetsImportCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        return result_response(DatasetsImportCtrl.RESPONSE_SERIALIZER, self.execute_op())
+        return result_response(self.RESPONSE_SERIALIZER, self.execute_op())

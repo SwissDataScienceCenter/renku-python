@@ -38,7 +38,7 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets edit list controller."""
-        self.ctx = cast(Dict, DatasetsEditCtrl.REQUEST_SERIALIZER.load(request_data))
+        self.ctx = cast(Dict, self.REQUEST_SERIALIZER.load(request_data))
         self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset edit {self.ctx['slug']}"
 
         super().__init__(cache, user_data, request_data, migrate_project=migrate_project)
@@ -142,4 +142,4 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
             "remote_branch": remote_branch,
         }
 
-        return result_response(DatasetsEditCtrl.RESPONSE_SERIALIZER, response)
+        return result_response(self.RESPONSE_SERIALIZER, response)

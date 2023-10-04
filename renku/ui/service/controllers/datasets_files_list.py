@@ -30,7 +30,7 @@ class DatasetsFilesListCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def __init__(self, cache, user_data, request_data):
         """Construct a datasets files list controller."""
-        self.ctx = DatasetsFilesListCtrl.REQUEST_SERIALIZER.load(request_data)
+        self.ctx = self.REQUEST_SERIALIZER.load(request_data)
 
         super().__init__(cache, user_data, request_data)
 
@@ -47,4 +47,4 @@ class DatasetsFilesListCtrl(ServiceCtrl, RenkuOperationMixin):
     def to_response(self):
         """Execute controller flow and serialize to service response."""
         self.ctx["files"] = self.execute_op()
-        return result_response(DatasetsFilesListCtrl.RESPONSE_SERIALIZER, self.ctx)
+        return result_response(self.RESPONSE_SERIALIZER, self.ctx)

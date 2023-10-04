@@ -17,34 +17,30 @@
 from flask import request
 
 from renku.ui.service.config import SERVICE_PREFIX
-from renku.ui.service.controllers.datasets_add_file import DatasetsAddFileCtrl
-from renku.ui.service.controllers.datasets_create import DatasetsCreateCtrl
-from renku.ui.service.controllers.datasets_edit import DatasetsEditCtrl
-from renku.ui.service.controllers.datasets_files_list import DatasetsFilesListCtrl
-from renku.ui.service.controllers.datasets_import import DatasetsImportCtrl
-from renku.ui.service.controllers.datasets_list import DatasetsListCtrl
-from renku.ui.service.controllers.datasets_remove import DatasetsRemoveCtrl
-from renku.ui.service.controllers.datasets_unlink import DatasetsUnlinkCtrl
-from renku.ui.service.views.api_versions import VERSIONS_FROM_V2_2, VersionedBlueprint
+from renku.ui.service.controllers.v1.datasets_add_file import DatasetsAddFileCtrl_2_1
+from renku.ui.service.controllers.v1.datasets_create import DatasetsCreateCtrl_2_1
+from renku.ui.service.controllers.v1.datasets_edit import DatasetsEditCtrl_2_1
+from renku.ui.service.controllers.v1.datasets_files_list import DatasetsFilesListCtrl_2_1
+from renku.ui.service.controllers.v1.datasets_import import DatasetsImportCtrl_2_1
+from renku.ui.service.controllers.v1.datasets_list import DatasetsListCtrl_2_1
+from renku.ui.service.controllers.v1.datasets_remove import DatasetsRemoveCtrl_2_1
+from renku.ui.service.controllers.v1.datasets_unlink import DatasetsUnlinkCtrl_2_1
+from renku.ui.service.views.api_versions import VERSIONS_BEFORE_2_2, VersionedBlueprint
 from renku.ui.service.views.decorators import accepts_json, optional_identity, requires_cache, requires_identity
 from renku.ui.service.views.error_handlers import (
     handle_common_except,
     handle_datasets_unlink_errors,
     handle_datasets_write_errors,
 )
-from renku.ui.service.views.v1.datasets import add_v1_specific_dataset_endpoints
 
 DATASET_BLUEPRINT_TAG = "datasets"
 dataset_blueprint = VersionedBlueprint(DATASET_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
-@dataset_blueprint.route(
-    "/datasets.list", methods=["GET"], provide_automatic_options=False, versions=VERSIONS_FROM_V2_2
-)
 @handle_common_except
 @requires_cache
 @optional_identity
-def list_datasets_view(user_data, cache):
+def list_datasets_view_2_1(user_data, cache):
     """
     List all datasets in a project.
 
@@ -59,20 +55,17 @@ def list_datasets_view(user_data, cache):
           description: Listing of all datasets in a project.
           content:
             application/json:
-              schema: DatasetListResponseRPC
+              schema: DatasetListResponseRPC_2_1
       tags:
         - datasets
     """
-    return DatasetsListCtrl(cache, user_data, dict(request.args)).to_response()
+    return DatasetsListCtrl_2_1(cache, user_data, dict(request.args)).to_response()
 
 
-@dataset_blueprint.route(
-    "/datasets.files_list", methods=["GET"], provide_automatic_options=False, versions=VERSIONS_FROM_V2_2
-)
 @handle_common_except
 @requires_cache
 @optional_identity
-def list_dataset_files_view(user_data, cache):
+def list_dataset_files_view_2_1(user_data, cache):
     """
     List files in a dataset.
 
@@ -81,28 +74,25 @@ def list_dataset_files_view(user_data, cache):
       description: List files in a dataset.
       parameters:
         - in: query
-          schema: DatasetFilesListRequest
+          schema: DatasetFilesListRequest_2_1
       responses:
         200:
           description: Listing of all files in a dataset.
           content:
             application/json:
-              schema: DatasetFilesListResponseRPC
+              schema: DatasetFilesListResponseRPC_2_1
       tags:
         - datasets
     """
-    return DatasetsFilesListCtrl(cache, user_data, dict(request.args)).to_response()
+    return DatasetsFilesListCtrl_2_1(cache, user_data, dict(request.args)).to_response()
 
 
-@dataset_blueprint.route(
-    "/datasets.add", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_FROM_V2_2
-)
 @handle_common_except
 @handle_datasets_write_errors
 @accepts_json
 @requires_cache
 @requires_identity
-def add_file_to_dataset_view(user_data, cache):
+def add_file_to_dataset_view_2_1(user_data, cache):
     """
     Add the uploaded file to a cloned repository.
 
@@ -112,28 +102,25 @@ def add_file_to_dataset_view(user_data, cache):
       requestBody:
         content:
           application/json:
-            schema: DatasetAddRequest
+            schema: DatasetAddRequest_2_1
       responses:
         200:
           description: Details of the added files.
           content:
             application/json:
-              schema: DatasetAddResponseRPC
+              schema: DatasetAddResponseRPC_2_1
       tags:
         - datasets
     """
-    return DatasetsAddFileCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
+    return DatasetsAddFileCtrl_2_1(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
-@dataset_blueprint.route(
-    "/datasets.create", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_FROM_V2_2
-)
 @handle_common_except
 @handle_datasets_write_errors
 @accepts_json
 @requires_cache
 @requires_identity
-def create_dataset_view(user_data, cache):
+def create_dataset_view_2_1(user_data, cache):
     """
     Create a new dataset in a project.
 
@@ -143,27 +130,24 @@ def create_dataset_view(user_data, cache):
       requestBody:
         content:
           application/json:
-            schema: DatasetCreateRequest
+            schema: DatasetCreateRequest_2_1
       responses:
         200:
           description: Properties of the created dataset.
           content:
             application/json:
-              schema: DatasetCreateResponseRPC
+              schema: DatasetCreateResponseRPC_2_1
       tags:
         - datasets
     """
-    return DatasetsCreateCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
+    return DatasetsCreateCtrl_2_1(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
-@dataset_blueprint.route(
-    "/datasets.remove", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_FROM_V2_2
-)
 @handle_common_except
 @accepts_json
 @requires_cache
 @requires_identity
-def remove_dataset_view(user_data, cache):
+def remove_dataset_view_2_1(user_data, cache):
     """
     Remove a dataset from a project.
 
@@ -173,27 +157,24 @@ def remove_dataset_view(user_data, cache):
       requestBody:
         content:
           application/json:
-            schema: DatasetRemoveRequest
+            schema: DatasetRemoveRequest_2_1
       responses:
         200:
           description: Details of the removed dataset.
           content:
             application/json:
-              schema: DatasetRemoveResponseRPC
+              schema: DatasetRemoveResponseRPC_2_1
       tags:
         - datasets
     """
-    return DatasetsRemoveCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
+    return DatasetsRemoveCtrl_2_1(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
-@dataset_blueprint.route(
-    "/datasets.import", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_FROM_V2_2
-)
 @handle_common_except
 @accepts_json
 @requires_cache
 @requires_identity
-def import_dataset_view(user_data, cache):
+def import_dataset_view_2_1(user_data, cache):
     """
     Import a dataset view.
 
@@ -203,7 +184,7 @@ def import_dataset_view(user_data, cache):
       requestBody:
         content:
           application/json:
-            schema: DatasetImportRequest
+            schema: DatasetImportRequest_2_1
       responses:
         200:
           description: Details of the dispatched import dataset job.
@@ -213,18 +194,15 @@ def import_dataset_view(user_data, cache):
       tags:
         - datasets
     """
-    return DatasetsImportCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
+    return DatasetsImportCtrl_2_1(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
-@dataset_blueprint.route(
-    "/datasets.edit", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_FROM_V2_2
-)
 @handle_common_except
 @handle_datasets_write_errors
 @accepts_json
 @requires_cache
 @requires_identity
-def edit_dataset_view(user_data, cache):
+def edit_dataset_view_2_1(user_data, cache):
     """
     Edit dataset metadata view.
 
@@ -236,7 +214,7 @@ def edit_dataset_view(user_data, cache):
       requestBody:
         content:
           application/json:
-            schema: DatasetEditRequest
+            schema: DatasetEditRequest_2_1
       responses:
         200:
           description: Status of the requested dataset edits.
@@ -246,18 +224,15 @@ def edit_dataset_view(user_data, cache):
       tags:
         - datasets
     """
-    return DatasetsEditCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
+    return DatasetsEditCtrl_2_1(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
-@dataset_blueprint.route(
-    "/datasets.unlink", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_FROM_V2_2
-)
 @handle_common_except
 @handle_datasets_unlink_errors
 @accepts_json
 @requires_cache
 @requires_identity
-def unlink_file_view(user_data, cache):
+def unlink_file_view_2_1(user_data, cache):
     """
     Unlink a file from a dataset view.
 
@@ -267,7 +242,7 @@ def unlink_file_view(user_data, cache):
       requestBody:
         content:
           application/json:
-            schema: DatasetUnlinkRequest
+            schema: DatasetUnlinkRequest_2_1
       responses:
         200:
           description: Details of the unlinked files.
@@ -277,7 +252,34 @@ def unlink_file_view(user_data, cache):
       tags:
         - datasets
     """
-    return DatasetsUnlinkCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
+    return DatasetsUnlinkCtrl_2_1(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
-dataset_blueprint = add_v1_specific_dataset_endpoints(dataset_blueprint)
+def add_v1_specific_dataset_endpoints(dataset_blueprint):
+    """Add v1 only endpoints to blueprint."""
+    dataset_blueprint.route(
+        "/datasets.list", methods=["GET"], provide_automatic_options=False, versions=VERSIONS_BEFORE_2_2
+    )(list_datasets_view_2_1)
+    dataset_blueprint.route(
+        "/datasets.files_list", methods=["GET"], provide_automatic_options=False, versions=VERSIONS_BEFORE_2_2
+    )(list_dataset_files_view_2_1)
+    dataset_blueprint.route(
+        "/datasets.add", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_BEFORE_2_2
+    )(add_file_to_dataset_view_2_1)
+    dataset_blueprint.route(
+        "/datasets.create", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_BEFORE_2_2
+    )(create_dataset_view_2_1)
+    dataset_blueprint.route(
+        "/datasets.remove", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_BEFORE_2_2
+    )(remove_dataset_view_2_1)
+    dataset_blueprint.route(
+        "/datasets.import", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_BEFORE_2_2
+    )(import_dataset_view_2_1)
+    dataset_blueprint.route(
+        "/datasets.edit", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_BEFORE_2_2
+    )(edit_dataset_view_2_1)
+    dataset_blueprint.route(
+        "/datasets.unlink", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_BEFORE_2_2
+    )(unlink_file_view_2_1)
+
+    return dataset_blueprint

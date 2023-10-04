@@ -18,7 +18,7 @@ from flask import request
 
 from renku.ui.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
 from renku.ui.service.serializers.v1.templates import ManifestTemplatesResponseRPC_1_5
-from renku.ui.service.views.api_versions import V1_0, V1_1, V1_2, V1_3, V1_4, V1_5
+from renku.ui.service.views.api_versions import VERSIONS_BEFORE_2_0
 from renku.ui.service.views.decorators import requires_cache, requires_identity
 from renku.ui.service.views.error_handlers import handle_common_except, handle_templates_read_errors
 
@@ -63,12 +63,9 @@ def read_manifest_from_template_1_5(user_data, cache):
     return ctrl.to_response()
 
 
-def add_v1_specific_endpoints(templates_blueprint):
+def add_v1_specific_template_endpoints(templates_blueprint):
     """Add v1 only endpoints to blueprint."""
     templates_blueprint.route(
-        "/templates.read_manifest",
-        methods=["GET"],
-        provide_automatic_options=False,
-        versions=[V1_0, V1_1, V1_2, V1_3, V1_4, V1_5],
+        "/templates.read_manifest", methods=["GET"], provide_automatic_options=False, versions=VERSIONS_BEFORE_2_0
     )(read_manifest_from_template_1_5)
     return templates_blueprint
