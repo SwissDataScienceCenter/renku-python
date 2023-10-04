@@ -243,7 +243,7 @@ datasets' metadata accordingly. You can automatically add new files from
 the dataset's data directory by using the ``--check-data-directory`` flag.
 
 You can limit the scope of updated files by specifying dataset slugs, using
-``--include`` and ``--exclude`` to filter based on file slugs, or using
+``--include`` and ``--exclude`` to filter based on file names, or using
 ``--creators`` to filter based on creators. For example, the following command
 updates only CSV files from ``my-dataset``:
 
