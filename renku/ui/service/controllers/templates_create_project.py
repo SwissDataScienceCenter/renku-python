@@ -23,13 +23,15 @@ from marshmallow import EXCLUDE
 
 from renku.command.init import create_from_template_local_command
 from renku.core import errors
+from renku.core.image import ImageObjectRequest
 from renku.core.template.template import fetch_templates_source
 from renku.core.util.contexts import renku_project_context
 from renku.domain_model.template import Template
 from renku.infrastructure.repository import Repository
-from renku.ui.service.config import MESSAGE_PREFIX
+from renku.ui.service.config import CACHE_UPLOADS_PATH, MESSAGE_PREFIX
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
+from renku.ui.service.controllers.utils.datasets import set_url_for_uploaded_images
 from renku.ui.service.errors import UserProjectCreationError, UserTemplateInvalidError
 from renku.ui.service.serializers.templates import ProjectTemplateRequest, ProjectTemplateResponseRPC
 from renku.ui.service.utils import new_repo_push
@@ -102,6 +104,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
             "owner": self.ctx["project_namespace"],
             "token": self.ctx["token"],
             "initialized": True,
+            "image": self.ctx["image"],
         }
         project = self.cache.make_project(self.user, new_project_data)
 
@@ -150,6 +153,18 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
         new_project = self.setup_new_project()
         new_project_path = new_project.abs_path
 
+        image = self.ctx.get("image")
+        if image:
+            user_cache_dir = CACHE_UPLOADS_PATH / self.user.user_id
+            set_url_for_uploaded_images(images=[image], cache=self.cache, user=self.user)
+
+            image = ImageObjectRequest(
+                content_url=image["content_url"],
+                position=0,
+                mirror_locally=image.get("mirror_locally", False),
+                safe_image_paths=[user_cache_dir],
+            )
+
         with renku_project_context(new_project_path):
             create_from_template_local_command().build().execute(
                 self.template.path,
@@ -167,6 +182,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
                 description=self.ctx["project_description"],
                 data_dir=self.ctx.get("data_directory"),
                 ssh_supported=self.template.ssh_supported,
+                image_request=image,
             )
 
         self.new_project_push(new_project_path)

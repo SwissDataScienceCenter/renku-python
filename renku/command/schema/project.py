@@ -20,6 +20,7 @@ from marshmallow import EXCLUDE, pre_dump
 from renku.command.schema.agent import PersonSchema
 from renku.command.schema.annotation import AnnotationSchema
 from renku.command.schema.calamus import DateTimeList, JsonLDSchema, Nested, StringList, fields, oa, prov, renku, schema
+from renku.command.schema.image import ImageObjectSchema
 from renku.domain_model.project import Project
 
 
@@ -39,6 +40,7 @@ class ProjectSchema(JsonLDSchema):
     date_created = DateTimeList(schema.dateCreated, load_default=None, format="iso", extra_formats=("%Y-%m-%d",))
     description = fields.String(schema.description, load_default=None)
     id = fields.Id(load_default=None)
+    image = fields.Nested(schema.image, ImageObjectSchema, load_default=None)
     immutable_template_files = fields.List(
         renku.immutableTemplateFiles,
         fields.String(),

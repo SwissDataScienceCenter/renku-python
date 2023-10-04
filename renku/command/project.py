@@ -17,14 +17,14 @@
 """Project management."""
 
 from renku.command.command_builder.command import Command
-from renku.core.constant import DATABASE_METADATA_PATH
+from renku.core.constant import PROJECT_METADATA_PATH
 from renku.core.project import edit_project, show_project
 
 
 def edit_project_command():
     """Command for editing project metadata."""
     command = Command().command(edit_project).lock_project().with_database(write=True)
-    return command.require_migration().with_commit(commit_only=DATABASE_METADATA_PATH)
+    return command.require_migration().with_commit(commit_only=PROJECT_METADATA_PATH)
 
 
 def show_project_command():

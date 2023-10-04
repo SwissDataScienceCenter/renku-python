@@ -184,7 +184,7 @@ def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers)
 
 @pytest.mark.service
 @pytest.mark.integration
-# @retry_failed
+@retry_failed
 @pytest.mark.parametrize(
     "git_url",
     [

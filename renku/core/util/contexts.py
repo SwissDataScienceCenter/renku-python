@@ -162,10 +162,14 @@ def with_project_metadata(
             custom_metadata=custom_metadata,
         )
 
-    yield project
-
-    if not read_only:
+    if read_only:
+        yield project
+    else:
+        # NOTE: Set project so that ``project_context`` can be used inside the code
         project_gateway.update_project(project)
+
+        yield project
+
         database_gateway.commit()
 
 

@@ -512,7 +512,11 @@ class RenkuSaveError(RenkuException):
     """Raised when renku save doesn't work."""
 
 
-class DatasetImageError(DatasetException):
+class ImageError(RenkuException):
+    """Raised when an image for a project/dataset is not accessible."""
+
+
+class DatasetImageError(DatasetException, ImageError):
     """Raised when a local dataset image is not accessible."""
 
 

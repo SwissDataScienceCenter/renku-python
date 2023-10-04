@@ -20,7 +20,7 @@ from marshmallow import Schema, ValidationError, fields, post_load
 from renku.domain_model.dataset import DatasetCreatorsJson as DatasetCreators
 from renku.domain_model.dataset import DatasetDetailsJson as DatasetDetails
 from renku.domain_model.dataset import ImageObjectJson as ImageObject
-from renku.domain_model.dataset import ImageObjectRequestJson as ImageObjectRequest
+from renku.domain_model.dataset import ImageObjectRequestJson
 from renku.ui.service.serializers.common import (
     AsyncSchema,
     JobDetailsResponse,
@@ -40,7 +40,7 @@ class DatasetNameSchema(Schema):
 class DatasetDetailsRequest(DatasetDetails):
     """Request schema with dataset image information."""
 
-    images = fields.List(fields.Nested(ImageObjectRequest))
+    images = fields.List(fields.Nested(ImageObjectRequestJson))
 
     custom_metadata: fields.Field = fields.Dict()
 
@@ -200,7 +200,7 @@ class DatasetEditRequest(
     creators = fields.List(fields.Nested(DatasetCreators), metadata={"description": "New creators of the dataset"})
     keywords = fields.List(fields.String(), allow_none=True, metadata={"description": "New keywords for the dataset"})
     images = fields.List(
-        fields.Nested(ImageObjectRequest), allow_none=True, metadata={"description": "New dataset images"}
+        fields.Nested(ImageObjectRequestJson), allow_none=True, metadata={"description": "New dataset images"}
     )
     custom_metadata = fields.List(
         fields.Dict(), metadata={"description": "New custom metadata for the dataset"}, allow_none=True

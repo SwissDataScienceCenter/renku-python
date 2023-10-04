@@ -28,12 +28,12 @@ from renku.domain_model.dataset import (
     Dataset,
     DatasetFile,
     DatasetTag,
-    ImageObject,
     Language,
     RemoteEntity,
     Url,
     is_dataset_name_valid,
 )
+from renku.domain_model.image import ImageObject
 from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance import agent as new_agents
 
@@ -65,7 +65,7 @@ def _convert_image_object(image_object: Optional[old_datasets.ImageObject], data
     """Create from old ImageObject instance."""
     if not image_object:
         return
-    id = ImageObject.generate_id(dataset_id=dataset_id, position=image_object.position)
+    id = ImageObject.generate_id(owner_id=dataset_id, position=image_object.position)
     return ImageObject(content_url=image_object.content_url, position=image_object.position, id=id)
 
 

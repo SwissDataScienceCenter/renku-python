@@ -78,7 +78,7 @@ def database() -> Iterator[Tuple["Database", DummyStorage]]:
 
 @pytest.fixture
 def with_injection():
-    """Factory fixture for test injections manager."""
+    """Factory fixture for test injection manager."""
     from renku.command.command_builder.command import inject, remove_injector
     from renku.domain_model.project_context import project_context
 

@@ -18,7 +18,7 @@
 from typing import Dict, List, Union, cast
 
 from renku.command.dataset import edit_dataset_command
-from renku.core.dataset.request_model import ImageRequestModel
+from renku.core.image import ImageObjectRequest
 from renku.core.util.metadata import construct_creators
 from renku.domain_model.constant import NO_VALUE, NoValueType
 from renku.domain_model.provenance.agent import Person
@@ -61,7 +61,7 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
             set_url_for_uploaded_images(images=images, cache=self.cache, user=self.user)
 
             images = [
-                ImageRequestModel(
+                ImageObjectRequest(
                     content_url=img["content_url"],
                     position=img["position"],
                     mirror_locally=img.get("mirror_locally", False),

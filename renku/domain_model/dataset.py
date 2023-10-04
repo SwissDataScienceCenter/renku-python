@@ -32,8 +32,9 @@ from renku.core.util.datetime8601 import fix_datetime, local_now, parse_date
 from renku.core.util.git import get_entity_from_revision
 from renku.core.util.metadata import is_linked_file
 from renku.core.util.os import get_absolute_path
-from renku.core.util.urls import get_path, get_slug
+from renku.core.util.urls import get_slug
 from renku.domain_model.constant import NO_VALUE, NON_EXISTING_ENTITY_CHECKSUM
+from renku.domain_model.image import ImageObject
 from renku.domain_model.project_context import project_context
 from renku.infrastructure.immutable import Immutable, Slots
 from renku.infrastructure.persistent import Persistent
@@ -171,30 +172,6 @@ class Language(Immutable):
         """Generate @id field."""
         name = quote(name, safe="")
         return f"/languages/{name}"
-
-
-class ImageObject(Slots):
-    """Represents a schema.org `ImageObject`."""
-
-    __slots__ = ("content_url", "id", "position")
-
-    id: str
-    content_url: str
-    position: int
-
-    def __init__(self, *, content_url: str, id: str, position: int):
-        id = get_path(id)
-        super().__init__(content_url=content_url, position=position, id=id)
-
-    @staticmethod
-    def generate_id(dataset_id: str, position: int) -> str:
-        """Generate @id field."""
-        return f"{dataset_id}/images/{position}"
-
-    @property
-    def is_absolute(self):
-        """Whether content_url is an absolute or relative url."""
-        return bool(urlparse(self.content_url).netloc)
 
 
 class RemoteEntity(Slots):
@@ -790,8 +767,8 @@ class ImageObjectRequestJson(marshmallow.Schema):
 
     file_id = marshmallow.fields.String()
     content_url = marshmallow.fields.String()
-    position = marshmallow.fields.Integer()
-    mirror_locally = marshmallow.fields.Bool(dump_default=False)
+    position = marshmallow.fields.Integer(load_default=0)
+    mirror_locally = marshmallow.fields.Bool(load_default=False)
 
 
 def get_file_path_in_dataset(dataset: Dataset, dataset_file: DatasetFile) -> Path:

@@ -15,6 +15,7 @@
 # limitations under the License.
 """Dataset business logic."""
 
+import imghdr
 import os
 import shutil
 import urllib
@@ -35,8 +36,8 @@ from renku.core.dataset.providers.api import AddProviderInterface, ProviderApi
 from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.git import GitProvider
 from renku.core.dataset.providers.models import DatasetUpdateAction, ProviderDataset
-from renku.core.dataset.request_model import ImageRequestModel
 from renku.core.dataset.tag import get_dataset_by_tag, prompt_access_token, prompt_tag_selection
+from renku.core.image import ImageObjectRequest
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.storage import check_external_storage, track_paths_in_storage
 from renku.core.util import communication
@@ -50,6 +51,7 @@ from renku.core.util.os import (
     get_absolute_path,
     get_file_size,
     get_files,
+    get_relative_path,
     get_safe_relative_path,
     hash_file,
     is_path_empty,
@@ -109,7 +111,7 @@ def create_dataset(
     description: Optional[str] = None,
     creators: Optional[List[Person]] = None,
     keywords: Optional[List[str]] = None,
-    images: Optional[List[ImageRequestModel]] = None,
+    images: Optional[List[ImageObjectRequest]] = None,
     update_provenance: bool = True,
     custom_metadata: Optional[Dict[str, Any]] = None,
     storage: Optional[str] = None,
@@ -123,7 +125,7 @@ def create_dataset(
         description(Optional[str], optional): Dataset description (Default value = None).
         creators(Optional[List[Person]], optional): Dataset creators (Default value = None).
         keywords(Optional[List[str]], optional): Dataset keywords (Default value = None).
-        images(Optional[List[ImageRequestModel]], optional): Dataset images (Default value = None).
+        images(Optional[List[ImageObjectRequest]], optional): Dataset images (Default value = None).
         update_provenance(bool, optional): Whether to add this dataset to dataset provenance
             (Default value = True).
         custom_metadata(Optional[Dict[str, Any]], optional): Custom JSON-LD metadata (Default value = None).
@@ -199,7 +201,7 @@ def edit_dataset(
     description: Optional[Union[str, NoValueType]],
     creators: Optional[Union[List[Person], NoValueType]],
     keywords: Optional[Union[List[str], NoValueType]] = NO_VALUE,
-    images: Optional[Union[List[ImageRequestModel], NoValueType]] = NO_VALUE,
+    images: Optional[Union[List[ImageObjectRequest], NoValueType]] = NO_VALUE,
     custom_metadata: Optional[Union[Dict, List[Dict], NoValueType]] = NO_VALUE,
     custom_metadata_source: Optional[Union[str, NoValueType]] = NO_VALUE,
 ):
@@ -211,7 +213,7 @@ def edit_dataset(
         description(Optional[Union[str, NoValueType]]): New description for the dataset.
         creators(Optional[Union[List[Person], NoValueType]]): New creators for the dataset.
         keywords(Optional[Union[List[str], NoValueType]]): New keywords for dataset (Default value = ``NO_VALUE``).
-        images(Optional[Union[List[ImageRequestModel], NoValueType]]): New images for dataset
+        images(Optional[Union[List[ImageObjectRequest], NoValueType]]): New images for dataset
             (Default value = ``NO_VALUE``).
         custom_metadata(Optional[Union[Dict, List[Dict], NoValueType]]): Custom JSON-LD metadata
             (Default value = ``NO_VALUE``).
@@ -248,7 +250,7 @@ def edit_dataset(
     if images == NO_VALUE:
         images_updated = False
     else:
-        images_updated = set_dataset_images(dataset=dataset, images=cast(Optional[List[ImageRequestModel]], images))
+        images_updated = set_dataset_images(dataset=dataset, images=cast(Optional[List[ImageObjectRequest]], images))
 
     if images_updated:
         updated["images"] = (
@@ -855,12 +857,12 @@ def add_datadir_files_to_dataset(dataset: Dataset) -> None:
         dataset.add_or_update_files(dataset_files)
 
 
-def set_dataset_images(dataset: Dataset, images: Optional[List[ImageRequestModel]]):
+def set_dataset_images(dataset: Dataset, images: Optional[List[ImageObjectRequest]]):
     """Set a dataset's images.
 
     Args:
         dataset(Dataset): The dataset to set images on.
-        images(List[ImageRequestModel]): The images to set.
+        images(List[ImageObjectRequest]): The images to set.
 
     Returns:
         True if images were set/modified.
@@ -875,10 +877,30 @@ def set_dataset_images(dataset: Dataset, images: Optional[List[ImageRequestModel
     dataset.images = []
     images_updated = False
     for img in images:
-        img_object = img.to_image_object(dataset)
+        image_folder = project_context.dataset_images_path / dataset.initial_identifier
+        try:
+            img_object = img.to_image_object(owner_id=dataset.id)
+        except errors.ImageError as e:
+            raise errors.DatasetImageError(e) from e
 
-        if not img_object:
-            continue
+        path = img_object.content_url
+
+        if not img_object.is_remote:
+            # NOTE: only copy dataset image if it's not in .renku/datasets/<id>/images/ already
+            if not path.startswith(str(image_folder)):
+                image_type = imghdr.what(path)
+                if image_type:
+                    ext = f".{image_type}"
+                else:
+                    _, ext = os.path.splitext(path)
+                target_image_path: Union[Path, str] = image_folder / f"{img_object.position}{ext}"
+
+                image_folder.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(path, target_image_path)
+            else:
+                target_image_path = path
+
+            img_object.content_url = get_relative_path(target_image_path, base=project_context.path)  # type: ignore
 
         if any(i.position == img_object.position for i in dataset.images):
             raise errors.DatasetImageError(f"Duplicate dataset image specified for position {img_object.position}")

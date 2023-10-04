@@ -160,6 +160,14 @@
                ]
             },
             {
+               "path": "schema:image",
+               "sh:class": {
+                  "@id": "schema:ImageObject"
+               },
+               "sh:pattern": "http(s)?://[^/]+/projects/.+/images/0",
+               "maxCount": 1
+            },
+            {
                "nodeKind": "sh:Literal",
                "path": "renku:templateSource",
                "datatype": {
