@@ -19,7 +19,7 @@ from typing import List, Tuple
 
 import pluggy
 
-from renku.domain_model.session import ISessionProvider
+from renku.domain_model.session import IHibernatingSessionProvider, ISessionProvider
 
 hookspec = pluggy.HookspecMarker("renku")
 
@@ -42,3 +42,9 @@ def get_supported_session_providers() -> List[ISessionProvider]:
     providers = pm.hook.session_provider()
 
     return sorted(providers, key=lambda p: p.priority)
+
+
+def get_supported_hibernating_session_providers() -> List[IHibernatingSessionProvider]:
+    """Returns the currently available interactive session providers that support hibernation."""
+    providers = get_supported_session_providers()
+    return [p for p in providers if isinstance(p, IHibernatingSessionProvider)]
