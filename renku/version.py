@@ -25,7 +25,7 @@ except ImportError:
 
 __version__ = cast(str, version("renku"))
 __template_version__ = "0.7.1"
-__minimum_project_version__ = "2.4.0"
+__minimum_project_version__ = "2.8.0"
 
 
 def is_release(version: Optional[str] = None):

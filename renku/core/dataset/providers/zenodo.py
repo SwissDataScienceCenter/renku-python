@@ -170,7 +170,7 @@ class ZenodoImporter(RepositoryImporter):
 
         from renku.command.schema.agent import PersonSchema
         from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile, ProviderDatasetSchema
-        from renku.domain_model.dataset import Url, generate_default_name
+        from renku.domain_model.dataset import Url, generate_default_slug
 
         class ZenodoDatasetSchema(ProviderDatasetSchema):
             """Schema for Dataverse datasets."""
@@ -204,7 +204,7 @@ class ZenodoImporter(RepositoryImporter):
         files = self.get_files()
         metadata = self.get_jsonld()
         dataset = ProviderDataset.from_jsonld(metadata, schema_class=ZenodoDatasetSchema)
-        dataset.name = generate_default_name(title=dataset.title or "", version=dataset.version)
+        dataset.slug = generate_default_slug(name=dataset.name or "", version=dataset.version)
         dataset.same_as = Url(url_id=remove_credentials(self.original_uri))
         if is_doi(dataset.identifier):
             dataset.same_as = Url(url_str=urllib.parse.urljoin("https://doi.org", dataset.identifier))
@@ -473,7 +473,7 @@ class ZenodoDeposition:
 
         request_payload = {
             "metadata": {
-                "title": dataset.title,
+                "title": dataset.name,
                 "upload_type": "dataset",
                 "description": dataset.description if dataset.description else None,
                 "creators": [

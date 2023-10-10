@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,7 +38,7 @@ from renku.core.dataset.tag import add_dataset_tag, list_dataset_tags, remove_da
 
 
 def search_datasets_command():
-    """Command to get all the datasets whose name starts with the given string."""
+    """Command to get all the datasets whose slug starts with the given string."""
     return Command().command(search_datasets).require_migration().with_database()
 
 

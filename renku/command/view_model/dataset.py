@@ -23,14 +23,14 @@ from renku.domain_model.dataset import Dataset, DatasetFile
 class DatasetViewModel:
     """A view model for a ``Dataset``."""
 
-    def __init__(self, name: str, same_as: Optional[str]):
-        self.name: str = name
+    def __init__(self, slug: str, same_as: Optional[str]):
+        self.slug: str = slug
         self.same_as: Optional[str] = same_as
 
     @classmethod
     def from_dataset(cls, dataset: Dataset) -> "DatasetViewModel":
         """Create view model from ``Dataset``."""
-        return cls(name=dataset.name, same_as=dataset.same_as.value if dataset.same_as else None)
+        return cls(slug=dataset.slug, same_as=dataset.same_as.value if dataset.same_as else None)
 
 
 class DatasetFileViewModel:
