@@ -255,15 +255,6 @@ def session():
     help="Backend to use for listing interactive sessions.",
 )
 @click.option(
-    "config",
-    "-c",
-    "--config",
-    hidden=True,
-    type=click.Path(exists=True, dir_okay=False),
-    metavar="<config file>",
-    help="YAML file containing configuration for the provider.",
-)
-@click.option(
     "--columns",
     type=click.STRING,
     default=None,
@@ -274,7 +265,7 @@ def session():
 @click.option(
     "--format", type=click.Choice(list(SESSION_FORMATS.keys())), default="log", help="Choose an output format."
 )
-def list_sessions(provider, config, columns, format):
+def list_sessions(provider, columns, format):
     """List interactive sessions."""
     from renku.command.session import session_list_command
 
