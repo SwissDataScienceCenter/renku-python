@@ -25,12 +25,12 @@ from pydantic import validate_arguments
 
 from renku.core import errors
 from renku.core.config import get_value
-from renku.core.plugin.session import get_supported_session_providers
+from renku.core.plugin.session import get_supported_hibernating_session_providers, get_supported_session_providers
 from renku.core.session.utils import get_image_repository_host, get_renku_project_name
 from renku.core.util import communication
 from renku.core.util.os import safe_read_yaml
 from renku.core.util.ssh import SystemSSHConfig, generate_ssh_keys
-from renku.domain_model.session import ISessionProvider, Session, SessionStopStatus
+from renku.domain_model.session import IHibernatingSessionProvider, ISessionProvider, Session, SessionStopStatus
 
 
 def _safe_get_provider(provider: str) -> ISessionProvider:
@@ -78,6 +78,22 @@ def search_session_providers(name: str) -> List[str]:
 
     name = name.lower()
     return [p.name for p in get_supported_session_providers() if p.name.lower().startswith(name)]
+
+
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def search_hibernating_session_providers(name: str) -> List[str]:
+    """Get all session providers that support hibernation and their name starts with the given name.
+
+    Args:
+        name(str): The name to search for.
+
+    Returns:
+        All session providers whose name starts with ``name``.
+    """
+    from renku.core.plugin.session import get_supported_hibernating_session_providers
+
+    name = name.lower()
+    return [p.name for p in get_supported_hibernating_session_providers() if p.name.lower().startswith(name)]
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
@@ -358,3 +374,94 @@ def ssh_setup(existing_key: Optional[Path] = None, force: bool = False):
         "This command does not add any public SSH keys to your project. "
         "Keys have to be added manually or by using the 'renku session start' command with the '--ssh' flag."
     )
+
+
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def session_pause(session_name: Optional[str], provider: Optional[str] = None, **kwargs):
+    """Pause an interactive session.
+
+    Args:
+        session_name(Optional[str]): Name of the session.
+        provider(Optional[str]): Name of the session provider to use.
+    """
+
+    def pause(session_provider: IHibernatingSessionProvider) -> SessionStopStatus:
+        try:
+            return session_provider.session_pause(project_name=project_name, session_name=session_name)
+        except errors.RenkulabSessionGetUrlError:
+            if provider:
+                raise
+            return SessionStopStatus.FAILED
+
+    project_name = get_renku_project_name()
+
+    if provider:
+        session_provider = _safe_get_provider(provider)
+        if session_provider is None:
+            raise errors.ParameterError(f"Provider '{provider}' not found")
+        elif not isinstance(session_provider, IHibernatingSessionProvider):
+            raise errors.ParameterError(f"Provider '{provider}' doesn't support pausing sessions")
+        providers = [session_provider]
+    else:
+        providers = get_supported_hibernating_session_providers()
+
+    session_message = f"session {session_name}" if session_name else "session"
+    statues = []
+    warning_messages = []
+    with communication.busy(msg=f"Waiting for {session_message} to pause..."):
+        for session_provider in sorted(providers, key=lambda p: p.priority):
+            try:
+                status = pause(session_provider)  # type: ignore
+            except errors.RenkuException as e:
+                warning_messages.append(f"Cannot pause sessions in provider '{session_provider.name}': {e}")
+            else:
+                statues.append(status)
+
+            # NOTE: The given session name was stopped; don't continue
+            if session_name and status == SessionStopStatus.SUCCESSFUL:
+                break
+
+    if warning_messages:
+        for message in warning_messages:
+            communication.warn(message)
+
+    if not statues:
+        return
+    elif all(s == SessionStopStatus.NO_ACTIVE_SESSION for s in statues):
+        raise errors.ParameterError("There are no running sessions.")
+    elif session_name and not any(s == SessionStopStatus.SUCCESSFUL for s in statues):
+        raise errors.ParameterError(f"Could not find '{session_name}' among the running sessions.")
+    elif not session_name and not any(s == SessionStopStatus.SUCCESSFUL for s in statues):
+        raise errors.ParameterError("Session name is missing")
+
+
+@validate_arguments(config=dict(arbitrary_types_allowed=True))
+def session_resume(session_name: Optional[str], provider: Optional[str] = None, **kwargs):
+    """Resume a paused session.
+
+    Args:
+        session_name(Optional[str]): Name of the session.
+        provider(Optional[str]): Name of the session provider to use.
+    """
+    project_name = get_renku_project_name()
+
+    if provider:
+        session_provider = _safe_get_provider(provider)
+        if session_provider is None:
+            raise errors.ParameterError(f"Provider '{provider}' not found")
+        elif not isinstance(session_provider, IHibernatingSessionProvider):
+            raise errors.ParameterError(f"Provider '{provider}' doesn't support pausing/resuming sessions")
+        providers = [session_provider]
+    else:
+        providers = get_supported_hibernating_session_providers()
+
+    session_message = f"session {session_name}" if session_name else "session"
+    with communication.busy(msg=f"Waiting for {session_message} to resume..."):
+        for session_provider in providers:
+            if session_provider.session_resume(project_name, session_name, **kwargs):  # type: ignore
+                return
+
+    if session_name:
+        raise errors.ParameterError(f"Could not find '{session_name}' among the sessions.")
+    else:
+        raise errors.ParameterError("Session name is missing")
