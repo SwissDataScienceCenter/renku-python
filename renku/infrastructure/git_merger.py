@@ -18,6 +18,7 @@
 
 import os
 import shutil
+import traceback
 from json import JSONDecodeError
 from pathlib import Path
 from tempfile import mkdtemp
@@ -117,6 +118,12 @@ class GitMerger:
                     )
                 )
             except Exception:
+                exc_str = traceback.format_exc(limit=None, chain=True)
+                if "No such file or directory" in exc_str and "Unable to create" in exc_str:
+                    communication.error(
+                        "Error when trying to sparse checkout worktree. Dies is likely due to using an old version of "
+                        "git. Please try with a newer version."
+                    )
                 # NOTE: cleanup worktree
                 try:
                     repository.remove_worktree(worktree_path)
