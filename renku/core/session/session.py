@@ -142,6 +142,9 @@ def session_start(
     """
     from renku.domain_model.project_context import project_context
 
+    if project_context.repository.head.detached:
+        raise errors.SessionStartError("Cannot start a session from a detached HEAD. Check out a branch first.")
+
     # NOTE: The Docker client in Python requires the parameters below to be a list and will fail with a tuple.
     # Click will convert parameters with the flag "many" set to True to tuples.
     kwargs["security_opt"] = list(kwargs.get("security_opt", []))
