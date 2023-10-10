@@ -188,11 +188,11 @@ class DatasetSchema(JsonLDSchema):
     in_language = Nested(schema.inLanguage, LanguageSchema, load_default=None)
     keywords = fields.List(schema.keywords, fields.String(), load_default=None)
     license = Uri(schema.license, load_default=None)
-    name = fields.String(renku.slug)
+    slug = fields.String(renku.slug)
     initial_identifier = fields.String(renku.originalIdentifier)
     project_id = fields.IRI(renku.hasDataset, reverse=True)
     same_as = Nested(schema.sameAs, UrlSchema, load_default=None)
-    title = fields.String(schema.name)
+    name = fields.String(schema.name)
     version = fields.String(schema.version, load_default=None)
 
     @pre_dump(pass_many=True)

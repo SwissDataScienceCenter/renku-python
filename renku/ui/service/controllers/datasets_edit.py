@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,8 +38,8 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets edit list controller."""
-        self.ctx = cast(Dict, DatasetsEditCtrl.REQUEST_SERIALIZER.load(request_data))
-        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset edit {self.ctx['name']}"
+        self.ctx = cast(Dict, self.REQUEST_SERIALIZER.load(request_data))
+        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset edit {self.ctx['slug']}"
 
         super().__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
@@ -78,10 +77,10 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
         else:
             creators = NO_VALUE
 
-        if "title" in self.ctx:
-            title = self.ctx.get("title")
+        if "name" in self.ctx:
+            name = self.ctx.get("name")
         else:
-            title = NO_VALUE
+            name = NO_VALUE
 
         if "description" in self.ctx:
             description = self.ctx.get("description")
@@ -111,8 +110,8 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
             .with_commit_message(self.ctx["commit_message"])
             .build()
             .execute(
-                self.ctx["name"],
-                title=title,
+                self.ctx["slug"],
+                name=name,
                 description=description,
                 creators=creators,
                 keywords=keywords,
@@ -143,4 +142,4 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
             "remote_branch": remote_branch,
         }
 
-        return result_response(DatasetsEditCtrl.RESPONSE_SERIALIZER, response)
+        return result_response(self.RESPONSE_SERIALIZER, response)

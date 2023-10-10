@@ -44,7 +44,7 @@ class RepositoryImporter(ImporterApi, abc.ABC):
 
         if self.provider_dataset.version:
             add_dataset_tag(
-                dataset_name=name,
+                dataset_slug=name,
                 tag=re.sub("[^a-zA-Z0-9.-_]", "_", self.provider_dataset.version),
                 description=f"Tag {self.provider_dataset.version} created by renku import",
             )

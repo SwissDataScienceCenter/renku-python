@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -583,6 +582,10 @@ class Cache:
 class Index(persistent.Persistent):
     """Database index."""
 
+    # NOTE: If this field isn't None, we use it as the index-attribute instead of ``_attribute``. This is used to avoid
+    # creating a migration when the index-attribute changes.
+    _v_main_attribute: Optional[str] = None
+
     def __init__(self, *, name: str, object_type, attribute: Optional[str], key_type=None):
         """Create an index where keys are extracted using ``attribute`` from an object or a key.
 
@@ -640,6 +643,9 @@ class Index(persistent.Persistent):
 
     def __iter__(self):
         return self._entries.__iter__()
+
+    def __repr__(self) -> str:
+        return f"<Index {self.name} on {self._object_type.__name__}.{self._v_main_attribute or self._attribute}>"
 
     @property
     def name(self) -> str:
@@ -748,9 +754,11 @@ class Index(persistent.Persistent):
         else:
             assert key_object is None, f"Index '{self.name}' does not accept 'key_object'"
 
-        if self._attribute:
+        attribute = self._v_main_attribute or self._attribute
+
+        if attribute:
             key_object = key_object or object
-            correct_key = get_attribute(key_object, self._attribute)
+            correct_key = get_attribute(key_object, attribute)
             if key is not None:
                 if verify:
                     assert key == correct_key, f"Incorrect key for index '{self.name}': '{key}' != '{correct_key}'"

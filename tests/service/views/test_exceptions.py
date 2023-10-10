@@ -1,6 +1,5 @@
-#
-# Copyright 2020-2023 -Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -106,7 +105,7 @@ def test_migration_required_flag(svc_client_setup):
 
     payload = {
         "git_url": url_components.href,
-        "name": uuid.uuid4().hex,
+        "slug": uuid.uuid4().hex,
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
@@ -155,7 +154,7 @@ def test_project_uninitialized(svc_client, it_non_renku_repo_url, identity_heade
     assert "error" in response.json
     assert response.json["error"]["code"] == 1110
 
-    payload["name"] = uuid.uuid4().hex
+    payload["slug"] = uuid.uuid4().hex
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers)
 
@@ -175,7 +174,7 @@ def test_project_no_commits(svc_client, it_no_commit_repo_url, identity_headers)
     assert "error" in response.json
     assert response.json["error"]["code"] == 1110
 
-    payload["name"] = uuid.uuid4().hex
+    payload["slug"] = uuid.uuid4().hex
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers)
 
     assert_rpc_response(response, "error")

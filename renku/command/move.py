@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,7 +56,7 @@ def _move(sources: List[str], destination: str, force: bool, verbose: bool, to_d
     absolute_sources = [_get_absolute_path(src) for src in sources]
 
     if to_dataset:
-        target_dataset = DatasetsProvenance().get_by_name(to_dataset, strict=True)
+        target_dataset = DatasetsProvenance().get_by_slug(to_dataset, strict=True)
         if not is_subpath(absolute_destination, _get_absolute_path(target_dataset.get_datadir())):
             raise errors.ParameterError(
                 f"Destination {destination} must be in {target_dataset.get_datadir()} when moving to a dataset."
@@ -112,7 +111,7 @@ def _move(sources: List[str], destination: str, force: bool, verbose: bool, to_d
     # NOTE: Force-add to include possible ignored files
     repository.add(*files.values(), force=True)
 
-    move_files(files=files, to_dataset_name=to_dataset)
+    move_files(files=files, to_dataset_slug=to_dataset)
 
     if verbose:
         _show_moved_files(project_context.path, files)
