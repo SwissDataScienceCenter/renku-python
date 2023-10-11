@@ -326,3 +326,23 @@ def test_ignored_paths(paths, ignored, project):
     from renku.domain_model.project_context import project_context
 
     assert project_context.repository.get_ignored_paths(*paths) == ignored
+
+
+def test_remote(git_repository):
+    """Test get remote of a repository."""
+    assert 1 == len(git_repository.remotes)
+
+    remote = git_repository.remotes[0]
+
+    assert "origin" == remote.name
+    assert "8853e0c1112e512c36db9cc76faff560b655e5d5" == remote.head
+
+
+def test_remote_detached(git_repository):
+    """Test get remote of a repository with detached head."""
+    git_repository.checkout("HEAD~")
+
+    remote = git_repository.remotes[0]
+
+    assert "origin" == remote.name
+    assert remote.head is None
