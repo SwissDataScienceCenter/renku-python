@@ -1,6 +1,5 @@
-#
-# Copyright 2021 Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -100,7 +99,7 @@ def unlink_file_setup(svc_client_with_repo):
 
     unlink_payload = {
         "git_url": url_components.href,
-        "name": response.json["result"]["name"],
+        "slug": response.json["result"]["slug"],
         "include_filters": [response.json["result"]["files"][0]["file_path"]],
     }
 

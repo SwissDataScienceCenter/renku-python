@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
 
 class SessionStopStatus(Enum):
-    """Status code returned when stopping sessions."""
+    """Status code returned when stopping/pausing sessions."""
 
     NO_ACTIVE_SESSION = auto()
     SUCCESSFUL = auto()
@@ -60,6 +60,11 @@ class Session:
         self.branch = branch
         self.provider = provider
         self.ssh_enabled = ssh_enabled
+
+    @property
+    def name(self) -> str:
+        """Return session name which is the same as its id."""
+        return self.id
 
 
 class ISessionProvider(metaclass=ABCMeta):
@@ -210,3 +215,28 @@ class ISessionProvider(metaclass=ABCMeta):
     def force_build_image(self, **kwargs) -> bool:
         """Whether we should force build the image directly or check for an existing image first."""
         return False
+
+
+class IHibernatingSessionProvider(ISessionProvider):
+    """Abstract class for an interactive session provider that supports hibernation."""
+
+    @abstractmethod
+    def session_pause(self, project_name: str, session_name: Optional[str], **kwargs) -> SessionStopStatus:
+        """Pause all or a given interactive session.
+
+        Args:
+            project_name(str): Project's name.
+            session_name(str, optional): The unique id of the interactive session.
+
+        Returns:
+            SessionStopStatus: The status of running and paused sessions
+        """
+
+    @abstractmethod
+    def session_resume(self, project_name: str, session_name: Optional[str], **kwargs) -> bool:
+        """Resume a paused session.
+
+        Args:
+            project_name(str): Renku project name.
+            session_name(Optional[str]): The unique id of the interactive session.
+        """

@@ -27,7 +27,7 @@ from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
 from renku.infrastructure.immutable import DynamicProxy
 
 
-def add_dataset_tag(dataset_name: str, tag: str, description="", force=False):
+def add_dataset_tag(dataset_slug: str, tag: str, description="", force=False):
     """Adds a new tag to a dataset.
 
     Validates if the tag already exists and that the tag follows the same rules as docker tags.
@@ -45,7 +45,7 @@ def add_dataset_tag(dataset_name: str, tag: str, description="", force=False):
             "Only characters a-z, A-Z, 0-9, ., - and _ are allowed.\nTag can't start with a . or -"
         )
     datasets_provenance = DatasetsProvenance()
-    dataset = datasets_provenance.get_by_name(dataset_name, strict=True)
+    dataset = datasets_provenance.get_by_slug(dataset_slug, strict=True)
     assert dataset is not None
 
     tags = datasets_provenance.get_all_tags(dataset)
@@ -60,25 +60,25 @@ def add_dataset_tag(dataset_name: str, tag: str, description="", force=False):
     datasets_provenance.add_tag(dataset, new_tag)
 
 
-def list_dataset_tags(dataset_name, format):
+def list_dataset_tags(dataset_slug, format):
     """List all tags for a dataset."""
     datasets_provenance = DatasetsProvenance()
-    dataset = datasets_provenance.get_by_name(dataset_name, strict=True)
+    dataset = datasets_provenance.get_by_slug(dataset_slug, strict=True)
     assert dataset is not None
 
     tags = datasets_provenance.get_all_tags(dataset)
     tags = sorted(tags, key=lambda t: t.date_created)
     tags = [cast(Dataset, DynamicProxy(t)) for t in tags]
     for tag in tags:
-        tag.dataset = dataset.title
+        tag.dataset = dataset.name
 
     return DATASET_TAGS_FORMATS[format](tags)
 
 
-def remove_dataset_tags(dataset_name: str, tags: List[str]):
+def remove_dataset_tags(dataset_slug: str, tags: List[str]):
     """Removes tags from a dataset."""
     datasets_provenance = DatasetsProvenance()
-    dataset = datasets_provenance.get_by_name(dataset_name, strict=True)
+    dataset = datasets_provenance.get_by_slug(dataset_slug, strict=True)
     assert dataset is not None
 
     dataset_tags = datasets_provenance.get_all_tags(dataset)

@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +26,7 @@ To get a list of available datasets in a Renku project use ``list`` method:
 
     datasets = Dataset.list()
 
-You can then access metadata of a dataset like ``name``, ``title``,
+You can then access metadata of a dataset like ``name``, ``slug``,
 ``keywords``, etc. To get the list of files inside a dataset use ``files``
 property:
 
@@ -62,7 +61,7 @@ class Dataset:
         "keywords",
         "license",
         "name",
-        "title",
+        "slug",
         "url",
         "version",
     ]

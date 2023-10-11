@@ -73,7 +73,10 @@ def get_lfs_tracking_and_file_sizes(records, has_tag: bool):
                 record.is_lfs = False
 
     def naturalize(value) -> str:
-        return naturalsize(value).upper().replace("BYTES", " B")
+        try:
+            return naturalsize(value).upper().replace("BYTES", " B")
+        except ValueError:
+            return str(value)
 
     def get_file_sizes():
         if not any(r for r in records if r.size is None):  # All records already have a size
@@ -181,8 +184,8 @@ DATASET_FILES_COLUMNS = {
     "dataset": ("title", "dataset"),
     "full_path": ("full_path", None),
     "path": ("path", None),
-    "short_name": ("dataset_name", "dataset name"),
-    "dataset_name": ("dataset_name", "dataset name"),
+    "short_name": ("dataset_slug", "dataset slug"),
+    "dataset_slug": ("dataset_slug", "dataset slug"),
     "size": ("size", None),
     "lfs": ("is_lfs", "lfs"),
     "source": ("source", None),
