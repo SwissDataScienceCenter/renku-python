@@ -22,6 +22,7 @@ import uuid
 import sentry_sdk
 from flask import Flask, Response, jsonify, request, url_for
 from jwt import InvalidTokenError
+from prometheus_flask_exporter import PrometheusMetrics
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.rq import RqIntegration
@@ -73,6 +74,8 @@ def create_app(custom_exceptions=True):
     app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 
     app.config["cache"] = cache
+    metrics = PrometheusMetrics.for_app_factory()
+    metrics.init_app(app)
 
     build_routes(app)
 
