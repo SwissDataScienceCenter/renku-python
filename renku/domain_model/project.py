@@ -27,6 +27,7 @@ from renku.core.util.datetime8601 import fix_datetime, local_now, parse_date
 from renku.core.util.git import get_git_user
 from renku.core.util.os import normalize_to_ascii
 from renku.domain_model.constant import NO_VALUE
+from renku.domain_model.image import ImageObject
 from renku.domain_model.provenance.agent import Person
 from renku.domain_model.provenance.annotation import Annotation
 from renku.version import __minimum_project_version__
@@ -53,6 +54,7 @@ class Project(persistent.Persistent):
     """Represent a project."""
 
     keywords: List[str] = list()
+    image: Optional[ImageObject] = None
 
     # NOTE: the minimum version of renku to needed to work with a project
     # This should be bumped on metadata version changes and when we do not forward-compatible on-the-fly migrations
@@ -71,6 +73,7 @@ class Project(persistent.Persistent):
         template_metadata: Optional[ProjectTemplateMetadata] = None,
         version: Optional[str] = None,
         keywords: Optional[List[str]] = None,
+        image: Optional[ImageObject] = None,
     ):
         from renku.core.migration.migrate import SUPPORTED_PROJECT_VERSION
 
@@ -91,6 +94,7 @@ class Project(persistent.Persistent):
         self.id: str = id
         self.version: str = version
         self.keywords = keywords or []
+        self.image = image
 
         self.template_metadata: ProjectTemplateMetadata = template_metadata or ProjectTemplateMetadata()
 
@@ -107,6 +111,7 @@ class Project(persistent.Persistent):
         keywords: Optional[List[str]] = None,
         custom_metadata: Optional[Dict] = None,
         creator: Optional[Person] = None,
+        image: Optional[ImageObject] = None,
     ) -> "Project":
         """Create an instance from a path.
 
@@ -119,6 +124,7 @@ class Project(persistent.Persistent):
             custom_metadata(Optional[Dict]): Custom JSON-LD metadata (when creating a new project)
                 (Default value = None).
             creator(Optional[Person]): The project creator.
+            image(Optional[ImageObject]): Project's image/avatar.
         """
         creator = creator or get_git_user(repository=project_context.repository)
 
@@ -141,7 +147,13 @@ class Project(persistent.Persistent):
 
         id = cls.generate_id(namespace=namespace, name=name)
         return cls(
-            creator=creator, id=id, name=name, description=description, keywords=keywords, annotations=annotations
+            annotations=annotations,
+            creator=creator,
+            description=description,
+            id=id,
+            image=image,
+            keywords=keywords,
+            name=name,
         )
 
     @staticmethod

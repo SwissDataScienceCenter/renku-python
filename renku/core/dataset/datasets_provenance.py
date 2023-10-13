@@ -56,31 +56,31 @@ class DatasetsProvenance:
         return None
 
     @overload
-    def get_by_name(self, name: str, *, immutable: bool = False, strict: Literal[False] = False) -> Optional["Dataset"]:
+    def get_by_slug(self, slug: str, *, immutable: bool = False, strict: Literal[False] = False) -> Optional["Dataset"]:
         ...
 
     @overload
-    def get_by_name(self, name: str, *, immutable: bool = False, strict: Literal[True]) -> "Dataset":
+    def get_by_slug(self, slug: str, *, immutable: bool = False, strict: Literal[True]) -> "Dataset":
         ...
 
-    def get_by_name(
-        self, name: str, immutable: bool = False, strict: bool = False
+    def get_by_slug(
+        self, slug: str, immutable: bool = False, strict: bool = False
     ) -> Union[Optional["Dataset"], "Dataset"]:
-        """Return a dataset by its name.
+        """Return a dataset by its slug.
 
         Args:
-            name(str): Name of the dataset
+            slug(str): Slug of the dataset
             immutable(bool): Whether the dataset will be used as an immutable instance or will be modified (Default
                 value = False).
             strict(bool): Whether to raise an exception if the dataset doesn't exist or not (Default value = False)
 
         Returns:
-            Optional[Dataset]: Dataset with the specified name if exists.
+            Optional[Dataset]: Dataset with the specified slug if exists.
         """
-        dataset = self.dataset_gateway.get_by_name(name)
+        dataset = self.dataset_gateway.get_by_slug(slug)
         if not dataset:
             if strict:
-                raise errors.DatasetNotFound(name=name)
+                raise errors.DatasetNotFound(slug=slug)
 
             return None
         if not dataset.immutable or immutable:
@@ -108,13 +108,13 @@ class DatasetsProvenance:
 
         assert isinstance(dataset, Dataset)
 
-        # NOTE: Dataset's name never changes, so, we use it to detect if a dataset should be mutated.
-        current_dataset = self.get_by_name(dataset.name)
+        # NOTE: Dataset's slug never changes, so, we use it to detect if a dataset should be mutated.
+        current_dataset = self.get_by_slug(dataset.slug)
 
         if current_dataset:
             assert (
                 not current_dataset.is_removed()
-            ), f"Adding/Updating a removed dataset '{dataset.name}:{dataset.identifier}'"
+            ), f"Adding/Updating a removed dataset '{dataset.slug}:{dataset.identifier}'"
 
             dataset.update_files_from(current_dataset, date=date)
 
@@ -123,7 +123,7 @@ class DatasetsProvenance:
         else:
             assert (
                 dataset.derived_from is None
-            ), f"Parent dataset {dataset.derived_from} not found for '{dataset.name}:{dataset.identifier}'"
+            ), f"Parent dataset {dataset.derived_from} not found for '{dataset.slug}:{dataset.identifier}'"
 
         self.dataset_gateway.add_or_remove(dataset)
 
@@ -133,18 +133,18 @@ class DatasetsProvenance:
 
         assert isinstance(dataset, Dataset)
 
-        # NOTE: Dataset's name never changes, so, we use it to detect if a dataset should be mutated.
-        current_dataset = self.dataset_gateway.get_by_name(dataset.name)
+        # NOTE: Dataset's slug never changes, so, we use it to detect if a dataset should be mutated.
+        current_dataset = self.dataset_gateway.get_by_slug(dataset.slug)
 
         if current_dataset:
-            assert not current_dataset.is_removed(), f"Removing a removed dataset '{dataset.name}:{dataset.identifier}'"
+            assert not current_dataset.is_removed(), f"Removing a removed dataset '{dataset.slug}:{dataset.identifier}'"
 
             # NOTE: We always assign a new identifier to make sure an old identifier is not reused
             dataset.derive_from(current_dataset, creator=creator)
         else:
             assert (
                 dataset.derived_from is None
-            ), f"Parent dataset {dataset.derived_from} not found for '{dataset.name}:{dataset.identifier}'"
+            ), f"Parent dataset {dataset.derived_from} not found for '{dataset.slug}:{dataset.identifier}'"
 
         dataset.remove(date)
         self.dataset_gateway.add_or_remove(dataset)
@@ -171,8 +171,8 @@ class DatasetsProvenance:
             existing.dataset_files = new.dataset_files
             return existing
 
-        # NOTE: Dataset's name never changes, so, we use it to detect if a dataset should be mutated.
-        current_dataset = self.get_by_name(dataset.name, immutable=True)
+        # NOTE: Dataset's slug never changes, so, we use it to detect if a dataset should be mutated.
+        current_dataset = self.get_by_slug(dataset.slug, immutable=True)
 
         new_identifier = self._create_dataset_identifier(commit_sha, dataset.identifier)
         dataset_with_same_id = self.get_by_id(dataset.id, immutable=True)
@@ -193,11 +193,11 @@ class DatasetsProvenance:
                 dataset.derive_from(current_dataset, creator=None, identifier=identifier, date_created=date_created)
         else:
             if remove:
-                communication.warn(f"Deleting non-existing dataset '{dataset.name}'")
+                communication.warn(f"Deleting non-existing dataset '{dataset.slug}'")
 
             if dataset.derived_from:
                 communication.warn(
-                    f"Parent dataset {dataset.derived_from} not found for '{dataset.name}:{dataset.identifier}'"
+                    f"Parent dataset {dataset.derived_from} not found for '{dataset.slug}:{dataset.identifier}'"
                 )
                 dataset.derived_from = None
 

@@ -58,7 +58,7 @@ from tests.utils import (
     [
         {
             "doi": "10.5281/zenodo.2658634",
-            "name": "pyndl_naive_discr_v0.6.4",
+            "slug": "pyndl_naive_discr_v0.6.4",
             "creator": "Konstantin Sering, Marc Weitz, David-Elias Künstle, Lennart Schneider",
             "version": "v0.6.4",
             "keywords": {
@@ -71,7 +71,7 @@ from tests.utils import (
         },
         {
             "doi": "10.7910/DVN/F4NUMR",
-            "name": "replication_data_for_2.2",
+            "slug": "replication_data_for_2.2",
             "creator": "James Druckman, Martin Kifer, Michael Parkin",
             "version": "2",
             "keywords": {"Social Sciences"},
@@ -98,17 +98,17 @@ def test_dataset_import_real_doi(runner, project, doi, prefix, sleep_after):
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "OK" in result.output + str(result.stderr_bytes)
 
-    result = runner.invoke(cli, ["dataset", "ls", "-c", "name,creators"])
+    result = runner.invoke(cli, ["dataset", "ls", "-c", "slug,creators"])
 
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    assert doi["name"] in result.output
+    assert doi["slug"] in result.output
     assert doi["creator"] in result.output
 
-    result = runner.invoke(cli, ["dataset", "ls-tags", doi["name"]])
+    result = runner.invoke(cli, ["dataset", "ls-tags", doi["slug"]])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert doi["version"] in result.output
 
-    dataset = get_dataset_with_injection(doi["name"])
+    dataset = get_dataset_with_injection(doi["slug"])
     assert doi["doi"] in dataset.same_as.url
     assert dataset.date_created is None
     assert dataset.date_published is not None
@@ -151,7 +151,7 @@ def test_dataset_import_real_doi(runner, project, doi, prefix, sleep_after):
 @pytest.mark.vcr
 def test_dataset_import_real_param(doi, input, runner, project, sleep_after):
     """Test dataset import and check metadata parsing."""
-    result = runner.invoke(cli, ["dataset", "import", "--name", "remote", doi], input=input)
+    result = runner.invoke(cli, ["dataset", "import", "--slug", "remote", doi], input=input)
 
     if "y" == input:
         assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
@@ -208,7 +208,7 @@ def test_dataset_import_real_doi_warnings(runner, project, sleep_after):
 
     result = runner.invoke(cli, ["dataset", "ls"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
-    assert "pyndl_naive_discr_v1.1.1" in result.output
+    assert "pyndl_naive_discr_v1.1.2" in result.output
 
 
 @pytest.mark.parametrize(
@@ -261,7 +261,7 @@ def test_dataset_import_real_http(runner, project, url, sleep_after):
 def test_dataset_import_and_extract(runner, project, sleep_after):
     """Test dataset import and extract files."""
     url = "https://zenodo.org/record/2658634"
-    result = runner.invoke(cli, ["dataset", "import", "--extract", "--short-name", "remote", url], input="y")
+    result = runner.invoke(cli, ["dataset", "import", "--extract", "--slug", "remote", url], input="y")
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     dataset = get_dataset_with_injection("remote")
@@ -276,11 +276,11 @@ def test_dataset_import_and_extract(runner, project, sleep_after):
 def test_dataset_import_different_names(runner, project, sleep_after):
     """Test can import same DOI under different names."""
     doi = "10.5281/zenodo.2658634"
-    result = runner.invoke(cli, ["dataset", "import", "--short-name", "name-1", doi], input="y")
+    result = runner.invoke(cli, ["dataset", "import", "--slug", "name-1", doi], input="y")
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "OK" in result.output + str(result.stderr_bytes)
 
-    result = runner.invoke(cli, ["dataset", "import", "--short-name", "name-2", doi], input="y")
+    result = runner.invoke(cli, ["dataset", "import", "--slug", "name-2", doi], input="y")
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     assert "OK" in result.output
 
@@ -304,13 +304,13 @@ def test_dataset_import_ignore_uncompressed_files(runner, project, sleep_after):
 def test_dataset_reimport_removed_dataset(runner, project, sleep_after):
     """Test re-importing of deleted datasets works."""
     doi = "10.5281/zenodo.2658634"
-    result = runner.invoke(cli, ["dataset", "import", doi, "--short-name", "my-dataset"], input="y")
+    result = runner.invoke(cli, ["dataset", "import", doi, "--slug", "my-dataset"], input="y")
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     result = runner.invoke(cli, ["dataset", "rm", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
-    result = runner.invoke(cli, ["dataset", "import", doi, "--short-name", "my-dataset"], input="y")
+    result = runner.invoke(cli, ["dataset", "import", doi, "--slug", "my-dataset"], input="y")
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
 
@@ -508,7 +508,7 @@ def test_dataset_import_renkulab_errors(runner, project, url, exit_code):
     [
         (
             "https://dev.renku.ch/projects/renku-test-projects/dataset-import/datasets/non-existing-dataset",
-            "Cannot fetch dataset with name 'non-existing-dataset'",
+            "Cannot fetch dataset with slug 'non-existing-dataset'",
         ),
         (
             "https://dev.renku.ch/projects/invalid/project-path/datasets/860f6b5b46364c83b6a9b38ef198bcc0",
@@ -986,7 +986,7 @@ def test_export_dataverse_no_dataverse_url(runner, project, dataverse_demo):
 @pytest.mark.vcr
 def test_export_imported_dataset_to_dataverse(runner, project, dataverse_demo, zenodo_sandbox):
     """Test exporting an imported Zenodo dataset to dataverse."""
-    result = runner.invoke(cli, ["dataset", "import", "10.5281/zenodo.2658634", "--short-name", "my-data"], input="y")
+    result = runner.invoke(cli, ["dataset", "import", "10.5281/zenodo.2658634", "--slug", "my-data"], input="y")
     assert 0 == result.exit_code, format_result_exception(result)
 
     result = runner.invoke(
@@ -1226,7 +1226,7 @@ def test_dataset_update(project, runner, params):
 def test_dataset_update_zenodo(project, runner, doi):
     """Test updating datasets from external providers."""
     result = runner.invoke(
-        cli, ["dataset", "import", "--short-name", "imported_dataset", doi], input="y", catch_exceptions=False
+        cli, ["dataset", "import", "--slug", "imported_dataset", doi], input="y", catch_exceptions=False
     )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
     commit_sha_after_file1_delete = project.repository.head.commit.hexsha
@@ -1265,7 +1265,7 @@ def test_dataset_update_dataverse(project, runner, doi, with_injection):
     Since dataverse does not have DOIs/IDs for each version, we need to fake the check.
     """
     result = runner.invoke(
-        cli, ["dataset", "import", "--short-name", "imported_dataset", doi], input="y", catch_exceptions=False
+        cli, ["dataset", "import", "--slug", "imported_dataset", doi], input="y", catch_exceptions=False
     )
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
@@ -1888,7 +1888,7 @@ def test_datasets_provenance_after_import(runner, project):
     assert 0 == runner.invoke(cli, ["dataset", "import", "-y", "--name", "my-data", "10.7910/DVN/F4NUMR"]).exit_code
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        assert datasets_provenance.get_by_name("my-data") is not None
+        assert datasets_provenance.get_by_slug("my-data") is not None
 
 
 @pytest.mark.integration
@@ -1903,7 +1903,7 @@ def test_datasets_provenance_after_git_update(project, runner):
     assert 0 == runner.invoke(cli, ["dataset", "update", "--all"], catch_exceptions=False).exit_code
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        current_version = datasets_provenance.get_by_name("my-data")
+        current_version = datasets_provenance.get_by_slug("my-data")
     assert current_version.identifier != current_version.initial_identifier
 
 
@@ -1919,7 +1919,7 @@ def test_datasets_provenance_after_external_provider_update(project, runner):
     assert 0 == runner.invoke(cli, ["dataset", "update", "my-data"]).exit_code
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        current_version = datasets_provenance.get_by_name("my-data")
+        current_version = datasets_provenance.get_by_slug("my-data")
 
     assert current_version.identifier != current_version.initial_identifier
 
@@ -1936,7 +1936,7 @@ def test_datasets_import_with_tag(project, runner):
     assert 0 == result.exit_code, format_result_exception(result)
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        dataset = datasets_provenance.get_by_name("parts")
+        dataset = datasets_provenance.get_by_slug("parts")
 
     dataset_path = project.path / "data" / "parts"
     assert "v1" == dataset.version
@@ -1992,7 +1992,7 @@ def test_dataset_update_removes_deleted_files(project, runner, with_injection):
     project.repository.commit("metadata updated")
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        dataset = datasets_provenance.get_by_name("parts")
+        dataset = datasets_provenance.get_by_slug("parts")
 
     assert 4 == len(dataset.files)
 
@@ -2000,7 +2000,7 @@ def test_dataset_update_removes_deleted_files(project, runner, with_injection):
 
     assert 0 == result.exit_code, format_result_exception(result)
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        dataset = datasets_provenance.get_by_name("parts")
+        dataset = datasets_provenance.get_by_slug("parts")
 
     assert 2 == len(dataset.files)
     assert {"data/parts/part_categories.csv", "data/parts/parts.csv"} == {f.entity.path for f in dataset.files}
@@ -2278,13 +2278,13 @@ def test_adding_data_from_cloud_storage(
 
     mock_cloud_storage = mocker.patch("renku.infrastructure.storage.factory.StorageFactory.get_storage", autospec=True)
     instance_cloud_storage = mock_cloud_storage.return_value
-    dataset_name = "cloud-data"
+    dataset_slug = "cloud-data"
     instance_cloud_storage.get_hashes.return_value = [FileHash(uri=f, path=get_path(f), size=42, hash=f) for f in files]
     if storage:
-        result = create_cloud_storage_dataset(dataset_name, storage)
+        result = create_cloud_storage_dataset(dataset_slug, storage)
         assert result.exit_code == 0, format_result_exception(result)
 
-    result = runner.invoke(cli, ["dataset", "add", dataset_name, *args, *files], input="\n\nn\n")
+    result = runner.invoke(cli, ["dataset", "add", dataset_slug, *args, *files], input="\n\nn\n")
     assert result.exit_code == 0, format_result_exception(result)
 
     assert instance_cloud_storage.get_hashes.call_count == len(files)
@@ -2359,14 +2359,14 @@ def test_invalid_cloud_storage_args(
     mock_cloud_storage_storage = mocker.patch(
         "renku.infrastructure.storage.factory.StorageFactory.get_storage", autospec=True
     )
-    dataset_name = "test-cloud-dataset"
+    dataset_slug = "test-cloud-dataset"
     if "--create" not in cmd_args:
         instance_cloud_storage_storage = mock_cloud_storage_storage.return_value
-        res = create_cloud_storage_dataset(dataset_name, storage)
+        res = create_cloud_storage_dataset(dataset_slug, storage)
         assert res.exit_code == 0
         instance_cloud_storage_storage.exists.assert_called_with(storage)
 
-    res = runner.invoke(cli, ["dataset", "add", dataset_name, *cmd_args])
+    res = runner.invoke(cli, ["dataset", "add", dataset_slug, *cmd_args])
 
     assert res.exit_code != 0
     assert expected_error_msg in res.stderr

@@ -169,7 +169,7 @@ class StorageProviderInterface(abc.ABC):
         """Update dataset files from the remote provider."""
         from renku.core.dataset.providers.models import DatasetUpdateAction, DatasetUpdateMetadata
 
-        progress_text = f"Checking remote files for updates in dataset {files[0].dataset.name}"
+        progress_text = f"Checking remote files for updates in dataset {files[0].dataset.slug}"
 
         results: List[DatasetUpdateMetadata] = []
 

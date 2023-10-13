@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +15,7 @@
 # limitations under the License.
 """Renku service datasets create controller."""
 from renku.command.dataset import create_dataset_command
-from renku.core.dataset.request_model import ImageRequestModel
+from renku.core.image import ImageObjectRequest
 from renku.core.util.metadata import construct_creators
 from renku.ui.service.cache.models.job import Job
 from renku.ui.service.config import CACHE_UPLOADS_PATH, MESSAGE_PREFIX
@@ -35,8 +34,8 @@ class DatasetsCreateCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets create controller."""
-        self.ctx = DatasetsCreateCtrl.REQUEST_SERIALIZER.load(request_data)
-        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset create {self.ctx['name']}"
+        self.ctx = self.REQUEST_SERIALIZER.load(request_data)
+        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset create {self.ctx['slug']}"
 
         super().__init__(cache, user_data, request_data, migrate_project)
 
@@ -53,7 +52,7 @@ class DatasetsCreateCtrl(ServiceCtrl, RenkuOpSyncMixin):
             set_url_for_uploaded_images(images=images, cache=self.cache, user=self.user)
 
             images = [
-                ImageRequestModel(
+                ImageObjectRequest(
                     content_url=img["content_url"],
                     position=img["position"],
                     mirror_locally=img.get("mirror_locally", False),
@@ -71,8 +70,8 @@ class DatasetsCreateCtrl(ServiceCtrl, RenkuOpSyncMixin):
             .with_commit_message(self.ctx["commit_message"])
             .build()
             .execute(
-                name=self.ctx["name"],
-                title=self.ctx.get("title"),
+                slug=self.ctx["slug"],
+                name=self.ctx.get("name"),
                 creators=creators,
                 description=self.ctx.get("description"),
                 keywords=self.ctx.get("keywords"),
@@ -92,4 +91,4 @@ class DatasetsCreateCtrl(ServiceCtrl, RenkuOpSyncMixin):
         op_result = self.ctx
         op_result["remote_branch"] = remote_branch
 
-        return result_response(DatasetsCreateCtrl.RESPONSE_SERIALIZER, op_result)
+        return result_response(self.RESPONSE_SERIALIZER, op_result)
