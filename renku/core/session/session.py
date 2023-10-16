@@ -242,10 +242,16 @@ def session_stop(session_name: Optional[str], stop_all: bool = False, provider: 
             return session_provider.session_stop(
                 project_name=project_name, session_name=session_name, stop_all=stop_all
             )
-        except errors.RenkulabSessionGetUrlError:
+        except errors.RenkulabSessionGetUrlError as e:
             if provider:
                 raise
-            return SessionStopStatus.FAILED
+            communication.warn(f"Didn't stop any renkulab sessions: {e}")
+            return SessionStopStatus.SUCCESSFUL
+        except errors.DockerError as e:
+            if provider:
+                raise
+            communication.warn(f"Didn't stop any docker sessions: {e}")
+            return SessionStopStatus.SUCCESSFUL
 
     session_detail = "all sessions" if stop_all else f"session {session_name}" if session_name else "session"
     project_name = get_renku_project_name()
