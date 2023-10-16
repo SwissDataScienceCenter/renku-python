@@ -302,7 +302,7 @@ module = [
     "pexpect",
     "PIL",
     "pluggy",
-    "prometheus_flask_exporter",
+    "prometheus_flask_exporter.*",
     "psutil",
     "pyld",
     "pyshacl",
