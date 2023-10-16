@@ -27,6 +27,7 @@ from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.rq import RqIntegration
 
+from renku.core.util.util import is_test_session_running
 from renku.ui.service.cache import cache
 from renku.ui.service.config import CACHE_DIR, MAX_CONTENT_LENGTH, SENTRY_ENABLED, SENTRY_SAMPLERATE, SERVICE_PREFIX
 from renku.ui.service.errors import (
@@ -74,7 +75,9 @@ def create_app(custom_exceptions=True):
     app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 
     app.config["cache"] = cache
-    GunicornPrometheusMetrics(app)
+
+    if not is_test_session_running():
+        GunicornPrometheusMetrics(app)
 
     build_routes(app)
 
