@@ -1283,10 +1283,13 @@ class DiffChangeType(Enum):
     """Type of change in a ``Diff``."""
 
     ADDED = "A"
+    COPIED = "C"
     DELETED = "D"
-    RENAMED = "R"
     MODIFIED = "M"
+    RENAMED = "R"
     TYPE_CHANGED = "T"
+    UNMERGED = "U"
+    UNKNOWN = "X"
 
 
 class Diff(NamedTuple):
