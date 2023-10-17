@@ -26,7 +26,6 @@ from walrus import BooleanField, DateTimeField, IntegerField, Model, TextField
 
 from renku.ui.service.cache.base import BaseCache
 from renku.ui.service.config import CACHE_PROJECTS_PATH
-from renku.ui.service.utils import normalize_git_url
 
 MAX_CONCURRENT_PROJECT_REQUESTS = 10
 LOCK_TIMEOUT = 15

@@ -45,7 +45,8 @@ class ProjectSchema(CreationSchema, AccessSchema, MandatoryUserSchema):
     @post_load
     def make_project(self, data, **options):
         """Construct project object."""
-        data["git_url"] = normalize_git_url(data["git_url"])
+        if data.get("git_url"):
+            data["git_url"] = normalize_git_url(data["git_url"])
         data["name"] = normalize_git_url(data["name"])
         data["slug"] = normalize_git_url(data["slug"])
         return Project(**data)

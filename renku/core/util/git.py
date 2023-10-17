@@ -823,7 +823,7 @@ def clone_repository(
     try:
         # NOTE: Try to clone, assuming checkout_revision is a branch or a tag (if it is set)
         repository = clone(branch=checkout_revision, depth=depth)
-    except errors.GitCommandError as err:
+    except errors.GitCommandError:
         if not checkout_revision:
             if raise_git_except:
                 raise
