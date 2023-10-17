@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,7 +61,7 @@ def test_dataset_log(runner, project):
     result = runner.invoke(cli, ["dataset", "add", "--copy", "test-set", "my_file"])
     assert 0 == result.exit_code, format_result_exception(result)
     result = runner.invoke(
-        cli, ["dataset", "edit", "test-set", "-t", "new title", "-d", "new description", "-k", "a", "-k", "b"]
+        cli, ["dataset", "edit", "test-set", "-n", "new name", "-d", "new description", "-k", "a", "-k", "b"]
     )
     assert 0 == result.exit_code, format_result_exception(result)
     result = runner.invoke(cli, ["dataset", "unlink", "test-set", "--include", "my_file"], input="y")
@@ -80,7 +79,7 @@ def test_dataset_log(runner, project):
     assert "Files modified" in result.output
     assert "- data/test-set/my_file" in result.output
     assert "+ data/test-set/my_file" in result.output
-    assert "Title set to: new title" in result.output
+    assert "Name set to: new name" in result.output
     assert "Description set to: new description" in result.output
     assert "Keywords modified" in result.output
     assert "Creators modified" in result.output

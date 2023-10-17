@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,8 +29,8 @@ class IDatasetGateway(ABC):
         """Get a dataset by id."""
         raise NotImplementedError
 
-    def get_by_name(self, name: str) -> Optional["Dataset"]:
-        """Get a dataset by id."""
+    def get_by_slug(self, slug: str) -> Optional["Dataset"]:
+        """Get a dataset by slug."""
         raise NotImplementedError
 
     def get_all_active_datasets(self) -> List["Dataset"]:
