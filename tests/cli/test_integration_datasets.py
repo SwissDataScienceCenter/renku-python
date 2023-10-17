@@ -1232,6 +1232,7 @@ def test_dataset_update_zenodo(project, runner, doi):
     commit_sha_after_file1_delete = project.repository.head.commit.hexsha
 
     before_dataset = get_dataset_with_injection("imported_dataset")
+    assert before_dataset is not None
 
     result = runner.invoke(cli, ["dataset", "update", "--all", "--dry-run"])
 
@@ -1245,6 +1246,7 @@ def test_dataset_update_zenodo(project, runner, doi):
     assert 0 == result.exit_code, format_result_exception(result) + str(result.stderr_bytes)
 
     after_dataset = get_dataset_with_injection("imported_dataset")
+    assert after_dataset is not None
     assert after_dataset.version != before_dataset.version
     assert after_dataset.id != before_dataset.id
     assert after_dataset.derived_from is None

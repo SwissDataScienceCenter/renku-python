@@ -34,6 +34,7 @@ from renku.core.dataset.providers.api import (
 from renku.core.dataset.providers.repository import RepositoryImporter, make_request
 from renku.core.util import communication
 from renku.core.util.doi import is_doi
+from renku.core.util.requests import get_redirect_url
 from renku.core.util.urls import remove_credentials
 from renku.domain_model.project_context import project_context
 
@@ -80,7 +81,9 @@ class ZenodoProvider(ProviderApi, ExportProviderInterface, ImportProviderInterfa
     @staticmethod
     def get_record_id(uri):
         """Extract record id from URI."""
-        return urlparse(uri).path.split("/")[-1]
+        parts = urlparse(uri).path.split("/")
+        parts = [p for p in parts if p.isdigit()]
+        return parts[-1]
 
     @staticmethod
     def get_export_parameters() -> List["ProviderParameter"]:
@@ -121,7 +124,7 @@ class ZenodoImporter(RepositoryImporter):
 
         metadata = self._json.pop("metadata", {})
         self._json["metadata"] = ZenodoMetadataSerializer.from_metadata(metadata) if metadata is not None else None
-        record_id = self._json.pop("record_id", None)
+        record_id = self._json.pop("record_id", None) or self._json.pop("recid", None)
         self._json["record_id"] = str(record_id) if record_id is not None else None
 
         # NOTE: Make sure that these properties have a default value
@@ -136,11 +139,11 @@ class ZenodoImporter(RepositoryImporter):
     @property
     def latest_uri(self):
         """Get URI of latest version."""
-        return self._json["links"].get("latest_html")
+        return get_redirect_url(self._json["links"].get("latest"))
 
     def is_latest_version(self):
         """Check if this record is the latest version."""
-        return ZenodoProvider.get_record_id(self._json["links"].get("latest_html")) == self._json["record_id"]
+        return ZenodoProvider.get_record_id(self.latest_uri) == self._json["record_id"]
 
     def get_jsonld(self):
         """Get record metadata as jsonld."""
@@ -181,7 +184,9 @@ class ZenodoImporter(RepositoryImporter):
                 # Fix context
                 context = data.get("@context")
                 if context and isinstance(context, str):
-                    if context == "https://schema.org":
+                    if not context.endswith("/"):
+                        context = f"{context}/"
+                    if context == "https://schema.org/":
                         context = "http://schema.org/"
                     data["@context"] = {"@base": context, "@vocab": context}
                 # Add type to creators
@@ -193,6 +198,10 @@ class ZenodoImporter(RepositoryImporter):
                 license = data.get("license")
                 if license and isinstance(license, dict):
                     data["license"] = license.get("url", "")
+                # fix keywords to be a list
+                keywords = data.get("keywords")
+                if keywords and isinstance(keywords, str):
+                    data["keywords"] = [k.strip() for k in keywords.split(",")]
 
                 # Delete existing isPartOf
                 data.pop("isPartOf", None)
@@ -227,17 +236,17 @@ class ZenodoImporter(RepositoryImporter):
 class ZenodoFileSerializer:
     """Zenodo record file."""
 
-    def __init__(self, *, id=None, checksum=None, links=None, filename=None, filesize=None):
+    def __init__(self, *, id=None, checksum=None, links=None, key=None, size=None, **kwargs):
         self.id = id
         self.checksum = checksum
         self.links = links
-        self.filename = filename
-        self.filesize = filesize
+        self.filename = key
+        self.filesize = size
 
     @property
     def remote_url(self):
         """Get remote URL as ``urllib.ParseResult``."""
-        return urllib.parse.urlparse(self.links["download"])
+        return urllib.parse.urlparse(self.links["self"])
 
     @property
     def type(self):
@@ -505,7 +514,9 @@ class ZenodoDeposition:
         """Publish existing deposition."""
         from renku.core.util import requests
 
-        response = requests.post(url=self.publish_url, params=self.exporter.default_params)
+        response = requests.post(
+            url=self.publish_url, params=self.exporter.default_params, headers=self.exporter.HEADERS
+        )
         self._check_response(response)
 
         return response
