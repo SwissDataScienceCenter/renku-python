@@ -173,18 +173,17 @@ class ZenodoImporter(RepositoryImporter):
         from renku.domain_model.dataset import Url, generate_default_slug
 
         class ZenodoDatasetSchema(ProviderDatasetSchema):
-            """Schema for Dataverse datasets."""
+            """Schema for Zenodo datasets."""
 
             @pre_load
             def fix_data(self, data, **kwargs):
-                """Fix data that is received from Dataverse."""
+                """Fix data that is received from Zenodo."""
                 # Fix context
                 context = data.get("@context")
                 if context and isinstance(context, str):
-                    if context == "https://schema.org/":
+                    if context == "https://schema.org":
                         context = "http://schema.org/"
                     data["@context"] = {"@base": context, "@vocab": context}
-
                 # Add type to creators
                 creators = data.get("creator", [])
                 for c in creators:
@@ -325,7 +324,10 @@ class ZenodoMetadataSerializer:
 class ZenodoExporter(ExporterApi):
     """Zenodo export manager."""
 
-    HEADERS = {"Content-Type": "application/json"}
+    HEADERS = {
+        "Content-Type": "application/json",
+        "Referer": f"https://{os.environ.get('RENKU_DOMAIN', 'renkulab.io')}",
+    }
 
     def __init__(self, dataset, publish, tag):
         super().__init__(dataset)
@@ -517,9 +519,14 @@ class ZenodoDeposition:
         except errors.RequestError:
             if response.status_code == 400:
                 err_response = response.json()
-                messages = [
-                    '"{}" failed with "{}"'.format(err["field"], err["message"]) for err in err_response["errors"]
-                ]
+                if "errors" in err_response:
+                    messages = [
+                        '"{}" failed with "{}"'.format(err["field"], err["message"]) for err in err_response["errors"]
+                    ]
+                elif "message" in err_response:
+                    messages = [err_response["message"]]
+                else:
+                    messages = [response.text()]
 
                 raise errors.ExportError(
                     "\n" + "\n".join(messages) + "\nSee `renku dataset edit -h` for details on how to edit" " metadata"
