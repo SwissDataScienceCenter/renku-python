@@ -836,14 +836,6 @@ def clone_repository(
         try:
             repository = clone(branch=None, depth=None)
         except errors.GitCommandError:
-            if re.match("^.* destination path .* already exists and is not an empty directory", err.stderr):
-                clean_directory()
-                try:
-                    repository = clone(branch=None, depth=None)
-                except errors.GitCommandError:
-                    if raise_git_except:
-                        raise
-                    raise error_from_progress(progress, url)
             if raise_git_except:
                 raise
             raise error_from_progress(progress, url)

@@ -136,7 +136,6 @@ class LocalRepositoryCache(IRepositoryCache):
             "branch": branch,
             "git_url": git_url,
             "user_id": user.user_id,
-            "branch": branch,
             "commit_sha": commit_sha,
         }
         project = cache.make_project(user, project_data, persist=False)
@@ -201,7 +200,7 @@ class LocalRepositoryCache(IRepositoryCache):
 
     def _unshallow_project(self, project: Project, user: User):
         """Turn a shallow clone into a full clone."""
-        if project.commit_sha is None:
+        if project.commit_sha is not None:
             # NOTE: A project in a detached head state at a specific commit SHA does not make sense to be unshallowed
             return
         try:
@@ -226,7 +225,7 @@ class LocalRepositoryCache(IRepositoryCache):
         if project.fetch_age < PROJECT_FETCH_TIME:
             return
 
-        if project.commit_sha is None:
+        if project.commit_sha is not None:
             # NOTE: A project in a detached head state at a specific commit SHA cannot be updated
             return
 
