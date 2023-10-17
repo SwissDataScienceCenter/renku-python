@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -116,7 +115,7 @@ def dataset_add_remote_file(cache, user, user_job_id, project_id, create_dataset
 
             worker_log.debug(f"adding files {urls} to dataset {name}")
             command = add_to_dataset_command().with_commit_message(commit_message).build()
-            result = command.execute(dataset_name=name, urls=urls, create=create_dataset)
+            result = command.execute(dataset_slug=name, urls=urls, create=create_dataset)
             if result.error:
                 raise result.error
 

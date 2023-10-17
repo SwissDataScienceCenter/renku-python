@@ -143,10 +143,10 @@ class ProviderDataset(Dataset):
             initial_identifier=dataset.initial_identifier,
             keywords=dataset.keywords,
             license=dataset.license,
-            name=dataset.name,
+            slug=dataset.slug,
             project_id=dataset.project_id,
             same_as=dataset.same_as,
-            title=dataset.title,
+            name=dataset.name,
             version=dataset.version,
             storage=dataset.storage,
         )

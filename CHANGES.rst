@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2023 - Swiss Data Science Center (SDSC)
+    Copyright Swiss Data Science Center (SDSC).
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -18,18 +18,30 @@
 Changes
 =======
 
-`2.7.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.6.2...v2.7.0>`__ (2023-08-09)
+`2.7.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.6.2...v2.7.0>`__ (2023-09-27)
 -------------------------------------------------------------------------------------------------------
 
 Bug Fixes
 ~~~~~~~~~
 
+-  **cli:** do not freeze/unfreeze plan view model
+   (`#3599 <https://github.com/SwissDataScienceCenter/renku-python/issues/3599>`__)
+   (`3c48cff <https://github.com/SwissDataScienceCenter/renku-python/commit/3c48cffe116db5c246beca2003c2f282fc38b465>`__)
+-  **cli:** ssh setup and key usage
+   (`#3615 <https://github.com/SwissDataScienceCenter/renku-python/issues/3615>`__)
+   (`3fa737a <https://github.com/SwissDataScienceCenter/renku-python/commit/3fa737ab6cd6126047098957ff2e5f179e939339>`__)
+-  **core:** setting non-existing config property to null
+   (`#3595 <https://github.com/SwissDataScienceCenter/renku-python/issues/3595>`__)
+   (`e0ff587 <https://github.com/SwissDataScienceCenter/renku-python/commit/e0ff587f507d049eeeb873e8488ba8bb10ac1a15>`__)
+-  **core:** skip fast cache migrations check for anonymous users
+   (`#3577 <https://github.com/SwissDataScienceCenter/renku-python/issues/3577>`__)
+   (`9ee3176 <https://github.com/SwissDataScienceCenter/renku-python/commit/9ee3176ce379dd80d2955e858f5e11e1fb32b464>`__)
+-  **service:** normalize git url to avoid duplicate cache entries
+   (`#3606 <https://github.com/SwissDataScienceCenter/renku-python/issues/3606>`__)
+   (`19142c6 <https://github.com/SwissDataScienceCenter/renku-python/commit/19142c6f58713cb9990b71f9ed738990987c3e16>`__)
 -  **cli:** adapt to changes in KG api for importing datasets
    (`#3549 <https://github.com/SwissDataScienceCenter/renku-python/issues/3549>`__)
    (`020434a <https://github.com/SwissDataScienceCenter/renku-python/commit/020434a7dd6449755644a2e9ca849b8821900f72>`__)
--  **cli:** fix overwriting dataset tags
-   (`#3497 <https://github.com/SwissDataScienceCenter/renku-python/issues/3497>`__)
-   (`17a49ae <https://github.com/SwissDataScienceCenter/renku-python/commit/17a49aebc7207901986c38fd30afc58baf40be1f>`__)
 -  **service:** add branch to service cache path
    (`#3562 <https://github.com/SwissDataScienceCenter/renku-python/issues/3562>`__)
    (`3800a38 <https://github.com/SwissDataScienceCenter/renku-python/commit/3800a3823515763c207b1b15f348df3b0cdd9831>`__)

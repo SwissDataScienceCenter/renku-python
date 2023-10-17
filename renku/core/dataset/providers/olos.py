@@ -128,7 +128,7 @@ class OLOSExporter(ExporterApi):
             "description": self.dataset.description,
             "identifier": identifier,
             "keywords": self.dataset.keywords,
-            "title": self.dataset.title,
+            "title": self.dataset.name,
             "access": "CLOSED",
             "dataSensitivity": "CRIMSON",
             "year": datetime.datetime.today().year,

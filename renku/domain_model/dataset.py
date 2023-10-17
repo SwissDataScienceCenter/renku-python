@@ -32,8 +32,9 @@ from renku.core.util.datetime8601 import fix_datetime, local_now, parse_date
 from renku.core.util.git import get_entity_from_revision
 from renku.core.util.metadata import is_linked_file
 from renku.core.util.os import get_absolute_path
-from renku.core.util.urls import get_path, get_slug
+from renku.core.util.urls import get_slug
 from renku.domain_model.constant import NO_VALUE, NON_EXISTING_ENTITY_CHECKSUM
+from renku.domain_model.image import ImageObject
 from renku.domain_model.project_context import project_context
 from renku.infrastructure.immutable import Immutable, Slots
 from renku.infrastructure.persistent import Persistent
@@ -44,27 +45,28 @@ if TYPE_CHECKING:
     from renku.domain_model.provenance.annotation import Annotation
 
 
-def is_dataset_name_valid(name: str) -> bool:
-    """Check if name is a valid slug."""
-    return name is not None and name == get_slug(name, lowercase=False)
+def is_dataset_slug_valid(slug: Optional[str]) -> bool:
+    """Check if a given slug is valid."""
+    # NOTE: Empty string, ``""``, isn't a valid name.
+    return slug is not None and slug != "" and slug == get_slug(slug, lowercase=False)
 
 
-def generate_default_name(title: str, version: Optional[str] = None) -> str:
-    """Get dataset name."""
+def generate_default_slug(name: str, version: Optional[str] = None) -> str:
+    """Get dataset slug."""
     max_length = 24
-    # For compatibility with older versions use title as name if it is valid; otherwise, use encoded title
-    if is_dataset_name_valid(title):
-        return title
+    # For compatibility with older versions use name as slug if it is valid; otherwise, use encoded name
+    if is_dataset_slug_valid(name):
+        return name
 
-    slug = get_slug(title)
-    name = slug[:max_length]
+    slug = get_slug(name)
+    slug = slug[:max_length]
 
     if version:
         max_version_length = 10
         version_slug = get_slug(version)[:max_version_length]
-        name = f"{name[:-(len(version_slug) + 1)]}_{version_slug}"
+        slug = f"{slug[:-(len(version_slug) + 1)]}_{version_slug}"
 
-    return get_slug(name)
+    return get_slug(slug)
 
 
 class Url:
@@ -171,30 +173,6 @@ class Language(Immutable):
         """Generate @id field."""
         name = quote(name, safe="")
         return f"/languages/{name}"
-
-
-class ImageObject(Slots):
-    """Represents a schema.org `ImageObject`."""
-
-    __slots__ = ("content_url", "id", "position")
-
-    id: str
-    content_url: str
-    position: int
-
-    def __init__(self, *, content_url: str, id: str, position: int):
-        id = get_path(id)
-        super().__init__(content_url=content_url, position=position, id=id)
-
-    @staticmethod
-    def generate_id(dataset_id: str, position: int) -> str:
-        """Generate @id field."""
-        return f"{dataset_id}/images/{position}"
-
-    @property
-    def is_absolute(self):
-        """Whether content_url is an absolute or relative url."""
-        return bool(urlparse(self.content_url).netloc)
 
 
 class RemoteEntity(Slots):
@@ -389,9 +367,9 @@ class Dataset(Persistent):
         datadir: Optional[Path] = None,
         dataset_files: Optional[List[DatasetFile]] = None,
         date_created: Optional[datetime] = None,
+        date_modified: Optional[datetime] = None,
         date_published: Optional[datetime] = None,
         date_removed: Optional[datetime] = None,
-        date_modified: Optional[datetime] = None,
         derived_from: Optional[Url] = None,
         description: Optional[str] = None,
         id: Optional[str] = None,
@@ -404,15 +382,25 @@ class Dataset(Persistent):
         name: Optional[str] = None,
         project_id: Optional[str] = None,
         same_as: Optional[Url] = None,
+        slug: Optional[str] = None,
         storage: Optional[str] = None,
         title: Optional[str] = None,
         version: Optional[str] = None,
     ):
-        if not name:
-            assert title, "Either 'name' or 'title' must be set."
-            name = generate_default_name(title, version)
+        if not slug:
+            if title:  # NOTE: Old metadata which only has name/title
+                slug, name, title = name, title, None
+            elif not name:
+                raise errors.ParameterError("Either 'slug', 'name' or 'title' must be set.", show_prefix=False)
 
-        self._validate_name(name)
+            # NOTE: At this point we have new metadata with slug/name
+            slug = slug or generate_default_slug(name, version)
+        elif title:
+            # NOTE: When both slug and title are set, copy title to name. This happens when transitioning from the old
+            # metadata to the new one.
+            name, title = title, None
+
+        self._validate_slug(slug)
         self._validate_creator(creators)
 
         # if `date_published` is set, we are probably dealing with an imported dataset so `date_created` is not needed
@@ -426,7 +414,10 @@ class Dataset(Persistent):
 
         self.identifier = identifier or uuid4().hex
         self.id = id or Dataset.generate_id(identifier=self.identifier)
-        self.name: str = name
+
+        self.name: Optional[str] = name
+        self.slug: str = slug
+        self.title: Optional[str] = None
 
         self.creators: List["Person"] = creators or []
         # `dataset_files` includes existing files and those that have been removed in the previous version
@@ -445,23 +436,31 @@ class Dataset(Persistent):
         self.project_id: Optional[str] = project_id
         self.same_as: Optional[Url] = same_as
         self.storage: Optional[str] = storage
-        self.title: Optional[str] = title
         self.version: Optional[str] = version
         self.annotations: List["Annotation"] = annotations or []
 
         if datadir:
             self.datadir: Optional[str] = str(datadir)
 
-        self.correct_linked_files()
+        self._correct_linked_files()
 
     def __setstate__(self, state):
         super().__setstate__(state)
-        self.correct_linked_files()
+        self._adjust_slug_and_name()
+        self._correct_linked_files()
 
-    def correct_linked_files(self):
+    def _correct_linked_files(self):
         """Fix linked dataset files."""
         for file in self.dataset_files:
             file.correct_linked_attribute()
+
+    def _adjust_slug_and_name(self):
+        """Replace name/title with slug/name if needed."""
+        slug = getattr(self, "slug", None)
+        if not slug:  # NOTE: Dataset doesn't have new metadata since slug isn't set
+            self.slug, self.name, self.title = self.name, self.title, None  # type: ignore
+        else:
+            assert self.title is None, f"Invalid slug: '{slug}', name: '{self.name}', and title: '{self.title}' values"
 
     @staticmethod
     def generate_id(identifier: str) -> str:
@@ -469,9 +468,9 @@ class Dataset(Persistent):
         return f"/datasets/{identifier}"
 
     @staticmethod
-    def _validate_name(name):
-        if not is_dataset_name_valid(name):
-            raise errors.ParameterError(f"Invalid dataset name: '{name}'")
+    def _validate_slug(slug: Optional[str]):
+        if not is_dataset_slug_valid(slug):
+            raise errors.ParameterError(f"Invalid dataset slug: '{slug}'")
 
     @staticmethod
     def _validate_creator(creators):
@@ -507,10 +506,10 @@ class Dataset(Persistent):
         if self.datadir:
             return Path(self.datadir)
 
-        return Path(os.path.join(project_context.datadir, self.name))
+        return Path(os.path.join(project_context.datadir, self.slug))
 
     def __repr__(self) -> str:
-        return f"<Dataset {self.identifier} {self.name}>"
+        return f"<Dataset {self.identifier} {self.slug}>"
 
     def is_derivation(self) -> bool:
         """Return if a dataset has correct derived_from."""
@@ -538,7 +537,7 @@ class Dataset(Persistent):
         `initial_identifier`.
         """
         assert self.derived_from is None, (
-            f"Replacing identifier of dataset '{self.name}:{self.identifier}' "
+            f"Replacing identifier of dataset '{self.slug}:{self.identifier}' "
             f"that is derived from {self.derived_from.url_id}"
         )
 
@@ -563,8 +562,8 @@ class Dataset(Persistent):
     ):
         """Make `self` a derivative of `dataset` and update related fields."""
         assert dataset is not None, "Cannot derive from None"
-        assert self is not dataset, f"Cannot derive from the same dataset '{self.name}:{self.identifier}'"
-        assert not identifier or self.id != identifier, f"Cannot derive from the same id '{self.name}:{identifier}'"
+        assert self is not dataset, f"Cannot derive from the same dataset '{self.slug}:{self.identifier}'"
+        assert not identifier or self.id != identifier, f"Cannot derive from the same id '{self.slug}:{identifier}'"
 
         self._assign_new_identifier(identifier)
         # NOTE: Setting `initial_identifier` is required for migration of broken projects
@@ -639,8 +638,8 @@ class Dataset(Persistent):
             "in_language",
             "keywords",
             "license",
+            "name",
             "same_as",
-            "title",
             "version",
         ]
         for name in updatable_fields:
@@ -662,7 +661,7 @@ class Dataset(Persistent):
 
     def update_metadata(self, **kwargs):
         """Updates metadata."""
-        editable_attributes = ["creators", "description", "keywords", "title"]
+        editable_attributes = ["creators", "description", "keywords", "name"]
         for name, value in kwargs.items():
             if name not in editable_attributes:
                 raise errors.ParameterError(f"Cannot edit field: '{name}'")
@@ -736,11 +735,11 @@ class AnnotationJson(marshmallow.Schema):
 class DatasetDetailsJson(marshmallow.Schema):
     """Serialize a dataset to a response object."""
 
-    name = marshmallow.fields.String(required=True)
+    slug = marshmallow.fields.String(required=True)
     version = marshmallow.fields.String(allow_none=True)
     created_at = marshmallow.fields.String(allow_none=True, attribute="date_created")
 
-    title = marshmallow.fields.String()
+    name = marshmallow.fields.String()
     creators = marshmallow.fields.List(marshmallow.fields.Nested(DatasetCreatorsJson))
     description = marshmallow.fields.String()
     keywords = marshmallow.fields.List(marshmallow.fields.String())
@@ -773,7 +772,7 @@ class DatasetFileDetailsJson(marshmallow.Schema):
     is_lfs = marshmallow.fields.Boolean()
 
     dataset_id = marshmallow.fields.String()
-    dataset_name = marshmallow.fields.String()
+    dataset_slug = marshmallow.fields.String()
 
     creators = marshmallow.fields.List(marshmallow.fields.Nested(DatasetCreatorsJson))
 
@@ -790,8 +789,8 @@ class ImageObjectRequestJson(marshmallow.Schema):
 
     file_id = marshmallow.fields.String()
     content_url = marshmallow.fields.String()
-    position = marshmallow.fields.Integer()
-    mirror_locally = marshmallow.fields.Bool(dump_default=False)
+    position = marshmallow.fields.Integer(load_default=0)
+    mirror_locally = marshmallow.fields.Bool(load_default=False)
 
 
 def get_file_path_in_dataset(dataset: Dataset, dataset_file: DatasetFile) -> Path:

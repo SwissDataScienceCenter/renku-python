@@ -1,5 +1,5 @@
 ..
-    Copyright 2017-2023 - Swiss Data Science Center (SDSC)
+    Copyright Swiss Data Science Center (SDSC).
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 
@@ -33,6 +33,25 @@ data science pipeline.
 `Documentation <https://github.com/ratschlab/renku-mls/blob/master/docs/gettingstarted.rst>`_
 `Example Project <https://renkulab.io/projects/learn-renku/plugins/renku-mls-plugin>`_
 
+renku-graph-vis
+---------------
+
+`renku-graph-vis <https://github.com/oda-hub/renku-graph-vis/>`_ is a plugin that
+provides a graphical representation of the renku repository's knowledge graph. 
+In particular, the plugin enables an interactive graph visualization feature 
+for real-time monitoring during a renku session introducing the ability to have 
+a live overview of the ongoing development. It also provides two CLI commands:
+
+* ``display`` to generate a representation of the graph over a png output image
+* ``show-graph`` to start an interactive visualization of the graph over the browser
+
+renku-aqs-annotation
+--------------------
+
+`renku-aqs-annotation <https://github.com/oda-hub/renku-aqs-annotation/>`_ is a plugin that
+intercepts several key astroquery methods and stores a number of dedicated annotations 
+containing information about the calls to these methods (like the arguments used in the call) 
+to the project's Knowledge Graph. 
 
 Developing a plugin?
 --------------------

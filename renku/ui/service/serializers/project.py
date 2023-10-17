@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +18,7 @@ from marshmallow import fields
 from marshmallow.schema import Schema
 
 from renku.domain_model.dataset import DatasetCreatorsJson as DatasetCreators
+from renku.domain_model.dataset import ImageObjectRequestJson
 from renku.ui.service.serializers.common import (
     AsyncSchema,
     GitCommitSHA,
@@ -79,6 +79,7 @@ class ProjectEditRequest(AsyncSchema, RemoteRepositorySchema, MigrateSchema):
         metadata={"description": "The source for the JSON-LD metadata"},
     )
     keywords = fields.List(fields.String(), allow_none=True, metadata={"description": "New keyword(s) for the project"})
+    image = fields.Nested(ImageObjectRequestJson, allow_none=True, metadata={"description": "Image for the project"})
 
 
 class ProjectEditResponse(RenkuSyncSchema):

@@ -1286,10 +1286,13 @@ class DiffChangeType(Enum):
     """Type of change in a ``Diff``."""
 
     ADDED = "A"
+    COPIED = "C"
     DELETED = "D"
-    RENAMED = "R"
     MODIFIED = "M"
+    RENAMED = "R"
     TYPE_CHANGED = "T"
+    UNMERGED = "U"
+    UNKNOWN = "X"
 
 
 class Diff(NamedTuple):
@@ -1557,6 +1560,11 @@ class SymbolicReference(Reference):
         except (git.GitError, TypeError):
             return None
 
+    @property
+    def detached(self) -> bool:
+        """True if the reference is to a commit and not a branch."""
+        return self._reference.is_detached
+
 
 class RemoteReference(Reference):
     """A git remote reference."""
@@ -1684,8 +1692,11 @@ class Remote:
         _run_git_command(self._repository, "remote", "set-url", self.name, url)
 
     @property
-    def head(self) -> str:
+    def head(self) -> Optional[str]:
         """The head commit of the remote."""
+        if self._repository.head.is_detached:
+            return None
+
         self._remote.fetch()
         return _run_git_command(self._repository, "rev-parse", f"{self._remote.name}/{self._repository.active_branch}")
 

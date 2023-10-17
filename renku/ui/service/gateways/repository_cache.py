@@ -38,6 +38,7 @@ from renku.ui.service.config import PROJECT_CLONE_DEPTH_DEFAULT
 from renku.ui.service.errors import IntermittentCacheError, IntermittentLockError
 from renku.ui.service.interfaces.repository_cache import IRepositoryCache
 from renku.ui.service.logger import service_log
+from renku.ui.service.utils import normalize_git_url
 
 
 class LocalRepositoryCache(IRepositoryCache):
@@ -56,6 +57,7 @@ class LocalRepositoryCache(IRepositoryCache):
         if git_url is None:
             raise ValidationError("Invalid `git_url`, URL is empty", "git_url")
 
+        git_url = normalize_git_url(git_url)
         try:
             project = Project.get(
                 (Project.user_id == user.user_id) & (Project.git_url == git_url) & (Project.branch == branch)
@@ -113,6 +115,8 @@ class LocalRepositoryCache(IRepositoryCache):
         commit_sha: Optional[str] = None,
     ) -> Project:
         """Clone a project to cache."""
+        git_url = normalize_git_url(git_url)
+
         try:
             parsed_git_url = GitURL.parse(git_url)
         except UnicodeError as e:
@@ -250,7 +254,7 @@ class LocalRepositoryCache(IRepositoryCache):
 
 def git_url_with_auth(project: Project, user: User):
     """Format url with auth."""
-    git_url = urlparse(project.git_url)
+    git_url = urlparse(normalize_git_url(project.git_url))
 
     url = "oauth2:{}@{}".format(user.token, git_url.netloc)
     return git_url._replace(netloc=url).geturl()

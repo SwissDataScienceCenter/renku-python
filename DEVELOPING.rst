@@ -261,7 +261,7 @@ number.
 - Once the release PR has been merged, publish the github release. This creates
   the tag on master that kicks off the publishing CI.
 - Keep an eye on CI, make sure that the `publish-pypi`, `build-images` and
-  `publish-chart` finish successfully.
+  `publish-chartpress-images` finish successfully.
   * If any of them don't finish successfully, ask for help.
 - Go to the `Renku` repository and approve/merge the automatically created PR
   there.

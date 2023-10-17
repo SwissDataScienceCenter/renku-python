@@ -117,12 +117,12 @@ You can start a session with SSH support using:
     connect to it
 
 This will create SSH keys for you and setup SSH configuration for connecting to the renku deployment.
-You can then use the SSH connection name (``ssh renkulab.io-myproject-sessionid`` in the example)
+You can then use the SSH connection name (``ssh renkulab.io-myproject-session-id`` in the example)
 to connect to the session or in tools such as VSCode.
 
 .. note::
 
-   If you need to recreate the generated SSH keys or you want to use existing keys instead,
+   If you need to recreate the generated SSH keys, or you want to use existing keys instead,
    you can use the ``renku session ssh-setup`` command to perform this step manually. See
    the help of the command for more details.
 
@@ -137,6 +137,8 @@ Managing active sessions
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
 The ``session`` command can be used to also list, stop and open active sessions.
+If the provider supports sessions hibernation, this command allows pausing and resuming
+sessions as well.
 In order to see active sessions (from any provider) run the following command:
 
 .. code-block:: console
@@ -162,6 +164,24 @@ active sessions.
 
 The command ``renku session stop --all`` will stop all active sessions regardless of the provider.
 
+If a provider supports session hibernation (e.g. ``renkulab`` provider) you can pause a session using
+its ``ID``:
+
+.. code-block:: console
+
+    $ renku session pause renku-test-e4fe76cc
+
+A paused session can be later resumed:
+
+.. code-block:: console
+
+    $ renku session resume renku-test-e4fe76cc
+
+.. note::
+
+   Session ``ID`` doesn't need to be passed to the above commands if there is only one interactive session available.
+
+
 .. cheatsheet::
    :group: Managing Interactive Sessions
    :command: $ renku session start --provider renkulab
@@ -182,6 +202,18 @@ The command ``renku session stop --all`` will stop all active sessions regardles
 
 .. cheatsheet::
    :group: Managing Interactive Sessions
+   :command: $ renku session pause <name>
+   :description: Pause the specified session.
+   :target: rp
+
+.. cheatsheet::
+   :group: Managing Interactive Sessions
+   :command: $ renku session resume <name>
+   :description: Resume the specified paused session.
+   :target: rp
+
+.. cheatsheet::
+   :group: Managing Interactive Sessions
    :command: $ renku session stop <name>
    :description: Stop the specified session.
    :target: rp
@@ -195,8 +227,15 @@ from renku.command.format.session import SESSION_COLUMNS, SESSION_FORMATS
 from renku.command.util import WARNING
 from renku.core import errors
 from renku.ui.cli.utils.callback import ClickCallback
-from renku.ui.cli.utils.click import shell_complete_session_providers, shell_complete_sessions
-from renku.ui.cli.utils.plugins import get_supported_session_providers_names
+from renku.ui.cli.utils.click import (
+    shell_complete_hibernating_session_providers,
+    shell_complete_session_providers,
+    shell_complete_sessions,
+)
+from renku.ui.cli.utils.plugins import (
+    get_supported_hibernating_session_providers_names,
+    get_supported_session_providers_names,
+)
 
 
 @click.group()
@@ -216,15 +255,6 @@ def session():
     help="Backend to use for listing interactive sessions.",
 )
 @click.option(
-    "config",
-    "-c",
-    "--config",
-    hidden=True,
-    type=click.Path(exists=True, dir_okay=False),
-    metavar="<config file>",
-    help="YAML file containing configuration for the provider.",
-)
-@click.option(
     "--columns",
     type=click.STRING,
     default=None,
@@ -235,7 +265,7 @@ def session():
 @click.option(
     "--format", type=click.Choice(list(SESSION_FORMATS.keys())), default="log", help="Choose an output format."
 )
-def list_sessions(provider, config, columns, format):
+def list_sessions(provider, columns, format):
     """List interactive sessions."""
     from renku.command.session import session_list_command
 
@@ -251,7 +281,7 @@ def list_sessions(provider, config, columns, format):
             click.echo(WARNING + message)
 
 
-def session_start_provider_options(*param_decls, **attrs):
+def session_start_provider_options(*_, **__):
     """Sets session provider options groups on the session start command."""
     from renku.core.plugin.session import get_supported_session_providers
     from renku.ui.cli.utils.click import create_options
@@ -260,7 +290,7 @@ def session_start_provider_options(*param_decls, **attrs):
     return create_options(providers=providers, parameter_function="get_start_parameters")
 
 
-@session.command("start")
+@session.command
 @click.option(
     "provider",
     "-p",
@@ -309,7 +339,7 @@ def start(provider, config, image, cpu, disk, gpu, memory, **kwargs):
     )
 
 
-@session.command("stop")
+@session.command
 @click.argument("session_name", metavar="<name>", required=False, default=None, shell_complete=shell_complete_sessions)
 @click.option(
     "provider",
@@ -340,7 +370,7 @@ def stop(session_name, stop_all, provider):
         click.echo("Interactive session has been successfully stopped.")
 
 
-def session_open_provider_options(*param_decls, **attrs):
+def session_open_provider_options(*_, **__):
     """Sets session provider option groups on the session open command."""
     from renku.core.plugin.session import get_supported_session_providers
     from renku.ui.cli.utils.click import create_options
@@ -349,7 +379,7 @@ def session_open_provider_options(*param_decls, **attrs):
     return create_options(providers=providers, parameter_function="get_open_parameters")
 
 
-@session.command("open")
+@session.command
 @click.argument("session_name", metavar="<name>", required=False, default=None, shell_complete=shell_complete_sessions)
 @click.option(
     "provider",
@@ -379,8 +409,60 @@ def open(session_name, provider, **kwargs):
 )
 @click.option("--force", is_flag=True, help="Overwrite existing keys/config.")
 def ssh_setup(existing_key, force):
-    """Setup keys for SSH connections into sessions."""
+    """Generate keys and configuration for SSH connections into sessions.
+
+    Note that this will not add any keys to a specific project, adding keys to a project
+    has to be done manually or through the renku session start command by using the --ssh flag.
+    """
     from renku.command.session import ssh_setup_command
 
     communicator = ClickCallback()
     ssh_setup_command().with_communicator(communicator).build().execute(existing_key=existing_key, force=force)
+
+
+@session.command
+@click.argument("session_name", metavar="<name>", required=False, default=None, shell_complete=shell_complete_sessions)
+@click.option(
+    "provider",
+    "-p",
+    "--provider",
+    type=click.Choice(Proxy(get_supported_hibernating_session_providers_names)),
+    default=None,
+    shell_complete=shell_complete_hibernating_session_providers,
+    help="Session provider to use.",
+)
+def pause(session_name, provider):
+    """Pause an interactive session."""
+    from renku.command.session import session_pause_command
+
+    communicator = ClickCallback()
+    session_pause_command().with_communicator(communicator).build().execute(
+        session_name=session_name, provider=provider
+    )
+
+    session_message = f"session '{session_name}'" if session_name else "session"
+    click.echo(f"Interactive {session_message} has been paused.")
+
+
+@session.command
+@click.argument("session_name", metavar="<name>", required=False, default=None, shell_complete=shell_complete_sessions)
+@click.option(
+    "provider",
+    "-p",
+    "--provider",
+    type=click.Choice(Proxy(get_supported_hibernating_session_providers_names)),
+    default=None,
+    shell_complete=shell_complete_hibernating_session_providers,
+    help="Session provider to use.",
+)
+def resume(session_name, provider):
+    """Resume a paused session."""
+    from renku.command.session import session_resume_command
+
+    communicator = ClickCallback()
+    session_resume_command().with_communicator(communicator).build().execute(
+        session_name=session_name, provider=provider
+    )
+
+    session_message = f"session '{session_name}'" if session_name else "session"
+    click.echo(f"Interactive {session_message} has been resumed.")
