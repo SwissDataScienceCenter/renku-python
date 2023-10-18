@@ -22,6 +22,7 @@ from renku.domain_model.dataset import ImageObjectJson as ImageObject
 from renku.domain_model.dataset import ImageObjectRequestJson
 from renku.ui.service.serializers.common import (
     AsyncSchema,
+    GitCommitSHA,
     JobDetailsResponse,
     MigrateSchema,
     RemoteRepositorySchema,
@@ -120,7 +121,7 @@ class DatasetAddResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetAddResponse)
 
 
-class DatasetListRequest(RemoteRepositorySchema):
+class DatasetListRequest(RemoteRepositorySchema, GitCommitSHA):
     """Request schema for dataset list view."""
 
 
@@ -142,7 +143,7 @@ class DatasetListResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetListResponse)
 
 
-class DatasetFilesListRequest(DatasetSlugSchema, RemoteRepositorySchema):
+class DatasetFilesListRequest(DatasetSlugSchema, RemoteRepositorySchema, GitCommitSHA):
     """Request schema for dataset files list view."""
 
 

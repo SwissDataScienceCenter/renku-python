@@ -67,6 +67,12 @@ class RemoteRepositorySchema(RemoteRepositoryBaseSchema):
         return data
 
 
+class GitCommitSHA:
+    """Schema for a commit SHA."""
+
+    commit_sha = fields.String(load_default=None, metadata={"description": "Git commit SHA."})
+
+
 class AsyncSchema(Schema):
     """Schema for adding a commit at the end of the operation."""
 

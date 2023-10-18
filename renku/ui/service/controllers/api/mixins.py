@@ -188,6 +188,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
             self.request_data.get("branch"),
             self.user,
             self.clone_depth is not None,
+            self.request_data.get("commit_sha"),
         )
 
         self.context["project_id"] = project.project_id

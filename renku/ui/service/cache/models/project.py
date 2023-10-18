@@ -26,11 +26,11 @@ from walrus import BooleanField, DateTimeField, IntegerField, Model, TextField
 
 from renku.ui.service.cache.base import BaseCache
 from renku.ui.service.config import CACHE_PROJECTS_PATH
-from renku.ui.service.utils import normalize_git_url
 
 MAX_CONCURRENT_PROJECT_REQUESTS = 10
 LOCK_TIMEOUT = 15
 NO_BRANCH_FOLDER = "__default_branch__"
+DETACHED_HEAD_FOLDER_PREFIX = "__detached_head_"
 
 
 class Project(Model):
@@ -55,14 +55,21 @@ class Project(Model):
     description = TextField()
     owner = TextField()
     initialized = BooleanField()
+    commit_sha = TextField()
+    branch = TextField()
 
     @property
     def abs_path(self) -> Path:
         """Full path of cached project."""
-        branch = self.branch
+        folder_name = self.branch
         if not self.branch:
-            branch = NO_BRANCH_FOLDER
-        return CACHE_PROJECTS_PATH / self.user_id / self.owner / normalize_git_url(self.slug) / branch
+            if self.commit_sha:
+                # NOTE: Detached head state
+                folder_name = f"{DETACHED_HEAD_FOLDER_PREFIX}{self.commit_sha}"
+            else:
+                # NOTE: We are on the default branch (i.e. main)
+                folder_name = NO_BRANCH_FOLDER
+        return CACHE_PROJECTS_PATH / self.user_id / self.owner / self.slug / folder_name
 
     def read_lock(self, timeout: Optional[float] = None):
         """Shared read lock on the project."""
