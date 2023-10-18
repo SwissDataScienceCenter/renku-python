@@ -28,7 +28,7 @@ from renku.ui.service.utils import normalize_git_url
 class RemoteRepositoryBaseSchema(Schema):
     """Schema for tracking a remote repository."""
 
-    git_url = fields.String(metadata={"description": "Remote git repository url."})
+    git_url = fields.String(required=True, metadata={"description": "Remote git repository url."})
 
     @pre_load
     def normalize_url(self, data, **_):

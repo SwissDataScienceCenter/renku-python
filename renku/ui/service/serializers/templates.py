@@ -17,29 +17,49 @@
 
 from urllib.parse import urlparse
 
-from marshmallow import Schema, ValidationError, fields, post_load, pre_load
-from yagup import GitURL
+import yagup
+from marshmallow import Schema, ValidationError, fields, post_load, pre_load, validates
 from yagup.exceptions import InvalidURL
 
 from renku.core.util.os import normalize_to_ascii
 from renku.domain_model.dataset import ImageObjectRequestJson
 from renku.ui.service.config import TEMPLATE_CLONE_DEPTH_DEFAULT
-from renku.ui.service.serializers.cache import ProjectCloneContext, RepositoryCloneRequest
+from renku.ui.service.errors import UserRepoUrlInvalidError
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 from renku.ui.service.utils import normalize_git_url
 
 
-class ManifestTemplatesRequest(RepositoryCloneRequest):
+class ManifestTemplatesRequest(Schema):
     """Request schema for listing manifest templates."""
 
-    url = fields.String(required=True)
+    template_git_url = fields.String(required=True, metadata={"description": "Template git repository url."})
     depth = fields.Integer(load_default=TEMPLATE_CLONE_DEPTH_DEFAULT)
+    branch = fields.String(load_default=None, metadata={"description": "Remote git branch (or tag or commit SHA)."})
 
-    @pre_load()
-    def set_git_url(self, data, **kwargs):
-        """Set git_url field."""
-        data["git_url"] = data["url"]
+    @pre_load
+    def set_fields(self, data, **_):
+        """Set `branch` field from `ref` if present and set template url."""
+        if "ref" in data and not data.get("branch"):
+            # Backward compatibility: branch and ref were both used. Let's keep branch as the exposed field
+            # even if internally it gets converted to "ref" later.
+            data["branch"] = data["ref"]
+            del data["ref"]
+        if "url" in data and not data.get("template_git_url"):
+            # needed for tests that share a fixture
+            data["template_git_url"] = data["url"]
+
         return data
+
+    @validates("template_git_url")
+    def validate_template_git_url(self, value):
+        """Validates git url."""
+        if value:
+            try:
+                yagup.parse(value)
+            except InvalidURL as e:
+                raise UserRepoUrlInvalidError(e, "Invalid `template_git_url`")
+
+        return value
 
 
 class TemplateParameterSchema(Schema):
@@ -49,9 +69,10 @@ class TemplateParameterSchema(Schema):
     value = fields.String(load_default="")
 
 
-class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
+class ProjectTemplateRequest(ManifestTemplatesRequest):
     """Request schema for listing manifest templates."""
 
+    token = fields.String()
     identifier = fields.String(required=True, metadata={"description": "Indentifier of the template"})
     initial_branch = fields.String(
         load_default=None, metadata={"description": "Name for the initial branch in the new project."}
@@ -71,19 +92,26 @@ class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
         load_default=None, metadata={"description": "Base dataset data directory in project. Defaults to 'data/'"}
     )
     image = fields.Nested(ImageObjectRequestJson, load_default=None)
+    slug = fields.String()
+    fullname = fields.String()
+    email = fields.String()
 
     @post_load()
     def add_required_fields(self, data, **kwargs):
         """Add necessary fields."""
+        if "template_git_url" in data and data["template_git_url"]:
+            data["template_git_url"] = normalize_git_url(data["template_git_url"])
         project_name_stripped = normalize_to_ascii(data["project_name"])
         project_name_stripped = normalize_git_url(project_name_stripped)
         if len(project_name_stripped) == 0:
             raise ValidationError("Project name contains only unsupported characters")
         new_project_url = f"{data['project_repository']}/{data['project_namespace']}/{project_name_stripped}"
         try:
-            _ = GitURL.parse(new_project_url)
+            _ = yagup.GitURL.parse(new_project_url)
         except InvalidURL as e:
-            raise ValidationError("`git_url` contains unsupported characters") from e
+            raise ValidationError(
+                "`project_repository`, `project_namespace` and `project_name` do not form a valid git url"
+            ) from e
 
         project_slug = f"{data['project_namespace']}/{project_name_stripped}"
         data["new_project_url"] = new_project_url

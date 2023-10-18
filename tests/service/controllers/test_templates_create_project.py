@@ -42,28 +42,22 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
 
     # Ctrl state.
     expected_context = {
-        "timestamp",
-        "owner",
         "project_namespace",
         "token",
         "email",
         "project_repository",
-        "url",
         "identifier",
         "parameters",
         "project_name",
-        "name",
-        "slug",
         "project_description",
         "new_project_url",
         "fullname",
         "project_slug",
-        "git_url",
+        "template_git_url",
         "project_name_stripped",
         "depth",
         "branch",
         "new_project_url_with_auth",
-        "url_with_auth",
     }
     assert expected_context.issubset(set(ctrl.context.keys()))
 
