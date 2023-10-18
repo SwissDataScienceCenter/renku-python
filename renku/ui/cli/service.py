@@ -50,6 +50,8 @@ def run_api(addr="0.0.0.0", port=8080, timeout=600):
         "gunicorn",
         "renku.ui.service.entrypoint:app",
         loading_opt,
+        "-c",
+        "gunicorn.conf.py",
         "-b",
         f"{addr}:{port}",
         "--timeout",
