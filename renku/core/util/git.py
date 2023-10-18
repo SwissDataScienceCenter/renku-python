@@ -29,6 +29,8 @@ from subprocess import PIPE, SubprocessError, run
 from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union, cast
 from uuid import uuid4
 
+import git
+
 from renku.core import errors
 from renku.infrastructure.repository import DiffChangeType
 
@@ -712,7 +714,7 @@ def clone_repository(
     skip_smudge=True,
     recursive=False,
     depth=None,
-    progress=None,
+    progress: Optional[git.RemoteProgress] = None,
     config: Optional[dict] = None,
     raise_git_except=False,
     checkout_revision=None,
@@ -746,10 +748,8 @@ def clone_repository(
 
     path = Path(path) if path else Path(get_repository_name(url))
 
-    def handle_git_exception():
-        """Handle git exceptions."""
-        if raise_git_except:
-            return
+    def error_from_progress(progress: Optional[git.RemoteProgress], url: str) -> errors.GitError:
+        """Format a Git command error into a more user-friendly format."""
 
         message = f"Cannot clone repo from {url}"
 
@@ -758,7 +758,7 @@ def clone_repository(
             error = "".join([f"\n\t{line}" for line in lines if line.strip()])
             message += f" - error message:\n {error}"
 
-        raise errors.GitError(message)
+        return errors.GitError(message)
 
     def clean_directory(clean: bool):
         if not clean or not path:
@@ -825,8 +825,9 @@ def clone_repository(
         repository = clone(branch=checkout_revision, depth=depth)
     except errors.GitCommandError:
         if not checkout_revision:
-            handle_git_exception()
-            raise
+            if raise_git_except:
+                raise
+            raise error_from_progress(progress, url)
 
         # NOTE: Delete the partially-cloned repository
         clean_directory(clean=True)
@@ -835,8 +836,9 @@ def clone_repository(
         try:
             repository = clone(branch=None, depth=None)
         except errors.GitCommandError:
-            handle_git_exception()
-            raise
+            if raise_git_except:
+                raise
+            raise error_from_progress(progress, url)
 
     if checkout_revision is not None and not no_checkout:
         try:
