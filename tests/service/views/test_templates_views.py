@@ -212,7 +212,7 @@ def test_create_project_from_template_failures(svc_client_templates_creation):
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
     assert UserProjectCreationError.code == response.json["error"]["code"], response.json
-    assert "git_url" in response.json["error"]["devMessage"]
+    assert "`project_repository`, `project_namespace`" in response.json["error"]["devMessage"]
 
     # NOTE: missing fields -- unlikely to happen. If that is the case, we should determine if it's a user error or not
     payload_missing_field = deepcopy(payload)

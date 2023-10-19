@@ -168,3 +168,9 @@ class ErrorResponse(Schema):
     userReference = fields.String()
     devReference = fields.String()
     sentry = fields.String()
+
+
+class GitUrlResponseMixin(Schema):
+    """Response containing a git url."""
+
+    git_url = fields.String(required=True, metadata={"description": "Remote git repository url."})

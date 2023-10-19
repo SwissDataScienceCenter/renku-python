@@ -25,6 +25,7 @@ from renku.core.util.os import normalize_to_ascii
 from renku.domain_model.dataset import ImageObjectRequestJson
 from renku.ui.service.config import TEMPLATE_CLONE_DEPTH_DEFAULT
 from renku.ui.service.errors import UserRepoUrlInvalidError
+from renku.ui.service.serializers.common import GitUrlResponseMixin
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 from renku.ui.service.utils import normalize_git_url
 
@@ -154,7 +155,7 @@ class ManifestTemplatesResponseRPC(JsonRPCResponse):
     result = fields.Nested(ManifestTemplatesResponse)
 
 
-class ProjectTemplateResponse(Schema):
+class ProjectTemplateResponse(GitUrlResponseMixin):
     """Response schema for dataset list view."""
 
     url = fields.String(required=True)

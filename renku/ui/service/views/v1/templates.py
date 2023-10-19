@@ -131,7 +131,8 @@ def create_project_from_template_v2_2(user_data, cache):
       tags:
         - templates
     """
-    ctrl = TemplatesCreateProjectCtrl_v2_2(cache, user_data, dict(request.json))
+    ctrl = TemplatesCreateProjectCtrl_v2_2(cache, user_data, dict(request.json))  # type: ignore
+
     return ctrl.to_response()
 
 
@@ -149,6 +150,6 @@ def add_v2_specific_template_endpoints(templates_blueprint):
         "/templates.read_manifest", methods=["GET"], provide_automatic_options=False, versions=[V2_0, V2_1, V2_2]
     )(read_manifest_from_template_v2_2)
     templates_blueprint.route(
-        "/templates.create_project", methods=["GET"], provide_automatic_options=False, versions=[V2_0, V2_1, V2_2]
+        "/templates.create_project", methods=["POST"], provide_automatic_options=False, versions=[V2_0, V2_1, V2_2]
     )(create_project_from_template_v2_2)
     return templates_blueprint

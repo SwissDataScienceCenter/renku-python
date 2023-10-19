@@ -17,8 +17,7 @@
 
 from urllib.parse import urlparse
 
-from marshmallow import Schema, fields, post_load, pre_load
-from pydantic import ValidationError
+from marshmallow import Schema, ValidationError, fields, post_load, pre_load
 from yagup import GitURL
 from yagup.exceptions import InvalidURL
 

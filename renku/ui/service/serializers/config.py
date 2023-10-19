@@ -20,6 +20,7 @@ from marshmallow import Schema, fields
 from renku.ui.service.serializers.common import (
     AsyncSchema,
     GitCommitSHA,
+    GitUrlResponseMixin,
     MigrateSchema,
     RemoteRepositorySchema,
     RenkuSyncSchema,
@@ -37,7 +38,7 @@ class ConfigShowSchema(Schema):
     config = fields.Dict(metadata={"description": "Dictionary of configuration items."}, required=True)
 
 
-class ConfigShowResponse(ConfigShowSchema):
+class ConfigShowResponse(ConfigShowSchema, GitUrlResponseMixin):
     """Response schema for project config show."""
 
     default = fields.Dict(metadata={"description": "Dictionary of default configuration items."}, required=True)
@@ -53,7 +54,7 @@ class ConfigSetRequest(AsyncSchema, ConfigShowSchema, MigrateSchema, RemoteRepos
     """Request schema for config set."""
 
 
-class ConfigSetResponse(ConfigShowSchema, RenkuSyncSchema):
+class ConfigSetResponse(ConfigShowSchema, RenkuSyncSchema, GitUrlResponseMixin):
     """Response schema for project config set."""
 
     default = fields.Dict(metadata={"description": "Dictionary of default configuration items."})

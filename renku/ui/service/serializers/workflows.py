@@ -22,7 +22,7 @@ from marshmallow_oneofschema import OneOfSchema
 from renku.domain_model.dataset import DatasetCreatorsJson
 from renku.infrastructure.persistent import Persistent
 from renku.ui.cli.utils.plugins import get_supported_formats
-from renku.ui.service.serializers.common import GitCommitSHA, RemoteRepositorySchema
+from renku.ui.service.serializers.common import GitCommitSHA, GitUrlResponseMixin, RemoteRepositorySchema
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
 
@@ -73,7 +73,7 @@ class WorflowPlanEntryResponse(AbstractPlanResponse):
     children = fields.List(fields.String)
 
 
-class WorkflowPlansListResponse(Schema):
+class WorkflowPlansListResponse(GitUrlResponseMixin):
     """Response schema for plan list view."""
 
     plans = fields.List(fields.Nested(WorflowPlanEntryResponse), required=True)
@@ -136,7 +136,7 @@ class ParameterSchema(ParameterBaseSchema):
     pass
 
 
-class PlanDetailsResponse(AbstractPlanResponse):
+class PlanDetailsResponse(AbstractPlanResponse, GitUrlResponseMixin):
     """Schema for Plan details."""
 
     last_executed = fields.DateTime()
@@ -190,7 +190,7 @@ class LinkSchema(Schema):
     sink_entries = fields.List(fields.Nested(ParameterTargetSchema), data_key="sinks")
 
 
-class CompositePlanDetailsResponse(AbstractPlanResponse):
+class CompositePlanDetailsResponse(AbstractPlanResponse, GitUrlResponseMixin):
     """Schema for Plan details."""
 
     steps = fields.List(fields.Nested(PlanReferenceSchema), data_key="plans")

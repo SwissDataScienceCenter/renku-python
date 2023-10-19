@@ -21,8 +21,12 @@ from renku.ui.service.serializers.v1.templates import ManifestTemplatesRequest_v
 
 
 class TemplatesCreateProjectCtrl_v2_2(TemplatesCreateProjectCtrl):
-    REQUEST_SERIALIZER = ManifestTemplatesRequest_v2_2()
+    """V2.2 create project controller."""
+
+    REQUEST_SERIALIZER = ProjectTemplateRequest_v2_2()  # type: ignore
 
 
 class TemplatesReadManifestCtrl_v2_2(TemplatesReadManifestCtrl):
-    REQUEST_SERIALIZER = ProjectTemplateRequest_v2_2()
+    """V2.2 read manifest controller."""
+
+    REQUEST_SERIALIZER = ManifestTemplatesRequest_v2_2()  # type: ignore
