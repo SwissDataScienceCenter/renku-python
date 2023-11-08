@@ -267,8 +267,9 @@ class RenkulabSessionProvider(IHibernatingSessionProvider):
         """Get cloudstorage configured for the project."""
         storage_service = cast(IStorageService, inject.instance(IStorageService))
         project_id = storage_service.project_id
-        if not project_id:
+        if project_id is None:
             communication.warn("Couldn't get project ID from Gitlab, skipping mounting cloudstorage")
+            return
 
         storages = storage_service.list(project_id)
 
