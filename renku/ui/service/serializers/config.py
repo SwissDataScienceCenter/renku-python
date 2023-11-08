@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,11 +17,17 @@
 
 from marshmallow import Schema, fields
 
-from renku.ui.service.serializers.common import AsyncSchema, MigrateSchema, RemoteRepositorySchema, RenkuSyncSchema
+from renku.ui.service.serializers.common import (
+    AsyncSchema,
+    GitCommitSHA,
+    MigrateSchema,
+    RemoteRepositorySchema,
+    RenkuSyncSchema,
+)
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
 
-class ConfigShowRequest(RemoteRepositorySchema):
+class ConfigShowRequest(RemoteRepositorySchema, GitCommitSHA):
     """Request schema for config show."""
 
 

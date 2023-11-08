@@ -328,7 +328,7 @@ class LocalExporter(ExporterApi):
         if self._path:
             dst_root = project_context.path / self._path
         else:
-            dataset_dir = f"{self._dataset.name}-{self._tag.name}" if self._tag else self._dataset.name
+            dataset_dir = f"{self._dataset.slug}-{self._tag.name}" if self._tag else self._dataset.slug
             dst_root = project_context.path / project_context.datadir / dataset_dir
 
         if dst_root.exists() and not dst_root.is_dir():

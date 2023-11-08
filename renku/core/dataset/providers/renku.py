@@ -56,7 +56,7 @@ class RenkuProvider(ProviderApi, ImportProviderInterface):
 
     @staticmethod
     def supports(uri):
-        """Whether or not this provider supports a given URI."""
+        """Whether this provider supports a given URI."""
         parsed_url = urllib.parse.urlparse(uri)
 
         if not parsed_url.netloc:
@@ -87,13 +87,13 @@ class RenkuProvider(ProviderApi, ImportProviderInterface):
 
         self._prepare_auth(self.uri)
 
-        name, identifier, latest_version_uri, kg_url = self._fetch_dataset_info(self.uri)
+        slug, identifier, latest_version_uri, kg_url = self._fetch_dataset_info(self.uri)
 
         project_url_ssh, project_url_http = self._get_project_urls(kg_url)
 
         return RenkuImporter(
             uri=self.uri,
-            name=name,
+            slug=slug,
             identifier=identifier,
             tag=self._tag,
             latest_version_uri=latest_version_uri,
@@ -107,23 +107,23 @@ class RenkuProvider(ProviderApi, ImportProviderInterface):
         """Return initial dataset identifier and urls of all projects that contain the dataset."""
         parsed_url = urllib.parse.urlparse(uri)
 
-        project_id, dataset_name_or_id = RenkuProvider._extract_project_and_dataset_ids(parsed_url)
-        if not project_id and not dataset_name_or_id:
+        project_id, dataset_slug_or_id = RenkuProvider._extract_project_and_dataset_ids(parsed_url)
+        if not project_id and not dataset_slug_or_id:
             raise errors.ParameterError("Invalid URI", param_hint=uri)
 
-        kg_path = f"/knowledge-graph/datasets/{dataset_name_or_id}"
+        kg_path = f"/knowledge-graph/datasets/{dataset_slug_or_id}"
         dataset_kg_url = parsed_url._replace(path=kg_path).geturl()
 
         try:
             dataset_info = self._query_knowledge_graph(dataset_kg_url)
         except errors.NotFound:
-            # NOTE: If URI is not found we assume that it contains dataset's name instead of its id
-            dataset_name = dataset_name_or_id
+            # NOTE: If URI is not found we assume that it contains dataset's slug instead of its id
+            dataset_slug = dataset_slug_or_id
             identifier = None
             dataset_info = None
         else:
             # name was renamed to slug, name kept for backwards compatibility
-            dataset_name = dataset_info.get("slug", dataset_info.get("name"))
+            dataset_slug = dataset_info.get("slug", dataset_info.get("name"))
             identifier = dataset_info["identifier"]
 
         if project_id:
@@ -142,21 +142,21 @@ class RenkuProvider(ProviderApi, ImportProviderInterface):
             if not project_kg_url:
                 raise errors.ParameterError("Cannot find project's KG URL from URI", param_hint=uri)
 
-        latest_identifier, latest_version_uri = self._fetch_dataset_info_from_project(project_kg_url, dataset_name)
+        latest_identifier, latest_version_uri = self._fetch_dataset_info_from_project(project_kg_url, dataset_slug)
         identifier = identifier or latest_identifier
 
-        return dataset_name, identifier, latest_version_uri, project_kg_url
+        return dataset_slug, identifier, latest_version_uri, project_kg_url
 
-    def _fetch_dataset_info_from_project(self, project_kg_url, dataset_name):
+    def _fetch_dataset_info_from_project(self, project_kg_url, dataset_slug):
         datasets_kg_url = f"{project_kg_url}/datasets"
         try:
             response = self._query_knowledge_graph(datasets_kg_url)
         except errors.NotFound:
             raise errors.NotFound(f"Cannot find project in the knowledge graph: {project_kg_url}")
 
-        dataset = next((d for d in response if d.get("name") == dataset_name), None)
+        dataset = next((d for d in response if d.get("slug") == dataset_slug), None)
         if not dataset:
-            raise errors.OperationError(f"Cannot fetch dataset with name '{dataset_name}' from '{project_kg_url}'")
+            raise errors.OperationError(f"Cannot fetch dataset with slug '{dataset_slug}' from '{project_kg_url}'")
 
         links = dataset.get("_links", [])
         latest_version_uri = next((link["href"] for link in links if link["rel"] == "details"), None)
@@ -167,12 +167,12 @@ class RenkuProvider(ProviderApi, ImportProviderInterface):
 
     @staticmethod
     def _extract_project_and_dataset_ids(parsed_url):
-        # https://<host>/projects/:namespace/:0-or-more-subgroups/:name/datasets/:dataset-name
+        # https://<host>/projects/:namespace/:0-or-more-subgroups/:name/datasets/:dataset-slug
         # https://<host>/projects/:namespace/:0-or-more-subgroups/:name/datasets/:id
         # https://<host>/datasets/:id
         match = re.match(r"(?:/projects/((?:[^/]+/)+[^/]+))?/datasets/([^/]+)/?$", parsed_url.path)
-        project_id, dataset_name_or_id = match.groups() if match else (None, None)
-        return project_id, dataset_name_or_id
+        project_id, dataset_slug_or_id = match.groups() if match else (None, None)
+        return project_id, dataset_slug_or_id
 
     def _query_knowledge_graph(self, url):
         from renku.core.util import requests
@@ -223,7 +223,7 @@ class RenkuImporter(ImporterApi):
     def __init__(
         self,
         uri,
-        name,
+        slug,
         identifier,
         tag,
         latest_version_uri,
@@ -235,7 +235,7 @@ class RenkuImporter(ImporterApi):
         """Create a RenkuImporter from a Dataset."""
         super().__init__(uri=uri, original_uri=uri)
 
-        self._name = name
+        self._slug = slug
         self._identifier = identifier
         self._tag = tag
         self._latest_version_uri = latest_version_uri
@@ -368,19 +368,19 @@ class RenkuImporter(ImporterApi):
 
         return results
 
-    def tag_dataset(self, name: str) -> None:
-        """Create a tag for the dataset ``name`` if the remote dataset has a tag/version."""
+    def tag_dataset(self, slug: str) -> None:
+        """Create a tag for the dataset ``slug`` if the remote dataset has a tag/version."""
         from renku.core.dataset.tag import add_dataset_tag
 
         if self.provider_dataset.tag:
             add_dataset_tag(
-                dataset_name=name,
+                dataset_slug=slug,
                 tag=self.provider_dataset.tag.name,
                 description=self.provider_dataset.tag.description,
             )
         elif self.provider_dataset.version:
             add_dataset_tag(
-                dataset_name=name,
+                dataset_slug=slug,
                 tag=self.provider_dataset.version,
                 description=f"Tag {self.provider_dataset.version} created by renku import",
             )
@@ -485,16 +485,16 @@ class RenkuImporter(ImporterApi):
 
             datasets_provenance = DatasetsProvenance()
 
-            dataset = datasets_provenance.get_by_name(self._name)
+            dataset = datasets_provenance.get_by_slug(self._slug)
             if not dataset:
-                raise errors.ParameterError(f"Cannot find dataset '{self._name}' in project '{self._project_url}'")
+                raise errors.ParameterError(f"Cannot find dataset '{self._slug}' in project '{self._project_url}'")
 
             if self._tag:
                 tags = datasets_provenance.get_all_tags(dataset=dataset)
                 tag = next((t for t in tags if t.name == self._tag), None)
 
                 if tag is None:
-                    raise errors.ParameterError(f"Cannot find tag '{self._tag}' for dataset '{self._name}'")
+                    raise errors.ParameterError(f"Cannot find tag '{self._tag}' for dataset '{self._slug}'")
 
                 dataset = datasets_provenance.get_by_id(tag.dataset_id.value)
             else:

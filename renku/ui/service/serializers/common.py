@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,6 +65,12 @@ class RemoteRepositorySchema(RemoteRepositoryBaseSchema):
             del data["ref"]
 
         return data
+
+
+class GitCommitSHA:
+    """Schema for a commit SHA."""
+
+    commit_sha = fields.String(load_default=None, metadata={"description": "Git commit SHA."})
 
 
 class AsyncSchema(Schema):

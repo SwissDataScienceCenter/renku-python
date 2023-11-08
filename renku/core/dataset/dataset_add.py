@@ -45,7 +45,7 @@ from renku.domain_model.project_context import project_context
 
 
 def add_to_dataset(
-    dataset_name: str,
+    dataset_slug: str,
     urls: List[str],
     *,
     importer: Optional[ImporterApi] = None,
@@ -69,7 +69,7 @@ def add_to_dataset(
         raise errors.ParameterError("Storage can be set only when creating a dataset")
 
     try:
-        with DatasetContext(name=dataset_name, create=create, datadir=datadir, storage=storage) as dataset:
+        with DatasetContext(slug=dataset_slug, create=create, datadir=datadir, storage=storage) as dataset:
             destination_path = _create_destination_directory(dataset, destination)
 
             check_external_storage()
@@ -115,7 +115,7 @@ def add_to_dataset(
         raise errors.DatasetNotFound(
             message="Dataset '{0}' does not exist.\n"
             "Use 'renku dataset create {0}' to create the dataset or retry 'renku dataset add {0}' command "
-            "with '--create' option for automatic dataset creation.".format(dataset_name)
+            "with '--create' option for automatic dataset creation.".format(dataset_slug)
         )
     except (FileNotFoundError, errors.GitCommandError) as e:
         raise errors.ParameterError("Could not find paths/URLs: \n{}".format("\n".join(urls))) from e
@@ -189,7 +189,7 @@ def get_files_metadata(
 @inject.autoparams("dataset_gateway")
 def has_cloud_storage(dataset_gateway: IDatasetGateway) -> bool:
     """Return if a project has any dataset with cloud storage with its data directory mounted or pulled."""
-    # NOTE: ``exists`` return False for symlinks if their target doesn't exists, but it's fine here since it means the
+    # NOTE: ``exists`` return False for symlinks if their target doesn't exist, but it's fine here since it means the
     # dataset's mounted/pulled location doesn't exist.
     return any(
         dataset
@@ -221,8 +221,8 @@ def get_cloud_dataset_from_path(
         datadir = project_context.path / dataset.get_datadir()
         resolved_path = path.resolve()
 
-        # NOTE: Resolve ``path`` because ``datadir`` is resolved and resolved paths might have be on a different
-        # location (e.g. on macos /tmp resolves to /private/tmp)
+        # NOTE: Resolve ``path`` because ``datadir`` is resolved and resolved paths might have been on a different
+        # location (e.g. on macOS /tmp resolves to /private/tmp)
         resolved_relative_path = get_relative_path(resolved_path, base=datadir.resolve())
 
         if is_subpath(path, base=datadir) or resolved_relative_path is not None:

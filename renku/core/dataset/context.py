@@ -31,14 +31,14 @@ class DatasetContext:
 
     def __init__(
         self,
-        name: str,
+        slug: str,
         create: Optional[bool] = False,
         commit_database: Optional[bool] = False,
         creator: Optional[Person] = None,
         datadir: Optional[Path] = None,
         storage: Optional[str] = None,
     ) -> None:
-        self.name = name
+        self.slug = slug
         self.create = create
         self.commit_database = commit_database
         self.creator = creator
@@ -49,17 +49,17 @@ class DatasetContext:
 
     def __enter__(self):
         """Enter context."""
-        self.dataset = self.dataset_provenance.get_by_name(name=self.name)
+        self.dataset = self.dataset_provenance.get_by_slug(slug=self.slug)
         if self.dataset is None:
             if not self.create:
-                raise errors.DatasetNotFound(name=self.name)
+                raise errors.DatasetNotFound(slug=self.slug)
 
             # NOTE: Don't update provenance when creating here because it will be updated later
             self.dataset = create_dataset(
-                name=self.name, update_provenance=False, datadir=self.datadir, storage=self.storage
+                slug=self.slug, update_provenance=False, datadir=self.datadir, storage=self.storage
             )
         elif self.create:
-            raise errors.DatasetExistsError(self.name)
+            raise errors.DatasetExistsError(self.slug)
 
         return self.dataset
 

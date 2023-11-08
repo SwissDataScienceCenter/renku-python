@@ -1,6 +1,5 @@
-#
-# Copyright 2019-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +35,7 @@ def test_error_response(svc_client):
 
 def test_result_response(svc_client):
     """Test result response utility."""
-    ctx = {"datasets": [{"name": "my-dataset"}]}
+    ctx = {"datasets": [{"slug": "my-dataset"}]}
     response = result_response(DatasetListResponseRPC(), ctx).json
 
     assert response
@@ -46,7 +45,7 @@ def test_result_response(svc_client):
     expected = ctx["datasets"][0]
     received = response["result"]["datasets"][0]
 
-    assert expected["name"] == received["name"]
+    assert expected["slug"] == received["slug"]
 
 
 def test_result_response_with_none(svc_client):

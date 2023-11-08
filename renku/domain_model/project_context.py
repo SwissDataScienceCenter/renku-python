@@ -31,6 +31,7 @@ from renku.core.constant import (
     DATASET_IMAGES,
     DEFAULT_DATA_DIR,
     DOCKERFILE,
+    IMAGES,
     LOCK_SUFFIX,
     POINTERS,
     RENKU_HOME,
@@ -91,6 +92,11 @@ class ProjectContext(threading.local):
     def dataset_images_path(self) -> Path:
         """Return a ``Path`` instance of Renku dataset metadata folder."""
         return self.path / RENKU_HOME / DATASET_IMAGES
+
+    @property
+    def project_image_pathname(self) -> Path:
+        """Return the path to the project's image file."""
+        return self.path / RENKU_HOME / IMAGES / "project" / "0.png"
 
     @property
     def dockerfile_path(self) -> Path:

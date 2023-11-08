@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +22,7 @@ from yagup import GitURL
 from yagup.exceptions import InvalidURL
 
 from renku.core.util.os import normalize_to_ascii
+from renku.domain_model.dataset import ImageObjectRequestJson
 from renku.ui.service.config import TEMPLATE_CLONE_DEPTH_DEFAULT
 from renku.ui.service.serializers.cache import ProjectCloneContext, RepositoryCloneRequest
 from renku.ui.service.serializers.rpc import JsonRPCResponse
@@ -70,6 +70,7 @@ class ProjectTemplateRequest(ProjectCloneContext, ManifestTemplatesRequest):
     data_directory = fields.String(
         load_default=None, metadata={"description": "Base dataset data directory in project. Defaults to 'data/'"}
     )
+    image = fields.Nested(ImageObjectRequestJson, load_default=None)
 
     @post_load()
     def add_required_fields(self, data, **kwargs):

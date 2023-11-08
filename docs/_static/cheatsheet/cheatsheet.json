@@ -326,6 +326,20 @@
           ]
         },
         {
+          "command": "$ renku session pause <name>",
+          "description": "Pause the specified session.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
+          "command": "$ renku session resume <name>",
+          "description": "Resume the specified paused session.",
+          "target": [
+            "rp"
+          ]
+        },
+        {
           "command": "$ renku session stop <name>",
           "description": "Stop the specified session.",
           "target": [

@@ -5,9 +5,11 @@ Amalthea
 analytics
 api
 app
+aqs
 args
 argv
 ascii
+astroquery
 async
 attrs
 auditability
@@ -173,6 +175,7 @@ params
 PIDs
 pipenv
 PNG
+png
 Postgresql
 powerline
 pre
@@ -296,6 +299,7 @@ versioning
 Versioning
 vertices
 viewmodel
+vis
 vm
 wasDerivedFrom
 webhook

@@ -1,6 +1,5 @@
-#
-# Copyright 2019-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -92,6 +91,7 @@ def test_edit_project_view(svc_client_with_repo, custom_metadata, custom_metadat
         "description": "my new title",
         "creator": {"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"},
         "custom_metadata": custom_metadata,
+        "image": {"content_url": "https://en.wikipedia.org/static/images/icons/wikipedia.png"},
     }
     if custom_metadata_source is not None:
         edit_payload["custom_metadata_source"] = custom_metadata_source
@@ -103,6 +103,11 @@ def test_edit_project_view(svc_client_with_repo, custom_metadata, custom_metadat
         "description": "my new title",
         "creator": {"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"},
         "custom_metadata": custom_metadata,
+        "image": {
+            "content_url": "https://en.wikipedia.org/static/images/icons/wikipedia.png",
+            "mirror_locally": False,
+            "position": 0,
+        },
     } == response.json["result"]["edited"]
 
     edit_payload = {
@@ -112,7 +117,7 @@ def test_edit_project_view(svc_client_with_repo, custom_metadata, custom_metadat
 
     assert_rpc_response(response)
     assert {"warning", "edited", "remote_branch"} == set(response.json["result"])
-    assert 0 == len(response.json["result"]["edited"])
+    assert 0 == len(response.json["result"]["edited"]), response.json["result"]["edited"]
 
 
 @pytest.mark.service
@@ -135,10 +140,11 @@ def test_edit_project_view_unset(svc_client_with_repo):
                 "https://schema.org/property2": "test",
             }
         ],
+        "image": {"content_url": "https://en.wikipedia.org/static/images/icons/wikipedia.png"},
     }
-    response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
+    svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
 
-    edit_payload = {"git_url": url_components.href, "custom_metadata": None, "keywords": None}
+    edit_payload = {"git_url": url_components.href, "custom_metadata": None, "keywords": None, "image": None}
     response = svc_client.post("/project.edit", data=json.dumps(edit_payload), headers=headers)
 
     assert_rpc_response(response)
@@ -146,6 +152,7 @@ def test_edit_project_view_unset(svc_client_with_repo):
     assert {
         "keywords": None,
         "custom_metadata": None,
+        "image": None,
     } == response.json[
         "result"
     ]["edited"]

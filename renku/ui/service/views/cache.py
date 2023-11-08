@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,14 +25,20 @@ from renku.ui.service.controllers.cache_migrate_project import MigrateProjectCtr
 from renku.ui.service.controllers.cache_migrations_check import MigrationsCheckCtrl
 from renku.ui.service.gateways.repository_cache import LocalRepositoryCache
 from renku.ui.service.jobs.cleanup import cache_files_cleanup
-from renku.ui.service.views.api_versions import ALL_VERSIONS, V2_0, V2_1, VERSIONS_FROM_V1_1, VersionedBlueprint
+from renku.ui.service.views.api_versions import (
+    ALL_VERSIONS,
+    VERSIONS_FROM_V1_1,
+    VERSIONS_FROM_V2_0,
+    VERSIONS_FROM_V2_1,
+    VersionedBlueprint,
+)
 from renku.ui.service.views.decorators import accepts_json, optional_identity, requires_cache, requires_identity
 from renku.ui.service.views.error_handlers import (
     handle_common_except,
     handle_migration_read_errors,
     handle_migration_write_errors,
 )
-from renku.ui.service.views.v1.cache import add_v1_specific_endpoints
+from renku.ui.service.views.v1.cache import add_v1_specific_cache_endpoints
 
 CACHE_BLUEPRINT_TAG = "cache"
 cache_blueprint = VersionedBlueprint("cache", __name__, url_prefix=SERVICE_PREFIX)
@@ -156,7 +161,7 @@ def migrate_project_view(user_data, cache):
 
 
 @cache_blueprint.route(
-    "/cache.migrations_check", methods=["GET"], provide_automatic_options=False, versions=[V2_0, V2_1]
+    "/cache.migrations_check", methods=["GET"], provide_automatic_options=False, versions=VERSIONS_FROM_V2_0
 )
 @handle_common_except
 @handle_migration_read_errors
@@ -184,7 +189,7 @@ def migration_check_project_view(user_data, cache):
     return MigrationsCheckCtrl(cache, user_data, dict(request.args), GitlabAPIProvider).to_response()
 
 
-@cache_blueprint.route("/cache.cleanup", methods=["GET"], provide_automatic_options=False, versions=[V2_1])
+@cache_blueprint.route("/cache.cleanup", methods=["GET"], provide_automatic_options=False, versions=VERSIONS_FROM_V2_1)
 @handle_common_except
 @handle_migration_read_errors
 @requires_cache
@@ -210,4 +215,4 @@ def cache_cleanup(user_data, cache):
     return jsonify({"result": "ok"})
 
 
-cache_blueprint = add_v1_specific_endpoints(cache_blueprint)
+cache_blueprint = add_v1_specific_cache_endpoints(cache_blueprint)
