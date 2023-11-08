@@ -175,3 +175,18 @@ def test_session_list_format(runner, project, dummy_session_provider, format, ou
     assert 0 == result.exit_code, format_result_exception(result)
     assert length == len(result.output.splitlines())
     assert output in result.output
+
+
+def test_session_detached_start(runner, project, dummy_session_provider):
+    """Test starting a session in a detached HEAD repository."""
+    # NOTE: Make a dummy commit for project to have two commits
+    (project.repository.path / "README.md").write_text("changes")
+    project.repository.add(all=True)
+    project.repository.commit("dummy commit")
+
+    project.repository.checkout("HEAD~")
+
+    result = runner.invoke(cli, ["session", "start", "-p", "dummy"])
+
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "Cannot start a session from a detached HEAD" in result.output

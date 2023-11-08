@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +31,7 @@ class DatasetsUnlinkCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets unlink list controller."""
-        self.ctx = DatasetsUnlinkCtrl.REQUEST_SERIALIZER.load(request_data)
+        self.ctx = self.REQUEST_SERIALIZER.load(request_data)
 
         self.include = self.ctx.get("include_filter")
         self.exclude = self.ctx.get("exclude_filter")
@@ -43,7 +42,7 @@ class DatasetsUnlinkCtrl(ServiceCtrl, RenkuOpSyncMixin):
             filters = f"-X {self.exclude}"
         else:
             filters = f"-I {self.include}"
-        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} unlink dataset {self.ctx['name']} {filters}"
+        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} unlink dataset {self.ctx['slug']} {filters}"
 
         super().__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
@@ -59,7 +58,7 @@ class DatasetsUnlinkCtrl(ServiceCtrl, RenkuOpSyncMixin):
             .with_commit_message(self.ctx["commit_message"])
             .build()
             .execute(
-                name=self.ctx["name"],
+                slug=self.ctx["slug"],
                 include=self.ctx.get("include_filters"),
                 exclude=self.ctx.get("exclude_filters"),
                 yes=True,
@@ -80,4 +79,4 @@ class DatasetsUnlinkCtrl(ServiceCtrl, RenkuOpSyncMixin):
             "remote_branch": remote_branch,
         }
 
-        return result_response(DatasetsUnlinkCtrl.RESPONSE_SERIALIZER, response)
+        return result_response(self.RESPONSE_SERIALIZER, response)

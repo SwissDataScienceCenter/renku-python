@@ -374,7 +374,7 @@ class Plan(AbstractPlan):
     def copy(self):
         """Create a copy of this plan.
 
-        Required where a plan is used several times in a workflow but we need to set different values on them.
+        Required where a plan is used several times in a workflow, but we need to set different values on them.
         """
         return copy.deepcopy(self)
 

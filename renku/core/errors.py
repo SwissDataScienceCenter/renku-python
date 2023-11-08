@@ -271,12 +271,12 @@ class InvalidSuccessCode(RenkuException):
 class DatasetNotFound(DatasetException):
     """Raise when dataset is not found."""
 
-    def __init__(self, *, name=None, message=None):
+    def __init__(self, *, slug=None, message=None):
         """Build a custom message."""
         if message:
             msg = message
-        elif name:
-            msg = f"Dataset '{name}' is not found."
+        elif slug:
+            msg = f"Dataset '{slug}' is not found."
         else:
             msg = "Dataset is not found."
         super().__init__(msg)
@@ -512,7 +512,11 @@ class RenkuSaveError(RenkuException):
     """Raised when renku save doesn't work."""
 
 
-class DatasetImageError(DatasetException):
+class ImageError(RenkuException):
+    """Raised when an image for a project/dataset is not accessible."""
+
+
+class DatasetImageError(DatasetException, ImageError):
     """Raised when a local dataset image is not accessible."""
 
 

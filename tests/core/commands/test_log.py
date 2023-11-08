@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -103,8 +102,8 @@ def test_log_dataset_create_simple(mocker):
 
     new_dataset = mocker.MagicMock()
     new_dataset.id = "new"
-    new_dataset.name = "ds"
-    new_dataset.title = None
+    new_dataset.slug = "ds"
+    new_dataset.name = None
     new_dataset.description = None
     new_dataset.derived_from = None
     new_dataset.same_as = None
@@ -137,7 +136,7 @@ def test_log_dataset_create_simple(mocker):
     assert "ds" == entry.id
     assert "Dataset 'ds': created" == entry.description
 
-    assert entry.details.title_changed is None
+    assert entry.details.name_changed is None
     assert not entry.details.description_changed
     assert not entry.details.creators_added
     assert not entry.details.creators_removed
@@ -156,10 +155,10 @@ def test_log_dataset_create_complex(mocker):
 
     new_dataset = mocker.MagicMock()
     new_dataset.id = "new"
-    new_dataset.name = "ds"
+    new_dataset.slug = "ds"
     new_dataset.derived_from = None
     new_dataset.same_as = None
-    new_dataset.title = "new-title"
+    new_dataset.name = "new-name"
     new_dataset.description = "new-description"
     new_dataset.dataset_files = []
     new_dataset.creators = [mocker.MagicMock(full_identity="John")]
@@ -193,7 +192,7 @@ def test_log_dataset_create_complex(mocker):
     assert "ds" == entry.id
     assert "Dataset 'ds': created" == entry.description
 
-    assert "new-title" == entry.details.title_changed
+    assert "new-name" == entry.details.name_changed
     assert "new-description" == entry.details.description_changed
     assert ["John"] == entry.details.creators_added
     assert not entry.details.files_added
@@ -214,10 +213,10 @@ def test_log_dataset_add_create(mocker):
 
     new_dataset = mocker.MagicMock()
     new_dataset.id = "new"
-    new_dataset.name = "ds"
+    new_dataset.slug = "ds"
     new_dataset.derived_from = None
     new_dataset.same_as = None
-    new_dataset.title = "new-title"
+    new_dataset.name = "new-name"
     new_dataset.description = "new-description"
     new_dataset.dataset_files = [
         mocker.MagicMock(date_removed=None, entity=mocker.MagicMock(path="file_a")),
@@ -251,7 +250,7 @@ def test_log_dataset_add_create(mocker):
     assert "ds" == entry.id
     assert "Dataset 'ds': created, 2 file(s) added" == entry.description
 
-    assert "new-title" == entry.details.title_changed
+    assert "new-name" == entry.details.name_changed
     assert "new-description" == entry.details.description_changed
     assert not entry.details.creators_added
     assert {"file_b", "file_a"} == set(entry.details.files_added)
@@ -271,9 +270,9 @@ def test_log_dataset_import(mocker):
     """Test getting dataset viewmodels for an imported dataset."""
     new_dataset = mocker.MagicMock()
     new_dataset.id = "new"
-    new_dataset.name = "ds"
+    new_dataset.slug = "ds"
     new_dataset.derived_from = None
-    new_dataset.title = "new-title"
+    new_dataset.name = "new-name"
     new_dataset.description = "new-description"
     new_dataset.same_as = mocker.MagicMock(value="http://renkulab.io/my/dataset")
     new_dataset.dataset_files = [
@@ -308,7 +307,7 @@ def test_log_dataset_import(mocker):
     assert "ds" == entry.id
     assert "Dataset 'ds': imported, 2 file(s) added" == entry.description
 
-    assert "new-title" == entry.details.title_changed
+    assert "new-name" == entry.details.name_changed
     assert "new-description" == entry.details.description_changed
     assert not entry.details.creators_added
     assert {"file_b", "file_a"} == set(entry.details.files_added)
@@ -329,7 +328,7 @@ def test_log_dataset_deleted(mocker):
     """Test getting dataset viewmodels for deleted dataset."""
     old_dataset = mocker.MagicMock()
     old_dataset.id = "old"
-    old_dataset.name = "ds"
+    old_dataset.slug = "ds"
     old_dataset.derived_from = None
     old_dataset.same_as = None
     old_dataset.dataset_files = []
@@ -337,8 +336,8 @@ def test_log_dataset_deleted(mocker):
 
     new_dataset = mocker.MagicMock()
     new_dataset.id = "new"
-    new_dataset.name = "ds"
-    new_dataset.title = None
+    new_dataset.slug = "ds"
+    new_dataset.name = None
     new_dataset.description = None
     new_dataset.derived_from = Url(url_id="old")
     new_dataset.same_as = None
@@ -380,7 +379,7 @@ def test_log_dataset_deleted(mocker):
     assert "ds" == entry.id
     assert "Dataset 'ds': deleted" == entry.description
 
-    assert entry.details.title_changed is None
+    assert entry.details.name_changed is None
     assert not entry.details.description_changed
     assert not entry.details.files_added
     assert not entry.details.files_removed
@@ -401,8 +400,8 @@ def test_log_dataset_files_removed(mocker):
     """Test getting dataset viewmodels for dataset with files removed."""
     old_dataset = mocker.MagicMock()
     old_dataset.id = "old"
-    old_dataset.name = "ds"
-    old_dataset.title = None
+    old_dataset.slug = "ds"
+    old_dataset.name = None
     old_dataset.description = None
     old_dataset.derived_from = None
     old_dataset.same_as = None
@@ -414,8 +413,8 @@ def test_log_dataset_files_removed(mocker):
 
     new_dataset = mocker.MagicMock()
     new_dataset.id = "new"
-    new_dataset.name = "ds"
-    new_dataset.title = None
+    new_dataset.slug = "ds"
+    new_dataset.name = None
     new_dataset.description = None
     new_dataset.derived_from = Url(url_id="old")
     new_dataset.same_as = None
@@ -458,7 +457,7 @@ def test_log_dataset_files_removed(mocker):
     assert "ds" == entry.id
     assert "Dataset 'ds': 1 file(s) removed" == entry.description
 
-    assert entry.details.title_changed is None
+    assert entry.details.name_changed is None
     assert not entry.details.description_changed
     assert not entry.details.files_added
     assert ["file_b"] == entry.details.files_removed
@@ -479,8 +478,8 @@ def test_log_dataset_metadata_modified(mocker):
     """Test getting dataset viewmodels for dataset with files removed."""
     old_dataset = mocker.MagicMock()
     old_dataset.id = "old"
-    old_dataset.name = "ds"
-    old_dataset.title = "old-title"
+    old_dataset.slug = "ds"
+    old_dataset.name = "old-name"
     old_dataset.description = "old-description"
     old_dataset.dataset_files = []
     old_dataset.creators = [mocker.MagicMock(full_identity="John")]
@@ -493,8 +492,8 @@ def test_log_dataset_metadata_modified(mocker):
 
     new_dataset = mocker.MagicMock()
     new_dataset.id = "new"
-    new_dataset.name = "ds"
-    new_dataset.title = "new-title"
+    new_dataset.slug = "ds"
+    new_dataset.name = "new-name"
     new_dataset.description = "new-description"
     new_dataset.derived_from = Url(url_id="old")
     new_dataset.same_as = None
@@ -540,7 +539,7 @@ def test_log_dataset_metadata_modified(mocker):
     assert "ds" == entry.id
     assert "Dataset 'ds': metadata modified" == entry.description
 
-    assert "new-title" == entry.details.title_changed
+    assert "new-name" == entry.details.name_changed
     assert "new-description" == entry.details.description_changed
     assert not entry.details.files_added
     assert not entry.details.files_removed

@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,11 +16,11 @@
 """Renku graph serializers."""
 from marshmallow import Schema, fields, validate
 
-from renku.ui.service.serializers.common import AsyncSchema, MigrateSchema, RemoteRepositorySchema
+from renku.ui.service.serializers.common import AsyncSchema, GitCommitSHA, MigrateSchema, RemoteRepositorySchema
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
 
-class GraphExportRequest(AsyncSchema, RemoteRepositorySchema, MigrateSchema):
+class GraphExportRequest(AsyncSchema, RemoteRepositorySchema, MigrateSchema, GitCommitSHA):
     """Request schema for dataset list view."""
 
     callback_url = fields.URL()

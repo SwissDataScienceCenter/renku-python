@@ -1,6 +1,5 @@
-#
-# Copyright 2021 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,6 +50,8 @@ def run_api(addr="0.0.0.0", port=8080, timeout=600):
         "gunicorn",
         "renku.ui.service.entrypoint:app",
         loading_opt,
+        "-c",
+        "gunicorn.conf.py",
         "-b",
         f"{addr}:{port}",
         "--timeout",

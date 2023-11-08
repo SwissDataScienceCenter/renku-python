@@ -21,7 +21,8 @@ from renku.command.schema.agent import PersonSchema
 from renku.command.schema.annotation import AnnotationSchema
 from renku.command.schema.calamus import DateTimeList, JsonLDSchema, Nested, Uri, fields, oa, prov, renku, schema
 from renku.command.schema.entity import CollectionSchema, EntitySchema
-from renku.domain_model.dataset import Dataset, DatasetFile, DatasetTag, ImageObject, Language, RemoteEntity, Url
+from renku.command.schema.image import ImageObjectSchema
+from renku.domain_model.dataset import Dataset, DatasetFile, DatasetTag, Language, RemoteEntity, Url
 
 
 def dump_dataset_as_jsonld(dataset: Dataset) -> dict:
@@ -102,21 +103,6 @@ class LanguageSchema(JsonLDSchema):
     alternate_name = fields.String(schema.alternateName)
     id = fields.Id(load_default=None)
     name = fields.String(schema.name)
-
-
-class ImageObjectSchema(JsonLDSchema):
-    """ImageObject schema."""
-
-    class Meta:
-        """Meta class."""
-
-        rdf_type = schema.ImageObject
-        model = ImageObject
-        unknown = EXCLUDE
-
-    content_url = fields.String(schema.contentUrl)
-    id = fields.Id(load_default=None)
-    position = fields.Integer(schema.position)
 
 
 class RemoteEntitySchema(JsonLDSchema):
@@ -202,11 +188,11 @@ class DatasetSchema(JsonLDSchema):
     in_language = Nested(schema.inLanguage, LanguageSchema, load_default=None)
     keywords = fields.List(schema.keywords, fields.String(), load_default=None)
     license = Uri(schema.license, load_default=None)
-    name = fields.String(renku.slug)
+    slug = fields.String(renku.slug)
     initial_identifier = fields.String(renku.originalIdentifier)
     project_id = fields.IRI(renku.hasDataset, reverse=True)
     same_as = Nested(schema.sameAs, UrlSchema, load_default=None)
-    title = fields.String(schema.name)
+    name = fields.String(schema.name)
     version = fields.String(schema.version, load_default=None)
 
     @pre_dump(pass_many=True)

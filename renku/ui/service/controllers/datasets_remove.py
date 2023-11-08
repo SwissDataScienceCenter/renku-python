@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,8 +31,8 @@ class DatasetsRemoveCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets remove controller."""
-        self.ctx = DatasetsRemoveCtrl.REQUEST_SERIALIZER.load(request_data)
-        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset remove {self.ctx['name']}"
+        self.ctx = self.REQUEST_SERIALIZER.load(request_data)
+        self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset remove {self.ctx['slug']}"
 
         super().__init__(cache, user_data, request_data, migrate_project=migrate_project)
 
@@ -45,7 +44,7 @@ class DatasetsRemoveCtrl(ServiceCtrl, RenkuOpSyncMixin):
     def renku_op(self):
         """Renku operation for the controller."""
         result = (
-            remove_dataset_command().with_commit_message(self.ctx["commit_message"]).build().execute(self.ctx["name"])
+            remove_dataset_command().with_commit_message(self.ctx["commit_message"]).build().execute(self.ctx["slug"])
         )
         return result.output
 
@@ -59,4 +58,4 @@ class DatasetsRemoveCtrl(ServiceCtrl, RenkuOpSyncMixin):
         response = self.ctx
         response["remote_branch"] = remote_branch
 
-        return result_response(DatasetsRemoveCtrl.RESPONSE_SERIALIZER, response)
+        return result_response(self.RESPONSE_SERIALIZER, response)

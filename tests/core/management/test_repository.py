@@ -1,6 +1,5 @@
-#
-# Copyright 2019-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +27,7 @@ def test_latest_version(project, with_injection):
     """Test returning the latest version of `SoftwareAgent`."""
     from renku import __version__
 
-    create_dataset_command().build().execute("ds1", title="", description="", creators=[])
+    create_dataset_command().build().execute("ds1", name="", description="", creators=[])
 
     with project_context.with_path(project.path), with_injection():
         assert __version__ == project_context.latest_agent
@@ -38,7 +37,7 @@ def test_latest_version_user_commits(project, with_injection):
     """Test retrieval of `SoftwareAgent` with latest non-renku command."""
     from renku import __version__
 
-    create_dataset_command().build().execute("ds1", title="", description="", creators=[])
+    create_dataset_command().build().execute("ds1", name="", description="", creators=[])
 
     file = Path("my-file")
     file.write_text("123")

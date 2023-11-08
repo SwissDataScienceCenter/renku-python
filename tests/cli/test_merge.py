@@ -1,6 +1,5 @@
-#
-# Copyright 2019-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -142,7 +141,7 @@ def test_mergetool(runner, project, directory_tree, run_shell, with_injection):
     assert len(activities) == 7
     assert len(plans) == 7
 
-    shared_dataset = next(d for d in datasets if d.name == "shared-dataset")
+    shared_dataset = next(d for d in datasets if d.slug == "shared-dataset")
     assert "remote description" == shared_dataset.description
 
 

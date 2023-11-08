@@ -107,7 +107,7 @@ class DOIImporter(ImporterApi):
         self.issued = issued
         self.language = language
         self.publisher = publisher
-        self.title = title
+        self.name = title
         self.type = type
         self._version = version
 
