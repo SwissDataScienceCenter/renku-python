@@ -16,11 +16,11 @@
 """Renku graph serializers."""
 from marshmallow import Schema, fields, validate
 
-from renku.ui.service.serializers.common import AsyncSchema, MigrateSchema, RemoteRepositorySchema
+from renku.ui.service.serializers.common import AsyncSchema, GitCommitSHA, MigrateSchema, RemoteRepositorySchema
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
 
-class GraphExportRequest(AsyncSchema, RemoteRepositorySchema, MigrateSchema):
+class GraphExportRequest(AsyncSchema, RemoteRepositorySchema, MigrateSchema, GitCommitSHA):
     """Request schema for dataset list view."""
 
     callback_url = fields.URL()
