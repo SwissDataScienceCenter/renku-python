@@ -65,6 +65,8 @@ class DatasetsImportCtrl(ServiceCtrl, RenkuOpSyncMixin):
                 tag=self.ctx.get("tag", None),
                 job_timeout=int(os.getenv("WORKER_DATASET_JOBS_TIMEOUT", 1800)),
                 result_ttl=int(os.getenv("WORKER_DATASET_JOBS_RESULT_TTL", 500)),
+                ttl=int(os.getenv("WORKER_DATASET_JOBS_TIMEOUT", 1800)),
+                failure_ttl=int(os.getenv("WORKER_DATASET_JOBS_RESULT_TTL", 500)),
                 commit_message=self.ctx["commit_message"],
                 data_directory=self.ctx.get("data_directory"),
             )
