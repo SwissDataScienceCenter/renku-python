@@ -35,16 +35,16 @@ class ManifestTemplatesRequest(Schema):
 
     template_git_url = fields.String(required=True, metadata={"description": "Template git repository url."})
     depth = fields.Integer(load_default=TEMPLATE_CLONE_DEPTH_DEFAULT)
-    branch = fields.String(load_default=None, metadata={"description": "Remote git branch (or tag or commit SHA)."})
+    ref = fields.String(load_default=None, metadata={"description": "Remote git branch (or tag or commit SHA)."})
 
     @pre_load
     def set_fields(self, data, **_):
-        """Set `branch` field from `ref` if present and set template url."""
-        if "ref" in data and not data.get("branch"):
+        """Set `ref` field from `branch` if present and set template url."""
+        if "branch" in data and not data.get("ref"):
             # Backward compatibility: branch and ref were both used. Let's keep branch as the exposed field
             # even if internally it gets converted to "ref" later.
-            data["branch"] = data["ref"]
-            del data["ref"]
+            data["ref"] = data["branch"]
+            del data["branch"]
         if "url" in data and not data.get("template_git_url"):
             # needed for tests that share a fixture
             data["template_git_url"] = data["url"]
