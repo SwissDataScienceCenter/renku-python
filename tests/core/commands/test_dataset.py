@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,7 +41,7 @@ from renku.core.errors import ParameterError
 from renku.core.util.contexts import chdir
 from renku.core.util.git import get_git_user
 from renku.core.util.urls import get_slug
-from renku.domain_model.dataset import Dataset, is_dataset_name_valid
+from renku.domain_model.dataset import Dataset, Url
 from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.agent import Person
 from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
@@ -88,6 +87,22 @@ def test_data_add(scheme, path, overwrite, error, project_with_injection, direct
             assert os.path.exists(target_path)
 
 
+@pytest.mark.parametrize(
+    "slash, target",
+    [
+        (False, "data/dataset/dir1/file2"),
+        (True, "data/dataset/file2"),
+    ],
+)
+def test_data_add_trailing_slash(slash, target, directory_tree, project_with_injection):
+    """Test recursive data imports."""
+
+    dataset = add_to_dataset("dataset", [str(directory_tree / "dir1") + ("/" if slash else "")], create=True)
+
+    file = next(f for f in dataset.files if f.entity.path.endswith("file2"))
+    assert file.entity.path == target
+
+
 def test_data_add_recursive(directory_tree, project_with_injection):
     """Test recursive data imports."""
     dataset = add_to_dataset("dataset", [str(directory_tree / "dir1")], create=True)
@@ -112,7 +127,7 @@ def test_creator_parse():
 
 def test_creators_with_same_email(project_with_injection):
     """Test creators with different names and same email address."""
-    with DatasetContext(name="dataset", create=True) as dataset:
+    with DatasetContext(slug="dataset", create=True) as dataset:
         dataset.creators = [Person(name="me", email="me@example.com"), Person(name="me2", email="me@example.com")]
         DatasetsProvenance().add_or_update(dataset)
 
@@ -125,7 +140,7 @@ def test_creators_with_same_email(project_with_injection):
 def test_create_dataset_command_custom_message(project):
     """Test create dataset custom message."""
     create_dataset_command().with_commit_message("my dataset").with_database(write=True).build().execute(
-        "ds1", title="", description="", creators=[]
+        "ds1", name="", description="", creators=[]
     )
 
     last_commit = Repository(".").head.commit
@@ -135,19 +150,19 @@ def test_create_dataset_command_custom_message(project):
 def test_list_datasets_default(project):
     """Test a default dataset listing."""
     create_dataset_command().with_commit_message("my dataset").with_database(write=True).build().execute(
-        "ds1", title="", description="", creators=[]
+        "ds1", name="", description="", creators=[]
     )
 
     datasets = list_datasets_command().with_database().build().execute().output
 
     assert isinstance(datasets, list)
-    assert "ds1" in [dataset.title for dataset in datasets]
+    assert "ds1" in [dataset.name for dataset in datasets]
 
 
 def test_list_files_default(project, tmpdir):
     """Test a default file listing."""
     create_dataset_command().with_commit_message("my dataset").with_database(write=True).build().execute(
-        "ds1", title="", description="", creators=[]
+        "ds1", name="", description="", creators=[]
     )
     data_file = tmpdir / Path("some-file")
     data_file.write_text("1,2,3", encoding="utf-8")
@@ -164,7 +179,7 @@ def test_unlink_default(directory_tree, project):
     with chdir(project.path):
         create_dataset_command().with_database(write=True).build().execute("dataset")
         add_to_dataset_command().with_database(write=True).build().execute(
-            dataset_name="dataset", urls=[str(directory_tree / "dir1")]
+            dataset_slug="dataset", urls=[str(directory_tree / "dir1")]
         )
 
     with pytest.raises(ParameterError):
@@ -178,7 +193,7 @@ def test_mutate(project):
         name="my-dataset",
         creators=[Person.from_string("John Doe <john.doe@mail.com>")],
         date_published=datetime.datetime.now(datetime.timezone.utc),
-        same_as="http://some-url",
+        same_as=Url(url_str="http://some-url"),
     )
     old_dataset = copy.deepcopy(dataset)
 
@@ -197,7 +212,7 @@ def test_mutator_is_added_once(project):
         name="my-dataset",
         creators=[mutator],
         date_published=datetime.datetime.now(datetime.timezone.utc),
-        same_as="http://some-url",
+        same_as=Url(url_str="http://some-url"),
     )
     old_dataset = copy.deepcopy(dataset)
 
@@ -239,12 +254,6 @@ def test_dataset_name_slug(name, slug):
     assert slug == get_slug(name)
 
 
-def test_uppercase_dataset_name_is_valid():
-    """Test dataset name can have uppercase characters."""
-    assert is_dataset_name_valid("UPPER-CASE")
-    assert is_dataset_name_valid("Pascal-Case")
-
-
 @pytest.mark.integration
 def test_get_dataset_by_tag(with_injection, tmp_path):
     """Test getting datasets by a given tag."""
@@ -254,7 +263,7 @@ def test_get_dataset_by_tag(with_injection, tmp_path):
     with project_context.with_path(repository.path), with_injection():
         dataset_gateway = DatasetGateway()
 
-        parts_dataset = dataset_gateway.get_by_name("parts")
+        parts_dataset = dataset_gateway.get_by_slug("parts")
 
         returned_datasets = get_dataset_by_tag(dataset=parts_dataset, tag="v1")
         selected_tag = next(tag for tag in dataset_gateway.get_all_tags(parts_dataset) if tag.name == "v1")

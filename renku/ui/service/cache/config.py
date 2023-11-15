@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,13 +15,22 @@
 # limitations under the License.
 """Renku service cache configuration."""
 import os
+import platform
+import socket
+import uuid
+
+container_name = platform.node()
+if not container_name:
+    container_name = socket.gethostname()
+if not container_name:
+    container_name = uuid.uuid4().hex  # NOTE: Fallback if no hostname could be determined
 
 REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
 REDIS_DATABASE = int(os.getenv("REDIS_DATABASE", 0))
 REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
 
-REDIS_NAMESPACE = os.getenv("REDIS_NAMESPACE")
+REDIS_NAMESPACE = os.getenv("REDIS_NAMESPACE", "") + container_name
 
 REDIS_IS_SENTINEL = os.environ.get("REDIS_IS_SENTINEL", "") == "true"
 REDIS_MASTER_SET = os.environ.get("REDIS_MASTER_SET", "mymaster")

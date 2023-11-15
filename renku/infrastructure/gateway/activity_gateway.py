@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +19,7 @@ import itertools
 from pathlib import Path
 from typing import List, Optional, Set, Tuple, Union
 
+import deal
 from persistent.list import PersistentList
 
 from renku.command.command_builder.command import inject
@@ -140,6 +140,13 @@ class ActivityGateway(IActivityGateway):
         database = project_context.database
         return [a for a in database["activities"].values() if not a.deleted or include_deleted]
 
+    @deal.pre(lambda _: _.activity.started_at_time is not None)
+    @deal.pre(lambda _: _.activity.ended_at_time is not None)
+    @deal.pre(lambda _: _.activity.started_at_time >= project_context.project.date_created)
+    @deal.pre(
+        lambda _: _.activity.invalidated_at is None or _.activity.invalidated_at >= project_context.project.date_created
+    )
+    @deal.pre(lambda _: _.activity.started_at_time >= _.activity.association.plan.date_created)
     def add(self, activity: Activity) -> None:
         """Add an ``Activity`` to storage."""
 
@@ -204,9 +211,13 @@ def reindex_catalog(database):
     """Clear and re-create database's activity-catalog and its relations."""
     activity_catalog = database["activity-catalog"]
     relations = database["_downstream_relations"]
+    by_usage = database["activities-by-usage"]
+    by_generation = database["activities-by-generation"]
 
     activity_catalog.clear()
     relations.clear()
+    by_usage.clear()
+    by_generation.clear()
 
     for activity in database["activities"].values():
         _index_activity(activity=activity, database=database)

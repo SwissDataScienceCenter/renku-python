@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Local exporter."""
+"""Local provider for local filesystem."""
 
 import os
 import urllib
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from renku.core import errors
+from renku.core.config import get_value
 from renku.core.dataset.providers.api import (
     AddProviderInterface,
     ExporterApi,
@@ -32,23 +32,25 @@ from renku.core.dataset.providers.api import (
 )
 from renku.core.storage import check_external_storage, track_paths_in_storage
 from renku.core.util import communication
-from renku.core.util.dataset import check_url
 from renku.core.util.metadata import is_protected_path
-from renku.core.util.os import get_absolute_path, is_path_empty, is_subpath
+from renku.core.util.os import get_absolute_path, get_safe_relative_path, is_path_empty, is_subpath
+from renku.core.util.urls import check_url
 from renku.domain_model.project_context import project_context
+from renku.infrastructure.immutable import DynamicProxy
 
 if TYPE_CHECKING:
-    from renku.core.dataset.providers.models import DatasetAddMetadata, ProviderParameter
+    from renku.core.dataset.providers.models import DatasetAddMetadata, DatasetUpdateMetadata, ProviderParameter
     from renku.domain_model.dataset import Dataset, DatasetTag
 
 
-class FilesystemProvider(ProviderApi, AddProviderInterface, ExportProviderInterface):
+class LocalProvider(ProviderApi, AddProviderInterface, ExportProviderInterface):
     """Local filesystem provider."""
 
     priority = ProviderPriority.LOW
     name = "Local"
+    is_remote = False
 
-    def __init__(self, uri: Optional[str]):
+    def __init__(self, uri: str):
         super().__init__(uri=uri)
 
         self._path: Optional[str] = None
@@ -65,9 +67,6 @@ class FilesystemProvider(ProviderApi, AddProviderInterface, ExportProviderInterf
         from renku.core.dataset.providers.models import ProviderParameter
 
         return [
-            ProviderParameter(
-                "external", flags=["e", "external"], help="Creates a link to external data.", is_flag=True
-            ),
             ProviderParameter(
                 "copy",
                 flags=["cp", "copy"],
@@ -98,44 +97,62 @@ class FilesystemProvider(ProviderApi, AddProviderInterface, ExportProviderInterf
 
         return [ProviderParameter("path", flags=["p", "path"], help="Path to copy data to.", type=str)]
 
-    def add(
+    def get_metadata(
         self,
         uri: str,
         destination: Path,
         *,
-        external: bool = False,
         move: bool = False,
         copy: bool = False,
         link: bool = False,
         force: bool = False,
         **kwargs,
     ) -> List["DatasetAddMetadata"]:
-        """Add files from a URI to a dataset."""
+        """Get metadata of files that will be added to a dataset."""
         from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
 
         repository = project_context.repository
 
-        if sum([move, copy, link]) > 1:
+        flags = sum([move, copy, link])
+        if flags > 1:
             raise errors.ParameterError("--move, --copy and --link are mutually exclusive.")
 
-        default_action = DatasetAddAction.COPY
-        prompt_action = True
+        prompt_action = False
 
         if move:
             default_action = DatasetAddAction.MOVE
-            prompt_action = False
         elif link:
             default_action = DatasetAddAction.SYMLINK
-            prompt_action = False
         elif copy:
-            prompt_action = False
+            default_action = DatasetAddAction.COPY
+        else:
+            prompt_action = True
+            action = get_value("renku", "default_dataset_add_action")
+            if action:
+                prompt_action = False
+                if action.lower() == "copy":
+                    default_action = DatasetAddAction.COPY
+                elif action.lower() == "move":
+                    default_action = DatasetAddAction.MOVE
+                elif action.lower() == "link":
+                    default_action = DatasetAddAction.SYMLINK
+                else:
+                    raise errors.ParameterError(
+                        f"Invalid default action for adding to datasets in Renku config: '{action}'. "
+                        "Valid values are 'copy', 'link', and 'move'."
+                    )
+            else:
+                default_action = DatasetAddAction.COPY
 
+        ends_with_slash = False
         u = urllib.parse.urlparse(uri)
         path = u.path
 
-        action = DatasetAddAction.SYMLINK if external else default_action
+        action = default_action
         source_root = Path(get_absolute_path(path))
-        warnings: List[str] = []
+
+        if source_root.is_dir() and uri.endswith("/"):
+            ends_with_slash = True
 
         def check_recursive_addition(src: Path):
             if is_subpath(destination, src):
@@ -155,20 +172,21 @@ class FilesystemProvider(ProviderApi, AddProviderInterface, ExportProviderInterf
             if source_root.is_dir() and destination_exists and not destination_is_dir:
                 raise errors.ParameterError(f"Cannot copy directory '{path}' to non-directory '{destination}'")
 
-            return destination / source_root.name if destination_exists and destination_is_dir else destination
+            if destination_exists and destination_is_dir:
+                if ends_with_slash:
+                    return destination
 
-        def get_metadata(src: Path) -> DatasetAddMetadata:
-            is_tracked = repository.contains(src)
+                return destination / source_root.name
+            return destination
+
+        def get_file_metadata(src: Path) -> DatasetAddMetadata:
             in_datadir = is_subpath(src, destination)
 
             relative_path = src.relative_to(source_root)
             dst = destination_root / relative_path
 
-            if is_tracked and external:
-                warnings.append(str(src.relative_to(project_context.path)))
-
-            if not is_tracked and not external and action == DatasetAddAction.SYMLINK:
-                # NOTE: we need to commit src if it is linked to and not external.
+            # NOTE: Add link targets in case they aren't already tracked in the repository
+            if action == DatasetAddAction.SYMLINK:
                 if check_external_storage():
                     track_paths_in_storage(src)
                 repository.add(src)
@@ -183,6 +201,14 @@ class FilesystemProvider(ProviderApi, AddProviderInterface, ExportProviderInterf
 
         destination_root = get_destination_root()
 
+        if not is_subpath(source_root, project_context.path):
+            if link:
+                raise errors.ParameterError(f"Cannot use '--link' for files outside of project: '{uri}'")
+            if default_action == DatasetAddAction.SYMLINK:
+                # NOTE: A default action of 'link' cannot be used for external files
+                action = DatasetAddAction.COPY
+                prompt_action = True
+
         results = []
         if source_root.is_dir():
             for file in source_root.rglob("*"):
@@ -192,24 +218,73 @@ class FilesystemProvider(ProviderApi, AddProviderInterface, ExportProviderInterf
                 if file.is_dir():
                     check_recursive_addition(file)
                     continue
-                results.append(get_metadata(file))
+                results.append(get_file_metadata(file))
         else:
-            results = [get_metadata(source_root)]
+            results = [get_file_metadata(source_root)]
 
-        if not force and prompt_action and not external:
+        if not force and prompt_action:
             communication.confirm(
-                f"The following files will be copied to {destination.relative_to(project_context.path)} "
-                "(use '--move' or '--link' to move or symlink them instead, '--copy' to not show this warning):\n\t"
+                f"The following files will be copied to {destination.relative_to(project_context.path)}:\n\t"
+                "(use '--move' or '--link' to move or symlink them instead, '--copy' to not show this warning).\n\t"
+                "(run 'renku config set renku.default_dataset_add_action copy' to make copy the default action).\n\t"
                 + "\n\t".join(str(e.source) for e in results)
                 + "\nProceed?",
                 abort=True,
                 warning=True,
             )
 
-        if warnings:
-            message = "\n\t".join(warnings)
-            communication.warn(f"Warning: The following files cannot be added as external:\n\t{message}")
+        return results
 
+    def update_files(
+        self,
+        files: List[DynamicProxy],
+        dry_run: bool,
+        delete: bool,
+        context: Dict[str, Any],
+        check_data_directory: bool = False,
+        **kwargs,
+    ) -> List["DatasetUpdateMetadata"]:
+        """Update dataset files from the remote provider."""
+        from renku.core.dataset.providers.models import DatasetUpdateAction, DatasetUpdateMetadata
+
+        progress_text = "Checking for local updates"
+        results: List[DatasetUpdateMetadata] = []
+
+        try:
+            communication.start_progress(progress_text, len(files))
+            check_paths = []
+            records_to_check = []
+            for file in files:
+                communication.update_progress(progress_text, 1)
+
+                if file.based_on or file.linked:
+                    continue
+
+                if not (project_context.path / file.entity.path).exists():
+                    results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.DELETE))
+                    continue
+
+                check_paths.append(file.entity.path)
+                records_to_check.append(file)
+
+            checksums = project_context.repository.get_object_hashes(check_paths)
+
+            for file in records_to_check:
+                current_checksum = checksums.get(file.entity.path)
+                if not current_checksum:
+                    results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.DELETE))
+                elif current_checksum != file.entity.checksum:
+                    results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.UPDATE))
+                elif check_data_directory and not any(file.entity.path == f.entity.path for f in file.dataset.files):
+                    datadir = file.dataset.get_datadir()
+                    try:
+                        get_safe_relative_path(file.entity.path, datadir)
+                    except ValueError:
+                        continue
+
+                    results.append(DatasetUpdateMetadata(entity=file, action=DatasetUpdateAction.UPDATE))
+        finally:
+            communication.finalize_progress(progress_text)
         return results
 
     def get_exporter(
@@ -225,7 +300,7 @@ class FilesystemProvider(ProviderApi, AddProviderInterface, ExportProviderInterf
 
 
 class LocalExporter(ExporterApi):
-    """Local export manager."""
+    """Local filesystem export manager."""
 
     def __init__(self, dataset: "Dataset", tag: Optional["DatasetTag"], path: Optional[str]):
         super().__init__(dataset)
@@ -253,7 +328,7 @@ class LocalExporter(ExporterApi):
         if self._path:
             dst_root = project_context.path / self._path
         else:
-            dataset_dir = f"{self._dataset.name}-{self._tag.name}" if self._tag else self._dataset.name
+            dataset_dir = f"{self._dataset.slug}-{self._tag.name}" if self._tag else self._dataset.slug
             dst_root = project_context.path / project_context.datadir / dataset_dir
 
         if dst_root.exists() and not dst_root.is_dir():

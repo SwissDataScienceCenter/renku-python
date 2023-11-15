@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -199,7 +198,7 @@ def _migrate_absolute_paths(data):
 def _migrate_doi_identifier(data):
     """If the dataset _id is doi, make it a UUID."""
     from renku.core.util.doi import is_doi
-    from renku.core.util.uuid import is_uuid
+    from renku.core.util.util import is_uuid
 
     _id = data.get("_id", "")
     identifier = data.get("identifier", "")

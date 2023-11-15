@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,8 +38,9 @@ class OLOSProvider(ProviderApi, ExportProviderInterface):
 
     priority = ProviderPriority.HIGH
     name = "OLOS"
+    is_remote = True
 
-    def __init__(self, uri: Optional[str], is_doi: bool = False):
+    def __init__(self, uri: str, is_doi: bool = False):
         super().__init__(uri=uri)
 
         self.is_doi = is_doi
@@ -128,7 +128,7 @@ class OLOSExporter(ExporterApi):
             "description": self.dataset.description,
             "identifier": identifier,
             "keywords": self.dataset.keywords,
-            "title": self.dataset.title,
+            "title": self.dataset.name,
             "access": "CLOSED",
             "dataSensitivity": "CRIMSON",
             "year": datetime.datetime.today().year,

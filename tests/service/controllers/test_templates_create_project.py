@@ -1,6 +1,5 @@
-#
-# Copyright 2020-2023 -Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,7 +38,7 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
 
     # Check ctrl_mock.
     assert ctrl_mock.call_count == 1
-    assert response.json["result"]["slug"] == ctrl_mock.call_args[0][0].name
+    assert response.json["result"]["slug"] == ctrl_mock.call_args[0][0].parent.name
 
     # Ctrl state.
     expected_context = {
@@ -62,7 +61,7 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         "git_url",
         "project_name_stripped",
         "depth",
-        "ref",
+        "branch",
         "new_project_url_with_auth",
         "url_with_auth",
     }
@@ -83,7 +82,7 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         expected_metadata.add("__renku_version__")
     assert expected_metadata == set(received_metadata.keys())
     assert payload["url"] == received_metadata["__template_source__"]
-    assert payload["ref"] == received_metadata["__template_ref__"]
+    assert payload["branch"] == received_metadata["__template_ref__"]
     assert payload["identifier"] == received_metadata["__template_id__"]
     assert payload["project_namespace"] == received_metadata["__namespace__"]
     assert payload["project_repository"] == received_metadata["__repository__"]
@@ -159,3 +158,37 @@ def test_except_project_name_handler(project_name, ctrl_init, svc_client_templat
         TemplatesCreateProjectCtrl(cache, user_data, payload)
 
     assert "Project name contains only unsupported characters" in str(exc_info.value)
+
+
+def test_template_create_project_with_custom_cli_ctrl(
+    ctrl_init, svc_cache_dir, svc_client_templates_creation, mocker, monkeypatch
+):
+    """Test template create project controller."""
+    from renku.ui.service.cache.models.project import NO_BRANCH_FOLDER
+
+    monkeypatch.setenv("RENKU_PROJECT_DEFAULT_CLI_VERSION", "9.9.9rc9")
+    from renku.ui.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
+
+    cache, user_data = ctrl_init
+    _, _, payload, _ = svc_client_templates_creation
+
+    ctrl = TemplatesCreateProjectCtrl(cache, user_data, payload)
+    mocker.patch.object(ctrl, "new_project_push", return_value=None)
+    response = ctrl.to_response()
+
+    # Check response.
+    assert {"result"} == response.json.keys()
+    assert {"project_id", "url", "namespace", "name", "slug"} == response.json["result"].keys()
+
+    cache_dir, _ = svc_cache_dir
+
+    project_path = (
+        cache_dir
+        / user_data["user_id"]
+        / response.json["result"]["namespace"]
+        / response.json["result"]["slug"]
+        / NO_BRANCH_FOLDER
+    )
+
+    with open(project_path / "Dockerfile") as f:
+        assert "ARG RENKU_VERSION=9.9.9rc9" in f.read()

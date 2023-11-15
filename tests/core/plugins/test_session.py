@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +27,7 @@ from renku.core.session.docker import DockerSessionProvider
 from renku.core.session.renkulab import RenkulabSessionProvider
 from renku.core.session.session import session_list, session_start, session_stop, ssh_setup
 from renku.core.util.ssh import SystemSSHConfig
+from renku.domain_model.session import SessionStopStatus
 
 
 def fake_start(
@@ -46,8 +46,8 @@ def fake_start(
 
 def fake_stop(self, project_name, session_name, stop_all):
     if session_name == "missing_session":
-        return False
-    return True
+        return SessionStopStatus.FAILED
+    return SessionStopStatus.SUCCESSFUL
 
 
 def fake_find_image(self, image_name, config):
@@ -60,12 +60,16 @@ def fake_build_image(self, image_descriptor, image_name, config):
     return
 
 
-def fake_session_list(self, project_name, config):
+def fake_session_list(self, project_name):
     return ["0xdeadbeef"]
 
 
 def fake_pre_start_checks(self, **kwargs):
     pass
+
+
+def fake_force_build_image(self, **kwargs):
+    return kwargs.get("force_build", False)
 
 
 @pytest.mark.parametrize(
@@ -80,7 +84,8 @@ def fake_pre_start_checks(self, **kwargs):
     [
         ({}, "0xdeadbeef"),
         ({"image_name": "fixed_image"}, "0xdeadbeef"),
-        ({"image_name": "missing_image"}, ParameterError),
+        ({"image_name": "missing_image"}, click.Abort),
+        (({"image_name": "missing_image", "force_build": True}, "0xdeadbeef")),
     ],
 )
 def test_session_start(
@@ -101,6 +106,7 @@ def test_session_start(
         find_image=fake_find_image,
         build_image=fake_build_image,
         pre_start_checks=fake_pre_start_checks,
+        force_build_image=fake_force_build_image,
         **provider_patches,
     ):
         provider_implementation = next(
@@ -133,14 +139,7 @@ def test_session_start(
     ],
 )
 def test_session_stop(
-    run_shell,
-    project,
-    session_provider,
-    provider_name,
-    parameters,
-    provider_patches,
-    result,
-    with_injection,
+    run_shell, project, with_injection, session_provider, provider_name, parameters, provider_patches, result
 ):
     """Test stopping sessions."""
     with patch.multiple(session_provider, session_stop=fake_stop, **provider_patches):
@@ -181,9 +180,9 @@ def test_session_list(
 
             if not isinstance(result, list) and issubclass(result, Exception):
                 with pytest.raises(result):
-                    session_list(provider=provider, config_path=None)
+                    session_list(provider=provider)
             else:
-                output = session_list(provider=provider, config_path=None)
+                output = session_list(provider=provider)
                 assert output.sessions == result
 
 

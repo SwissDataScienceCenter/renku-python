@@ -3,16 +3,16 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: New release version
+        description: New release version (e.g. 2.3.1)
         type: string
         required: true
       ref:
-        description: Branch/ref to create a release from
+        description: Source branch/ref to create a release from
         type: string
         required: true
         default: develop
       target_branch:
-        description: Target branch to create a release to
+        description: Target branch to create a release/PR to
         type: string
         required: true
         default: master
@@ -21,7 +21,7 @@ jobs:
   create-release-pr:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.3.0
+      - uses: actions/checkout@v3.5.2
         with:
           fetch-depth: 0
           token: "${{ secrets.RENKUBOT_GITHUB_TOKEN }}"

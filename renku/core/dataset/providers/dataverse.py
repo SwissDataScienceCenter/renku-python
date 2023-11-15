@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,10 +37,12 @@ from renku.core.dataset.providers.dataverse_metadata_templates import (
     AUTHOR_METADATA_TEMPLATE,
     CONTACT_METADATA_TEMPLATE,
     DATASET_METADATA_TEMPLATE,
+    KEYWORDS_METADATA_TEMPLATE,
 )
 from renku.core.dataset.providers.doi import DOIProvider
 from renku.core.dataset.providers.repository import RepositoryImporter, make_request
 from renku.core.util import communication
+from renku.core.util.datetime8601 import fix_datetime
 from renku.core.util.doi import extract_doi, get_doi_url, is_doi
 from renku.core.util.urls import remove_credentials
 from renku.domain_model.project_context import project_context
@@ -81,8 +82,9 @@ class DataverseProvider(ProviderApi, ExportProviderInterface, ImportProviderInte
 
     priority = ProviderPriority.HIGH
     name = "Dataverse"
+    is_remote = True
 
-    def __init__(self, uri: Optional[str], is_doi: bool = False):
+    def __init__(self, uri: str, is_doi: bool = False):
         super().__init__(uri=uri)
 
         self.is_doi = is_doi
@@ -222,11 +224,11 @@ class DataverseImporter(RepositoryImporter):
 
     def fetch_provider_dataset(self) -> "ProviderDataset":
         """Deserialize a ``Dataset``."""
-        from marshmallow import pre_load
+        from marshmallow import post_load, pre_load
 
         from renku.command.schema.agent import PersonSchema
         from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile, ProviderDatasetSchema
-        from renku.domain_model.dataset import Url, generate_default_name
+        from renku.domain_model.dataset import Url, generate_default_slug
 
         class DataverseDatasetSchema(ProviderDatasetSchema):
             """Schema for Dataverse datasets."""
@@ -253,10 +255,20 @@ class DataverseImporter(RepositoryImporter):
 
                 return data
 
+            @post_load
+            def fix_timezone(self, obj, **kwargs):
+                """Add timezone to datetime object."""
+                if obj.get("date_modified"):
+                    obj["date_modified"] = fix_datetime(obj["date_modified"])
+                if obj.get("date_published"):
+                    obj["date_published"] = fix_datetime(obj["date_published"])
+
+                return obj
+
         files = self.get_files()
         dataset = ProviderDataset.from_jsonld(data=self._json, schema_class=DataverseDatasetSchema)
         dataset.version = self.version
-        dataset.name = generate_default_name(title=dataset.title or "", version=dataset.version)
+        dataset.slug = generate_default_slug(name=dataset.name or "", version=dataset.version)
         dataset.same_as = (
             Url(url_str=get_doi_url(dataset.identifier))
             if is_doi(dataset.identifier)
@@ -301,6 +313,7 @@ class DataverseFileSerializer:
         name=None,
         parent_url=None,
         type=None,
+        encoding_format=None,
     ):
         self.content_size = content_size
         self.content_url = content_url
@@ -311,6 +324,7 @@ class DataverseFileSerializer:
         self.name = name
         self.parent_url = parent_url
         self.type = type
+        self.encoding_format = encoding_format
 
     @property
     def remote_url(self):
@@ -374,13 +388,15 @@ class DataverseExporter(ExporterApi):
     def _get_dataset_metadata(self):
         authors, contacts = self._get_creators()
         subject = self._get_subject()
+        keywords = self._get_keywords()
         metadata_template = Template(DATASET_METADATA_TEMPLATE)
         metadata = metadata_template.substitute(
-            name=_escape_json_string(self.dataset.title),
+            name=_escape_json_string(self.dataset.name),
             authors=json.dumps(authors),
             contacts=json.dumps(contacts),
             description=_escape_json_string(self.dataset.description),
             subject=subject,
+            keywords=json.dumps(keywords),
         )
         return json.loads(metadata)
 
@@ -414,6 +430,16 @@ class DataverseExporter(ExporterApi):
             contacts.append(json.loads(contact))
 
         return authors, contacts
+
+    def _get_keywords(self):
+        keywords = []
+
+        for keyword in self.dataset.keywords:
+            keyword_template = Template(KEYWORDS_METADATA_TEMPLATE)
+            keyword_str = keyword_template.substitute(keyword=_escape_json_string(keyword))
+            keywords.append(json.loads(keyword_str))
+
+        return keywords
 
 
 class _DataverseDeposition:

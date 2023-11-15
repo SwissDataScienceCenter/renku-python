@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,11 +28,9 @@ logging.config.dictConfig(config)
 
 service_log = logging.getLogger("renku.ui.service")
 worker_log = logging.getLogger("renku.worker")
-scheduler_log = logging.getLogger("renku.scheduler")
 
 __all__ = [
     "service_log",
     "worker_log",
-    "scheduler_log",
     "DEPLOYMENT_LOG_LEVEL",
 ]

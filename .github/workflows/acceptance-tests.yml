@@ -26,12 +26,13 @@ jobs:
       renku-graph: ${{ steps.deploy-comment.outputs.renku-graph}}
       renku-notebooks: ${{ steps.deploy-comment.outputs.renku-notebooks}}
       renku-ui: ${{ steps.deploy-comment.outputs.renku-ui}}
+      renku-data-services: ${{ steps.deploy-comment.outputs.renku-data-services}}
       test-enabled: ${{ steps.deploy-comment.outputs.test-enabled}}
       extra-values: ${{ steps.deploy-comment.outputs.extra-values}}
       persist: ${{ steps.deploy-comment.outputs.persist}}
     steps:
       - id: deploy-comment
-        uses: SwissDataScienceCenter/renku-actions/check-pr-description@v1.4.2
+        uses: SwissDataScienceCenter/renku-actions/check-pr-description@v1.7.0
         with:
           string: /deploy
           pr_ref: ${{ github.event.number }}
@@ -43,7 +44,7 @@ jobs:
       name: renku-ci-rp-${{ github.event.number }}
     steps:
       - name: deploy-pr
-        uses: SwissDataScienceCenter/renku-actions/deploy-renku@v1.4.1
+        uses: SwissDataScienceCenter/renku-actions/deploy-renku@v1.7.0
         env:
           DOCKER_PASSWORD: ${{ secrets.RENKU_DOCKER_PASSWORD }}
           DOCKER_USERNAME: ${{ secrets.RENKU_DOCKER_USERNAME }}
@@ -52,7 +53,7 @@ jobs:
           RANCHER_PROJECT_ID: ${{ secrets.CI_RANCHER_PROJECT }}
           RENKU_RELEASE: renku-ci-rp-${{ github.event.number }}
           RENKU_VALUES_FILE: "${{ github.workspace }}/values.yaml"
-          RENKU_VALUES: ${{ secrets.CI_RENKU_VALUES }}
+          RENKU_VALUES: ${{ secrets.COMBINED_CHARTS_CI_RENKU_VALUES }}
           RENKUBOT_KUBECONFIG: ${{ secrets.RENKUBOT_DEV_KUBECONFIG }}
           RENKUBOT_RANCHER_BEARER_TOKEN: ${{ secrets.RENKUBOT_RANCHER_BEARER_TOKEN }}
           RANCHER_DEV_API_ENDPOINT: ${{ secrets.RANCHER_DEV_API_ENDPOINT }}
@@ -66,6 +67,7 @@ jobs:
           renku_graph: "${{ needs.check-deploy.outputs.renku-graph }}"
           renku_notebooks: "${{ needs.check-deploy.outputs.renku-notebooks }}"
           renku_ui: "${{ needs.check-deploy.outputs.renku-ui }}"
+          renku_data_services: "${{ needs.check-deploy.outputs.renku-data-services }}"
           extra_values: "${{ needs.check-deploy.outputs.extra-values }}"
       - name: Check existing renkubot comment
         uses: peter-evans/find-comment@v2
@@ -76,7 +78,7 @@ jobs:
           body-includes: "You can access the deployment of this PR at"
       - name: Create comment pre deploy
         if: steps.findcomment.outputs.comment-id == 0
-        uses: peter-evans/create-or-update-comment@v2
+        uses: peter-evans/create-or-update-comment@v3
         with:
           token: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
@@ -88,7 +90,7 @@ jobs:
     if: ${{ github.event.action != 'closed' && needs.check-deploy.outputs.pr-contains-string == 'true' && needs.check-deploy.outputs.test-enabled == 'true' }}
     needs: [check-deploy, deploy-pr]
     steps:
-      - uses: SwissDataScienceCenter/renku-actions/test-renku@v1.4.1
+      - uses: SwissDataScienceCenter/renku-actions/test-renku@v1.7.0
         with:
           kubeconfig: ${{ secrets.RENKUBOT_DEV_KUBECONFIG }}
           renku-release: renku-ci-rp-${{ github.event.number }}
@@ -103,7 +105,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: renku teardown
-        uses: SwissDataScienceCenter/renku-actions/cleanup-renku-ci-deployments@v1.4.1
+        uses: SwissDataScienceCenter/renku-actions/cleanup-renku-ci-deployments@v1.7.0
         env:
           HELM_RELEASE_REGEX: "^renku-ci-rp-${{ github.event.number }}$"
           GITLAB_TOKEN: ${{ secrets.DEV_GITLAB_TOKEN }}

@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,10 +22,12 @@ import uuid
 import sentry_sdk
 from flask import Flask, Response, jsonify, request, url_for
 from jwt import InvalidTokenError
+from prometheus_flask_exporter.multiprocess import GunicornPrometheusMetrics
 from sentry_sdk.integrations.flask import FlaskIntegration
 from sentry_sdk.integrations.redis import RedisIntegration
 from sentry_sdk.integrations.rq import RqIntegration
 
+from renku.core.util.util import is_test_session_running
 from renku.ui.service.cache import cache
 from renku.ui.service.config import CACHE_DIR, MAX_CONTENT_LENGTH, SENTRY_ENABLED, SENTRY_SAMPLERATE, SERVICE_PREFIX
 from renku.ui.service.errors import (
@@ -50,6 +51,7 @@ from renku.ui.service.views.jobs import jobs_blueprint
 from renku.ui.service.views.project import project_blueprint
 from renku.ui.service.views.templates import templates_blueprint
 from renku.ui.service.views.version import version_blueprint
+from renku.ui.service.views.versions_list import versions_list_blueprint
 from renku.ui.service.views.workflow_plans import workflow_plans_blueprint
 
 logging.basicConfig(level=os.getenv("SERVICE_LOG_LEVEL", "WARNING"))
@@ -73,6 +75,9 @@ def create_app(custom_exceptions=True):
     app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 
     app.config["cache"] = cache
+
+    if not is_test_session_running():
+        GunicornPrometheusMetrics(app)
 
     build_routes(app)
 
@@ -154,6 +159,7 @@ def build_routes(app):
     app.register_blueprint(templates_blueprint)
     app.register_blueprint(version_blueprint)
     app.register_blueprint(apispec_blueprint)
+    app.register_blueprint(versions_list_blueprint)
 
 
 app = create_app()

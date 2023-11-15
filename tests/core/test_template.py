@@ -1,6 +1,5 @@
-#
-# Copyright 2019-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -182,20 +181,36 @@ def test_get_file_actions_for_update(project_with_template, rendered_template_wi
 
     identical_file = ".dummy"
     assert FileAction.IGNORE_IDENTICAL == actions[identical_file]
-    remotely_modified = "Dockerfile"
+    remotely_modified = ".gitignore"
     assert FileAction.OVERWRITE == actions[remotely_modified]
+    dockerfile = "Dockerfile"
+    assert FileAction.UPDATE_DOCKERFILE == actions[dockerfile]
+
+
+def test_template_set_with_locally_modified_dockerfile(
+    project_with_template, rendered_template_with_update, with_injection
+):
+    """Test setting template with a locally modified Dockerfile will overwrite the Dockerfile."""
+    (project_context.path / "Dockerfile").write_text("Local modification")
+
+    with with_injection():
+        actions = get_file_actions(
+            rendered_template=rendered_template_with_update, template_action=TemplateAction.SET, interactive=False
+        )
+
+    assert FileAction.OVERWRITE == actions["Dockerfile"]
 
 
 def test_update_with_locally_modified_file(project_with_template, rendered_template_with_update, with_injection):
     """Test a locally modified file that is remotely updated won't change."""
-    (project_context.path / "Dockerfile").write_text("Local modification")
+    (project_context.path / "requirements.txt").write_text("Local modification")
 
     with with_injection():
         actions = get_file_actions(
             rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
         )
 
-    assert FileAction.KEEP == actions["Dockerfile"]
+    assert FileAction.KEEP == actions["requirements.txt"]
 
 
 def test_update_with_locally_deleted_file(project_with_template, rendered_template_with_update, with_injection):
@@ -208,6 +223,31 @@ def test_update_with_locally_deleted_file(project_with_template, rendered_templa
         )
 
     assert FileAction.DELETED == actions["requirements.txt"]
+
+
+def test_update_with_unsafe_modified_dockerfile(project_with_template, rendered_template_with_update, with_injection):
+    """Test a locally modified Dockerfile that touches the Renku-specific section will raise an exception."""
+    (project_context.path / "Dockerfile").write_text("Local modification")
+
+    with pytest.raises(
+        errors.TemplateUpdateError, match="Can't update template as Dockerfile was locally changed."
+    ), with_injection():
+        get_file_actions(
+            rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
+        )
+
+
+def test_update_with_safe_modified_dockerfile(project_with_template, rendered_template_with_update, with_injection):
+    """Test a locally modified Dockerfile that doesn't touch the Renku-specific section updates the file."""
+    dockerfile = project_context.path / "Dockerfile"
+    dockerfile.write_text(f"{dockerfile.read_text()}\nLocal modification")
+
+    with with_injection():
+        actions = get_file_actions(
+            rendered_template=rendered_template_with_update, template_action=TemplateAction.UPDATE, interactive=False
+        )
+
+    assert FileAction.UPDATE_DOCKERFILE == actions["Dockerfile"]
 
 
 @pytest.mark.parametrize("delete", [False, True])

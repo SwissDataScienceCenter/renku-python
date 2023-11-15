@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,11 +25,12 @@ class IGitAPIProvider(ABC):
 
     def download_files_from_api(
         self,
-        paths: List[Union[Path, str]],
+        files: List[Union[Path, str]],
+        folders: List[Union[Path, str]],
         target_folder: Union[Path, str],
         remote: str,
         token: str,
-        ref: Optional[str] = None,
+        branch: Optional[str] = None,
     ):
         """Download files through a remote Git API."""
         raise NotImplementedError()

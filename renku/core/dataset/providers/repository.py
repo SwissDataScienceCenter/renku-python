@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,7 +44,7 @@ class RepositoryImporter(ImporterApi, abc.ABC):
 
         if self.provider_dataset.version:
             add_dataset_tag(
-                dataset_name=name,
+                dataset_slug=name,
                 tag=re.sub("[^a-zA-Z0-9.-_]", "_", self.provider_dataset.version),
                 description=f"Tag {self.provider_dataset.version} created by renku import",
             )

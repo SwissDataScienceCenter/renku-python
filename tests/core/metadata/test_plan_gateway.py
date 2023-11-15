@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,7 +15,7 @@
 # limitations under the License.
 """Test plan database gateways."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from renku.domain_model.workflow.composite_plan import CompositePlan
 from renku.domain_model.workflow.plan import Plan
@@ -51,8 +50,12 @@ def test_plan_gateway_newest_plans(project_with_injection):
     """Test getting newest plans."""
     plan = Plan(id=Plan.generate_id(), name="plan", command="")
     plan2 = Plan(id=Plan.generate_id(), name="plan", command="")
-    invalidated_plan = Plan(id=Plan.generate_id(), name="invalidated_plan", command="", date_removed=datetime.utcnow())
-    invalidated_plan2 = Plan(id=Plan.generate_id(), name="invalidated_plan", command="", date_removed=datetime.utcnow())
+    invalidated_plan = Plan(
+        id=Plan.generate_id(), name="invalidated_plan", command="", date_removed=datetime.now(timezone.utc)
+    )
+    invalidated_plan2 = Plan(
+        id=Plan.generate_id(), name="invalidated_plan", command="", date_removed=datetime.now(timezone.utc)
+    )
 
     plan_gateway = PlanGateway()
 

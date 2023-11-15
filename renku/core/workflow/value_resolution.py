@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,15 +15,51 @@
 # limitations under the License.
 """Resolution of ``Workflow`` execution values precedence."""
 
+import datetime
 from abc import ABC, abstractmethod
 from itertools import chain
-from typing import Any, Dict, Optional, Set
+from string import Formatter
+from typing import Any, Dict, Iterable, Mapping, Optional, Set, Tuple, Union
 
 from renku.core import errors
-from renku.core.util.template_vars import TemplateVariableFormatter
 from renku.domain_model.workflow.composite_plan import CompositePlan
-from renku.domain_model.workflow.parameter import ParameterMapping
+from renku.domain_model.workflow.parameter import CommandParameterBase, ParameterMapping
 from renku.domain_model.workflow.plan import AbstractPlan, Plan
+
+
+class TemplateVariableFormatter(Formatter):
+    """Template variable formatter for `CommandParameterBase`."""
+
+    RESERVED_KEYS = ["iter_index"]
+
+    def __init__(self):
+        super().__init__()
+
+    def apply(self, param: str, parameters: Optional[Mapping[str, Any]] = None) -> str:
+        """Renders the parameter template into its final value."""
+        if parameters is None:
+            parameters = {}
+
+        try:
+            return super().vformat(param, args=[datetime.datetime.now()], kwargs=parameters)
+        except KeyError as e:
+            raise errors.ParameterError(f"Could not resolve the variable {str(e)}")
+
+    def get_value(self, key, args, kwargs):
+        """Ignore some special keys when formatting the variable."""
+        if key in self.RESERVED_KEYS:
+            return key
+        return super().get_value(key, args, kwargs)
+
+    @staticmethod
+    def to_map(parameters: Iterable[Union[CommandParameterBase, Tuple[str, str]]]) -> Mapping[str, str]:
+        """Converts a list of `CommandParameterBase` into parameter name-value dictionary."""
+        return dict(
+            map(
+                lambda x: (x.name, x.actual_value) if isinstance(x, CommandParameterBase) else (x[1], str(x[0])),
+                parameters,
+            )
+        )
 
 
 class ValueResolver(ABC):

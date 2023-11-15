@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +18,7 @@
 import os
 import sys
 from collections import defaultdict
+from io import UnsupportedOperation
 from pathlib import Path
 from subprocess import call
 from typing import Dict, List, NamedTuple, Optional, Set, Union, cast
@@ -166,18 +166,19 @@ def get_valid_parameter_name(name: str) -> str:
 @inject.autoparams("activity_gateway", "plan_gateway")
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
 def run_command_line(
-    name,
-    description,
-    keyword,
-    explicit_inputs,
-    explicit_outputs,
-    explicit_parameters,
-    no_output,
-    no_input_detection,
-    no_output_detection,
-    success_codes,
-    command_line,
-    creators,
+    name: Optional[str],
+    description: Optional[str],
+    keyword: Optional[List[str]],
+    explicit_inputs: List[str],
+    explicit_outputs: List[str],
+    explicit_parameters: List[str],
+    no_output: bool,
+    no_input_detection: bool,
+    no_output_detection: bool,
+    no_parameter_detection: bool,
+    success_codes: List[int],
+    command_line: List[str],
+    creators: Optional[List[Person]],
     activity_gateway: IActivityGateway,
     plan_gateway: IPlanGateway,
 ) -> PlanViewModel:
@@ -261,19 +262,20 @@ def run_command_line(
 
             return result
 
-        explicit_inputs = parse_explicit_definition(explicit_inputs, "input")
-        explicit_outputs = parse_explicit_definition(explicit_outputs, "output")
-        explicit_parameters = parse_explicit_definition(explicit_parameters, "param")
+        explicit_inputs_parsed = parse_explicit_definition(explicit_inputs, "input")
+        explicit_outputs_parsed = parse_explicit_definition(explicit_outputs, "output")
+        explicit_parameters_parsed = parse_explicit_definition(explicit_parameters, "param")
 
         factory = PlanFactory(
             command_line=command_line,
-            explicit_inputs=explicit_inputs,
-            explicit_outputs=explicit_outputs,
-            explicit_parameters=explicit_parameters,
+            explicit_inputs=explicit_inputs_parsed,
+            explicit_outputs=explicit_outputs_parsed,
+            explicit_parameters=explicit_parameters_parsed,
             directory=os.getcwd(),
             working_dir=working_dir,
             no_input_detection=no_input_detection,
             no_output_detection=no_output_detection,
+            no_parameter_detection=no_parameter_detection,
             success_codes=success_codes,
             **{name: os.path.relpath(path, working_dir) for name, path in mapped_std.items()},
         )
@@ -290,6 +292,24 @@ def run_command_line(
                     sys.stdout = old_stdout
                 if stderr_redirected:
                     sys.stderr = old_stderr
+
+                if "stdout" not in mapped_std:
+                    try:
+                        sys.stdout.fileno()
+                    except UnsupportedOperation:
+                        # Pytest capsys creates a pseudo device that doesn't have fileno and would fail if passed
+                        pass
+                    else:
+                        mapped_std["stdout"] = sys.stdout
+
+                if "stderr" not in mapped_std:
+                    try:
+                        sys.stderr.fileno()
+                    except UnsupportedOperation:
+                        # Pytest capsys creates a pseudo device that doesn't have fileno and would fail if passed
+                        pass
+                    else:
+                        mapped_std["stderr"] = sys.stderr
 
             started_at_time = local_now()
 

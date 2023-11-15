@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Dataset jobs."""
+import os
 import urllib
 
 from urllib3.exceptions import HTTPError
@@ -87,7 +87,7 @@ def dataset_import(
 
 def _is_safe_to_pass_gitlab_token(project_git_url, dataset_uri):
     """Passing token is safe if project and dataset belong to the same deployment."""
-    project_host = GitURL.parse(project_git_url).hostname
+    project_host = os.environ.get("RENKU_DOMAIN") or GitURL.parse(project_git_url).hostname
     dataset_host = urllib.parse.urlparse(dataset_uri).netloc
 
     # NOTE: URLs changed from domain/gitlab to gitlab.domain when moving to cloud native gitlab
@@ -115,7 +115,7 @@ def dataset_add_remote_file(cache, user, user_job_id, project_id, create_dataset
 
             worker_log.debug(f"adding files {urls} to dataset {name}")
             command = add_to_dataset_command().with_commit_message(commit_message).build()
-            result = command.execute(dataset_name=name, urls=urls, create=create_dataset)
+            result = command.execute(dataset_slug=name, urls=urls, create=create_dataset)
             if result.error:
                 raise result.error
 

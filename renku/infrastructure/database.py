@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +26,7 @@ from types import BuiltinFunctionType, FunctionType
 from typing import Any, Dict, List, Optional, Union, cast
 from uuid import uuid4
 
+import deal
 import persistent
 import zstandard as zstd
 from BTrees.Length import Length
@@ -67,7 +67,7 @@ def _is_module_allowed(module_name: str, type_name: str):
         TypeError: If the type is now allowed in the database.
     """
 
-    if module_name not in ["BTrees", "builtins", "datetime", "persistent", "renku", "zc", "zope"]:
+    if module_name not in ["BTrees", "builtins", "datetime", "persistent", "renku", "zc", "zope", "deal"]:
         raise TypeError(f"Objects of type '{type_name}' are not allowed")
 
 
@@ -365,6 +365,7 @@ class Database:
         Returns:
             persistent.Persistent: The object.
         """
+        deal.disable(warn=False)
         data = self._storage.load(filename=path, absolute=absolute)
         if override_type is not None:
             if "@renku_data_type" not in data:
@@ -374,7 +375,7 @@ class Database:
         object = self._reader.deserialize(data)
         object._p_changed = 0
         object._p_serial = PERSISTED
-
+        deal.enable()
         return object
 
     def get_by_id(self, id: str) -> persistent.Persistent:
@@ -441,11 +442,13 @@ class Database:
         Args:
             object(persistent.Persistent): The object to set the state on.
         """
+        deal.disable(warn=False)
         data = self._storage.load(filename=self._get_filename_from_oid(object._p_oid))
         self._reader.set_ghost_state(object, data)
         object._p_serial = PERSISTED
         if isinstance(object, Persistent):
             object.freeze()
+        deal.enable()
 
     def commit(self):
         """Commit modified and new objects."""
@@ -579,8 +582,12 @@ class Cache:
 class Index(persistent.Persistent):
     """Database index."""
 
+    # NOTE: If this field isn't None, we use it as the index-attribute instead of ``_attribute``. This is used to avoid
+    # creating a migration when the index-attribute changes.
+    _v_main_attribute: Optional[str] = None
+
     def __init__(self, *, name: str, object_type, attribute: Optional[str], key_type=None):
-        """Create an index where keys are extracted using `attribute` from an object or a key.
+        """Create an index where keys are extracted using ``attribute`` from an object or a key.
 
         Args:
             name (str): Index's name.
@@ -633,6 +640,12 @@ class Index(persistent.Persistent):
         self._key_type = get_class(data.pop("key_type"))
         self._attribute = data.pop("attribute")
         self._entries = data.pop("entries")
+
+    def __iter__(self):
+        return self._entries.__iter__()
+
+    def __repr__(self) -> str:
+        return f"<Index {self.name} on {self._object_type.__name__}.{self._v_main_attribute or self._attribute}>"
 
     @property
     def name(self) -> str:
@@ -741,9 +754,11 @@ class Index(persistent.Persistent):
         else:
             assert key_object is None, f"Index '{self.name}' does not accept 'key_object'"
 
-        if self._attribute:
+        attribute = self._v_main_attribute or self._attribute
+
+        if attribute:
             key_object = key_object or object
-            correct_key = get_attribute(key_object, self._attribute)
+            correct_key = get_attribute(key_object, attribute)
             if key is not None:
                 if verify:
                     assert key == correct_key, f"Incorrect key for index '{self.name}': '{key}' != '{correct_key}'"
@@ -826,7 +841,10 @@ class Storage:
                 with self.zstd_decompressor.stream_reader(file) as zfile:
                     data = json.load(zfile)
             else:
-                data = json.load(file)
+                try:
+                    data = json.load(file)
+                except json.JSONDecodeError:
+                    raise errors.MetadataCorruptError(path)
         return data
 
 
@@ -863,87 +881,77 @@ class ObjectWriter:
 
         return data
 
-    def _serialize_helper(self, object):
+    def _serialize_helper(self, obj):
         # TODO: Raise an error if an unsupported object is being serialized
-        if object is None:
+        if obj is None:
             return None
-        elif isinstance(object, (int, float, str, bool)):
-            return object
-        elif isinstance(object, list):
-            return [self._serialize_helper(value) for value in object]
-        elif isinstance(object, set):
+        elif isinstance(obj, (int, float, str, bool)):
+            return obj
+        elif isinstance(obj, list):
+            return [self._serialize_helper(value) for value in obj]
+        elif isinstance(obj, set):
             return {
                 "@renku_data_type": SET_TYPE,
-                "@renku_data_value": [self._serialize_helper(value) for value in object],
+                "@renku_data_value": [self._serialize_helper(value) for value in obj],
             }
-        elif isinstance(object, frozenset):
+        elif isinstance(obj, frozenset):
             return {
                 "@renku_data_type": FROZEN_SET_TYPE,
-                "@renku_data_value": [self._serialize_helper(value) for value in object],
+                "@renku_data_value": [self._serialize_helper(value) for value in obj],
             }
-        elif isinstance(object, dict):
+        elif isinstance(obj, dict):
             result = dict()
-            items = sorted(object.items(), key=lambda x: x[0])
+            items = sorted(obj.items(), key=lambda x: x[0])
             for key, value in items:
                 result[key] = self._serialize_helper(value)
             return result
-        elif isinstance(object, Index):
+        elif isinstance(obj, Index):
             # NOTE: Index objects are not stored as references and are included in their parent object (i.e. root)
-            state = object.__getstate__()
+            state = obj.__getstate__()
             state = self._serialize_helper(state)
-            return {"@renku_data_type": get_type_name(object), "@renku_oid": object._p_oid, **state}
-        elif isinstance(object, (OOTreeSet, Length, OOSet)):
-            state = object.__getstate__()
+            return {"@renku_data_type": get_type_name(obj), "@renku_oid": obj._p_oid, **state}
+        elif isinstance(obj, (OOTreeSet, Length, OOSet)):
+            state = obj.__getstate__()
             state = self._serialize_helper(state)
-            return {"@renku_data_type": get_type_name(object), "@renku_data_value": state}
-        elif isinstance(object, persistent.Persistent):
-            if not object._p_oid:
-                object._p_oid = Database.generate_oid(object)
-            if object._p_state not in [GHOST, UPTODATE] or (object._p_state == UPTODATE and object._p_serial == NEW):
-                self._database.register(object)
-            return {"@renku_data_type": get_type_name(object), "@renku_oid": object._p_oid, "@renku_reference": True}
-        elif isinstance(object, datetime.datetime):
-            value = object.isoformat()
-        elif isinstance(object, tuple):
-            value = tuple(self._serialize_helper(value) for value in object)
-        elif isinstance(object, (InterfaceClass)):
+            return {"@renku_data_type": get_type_name(obj), "@renku_data_value": state}
+        elif isinstance(obj, persistent.Persistent):
+            if not obj._p_oid:
+                obj._p_oid = Database.generate_oid(obj)
+            if obj._p_state not in [GHOST, UPTODATE] or (obj._p_state == UPTODATE and obj._p_serial == NEW):
+                self._database.register(obj)
+            return {"@renku_data_type": get_type_name(obj), "@renku_oid": obj._p_oid, "@renku_reference": True}
+        elif isinstance(obj, datetime.datetime):
+            value = obj.isoformat()
+        elif isinstance(obj, tuple):
+            value = tuple(self._serialize_helper(value) for value in obj)
+        elif isinstance(obj, (InterfaceClass)):
             # NOTE: Zope interfaces are weird, they're a class with type InterfaceClass, but need to be deserialized
             # as the class (without instantiation)
-            return {"@renku_data_type": TYPE_TYPE, "@renku_data_value": f"{object.__module__}.{object.__name__}"}
-        elif isinstance(object, type):
+            return {"@renku_data_type": TYPE_TYPE, "@renku_data_value": f"{obj.__module__}.{obj.__name__}"}
+        elif isinstance(obj, type):
             # NOTE: We're storing a type, not an instance
-            return {"@renku_data_type": TYPE_TYPE, "@renku_data_value": get_type_name(object)}
-        elif isinstance(object, (FunctionType, BuiltinFunctionType)):
-            name = object.__name__
-            module = getattr(object, "__module__", None)
+            return {"@renku_data_type": TYPE_TYPE, "@renku_data_value": get_type_name(obj)}
+        elif isinstance(obj, (FunctionType, BuiltinFunctionType)):
+            name = obj.__name__
+            module = getattr(obj, "__module__", None)
             return {"@renku_data_type": FUNCTION_TYPE, "@renku_data_value": f"{module}.{name}"}
-        elif hasattr(object, "__getstate__"):
-            if id(object) in self._serialization_cache:
-                # NOTE: We already serialized this -> circular/repeat reference.
-                return {"@renku_data_type": REFERENCE_TYPE, "@renku_data_value": self._serialization_cache[id(object)]}
-
-            # NOTE: The reference used for circular reference is just the position in the serialization cache,
-            # as the order is deterministic. So the order in which objects are encoutered is their id for referencing.
-            self._serialization_cache[id(object)] = len(self._serialization_cache)
-
-            value = object.__getstate__().copy()
-            value = {k: v for k, v in value.items() if not k.startswith("_v_")}
-            value = self._serialize_helper(value)
-            assert not isinstance(value, dict) or "id" in value, f"Invalid object state: {value} for {object}"
         else:
-            if id(object) in self._serialization_cache:
+            if id(obj) in self._serialization_cache:
                 # NOTE: We already serialized this -> circular/repeat reference
-                return {"@renku_data_type": REFERENCE_TYPE, "@renku_data_value": self._serialization_cache[id(object)]}
+                return {"@renku_data_type": REFERENCE_TYPE, "@renku_data_value": self._serialization_cache[id(obj)]}
 
             # NOTE: The reference used for circular reference is just the position in the serialization cache,
             # as the order is deterministic So the order in which objects are encoutered is their id for referencing.
-            self._serialization_cache[id(object)] = len(self._serialization_cache)
-
-            value = object.__dict__.copy()
+            self._serialization_cache[id(obj)] = len(self._serialization_cache)
+            if hasattr(obj, "__getstate__"):
+                # NOTE: On Python 3.11+ this just returns __dict__ if __getstate__ isn't implemented.
+                value = obj.__getstate__().copy()
+            else:
+                value = obj.__dict__.copy()
             value = {k: v for k, v in value.items() if not k.startswith("_v_")}
             value = self._serialize_helper(value)
 
-        return {"@renku_data_type": get_type_name(object), "@renku_data_value": value}
+        return {"@renku_data_type": get_type_name(obj), "@renku_data_value": value}
 
 
 class ObjectReader:
@@ -1089,15 +1097,23 @@ class ObjectReader:
 
                 # NOTE: we deserialize in the same order as we serialized, so the two stacks here match
                 self._deserialization_cache.append(new_object)
+                cache_index = len(self._deserialization_cache) - 1
 
                 data = self._deserialize_helper(data)
                 assert isinstance(data, dict)
 
                 if "id" in data and data["id"] in self._normal_object_cache:
-                    return self._normal_object_cache[data["id"]]
+                    existing_object = self._normal_object_cache[data["id"]]
 
-                for name, value in data.items():
-                    object.__setattr__(new_object, name, value)
+                    # NOTE: replace uninitialized object in cache with actual object
+                    self._deserialization_cache[cache_index] = existing_object
+                    return existing_object
+
+                if hasattr(new_object, "__setstate__"):
+                    new_object.__setstate__(data)
+                else:
+                    for name, value in data.items():
+                        object.__setattr__(new_object, name, value)
 
                 if issubclass(cls, Immutable):
                     new_object = cls.make_instance(new_object)

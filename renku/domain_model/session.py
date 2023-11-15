@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +18,8 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
+from datetime import datetime
+from enum import Enum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
@@ -28,18 +29,46 @@ if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderParameter
 
 
+class SessionStopStatus(Enum):
+    """Status code returned when stopping/pausing sessions."""
+
+    NO_ACTIVE_SESSION = auto()
+    SUCCESSFUL = auto()
+    FAILED = auto()  # When all or some of (requested) sessions can't be stopped
+    NAME_NEEDED = auto()
+
+
 class Session:
     """Interactive session."""
 
-    def __init__(self, id: str, status: str, url: str, ssh_enabled: bool = False):
+    def __init__(
+        self,
+        id: str,
+        status: str,
+        url: str,
+        commit: str,
+        branch: str,
+        provider: str,
+        start_time: datetime,
+        ssh_enabled: bool = False,
+    ):
         self.id = id
         self.status = status
         self.url = url
+        self.start_time = start_time
+        self.commit = commit
+        self.branch = branch
+        self.provider = provider
         self.ssh_enabled = ssh_enabled
+
+    @property
+    def name(self) -> str:
+        """Return session name which is the same as its id."""
+        return self.id
 
 
 class ISessionProvider(metaclass=ABCMeta):
-    """Abstract class for a interactive session provider."""
+    """Abstract class for an interactive session provider."""
 
     priority: ProviderPriority = ProviderPriority.NORMAL
 
@@ -98,12 +127,11 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
+    def session_list(self, project_name: str) -> List[Session]:
         """Lists all the sessions currently running by the given session provider.
 
         Args:
             project_name(str): Renku project name.
-            config(Dict[str, Any], optional): Path to the session provider specific configuration YAML.
 
         Returns:
             a list of sessions.
@@ -139,27 +167,27 @@ class ISessionProvider(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> bool:
+    def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> SessionStopStatus:
         """Stops all or a given interactive session.
 
         Args:
             project_name(str): Project's name.
             session_name(str, optional): The unique id of the interactive session.
-            stop_all(bool): Specifies whether or not to stop all the running interactive sessions.
+            stop_all(bool): Specifies whether to stop all the running interactive sessions.
 
 
         Returns:
-            bool: True in case session(s) has been successfully stopped
+            SessionStopStatus: The status of running and stopped sessions
         """
         pass
 
     @abstractmethod
-    def session_open(self, project_name: str, session_name: str, **kwargs) -> bool:
+    def session_open(self, project_name: str, session_name: Optional[str], **kwargs) -> bool:
         """Open a given interactive session.
 
         Args:
             project_name(str): Renku project name.
-            session_name(str): The unique id of the interactive session.
+            session_name(Optional[str]): The unique id of the interactive session.
         """
         pass
 
@@ -180,6 +208,35 @@ class ISessionProvider(metaclass=ABCMeta):
 
         The expectation is that this method will abort the
         session start if the checks are not successful or will take corrective actions to
-        make sure that the session launches successfully. By default this method does not do any checks.
+        make sure that the session launches successfully. By default, this method does not do any checks.
         """
         return None
+
+    def force_build_image(self, **kwargs) -> bool:
+        """Whether we should force build the image directly or check for an existing image first."""
+        return False
+
+
+class IHibernatingSessionProvider(ISessionProvider):
+    """Abstract class for an interactive session provider that supports hibernation."""
+
+    @abstractmethod
+    def session_pause(self, project_name: str, session_name: Optional[str], **kwargs) -> SessionStopStatus:
+        """Pause all or a given interactive session.
+
+        Args:
+            project_name(str): Project's name.
+            session_name(str, optional): The unique id of the interactive session.
+
+        Returns:
+            SessionStopStatus: The status of running and paused sessions
+        """
+
+    @abstractmethod
+    def session_resume(self, project_name: str, session_name: Optional[str], **kwargs) -> bool:
+        """Resume a paused session.
+
+        Args:
+            project_name(str): Renku project name.
+            session_name(Optional[str]): The unique id of the interactive session.
+        """

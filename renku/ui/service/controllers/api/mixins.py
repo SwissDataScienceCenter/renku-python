@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,32 +16,33 @@
 """Renku service controller mixin."""
 import contextlib
 from abc import ABCMeta, abstractmethod
-from datetime import datetime
 from functools import wraps
 from pathlib import Path
+from typing import Optional, Union
 
 import portalocker
 
 from renku.core.constant import RENKU_HOME
-from renku.core.errors import GitCommandError, GitConfigurationError, LockError, RenkuException, UninitializedProject
+from renku.core.errors import LockError, RenkuException, UninitializedProject
 from renku.core.util.contexts import renku_project_context
 from renku.infrastructure.repository import Repository
 from renku.ui.service.cache.config import REDIS_NAMESPACE
 from renku.ui.service.cache.models.job import Job
 from renku.ui.service.cache.models.project import Project
 from renku.ui.service.cache.models.user import User
-from renku.ui.service.config import PROJECT_CLONE_DEPTH_DEFAULT, PROJECT_CLONE_NO_DEPTH
+from renku.ui.service.config import PROJECT_CLONE_DEPTH_DEFAULT
 from renku.ui.service.controllers.utils.remote_project import RemoteProject
 from renku.ui.service.errors import (
     IntermittentAuthenticationError,
-    IntermittentCacheError,
     IntermittentLockError,
     ProgramRenkuError,
     UserAnonymousError,
 )
+from renku.ui.service.gateways.repository_cache import LocalRepositoryCache
 from renku.ui.service.jobs.contexts import enqueue_retry
 from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 from renku.ui.service.serializers.common import DelayedResponseRPC
+from renku.ui.service.utils import normalize_git_url
 
 PROJECT_FETCH_TIME = 30
 
@@ -98,8 +98,8 @@ class RenkuOperationMixin(metaclass=ABCMeta):
             self.migrate_project = self.request_data.get("migrate_project", False)
 
         # NOTE: This is absolute project path and its set before invocation of `renku_op`,
-        # so its safe to use it in controller operations. Its type will always be `pathlib.Path`.
-        self.project_path = None
+        # so it's safe to use it in controller operations. Its type will always be `pathlib.Path`.
+        self._project_path = None
 
     @property
     @abstractmethod
@@ -107,12 +107,27 @@ class RenkuOperationMixin(metaclass=ABCMeta):
         """Operation context."""
         raise NotImplementedError
 
+    @property
+    def project_path(self) -> Optional[Path]:
+        """Absolute project's path."""
+        return self._project_path
+
+    @project_path.setter
+    def project_path(self, path: Optional[Union[str, Path]]):
+        """Set absolute project's path."""
+        if not path:
+            self._project_path = None
+            return
+
+        path = normalize_git_url(str(path))
+        self._project_path = Path(path)
+
     @abstractmethod
     def renku_op(self):
         """Implements operation for the controller."""
         raise NotImplementedError
 
-    def ensure_migrated(self, project_id):
+    def ensure_migrated(self, project: Project):
         """Ensure that project is migrated."""
         if not self.migrate_project:
             return
@@ -120,9 +135,10 @@ class RenkuOperationMixin(metaclass=ABCMeta):
         from renku.ui.service.controllers.cache_migrate_project import MigrateProjectCtrl
 
         migrate_context = {
-            "project_id": project_id,
+            "git_url": project.git_url,
             "skip_docker_update": True,
             "skip_template_update": True,
+            "branch": project.branch,
         }
         migration_response = MigrateProjectCtrl(
             self.cache, self.user_data, migrate_context, skip_lock=True
@@ -139,7 +155,7 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
         if self.context.get("is_delayed", False) and "user_id" in self.user_data:
             # NOTE: After pushing the controller to delayed execution,
-            # its important to remove the delayed mark,
+            # it's important to remove the delayed mark,
             # otherwise job will keep recursively enqueuing itself.
             self.context.pop("is_delayed")
 
@@ -150,136 +166,14 @@ class RenkuOperationMixin(metaclass=ABCMeta):
 
             return job
 
-        if "project_id" in self.context:
-            return self.local()
-
-        elif "git_url" in self.context and "user_id" not in self.user_data:
-            # NOTE: Anonymous session support.
-            return self.remote()
-
-        elif "git_url" in self.context and "user_id" in self.user_data:
-
-            try:
-                project = Project.get(
-                    (Project.user_id == self.user_data["user_id"]) & (Project.git_url == self.context["git_url"])
-                )
-            except ValueError:
-                from renku.ui.service.controllers.cache_project_clone import ProjectCloneCtrl
-
-                clone_context = {
-                    "git_url": self.request_data["git_url"],
-                }
-
-                if "ref" in self.request_data:
-                    clone_context["ref"] = self.request_data["ref"]
-
-                # NOTE: If we want to migrate project, then we need to do full clone.
-                # This operation can take very long time, and as such is expected
-                # only to be executed from delayed tasks.
-                if self.migrate_project:
-                    clone_context["depth"] = PROJECT_CLONE_NO_DEPTH
-                elif self.clone_depth:
-                    clone_context["depth"] = self.clone_depth
-
-                project = ProjectCloneCtrl(self.cache, self.user_data, clone_context).project_clone()
-
-                if not project.initialized:
-                    raise UninitializedProject(project.abs_path)
+        if "git_url" in self.context:
+            if "user_id" not in self.user_data:
+                # NOTE: Anonymous session support.
+                return self.remote()
             else:
-                ref = self.request_data.get("ref", None)
-
-                if ref:
-                    with Repository(project.abs_path) as repository:
-                        if ref != repository.active_branch.name:
-                            # NOTE: Command called for different branch than the one used in cache, change branch
-                            if len(repository.remotes) != 1:
-                                raise RenkuException("Couldn't find remote for project in cache.")
-                            origin = repository.remotes[0]
-                            remote_branch = f"{origin}/{ref}"
-
-                            with project.write_lock():
-                                # NOTE: Add new ref to remote branches
-                                repository.run_git_command("remote", "set-branches", "--add", origin, ref)
-                                if self.migrate_project or self.clone_depth == PROJECT_CLONE_NO_DEPTH:
-                                    repository.fetch(origin, ref)
-                                else:
-                                    repository.fetch(origin, ref, depth=self.clone_depth)
-
-                                # NOTE: Switch to new ref
-                                repository.run_git_command("checkout", "--track", "-f", "-b", ref, remote_branch)
-
-                                # NOTE: cleanup remote branches in case a remote was deleted (fetch fails otherwise)
-                                repository.run_git_command("remote", "prune", origin)
-
-                                for branch in repository.branches:
-                                    if branch.remote_branch and not branch.remote_branch.is_valid():
-                                        repository.branches.remove(branch, force=True)
-                                        # NOTE: Remove left-over refspec
-                                        try:
-                                            with repository.get_configuration(writable=True) as config:
-                                                config.remove_value(f"remote.{origin}.fetch", f"origin.{branch}$")
-                                        except GitConfigurationError:
-                                            pass
-                else:
-                    self.reset_local_repo(project)
-
-            self.context["project_id"] = project.project_id
-            return self.local()
-
+                return self.local()
         else:
             raise RenkuException("context does not contain `project_id` or `git_url`")
-
-    def reset_local_repo(self, project):
-        """Reset the local repo to be up to date with the remote."""
-
-        from renku.ui.service.controllers.cache_migrate_project import MigrateProjectCtrl
-
-        # NOTE: Only do a fetch every >30s to get eventual consistency but not slow things down too much,
-        # except for MigrateProject since that is likely to require to unshallow the repository
-        if project.fetch_age < PROJECT_FETCH_TIME and not isinstance(self, MigrateProjectCtrl):
-            return
-
-        lock = project.write_lock()
-
-        if self.skip_lock:
-            lock = contextlib.suppress()
-        try:
-            with lock:
-                if project.fetch_age < PROJECT_FETCH_TIME:
-                    # NOTE: return immediately in case of multiple writers waiting
-                    return
-
-                with Repository(project.abs_path) as repository:
-                    origin = None
-                    tracking_branch = repository.active_branch.remote_branch
-                    if tracking_branch:
-                        origin = tracking_branch.remote
-                    elif len(repository.remotes) == 1:
-                        origin = repository.remotes[0]
-
-                    if origin:
-                        unshallow = self.migrate_project or self.clone_depth == PROJECT_CLONE_NO_DEPTH
-                        if unshallow:
-                            try:
-                                # NOTE: It could happen that repository is already un-shallowed,
-                                # in this case we don't want to leak git exception, but still want to fetch.
-                                repository.fetch("origin", repository.active_branch, unshallow=True)
-                            except GitCommandError:
-                                repository.fetch("origin", repository.active_branch)
-
-                            repository.reset(f"{origin}/{repository.active_branch}", hard=True)
-                        else:
-                            try:
-                                # NOTE: it rarely happens that origin is not reachable. Try again if it fails.
-                                repository.fetch("origin", repository.active_branch)
-                                repository.reset(f"{origin}/{repository.active_branch}", hard=True)
-                            except GitCommandError as e:
-                                project.purge()
-                                raise IntermittentCacheError(e)
-                project.last_fetched_at = datetime.utcnow()
-                project.save()
-        except (portalocker.LockException, portalocker.AlreadyLocked, LockError) as e:
-            raise IntermittentLockError() from e
 
     @local_identity
     def local(self):
@@ -288,7 +182,16 @@ class RenkuOperationMixin(metaclass=ABCMeta):
             error = Exception("local execution is disabled")
             raise ProgramRenkuError(error)
 
-        project = self.cache.get_project(self.user, self.context["project_id"])
+        project = LocalRepositoryCache().get(
+            self.cache,
+            self.request_data["git_url"],
+            self.request_data.get("branch"),
+            self.user,
+            self.clone_depth is not None,
+            self.request_data.get("commit_sha"),
+        )
+
+        self.context["project_id"] = project.project_id
 
         if self.skip_lock:
             lock = contextlib.suppress()
@@ -298,17 +201,13 @@ class RenkuOperationMixin(metaclass=ABCMeta):
             lock = project.read_lock()
         try:
             with project.concurrency_lock():
-                self.reset_local_repo(project)
-
                 with lock:
                     # NOTE: Get up-to-date version of object
                     current_project = Project.load(project.project_id)
-                    if not current_project.initialized:
-                        raise UninitializedProject(project.abs_path)
                     if self.migrate_project:
-                        self.ensure_migrated(project.project_id)
+                        self.ensure_migrated(current_project)
 
-                    self.project_path = project.abs_path
+                    self.project_path = current_project.abs_path
 
                     with renku_project_context(self.project_path):
                         return self.renku_op()

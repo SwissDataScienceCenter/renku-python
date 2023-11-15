@@ -1,5 +1,5 @@
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@ from marshmallow import EXCLUDE
 
 from renku.command.schema.dataset import DatasetSchema
 from renku.domain_model.dataset import Dataset
+from renku.infrastructure.immutable import DynamicProxy
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.api import StorageProviderInterface
@@ -44,6 +45,13 @@ class DatasetAddAction(Enum):
     REMOTE_STORAGE = auto()  # For URIs that are from a remote storage provider
 
 
+class DatasetUpdateAction(Enum):
+    """Types of action when updating a file in a dataset."""
+
+    UPDATE = auto()
+    DELETE = auto()
+
+
 @dataclasses.dataclass
 class DatasetAddMetadata:
     """Metadata for a new file that will be added to a dataset."""
@@ -55,6 +63,7 @@ class DatasetAddMetadata:
     destination: Path
     provider: Optional["StorageProviderInterface"] = None
     based_on: Optional["RemoteEntity"] = None
+    size: Optional[int] = None
 
     @property
     def has_action(self) -> bool:
@@ -67,13 +76,21 @@ class DatasetAddMetadata:
         return self.action == DatasetAddAction.METADATA_ONLY
 
     @property
-    def remote_storage(self) -> bool:
-        """Returns if file is from a remote storage."""
+    def from_cloud_storage(self) -> bool:
+        """Returns if file is from a cloud storage."""
         return self.action == DatasetAddAction.REMOTE_STORAGE
 
     def get_absolute_commit_path(self, project_path: Path) -> str:
         """Return path of the file in the repository."""
         return os.path.join(project_path, self.entity_path)
+
+
+@dataclasses.dataclass
+class DatasetUpdateMetadata:
+    """Metadata for updating dataset files."""
+
+    entity: DynamicProxy
+    action: DatasetUpdateAction
 
 
 class ProviderParameter(NamedTuple):
@@ -86,6 +103,7 @@ class ProviderParameter(NamedTuple):
     is_flag: bool = False
     multiple: bool = False
     type: Optional[Type] = None
+    metavar: Optional[str] = None
 
 
 class ProviderDataset(Dataset):
@@ -125,11 +143,12 @@ class ProviderDataset(Dataset):
             initial_identifier=dataset.initial_identifier,
             keywords=dataset.keywords,
             license=dataset.license,
-            name=dataset.name,
+            slug=dataset.slug,
             project_id=dataset.project_id,
             same_as=dataset.same_as,
-            title=dataset.title,
+            name=dataset.name,
             version=dataset.version,
+            storage=dataset.storage,
         )
 
     @property

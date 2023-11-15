@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -272,12 +271,12 @@ class InvalidSuccessCode(RenkuException):
 class DatasetNotFound(DatasetException):
     """Raise when dataset is not found."""
 
-    def __init__(self, *, name=None, message=None):
+    def __init__(self, *, slug=None, message=None):
         """Build a custom message."""
         if message:
             msg = message
-        elif name:
-            msg = f"Dataset '{name}' is not found."
+        elif slug:
+            msg = f"Dataset '{slug}' is not found."
         else:
             msg = "Dataset is not found."
         super().__init__(msg)
@@ -513,7 +512,11 @@ class RenkuSaveError(RenkuException):
     """Raised when renku save doesn't work."""
 
 
-class DatasetImageError(DatasetException):
+class ImageError(RenkuException):
+    """Raised when an image for a project/dataset is not accessible."""
+
+
+class DatasetImageError(DatasetException, ImageError):
     """Raised when a local dataset image is not accessible."""
 
 
@@ -709,7 +712,19 @@ class NotebookSessionImageNotExistError(RenkuException):
 
 
 class MetadataMergeError(RenkuException):
-    """Raise when merging of metadata failed."""
+    """Raised when merging of metadata failed."""
+
+
+class MetadataCorruptError(RenkuException):
+    """Raised when metadata is corrupt and couldn't be loaded."""
+
+    def __init__(self, path: Union[str, Path]) -> None:
+        message = f"Metadata file '{path}' couldn't be loaded because it is corrupted."
+        with open(path) as f:
+            content = f.read()
+        if all(pattern in content for pattern in ["<<<<<<<", "=======", ">>>>>>>"]):
+            message += "\nThis is likely due to an unresolved git merge conflict in the file."
+        super().__init__(message)
 
 
 class MinimumVersionError(RenkuException):

@@ -1,6 +1,5 @@
-#
-# Copyright 2020-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -58,11 +57,15 @@ def doctor(ctx, fix, force):
     command = doctor_check_command(with_fix=fix)
     if fix:
         command = command.with_communicator(communicator)
-    is_ok, problems = command.build().execute(fix=fix, force=force).output
+    is_ok, fixes_available, problems = command.build().execute(fix=fix, force=force).output
 
     if is_ok:
         click.secho("Everything seems to be ok.", fg=color.GREEN)
         ctx.exit(0)
 
     click.echo(problems)
+
+    if fixes_available:
+        click.echo("Run with '--fix' flag to try and fix these issues.")
+
     ctx.exit(1)

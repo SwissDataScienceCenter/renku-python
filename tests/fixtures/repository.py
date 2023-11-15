@@ -1,6 +1,5 @@
-#
-# Copyright 2021 Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +20,7 @@ import os
 import secrets
 import shutil
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Generator
 
@@ -79,16 +79,17 @@ def fake_home(tmp_path, monkeypatch) -> Generator[Path, None, None]:
     home.mkdir(parents=True, exist_ok=True)
     home_str = home.as_posix()
 
+    # NOTE: fake user home directory
     with modified_environ(HOME=home_str, XDG_CONFIG_HOME=home_str), monkeypatch.context() as context:
-        context.setattr(ProjectContext, "global_config_dir", os.path.join(home, ".renku"))
-
-        # NOTE: fake user home directory
         with Repository.get_global_configuration(writable=True) as global_config:
             global_config.set_value("user", "name", "Renku Bot")
             global_config.set_value("user", "email", "renku@datascience.ch")
             global_config.set_value("pull", "rebase", "false")
 
+        context.setattr(ProjectContext, "global_config_dir", os.path.join(home, ".renku"))
+
         set_value(section="renku", key="show_lfs_message", value="false", global_only=True)
+        set_value(section="renku", key="check_datadir_files", value="false", global_only=True)
 
         yield home
 
@@ -111,3 +112,14 @@ def project(fake_home) -> Generator[RenkuProject, None, None]:
             project_context.repository = repository
 
             yield RenkuProject(path=repository.path, repository=repository)
+
+
+@pytest.fixture
+def project_with_creation_date(project, monkeypatch, with_injection) -> Generator[RenkuProject, None, None]:
+    """A Renku test project."""
+    with with_injection():
+        project_context.project.date_created = datetime(2022, 5, 20, 0, 40, 0, tzinfo=timezone.utc)
+        project_context.database.commit()
+        project_context.repository.add(all=True)
+        project_context.repository.commit("fake creation date")
+    yield project

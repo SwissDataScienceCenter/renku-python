@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +19,7 @@ import uuid
 from urllib.parse import urlparse
 
 from marshmallow import Schema, ValidationError, fields, post_load, pre_load, validates_schema
+from marshmallow_oneofschema import OneOfSchema
 from werkzeug.utils import secure_filename
 
 from renku.core import errors
@@ -29,8 +29,8 @@ from renku.ui.service.config import PROJECT_CLONE_DEPTH_DEFAULT
 from renku.ui.service.serializers.common import (
     ArchiveSchema,
     AsyncSchema,
+    ErrorResponse,
     FileDetailsSchema,
-    LocalRepositorySchema,
     RemoteRepositorySchema,
     RenkuSyncSchema,
 )
@@ -131,7 +131,6 @@ class RepositoryCloneRequest(RemoteRepositorySchema):
     """Request schema for repository clone."""
 
     depth = fields.Integer(metadata={"description": "Git fetch depth"}, load_default=PROJECT_CLONE_DEPTH_DEFAULT)
-    ref = fields.String(metadata={"description": "Repository reference (branch, commit or tag)"}, load_default=None)
 
 
 class ProjectCloneContext(RepositoryCloneRequest):
@@ -232,25 +231,13 @@ class ProjectListResponseRPC(JsonRPCResponse):
     result = fields.Nested(ProjectListResponse)
 
 
-class ProjectMigrateRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySchema):
+class ProjectMigrateRequest(AsyncSchema, RemoteRepositorySchema):
     """Request schema for project migrate."""
 
     force_template_update = fields.Boolean(dump_default=False)
     skip_template_update = fields.Boolean(dump_default=False)
     skip_docker_update = fields.Boolean(dump_default=False)
     skip_migrations = fields.Boolean(dump_default=False)
-
-    @pre_load()
-    def handle_ref(self, data, **kwargs):
-        """Handle ref and branch."""
-
-        # Backward compatibility: branch and ref were both used. Let's keep branch as the exposed field
-        # even if interally it gets converted to "ref" later.
-        if data.get("ref"):
-            data["branch"] = data["ref"]
-            del data["ref"]
-
-        return data
 
 
 class ProjectMigrateResponse(RenkuSyncSchema):
@@ -270,11 +257,11 @@ class ProjectMigrateResponseRPC(JsonRPCResponse):
     result = fields.Nested(ProjectMigrateResponse)
 
 
-class ProjectMigrationCheckRequest(LocalRepositorySchema, RemoteRepositorySchema):
+class ProjectMigrationCheckRequest(RemoteRepositorySchema):
     """Request schema for project migration check."""
 
 
-class ProjectCompatibilityResponse(Schema):
+class ProjectCompatibilityResponseDetail(Schema):
     """Response schema outlining service compatibility for migrations check."""
 
     project_metadata_version = fields.String(
@@ -288,7 +275,22 @@ class ProjectCompatibilityResponse(Schema):
     )
 
 
-class DockerfileStatusResponse(Schema):
+class ProjectCompatibilityResponse(OneOfSchema):
+    """Combined schema of DockerfileStatusResponseDetail or Exception."""
+
+    type_schemas = {"detail": ProjectCompatibilityResponseDetail, "error": ErrorResponse}
+
+    def get_obj_type(self, obj):
+        """Get type from object."""
+        from renku.command.migrate import CoreStatusResult
+
+        if isinstance(obj, CoreStatusResult) or (isinstance(obj, dict) and "userMessage" not in obj):
+            return "detail"
+
+        return "error"
+
+
+class DockerfileStatusResponseDetail(Schema):
     """Response schema outlining dockerfile status for migrations check."""
 
     newer_renku_available = fields.Boolean(
@@ -305,7 +307,22 @@ class DockerfileStatusResponse(Schema):
     dockerfile_renku_version = fields.String(metadata={"description": "Version of Renku specified in the Dockerfile."})
 
 
-class TemplateStatusResponse(Schema):
+class DockerfileStatusResponse(OneOfSchema):
+    """Combined schema of DockerfileStatusResponseDetail or Exception."""
+
+    type_schemas = {"detail": DockerfileStatusResponseDetail, "error": ErrorResponse}
+
+    def get_obj_type(self, obj):
+        """Get type from object."""
+        from renku.command.migrate import DockerfileStatusResult
+
+        if isinstance(obj, DockerfileStatusResult) or (isinstance(obj, dict) and "userMessage" not in obj):
+            return "detail"
+
+        return "error"
+
+
+class TemplateStatusResponseDetail(Schema):
     """Response schema outlining template status for migrations check."""
 
     automated_template_update = fields.Boolean(
@@ -341,6 +358,21 @@ class TemplateStatusResponse(Schema):
     ssh_supported = fields.Boolean(
         metadata={"description": "Whether this project supports ssh connections to sessions or not."}
     )
+
+
+class TemplateStatusResponse(OneOfSchema):
+    """Combined schema of TemplateStatusResponseDetail or Exception."""
+
+    type_schemas = {"detail": TemplateStatusResponseDetail, "error": ErrorResponse}
+
+    def get_obj_type(self, obj):
+        """Get type from object."""
+        from renku.command.migrate import TemplateStatusResult
+
+        if isinstance(obj, TemplateStatusResult) or (isinstance(obj, dict) and "userMessage" not in obj):
+            return "detail"
+
+        return "error"
 
 
 class ProjectMigrationCheckResponse(Schema):

@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -160,6 +159,17 @@ class CommandParameterBase:
 
         return [str(value)]
 
+    def _update_from(self, other: "CommandParameterBase"):
+        """Update this parameter with values from another parameter, if applicable."""
+        if other.prefix is not None:
+            self.prefix = other.prefix
+        if other.position is not None:
+            self.position = other.position
+        if other.description:
+            self.description = other.description
+        if other.name_set_by_user:
+            self.name_set_by_user = other.name_set_by_user
+
     @property
     def actual_value(self):
         """Get the actual value to be used for execution."""
@@ -243,6 +253,10 @@ class CommandParameter(CommandParameterBase):
         parameter.id = CommandParameter.generate_id(plan_id=plan_id, position=self.position, postfix=self.postfix)
         return parameter
 
+    def update_from(self, other: "CommandParameter"):
+        """Update this output with values from another output, if applicable."""
+        super()._update_from(other)
+
 
 class CommandInput(CommandParameterBase):
     """An input to a command."""
@@ -318,6 +332,16 @@ class CommandInput(CommandParameterBase):
         parameter.id = CommandInput.generate_id(plan_id=plan_id, position=self.position, postfix=self.postfix)
         return parameter
 
+    def update_from(self, other: "CommandInput"):
+        """Update this input with values from another input, if applicable."""
+        super()._update_from(other)
+
+        if other.encoding_format:
+            self.encoding_format = other.encoding_format
+
+        if other.mapped_to is not None:
+            self.mapped_to = other.mapped_to
+
 
 class HiddenInput(CommandInput):
     """An input to a command that is added by Renku and should be hidden from users."""
@@ -391,6 +415,19 @@ class CommandOutput(CommandParameterBase):
             return False
 
         return super().is_equal_to(other)
+
+    def update_from(self, other: "CommandOutput"):
+        """Update this output with values from another output, if applicable."""
+        super()._update_from(other)
+
+        if other.encoding_format:
+            self.encoding_format = other.encoding_format
+
+        if other.mapped_to is not None:
+            self.mapped_to = other.mapped_to
+
+        if other.create_folder:
+            self.create_folder = other.create_folder
 
     @staticmethod
     def _get_equality_attributes() -> List[str]:

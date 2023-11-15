@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Test activity database gateways."""
+from datetime import timedelta
 
 import pytest
 
@@ -204,7 +204,7 @@ def test_remove_activity(project_with_injection):
     assert {activity, upstream} == activity_gateway.get_upstream_activities(downstream)
 
     activity_gateway.remove(activity, keep_reference=True, force=True)
-    activity.delete()
+    activity.delete(when=activity.ended_at_time + timedelta(seconds=1))
 
     # Deleted activity is in the list of activities if we keep its reference and request it
     assert activity in activity_gateway.get_all_activities(include_deleted=True)

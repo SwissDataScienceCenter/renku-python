@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,7 +54,7 @@ class GraphExportCtrl(ServiceCtrl, RenkuOperationMixin):
         """Renku operation for the controller."""
         result = migrations_check().build().execute().output
 
-        if not result["project_supported"]:
+        if not result.project_supported:
             raise RenkuException("project not supported")
 
         callback_payload = {

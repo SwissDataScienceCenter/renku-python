@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +19,7 @@ from marshmallow import Schema, fields
 
 from renku.ui.service.serializers.common import (
     AsyncSchema,
-    LocalRepositorySchema,
+    GitCommitSHA,
     MigrateSchema,
     RemoteRepositorySchema,
     RenkuSyncSchema,
@@ -28,7 +27,7 @@ from renku.ui.service.serializers.common import (
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
 
-class ConfigShowRequest(LocalRepositorySchema, RemoteRepositorySchema):
+class ConfigShowRequest(RemoteRepositorySchema, GitCommitSHA):
     """Request schema for config show."""
 
 
@@ -50,7 +49,7 @@ class ConfigShowResponseRPC(JsonRPCResponse):
     result = fields.Nested(ConfigShowResponse)
 
 
-class ConfigSetRequest(AsyncSchema, ConfigShowSchema, LocalRepositorySchema, MigrateSchema, RemoteRepositorySchema):
+class ConfigSetRequest(AsyncSchema, ConfigShowSchema, MigrateSchema, RemoteRepositorySchema):
     """Request schema for config set."""
 
 

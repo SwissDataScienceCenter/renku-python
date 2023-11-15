@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -340,8 +339,14 @@ class ActivityGraphViewModel:
                         max_y = max(max_y, local_max_y)
 
                     xy = node.view.xy
+                    split = node.data[0].splitlines()
+                    max_height = len(split)
+                    max_width = max(len(line) for line in split)
                     node_shape = NodeShape(
-                        node.data[0], Point(xy[0], xy[1] + min_y), double_border=node.data[1], color=node_color
+                        node.data[0],
+                        Point(round(xy[0] - max_width / 2), round(xy[1] + min_y - max_height)),
+                        double_border=node.data[1],
+                        color=node_color,
                     )
                     canvas.add_shape(node_shape, layer=1)
                     max_y = max(max_y, node_shape.extent[0][1])

@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +33,7 @@ def check_project_id_group(fix, project_gateway: IProjectGateway, **_):
         _: keyword arguments.
 
     Returns:
-        Tuple of whether project id is valid.
+        Tuple of whether project id is valid, if an automated fix is available and string of found problems.
     """
     current_project = project_gateway.get_project()
 
@@ -43,21 +42,25 @@ def check_project_id_group(fix, project_gateway: IProjectGateway, **_):
     )
 
     if namespace is None or name is None:
-        return True, None
+        return True, False, None
 
     generated_id = Project.generate_id(namespace=namespace, name=name)
 
     if generated_id == current_project.id:
-        return True, None
+        return True, False, None
 
     if fix:
         communication.info(f"Fixing project id '{current_project.id}' -> '{generated_id}'")
         current_project.id = generated_id
         project_gateway.update_project(current_project)
-        return True, None
+        return True, False, None
 
-    return True, (
-        WARNING
-        + "Project id doesn't match id created based on the current Git remote (use 'renku doctor --fix' to fix it):"
-        f"\n\t'{current_project.id}' -> '{generated_id}'"
+    return (
+        False,
+        True,
+        (
+            WARNING
+            + "Project id doesn't match id based on the current Git remote (use 'renku doctor --fix' to fix it):"
+            f"\n\t'{current_project.id}' -> '{generated_id}'"
+        ),
     )

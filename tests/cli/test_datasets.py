@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,6 +34,7 @@ from renku.core.constant import REFS, RENKU_HOME
 from renku.core.dataset.providers.dataverse import DataverseProvider
 from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.zenodo import ZenodoProvider
+from renku.core.interface.storage import FileHash
 from renku.core.storage import track_paths_in_storage
 from renku.core.util.git import get_dirty_paths
 from renku.core.util.urls import get_slug
@@ -141,8 +141,8 @@ def test_dataset_show(runner, project, subdirectory, datadir_option, datadir):
             "dataset",
             "create",
             "my-dataset",
-            "--title",
-            "Long Title",
+            "--name",
+            "Long Name",
             "--description",
             "# t1\n## t2\nsome description here",
             "-c",
@@ -164,11 +164,11 @@ def test_dataset_show(runner, project, subdirectory, datadir_option, datadir):
     result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "some description here" in result.output
-    assert "Long Title" in result.output
+    assert "Long Name" in result.output
     assert "keyword-1" in result.output
     assert "keyword-2" in result.output
     assert "Created: " in result.output
-    assert "Name: my-dataset" in result.output
+    assert "Slug: my-dataset" in result.output
     assert "John Doe <john.doe@mail.ch>" in result.output
     assert "some_unique_value" in result.output
     assert "https://schema.org/specialProperty" in result.output
@@ -199,8 +199,8 @@ def test_dataset_show_tag(runner, project, subdirectory):
             "dataset",
             "create",
             "my-dataset",
-            "--title",
-            "Long Title",
+            "--name",
+            "Long Name",
             "--description",
             "description1",
         ],
@@ -250,19 +250,19 @@ def test_dataset_show_tag(runner, project, subdirectory):
     assert "description3" not in result.output
 
 
-def test_datasets_create_different_names(runner, project):
-    """Test creating datasets with same title but different name."""
-    result = runner.invoke(cli, ["dataset", "create", "dataset-1", "--title", "title"])
+def test_datasets_create_different_slugs(runner, project):
+    """Test creating datasets with same name but different slugs."""
+    result = runner.invoke(cli, ["dataset", "create", "dataset-1", "--name", "name"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
-    result = runner.invoke(cli, ["dataset", "create", "dataset-2", "--title", "title"])
+    result = runner.invoke(cli, ["dataset", "create", "dataset-2", "--name", "name"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
 
-def test_datasets_create_with_same_name(runner, project):
-    """Test creating datasets with same name."""
+def test_datasets_create_with_same_slug(runner, project):
+    """Test creating datasets with same slug."""
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
@@ -273,7 +273,7 @@ def test_datasets_create_with_same_name(runner, project):
 
 
 @pytest.mark.parametrize(
-    "name",
+    "slug",
     [
         "any name /@#$!",
         "name longer than 24 characters",
@@ -284,13 +284,13 @@ def test_datasets_create_with_same_name(runner, project):
         "name ends in.lock",
     ],
 )
-def test_datasets_invalid_name(runner, project, name):
-    """Test creating datasets with invalid name."""
-    result = runner.invoke(cli, ["dataset", "create", name])
+def test_datasets_invalid_slug(runner, project, slug):
+    """Test creating datasets with invalid slug."""
+    result = runner.invoke(cli, ["dataset", "create", slug])
 
     assert 2 == result.exit_code
-    assert f"Dataset name '{name}' is not valid" in result.output
-    assert f"Hint: '{get_slug(name)}' is valid" in result.output
+    assert f"Dataset slug '{slug}' is not valid" in result.output
+    assert f"Hint: '{get_slug(slug)}' is valid" in result.output
 
 
 def test_datasets_create_dirty_exception_untracked(runner, project):
@@ -442,15 +442,15 @@ def test_datasets_list_non_empty(output_format, runner, project, datadir_option,
 @pytest.mark.parametrize(
     "columns,headers,values",
     [
-        ("title,short_name", ["TITLE", "NAME"], ["my-dataset", "Long Title"]),
-        ("title,name", ["TITLE", "NAME"], ["my-dataset", "Long Title"]),
+        ("title,short_name", ["NAME", "SLUG"], ["my-dataset", "Long Name"]),
+        ("name,slug", ["NAME", "SLUG"], ["my-dataset", "Long Name"]),
         ("creators", ["CREATORS"], ["John Doe"]),
     ],
 )
 def test_datasets_list_with_columns(runner, project, columns, headers, values):
     """Test listing datasets with custom column name."""
     result = runner.invoke(
-        cli, ["dataset", "create", "my-dataset", "--title", "Long Title", "-c", "John Doe <john.doe@mail.ch>"]
+        cli, ["dataset", "create", "my-dataset", "--name", "Long Name", "-c", "John Doe <john.doe@mail.ch>"]
     )
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -611,7 +611,7 @@ def test_multiple_file_to_dataset(tmpdir, runner, project):
     assert "OK" in result.output
 
     dataset = get_dataset_with_injection("dataset")
-    assert dataset.title == "dataset"
+    assert dataset.name == "dataset"
 
     paths = []
     for i in range(3):
@@ -670,6 +670,71 @@ def test_add_local_actions(runner, project, action, existing_paths, missing_path
         assert path.is_symlink()
 
 
+@pytest.mark.parametrize("action, source_exists_after", [("--copy", True), ("--move", False)])
+def test_add_non_local_actions(runner, project, directory_tree, action, source_exists_after):
+    """Test adding data outside the project with different actions."""
+    path = directory_tree / "file1"
+
+    result = runner.invoke(cli, ["dataset", "add", action, "--create", "local", path])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert source_exists_after == path.exists()
+    assert (project.path / "data" / "local" / "file1").exists()
+
+
+def test_add_non_local_link_action(runner, project, directory_tree):
+    """Test cannot add and link data outside the project."""
+    path = directory_tree / "file1"
+
+    result = runner.invoke(cli, ["dataset", "add", "--link", "--create", "local", path])
+
+    assert 2 == result.exit_code, format_result_exception(result)
+    assert "Cannot use '--link' for files outside of project:" in result.output
+
+
+@pytest.mark.parametrize("action, source_exists_after", [("copy", True), ("move", False)])
+@pytest.mark.serial
+def test_add_default_configured_actions(runner, project, directory_tree, action, source_exists_after):
+    """Test adding data with different actions set in Renku configuration file."""
+    path = directory_tree / "file1"
+    set_value("renku", "default_dataset_add_action", action, global_only=True)
+
+    result = runner.invoke(cli, ["dataset", "add", "--create", "local", path])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "The following files will be copied to" not in result.output
+    assert path.exists() is source_exists_after
+    assert (project.path / "data" / "local" / "file1").exists()
+
+
+@pytest.mark.serial
+def test_add_default_configured_link(runner, project, directory_tree):
+    """Test adding data with default ``link`` action should prompt the user."""
+    path = directory_tree / "file1"
+    set_value("renku", "default_dataset_add_action", "link", global_only=True)
+
+    result = runner.invoke(cli, ["dataset", "add", "--create", "local", path], input="y\n")
+
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert "The following files will be copied to" in result.output
+    assert path.exists()
+    assert (project.path / "data" / "local" / "file1").exists()
+    assert not (project.path / "data" / "local" / "file1").is_symlink()
+
+
+@pytest.mark.serial
+def test_add_default_configured_invalid_action(runner, project, directory_tree):
+    """Test adding data with an invalid actions set in Renku configuration file."""
+    path = directory_tree / "file1"
+    set_value("renku", "default_dataset_add_action", "invalid", global_only=True)
+
+    result = runner.invoke(cli, ["dataset", "add", "--create", "local", path])
+
+    assert 2 == result.exit_code, format_result_exception(result)
+    assert "Invalid default action for adding to datasets in Renku config: 'invalid'." in result.output
+    assert "Valid values are 'copy', 'link', and 'move'." in result.output
+
+
 def test_add_an_empty_directory(runner, project, directory_tree):
     """Test adding an empty directory to a dataset."""
     path = directory_tree / "empty-directory"
@@ -695,7 +760,7 @@ def test_repository_file_to_dataset(runner, project, subdirectory):
     assert 0 == result.exit_code, format_result_exception(result)
 
     dataset = get_dataset_with_injection("dataset")
-    assert dataset.title == "dataset"
+    assert dataset.name == "dataset"
     assert dataset.find_file("data/dataset/a") is not None
 
 
@@ -707,7 +772,7 @@ def test_relative_import_to_dataset(tmpdir, runner, project, subdirectory):
     assert "OK" in result.output
 
     dataset = get_dataset_with_injection("dataset")
-    assert dataset.title == "dataset"
+    assert dataset.name == "dataset"
 
     zero_data = tmpdir.join("zero.txt")
     zero_data.write("zero")
@@ -759,32 +824,6 @@ def test_add_untracked_file(runner, project):
     assert get_dataset_with_injection("my-dataset").find_file("data/my-dataset/untracked")
 
 
-def test_add_untracked_file_as_external(runner, project):
-    """Test adding an untracked directory to a dataset as external."""
-    untracked = project.path / "untracked"
-    untracked.mkdir(exist_ok=True)
-    some_file = untracked / "some-file"
-    some_file.write_text("untracked file")
-
-    result = runner.invoke(cli, ["dataset", "add", "my-dataset", "--create", "--external", str(untracked)])
-
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    path = project.path / DATA_DIR / "my-dataset" / "untracked" / "some-file"
-
-    assert project.repository.is_dirty()
-    assert not project.repository.contains(untracked)
-    assert get_dataset_with_injection("my-dataset").find_file(path.relative_to(project.path))
-    assert path.is_symlink()
-    assert path.resolve() == some_file.resolve()
-
-    pointer_file = path.parent / os.readlink(path)
-    assert pointer_file.is_symlink()
-    # NOTE: Make sure that pointer file is a relative symlink and not an absolute one
-    link = os.readlink(pointer_file)
-    assert link.startswith("..")
-
-
 def test_add_data_directory(runner, project, directory_tree):
     """Test adding a dataset's data directory to it prints an error."""
     result = runner.invoke(cli, ["dataset", "add", "--copy", "--create", "new-dataset", str(directory_tree)])
@@ -819,7 +858,7 @@ def test_dataset_add_with_copy(tmpdir, runner, project):
 
     received_inodes = []
     dataset = get_dataset_with_injection("my-dataset")
-    assert dataset.title == "my-dataset"
+    assert dataset.name == "my-dataset"
 
     for file in dataset.files:
         path = (project.path / file.entity.path).resolve()
@@ -971,12 +1010,12 @@ def test_datasets_ls_files_json(runner, project, tmpdir, large_file):
 
     assert file1["creators"]
     assert file1["size"]
-    assert file1["dataset_name"]
+    assert file1["dataset_slug"]
     assert file1["dataset_id"]
 
     assert file2["creators"]
     assert file2["size"]
-    assert file2["dataset_name"]
+    assert file2["dataset_slug"]
     assert file2["dataset_id"]
 
 
@@ -1085,7 +1124,7 @@ def test_datasets_ls_files_correct_paths(runner, project, directory_tree):
 def test_datasets_ls_files_with_name(directory_tree, runner, project):
     """Test listing of data within dataset with include/exclude filters."""
     # create a dataset
-    result = runner.invoke(cli, ["dataset", "create", "my-dataset", "--title", "Long Title"])
+    result = runner.invoke(cli, ["dataset", "create", "my-dataset", "--name", "Long Name"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     # add data to dataset
@@ -1262,7 +1301,7 @@ def test_dataset_edit(runner, project, dirty, subdirectory):
 
     result = runner.invoke(
         cli,
-        ["dataset", "create", "dataset", "-t", "original title", "-k", "keyword-1", "--metadata", str(metadata_path)],
+        ["dataset", "create", "dataset", "-n", "original name", "-k", "keyword-1", "--metadata", str(metadata_path)],
     )
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -1281,12 +1320,12 @@ def test_dataset_edit(runner, project, dirty, subdirectory):
 
     dataset = get_dataset_with_injection("dataset")
     assert " new description " == dataset.description
-    assert "original title" == dataset.title
+    assert "original name" == dataset.name
     assert {creator1, creator2}.issubset({c.full_identity for c in dataset.creators})
 
-    result = runner.invoke(cli, ["dataset", "edit", "dataset", "-t", " new title "], catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "edit", "dataset", "-n", " new name "], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Successfully updated: title." in result.output
+    assert "Successfully updated: name." in result.output
 
     result = runner.invoke(
         cli, ["dataset", "edit", "dataset", "-k", "keyword-2", "-k", "keyword-3"], catch_exceptions=False
@@ -1309,7 +1348,7 @@ def test_dataset_edit(runner, project, dirty, subdirectory):
 
     dataset = get_dataset_with_injection("dataset")
     assert " new description " == dataset.description
-    assert "new title" == dataset.title
+    assert "new name" == dataset.name
     assert {creator1, creator2}.issubset({c.full_identity for c in dataset.creators})
     assert {"keyword-2", "keyword-3"} == set(dataset.keywords)
     assert 1 == len(dataset.annotations)
@@ -1350,8 +1389,8 @@ def test_dataset_edit_metadata(runner, project, source, metadata):
         "dataset",
         "create",
         "dataset",
-        "-t",
-        "original title",
+        "-n",
+        "original name",
         "-k",
         "keyword-1",
     ]
@@ -1403,8 +1442,8 @@ def test_dataset_edit_unset(runner, project, dirty, subdirectory):
             "dataset",
             "create",
             "dataset",
-            "-t",
-            "original title",
+            "-n",
+            "original name",
             "-c",
             "John Doe <john@does.example.com>",
             "-k",
@@ -1431,7 +1470,7 @@ def test_dataset_edit_unset(runner, project, dirty, subdirectory):
 @pytest.mark.parametrize("dirty", [False, True])
 def test_dataset_edit_no_change(runner, project, dirty):
     """Check metadata editing does not commit when there is no change."""
-    result = runner.invoke(cli, ["dataset", "create", "dataset", "-t", "original title"])
+    result = runner.invoke(cli, ["dataset", "create", "dataset", "-n", "original name"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     if dirty:
@@ -1466,6 +1505,7 @@ def test_dataset_provider_resolution_zenodo(doi_responses, uri):
     ],
 )
 @pytest.mark.integration
+@pytest.mark.shaky
 def test_dataset_provider_resolution_dataverse(doi_responses, uri):
     """Check that dataverse URIs resolve to ``DataverseProvider``."""
     provider = ProviderFactory.get_import_provider(uri)
@@ -1499,12 +1539,32 @@ def test_dataset_tag(tmpdir, runner, project, subdirectory):
     assert 0 == result.exit_code, format_result_exception(result)
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        dataset = datasets_provenance.get_by_name("my-dataset")
+        dataset = datasets_provenance.get_by_slug("my-dataset")
         all_tags = datasets_provenance.get_all_tags(dataset)
         assert {dataset.id} == {t.dataset_id.value for t in all_tags}
 
     result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
+
+
+def test_dataset_overwrite_tag(runner, project_with_datasets):
+    """Test that dataset tags can be overwritten."""
+    # tag dataset
+    result = runner.invoke(cli, ["dataset", "tag", "dataset-1", "1.0"], catch_exceptions=False)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    # retag
+    result = runner.invoke(cli, ["dataset", "tag", "dataset-1", "1.0"], catch_exceptions=False)
+    assert 2 == result.exit_code, format_result_exception(result)
+    assert "Tag '1.0' already exists" in result.output
+
+    # force overwrite
+    result = runner.invoke(cli, ["dataset", "tag", "--force", "dataset-1", "1.0"], catch_exceptions=False)
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert 1 == result.output.count('"@id": "https://localhost/dataset-tags/1.0%40')
 
 
 @pytest.mark.parametrize("form", ["tabular", "json-ld"])
@@ -1802,6 +1862,8 @@ def test_lfs_hook_can_be_avoided(runner, project, subdirectory, large_file):
 
 def test_datadir_hook(runner, project, subdirectory):
     """Test pre-commit hook fir checking datadir files."""
+    set_value(section="renku", key="check_datadir_files", value="true", global_only=True)
+
     datadir = project.path / "test"
     datadir.mkdir()
 
@@ -1824,9 +1886,7 @@ def test_datadir_hook(runner, project, subdirectory):
     assert file.name in e.value.stderr
     assert file2.name in e.value.stderr
 
-    result = runner.invoke(
-        cli, ["--no-external-storage", "dataset", "update", "-c", "--all", "--no-remote", "--no-external"]
-    )
+    result = runner.invoke(cli, ["--no-external-storage", "dataset", "update", "-c", "--all", "--no-remote"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     file3 = datadir / "yet_another_new_file"
@@ -1847,12 +1907,9 @@ def test_datadir_hook(runner, project, subdirectory):
     project.repository.commit("datadir files in dataset")
 
 
-@pytest.mark.parametrize("external", [False, True])
-def test_add_existing_files(runner, project, directory_tree, external, no_lfs_size_limit):
+def test_add_existing_files(runner, project, directory_tree, no_lfs_size_limit):
     """Check adding/overwriting existing files."""
-    param = ["--external"] if external else []
-
-    result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-dataset", str(directory_tree)] + param)
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-dataset", str(directory_tree)])
 
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -1861,34 +1918,29 @@ def test_add_existing_files(runner, project, directory_tree, external, no_lfs_si
     dataset = get_dataset_with_injection("my-dataset")
     assert dataset.find_file(path) is not None
 
-    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(directory_tree)] + param)
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(directory_tree)])
     assert 1 == result.exit_code
     assert "These existing files were not overwritten" in result.output
     assert str(path) in result.output
     assert "Warning: No new file was added to project" in result.output
     assert "Error: There is nothing to commit." in result.output
 
-    result = runner.invoke(cli, ["dataset", "add", "--copy", "--overwrite", "my-dataset", str(directory_tree)] + param)
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "--overwrite", "my-dataset", str(directory_tree)])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "These existing files were not overwritten" not in result.output
     assert str(path) not in result.output
-    assert external or "Warning: No new file was added to project" in result.output
+    assert "Warning: No new file was added to project" in result.output
     assert "Error: There is nothing to commit." not in result.output  # dataset metadata is always updated
 
 
-@pytest.mark.parametrize("external", [False, True])
-def test_add_existing_and_new_files(runner, project, directory_tree, external):
+def test_add_existing_and_new_files(runner, project, directory_tree):
     """Check adding/overwriting existing files."""
-    param = ["--external"] if external else []
-
-    assert (
-        0 == runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-dataset", str(directory_tree)] + param).exit_code
-    )
+    assert 0 == runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-dataset", str(directory_tree)]).exit_code
 
     path = Path(DATA_DIR) / "my-dataset" / directory_tree.name / "file1"
 
     # Add existing files and files within same project
-    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(directory_tree), "README.md"] + param)
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(directory_tree), "README.md"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "These existing files were not overwritten" in result.output
     assert str(path) in result.output
@@ -1896,7 +1948,7 @@ def test_add_existing_and_new_files(runner, project, directory_tree, external):
     # Add existing and non-existing files
     directory_tree.joinpath("new-file").write_text("new-file")
 
-    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(directory_tree)] + param)
+    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset", str(directory_tree)])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "These existing files were not overwritten" in result.output
     assert str(path) in result.output
@@ -1954,169 +2006,36 @@ def test_add_ignored_files(runner, project, directory_tree):
     assert dataset.find_file(relative_path) is not None
 
 
-def test_add_external_files(runner, project, directory_tree, no_lfs_size_limit):
-    """Check adding external files."""
-    result = runner.invoke(cli, ["dataset", "add", "--copy", "-c", "--external", "my-data", str(directory_tree)])
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    path = project.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
-    assert path.exists()
-    assert path.is_symlink()
-    external_path = directory_tree / "file1"
-    assert path.resolve() == external_path
-
-    dataset = get_dataset_with_injection("my-data")
-    assert dataset.find_file(path.relative_to(project.path)) is not None
-
-    # Symbolic links should not be tracked
-    attr_path = project.path / ".gitattributes"
-    assert not attr_path.exists() or "file1" not in attr_path.read_text()
-
-
-def test_overwrite_external_file(runner, project, directory_tree, subdirectory):
-    """Check overwriting external and normal files."""
-    # Add external file
-    result = runner.invoke(cli, ["dataset", "add", "--create", "--external", "my-data", str(directory_tree)])
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    # Cannot add the same file
-    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-data", str(directory_tree)])
-    assert 1 == result.exit_code
-    assert "Warning: No new file was added to project" in result.output
-
-    # Can add the same file with --overwrite
-    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-data", "--overwrite", str(directory_tree)])
-    assert 0 == result.exit_code, format_result_exception(result)
-    pointer_files_deleted = list(project.pointers_path.rglob("*")) == []
-    assert pointer_files_deleted
-
-    # Can add the same external file
-    result = runner.invoke(cli, ["dataset", "add", "--external", "my-data", "--overwrite", str(directory_tree)])
-    assert 0 == result.exit_code, format_result_exception(result)
-    pointer_files_exist = len(list(project.pointers_path.rglob("*"))) > 0
-    assert pointer_files_exist
-
-
-def test_overwrite_external_file_keeps_original_content(runner, project, directory_tree):
-    """Check overwriting external files doesn't corrupt original content."""
-    origin = directory_tree / "file1"
-
-    assert 0 == runner.invoke(cli, ["dataset", "add", "--create", "--external", "my-data", str(origin)]).exit_code
-
-    path = project.path / DATA_DIR / "my-data" / "file1"
-    assert "file1 content" == path.read_text()
-    assert path.is_symlink()
-
-    new_data = directory_tree / "dir1" / "file2"
-    # Can add another file to the same destination
-    result = runner.invoke(cli, ["dataset", "add", "--copy", "my-data", "--overwrite", "-d", "file1", str(new_data)])
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    assert "file2 content" == path.read_text()
-    assert not path.is_symlink()
-    assert "file1 content" == origin.read_text()
-
-
-def test_add_project_files_as_external(runner, project):
-    """Test adding files that are in the git repo as external files."""
-    path = os.path.join(DATA_DIR, "some-data")
-    write_and_commit_file(project.repository, path, "some-content")
-
-    result = runner.invoke(cli, ["dataset", "add", "--create", "--external", "my-data", path])
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    assert "Warning: The following files cannot be added as external" in result.output
-    assert path in result.output
-
-
-def test_remove_external_file(runner, project, directory_tree, subdirectory):
-    """Test removal of external files."""
-    result = runner.invoke(cli, ["dataset", "add", "--create", "--external", "my-data", str(directory_tree)])
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    targets_before = {str(p.resolve()) for p in project.pointers_path.rglob("*")}
-    path = project.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
-
-    result = runner.invoke(cli, ["rm", str(path)])
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    targets_after = {str(p.resolve()) for p in project.pointers_path.rglob("*")}
-
-    removed = targets_before - targets_after
-    assert 1 == len(removed)
-    assert removed.pop().endswith("/file1")
-
-
-def test_unavailable_external_files(runner, project, directory_tree, subdirectory):
-    """Check for external files that are not available."""
-    result = runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)])
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    path = Path(DATA_DIR) / "my-data" / directory_tree.name / "file1"
-    target = (project.path / path).resolve()
-
-    directory_tree.joinpath("file1").unlink()
-    assert not path.exists()
-
-    # Update won't work
-    result = runner.invoke(cli, ["dataset", "update", "--all"])
-    assert 1 == result.exit_code
-    assert "Cannot find external file" in result.output
-
-    # Renku doctor shows inaccessible files
-    result = runner.invoke(cli, ["doctor"])
-    assert 1 == result.exit_code
-    assert "There are missing external files." in result.output
-    assert str(path) in result.output
-    assert str(target) in result.output
-
-
 @pytest.mark.serial
-def test_external_file_update(runner, project, directory_tree, subdirectory):
-    """Check updating external files."""
-    result = runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)])
+def test_workflow_with_linked_file(runner, project, run, no_lfs_size_limit):
+    """Check using linked files in workflows."""
+    write_and_commit_file(project.repository, "file1", "file1 content")
+    path = project.path / "file1"
+    (project.path / "data" / "my-data" / "directory_tree").mkdir(parents=True, exist_ok=True)
+
+    result = runner.invoke(cli, ["dataset", "add", "-c", "-d", "directory_tree", "--link", "my-data", path])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    directory_tree.joinpath("file1").write_text("some updates")
-
-    path = project.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
-    previous_commit = project.repository.get_previous_commit(path)
-
-    result = runner.invoke(cli, ["dataset", "update", "--external", "my-data"])
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    current_commit = project.repository.get_previous_commit(path)
-    assert current_commit != previous_commit
-
-
-@pytest.mark.skip("renku update follows symlinks when calculating hashes and doesn't respect external files")
-@pytest.mark.serial
-def test_workflow_with_external_file(runner, project, directory_tree, run, subdirectory, no_lfs_size_limit):
-    """Check using external files in workflows."""
-    result = runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)])
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    source = project.path / DATA_DIR / "my-data" / directory_tree.name / "file1"
+    source = project.path / DATA_DIR / "my-data" / "directory_tree" / "file1"
     output = project.path / DATA_DIR / "output.txt"
 
     assert 0 == run(args=("run", "wc", "-c"), stdin=source, stdout=output)
 
     previous_commit = project.repository.get_previous_commit(output)
 
-    # Update external file
-    directory_tree.joinpath("file1").write_text("some updates")
+    # Update linked file
+    path.write_text("some updates")
+    project.repository.add(all=True)
+    project.repository.commit("changes", no_verify=True)
 
-    # Nothing is changed unless external files are updated
-    result = runner.invoke(cli, ["status"])
-    assert 0 == result.exit_code, format_result_exception(result)
-
-    result = runner.invoke(cli, ["dataset", "update", "my-data"])
-    assert 0 == result.exit_code, format_result_exception(result)
-
+    # Renku status/update follows symlinks when calculating hashes and doesn't respect linked files, so, no dataset
+    # update is needed
     result = runner.invoke(cli, ["status"])
     assert 1 == result.exit_code, format_result_exception(result)
 
-    assert 0 == run(args=("update", "--all"))
+    result = runner.invoke(cli, ["update", "--all"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
     result = runner.invoke(cli, ["status"])
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -2170,38 +2089,14 @@ def test_immutability_for_adding_files_twice(directory_tree, runner, project):
     assert old_dataset.id == dataset.id
 
 
-def test_immutability_after_external_update(runner, project, directory_tree):
-    """Test dataset's ID changes after updating external files."""
-    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)]).exit_code
-    old_dataset = get_dataset_with_injection("my-data")
-
-    directory_tree.joinpath("file1").write_text("some updates")
-    result = runner.invoke(cli, ["dataset", "update", "my-data"])
-    assert 0 == result.exit_code, result.output
-    dataset = get_dataset_with_injection("my-data")
-
-    assert_dataset_is_mutated(old=old_dataset, new=dataset)
-
-
-def test_immutability_after_no_update(runner, project, directory_tree):
-    """Test dataset's ID does not changes if no external file is updated."""
-    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)]).exit_code
-    old_dataset = get_dataset_with_injection("my-data")
-
-    assert 0 == runner.invoke(cli, ["dataset", "update", "--all"]).exit_code
-    dataset = get_dataset_with_injection("my-data")
-
-    assert dataset.id == old_dataset.id
-
-
 def test_datasets_provenance_after_create(runner, project):
     """Test datasets provenance is updated after creating a dataset."""
     args = [
         "dataset",
         "create",
         "my-data",
-        "--title",
-        "Long Title",
+        "--name",
+        "Long Name",
         "--description",
         "some description here",
         "-c",
@@ -2216,10 +2111,10 @@ def test_datasets_provenance_after_create(runner, project):
     assert 0 == runner.invoke(cli, args, catch_exceptions=False).exit_code
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        dataset = datasets_provenance.get_by_name("my-data")
+        dataset = datasets_provenance.get_by_slug("my-data")
 
-    assert "Long Title" == dataset.title
-    assert "my-data" == dataset.name
+    assert "Long Name" == dataset.name
+    assert "my-data" == dataset.slug
     assert "some description here" == dataset.description
     assert "John Doe" in [c.name for c in dataset.creators]
     assert "john.doe@mail.ch" in [c.email for c in dataset.creators]
@@ -2239,7 +2134,7 @@ def test_datasets_provenance_after_create_when_adding(runner, project):
     assert 0 == runner.invoke(cli, ["dataset", "add", "--copy", "--create", "my-data", "README.md"]).exit_code
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        dataset = datasets_provenance.get_by_name("my-data")
+        dataset = datasets_provenance.get_by_slug("my-data")
 
     assert dataset.initial_identifier == dataset.identifier
     assert dataset.derived_from is None
@@ -2257,7 +2152,7 @@ def test_datasets_provenance_after_edit(runner, project):
     dataset = get_dataset_with_injection("my-data")
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        current_version = datasets_provenance.get_by_name("my-data")
+        current_version = datasets_provenance.get_by_slug("my-data")
         old_version = datasets_provenance.get_previous_version(current_version)
 
     assert_dataset_is_mutated(old=old_version, new=dataset)
@@ -2277,7 +2172,7 @@ def test_datasets_provenance_after_add(runner, project, directory_tree):
     )
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        dataset = datasets_provenance.get_by_name("my-data")
+        dataset = datasets_provenance.get_by_slug("my-data")
 
     path = os.path.join(DATA_DIR, "my-data", "file1")
     file = dataset.find_file(path)
@@ -2302,7 +2197,7 @@ def test_datasets_provenance_after_multiple_adds(runner, project, directory_tree
 
         assert 1 == len(provenance)
 
-        current_version = datasets_provenance.get_by_name("my-data")
+        current_version = datasets_provenance.get_by_slug("my-data")
         old_version = datasets_provenance.get_by_id(current_version.derived_from.url_id)
 
     old_dataset_file_ids = {f.id for f in old_version.files}
@@ -2326,7 +2221,7 @@ def test_datasets_provenance_after_add_with_overwrite(runner, project, directory
 
         assert 1 == len(provenance)
 
-        current_version = datasets_provenance.get_by_name("my-data")
+        current_version = datasets_provenance.get_by_slug("my-data")
         old_version = datasets_provenance.get_by_id(current_version.derived_from.url_id)
     old_dataset_file_ids = {f.id for f in old_version.files}
 
@@ -2343,7 +2238,7 @@ def test_datasets_provenance_after_file_unlink(runner, project, directory_tree):
 
     dataset = get_dataset_with_injection("my-data")
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        current_version = datasets_provenance.get_by_name("my-data")
+        current_version = datasets_provenance.get_by_slug("my-data")
         old_version = datasets_provenance.get_by_id(Dataset.generate_id(dataset.initial_identifier))
     path = os.path.join(DATA_DIR, "my-data", directory_tree.name, "file1")
 
@@ -2365,7 +2260,7 @@ def test_datasets_provenance_after_remove(runner, project, directory_tree):
     assert 0 == runner.invoke(cli, ["dataset", "rm", "my-data"]).exit_code
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        current_version = datasets_provenance.get_by_name("my-data")
+        current_version = datasets_provenance.get_by_slug("my-data")
         provenance = datasets_provenance.get_provenance_tails()
 
     assert current_version is None
@@ -2378,23 +2273,6 @@ def test_datasets_provenance_after_remove(runner, project, directory_tree):
     assert_dataset_is_mutated(old=dataset, new=last_version)
 
 
-@pytest.mark.serial
-def test_datasets_provenance_after_update(runner, project, directory_tree):
-    """Test datasets provenance is updated after updating a dataset."""
-    assert 0 == runner.invoke(cli, ["dataset", "add", "-c", "--external", "my-data", str(directory_tree)]).exit_code
-
-    directory_tree.joinpath("file1").write_text("some updates")
-    assert 0 == runner.invoke(cli, ["dataset", "update", "--all"]).exit_code
-
-    with get_datasets_provenance_with_injection() as datasets_provenance:
-        current_version = datasets_provenance.get_by_name("my-data")
-
-    assert current_version.identifier != current_version.initial_identifier
-
-    result = runner.invoke(cli, ["graph", "export", "--format", "json-ld", "--strict"])
-    assert 0 == result.exit_code, format_result_exception(result)
-
-
 def test_datasets_provenance_after_adding_tag(runner, project):
     """Test datasets provenance is updated after tagging a dataset."""
     assert 0 == runner.invoke(cli, ["dataset", "create", "my-data"]).exit_code
@@ -2405,7 +2283,7 @@ def test_datasets_provenance_after_adding_tag(runner, project):
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
         provenance = datasets_provenance.get_provenance_tails()
-        current_version = datasets_provenance.get_by_name("my-data")
+        current_version = datasets_provenance.get_by_slug("my-data")
 
     assert 1 == len(provenance)
     assert current_version.identifier == current_version.initial_identifier
@@ -2425,7 +2303,7 @@ def test_datasets_provenance_after_removing_tag(runner, project):
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
         provenance = datasets_provenance.get_provenance_tails()
-        current_version = datasets_provenance.get_by_name("my-data")
+        current_version = datasets_provenance.get_by_slug("my-data")
 
     assert 1 == len(provenance)
     assert current_version.identifier == current_version.initial_identifier
@@ -2443,7 +2321,7 @@ def test_datasets_provenance_multiple(runner, project, directory_tree):
     assert 0 == runner.invoke(cli, ["dataset", "unlink", "my-data", "--include", "*/dir1/*"], input="y").exit_code
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        tail_dataset = datasets_provenance.get_by_name("my-data", immutable=True)
+        tail_dataset = datasets_provenance.get_by_slug("my-data", immutable=True)
         provenance = datasets_provenance.get_provenance_tails()
 
         # NOTE: We only keep the tail of provenance chain for each dataset in the provenance
@@ -2617,9 +2495,7 @@ def test_update_local_file_in_datadir(runner, project, directory_tree, datadir_o
     old_dataset = get_dataset_with_injection("my-data")
 
     # NOTE: Update dry run
-    result = runner.invoke(
-        cli, ["dataset", "update", "my-data", "--dry-run", "--check-data-directory", "--no-remote", "--no-external"]
-    )
+    result = runner.invoke(cli, ["dataset", "update", "my-data", "--dry-run", "--check-data-directory", "--no-remote"])
 
     assert 1 == result.exit_code, format_result_exception(result)
     assert "The following files will be updated" in result.output
@@ -2629,9 +2505,7 @@ def test_update_local_file_in_datadir(runner, project, directory_tree, datadir_o
 
     assert project.repository.is_dirty()
 
-    result = runner.invoke(
-        cli, ["dataset", "update", "my-data", "--check-data-directory", "--no-remote", "--no-external"]
-    )
+    result = runner.invoke(cli, ["dataset", "update", "my-data", "--check-data-directory", "--no-remote"])
 
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -2688,34 +2562,6 @@ def test_update_local_deleted_file(runner, project, directory_tree):
     assert "Updated 0 files and deleted 0 files" in result.output
 
 
-def test_update_mixed_types(runner, project, directory_tree):
-    """Check updating datasets with mixed local and external files."""
-    external_file = directory_tree / "file1"
-    assert 0 == runner.invoke(cli, ["dataset", "add", "--copy", "-c", "my-data", "-e", str(external_file)]).exit_code
-
-    local_file = directory_tree / "dir1" / "file2"
-    assert 0 == runner.invoke(cli, ["dataset", "add", "--copy", "my-data", str(local_file)]).exit_code
-
-    # Update files
-    external_file.write_text("some external updates")
-
-    file2 = Path(DATA_DIR) / "my-data" / "file2"
-    write_and_commit_file(project.repository, file2, "some updates", commit=False)
-    new_checksum_file2 = project.repository.get_object_hash(file2)
-
-    old_dataset = get_dataset_with_injection("my-data")
-
-    result = runner.invoke(cli, ["dataset", "update", "my-data"])
-
-    assert 0 == result.exit_code, format_result_exception(result)
-    file1 = Path(DATA_DIR) / "my-data" / "file1"
-    assert "some external updates" == file1.read_text()
-
-    dataset = get_dataset_with_injection("my-data")
-    assert new_checksum_file2 == dataset.find_file(file2).entity.checksum
-    assert_dataset_is_mutated(old=old_dataset, new=dataset)
-
-
 def test_update_with_no_dataset(runner, project):
     """Check updating a project with no dataset should not raise an error."""
     result = runner.invoke(cli, ["dataset", "update", "--all"])
@@ -2723,7 +2569,9 @@ def test_update_with_no_dataset(runner, project):
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-@pytest.mark.parametrize("uri", ["s3://s3.endpoint/bucket/path", "azure://renkupythontest1/test-private-1"])
+@pytest.mark.parametrize(
+    "uri", ["s3://s3.endpoint/bucket/path", "azure://renkupythontest1/test-private-1", "/local/file/storage"]
+)
 def test_add_local_data_to_cloud_datasets(runner, project, mocker, directory_tree, uri):
     """Test adding local data to a dataset with cloud storage backend."""
     storage_factory = mocker.patch("renku.infrastructure.storage.factory.StorageFactory.get_storage", autospec=True)
@@ -2731,7 +2579,6 @@ def test_add_local_data_to_cloud_datasets(runner, project, mocker, directory_tre
 
     cloud_storage.upload.return_value = []
 
-    uri = "s3://s3.endpoint/bucket/path"
     result = runner.invoke(cli, ["dataset", "create", "cloud-data", "--storage", uri])
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -2760,7 +2607,156 @@ def test_add_local_data_to_cloud_datasets(runner, project, mocker, directory_tre
     cloud_storage.upload.assert_has_calls(calls=calls, any_order=True)
 
 
-@pytest.mark.parametrize("storage", ["s3://s3.endpoint/bucket/path", "azure://renkupythontest1/test-private-1"])
+@pytest.mark.parametrize("uri", ["s3://s3.endpoint/bucket/", "azure://renkupythontest1/test-private-1"])
+def test_dataset_update_remote_file(runner, project, mocker, uri):
+    """Test updating a file added from remote/cloud storage."""
+    storage_factory = mocker.patch("renku.infrastructure.storage.factory.StorageFactory.get_storage", autospec=True)
+    cloud_storage = storage_factory.return_value
+
+    uri = f"{uri}/path/myfile"
+
+    def _fake_download(uri, destination):
+        with open(destination, "w") as f:
+            f.write("a")
+
+    cloud_storage.get_hashes.return_value = [FileHash(uri=uri, path="path/myfile", size=5, hash="deadbeef")]
+    cloud_storage.download.side_effect = _fake_download
+
+    result = runner.invoke(cli, ["dataset", "create", "local-data"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "add", "local-data", uri])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 1 == len(dataset.files)
+    assert dataset.files[0].based_on.url == uri
+    assert dataset.files[0].based_on.checksum == "deadbeef"
+
+    # Updating without changes does nothing
+    result = runner.invoke(cli, ["dataset", "update", "local-data"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 1 == len(dataset.files)
+    assert dataset.files[0].based_on.url == uri
+    assert dataset.files[0].based_on.checksum == "deadbeef"
+
+    # Updating with changes works
+    def _fake_download2(uri, destination):
+        with open(destination, "w") as f:
+            f.write("b")
+
+    cloud_storage.get_hashes.return_value = [FileHash(uri=uri, path="path/myfile", size=7, hash="8badf00d")]
+    cloud_storage.download.side_effect = _fake_download2
+
+    result = runner.invoke(cli, ["dataset", "update", "local-data"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 1 == len(dataset.files)
+    assert dataset.files[0].based_on.url == uri
+    assert dataset.files[0].based_on.checksum == "8badf00d"
+
+    cloud_storage.get_hashes.return_value = []
+
+    # check deletion doesn't happen without --delete
+    result = runner.invoke(cli, ["dataset", "update", "local-data"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 1 == len(dataset.files)
+
+    # check deletion
+    result = runner.invoke(cli, ["dataset", "update", "local-data", "--delete"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 0 == len(dataset.files)
+
+
+def test_dataset_update_web_file(runner, project, mocker):
+    """Test updating a file added from remote/cloud storage."""
+
+    uri = "http://www.example.com/myfile.txt"
+
+    cache = project.path / ".renku" / "cache"
+    cache.mkdir(parents=True, exist_ok=True)
+    new_file = cache / "myfile.txt"
+    new_file.write_text("output")
+
+    mocker.patch("renku.core.util.requests.get_redirect_url", lambda _: uri)
+    mocker.patch(
+        "renku.core.util.requests.download_file",
+        lambda base_directory, url, filename, extract: (cache, [Path(new_file)]),
+    )
+
+    result = runner.invoke(cli, ["dataset", "create", "local-data"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "add", "local-data", uri])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 1 == len(dataset.files)
+    assert dataset.files[0].source == uri
+    assert dataset.files[0].entity.checksum == "6caf68aff423350af0ef7b148fec2ed4243658e5"
+
+    # Updating without changes does nothing
+    new_file.write_text("output")
+
+    result = runner.invoke(cli, ["dataset", "update", "local-data"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 1 == len(dataset.files)
+    assert dataset.files[0].source == uri
+    assert dataset.files[0].entity.checksum == "6caf68aff423350af0ef7b148fec2ed4243658e5"
+
+    # Updating with changes works
+    new_file.write_text("output2")
+
+    result = runner.invoke(cli, ["dataset", "update", "local-data"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 1 == len(dataset.files)
+    assert dataset.files[0].source == uri
+    assert dataset.files[0].entity.checksum == "1bc6411450b62581e5cea1174c15269c249dd4ea"
+
+    # check deletion doesn't happen without --delete
+    def _fake_raise(base_directory, url, filename, extract):
+        raise errors.RequestError
+
+    mocker.patch("renku.core.util.requests.download_file", _fake_raise)
+
+    result = runner.invoke(cli, ["dataset", "update", "local-data"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 1 == len(dataset.files)
+
+    # check deletion
+    result = runner.invoke(cli, ["dataset", "update", "local-data", "--delete"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    dataset = get_dataset_with_injection("local-data")
+
+    assert 0 == len(dataset.files)
+
+
+@pytest.mark.parametrize(
+    "storage", ["s3://s3.endpoint/bucket/path", "azure://renkupythontest1/test-private-1", "/local/file/storage"]
+)
 def test_unmounting_dataset(runner, project, mocker, storage):
     """Test unmounting a not-mounted dataset doesn't raise errors."""
     storage_factory = mocker.patch("renku.infrastructure.storage.factory.StorageFactory.get_storage", autospec=True)

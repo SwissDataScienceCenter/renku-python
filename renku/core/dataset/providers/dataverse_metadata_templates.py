@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,6 +37,12 @@ DATASET_METADATA_TEMPLATE = """
                         "typeClass": "compound",
                         "multiple": true,
                         "typeName": "datasetContact"
+                    },
+                    {
+                        "value": ${keywords},
+                        "typeClass": "compound",
+                        "multiple": true,
+                        "typeName": "keyword"
                     },
                     {
                         "value": [
@@ -97,6 +102,17 @@ CONTACT_METADATA_TEMPLATE = """
         "multiple": false,
         "typeName": "datasetContactName",
         "value": "${name}"
+    }
+}
+"""
+
+KEYWORDS_METADATA_TEMPLATE = """
+{
+    "keywordValue": {
+        "typeName": "keywordValue",
+        "multiple": false,
+        "typeClass": "primitive",
+        "value": "${keyword}"
     }
 }
 """

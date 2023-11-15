@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -148,7 +147,7 @@ class CWLExporter(IWorkflowConverter):
                     step_filename = Path(f"{uuid4()}.cwl")
                     step_path = (tmpdir / step_filename).resolve()
                     write_yaml(step_path, step.run.save())
-                    step.run = str(step_path)
+                    step.run = f"file://{step_path}"
             if filename is None:
                 filename = Path(f"parent_{uuid4()}.cwl")
         else:

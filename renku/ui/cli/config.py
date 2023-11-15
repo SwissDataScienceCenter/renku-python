@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -92,6 +91,10 @@ the ``renku config`` command:
 +--------------------------------+-------------------------------------+-----------+
 | ``dataverse.server_url``       | URL for the Dataverse API server    | ``None``  |
 |                                | to use                              |           |
++--------------------------------+-------------------------------------+-----------+
+| ``default_dataset_add_action`` | Default action when adding files to | ``None``  |
+|                                | datasets. Can be either ``copy`` or |           |
+|                                | ``move``.                           |           |
 +--------------------------------+-------------------------------------+-----------+
 | ``lfs_threshold``              | Threshold file size below which     | ``100kb`` |
 |                                | files are not added to git LFS      |           |

@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -96,19 +95,35 @@ def test_graph_export_strict_dataset(tmpdir, runner, project, subdirectory):
     result = runner.invoke(cli, ["dataset", "add", "--copy", "my-dataset"] + paths)
     assert 0 == result.exit_code, format_result_exception(result)
 
-    result = runner.invoke(cli, ["graph", "export", "--strict", "--format=json-ld"])
+    result = runner.invoke(cli, ["graph", "export", "--strict", "--format=json-ld", "--revision", "HEAD"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert all(p in result.output for p in test_paths), result.output
 
     # check that only most recent dataset is exported
     assert 1 == result.output.count("http://schema.org/Dataset")
 
-    result = runner.invoke(cli, ["graph", "export", "--strict", "--format=json-ld", "--full"])
+    # NOTE: Don't pass ``--full`` to check it's the default action.
+    result = runner.invoke(cli, ["graph", "export", "--strict", "--format=json-ld"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert all(p in result.output for p in test_paths), result.output
 
     # check that all datasets are exported
     assert 2 == result.output.count("http://schema.org/Dataset")
+
+    # remove and readd dataset
+    result = runner.invoke(cli, ["dataset", "rm", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["dataset", "create", "my-dataset"])
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    result = runner.invoke(cli, ["graph", "export", "--strict", "--format=json-ld"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert all(p in result.output for p in test_paths), result.output
+
+    # check that all datasets are exported
+    assert 4 == result.output.count("http://schema.org/Dataset")
+    assert 1 == result.output.count("invalidatedAtTime")
 
 
 def test_graph_export_dataset_mutability(runner, project_with_datasets, with_injection):

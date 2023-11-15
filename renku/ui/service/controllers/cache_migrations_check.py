@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,18 +16,18 @@
 """Renku service migrations check controller."""
 
 import tempfile
+from dataclasses import asdict
 from pathlib import Path
 
-from renku.command.migrate import migrations_check
+from renku.command.migrate import MigrationCheckResult, migrations_check
 from renku.core.errors import AuthenticationError, MinimumVersionError, ProjectNotFound, RenkuException
-from renku.core.migration.migrate import SUPPORTED_PROJECT_VERSION
 from renku.core.util.contexts import renku_project_context
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
 from renku.ui.service.interfaces.git_api_provider import IGitAPIProvider
+from renku.ui.service.logger import service_log
 from renku.ui.service.serializers.cache import ProjectMigrationCheckRequest, ProjectMigrationCheckResponseRPC
 from renku.ui.service.views import result_response
-from renku.version import __version__
 
 
 class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
@@ -51,25 +50,28 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
     def _fast_op_without_cache(self):
         """Execute renku_op with only necessary files, without cloning the whole repo."""
         if "git_url" not in self.context:
-            raise RenkuException("context does not contain `project_id` or `git_url`")
+            raise RenkuException("context does not contain `git_url`")
+
+        token = self.user.token if hasattr(self, "user") else self.user_data.get("token")
+
+        if not token:
+            # User isn't logged in, fast op doesn't work
+            return None
 
         with tempfile.TemporaryDirectory() as tempdir:
             tempdir_path = Path(tempdir)
-
             self.git_api_provider.download_files_from_api(
-                [
-                    ".renku/metadata/root",
-                    ".renku/metadata/project",
-                    ".renku/metadata.yml",
-                    ".renku/renku.ini",
+                files=[
                     "Dockerfile",
                 ],
-                tempdir_path,
+                folders=[".renku"],
+                target_folder=tempdir_path,
                 remote=self.ctx["git_url"],
-                ref=self.request_data.get("ref", None),
-                token=self.user_data.get("token", None),
+                branch=self.request_data.get("branch", None),
+                token=self.user.token,
             )
             with renku_project_context(tempdir_path):
+                self.project_path = tempdir_path
                 return self.renku_op()
 
     def renku_op(self):
@@ -77,43 +79,34 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
         try:
             return migrations_check().build().execute().output
         except MinimumVersionError as e:
-            return {
-                "project_supported": False,
-                "core_renku_version": e.current_version,
-                "project_renku_version": f">={e.minimum_version}",
-                "core_compatibility_status": {
-                    "migration_required": False,
-                    "project_metadata_version": f">={SUPPORTED_PROJECT_VERSION}",
-                    "current_metadata_version": SUPPORTED_PROJECT_VERSION,
-                },
-                "dockerfile_renku_status": {
-                    "dockerfile_renku_version": "unknown",
-                    "latest_renku_version": __version__,
-                    "newer_renku_available": False,
-                    "automated_dockerfile_update": False,
-                },
-                "template_status": {
-                    "automated_template_update": False,
-                    "newer_template_available": False,
-                    "template_source": "unknown",
-                    "template_ref": "unknown",
-                    "template_id": "unknown",
-                    "project_template_version": "unknown",
-                    "latest_template_version": "unknown",
-                },
-            }
+            return MigrationCheckResult.from_minimum_version_error(e)
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        if "project_id" in self.context:
+        from renku.ui.service.views.error_handlers import pretty_print_error
+
+        # NOTE: use quick flow but fallback to regular flow in case of unexpected exceptions
+        try:
+            result = self._fast_op_without_cache()
+        except (AuthenticationError, ProjectNotFound):
+            raise
+        except BaseException as e:
+            service_log.info(f"fast gitlab checkout didnt work: {e}", exc_info=e)
             result = self.execute_op()
         else:
-            # NOTE: use quick flow but fallback to regular flow in case of unexpected exceptions
-            try:
-                result = self._fast_op_without_cache()
-            except (AuthenticationError, ProjectNotFound):
-                raise
-            except BaseException:
+            if result is None:
                 result = self.execute_op()
 
-        return result_response(self.RESPONSE_SERIALIZER, result)
+        result_dict = asdict(result)
+
+        # NOTE: Pretty-print errors for the UI
+        if isinstance(result.template_status, Exception):
+            result_dict["template_status"] = pretty_print_error(result.template_status)
+
+        if isinstance(result.dockerfile_renku_status, Exception):
+            result_dict["dockerfile_renku_status"] = pretty_print_error(result.dockerfile_renku_status)
+
+        if isinstance(result.core_compatibility_status, Exception):
+            result_dict["core_compatibility_status"] = pretty_print_error(result.core_compatibility_status)
+
+        return result_response(self.RESPONSE_SERIALIZER, result_dict)

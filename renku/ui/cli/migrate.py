@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,6 +58,7 @@ by running
 """
 import json
 import os
+from dataclasses import asdict
 
 import click
 
@@ -152,7 +152,12 @@ def migrationscheck():
     from renku.command.migrate import migrations_check
 
     result = migrations_check().lock_project().build().execute().output
-    click.echo(json.dumps(result))
+    result_dict = asdict(result)
+
+    if result_dict.get("errors"):
+        for key, value in result_dict["errors"]:
+            result_dict["errors"][key] = str(value)
+    click.echo(json.dumps(result_dict))
 
 
 @click.command(hidden=True)

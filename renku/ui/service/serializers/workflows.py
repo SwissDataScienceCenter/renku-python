@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,16 +16,17 @@
 """Renku service workflow serializers."""
 from enum import Enum
 
-from marshmallow import Schema, fields
+from marshmallow import Schema, fields, pre_dump
 from marshmallow_oneofschema import OneOfSchema
 
 from renku.domain_model.dataset import DatasetCreatorsJson
+from renku.infrastructure.persistent import Persistent
 from renku.ui.cli.utils.plugins import get_supported_formats
-from renku.ui.service.serializers.common import LocalRepositorySchema, RemoteRepositorySchema
+from renku.ui.service.serializers.common import GitCommitSHA, RemoteRepositorySchema
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
 
-class WorkflowPlansListRequest(LocalRepositorySchema, RemoteRepositorySchema):
+class WorkflowPlansListRequest(RemoteRepositorySchema, GitCommitSHA):
     """Request schema for plan list view."""
 
 
@@ -42,6 +42,27 @@ class AbstractPlanResponse(Schema):
     keywords = fields.List(fields.String())
     touches_existing_files = fields.Boolean()
     duration = fields.Integer(dump_default=None)
+
+    @pre_dump(pass_many=True)
+    def fix_ids(self, objs, many, **kwargs):
+        """Renku up to 2.4.1 had a bug that created wrong ids for workflow file entities, this fixes those on export."""
+
+        def _replace_id(obj):
+            if isinstance(obj, Persistent):
+                obj.unfreeze()
+
+            obj.id = obj.id.replace("//plans/", "/")
+
+            if isinstance(obj, Persistent):
+                obj.freeze()
+
+        if many:
+            for obj in objs:
+                _replace_id(obj)
+            return objs
+
+        _replace_id(objs)
+        return objs
 
 
 class WorflowPlanEntryResponse(AbstractPlanResponse):
@@ -64,7 +85,7 @@ class WorkflowPlansListResponseRPC(JsonRPCResponse):
     result = fields.Nested(WorkflowPlansListResponse)
 
 
-class WorkflowPlansShowRequest(LocalRepositorySchema, RemoteRepositorySchema):
+class WorkflowPlansShowRequest(RemoteRepositorySchema, GitCommitSHA):
     """Request schema for plan show view."""
 
     plan_id = fields.String(required=True)
@@ -201,7 +222,7 @@ WorkflowExportFormatEnum = Enum(  # type: ignore
 )
 
 
-class WorkflowPlansExportRequest(LocalRepositorySchema, RemoteRepositorySchema):
+class WorkflowPlansExportRequest(RemoteRepositorySchema, GitCommitSHA):
     """Request schema for exporting a plan."""
 
     plan_id = fields.String(required=True)

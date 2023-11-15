@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service template create project controller."""
+import os
 import shutil
 from typing import Any, Dict, Optional, cast
 
@@ -22,13 +22,15 @@ from marshmallow import EXCLUDE
 
 from renku.command.init import create_from_template_local_command
 from renku.core import errors
+from renku.core.image import ImageObjectRequest
 from renku.core.template.template import fetch_templates_source
 from renku.core.util.contexts import renku_project_context
 from renku.domain_model.template import Template
 from renku.infrastructure.repository import Repository
-from renku.ui.service.config import MESSAGE_PREFIX
+from renku.ui.service.config import CACHE_UPLOADS_PATH, MESSAGE_PREFIX
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
+from renku.ui.service.controllers.utils.datasets import set_url_for_uploaded_images
 from renku.ui.service.errors import UserProjectCreationError, UserTemplateInvalidError
 from renku.ui.service.serializers.templates import ProjectTemplateRequest, ProjectTemplateResponseRPC
 from renku.ui.service.utils import new_repo_push
@@ -64,7 +66,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
 
         metadata = {
             "__template_source__": self.ctx["git_url"],
-            "__template_ref__": self.ctx["ref"],
+            "__template_ref__": self.ctx["branch"],
             "__template_id__": self.ctx["identifier"],
             "__namespace__": self.ctx["project_namespace"],
             "__repository__": self.ctx["project_repository"],
@@ -72,8 +74,10 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
             "__project_slug__": self.ctx["project_slug"],
             "__project_description__": self.ctx["project_description"],
         }
-        if is_release():
-            metadata["__renku_version__"] = __version__
+
+        cli_version = os.environ.get("RENKU_PROJECT_DEFAULT_CLI_VERSION") or __version__
+        if is_release(cli_version):
+            metadata["__renku_version__"] = cli_version
 
         return metadata
 
@@ -99,6 +103,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
             "owner": self.ctx["project_namespace"],
             "token": self.ctx["token"],
             "initialized": True,
+            "image": self.ctx["image"],
         }
         project = self.cache.make_project(self.user, new_project_data)
 
@@ -112,7 +117,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
 
     def setup_template(self):
         """Reads template manifest."""
-        templates_source = fetch_templates_source(source=self.ctx["git_url"], reference=self.ctx["ref"])
+        templates_source = fetch_templates_source(source=self.ctx["git_url"], reference=self.ctx["branch"])
         identifier = self.ctx["identifier"]
         try:
             self.template = templates_source.get_template(id=identifier, reference=None)
@@ -127,9 +132,10 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
         self.template_version = repository.head.commit.hexsha
 
         # Verify missing parameters
-        template_parameters = {p.name for p in self.template.parameters}
+        template_parameters = {p.name: p for p in self.template.parameters}
         provided_parameters = {p["key"]: p["value"] for p in self.ctx["parameters"]}
-        missing_keys = list(template_parameters - provided_parameters.keys())
+        missing_keys = list(template_parameters.keys() - provided_parameters.keys())
+        missing_keys = [k for k in missing_keys if not template_parameters[k].has_default]
         if len(missing_keys) > 0:
             raise UserProjectCreationError(error_message=f"the template requires a value for '${missing_keys[0]}'")
 
@@ -145,6 +151,18 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
         assert self.template is not None
         new_project = self.setup_new_project()
         new_project_path = new_project.abs_path
+
+        image = self.ctx.get("image")
+        if image:
+            user_cache_dir = CACHE_UPLOADS_PATH / self.user.user_id
+            set_url_for_uploaded_images(images=[image], cache=self.cache, user=self.user)
+
+            image = ImageObjectRequest(
+                content_url=image["content_url"],
+                position=0,
+                mirror_locally=image.get("mirror_locally", False),
+                safe_image_paths=[user_cache_dir],
+            )
 
         with renku_project_context(new_project_path):
             create_from_template_local_command().build().execute(
@@ -163,6 +181,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
                 description=self.ctx["project_description"],
                 data_dir=self.ctx.get("data_directory"),
                 ssh_supported=self.template.ssh_supported,
+                image_request=image,
             )
 
         self.new_project_push(new_project_path)

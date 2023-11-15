@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Represent workflow file run templates."""
+
+from itertools import chain
+from typing import List, Union
 
 import marshmallow
 
@@ -34,6 +36,26 @@ class WorkflowFilePlanSchema(PlanSchema):
         model = WorkflowFilePlan
         unknown = marshmallow.EXCLUDE
 
+    @marshmallow.pre_dump(pass_many=True)
+    def fix_ids(self, objs: Union[WorkflowFilePlan, List[WorkflowFilePlan]], many, **kwargs):
+        """Renku up to 2.4.1 had a bug that created wrong ids for workflow file entities, this fixes those on export."""
+
+        def _replace_id(obj):
+            obj.unfreeze()
+            obj.id = obj.id.replace("//plans/", "/")
+
+            for child in chain(obj.inputs, obj.outputs, obj.parameters):
+                child.id = child.id.replace("//plans/", "/")
+            obj.freeze()
+
+        if many:
+            for obj in objs:
+                _replace_id(obj)
+            return objs
+
+        _replace_id(objs)
+        return objs
+
 
 class WorkflowFileCompositePlanSchema(CompositePlanSchema):
     """Plan schema."""
@@ -47,3 +69,20 @@ class WorkflowFileCompositePlanSchema(CompositePlanSchema):
 
     path = fields.String(prov.atLocation)
     plans = fields.Nested(renku.hasSubprocess, WorkflowFilePlanSchema, many=True)
+
+    @marshmallow.pre_dump(pass_many=True)
+    def fix_ids(self, objs, many, **kwargs):
+        """Renku up to 2.4.1 had a bug that created wrong ids for workflow file entities, this fixes those on export."""
+
+        def _replace_id(obj):
+            obj.unfreeze()
+            obj.id = obj.id.replace("//plans/", "/")
+            obj.freeze()
+
+        if many:
+            for obj in objs:
+                _replace_id(obj)
+            return objs
+
+        _replace_id(objs)
+        return objs

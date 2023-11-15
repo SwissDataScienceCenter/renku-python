@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +25,7 @@ import pytest
 
 from renku.core import errors
 from renku.infrastructure.database import Database
-from renku.infrastructure.repository import Repository
+from renku.infrastructure.repository import Actor, Repository
 from renku.ui.cli import cli
 from renku.ui.cli.init import parse_parameters
 from tests.utils import format_result_exception, raises
@@ -249,15 +248,18 @@ def test_init_force_in_dirty_dir(isolated_runner, project_init):
     assert "My first project!" == readme.read_text()
 
 
-def test_init_on_cloned_repo(isolated_runner, data_repository, project_init):
+def test_init_on_cloned_repo(isolated_runner, project_init):
     """Run init --force in directory containing another repository."""
     data, commands = project_init
 
+    # Create a repository
     new_project = Path(data["test_project"])
-    import shutil
-
-    shutil.copytree(str(data_repository.path), str(new_project))
+    repository = Repository.initialize(new_project)
     assert new_project.exists()
+    (repository.path / "file1").write_text("some data")
+    repository.add(all=True)
+    repository.commit("test commit", author=Actor("me", "me@example.com"))
+    assert repository.contains("file1")
 
     # try to create in a dirty folder
     result = isolated_runner.invoke(cli, commands["init_test"] + commands["id"], commands["confirm"])
@@ -468,3 +470,45 @@ def test_init_with_description(isolated_runner, template):
     result = isolated_runner.invoke(cli, ["graph", "export", "--strict"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "my project description" in result.output
+
+
+@pytest.mark.parametrize(
+    "image",
+    [Path(__file__).parent / ".." / "data" / "renku.png", "https://en.wikipedia.org/static/images/icons/wikipedia.png"],
+)
+def test_init_with_image(isolated_runner, template, image):
+    """Test project initialization with image."""
+    result = isolated_runner.invoke(cli, ["init", "--image", image, "new-project", "-t", template["id"]])
+
+    assert 0 == result.exit_code, format_result_exception(result)
+
+    project = Database.from_path(Path("new-project") / ".renku" / "metadata").get("project")
+
+    assert (Path("new-project") / ".renku" / "images" / "project" / "0.png").exists()
+    assert ".renku/images/project/0.png" == project.image.content_url
+    assert 0 == project.image.position
+
+
+@pytest.mark.parametrize(
+    "image, error",
+    [
+        ("non-existing.png", "Image with local path"),
+        ("/non-existing", "Image with local path"),
+        ("https://example.com/non-existing.png", "Cannot download image with url"),
+    ],
+)
+def test_init_with_non_existing_image(isolated_runner, template, image, error):
+    """Test project initialization fails when the image doesn't exist."""
+    result = isolated_runner.invoke(cli, ["init", "--image", image, "new-project", "-t", template["id"]])
+
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert error in result.output
+
+
+@pytest.mark.parametrize("image", [Path(__file__).parent / ".." / "data" / "workflow-file.yml", "/etc/passwd"])
+def test_init_with_non_image_files(isolated_runner, template, image):
+    """Test project initialization fails when the file isn't an image format."""
+    result = isolated_runner.invoke(cli, ["init", "--image", image, "new-project", "-t", template["id"]])
+
+    assert 1 == result.exit_code, format_result_exception(result)
+    assert "isn't a valid image file" in result.output

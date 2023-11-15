@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +17,7 @@
 
 import re
 from subprocess import PIPE, SubprocessError, run
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional, Union
 
 from renku.domain_model.project_context import project_context
 
@@ -61,6 +60,9 @@ def get_lfs_tracking_and_file_sizes(records, has_tag: bool):
     repository = project_context.repository
 
     def get_lfs_tracking():
+        if has_tag:
+            return
+
         paths = (r.path for r in records)
         attrs = repository.get_attributes(*paths)
 
@@ -70,57 +72,72 @@ def get_lfs_tracking_and_file_sizes(records, has_tag: bool):
             else:
                 record.is_lfs = False
 
-    lfs_files_sizes = {}
+    def naturalize(value) -> str:
+        try:
+            return naturalsize(value).upper().replace("BYTES", " B")
+        except ValueError:
+            return str(value)
 
-    try:
-        lfs_run = run(
-            ("git", "lfs", "ls-files", "--name-only", "--size", "--deleted"),
-            stdout=PIPE,
-            cwd=project_context.path,
-            text=True,
-        )
-    except SubprocessError:
-        pass
-    else:
-        lfs_output = lfs_run.stdout.split("\n")
-        # Example line format: relative/path/to/file (7.9 MB)
-        pattern = re.compile(r"^(.*?)\s*\((.*)\)")
+    def get_file_sizes():
+        if not any(r for r in records if r.size is None):  # All records already have a size
+            return {}, {}
 
-        for line in lfs_output:
-            match = pattern.search(line)
-            if not match:
-                continue
-            path, size = match.groups()
-            # Fix alignment for bytes
-            if size.endswith(" B"):
-                size = size.replace(" B", "  B")
-            lfs_files_sizes[path] = size
+        lfs_files_sizes = {}
 
-    if has_tag:
-        checksums = [r.entity.checksum for r in records]
-        sizes = repository.get_sizes(*checksums)
-        non_lfs_files_sizes = {
-            r.entity.path: naturalsize(s).upper().replace("BYTES", " B") for r, s in zip(records, sizes)
-        }
-    else:
-        non_lfs_files_sizes = {
-            o.path: o.size for o in repository.head.commit.traverse() if o.path not in lfs_files_sizes
-        }
-        non_lfs_files_sizes = {k: naturalsize(v).upper().replace("BYTES", " B") for k, v in non_lfs_files_sizes.items()}
+        try:
+            lfs_run = run(
+                ("git", "lfs", "ls-files", "--name-only", "--size", "--deleted"),
+                stdout=PIPE,
+                cwd=project_context.path,
+                text=True,
+            )
+        except SubprocessError:
+            pass
+        else:
+            lfs_output = lfs_run.stdout.split("\n")
+            # Example line format: relative/path/to/file (7.9 MB)
+            pattern = re.compile(r"^(.*?)\s*\((.*)\)")
 
-        # NOTE: Check .gitattributes file to see if a file is in LFS
-        get_lfs_tracking()
+            for line in lfs_output:
+                match = pattern.search(line)
+                if not match:
+                    continue
+                path, size = match.groups()
+                # Fix alignment for bytes
+                if size.endswith(" B"):
+                    size = size.replace(" B", "  B")
+                lfs_files_sizes[path] = size
+
+        non_lfs_files_sizes: Dict[str, Optional[Union[int, str]]]
+        if has_tag:
+            checksums = [r.entity.checksum for r in records]
+            sizes = repository.get_sizes(*checksums)
+            non_lfs_files_sizes = {k.entity.path: naturalize(v) for k, v in zip(records, sizes)}
+        else:
+            non_lfs_files_sizes = {
+                o.path: o.size for o in repository.head.commit.traverse() if o.path not in lfs_files_sizes
+            }
+            non_lfs_files_sizes = {k: naturalize(v) for k, v in non_lfs_files_sizes.items()}
+
+        return lfs_files_sizes, non_lfs_files_sizes
+
+    lfs_files_sizes, non_lfs_files_sizes = get_file_sizes()
+    get_lfs_tracking()
 
     for record in records:
-        size = lfs_files_sizes.get(record.path) or non_lfs_files_sizes.get(record.path)
-        record.size = size
+        size = (
+            lfs_files_sizes.get(record.path) or non_lfs_files_sizes.get(record.path) or None
+            if record.size is None
+            else naturalize(record.size)
+        )
+        record.size = size if size or size == 0 else None
 
         # NOTE: When listing a tag we assume that the file is in LFS if it was in LFS at some point in time
         if has_tag:
             record.is_lfs = lfs_files_sizes.get(record.path) is not None
 
 
-def jsonld(records, **kwargs):
+def jsonld(records, **_):
     """Format dataset files as JSON-LD.
 
     Args:
@@ -133,7 +150,7 @@ def jsonld(records, **kwargs):
     return dumps(data, indent=2)
 
 
-def json(records, **kwargs):
+def json(records, **_):
     """Format dataset files as JSON.
 
     Args:
@@ -167,8 +184,8 @@ DATASET_FILES_COLUMNS = {
     "dataset": ("title", "dataset"),
     "full_path": ("full_path", None),
     "path": ("path", None),
-    "short_name": ("dataset_name", "dataset name"),
-    "dataset_name": ("dataset_name", "dataset name"),
+    "short_name": ("dataset_slug", "dataset slug"),
+    "dataset_slug": ("dataset_slug", "dataset slug"),
     "size": ("size", None),
     "lfs": ("is_lfs", "lfs"),
     "source": ("source", None),

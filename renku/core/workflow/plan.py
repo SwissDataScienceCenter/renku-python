@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,9 +34,9 @@ from renku.core.plugin.workflow_file_parser import read_workflow_file
 from renku.core.util import communication
 from renku.core.util.git import get_git_user
 from renku.core.util.os import are_paths_related, get_relative_paths
-from renku.core.util.util import NO_VALUE, NoValueType
 from renku.core.workflow.model.concrete_execution_graph import ExecutionGraph
 from renku.core.workflow.value_resolution import CompositePlanValueResolver, ValueResolver
+from renku.domain_model.constant import NO_VALUE, NoValueType
 from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.activity import Activity
 from renku.domain_model.provenance.agent import Person
@@ -194,7 +193,6 @@ def show_workflow(name_or_id_or_path: str, activity_gateway: IActivityGateway, w
             touches_existing_files = _check_workflow_touches_existing_files(workflow, touches_files_cache, activity_map)
 
             if isinstance(workflow, Plan):
-
                 num_executions = 0
                 last_execution: Optional[datetime] = None
 

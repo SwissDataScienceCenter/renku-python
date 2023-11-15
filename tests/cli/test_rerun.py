@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -125,11 +124,14 @@ def test_rerun_with_from(project, renku_cli, provider, source, content):
     write_and_commit_file(project.repository, input2, "input2 old")
 
     assert 0 == renku_cli("run", "cp", input1, intermediate1).exit_code
-    assert 0 == renku_cli("run", "cp", input2, intermediate2).exit_code
     assert 0 == renku_cli("run", "cp", intermediate1, final1).exit_code
+    time.sleep(1)
+    assert 0 == renku_cli("run", "cp", input2, intermediate2).exit_code
     assert 0 == renku_cli("run", "cp", intermediate2, final2).exit_code
+    time.sleep(1)
 
     assert 0 == renku_cli("run", "cat", final1, final2, stdout=output).exit_code
+    time.sleep(1)
 
     # Update both inputs
     write_and_commit_file(project.repository, input1, "input1 new-")

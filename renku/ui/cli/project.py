@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,11 +32,12 @@ Commands and options
 
 import json
 from pathlib import Path
+from typing import Optional, Union
 
 import click
 
 import renku.ui.cli.utils.color as color
-from renku.core.util.util import NO_VALUE
+from renku.domain_model.constant import NO_VALUE, NoValueType
 from renku.ui.cli.utils.callback import ClickCallback
 
 
@@ -59,6 +59,7 @@ def project():
     type=click.UNPROCESSED,
     help="Creator's name, email, and affiliation. Accepted format is 'Forename Surname <email> [affiliation]'.",
 )
+@click.option("-i", "--image", default=NO_VALUE, type=click.UNPROCESSED, help="Path or URL to project's avatar/image.")
 @click.option(
     "-m",
     "--metadata",
@@ -71,8 +72,8 @@ def project():
     "--unset",
     default=[],
     multiple=True,
-    type=click.Choice(["keywords", "k", "metadata", "m"]),
-    help="Remove keywords from dataset.",
+    type=click.Choice(["keywords", "k", "metadata", "m", "description", "d", "image", "i"]),
+    help="Remove keywords, metadata, description, or image from project.",
 )
 @click.option(
     "--metadata-source",
@@ -80,9 +81,11 @@ def project():
     default=NO_VALUE,
     help="Set the source field in the metadata when editing it if not provided, then the default is 'renku'.",
 )
-def edit(description, keywords, creators, metadata, unset, metadata_source):
+def edit(description, keywords, creators, image, metadata, unset, metadata_source):
     """Edit project metadata."""
     from renku.command.project import edit_project_command
+    from renku.core.constant import FILESYSTEM_ROOT
+    from renku.core.image import ImageObjectRequest
 
     if list(creators) == [NO_VALUE]:
         creators = NO_VALUE
@@ -99,6 +102,20 @@ def edit(description, keywords, creators, metadata, unset, metadata_source):
         if metadata is not NO_VALUE:
             raise click.UsageError("Cant use '--metadata' together with unsetting metadata")
         metadata = None
+
+    if "d" in unset or "description" in unset:
+        if description is not NO_VALUE:
+            raise click.UsageError("Cant use '--description' together with unsetting description")
+        description = None
+
+    if "i" in unset or "image" in unset:
+        if image is not NO_VALUE:
+            raise click.UsageError("Cant use '--image' together with unsetting image")
+        image_request: Optional[Union[ImageObjectRequest, NoValueType]] = None
+    elif image is not NO_VALUE:
+        image_request = ImageObjectRequest(content_url=image, safe_image_paths=[FILESYSTEM_ROOT])
+    else:
+        image_request = NO_VALUE
 
     if metadata_source is not NO_VALUE and metadata is NO_VALUE:
         raise click.UsageError("The '--metadata-source' option can only be used with the '--metadata' flag")
@@ -122,6 +139,7 @@ def edit(description, keywords, creators, metadata, unset, metadata_source):
             description=description,
             creator=creators,
             keywords=keywords,
+            image_request=image_request,
             custom_metadata=custom_metadata,
             custom_metadata_source=metadata_source,
         )

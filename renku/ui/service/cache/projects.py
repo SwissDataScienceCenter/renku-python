@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service project cache management."""
+from typing import cast
+
 from marshmallow import EXCLUDE
 
 from renku.ui.service.cache.base import BaseCache
@@ -29,11 +30,11 @@ class ProjectManagementCache(BaseCache):
 
     project_schema = ProjectSchema()
 
-    def make_project(self, user, project_data, persist=True):
+    def make_project(self, user, project_data, persist=True) -> Project:
         """Store user project metadata."""
         project_data.update({"user_id": user.user_id})
 
-        project_obj = self.project_schema.load(project_data, unknown=EXCLUDE)
+        project_obj: Project = cast(Project, self.project_schema.load(project_data, unknown=EXCLUDE))
 
         if persist:
             project_obj.save()

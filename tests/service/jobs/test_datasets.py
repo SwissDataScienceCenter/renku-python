@@ -1,6 +1,5 @@
-#
-# Copyright 2020-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,9 +22,8 @@ import jwt
 import pytest
 from werkzeug.utils import secure_filename
 
-from renku.core.errors import DatasetExistsError, MigrationRequired, ParameterError
+from renku.core.errors import DatasetExistsError, DatasetNotFound, ParameterError
 from renku.infrastructure.repository import Repository
-from renku.ui.service.jobs.cleanup import cache_project_cleanup
 from renku.ui.service.jobs.datasets import dataset_add_remote_file, dataset_import
 from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET, encode_b64
 from renku.ui.service.utils import make_project_path
@@ -50,7 +48,7 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
     }
 
     payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
         "dataset_uri": url,
     }
 
@@ -98,7 +96,7 @@ def test_dataset_import_job(doi, svc_client_with_repo):
     user = {"user_id": user_id}
 
     payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
         "dataset_uri": doi,
     }
     response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
@@ -153,7 +151,7 @@ def test_dataset_import_junk_job(doi, expected_err, svc_client_with_repo):
     user = {"user_id": user_id}
 
     payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
         "dataset_uri": doi,
     }
     response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
@@ -202,7 +200,7 @@ def test_dataset_import_twice_job(doi, svc_client_with_repo):
     user = {"user_id": user_id}
 
     payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
         "dataset_uri": doi,
     }
     response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
@@ -257,11 +255,16 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
     user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
     user = {"user_id": user_id}
 
-    payload = {"project_id": project_id, "name": uuid.uuid4().hex, "create_dataset": True, "files": [{"file_url": url}]}
+    payload = {
+        "git_url": url_components.href,
+        "slug": uuid.uuid4().hex,
+        "create_dataset": True,
+        "files": [{"file_url": url}],
+    }
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"files", "name", "project_id", "remote_branch"} == set(response.json["result"].keys())
+    assert {"files", "slug", "project_id", "remote_branch"} == set(response.json["result"].keys())
 
     dest = make_project_path(
         user,
@@ -276,7 +279,7 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
     job_id = response.json["result"]["files"][0]["job_id"]
     commit_message = "service: dataset add remote file"
 
-    dataset_add_remote_file(user, job_id, project_id, True, commit_message, payload["name"], url)
+    dataset_add_remote_file(user, job_id, project_id, True, commit_message, payload["slug"], url)
 
     new_commit = Repository(dest).head.commit
 
@@ -302,8 +305,8 @@ def test_delay_add_file_job(svc_client_cache, it_remote_repo_url_temp_branch, vi
     context = DatasetAddRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": branch,
-            "name": uuid.uuid4().hex,
+            "branch": branch,
+            "slug": uuid.uuid4().hex,
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
             "migrate_project": True,
@@ -321,7 +324,7 @@ def test_delay_add_file_job(svc_client_cache, it_remote_repo_url_temp_branch, vi
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
     assert updated_job
-    assert {"remote_branch", "project_id", "files", "name"} == updated_job.ctrl_result["result"].keys()
+    assert {"remote_branch", "project_id", "files", "slug"} == updated_job.ctrl_result["result"].keys()
 
 
 @pytest.mark.service
@@ -346,8 +349,8 @@ def test_delay_add_file_job_failure(svc_client_cache, it_remote_repo_url_temp_br
     context = DatasetAddRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": branch,
-            "name": uuid.uuid4().hex,
+            "branch": branch,
+            "slug": uuid.uuid4().hex,
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
             "migrate_project": False,
@@ -362,45 +365,7 @@ def test_delay_add_file_job_failure(svc_client_cache, it_remote_repo_url_temp_br
 
     from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
-    with pytest.raises(MigrationRequired):
-        delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
-
-
-@pytest.mark.parametrize("doi", ["10.5281/zenodo.3761586"])
-@pytest.mark.integration
-@pytest.mark.service
-def test_dataset_project_lock(doi, svc_client_with_repo):
-    """Test dataset project lock."""
-    svc_client, headers, project_id, url_components = svc_client_with_repo
-    user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
-    user = {"user_id": user_id}
-
-    payload = {
-        "project_id": project_id,
-        "dataset_uri": doi,
-    }
-    response = svc_client.post("/datasets.import", data=json.dumps(payload), headers=headers)
-
-    assert_rpc_response(response)
-    assert {"job_id", "created_at"} == set(response.json["result"].keys())
-
-    dest = make_project_path(
-        user,
-        {
-            "owner": url_components.owner,
-            "name": url_components.name,
-            "slug": url_components.slug,
-            "project_id": project_id,
-        },
-    )
-
-    old_commit = Repository(dest).head.commit
-
-    cache_project_cleanup()
-
-    new_commit = Repository(dest).head.commit
-    assert old_commit.hexsha == new_commit.hexsha
-    assert dest.exists() and [file for file in dest.glob("*")]
+    delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
 
 @pytest.mark.service
@@ -415,8 +380,8 @@ def test_delay_create_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
     context = DatasetCreateRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": branch,
-            "name": uuid.uuid4().hex,
+            "branch": branch,
+            "slug": uuid.uuid4().hex,
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
             "migrate_project": True,
@@ -437,7 +402,7 @@ def test_delay_create_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
     assert updated_job
-    assert {"name", "remote_branch"} == updated_job.ctrl_result["result"].keys()
+    assert {"slug", "remote_branch"} == updated_job.ctrl_result["result"].keys()
 
 
 @pytest.mark.service
@@ -452,8 +417,8 @@ def test_delay_create_dataset_failure(svc_client_cache, it_remote_repo_url_temp_
     context = DatasetCreateRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": branch,
-            "name": uuid.uuid4().hex,
+            "branch": branch,
+            "slug": uuid.uuid4().hex,
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
         }
@@ -471,15 +436,14 @@ def test_delay_create_dataset_failure(svc_client_cache, it_remote_repo_url_temp_
 
     from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
-    with pytest.raises(MigrationRequired):
-        delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
+    delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
 
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
 def test_delay_remove_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
-    """Create a dataset was removed successfully."""
+    """Check a dataset was removed successfully."""
     from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
     from renku.ui.service.serializers.datasets import DatasetRemoveRequest
 
@@ -489,8 +453,8 @@ def test_delay_remove_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
 
     request_payload = {
         "git_url": it_remote_repo_url,
-        "ref": branch,
-        "name": "mydata",
+        "branch": branch,
+        "slug": "mydata",
         "migrate_project": True,
     }
 
@@ -505,26 +469,26 @@ def test_delay_remove_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
     updated_job = delayed_ctrl_job(context, view_user_data, delete_job.job_id, renku_module, renku_ctrl)
 
     assert updated_job
-    assert {"name", "remote_branch"} == updated_job.ctrl_result["result"].keys()
+    assert {"slug", "remote_branch"} == updated_job.ctrl_result["result"].keys()
 
 
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
 def test_delay_remove_dataset_job_failure(svc_client_cache, it_remote_repo_url_temp_branch, view_user_data):
-    """Create a dataset was removed successfully."""
+    """Check removing missing dataset fails."""
     from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
     from renku.ui.service.serializers.datasets import DatasetRemoveRequest
 
     it_remote_repo_url, ref = it_remote_repo_url_temp_branch
     _, _, cache = svc_client_cache
     user = cache.ensure_user(view_user_data)
-    dataset_name = uuid.uuid4().hex
+    dataset_slug = uuid.uuid4().hex
 
     request_payload = {
         "git_url": it_remote_repo_url,
-        "ref": ref,
-        "name": dataset_name,
+        "branch": ref,
+        "slug": dataset_slug,
     }
 
     context = DatasetRemoveRequest().load(request_payload)
@@ -535,7 +499,7 @@ def test_delay_remove_dataset_job_failure(svc_client_cache, it_remote_repo_url_t
         user, job_data={"ctrl_context": {**context, "renku_module": renku_module, "renku_ctrl": renku_ctrl}}
     )
 
-    with pytest.raises(MigrationRequired):
+    with pytest.raises(DatasetNotFound):
         delayed_ctrl_job(context, view_user_data, delete_job.job_id, renku_module, renku_ctrl)
 
 
@@ -551,9 +515,9 @@ def test_delay_edit_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch
     context = DatasetEditRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": branch,
-            "name": "mydata",
-            "title": f"new title => {uuid.uuid4().hex}",
+            "branch": branch,
+            "slug": "mydata",
+            "name": f"new name => {uuid.uuid4().hex}",
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
             "migrate_project": True,
@@ -575,7 +539,7 @@ def test_delay_edit_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch
 
     assert updated_job
     assert {"warnings", "remote_branch", "edited"} == updated_job.ctrl_result["result"].keys()
-    assert {"title"} == updated_job.ctrl_result["result"]["edited"].keys()
+    assert {"name"} == updated_job.ctrl_result["result"]["edited"].keys()
 
 
 @pytest.mark.service
@@ -590,9 +554,9 @@ def test_delay_edit_dataset_job_failure(svc_client_cache, it_remote_repo_url_tem
     context = DatasetEditRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": branch,
-            "name": "mydata",
-            "title": f"new title => {uuid.uuid4().hex}",
+            "branch": branch,
+            "slug": "mydata",
+            "name": f"new name => {uuid.uuid4().hex}",
             "migrate_project": False,
         }
     )
@@ -608,8 +572,7 @@ def test_delay_edit_dataset_job_failure(svc_client_cache, it_remote_repo_url_tem
 
     from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
-    with pytest.raises(MigrationRequired):
-        delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
+    delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
 
 @pytest.mark.service
@@ -624,8 +587,8 @@ def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
     context = DatasetUnlinkRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": branch,
-            "name": "ds1",
+            "branch": branch,
+            "slug": "ds1",
             "include_filters": ["data1"],
             # NOTE: We test with this only to check that recursive invocation is being prevented.
             "is_delayed": True,
@@ -661,7 +624,7 @@ def test_delay_unlink_dataset_job_failure(svc_client_cache, it_remote_repo_url_t
     it_remote_repo_url, branch = it_remote_repo_url_temp_branch
 
     context = DatasetUnlinkRequest().load(
-        {"git_url": it_remote_repo_url, "ref": branch, "name": "ds1", "include_filters": ["data1"]}
+        {"git_url": it_remote_repo_url, "branch": branch, "slug": "ds1", "include_filters": ["data1"]}
     )
 
     _, _, cache = svc_client_cache
@@ -675,8 +638,7 @@ def test_delay_unlink_dataset_job_failure(svc_client_cache, it_remote_repo_url_t
 
     from renku.ui.service.jobs.delayed_ctrl import delayed_ctrl_job
 
-    with pytest.raises(MigrationRequired):
-        delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
+    delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
 
 @pytest.mark.service
@@ -691,8 +653,8 @@ def test_unlink_dataset_sync(svc_client_cache, it_remote_repo_url_temp_branch, v
     context = DatasetUnlinkRequest().load(
         {
             "git_url": it_remote_repo_url,
-            "ref": branch,
-            "name": "ds1",
+            "branch": branch,
+            "slug": "ds1",
             "include_filters": ["data1"],
             "migrate_project": True,
         }
@@ -714,3 +676,22 @@ def test_unlink_dataset_sync(svc_client_cache, it_remote_repo_url_temp_branch, v
     assert updated_job
     assert {"unlinked", "remote_branch"} == updated_job.ctrl_result["result"].keys()
     assert ["data/data1"] == updated_job.ctrl_result["result"]["unlinked"]
+
+
+@pytest.mark.parametrize(
+    "renku_domain,dataset_url,result",
+    [
+        ("renkulab.io", "https://renkulab.io/datasets/abcdefg", True),
+        ("gitlab.renkulab.io", "https://renkulab.io/datasets/abcdefg", True),
+        ("renkulab.io", "https://dev.renku.ch/datasets/abcdefg", False),
+        ("dev.renku.ch", "https://ci-9999.dev.renku.ch/datasets/abcdefg", False),
+    ],
+)
+def test_dataset_gitlab_token_logic(renku_domain, dataset_url, result, monkeypatch):
+    """Test that logic for forwarding gitlab tokens works correctly."""
+    from renku.ui.service.jobs.datasets import _is_safe_to_pass_gitlab_token
+
+    with monkeypatch.context() as monkey:
+        monkey.setenv("RENKU_DOMAIN", renku_domain)
+
+        assert _is_safe_to_pass_gitlab_token("", dataset_url) == result

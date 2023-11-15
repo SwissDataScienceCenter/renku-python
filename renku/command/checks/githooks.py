@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,7 +41,7 @@ def check_git_hooks_installed(**_):
         hook_path = get_hook_path(name=hook, path=project_context.path)
         if not hook_path.exists():
             message = WARNING + "Git hooks are not installed. " 'Use "renku githooks install" to install them. \n'
-            return False, message
+            return False, False, message
 
         with hook_path.open() as file_:
             actual_hook = _extract_renku_hook(file_)
@@ -51,16 +50,16 @@ def check_git_hooks_installed(**_):
 
         if not expected_hook:
             message = WARNING + "Cannot check for existence of Git hooks.\n"
-            return False, message
+            return False, False, message
 
         if actual_hook != expected_hook:
             message = (
                 WARNING + "Git hooks are outdated or not installed.\n"
                 '  (use "renku githooks install --force" to update them) \n'
             )
-            return False, message
+            return False, False, message
 
-    return True, None
+    return True, False, None
 
 
 def _extract_renku_hook(file):

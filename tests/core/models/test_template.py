@@ -1,6 +1,5 @@
-#
-# Copyright 2019-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -84,6 +83,7 @@ def test_templates_manifest():
               variables: {}
               icon: python.png
             - id: R
+              aliases: ["R-minimal", "R-base"]
               name: R Project
               description: An R-based Renku project
               variables:
@@ -98,12 +98,14 @@ def test_templates_manifest():
     assert 2 == len(manifest.templates)
 
     template = next(t for t in manifest.templates if t.id == "python")
+    assert [] == template.aliases
     assert "Python Project" == template.name
     assert "A Python-based Renku project" == template.description
     assert "python.png" == template.icon
     assert [] == template.parameters
 
     template = next(t for t in manifest.templates if t.id == "R")
+    assert ["R-minimal", "R-base"] == template.aliases
     assert "R Project" == template.name
     assert "An R-based Renku project" == template.description
     assert "R.png" == template.icon
@@ -142,6 +144,7 @@ def test_templates_manifest_invalid_yaml(tmp_path):
         ("- no-id: python", "Template doesn't have an id:"),
         ("- id: python\n  variables: p1", "Invalid template variable type on template 'python': 'str'"),
         ("- id: python\n  variables:\n    p1: 42", "Invalid parameter type 'int' for 'p1'"),
+        ("- id: python\n  name: Python\n  aliases: [R]\n- id: R\n  name: R\n", "Found duplicate IDs or aliases: 'R'"),
     ],
 )
 def test_templates_manifest_invalid_content(tmp_path, content, message):

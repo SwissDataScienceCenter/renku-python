@@ -1,6 +1,5 @@
-#
-# Copyright 2021 Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,10 +15,13 @@
 # limitations under the License.
 """Renku session fixtures."""
 
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import MagicMock
 
 import pytest
+
+from renku.domain_model.session import SessionStopStatus
 
 
 @pytest.fixture()
@@ -52,8 +54,19 @@ def dummy_session_provider():
         def session_provider(self) -> ISessionProvider:
             return self
 
-        def session_list(self, project_name: str, config: Optional[Dict[str, Any]]) -> List[Session]:
-            return [Session(id=n, status="running", url="http://localhost/") for n in self.sessions]
+        def session_list(self, project_name: str) -> List[Session]:
+            return [
+                Session(
+                    id=n,
+                    status="running",
+                    url="http://localhost/",
+                    start_time=datetime.now(),
+                    provider="dummy",
+                    commit="abcdefg",
+                    branch="master",
+                )
+                for n in self.sessions
+            ]
 
         def session_start(
             self,
@@ -70,13 +83,13 @@ def dummy_session_provider():
             self.sessions.append(name)
             return name, ""
 
-        def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> bool:
+        def session_stop(self, project_name: str, session_name: Optional[str], stop_all: bool) -> SessionStopStatus:
             if stop_all:
                 self.sessions.clear()
-                return True
+                return SessionStopStatus.SUCCESSFUL
 
             self.sessions.remove(session_name)
-            return True
+            return SessionStopStatus.SUCCESSFUL
 
         def session_url(self, session_name: str) -> Optional[str]:
             return "http://localhost/"

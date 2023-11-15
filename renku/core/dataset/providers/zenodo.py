@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,8 +61,9 @@ class ZenodoProvider(ProviderApi, ExportProviderInterface, ImportProviderInterfa
 
     priority = ProviderPriority.HIGH
     name = "Zenodo"
+    is_remote = True
 
-    def __init__(self, uri: Optional[str], is_doi: bool = False):
+    def __init__(self, uri: str, is_doi: bool = False):
         super().__init__(uri=uri)
 
         self.is_doi = is_doi
@@ -71,7 +71,7 @@ class ZenodoProvider(ProviderApi, ExportProviderInterface, ImportProviderInterfa
 
     @staticmethod
     def supports(uri):
-        """Whether or not this provider supports a given URI."""
+        """Whether this provider supports a given URI."""
         if "zenodo" in uri.lower():
             return True
 
@@ -170,7 +170,7 @@ class ZenodoImporter(RepositoryImporter):
 
         from renku.command.schema.agent import PersonSchema
         from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile, ProviderDatasetSchema
-        from renku.domain_model.dataset import Url, generate_default_name
+        from renku.domain_model.dataset import Url, generate_default_slug
 
         class ZenodoDatasetSchema(ProviderDatasetSchema):
             """Schema for Dataverse datasets."""
@@ -204,7 +204,7 @@ class ZenodoImporter(RepositoryImporter):
         files = self.get_files()
         metadata = self.get_jsonld()
         dataset = ProviderDataset.from_jsonld(metadata, schema_class=ZenodoDatasetSchema)
-        dataset.name = generate_default_name(title=dataset.title or "", version=dataset.version)
+        dataset.slug = generate_default_slug(name=dataset.name or "", version=dataset.version)
         dataset.same_as = Url(url_id=remove_credentials(self.original_uri))
         if is_doi(dataset.identifier):
             dataset.same_as = Url(url_str=urllib.parse.urljoin("https://doi.org", dataset.identifier))
@@ -336,10 +336,7 @@ class ZenodoExporter(ExporterApi):
     @property
     def zenodo_url(self):
         """Returns correct Zenodo URL based on environment."""
-        if "ZENODO_USE_SANDBOX" in os.environ:
-            return ZENODO_SANDBOX_URL
-
-        return ZENODO_BASE_URL
+        return ZENODO_SANDBOX_URL if "ZENODO_USE_SANDBOX" in os.environ else ZENODO_BASE_URL
 
     def set_access_token(self, access_token):
         """Set access token."""
@@ -476,13 +473,14 @@ class ZenodoDeposition:
 
         request_payload = {
             "metadata": {
-                "title": dataset.title,
+                "title": dataset.name,
                 "upload_type": "dataset",
                 "description": dataset.description if dataset.description else None,
                 "creators": [
                     {"name": creator.name, "affiliation": creator.affiliation if creator.affiliation else None}
                     for creator in dataset.creators
                 ],
+                "keywords": dataset.keywords,
             }
         }
 
@@ -533,12 +531,12 @@ class ZenodoDeposition:
 def _make_request(uri, accept: str = "application/json"):
     """Execute network request."""
     record_id = ZenodoProvider.get_record_id(uri)
-    url = make_records_url(record_id)
+    url = make_records_url(record_id, uri=uri)
 
     return make_request(url=url, accept=accept)
 
 
-def make_records_url(record_id):
+def make_records_url(record_id, uri: str):
     """Create URL to access record by ID.
 
     Args:
@@ -547,4 +545,6 @@ def make_records_url(record_id):
     Returns:
         str: Full URL for the record.
     """
-    return urllib.parse.urljoin(ZENODO_BASE_URL, posixpath.join(ZENODO_API_PATH, "records", record_id))
+    url = ZENODO_SANDBOX_URL if "sandbox.zenodo.org" in uri.lower() else ZENODO_BASE_URL
+
+    return urllib.parse.urljoin(url, posixpath.join(ZENODO_API_PATH, "records", record_id))

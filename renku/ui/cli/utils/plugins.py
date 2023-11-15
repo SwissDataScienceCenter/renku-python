@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,3 +35,10 @@ def get_supported_session_providers_names():
     from renku.core.plugin.session import get_supported_session_providers
 
     return [p.name for p in get_supported_session_providers()]
+
+
+def get_supported_hibernating_session_providers_names():
+    """Return names of session providers that support hibernation."""
+    from renku.core.plugin.session import get_supported_hibernating_session_providers
+
+    return [p.name for p in get_supported_hibernating_session_providers()]

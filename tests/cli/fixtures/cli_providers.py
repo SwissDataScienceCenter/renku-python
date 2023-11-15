@@ -1,6 +1,5 @@
-#
-# Copyright 2021 Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,10 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku CLI fixtures for providers testing."""
+
 import json
 import os
 import posixpath
 import re
+import shutil
 import urllib
 import warnings
 
@@ -114,6 +115,20 @@ def cloud_storage_credentials(project):
     azure_section = f"{azure_account}.blob.core.windows.net"
     set_value(section=azure_section, key="account", value=azure_account, global_only=True)
     set_value(section=azure_section, key="key", value=azure_key, global_only=True)
+
+
+@pytest.fixture
+def external_cloud_storage(directory_tree, fake_home) -> str:
+    """Path to a directory to be used with an external cloud storage provider."""
+    external_storage = fake_home / "external" / "cloud" / "storage"
+
+    shutil.rmtree(external_storage, ignore_errors=True)
+    shutil.copytree(directory_tree, external_storage)
+
+    try:
+        yield external_storage.as_posix()
+    finally:
+        shutil.rmtree(external_storage, ignore_errors=True)
 
 
 @pytest.fixture

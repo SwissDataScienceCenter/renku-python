@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,7 +18,7 @@ from typing import List, Tuple
 
 import pluggy
 
-from renku.domain_model.session import ISessionProvider
+from renku.domain_model.session import IHibernatingSessionProvider, ISessionProvider
 
 hookspec = pluggy.HookspecMarker("renku")
 
@@ -39,4 +38,12 @@ def get_supported_session_providers() -> List[ISessionProvider]:
     from renku.core.plugin.pluginmanager import get_plugin_manager
 
     pm = get_plugin_manager()
-    return pm.hook.session_provider()
+    providers = pm.hook.session_provider()
+
+    return sorted(providers, key=lambda p: p.priority)
+
+
+def get_supported_hibernating_session_providers() -> List[IHibernatingSessionProvider]:
+    """Returns the currently available interactive session providers that support hibernation."""
+    providers = get_supported_session_providers()
+    return [p for p in providers if isinstance(p, IHibernatingSessionProvider)]

@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,6 +31,7 @@ from renku.core.constant import (
     DATASET_IMAGES,
     DEFAULT_DATA_DIR,
     DOCKERFILE,
+    IMAGES,
     LOCK_SUFFIX,
     POINTERS,
     RENKU_HOME,
@@ -92,6 +92,11 @@ class ProjectContext(threading.local):
     def dataset_images_path(self) -> Path:
         """Return a ``Path`` instance of Renku dataset metadata folder."""
         return self.path / RENKU_HOME / DATASET_IMAGES
+
+    @property
+    def project_image_pathname(self) -> Path:
+        """Return the path to the project's image file."""
+        return self.path / RENKU_HOME / IMAGES / "project" / "0.png"
 
     @property
     def dockerfile_path(self) -> Path:
@@ -221,9 +226,9 @@ class ProjectContext(threading.local):
 
         raise errors.ProjectContextError("No project context was pushed")
 
-    def has_context(self) -> bool:
-        """Return if at least one context is pushed."""
-        return bool(self._context_stack)
+    def has_context(self, path: Optional[Union[Path, str]] = None) -> bool:
+        """Return if at least one context which is equal to path (if not None) is pushed."""
+        return True if self._context_stack and (path is None or self.path == Path(path).resolve()) else False
 
     def clear(self) -> None:
         """Remove all contexts and reset the state without committing intermediate changes.

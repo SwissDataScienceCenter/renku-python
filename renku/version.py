@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,20 +16,24 @@
 """Version information for Renku."""
 
 import re
+from typing import Optional, cast
 
 try:
     from importlib.metadata import distribution, version
 except ImportError:
     from importlib_metadata import distribution, version  # type: ignore
 
-__version__ = version("renku")
-__template_version__ = "0.5.0"
-__minimum_project_version__ = "2.1.0"
+__version__ = cast(str, version("renku"))
+__template_version__ = "0.7.1"
+__minimum_project_version__ = "2.8.0"
 
 
-def is_release():
+def is_release(version: Optional[str] = None):
     """Check if current version is a release semver."""
-    if re.match(r"\d+.\d+.\d+$", __version__):
+    if not version:
+        version = __version__
+
+    if re.match(r"\d+.\d+.\d+(rc\d+)?$", version):
         return True
     return False
 

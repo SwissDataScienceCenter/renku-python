@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +26,7 @@ from renku.domain_model.workflow.plan import AbstractPlan
 from renku.infrastructure.gateway.activity_gateway import reindex_catalog
 
 
-def check_activity_catalog(fix, force, **_) -> Tuple[bool, Optional[str]]:
+def check_activity_catalog(fix, force, **_) -> Tuple[bool, bool, Optional[str]]:
     """Check if the activity-catalog needs to be rebuilt.
 
     Args:
@@ -36,7 +35,8 @@ def check_activity_catalog(fix, force, **_) -> Tuple[bool, Optional[str]]:
         _: keyword arguments.
 
     Returns:
-        Tuple of whether the activity-catalog needs to be rebuilt and a string of found problems.
+        Tuple of whether the activity-catalog needs to be rebuilt, if an automated fix is available and a string of
+            found problems.
     """
     database = project_context.database
     activity_catalog = database["activity-catalog"]
@@ -45,25 +45,25 @@ def check_activity_catalog(fix, force, **_) -> Tuple[bool, Optional[str]]:
     # NOTE: If len(activity_catalog) > 0 then either the project is fixed or it used a fixed Renku version but still has
     # broken metadata. ``force`` allows to rebuild the metadata in the latter case.
     if (len(relations) == 0 or len(activity_catalog) > 0) and not (force and fix):
-        return True, None
+        return True, False, None
 
     if not fix:
         problems = (
             WARNING + "The project's workflow metadata needs to be rebuilt (use 'renku doctor --fix' to rebuild it).\n"
         )
 
-        return False, problems
+        return False, True, problems
 
     with communication.busy("Rebuilding workflow metadata ..."):
         reindex_catalog(database=database)
 
     communication.info("Workflow metadata was rebuilt")
 
-    return True, None
+    return True, False, None
 
 
 @inject.autoparams("plan_gateway")
-def check_plan_modification_date(fix, plan_gateway: IPlanGateway, **_) -> Tuple[bool, Optional[str]]:
+def check_plan_modification_date(fix, plan_gateway: IPlanGateway, **_) -> Tuple[bool, bool, Optional[str]]:
     """Check if all plans have modification date set for them.
 
     Args:
@@ -72,7 +72,8 @@ def check_plan_modification_date(fix, plan_gateway: IPlanGateway, **_) -> Tuple[
         _: keyword arguments.
 
     Returns:
-        Tuple[bool, Optional[str]]: Tuple of whether there are plans without modification date and a string of their IDs
+        Tuple[bool, Optional[str]]: Tuple of whether there are plans without modification date, if an automated fix is
+            available and a string of their IDs
     """
     plans: List[AbstractPlan] = plan_gateway.get_all_plans()
 
@@ -82,7 +83,7 @@ def check_plan_modification_date(fix, plan_gateway: IPlanGateway, **_) -> Tuple[
             to_be_processed.append(plan)
 
     if not to_be_processed:
-        return True, None
+        return True, False, None
     if not fix:
         ids = [plan.id for plan in to_be_processed]
         message = (
@@ -90,13 +91,13 @@ def check_plan_modification_date(fix, plan_gateway: IPlanGateway, **_) -> Tuple[
             + "The following workflows have incorrect modification date (use 'renku doctor --fix' to fix them):\n\t"
             + "\n\t".join(ids)
         )
-        return False, message
+        return False, True, message
 
     fix_plan_dates(plans=to_be_processed, plan_gateway=plan_gateway)
     project_context.database.commit()
     communication.info("Workflow modification dates were fixed")
 
-    return True, None
+    return True, False, None
 
 
 def fix_plan_dates(plans: List[AbstractPlan], plan_gateway):
@@ -126,3 +127,44 @@ def fix_plan_dates(plans: List[AbstractPlan], plan_gateway):
             if plan.date_removed and plan.date_removed < plan.date_created:
                 plan.date_removed = plan.date_created + timedelta(seconds=1)
             plan.freeze()
+
+
+@inject.autoparams("plan_gateway")
+def check_plan_id(fix, plan_gateway: IPlanGateway, **_) -> Tuple[bool, bool, Optional[str]]:
+    """Check if all plans have correct IDs.
+
+    Args:
+        fix(bool): Whether to fix found issues.
+        plan_gateway(IPlanGateway): Injected PlanGateway.
+        _: keyword arguments.
+
+    Returns:
+        Tuple[bool, Optional[str]]: Tuple of whether there are plans with invalid IDs, if an automated fix is
+            available and a string of their IDs
+    """
+    plans: List[AbstractPlan] = plan_gateway.get_all_plans()
+
+    to_be_processed = []
+    for plan in plans:
+        if isinstance(plan.id, str) and plan.id.startswith("/plans//plans"):
+            to_be_processed.append(plan)
+
+    if not to_be_processed:
+        return True, False, None
+    if not fix:
+        ids = [plan.id for plan in to_be_processed]
+        message = (
+            WARNING
+            + "The following workflows have incorrect IDs (use 'renku doctor --fix' to fix them):\n\t"
+            + "\n\t".join(ids)
+        )
+        return False, True, message
+
+    for plan in to_be_processed:
+        plan.unfreeze()
+        plan.id = plan.id.replace("//plans/", "/")
+        plan.freeze()
+    project_context.database.commit()
+    communication.info("Workflow IDs were fixed")
+
+    return True, False, None

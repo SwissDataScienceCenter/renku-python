@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -129,18 +128,44 @@ to allow execution using various execution backends.
 
 Parameters can be set using the ``--set`` keyword or by specifying them in a
 values YAML file and passing that using ``--values``. In case of passing a file,
-the YAML should follow the this structure:
+for a composite workflow like:
+
+.. code-block:: console
+
+    $ renku run --name train -- python train.py --lr=0.1 --gamma=0.5 --output=result.csv
+    $ renku run --name eval -- python eval.py --image=graph.png --data=result.csv
+    $ renku workflow compose --map learning_rate=train.lr --map graph=eval.image
+
+the YAML file could look like:
 
 .. code-block:: yaml
 
+    # composite (mapped) parameters
     learning_rate: 0.9
-    dataset_input: dataset.csv
-    chart_output: chart.png
-    my-workflow:
-        lr: 0.8
-        lookup-table: lookup.xml
-        my-other-workflow:
-            language: en
+    graph: overview.png
+    train: # child workflow name
+        # child workflow parameters
+        gamma: 1.0
+
+Which would rerun the two steps but with ``lr`` set to ``0.9``, ``gamma`` set to ``1.0``
+and the output saved under ``overview.png``.
+
+Note that this would be the same as using:
+
+.. code-block:: yaml
+
+    train:
+        lr: 0.9
+        gamma: 1.0
+    eval:
+        image: overview.png
+
+For a regular (non-composite) workflow it is enough to just specify key-value pairs like:
+
+.. code-block:: yaml
+
+    lr: 0.9
+    gamma: 1.0
 
 In addition to being passed on the command line and being available to
 ``renku.ui.api.*`` classes in Python scripts, parameters are also set as
@@ -730,20 +755,11 @@ from renku.command.format.workflow import WORKFLOW_COLUMNS, WORKFLOW_FORMATS, WO
 from renku.command.util import ERROR
 from renku.command.view_model.activity_graph import ACTIVITY_GRAPH_COLUMNS
 from renku.core import errors
-from renku.core.util.util import NO_VALUE
+from renku.domain_model.constant import NO_VALUE
 from renku.ui.cli.utils.callback import ClickCallback
+from renku.ui.cli.utils.click import shell_complete_workflows
 from renku.ui.cli.utils.plugins import available_workflow_providers, get_supported_formats
 from renku.ui.cli.utils.terminal import print_workflow_file, show_text_with_pager
-
-
-def _complete_workflows(ctx, param, incomplete):
-    from renku.command.workflow import search_workflows_command
-
-    try:
-        result = search_workflows_command().build().execute(name=incomplete)
-        return list(filter(lambda x: x.startswith(incomplete), result.output))
-    except Exception:
-        return []
 
 
 @click.group()
@@ -774,7 +790,7 @@ def list_workflows(format, columns):
 
 
 @workflow.command()
-@click.argument("name_or_id_or_path", metavar="<name_or_id_or_path>", shell_complete=_complete_workflows)
+@click.argument("name_or_id_or_path", metavar="<name_or_id_or_path>", shell_complete=shell_complete_workflows)
 def show(name_or_id_or_path):
     """Show details for workflow <name_or_id_or_path>."""
     from renku.command.view_model.plan import PlanViewModel
@@ -804,7 +820,7 @@ def show(name_or_id_or_path):
 
 
 @workflow.command()
-@click.argument("name", metavar="<name>", shell_complete=_complete_workflows)
+@click.argument("name", metavar="<name>", shell_complete=shell_complete_workflows)
 @click.option("--force", is_flag=True, help="Override the existence check.")
 def remove(name, force):
     """Remove a workflow named <name>."""
@@ -850,7 +866,7 @@ def remove(name, force):
     help="Creator's name, email, and affiliation. Accepted format is 'Forename Surname <email> [affiliation]'.",
 )
 @click.argument("name", required=True)
-@click.argument("steps", nargs=-1, type=click.UNPROCESSED, shell_complete=_complete_workflows)
+@click.argument("steps", nargs=-1, type=click.UNPROCESSED, shell_complete=shell_complete_workflows)
 def compose(
     description,
     mappings,
@@ -914,7 +930,7 @@ def compose(
 
 
 @workflow.command()
-@click.argument("workflow_name", metavar="<name or uuid>", shell_complete=_complete_workflows)
+@click.argument("workflow_name", metavar="<name or uuid>", shell_complete=shell_complete_workflows)
 @click.option("-n", "--name", metavar="<new name>", help="New name of the workflow")
 @click.option("-d", "--description", metavar="<new desc>", help="New description of the workflow")
 @click.option(
@@ -1029,7 +1045,7 @@ def edit(
 
 
 @workflow.command()
-@click.argument("workflow_name", metavar="<name or uuid>", shell_complete=_complete_workflows)
+@click.argument("workflow_name", metavar="<name or uuid>", shell_complete=shell_complete_workflows)
 @click.option(
     "-f",
     "--format",
@@ -1157,7 +1173,7 @@ def outputs(ctx, paths):
     help="YAML file containing parameter mappings to be used.",
 )
 @click.option("--skip-metadata-update", is_flag=True, help="Do not update the metadata store for the execution.")
-@click.argument("name_or_id", required=True, shell_complete=_complete_workflows)
+@click.argument("name_or_id", required=True, shell_complete=shell_complete_workflows)
 def execute(
     provider,
     config,
@@ -1315,7 +1331,7 @@ def visualize(sources, columns, exclude_files, ascii, revision, format, interact
 )
 @click.option("mappings", "-m", "--map", multiple=True, help="Mapping for a workflow parameter.")
 @click.option("config", "-c", "--config", metavar="<config file>", help="YAML file containing config for the provider.")
-@click.argument("name_or_id", required=True, shell_complete=_complete_workflows)
+@click.argument("name_or_id", required=True, shell_complete=shell_complete_workflows)
 def iterate(name_or_id, mappings, mapping_path, dry_run, provider, config, skip_metadata_update):
     """Execute a workflow by iterating through a range of provided parameters."""
     from renku.command.view_model.plan import PlanViewModel

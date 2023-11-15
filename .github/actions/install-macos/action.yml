@@ -1,0 +1,49 @@
+name: Install dependencies on macOS
+description: Install dependencies on macOS
+inputs:
+  python-version:
+    description: "Python version to install"
+    required: false
+    default: "3.9"
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v3.5.0
+      with:
+        fetch-depth: 0
+    - name: Checkout repository
+      shell: bash
+      run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+    - name: Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Install dependencies
+      env:
+        POETRY_VIRTUALENVS_CREATE: "false"
+      shell: bash
+      run: |
+        brew update || true
+        brew unlink git-lfs || true
+        curl -L https://raw.githubusercontent.com/Homebrew/homebrew-core/43842898fd3ff43273466052722f5ba2789196cb/Formula/git-lfs.rb > git-lfs.rb && brew install git-lfs.rb && rm git-lfs.rb
+        brew install shellcheck node || brew link --overwrite node
+        python -m pip install --upgrade pip
+        python -m pip install wheel poetry
+        poetry self add "poetry-dynamic-versioning[plugin]"
+        make download-templates
+        poetry install -E service --with dev,tests,docs
+    - name: Set Git config
+      shell: bash
+      run: |
+        git config --global --add user.name "Renku Bot"
+        git config --global --add user.email "renku@datascience.ch"
+    - id: year-week
+      shell: bash
+      run: echo "date=$(date '+%Y-%V')" >> $GITHUB_OUTPUT
+    - name: Network cache
+      uses: actions/cache@master
+      with:
+        path: cassettes
+        key: ${{ env.NETWORK_CACHE_PREFIX }}-${{ steps.year-week.outputs.date }}-${{ hashFiles('poetry.lock') }}-${{ github.job }}
+      env:
+        NETWORK_CACHE_PREFIX: "20230929"

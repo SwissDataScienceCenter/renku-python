@@ -1,6 +1,5 @@
-#
-# Copyright 2019-2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +19,7 @@ import json
 
 import pytest
 
-from renku.ui.service.errors import IntermittentSettingExistsError, ProgramProjectCorruptError, UserNonRenkuProjectError
+from renku.ui.service.errors import ProgramProjectCorruptError, UserNonRenkuProjectError
 from tests.utils import retry_failed
 
 
@@ -29,10 +28,10 @@ from tests.utils import retry_failed
 @retry_failed
 def test_config_view_show(svc_client_with_repo):
     """Check config show view."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     params = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
 
     response = svc_client.get("/config.show", query_string=params, headers=headers)
@@ -82,10 +81,10 @@ def test_config_view_show_remote(svc_client_with_repo, it_remote_repo_url):
 @retry_failed
 def test_config_view_set(svc_client_with_repo):
     """Check config set view."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
         "config": {
             "lfs_threshold": "1b",
             "renku.autocommit_lfs": "true",
@@ -100,7 +99,7 @@ def test_config_view_set(svc_client_with_repo):
     assert {"error"} != set(response.json.keys())
 
     params = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
 
     response = svc_client.get("/config.show", query_string=params, headers=headers)
@@ -113,7 +112,7 @@ def test_config_view_set(svc_client_with_repo):
     assert 200 == response.status_code
 
     payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
         "config": {"lfs_threshold": None, "interactive.default_url": "/still_not_lab", "interactive.dummy": None},
     }
 
@@ -134,14 +133,13 @@ def test_config_view_set(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
-def test_config_view_set_failures(svc_client_with_repo):
-    """Check errors triggered while invoking config set."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+def test_config_view_set_nonexising_key_removal(svc_client_with_repo):
+    """Check that removing a non-existing key (i.e. setting to None) is allowed."""
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
-    # NOTE: remove a non existing value
     non_existing_param = "NON_EXISTING"
     payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
         "config": {
             non_existing_param: None,
         },
@@ -150,9 +148,9 @@ def test_config_view_set_failures(svc_client_with_repo):
     response = svc_client.post("/config.set", data=json.dumps(payload), headers=headers)
 
     assert 200 == response.status_code
-    assert {"error"} == set(response.json.keys())
-    assert IntermittentSettingExistsError.code == response.json["error"]["code"]
-    assert non_existing_param in response.json["error"]["devMessage"]
+    assert {"error"} != set(response.json.keys())
+    assert {"result"} == set(response.json.keys())
+    assert response.json["result"]["config"][non_existing_param] is None
 
 
 @pytest.mark.service
@@ -160,11 +158,11 @@ def test_config_view_set_failures(svc_client_with_repo):
 @retry_failed
 def test_config_view_set_and_show_failures(svc_client_with_repo):
     """Check errors triggered while invoking config set."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     # NOTE: use sections with wrong chars introduces a readin error. Should we handle it at write time?
     payload = {
-        "project_id": project_id,
+        "git_url": url_components.href,
         "config": {".NON_EXISTING": "test"},
     }
 
@@ -173,7 +171,7 @@ def test_config_view_set_and_show_failures(svc_client_with_repo):
     assert 200 == response.status_code
     assert {"error"} != set(response.json.keys())
 
-    response = svc_client.get("/config.show", query_string={"project_id": project_id}, headers=headers)
+    response = svc_client.get("/config.show", query_string={"git_url": url_components.href}, headers=headers)
 
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())

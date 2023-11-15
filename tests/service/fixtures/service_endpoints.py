@@ -1,6 +1,5 @@
-#
-# Copyright 2021 Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,16 +27,6 @@ import pytest
             "headers": {"Content-Type": "application/json", "accept": "application/json"},
         },
         {"url": "/cache.files_upload", "allowed_method": "POST", "headers": {}},
-        {
-            "url": "/cache.project_clone",
-            "allowed_method": "POST",
-            "headers": {"Content-Type": "application/json", "accept": "application/json"},
-        },
-        {
-            "url": "/cache.project_list",
-            "allowed_method": "GET",
-            "headers": {"Content-Type": "application/json", "accept": "application/json"},
-        },
         {
             "url": "/datasets.add",
             "allowed_method": "POST",
@@ -78,14 +67,14 @@ def service_allowed_endpoint(request, svc_client, mock_redis):
             "headers": {"Content-Type": "application/json", "accept": "application/json"},
         },
         {
-            "url": "/cache.project_clone",
+            "url": "/project.show",
             "allowed_method": "POST",
             "headers": {"Content-Type": "application/json", "accept": "application/json"},
         },
     ]
 )
 def service_unallowed_endpoint(request, svc_client):
-    """Ensure not allawed methods do not crash the app."""
+    """Ensure not allowed methods do not crash the app."""
     methods = {
         "PUT": svc_client.put,
         "DELETE": svc_client.delete,
@@ -101,16 +90,16 @@ def unlink_file_setup(svc_client_with_repo):
     """Setup for testing of unlinking of a file."""
     from tests.utils import make_dataset_add_payload
 
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
-    payload = make_dataset_add_payload(project_id, [("file_path", "README.md")])
+    payload = make_dataset_add_payload(url_components.href, [("file_path", "README.md")])
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
     assert 200 == response.status_code
 
     unlink_payload = {
-        "project_id": project_id,
-        "name": response.json["result"]["name"],
+        "git_url": url_components.href,
+        "slug": response.json["result"]["slug"],
         "include_filters": [response.json["result"]["files"][0]["file_path"]],
     }
 

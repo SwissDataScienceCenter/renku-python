@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +22,7 @@ from rq import Worker
 from sentry_sdk.integrations.rq import RqIntegration
 
 from renku.core.errors import ConfigurationError, UsageError
+from renku.ui.service.cache.config import REDIS_NAMESPACE
 from renku.ui.service.config import SENTRY_ENABLED, SENTRY_SAMPLERATE
 from renku.ui.service.jobs.queues import QUEUES, WorkerQueues
 from renku.ui.service.logger import DEPLOYMENT_LOG_LEVEL, worker_log
@@ -63,12 +63,12 @@ def check_queues(queue_list):
 
 def start_worker(queue_list):
     """Start worker."""
-    q = [q.strip() for q in queue_list if q.strip()]
+    q = [f"{REDIS_NAMESPACE}.{q.strip()}" for q in queue_list if q.strip()]
     check_queues(q)
 
-    worker_log.info(f"working on queues: {queue_list}")
+    worker_log.info(f"working on queues: {q}")
 
-    with worker(queue_list) as rq_worker:
+    with worker(q) as rq_worker:
         worker_log.info("running worker")
         rq_worker.work(logging_level=DEPLOYMENT_LOG_LEVEL)
 
@@ -82,4 +82,4 @@ if __name__ == "__main__":
             "Worker queues not specified. Please, set RENKU_SVC_WORKER_QUEUES environment variable."
         )
 
-    start_worker([queue_name.strip() for queue_name in queues.strip().split(",")])
+    start_worker([f"{REDIS_NAMESPACE}.{queue_name.strip()}" for queue_name in queues.strip().split(",")])

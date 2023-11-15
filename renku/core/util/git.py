@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +28,8 @@ from pathlib import Path
 from subprocess import PIPE, SubprocessError, run
 from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union, cast
 from uuid import uuid4
+
+import git
 
 from renku.core import errors
 from renku.infrastructure.repository import DiffChangeType
@@ -95,7 +96,7 @@ def is_valid_git_repository(repository: Optional["Repository"]) -> bool:
         repository(Optional[Repository]): The repository to check.
 
     Returns:
-        bool: Whether or not this is a valid Git repository.
+        bool: Whether this is a valid Git repository.
 
     """
     return repository is not None and repository.head.is_valid()
@@ -388,7 +389,8 @@ def get_entity_from_revision(
         Entity: The Entity for the given path and revision.
 
     """
-    from renku.domain_model.entity import NON_EXISTING_ENTITY_CHECKSUM, Collection, Entity
+    from renku.domain_model.constant import NON_EXISTING_ENTITY_CHECKSUM
+    from renku.domain_model.entity import Collection, Entity
 
     def get_directory_members(absolute_path: Path) -> List[Entity]:
         """Return first-level files/directories in a directory."""
@@ -490,7 +492,8 @@ def commit_changes(*paths: Union[Path, str], repository: "Repository", message=N
         if saved_paths:
             if not message:
                 # Show saved files in message
-                max_len = 100
+                max_line_len = 100
+                max_total_len = 100000
                 message = "Saved changes to: "
                 paths_with_lens = cast(
                     List[Tuple[str, int]],
@@ -501,7 +504,10 @@ def commit_changes(*paths: Union[Path, str], repository: "Repository", message=N
                     )[1:],
                 )
                 # limit first line to max_len characters
-                message += " ".join(p if l < max_len else "\n\t" + p for p, l in paths_with_lens)
+                message += " ".join(p if l < max_line_len else "\n\t" + p for p, l in paths_with_lens)
+
+                if len(message) > max_total_len:
+                    message = message[: max_total_len - 3] + "..."
 
             repository.commit(message)
     except errors.GitCommandError as e:
@@ -621,7 +627,7 @@ def clone_renku_repository(
     install_githooks=False,
     install_lfs=True,
     skip_smudge=True,
-    recursive=True,
+    recursive=False,
     progress=None,
     config: Optional[dict] = None,
     raise_git_except=False,
@@ -640,17 +646,19 @@ def clone_renku_repository(
         install_githooks: Whether to install git hooks (Default value = False).
         install_lfs: Whether to install Git LFS (Default value = True).
         skip_smudge: Whether to pull files from Git LFS (Default value = True).
-        recursive: Whether to clone recursively (Default value = True).
+        recursive: Whether to clone recursively (Default value = False).
         progress: The GitProgress object (Default value = None).
         config(Optional[dict], optional): Set configuration for the project (Default value = None).
         raise_git_except: Whether to raise git exceptions (Default value = False).
-        checkout_revision: The revision to checkout after clone (Default value = None).
+        checkout_revision: The revision to check out after clone (Default value = None).
         use_renku_credentials(bool, optional): Whether to use Renku provided credentials (Default value = False).
         reuse_existing_repository(bool, optional): Whether to clone over an existing repository (Default value = False).
 
     Returns:
         The cloned repository.
     """
+    from renku.core.login import has_credentials_for_hostname
+
     parsed_url = parse_git_url(url)
 
     clone_options = None
@@ -661,7 +669,11 @@ def clone_renku_repository(
         git_url = str(absolute_path)
     elif parsed_url.scheme in ["http", "https"] and gitlab_token:
         git_url = get_oauth_url(url, gitlab_token)
-    elif parsed_url.scheme in ["http", "https"] and use_renku_credentials:
+    elif (
+        parsed_url.scheme in ["http", "https"]
+        and use_renku_credentials
+        and has_credentials_for_hostname(parsed_url.hostname)  # NOTE: Don't change remote URL if no credentials exist
+    ):
         clone_options = [f"--config credential.helper='!renku credentials --hostname {parsed_url.hostname}'"]
         deployment_hostname = deployment_hostname or parsed_url.hostname
         git_url = get_renku_repo_url(url, deployment_hostname=deployment_hostname, access_token=None)
@@ -700,9 +712,9 @@ def clone_repository(
     install_githooks=True,
     install_lfs=True,
     skip_smudge=True,
-    recursive=True,
+    recursive=False,
     depth=None,
-    progress=None,
+    progress: Optional[git.RemoteProgress] = None,
     config: Optional[dict] = None,
     raise_git_except=False,
     checkout_revision=None,
@@ -718,12 +730,12 @@ def clone_repository(
         install_githooks: Whether to install git hooks (Default value = True).
         install_lfs: Whether to install Git LFS (Default value = True).
         skip_smudge: Whether to pull files from Git LFS (Default value = True).
-        recursive: Whether to clone recursively (Default value = True).
+        recursive: Whether to clone recursively (Default value = False).
         depth: The clone depth, number of commits from HEAD (Default value = None).
         progress: The GitProgress object (Default value = None).
         config(Optional[dict], optional): Set configuration for the project (Default value = None).
         raise_git_except: Whether to raise git exceptions (Default value = False).
-        checkout_revision: The revision to checkout after clone (Default value = None).
+        checkout_revision: The revision to check out after clone (Default value = None).
         no_checkout(bool, optional): Whether to perform a checkout (Default value = False).
         clean(bool, optional): Whether to require the target folder to be clean (Default value = False).
         clone_options(List[str], optional): Additional clone options (Default value = None).
@@ -736,10 +748,8 @@ def clone_repository(
 
     path = Path(path) if path else Path(get_repository_name(url))
 
-    def handle_git_exception():
-        """Handle git exceptions."""
-        if raise_git_except:
-            return
+    def error_from_progress(progress: Optional[git.RemoteProgress], url: str) -> errors.GitError:
+        """Format a Git command error into a more user-friendly format."""
 
         message = f"Cannot clone repo from {url}"
 
@@ -748,9 +758,9 @@ def clone_repository(
             error = "".join([f"\n\t{line}" for line in lines if line.strip()])
             message += f" - error message:\n {error}"
 
-        raise errors.GitError(message)
+        return errors.GitError(message)
 
-    def clean_directory():
+    def clean_directory(clean: bool):
         if not clean or not path:
             return
         try:
@@ -771,7 +781,7 @@ def clone_repository(
             if remote and have_same_remote(remote.url, url):
                 repository.reset(hard=True)
                 repository.fetch(all=True, tags=True)
-                # NOTE: By default we checkout remote repository's HEAD since the local HEAD might not point to
+                # NOTE: By default we check out remote repository's HEAD since the local HEAD might not point to
                 # the default branch.
                 default_checkout_revision = checkout_revision or "origin/HEAD"
                 repository.checkout(default_checkout_revision)
@@ -781,10 +791,10 @@ def clone_repository(
                     pass
             else:
                 # NOTE: not same remote, so don't reuse
-                clean_directory()
+                clean_directory(clean=clean)
                 return None
         except errors.GitError:  # NOTE: Not a git repository, remote not found, or checkout failed
-            clean_directory()
+            clean_directory(clean=clean)
         else:
             return repository
 
@@ -815,15 +825,20 @@ def clone_repository(
         repository = clone(branch=checkout_revision, depth=depth)
     except errors.GitCommandError:
         if not checkout_revision:
-            handle_git_exception()
-            raise
+            if raise_git_except:
+                raise
+            raise error_from_progress(progress, url)
+
+        # NOTE: Delete the partially-cloned repository
+        clean_directory(clean=True)
 
         # NOTE: clone without branch set, in case checkout_revision was not a branch or a tag but a commit
         try:
             repository = clone(branch=None, depth=None)
         except errors.GitCommandError:
-            handle_git_exception()
-            raise
+            if raise_git_except:
+                raise
+            raise error_from_progress(progress, url)
 
     if checkout_revision is not None and not no_checkout:
         try:

@@ -1,6 +1,5 @@
-#
-# Copyright 2021 Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +24,13 @@ import pytest
 
 from renku.core.template.template import EmbeddedTemplates, FileAction, RepositoryTemplates, copy_template_to_project
 from renku.domain_model.project_context import project_context
-from renku.domain_model.template import RenderedTemplate, Template, TemplateMetadata, TemplateParameter
+from renku.domain_model.template import (
+    RenderedTemplate,
+    Template,
+    TemplateMetadata,
+    TemplateParameter,
+    TemplatesManifest,
+)
 from renku.infrastructure.repository import Repository
 from renku.version import __version__ as renku_version
 from tests.fixtures.repository import RenkuProject
@@ -53,7 +58,7 @@ def template(template_metadata):
         "url": "https://github.com/SwissDataScienceCenter/renku-project-template",
         "id": "python-minimal",
         "index": 1,
-        "ref": "master",
+        "branch": "master",
         # TODO: Add template parameters here once parameters are added to the template.
         "metadata": {},
         "default_metadata": template_metadata,
@@ -78,7 +83,7 @@ def project_init(template):
         "init_custom": [
             "init",
             "--template-ref",
-            template["ref"],
+            template["branch"],
             "--template-id",
             "python-minimal",
             data["test_project"],
@@ -86,7 +91,7 @@ def project_init(template):
         "init_custom_template": (
             "https://gitlab.dev.renku.ch/renku-python-integration-tests/core-it-template-variable-test-project"
         ),
-        "remote": ["--template-source", template["url"], "--template-ref", template["ref"]],
+        "remote": ["--template-source", template["url"], "--template-ref", template["branch"]],
         "id": ["--template-id", template["id"]],
         "force": ["--force"],
         "parameters": ["--parameter", "p1=v1", "--parameter", "p2=v2"],
@@ -126,12 +131,25 @@ def source_template(templates_source_root) -> Template:
             # Docker content
             ARG RENKU_VERSION={{ __renku_version__ | default("0.42.0") }}
             # More content
+            ########################################################
+            #        Renku-specific section - DO NOT MODIFY        #
+            ########################################################
+
+            FROM ${RENKU_BASE_IMAGE} as builder
+
+            RUN specific commands
+
+            ########################################################
+            #              End Renku-specific section              #
+            ########################################################
+            # More content
             """
         )
     )
 
     return Template(
         id="dummy",
+        aliases=[],
         name="Dummy Template",
         description="A dummy template",
         source="dummy",
@@ -150,7 +168,9 @@ def source_template(templates_source_root) -> Template:
 @pytest.fixture(params=["renku", "repository"])
 def templates_source(request, monkeypatch, templates_source_root, source_template):
     """A dummy TemplatesSource."""
-    (templates_source_root / "manifest.yaml").write_text(
+    manifest = templates_source_root / "manifest.yaml"
+
+    manifest.write_text(
         textwrap.dedent(
             """
             - id: dummy
@@ -162,7 +182,7 @@ def templates_source(request, monkeypatch, templates_source_root, source_templat
         )
     )
 
-    def update_dummy_template_files(templates_source, id, content, parameters):
+    def update_template_files(templates_source, id, content, parameters):
         template = templates_source.get_template(id=id, reference=None)
 
         if template is None or template.path is None:
@@ -170,9 +190,31 @@ def templates_source(request, monkeypatch, templates_source_root, source_templat
 
         for relative_path in template.get_files():
             path = template.path / relative_path
-            path.write_text(f"{path.read_text()}\n{content}")
+
+            if relative_path == "Dockerfile":
+                path.write_text(path.read_text().replace("RUN specific commands", "RUN updated specific commands"))
+            else:
+                path.write_text(f"{path.read_text()}\n{content}")
 
         template.parameters = parameters or []
+
+    def rename_template(templates_source, id: str, new_name: str):
+        shutil.copytree(templates_source.path / "dummy", templates_source.path / new_name)
+
+        manifest.write_text(
+            textwrap.dedent(
+                f"""
+                - id: {new_name}
+                  name: Dummy Template
+                  description: A dummy template
+                  immutable_template_files:
+                    - immutable.file
+                  aliases: [{id}]
+                """
+            )
+        )
+        # NOTE: Reload manifest file
+        templates_source.manifest = TemplatesManifest.from_path(manifest, skip_validation=True)
 
     class DummyRenkuTemplatesSource(EmbeddedTemplates):
         """Base class for Renku template sources."""
@@ -183,8 +225,12 @@ def templates_source(request, monkeypatch, templates_source_root, source_templat
 
         def update(self, id, version, content="# modification", parameters: Optional[List[TemplateParameter]] = None):
             """Update all files of a template."""
-            update_dummy_template_files(self, id, content, parameters)
+            update_template_files(self, id, content, parameters)
+            self.version = self.reference = version
 
+        def rename(self, id: str, new_name: str, version: str):
+            """Rename a template."""
+            rename_template(templates_source=self, id=id, new_name=new_name)
             self.version = self.reference = version
 
     class DummyRepositoryTemplatesSource(RepositoryTemplates):
@@ -207,10 +253,17 @@ def templates_source(request, monkeypatch, templates_source_root, source_templat
 
         def update(self, id, version, content="# modification", parameters: Optional[List[TemplateParameter]] = None):
             """Update all files of a template."""
-            update_dummy_template_files(self, id, content, parameters)
+            update_template_files(self, id, content, parameters)
+            self.update_templates(f"Update {id} template", version)
 
+        def rename(self, id: str, new_name: str, version: str):
+            """Rename a template."""
+            rename_template(templates_source=self, id=id, new_name=new_name)
+            self.update_templates(f"Rename {id} template", version)
+
+        def update_templates(self, message, version):
             self.repository.add(all=True)
-            self.repository.commit("updated dummy template", no_verify=True)
+            self.repository.commit(message, no_verify=True)
             self.repository.tags.add(version)
 
             self.version = self.repository.head.commit.hexsha
@@ -270,7 +323,7 @@ def rendered_template_with_update(tmp_path, rendered_template):
     (updated_template_root / ".gitignore").write_text(".swp\n.idea")
     (updated_template_root / "requirements.txt").write_text("changed\n")
     dockerfile = updated_template_root / "Dockerfile"
-    dockerfile.write_text(f"{dockerfile.read_text()}\n# Updated Dockerfile")
+    dockerfile.write_text(dockerfile.read_text().replace("RUN specific commands", "RUN updated specific commands"))
     (updated_template_root / "README.md").write_text("""Updated README: {{ __project_description__ }}\n""")
 
     updated_rendered_template = RenderedTemplate(

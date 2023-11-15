@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +25,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from cwl_utils.parser import load_document_by_uri
-from cwl_utils.parser.cwl_v1_0 import CommandLineTool, InitialWorkDirRequirement
+from cwl_utils.parser.cwl_v1_0 import CommandLineTool, Directory, File, InitialWorkDirRequirement
 from werkzeug.utils import secure_filename
 
 from renku.core.constant import RENKU_HOME
@@ -167,7 +166,7 @@ def _migrate_single_step(migration_context, cmd_line_tool, path, commit=None, pa
         matched_input = next(i for i in inputs if i.id.endswith(name))
         inputs.remove(matched_input)
 
-        path = project_context.metadata_path / OLD_WORKFLOW_PATH / Path(matched_input.default["path"])
+        path = project_context.metadata_path / OLD_WORKFLOW_PATH / Path(matched_input.default.path)
         stdin = path.resolve().relative_to(project_context.path)
         id_ = CommandInput.generate_id(base_id, "stdin")
 
@@ -237,7 +236,7 @@ def _migrate_single_step(migration_context, cmd_line_tool, path, commit=None, pa
                 pass
 
             if isinstance(matched_input.default, dict):
-                path = project_context.metadata_path / OLD_WORKFLOW_PATH / Path(matched_input.default["path"])
+                path = project_context.metadata_path / OLD_WORKFLOW_PATH / Path(matched_input.default.path)
             else:
                 path = Path(matched_input.default)
 
@@ -282,8 +281,8 @@ def _migrate_single_step(migration_context, cmd_line_tool, path, commit=None, pa
             if prefix and i.inputBinding.separate:
                 prefix += " "
 
-        if isinstance(i.default, dict) and "class" in i.default and i.default["class"] in ["File", "Directory"]:
-            path = project_context.metadata_path / OLD_WORKFLOW_PATH / Path(i.default["path"])
+        if isinstance(i.default, (File, Directory)):
+            path = project_context.metadata_path / OLD_WORKFLOW_PATH / Path(str(i.default.path))
             path = Path(os.path.realpath(path)).relative_to(project_context.path)
 
             run.inputs.append(

@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,29 +16,38 @@
 """S3 dataset provider."""
 
 import urllib
+from pathlib import Path
 from typing import TYPE_CHECKING, List, Optional, Tuple, cast
 
-from renku.command.command_builder import inject
 from renku.core import errors
-from renku.core.dataset.providers.api import ProviderApi, ProviderCredentials, ProviderPriority
-from renku.core.dataset.providers.cloud import CloudStorageAddProvider
-from renku.core.dataset.providers.models import ProviderParameter
-from renku.core.interface.storage import IStorage, IStorageFactory
+from renku.core.dataset.providers.api import (
+    AddProviderInterface,
+    ProviderApi,
+    ProviderCredentials,
+    ProviderPriority,
+    StorageProviderInterface,
+)
+from renku.core.dataset.providers.common import get_metadata
+from renku.core.dataset.providers.models import DatasetAddAction
+from renku.core.interface.storage import IStorage
 from renku.core.util.metadata import prompt_for_credentials
 from renku.core.util.urls import get_scheme
 from renku.domain_model.project_context import project_context
+from renku.infrastructure.storage.factory import StorageFactory
 
 if TYPE_CHECKING:
+    from renku.core.dataset.providers.models import DatasetAddMetadata
     from renku.domain_model.dataset import Dataset
 
 
-class S3Provider(ProviderApi, CloudStorageAddProvider):
+class S3Provider(ProviderApi, StorageProviderInterface, AddProviderInterface):
     """S3 provider."""
 
     priority = ProviderPriority.HIGHEST
     name = "S3"
+    is_remote = True
 
-    def __init__(self, uri: Optional[str]):
+    def __init__(self, uri: str):
         super().__init__(uri=uri)
 
         endpoint, bucket, _ = parse_s3_uri(uri=self.uri)
@@ -53,29 +61,26 @@ class S3Provider(ProviderApi, CloudStorageAddProvider):
         return get_scheme(uri) == "s3"
 
     @staticmethod
-    def get_add_parameters() -> List["ProviderParameter"]:
-        """Returns parameters that can be set for add."""
-        from renku.core.dataset.providers.models import ProviderParameter
+    def supports_storage(uri: str) -> bool:
+        """Whether or not this provider supports a given URI storage."""
+        return S3Provider.supports(uri=uri)
 
-        return [
-            ProviderParameter(
-                "storage",
-                flags=["storage"],
-                default=None,
-                help="Uri for the S3 bucket when creating the dataset at the same time when running 'add'",
-                multiple=False,
-                type=str,
-            ),
-        ]
+    def get_metadata(
+        self, uri: str, destination: Path, dataset_add_action: DatasetAddAction = DatasetAddAction.NONE, **_
+    ) -> List["DatasetAddMetadata"]:
+        """Get metadata of files that will be added to a dataset."""
+        return get_metadata(provider=self, uri=uri, destination=destination, dataset_add_action=dataset_add_action)
+
+    def convert_to_storage_uri(self, uri: str) -> str:
+        """Convert backend-specific URI to a URI that is usable by the IStorage implementation."""
+        _, bucket, path = parse_s3_uri(uri=uri)
+        return f"s3://{bucket}/{path}"
 
     def get_credentials(self) -> "S3Credentials":
         """Return an instance of provider's credential class."""
         return S3Credentials(provider=self)
 
-    @inject.autoparams("storage_factory")
-    def get_storage(
-        self, storage_factory: "IStorageFactory", credentials: Optional["ProviderCredentials"] = None
-    ) -> "IStorage":
+    def get_storage(self, credentials: Optional["ProviderCredentials"] = None) -> "IStorage":
         """Return the storage manager for the provider."""
         s3_configuration = {
             "type": "s3",
@@ -83,22 +88,15 @@ class S3Provider(ProviderApi, CloudStorageAddProvider):
             "endpoint": self.endpoint,
         }
 
-        def create_renku_storage_s3_uri(uri: str) -> str:
-            """Create a S3 URI to work with the Renku storage handler."""
-            _, bucket, path = parse_s3_uri(uri=uri)
-
-            return f"s3://{bucket}/{path}"
-
         if not credentials:
             credentials = self.get_credentials()
             prompt_for_credentials(credentials)
 
-        return storage_factory.get_storage(
+        return StorageFactory.get_storage(
             storage_scheme="s3",
             provider=self,
             credentials=credentials,
             configuration=s3_configuration,
-            uri_convertor=create_renku_storage_s3_uri,
         )
 
     @property
@@ -160,14 +158,18 @@ def parse_s3_uri(uri: str) -> Tuple[str, str, str]:
     bucket, _, path = path.partition("/")
 
     if parsed_uri.scheme.lower() != "s3":
-        raise errors.ParameterError(f"Invalid S3 scheme: {uri}. Valid format is 's3://<hostname>/<bucket-name>/<path>'")
+        raise errors.ParameterError(
+            f"Invalid S3 scheme: {uri}.\nValid format is 's3://<hostname>/<bucket-name>/<path>'", show_prefix=False
+        )
     if not hostname:
         raise errors.ParameterError(
-            f"Hostname is missing in S3 URI: {uri}. Valid format is 's3://<hostname>/<bucket-name>/<path>'"
+            f"Hostname is missing in S3 URI: {uri}.\nValid format is 's3://<hostname>/<bucket-name>/<path>'",
+            show_prefix=False,
         )
     if not bucket:
         raise errors.ParameterError(
-            f"Bucket name is missing in S3 URI: {uri}. Valid format is 's3://<hostname>/<bucket-name>/<path>'"
+            f"Bucket name is missing in S3 URI: {uri}.\nValid format is 's3://<hostname>/<bucket-name>/<path>'",
+            show_prefix=False,
         )
 
     return hostname, bucket, path.strip("/")

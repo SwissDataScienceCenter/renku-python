@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,12 +94,10 @@ def _update_config(
     """
     section, section_key = _split_section_and_key(key)
     if remove:
-        value = remove_value(section, section_key, global_only=global_only)
-        if value is None:
-            raise errors.ParameterError(f'Key "{key}" not found.')
+        remove_value(section, section_key, global_only=global_only)
     else:
         set_value(section, section_key, value, global_only=global_only)
-        return value
+    return value
 
 
 def update_config():

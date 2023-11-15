@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,23 +18,25 @@ import uuid
 from datetime import datetime
 
 import yagup
-from marshmallow import Schema, fields, validates
+from marshmallow import Schema, fields, pre_load, validates
 
 from renku.ui.service.errors import UserRepoUrlInvalidError
 from renku.ui.service.serializers.rpc import JsonRPCResponse
-
-
-class LocalRepositorySchema(Schema):
-    """Schema for identifying a locally stored repository."""
-
-    # In the long term, the id should be used only for internal operations
-    project_id = fields.String(metadata={"description": "Reference to access the project in the local cache."})
+from renku.ui.service.utils import normalize_git_url
 
 
 class RemoteRepositoryBaseSchema(Schema):
     """Schema for tracking a remote repository."""
 
     git_url = fields.String(metadata={"description": "Remote git repository url."})
+
+    @pre_load
+    def normalize_url(self, data, **_):
+        """Remove ``.git`` extension from the git url."""
+        if "git_url" in data and data["git_url"]:
+            data["git_url"] = normalize_git_url(data["git_url"])
+
+        return data
 
     @validates("git_url")
     def validate_git_url(self, value):
@@ -52,7 +53,24 @@ class RemoteRepositoryBaseSchema(Schema):
 class RemoteRepositorySchema(RemoteRepositoryBaseSchema):
     """Schema for tracking a remote repository and branch."""
 
-    branch = fields.String(metadata={"description": "Remote git branch."})
+    branch = fields.String(load_default=None, metadata={"description": "Remote git branch (or tag or commit SHA)."})
+
+    @pre_load
+    def set_branch_from_ref(self, data, **_):
+        """Set `branch` field from `ref` if present."""
+        if "ref" in data and not data.get("branch"):
+            # Backward compatibility: branch and ref were both used. Let's keep branch as the exposed field
+            # even if internally it gets converted to "ref" later.
+            data["branch"] = data["ref"]
+            del data["ref"]
+
+        return data
+
+
+class GitCommitSHA:
+    """Schema for a commit SHA."""
+
+    commit_sha = fields.String(load_default=None, metadata={"description": "Git commit SHA."})
 
 
 class AsyncSchema(Schema):
@@ -98,6 +116,15 @@ class CreationSchema(Schema):
     )
 
 
+class AccessSchema(Schema):
+    """Schema for access date."""
+
+    accessed_at = fields.DateTime(
+        load_default=datetime.utcnow,
+        metadata={"description": "Access date."},
+    )
+
+
 class FileDetailsSchema(ArchiveSchema, CreationSchema):
     """Schema for file details."""
 
@@ -130,3 +157,14 @@ class DelayedResponseRPC(JsonRPCResponse):
     """RPC response schema for project migrate."""
 
     result = fields.Nested(JobDetailsResponse)
+
+
+class ErrorResponse(Schema):
+    """Renku Service Error Response."""
+
+    code = fields.Integer(required=True)
+    userMessage = fields.String(required=True)
+    devMessage = fields.String(required=True)
+    userReference = fields.String()
+    devReference = fields.String()
+    sentry = fields.String()

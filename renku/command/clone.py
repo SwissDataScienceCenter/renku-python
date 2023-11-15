@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +32,7 @@ def _project_clone(
     install_githooks: bool = True,
     install_mergetool: bool = True,
     skip_smudge: bool = True,
-    recursive: bool = True,
+    recursive: bool = False,
     depth: Optional[int] = None,
     progress: Optional[RemoteProgress] = None,
     config: Optional[Dict[str, Any]] = None,
@@ -49,7 +48,7 @@ def _project_clone(
         install_githooks(bool): Whether to install the pre-commit hook or not (Default value = True).
         install_mergetool(bool): Whether to install the renku metadata git mergetool or not (Default value = True).
         skip_smudge(bool): Whether to skip pulling files from LFS (Default value = True).
-        recursive(bool): Recursively clone (Default value = True).
+        recursive(bool): Recursively clone (Default value = False).
         depth(Optional[int]): Clone depth (commits from HEAD) (Default value = None).
         progress(Optional[RemoteProgress]): Git progress object (Default value = None).
         config(Optional[Dict[str, Any]]): Initial config (Default value = None).

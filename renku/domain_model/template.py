@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +28,8 @@ import yaml
 
 from renku.core import errors
 from renku.core.constant import RENKU_HOME
-from renku.core.util.os import get_safe_relative_path, hash_file
+from renku.core.util.os import get_safe_relative_path, hash_file, hash_string
+from renku.core.util.util import to_string
 
 if TYPE_CHECKING:
     from renku.domain_model.project import Project
@@ -130,6 +130,7 @@ class TemplatesManifest:
             self._templates = [
                 Template(
                     id=cast(str, t.get("id") or t.get("folder")),
+                    aliases=t.get("aliases", []),
                     name=cast(str, t.get("name")),
                     description=cast(str, t.get("description")),
                     parameters=cast(Dict[str, Dict[str, Any]], t.get("variables") or t.get("parameters")),
@@ -161,6 +162,8 @@ class TemplatesManifest:
         elif not isinstance(self._content, list):
             raise errors.InvalidTemplateError(f"Invalid manifest content type: '{type(self._content).__name__}'")
 
+        existing_ids: Set[str] = set()
+
         # NOTE: First check if required fields exists for creating Template instances
         for template_entry in self._content:
             if not isinstance(template_entry, dict):
@@ -171,6 +174,15 @@ class TemplatesManifest:
                 raise errors.InvalidTemplateError(f"Template doesn't have an id: '{template_entry}'")
             if not template_entry.get("id"):
                 warnings.append(f"Template '{id}' should use 'id' attribute instead of 'folder'.")
+
+            # NOTE: Check for duplicate IDs and aliases
+            aliases = {id}
+            aliases.update(template_entry.get("aliases", []))
+            duplicates = existing_ids.intersection(aliases)
+            if duplicates:
+                duplicates_str = ", ".join(sorted(f"'{d}'" for d in duplicates))
+                raise errors.InvalidTemplateError(f"Found duplicate IDs or aliases: {duplicates_str}")
+            existing_ids.update(aliases)
 
             parameters = template_entry.get("variables")
             if parameters:
@@ -209,6 +221,7 @@ class Template:
         parameters: Dict[str, Dict[str, Any]],
         icon: str,
         ssh_supported: bool,
+        aliases: List[str],
         immutable_files: List[str],
         allow_update: bool,
         source: Optional[str],
@@ -226,6 +239,7 @@ class Template:
         self.description: str = description
         self.icon = icon
         self.ssh_supported = ssh_supported
+        self.aliases: List[str] = aliases
         self.immutable_files: List[str] = immutable_files or []
         self.allow_update: bool = allow_update
         parameters = parameters or {}
@@ -234,6 +248,9 @@ class Template:
         ]
 
         self._templates_source: Optional[TemplatesSource] = templates_source
+
+    def __repr__(self) -> str:
+        return f"<Template {self.id}@{self.version}>"
 
     @property
     def templates_source(self) -> Optional[TemplatesSource]:
@@ -362,7 +379,9 @@ class RenderedTemplate:
         self.path: Path = path
         self.template: Template = template
         self.metadata: Dict[str, Any] = metadata
-        self.checksums: Dict[str, Optional[str]] = {f: hash_file(self.path / f) for f in self.get_files()}
+        self.checksums: Dict[str, Optional[str]] = {
+            f: hash_template_file(relative_path=f, absolute_path=self.path / f) for f in self.get_files()
+        }
 
     def get_files(self) -> Generator[str, None, None]:
         """Return all files in a rendered renku template."""
@@ -531,7 +550,8 @@ class TemplateMetadata:
         # NOTE: Always set __renku_version__ to the value read from the Dockerfile (if available) since setting/updating
         # the template doesn't change project's metadata version and shouldn't update the Renku version either
         renku_version = metadata.get("__renku_version__")
-        metadata["__renku_version__"] = str(read_renku_version_from_dockerfile()) or renku_version or __version__
+        dockerfile_version = to_string(read_renku_version_from_dockerfile())
+        metadata["__renku_version__"] = dockerfile_version or renku_version or __version__
 
         return cls(metadata=metadata, immutable_files=immutable_files)
 
@@ -568,3 +588,73 @@ class TemplateMetadata:
         self.metadata["__template_id__"] = template.id
         self.metadata["__automated_update__"] = template.allow_update
         self.immutable_files = template.immutable_files
+
+
+def find_renku_section(lines: List[str]) -> Tuple[int, int]:
+    """Return start and end line numbers of the Renku-specific section."""
+    start = end = -1
+    for index, line in enumerate(lines):
+        if line.startswith("#        Renku-specific section - DO NOT MODIFY        #"):
+            start = index
+        elif line.endswith("#              End Renku-specific section              #"):
+            end = index
+            break
+
+    return start, end
+
+
+def get_renku_section_from_dockerfile(content: str) -> Optional[str]:
+    """Return the Renku-specific section of the Dockerfile or the whole Dockerfile if it doesn't exist."""
+    lines = [line.rstrip() for line in content.splitlines()]
+    start, end = find_renku_section(lines)
+
+    if 0 <= start < end:
+        lines = lines[start:end]
+        lines = [line for line in lines if line]  # NOTE: Remove empty lines
+        return "\n".join(lines)
+    else:
+        return None
+
+
+def calculate_dockerfile_checksum(
+    *, dockerfile: Optional[Path] = None, dockerfile_content: Optional[str] = None
+) -> str:
+    """Calculate checksum for the given file or content.
+
+    NOTE: We ignore empty lines and whitespace characters at the end of the lines when calculating Dockerfile checksum
+    if it has Renku-specific section markers.
+    """
+    if not dockerfile and not dockerfile_content:
+        raise errors.ParameterError("Either Dockerfile or its content must be passed")
+    elif dockerfile and dockerfile_content:
+        raise errors.ParameterError("Cannot pass both Dockerfile and its content")
+
+    content = dockerfile_content if dockerfile_content is not None else dockerfile.read_text()  # type: ignore
+    renku_section = get_renku_section_from_dockerfile(content) or content
+    return hash_string(renku_section)
+
+
+def update_dockerfile_content(source: Path, destination: Path) -> None:
+    """Update the Renku-specific section of the destination Dockerfile with the one from the source Dockerfile."""
+    source_lines = [line.rstrip() for line in source.read_text().splitlines()]
+    source_start, source_end = find_renku_section(source_lines)
+
+    destination_lines = [line.rstrip() for line in destination.read_text().splitlines()]
+    destination_start, destination_end = find_renku_section(destination_lines)
+
+    # NOTE: If source or destination Dockerfiles doesn't have Renku-specific section, we overwrite the whole file
+    if 0 <= source_start < source_end and 0 <= destination_start < destination_end:
+        destination_lines[destination_start:destination_end] = source_lines[source_start:source_end]
+        content = "\n".join(destination_lines)
+        destination.write_text(content)
+    else:
+        destination.write_text(source.read_text())
+
+
+def hash_template_file(*, relative_path: Union[Path, str], absolute_path: Union[Path, str]) -> Optional[str]:
+    """Use proper hash on a template file."""
+    return (
+        calculate_dockerfile_checksum(dockerfile=Path(absolute_path))
+        if str(relative_path) == "Dockerfile"
+        else hash_file(absolute_path)
+    )

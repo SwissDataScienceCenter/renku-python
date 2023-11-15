@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -77,6 +76,11 @@ def post(url, *, data=None, files=None, headers=None, json=None, params=None):
 def put(url, *, data=None, files=None, headers=None, params=None):
     """Send a PUT request."""
     return _request("put", url=url, data=data, files=files, headers=headers, params=params)
+
+
+def patch(url, *, json=None, files=None, headers=None, params=None):
+    """Send a PATCH request."""
+    return _request("patch", url=url, json=json, files=files, headers=headers, params=params)
 
 
 def _request(verb: str, url: str, *, allow_redirects=True, data=None, files=None, headers=None, json=None, params=None):

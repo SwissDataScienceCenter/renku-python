@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -91,13 +90,14 @@ DATASETS_COLUMNS = {
     "id": ("identifier", "id"),
     "created": ("date_created", None),
     "date_created": ("date_created", None),
-    "short_name": ("name", None),
+    "short_name": ("slug", None),
     "name": ("name", None),
+    "slug": ("slug", None),
     "creators": ("creators_csv", "creators"),
     "creators_full": ("creators_full_csv", "creators"),
     "tags": ("tags_csv", "tags"),
     "version": ("version", None),
-    "title": ("title", "title"),
+    "title": ("name", None),
     "keywords": ("keywords_csv", "keywords"),
     "description": ("short_description", "description"),
     "storage": ("storage", None),

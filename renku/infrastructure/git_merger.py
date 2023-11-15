@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +17,7 @@
 
 import os
 import shutil
+import traceback
 from json import JSONDecodeError
 from pathlib import Path
 from tempfile import mkdtemp
@@ -117,6 +117,12 @@ class GitMerger:
                     )
                 )
             except Exception:
+                exc_str = traceback.format_exc(limit=None, chain=True)
+                if "No such file or directory" in exc_str and "Unable to create" in exc_str:
+                    communication.error(
+                        "Error when trying to sparse checkout worktree. This is likely due to using an old version of "
+                        "git. Please try with a newer version."
+                    )
                 # NOTE: cleanup worktree
                 try:
                     repository.remove_worktree(worktree_path)
@@ -126,7 +132,7 @@ class GitMerger:
 
     def merge_objects(self, local: Persistent, remote: Persistent, base: Optional[Persistent]) -> Persistent:
         """Merge two database objects."""
-        if type(local) != type(remote):
+        if not isinstance(local, type(remote)):
             raise errors.MetadataMergeError(f"Cannot merge {local} and {remote}: disparate types.")
         if isinstance(local, (BTree, Index, Bucket)):
             return self.merge_btrees(local, remote)
@@ -301,7 +307,6 @@ class GitMerger:
 
             # NOTE: Merge description
             if local.description != remote.description:
-
                 if base is None or (local.description != base.description and remote.description != base.description):
                     local.description = communication.prompt(
                         f"Project description was modified in local and remote branch.\n"

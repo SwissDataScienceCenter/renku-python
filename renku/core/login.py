@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -137,7 +136,7 @@ def login(endpoint: Optional[str], git_login: bool, yes: bool):
             raise errors.AuthenticationError(f"Invalid status code from server: {status_code} - {response.content}")
 
     access_token = response.json().get("access_token")
-    _store_token(parsed_endpoint.netloc, access_token)
+    store_token(parsed_endpoint.netloc, access_token)
 
     if git_login and repository:
         set_git_credential_helper(repository=cast("Repository", repository), hostname=parsed_endpoint.netloc)
@@ -171,8 +170,9 @@ def _get_url(parsed_endpoint, path, **query_args) -> str:
     return parsed_endpoint._replace(path=path, query=query).geturl()
 
 
-def _store_token(netloc, access_token):
-    set_value(section=CONFIG_SECTION, key=netloc, value=access_token, global_only=True)
+def store_token(hostname: str, access_token: str):
+    """Store access token for ``hostname``."""
+    set_value(section=CONFIG_SECTION, key=hostname, value=access_token, global_only=True)
     os.chmod(project_context.global_config_path, 0o600)
 
 
@@ -268,6 +268,11 @@ def _restore_git_remote(repository):
             repository.remotes.remove(backup_remote)
         except errors.GitCommandError:
             communication.error(f"Cannot delete backup remote '{backup_remote}'")
+
+
+def has_credentials_for_hostname(hostname: str) -> bool:
+    """Check if credentials are set for the given hostname."""
+    return bool(_read_renku_token_for_hostname(hostname))
 
 
 @validate_arguments(config=dict(arbitrary_types_allowed=True))
