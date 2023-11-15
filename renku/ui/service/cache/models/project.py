@@ -56,7 +56,6 @@ class Project(Model):
     owner = TextField()
     initialized = BooleanField()
     commit_sha = TextField()
-    branch = TextField()
 
     @property
     def abs_path(self) -> Path:

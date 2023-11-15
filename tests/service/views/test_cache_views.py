@@ -944,7 +944,7 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_
     assert response
     assert 200 == response.status_code
 
-    assert {"datasets"} == set(response.json["result"].keys()), response.json
+    assert {"datasets", "git_url"} == set(response.json["result"].keys()), response.json
     assert 1 == len(response.json["result"]["datasets"])
 
     payload = {

@@ -42,28 +42,22 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
 
     # Ctrl state.
     expected_context = {
-        "timestamp",
-        "owner",
         "project_namespace",
         "token",
         "email",
         "project_repository",
-        "url",
         "identifier",
         "parameters",
         "project_name",
-        "name",
-        "slug",
         "project_description",
         "new_project_url",
         "fullname",
         "project_slug",
-        "git_url",
+        "template_git_url",
         "project_name_stripped",
         "depth",
-        "branch",
+        "ref",
         "new_project_url_with_auth",
-        "url_with_auth",
     }
     assert expected_context.issubset(set(ctrl.context.keys()))
 
@@ -82,7 +76,7 @@ def test_template_create_project_ctrl(ctrl_init, svc_client_templates_creation, 
         expected_metadata.add("__renku_version__")
     assert expected_metadata == set(received_metadata.keys())
     assert payload["url"] == received_metadata["__template_source__"]
-    assert payload["branch"] == received_metadata["__template_ref__"]
+    assert payload["ref"] == received_metadata["__template_ref__"]
     assert payload["identifier"] == received_metadata["__template_id__"]
     assert payload["project_namespace"] == received_metadata["__namespace__"]
     assert payload["project_repository"] == received_metadata["__repository__"]

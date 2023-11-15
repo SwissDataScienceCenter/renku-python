@@ -37,7 +37,7 @@ def test_list_workflow_plans_view(svc_client_with_repo):
     response = svc_client.get("/workflow_plans.list", query_string=params, headers=headers)
 
     assert_rpc_response(response)
-    assert {"plans"} == set(response.json["result"].keys())
+    assert {"plans", "git_url"} == set(response.json["result"].keys())
     assert 0 != len(response.json["result"]["plans"])
     assert {
         "children",
