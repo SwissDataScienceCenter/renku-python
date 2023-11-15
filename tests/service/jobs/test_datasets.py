@@ -264,7 +264,7 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"files", "slug", "project_id", "remote_branch"} == set(response.json["result"].keys())
+    assert {"files", "slug", "project_id", "remote_branch", "git_url"} == set(response.json["result"].keys())
 
     dest = make_project_path(
         user,
@@ -324,7 +324,7 @@ def test_delay_add_file_job(svc_client_cache, it_remote_repo_url_temp_branch, vi
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
     assert updated_job
-    assert {"remote_branch", "project_id", "files", "slug"} == updated_job.ctrl_result["result"].keys()
+    assert {"remote_branch", "project_id", "files", "slug", "git_url"} == updated_job.ctrl_result["result"].keys()
 
 
 @pytest.mark.service
@@ -402,7 +402,7 @@ def test_delay_create_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
     assert updated_job
-    assert {"slug", "remote_branch"} == updated_job.ctrl_result["result"].keys()
+    assert {"slug", "remote_branch", "git_url"} == updated_job.ctrl_result["result"].keys()
 
 
 @pytest.mark.service
@@ -469,7 +469,7 @@ def test_delay_remove_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
     updated_job = delayed_ctrl_job(context, view_user_data, delete_job.job_id, renku_module, renku_ctrl)
 
     assert updated_job
-    assert {"slug", "remote_branch"} == updated_job.ctrl_result["result"].keys()
+    assert {"slug", "remote_branch", "git_url"} == updated_job.ctrl_result["result"].keys()
 
 
 @pytest.mark.service
@@ -538,7 +538,7 @@ def test_delay_edit_dataset_job(svc_client_cache, it_remote_repo_url_temp_branch
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
     assert updated_job
-    assert {"warnings", "remote_branch", "edited"} == updated_job.ctrl_result["result"].keys()
+    assert {"warnings", "remote_branch", "edited", "git_url"} == updated_job.ctrl_result["result"].keys()
     assert {"name"} == updated_job.ctrl_result["result"]["edited"].keys()
 
 
@@ -610,7 +610,7 @@ def test_delay_unlink_dataset_job(svc_client_cache, it_remote_repo_url_temp_bran
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
     assert updated_job
-    assert {"unlinked", "remote_branch"} == updated_job.ctrl_result["result"].keys()
+    assert {"unlinked", "remote_branch", "git_url"} == updated_job.ctrl_result["result"].keys()
     assert ["data/data1"] == updated_job.ctrl_result["result"]["unlinked"]
 
 
@@ -674,7 +674,7 @@ def test_unlink_dataset_sync(svc_client_cache, it_remote_repo_url_temp_branch, v
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
     assert updated_job
-    assert {"unlinked", "remote_branch"} == updated_job.ctrl_result["result"].keys()
+    assert {"unlinked", "remote_branch", "git_url"} == updated_job.ctrl_result["result"].keys()
     assert ["data/data1"] == updated_job.ctrl_result["result"]["unlinked"]
 
 

@@ -23,6 +23,7 @@ from renku.domain_model.dataset import ImageObjectRequestJson
 from renku.ui.service.serializers.common import (
     AsyncSchema,
     GitCommitSHA,
+    GitUrlResponseMixin,
     JobDetailsResponse,
     MigrateSchema,
     RemoteRepositorySchema,
@@ -55,7 +56,7 @@ class DatasetCreateRequest(AsyncSchema, DatasetDetailsRequest, RemoteRepositoryS
     )
 
 
-class DatasetCreateResponse(DatasetSlugSchema, RenkuSyncSchema):
+class DatasetCreateResponse(DatasetSlugSchema, RenkuSyncSchema, GitUrlResponseMixin):
     """Response schema for a dataset create view."""
 
 
@@ -69,7 +70,7 @@ class DatasetRemoveRequest(AsyncSchema, DatasetSlugSchema, RemoteRepositorySchem
     """Request schema for a dataset remove."""
 
 
-class DatasetRemoveResponse(DatasetSlugSchema, RenkuSyncSchema):
+class DatasetRemoveResponse(DatasetSlugSchema, RenkuSyncSchema, GitUrlResponseMixin):
     """Response schema for a dataset create view."""
 
 
@@ -108,7 +109,7 @@ class DatasetAddRequest(AsyncSchema, DatasetSlugSchema, RemoteRepositorySchema, 
         return data
 
 
-class DatasetAddResponse(DatasetSlugSchema, RenkuSyncSchema):
+class DatasetAddResponse(DatasetSlugSchema, RenkuSyncSchema, GitUrlResponseMixin):
     """Response schema for a dataset add file view."""
 
     project_id = fields.String(required=True)
@@ -131,7 +132,7 @@ class DatasetDetailsResponse(DatasetDetails):
     images = fields.List(fields.Nested(ImageObject))
 
 
-class DatasetListResponse(Schema):
+class DatasetListResponse(GitUrlResponseMixin):
     """Response schema for dataset list view."""
 
     datasets = fields.List(fields.Nested(DatasetDetailsResponse), required=True)
@@ -156,7 +157,7 @@ class DatasetFileDetails(Schema):
     added = fields.DateTime()
 
 
-class DatasetFilesListResponse(DatasetSlugSchema):
+class DatasetFilesListResponse(DatasetSlugSchema, GitUrlResponseMixin):
     """Response schema for dataset files list view."""
 
     files = fields.List(fields.Nested(DatasetFileDetails), required=True)
@@ -212,7 +213,7 @@ class DatasetEditRequest(
     )
 
 
-class DatasetEditResponse(RenkuSyncSchema):
+class DatasetEditResponse(RenkuSyncSchema, GitUrlResponseMixin):
     """Dataset edit metadata response."""
 
     edited = fields.Dict(required=True)
@@ -243,7 +244,7 @@ class DatasetUnlinkRequest(AsyncSchema, DatasetSlugSchema, RemoteRepositorySchem
         return data
 
 
-class DatasetUnlinkResponse(RenkuSyncSchema):
+class DatasetUnlinkResponse(RenkuSyncSchema, GitUrlResponseMixin):
     """Dataset unlink files response."""
 
     unlinked = fields.List(fields.String())

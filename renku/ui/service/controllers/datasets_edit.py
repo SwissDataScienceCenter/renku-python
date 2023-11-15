@@ -140,6 +140,7 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
             "edited": edited,
             "warnings": warnings,
             "remote_branch": remote_branch,
+            "git_url": self.ctx["git_url"],
         }
 
         return result_response(self.RESPONSE_SERIALIZER, response)

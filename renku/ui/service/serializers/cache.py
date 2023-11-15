@@ -31,6 +31,7 @@ from renku.ui.service.serializers.common import (
     AsyncSchema,
     ErrorResponse,
     FileDetailsSchema,
+    GitUrlResponseMixin,
     RemoteRepositorySchema,
     RenkuSyncSchema,
 )
@@ -240,7 +241,7 @@ class ProjectMigrateRequest(AsyncSchema, RemoteRepositorySchema):
     skip_migrations = fields.Boolean(dump_default=False)
 
 
-class ProjectMigrateResponse(RenkuSyncSchema):
+class ProjectMigrateResponse(RenkuSyncSchema, GitUrlResponseMixin):
     """Response schema for project migrate."""
 
     was_migrated = fields.Boolean()
@@ -375,7 +376,7 @@ class TemplateStatusResponse(OneOfSchema):
         return "error"
 
 
-class ProjectMigrationCheckResponse(Schema):
+class ProjectMigrationCheckResponse(GitUrlResponseMixin):
     """Response schema for project migration check."""
 
     project_supported = fields.Boolean(

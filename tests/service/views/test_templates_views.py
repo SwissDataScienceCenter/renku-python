@@ -74,7 +74,7 @@ def test_compare_manifests(svc_client_with_templates):
     assert {"result"} == set(response.json.keys())
     assert response.json["result"]["templates"]
 
-    templates_source = fetch_templates_source(source=template_params["url"], reference=template_params["branch"])
+    templates_source = fetch_templates_source(source=template_params["url"], reference=template_params["ref"])
     manifest_file = templates_source.path / TEMPLATE_MANIFEST
 
     manifest = TemplatesManifest.from_path(manifest_file).get_raw_content()
@@ -212,7 +212,7 @@ def test_create_project_from_template_failures(svc_client_templates_creation):
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
     assert UserProjectCreationError.code == response.json["error"]["code"], response.json
-    assert "git_url" in response.json["error"]["devMessage"]
+    assert "`project_repository`, `project_namespace`" in response.json["error"]["devMessage"]
 
     # NOTE: missing fields -- unlikely to happen. If that is the case, we should determine if it's a user error or not
     payload_missing_field = deepcopy(payload)

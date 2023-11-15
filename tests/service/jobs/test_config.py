@@ -42,7 +42,7 @@ def test_delay_config_set(svc_client_cache, it_remote_repo_url, view_user_data):
     updated_job = delayed_ctrl_job(context, view_user_data, job.job_id, renku_module, renku_ctrl)
 
     assert updated_job
-    assert {"config", "remote_branch"} == set(updated_job.ctrl_result["result"].keys())
+    assert {"config", "remote_branch", "git_url"} == set(updated_job.ctrl_result["result"].keys())
 
 
 @pytest.mark.service
