@@ -24,7 +24,7 @@ Changes
 Bug Fixes
 ~~~~~~~~~
 
--  **cli:** do not error unneccesarily on session stop
+-  **cli:** do not error unnecessarily on session stop
    (`#3642 <https://github.com/SwissDataScienceCenter/renku-python/issues/3642>`__)
    (`4726f66 <https://github.com/SwissDataScienceCenter/renku-python/commit/4726f660e33a6eb3706b20f661faa635fbe6356b>`__)
 -  **cli:** do not pass the force-build flag to docker
