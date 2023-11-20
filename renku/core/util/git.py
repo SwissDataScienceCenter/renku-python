@@ -29,6 +29,8 @@ from subprocess import PIPE, SubprocessError, run
 from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple, Union, cast
 from uuid import uuid4
 
+import git
+
 from renku.core import errors
 from renku.infrastructure.repository import DiffChangeType
 
@@ -625,7 +627,7 @@ def clone_renku_repository(
     install_githooks=False,
     install_lfs=True,
     skip_smudge=True,
-    recursive=True,
+    recursive=False,
     progress=None,
     config: Optional[dict] = None,
     raise_git_except=False,
@@ -644,7 +646,7 @@ def clone_renku_repository(
         install_githooks: Whether to install git hooks (Default value = False).
         install_lfs: Whether to install Git LFS (Default value = True).
         skip_smudge: Whether to pull files from Git LFS (Default value = True).
-        recursive: Whether to clone recursively (Default value = True).
+        recursive: Whether to clone recursively (Default value = False).
         progress: The GitProgress object (Default value = None).
         config(Optional[dict], optional): Set configuration for the project (Default value = None).
         raise_git_except: Whether to raise git exceptions (Default value = False).
@@ -710,9 +712,9 @@ def clone_repository(
     install_githooks=True,
     install_lfs=True,
     skip_smudge=True,
-    recursive=True,
+    recursive=False,
     depth=None,
-    progress=None,
+    progress: Optional[git.RemoteProgress] = None,
     config: Optional[dict] = None,
     raise_git_except=False,
     checkout_revision=None,
@@ -728,7 +730,7 @@ def clone_repository(
         install_githooks: Whether to install git hooks (Default value = True).
         install_lfs: Whether to install Git LFS (Default value = True).
         skip_smudge: Whether to pull files from Git LFS (Default value = True).
-        recursive: Whether to clone recursively (Default value = True).
+        recursive: Whether to clone recursively (Default value = False).
         depth: The clone depth, number of commits from HEAD (Default value = None).
         progress: The GitProgress object (Default value = None).
         config(Optional[dict], optional): Set configuration for the project (Default value = None).
@@ -746,10 +748,8 @@ def clone_repository(
 
     path = Path(path) if path else Path(get_repository_name(url))
 
-    def handle_git_exception():
-        """Handle git exceptions."""
-        if raise_git_except:
-            return
+    def error_from_progress(progress: Optional[git.RemoteProgress], url: str) -> errors.GitError:
+        """Format a Git command error into a more user-friendly format."""
 
         message = f"Cannot clone repo from {url}"
 
@@ -758,9 +758,9 @@ def clone_repository(
             error = "".join([f"\n\t{line}" for line in lines if line.strip()])
             message += f" - error message:\n {error}"
 
-        raise errors.GitError(message)
+        return errors.GitError(message)
 
-    def clean_directory():
+    def clean_directory(clean: bool):
         if not clean or not path:
             return
         try:
@@ -791,10 +791,10 @@ def clone_repository(
                     pass
             else:
                 # NOTE: not same remote, so don't reuse
-                clean_directory()
+                clean_directory(clean=clean)
                 return None
         except errors.GitError:  # NOTE: Not a git repository, remote not found, or checkout failed
-            clean_directory()
+            clean_directory(clean=clean)
         else:
             return repository
 
@@ -825,15 +825,20 @@ def clone_repository(
         repository = clone(branch=checkout_revision, depth=depth)
     except errors.GitCommandError:
         if not checkout_revision:
-            handle_git_exception()
-            raise
+            if raise_git_except:
+                raise
+            raise error_from_progress(progress, url)
+
+        # NOTE: Delete the partially-cloned repository
+        clean_directory(clean=True)
 
         # NOTE: clone without branch set, in case checkout_revision was not a branch or a tag but a commit
         try:
             repository = clone(branch=None, depth=None)
         except errors.GitCommandError:
-            handle_git_exception()
-            raise
+            if raise_git_except:
+                raise
+            raise error_from_progress(progress, url)
 
     if checkout_revision is not None and not no_checkout:
         try:

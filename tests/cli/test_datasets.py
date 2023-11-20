@@ -141,8 +141,8 @@ def test_dataset_show(runner, project, subdirectory, datadir_option, datadir):
             "dataset",
             "create",
             "my-dataset",
-            "--title",
-            "Long Title",
+            "--name",
+            "Long Name",
             "--description",
             "# t1\n## t2\nsome description here",
             "-c",
@@ -164,11 +164,11 @@ def test_dataset_show(runner, project, subdirectory, datadir_option, datadir):
     result = runner.invoke(cli, ["dataset", "show", "my-dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "some description here" in result.output
-    assert "Long Title" in result.output
+    assert "Long Name" in result.output
     assert "keyword-1" in result.output
     assert "keyword-2" in result.output
     assert "Created: " in result.output
-    assert "Name: my-dataset" in result.output
+    assert "Slug: my-dataset" in result.output
     assert "John Doe <john.doe@mail.ch>" in result.output
     assert "some_unique_value" in result.output
     assert "https://schema.org/specialProperty" in result.output
@@ -199,8 +199,8 @@ def test_dataset_show_tag(runner, project, subdirectory):
             "dataset",
             "create",
             "my-dataset",
-            "--title",
-            "Long Title",
+            "--name",
+            "Long Name",
             "--description",
             "description1",
         ],
@@ -250,19 +250,19 @@ def test_dataset_show_tag(runner, project, subdirectory):
     assert "description3" not in result.output
 
 
-def test_datasets_create_different_names(runner, project):
-    """Test creating datasets with same title but different name."""
-    result = runner.invoke(cli, ["dataset", "create", "dataset-1", "--title", "title"])
+def test_datasets_create_different_slugs(runner, project):
+    """Test creating datasets with same name but different slugs."""
+    result = runner.invoke(cli, ["dataset", "create", "dataset-1", "--name", "name"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
-    result = runner.invoke(cli, ["dataset", "create", "dataset-2", "--title", "title"])
+    result = runner.invoke(cli, ["dataset", "create", "dataset-2", "--name", "name"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
 
 
-def test_datasets_create_with_same_name(runner, project):
-    """Test creating datasets with same name."""
+def test_datasets_create_with_same_slug(runner, project):
+    """Test creating datasets with same slug."""
     result = runner.invoke(cli, ["dataset", "create", "dataset"])
     assert 0 == result.exit_code, format_result_exception(result)
     assert "OK" in result.output
@@ -273,7 +273,7 @@ def test_datasets_create_with_same_name(runner, project):
 
 
 @pytest.mark.parametrize(
-    "name",
+    "slug",
     [
         "any name /@#$!",
         "name longer than 24 characters",
@@ -284,13 +284,13 @@ def test_datasets_create_with_same_name(runner, project):
         "name ends in.lock",
     ],
 )
-def test_datasets_invalid_name(runner, project, name):
-    """Test creating datasets with invalid name."""
-    result = runner.invoke(cli, ["dataset", "create", name])
+def test_datasets_invalid_slug(runner, project, slug):
+    """Test creating datasets with invalid slug."""
+    result = runner.invoke(cli, ["dataset", "create", slug])
 
     assert 2 == result.exit_code
-    assert f"Dataset name '{name}' is not valid" in result.output
-    assert f"Hint: '{get_slug(name)}' is valid" in result.output
+    assert f"Dataset slug '{slug}' is not valid" in result.output
+    assert f"Hint: '{get_slug(slug)}' is valid" in result.output
 
 
 def test_datasets_create_dirty_exception_untracked(runner, project):
@@ -442,15 +442,15 @@ def test_datasets_list_non_empty(output_format, runner, project, datadir_option,
 @pytest.mark.parametrize(
     "columns,headers,values",
     [
-        ("title,short_name", ["TITLE", "NAME"], ["my-dataset", "Long Title"]),
-        ("title,name", ["TITLE", "NAME"], ["my-dataset", "Long Title"]),
+        ("title,short_name", ["NAME", "SLUG"], ["my-dataset", "Long Name"]),
+        ("name,slug", ["NAME", "SLUG"], ["my-dataset", "Long Name"]),
         ("creators", ["CREATORS"], ["John Doe"]),
     ],
 )
 def test_datasets_list_with_columns(runner, project, columns, headers, values):
     """Test listing datasets with custom column name."""
     result = runner.invoke(
-        cli, ["dataset", "create", "my-dataset", "--title", "Long Title", "-c", "John Doe <john.doe@mail.ch>"]
+        cli, ["dataset", "create", "my-dataset", "--name", "Long Name", "-c", "John Doe <john.doe@mail.ch>"]
     )
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -611,7 +611,7 @@ def test_multiple_file_to_dataset(tmpdir, runner, project):
     assert "OK" in result.output
 
     dataset = get_dataset_with_injection("dataset")
-    assert dataset.title == "dataset"
+    assert dataset.name == "dataset"
 
     paths = []
     for i in range(3):
@@ -760,7 +760,7 @@ def test_repository_file_to_dataset(runner, project, subdirectory):
     assert 0 == result.exit_code, format_result_exception(result)
 
     dataset = get_dataset_with_injection("dataset")
-    assert dataset.title == "dataset"
+    assert dataset.name == "dataset"
     assert dataset.find_file("data/dataset/a") is not None
 
 
@@ -772,7 +772,7 @@ def test_relative_import_to_dataset(tmpdir, runner, project, subdirectory):
     assert "OK" in result.output
 
     dataset = get_dataset_with_injection("dataset")
-    assert dataset.title == "dataset"
+    assert dataset.name == "dataset"
 
     zero_data = tmpdir.join("zero.txt")
     zero_data.write("zero")
@@ -858,7 +858,7 @@ def test_dataset_add_with_copy(tmpdir, runner, project):
 
     received_inodes = []
     dataset = get_dataset_with_injection("my-dataset")
-    assert dataset.title == "my-dataset"
+    assert dataset.name == "my-dataset"
 
     for file in dataset.files:
         path = (project.path / file.entity.path).resolve()
@@ -1010,12 +1010,12 @@ def test_datasets_ls_files_json(runner, project, tmpdir, large_file):
 
     assert file1["creators"]
     assert file1["size"]
-    assert file1["dataset_name"]
+    assert file1["dataset_slug"]
     assert file1["dataset_id"]
 
     assert file2["creators"]
     assert file2["size"]
-    assert file2["dataset_name"]
+    assert file2["dataset_slug"]
     assert file2["dataset_id"]
 
 
@@ -1124,7 +1124,7 @@ def test_datasets_ls_files_correct_paths(runner, project, directory_tree):
 def test_datasets_ls_files_with_name(directory_tree, runner, project):
     """Test listing of data within dataset with include/exclude filters."""
     # create a dataset
-    result = runner.invoke(cli, ["dataset", "create", "my-dataset", "--title", "Long Title"])
+    result = runner.invoke(cli, ["dataset", "create", "my-dataset", "--name", "Long Name"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     # add data to dataset
@@ -1301,7 +1301,7 @@ def test_dataset_edit(runner, project, dirty, subdirectory):
 
     result = runner.invoke(
         cli,
-        ["dataset", "create", "dataset", "-t", "original title", "-k", "keyword-1", "--metadata", str(metadata_path)],
+        ["dataset", "create", "dataset", "-n", "original name", "-k", "keyword-1", "--metadata", str(metadata_path)],
     )
     assert 0 == result.exit_code, format_result_exception(result)
 
@@ -1320,12 +1320,12 @@ def test_dataset_edit(runner, project, dirty, subdirectory):
 
     dataset = get_dataset_with_injection("dataset")
     assert " new description " == dataset.description
-    assert "original title" == dataset.title
+    assert "original name" == dataset.name
     assert {creator1, creator2}.issubset({c.full_identity for c in dataset.creators})
 
-    result = runner.invoke(cli, ["dataset", "edit", "dataset", "-t", " new title "], catch_exceptions=False)
+    result = runner.invoke(cli, ["dataset", "edit", "dataset", "-n", " new name "], catch_exceptions=False)
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "Successfully updated: title." in result.output
+    assert "Successfully updated: name." in result.output
 
     result = runner.invoke(
         cli, ["dataset", "edit", "dataset", "-k", "keyword-2", "-k", "keyword-3"], catch_exceptions=False
@@ -1348,7 +1348,7 @@ def test_dataset_edit(runner, project, dirty, subdirectory):
 
     dataset = get_dataset_with_injection("dataset")
     assert " new description " == dataset.description
-    assert "new title" == dataset.title
+    assert "new name" == dataset.name
     assert {creator1, creator2}.issubset({c.full_identity for c in dataset.creators})
     assert {"keyword-2", "keyword-3"} == set(dataset.keywords)
     assert 1 == len(dataset.annotations)
@@ -1389,8 +1389,8 @@ def test_dataset_edit_metadata(runner, project, source, metadata):
         "dataset",
         "create",
         "dataset",
-        "-t",
-        "original title",
+        "-n",
+        "original name",
         "-k",
         "keyword-1",
     ]
@@ -1442,8 +1442,8 @@ def test_dataset_edit_unset(runner, project, dirty, subdirectory):
             "dataset",
             "create",
             "dataset",
-            "-t",
-            "original title",
+            "-n",
+            "original name",
             "-c",
             "John Doe <john@does.example.com>",
             "-k",
@@ -1470,7 +1470,7 @@ def test_dataset_edit_unset(runner, project, dirty, subdirectory):
 @pytest.mark.parametrize("dirty", [False, True])
 def test_dataset_edit_no_change(runner, project, dirty):
     """Check metadata editing does not commit when there is no change."""
-    result = runner.invoke(cli, ["dataset", "create", "dataset", "-t", "original title"])
+    result = runner.invoke(cli, ["dataset", "create", "dataset", "-n", "original name"])
     assert 0 == result.exit_code, format_result_exception(result)
 
     if dirty:
@@ -1539,7 +1539,7 @@ def test_dataset_tag(tmpdir, runner, project, subdirectory):
     assert 0 == result.exit_code, format_result_exception(result)
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        dataset = datasets_provenance.get_by_name("my-dataset")
+        dataset = datasets_provenance.get_by_slug("my-dataset")
         all_tags = datasets_provenance.get_all_tags(dataset)
         assert {dataset.id} == {t.dataset_id.value for t in all_tags}
 
@@ -2095,8 +2095,8 @@ def test_datasets_provenance_after_create(runner, project):
         "dataset",
         "create",
         "my-data",
-        "--title",
-        "Long Title",
+        "--name",
+        "Long Name",
         "--description",
         "some description here",
         "-c",
@@ -2111,10 +2111,10 @@ def test_datasets_provenance_after_create(runner, project):
     assert 0 == runner.invoke(cli, args, catch_exceptions=False).exit_code
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        dataset = datasets_provenance.get_by_name("my-data")
+        dataset = datasets_provenance.get_by_slug("my-data")
 
-    assert "Long Title" == dataset.title
-    assert "my-data" == dataset.name
+    assert "Long Name" == dataset.name
+    assert "my-data" == dataset.slug
     assert "some description here" == dataset.description
     assert "John Doe" in [c.name for c in dataset.creators]
     assert "john.doe@mail.ch" in [c.email for c in dataset.creators]
@@ -2134,7 +2134,7 @@ def test_datasets_provenance_after_create_when_adding(runner, project):
     assert 0 == runner.invoke(cli, ["dataset", "add", "--copy", "--create", "my-data", "README.md"]).exit_code
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        dataset = datasets_provenance.get_by_name("my-data")
+        dataset = datasets_provenance.get_by_slug("my-data")
 
     assert dataset.initial_identifier == dataset.identifier
     assert dataset.derived_from is None
@@ -2152,7 +2152,7 @@ def test_datasets_provenance_after_edit(runner, project):
     dataset = get_dataset_with_injection("my-data")
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        current_version = datasets_provenance.get_by_name("my-data")
+        current_version = datasets_provenance.get_by_slug("my-data")
         old_version = datasets_provenance.get_previous_version(current_version)
 
     assert_dataset_is_mutated(old=old_version, new=dataset)
@@ -2172,7 +2172,7 @@ def test_datasets_provenance_after_add(runner, project, directory_tree):
     )
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        dataset = datasets_provenance.get_by_name("my-data")
+        dataset = datasets_provenance.get_by_slug("my-data")
 
     path = os.path.join(DATA_DIR, "my-data", "file1")
     file = dataset.find_file(path)
@@ -2197,7 +2197,7 @@ def test_datasets_provenance_after_multiple_adds(runner, project, directory_tree
 
         assert 1 == len(provenance)
 
-        current_version = datasets_provenance.get_by_name("my-data")
+        current_version = datasets_provenance.get_by_slug("my-data")
         old_version = datasets_provenance.get_by_id(current_version.derived_from.url_id)
 
     old_dataset_file_ids = {f.id for f in old_version.files}
@@ -2221,7 +2221,7 @@ def test_datasets_provenance_after_add_with_overwrite(runner, project, directory
 
         assert 1 == len(provenance)
 
-        current_version = datasets_provenance.get_by_name("my-data")
+        current_version = datasets_provenance.get_by_slug("my-data")
         old_version = datasets_provenance.get_by_id(current_version.derived_from.url_id)
     old_dataset_file_ids = {f.id for f in old_version.files}
 
@@ -2238,7 +2238,7 @@ def test_datasets_provenance_after_file_unlink(runner, project, directory_tree):
 
     dataset = get_dataset_with_injection("my-data")
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        current_version = datasets_provenance.get_by_name("my-data")
+        current_version = datasets_provenance.get_by_slug("my-data")
         old_version = datasets_provenance.get_by_id(Dataset.generate_id(dataset.initial_identifier))
     path = os.path.join(DATA_DIR, "my-data", directory_tree.name, "file1")
 
@@ -2260,7 +2260,7 @@ def test_datasets_provenance_after_remove(runner, project, directory_tree):
     assert 0 == runner.invoke(cli, ["dataset", "rm", "my-data"]).exit_code
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        current_version = datasets_provenance.get_by_name("my-data")
+        current_version = datasets_provenance.get_by_slug("my-data")
         provenance = datasets_provenance.get_provenance_tails()
 
     assert current_version is None
@@ -2283,7 +2283,7 @@ def test_datasets_provenance_after_adding_tag(runner, project):
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
         provenance = datasets_provenance.get_provenance_tails()
-        current_version = datasets_provenance.get_by_name("my-data")
+        current_version = datasets_provenance.get_by_slug("my-data")
 
     assert 1 == len(provenance)
     assert current_version.identifier == current_version.initial_identifier
@@ -2303,7 +2303,7 @@ def test_datasets_provenance_after_removing_tag(runner, project):
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
         provenance = datasets_provenance.get_provenance_tails()
-        current_version = datasets_provenance.get_by_name("my-data")
+        current_version = datasets_provenance.get_by_slug("my-data")
 
     assert 1 == len(provenance)
     assert current_version.identifier == current_version.initial_identifier
@@ -2321,7 +2321,7 @@ def test_datasets_provenance_multiple(runner, project, directory_tree):
     assert 0 == runner.invoke(cli, ["dataset", "unlink", "my-data", "--include", "*/dir1/*"], input="y").exit_code
 
     with get_datasets_provenance_with_injection() as datasets_provenance:
-        tail_dataset = datasets_provenance.get_by_name("my-data", immutable=True)
+        tail_dataset = datasets_provenance.get_by_slug("my-data", immutable=True)
         provenance = datasets_provenance.get_provenance_tails()
 
         # NOTE: We only keep the tail of provenance chain for each dataset in the provenance

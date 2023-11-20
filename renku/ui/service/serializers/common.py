@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +28,7 @@ from renku.ui.service.utils import normalize_git_url
 class RemoteRepositoryBaseSchema(Schema):
     """Schema for tracking a remote repository."""
 
-    git_url = fields.String(metadata={"description": "Remote git repository url."})
+    git_url = fields.String(required=True, metadata={"description": "Remote git repository url."})
 
     @pre_load
     def normalize_url(self, data, **_):
@@ -66,6 +65,12 @@ class RemoteRepositorySchema(RemoteRepositoryBaseSchema):
             del data["ref"]
 
         return data
+
+
+class GitCommitSHA:
+    """Schema for a commit SHA."""
+
+    commit_sha = fields.String(load_default=None, metadata={"description": "Git commit SHA."})
 
 
 class AsyncSchema(Schema):
@@ -163,3 +168,9 @@ class ErrorResponse(Schema):
     userReference = fields.String()
     devReference = fields.String()
     sentry = fields.String()
+
+
+class GitUrlResponseMixin(Schema):
+    """Response containing a git url."""
+
+    git_url = fields.String(required=True, metadata={"description": "Remote git repository url."})

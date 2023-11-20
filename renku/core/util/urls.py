@@ -167,3 +167,9 @@ def check_url(url: str) -> Tuple[bool, bool]:
     is_git = is_remote and (u.path.lower().endswith(".git") or scheme in ("git+https", "git+ssh") or starts_with_git)
 
     return is_remote, is_git
+
+
+def is_remote(uri: str) -> bool:
+    """Returns True if a given URI is remote."""
+    is_remote, _ = check_url(uri)
+    return is_remote

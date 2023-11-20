@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -116,6 +114,7 @@ redis = { version = ">=3.5.3,<4.6.0,!=4.5.5", optional = true }
 rq = { version = "==1.15.0", optional = true }
 sentry-sdk = { version = ">=1.5.11,<1.26.0", extras = ["flask"],  optional = true }
 walrus = { version = ">=0.8.2,<0.10.0", optional = true }
+prometheus-flask-exporter = "^0.22.4"
 
 [tool.poetry.group.dev.dependencies]
 black = "==23.1.0"
@@ -303,6 +302,7 @@ module = [
     "pexpect",
     "PIL",
     "pluggy",
+    "prometheus_flask_exporter.*",
     "psutil",
     "pyld",
     "pyshacl",

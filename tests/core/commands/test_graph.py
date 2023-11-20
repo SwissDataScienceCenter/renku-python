@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -260,7 +259,7 @@ def test_graph_export_full():
         MagicMock(
             spec=Dataset,
             id="/datasets/abcdefg12345",
-            name="my-dataset",
+            slug="my-dataset",
             dataset_files=[
                 DatasetFile(
                     id="/dataset-files/abcdefg123456789",
@@ -278,7 +277,7 @@ def test_graph_export_full():
     ]
     dataset_gateway.get_by_id.return_value = Dataset(
         id="/datasets/0000000aaaaaaa",
-        name="my-dataset",
+        slug="my-dataset",
         date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
         date_modified=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
         date_removed=None,
@@ -336,7 +335,10 @@ def test_graph_export_full():
 
     project_gateway = MagicMock(spec=IProjectGateway)
     project_gateway.get_project.return_value = MagicMock(
-        spec=Project, id="/projects/my-project", date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00")
+        spec=Project,
+        id="/projects/my-project",
+        date_created=datetime.fromisoformat("2022-07-12T16:29:14+02:00"),
+        image=None,
     )
 
     result = get_graph_for_all_objects(
@@ -444,6 +446,7 @@ def test_graph_export_full():
             "https://swissdatasciencecenter.github.io/renku-ontology#originalIdentifier": [{"@value": "abcdefg"}],
             "http://schema.org/dateCreated": [{"@value": "2022-07-12T16:29:14+02:00"}],
             "http://schema.org/dateModified": [{"@value": "2022-07-12T16:29:14+02:00"}],
+            "https://swissdatasciencecenter.github.io/renku-ontology#slug": [{"@value": "my-dataset"}],
         },
         {
             "@id": "/entities/1234567890/data/my-dataset",

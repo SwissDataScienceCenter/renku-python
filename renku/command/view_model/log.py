@@ -90,7 +90,7 @@ class DatasetChangeDetailsViewModel:
     modified: bool = False
     files_added: Optional[List[str]] = None
     files_removed: Optional[List[str]] = None
-    title_changed: Optional[str] = None
+    name_changed: Optional[str] = None
     description_changed: Optional[str] = None
     creators_added: Optional[List[str]] = None
     creators_removed: Optional[List[str]] = None
@@ -181,7 +181,7 @@ class LogViewModel:
 
         dataset_gateway = inject.instance(IDatasetGateway)
 
-        descriptions = [f"Dataset '{dataset.name}': "]
+        descriptions = [f"Dataset '{dataset.slug}': "]
         details = DatasetChangeDetailsViewModel()
 
         if not dataset.derived_from and not dataset.same_as:
@@ -231,8 +231,8 @@ class LogViewModel:
 
         if not previous_dataset:
             # NOTE: Check metadata changes on create/import
-            if dataset.title:
-                details.title_changed = dataset.title
+            if dataset.name:
+                details.name_changed = dataset.name
 
             if dataset.description:
                 details.description_changed = dataset.description
@@ -248,8 +248,8 @@ class LogViewModel:
         elif not details.deleted:
             # NOTE: Check metadata changes to previous dataset
             modified = False
-            if dataset.title != previous_dataset.title:
-                details.title_changed = dataset.title
+            if dataset.name != previous_dataset.name:
+                details.name_changed = dataset.name
                 modified = True
             if dataset.description != previous_dataset.description:
                 details.description_changed = dataset.description
@@ -286,7 +286,7 @@ class LogViewModel:
                 descriptions.append("metadata modified")
 
         return DatasetLogViewModel(
-            id=dataset.name,
+            id=dataset.slug,
             date=dataset.date_removed
             if dataset.date_removed
             else (

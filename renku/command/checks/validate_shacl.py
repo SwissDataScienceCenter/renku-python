@@ -104,7 +104,7 @@ def check_datasets_structure(dataset_gateway: IDatasetGateway, **_):
         try:
             conform, graph, t = _check_shacl_structure(data)
         except (Exception, BaseException) as e:
-            problems.append(f"Couldn't validate dataset '{dataset.name}': {e}\n\n")
+            problems.append(f"Couldn't validate dataset '{dataset.slug}': {e}\n\n")
             continue
 
         if conform:
@@ -112,7 +112,7 @@ def check_datasets_structure(dataset_gateway: IDatasetGateway, **_):
 
         ok = False
 
-        problems.append(f"{dataset.name}\n\t{_shacl_graph_to_string(graph)}\n")
+        problems.append(f"{dataset.slug}\n\t{_shacl_graph_to_string(graph)}\n")
 
     if ok:
         return True, False, None

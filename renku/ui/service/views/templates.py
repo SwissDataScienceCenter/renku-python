@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,21 +19,21 @@ from flask import request
 from renku.ui.service.config import SERVICE_PREFIX
 from renku.ui.service.controllers.templates_create_project import TemplatesCreateProjectCtrl
 from renku.ui.service.controllers.templates_read_manifest import TemplatesReadManifestCtrl
-from renku.ui.service.views.api_versions import ALL_VERSIONS, V2_0, V2_1, VersionedBlueprint
+from renku.ui.service.views.api_versions import VERSIONS_FROM_V2_2, VersionedBlueprint
 from renku.ui.service.views.decorators import accepts_json, requires_cache, requires_identity
 from renku.ui.service.views.error_handlers import (
     handle_common_except,
     handle_templates_create_errors,
     handle_templates_read_errors,
 )
-from renku.ui.service.views.v1.templates import add_v1_specific_endpoints
+from renku.ui.service.views.v1.templates import add_v1_specific_template_endpoints, add_v2_specific_template_endpoints
 
 TEMPLATES_BLUEPRINT_TAG = "templates"
 templates_blueprint = VersionedBlueprint(TEMPLATES_BLUEPRINT_TAG, __name__, url_prefix=SERVICE_PREFIX)
 
 
 @templates_blueprint.route(
-    "/templates.read_manifest", methods=["GET"], provide_automatic_options=False, versions=[V2_0, V2_1]
+    "/templates.read_manifest", methods=["GET"], provide_automatic_options=False, versions=VERSIONS_FROM_V2_2
 )
 @handle_common_except
 @handle_templates_read_errors
@@ -74,7 +73,7 @@ def read_manifest_from_template(user_data, cache):
 
 
 @templates_blueprint.route(
-    "/templates.create_project", methods=["POST"], provide_automatic_options=False, versions=ALL_VERSIONS
+    "/templates.create_project", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_FROM_V2_2
 )
 @handle_common_except
 @handle_templates_create_errors
@@ -104,4 +103,5 @@ def create_project_from_template(user_data, cache):
     return TemplatesCreateProjectCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
-templates_blueprint = add_v1_specific_endpoints(templates_blueprint)
+templates_blueprint = add_v1_specific_template_endpoints(templates_blueprint)
+templates_blueprint = add_v2_specific_template_endpoints(templates_blueprint)

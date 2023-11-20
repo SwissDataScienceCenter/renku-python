@@ -34,13 +34,13 @@ from renku.core.util.git import get_remote
 from renku.core.util.jwt import is_token_expired
 from renku.core.util.ssh import SystemSSHConfig
 from renku.domain_model.project_context import project_context
-from renku.domain_model.session import ISessionProvider, Session, SessionStopStatus
+from renku.domain_model.session import IHibernatingSessionProvider, Session, SessionStopStatus
 
 if TYPE_CHECKING:
     from renku.core.dataset.providers.models import ProviderParameter
 
 
-class RenkulabSessionProvider(ISessionProvider):
+class RenkulabSessionProvider(IHibernatingSessionProvider):
     """A session provider that uses the notebook service API to launch sessions."""
 
     DEFAULT_TIMEOUT_SECONDS = 300
@@ -118,7 +118,7 @@ class RenkulabSessionProvider(ISessionProvider):
             )
             if res.status_code == 404 and status == "stopping":
                 return
-            if res.status_code == 200 and status != "stopping":
+            if res.status_code in [200, 204] and status != "stopping":
                 if res.json().get("status", {}).get("state") == status:
                     return
             sleep(5)
@@ -210,9 +210,9 @@ class RenkulabSessionProvider(ISessionProvider):
 
         return remote.head
 
-    def _send_renku_request(self, req_type: str, *args, **kwargs):
-        res = getattr(requests, req_type)(*args, **kwargs)
-        if res.status_code == 401:
+    def _send_renku_request(self, verb: str, *args, **kwargs):
+        response = getattr(requests, verb)(*args, **kwargs)
+        if response.status_code == 401:
             # NOTE: Check if logged in to KC but not the Renku UI
             token = read_renku_token(endpoint=self._renku_url())
             if token and not is_token_expired(token):
@@ -222,7 +222,7 @@ class RenkulabSessionProvider(ISessionProvider):
             raise errors.AuthenticationError(
                 "Please run the renku login command to authenticate with Renku or to refresh your expired credentials."
             )
-        return res
+        return response
 
     @staticmethod
     def _project_name_from_full_project_name(project_name: str) -> str:
@@ -262,7 +262,7 @@ class RenkulabSessionProvider(ISessionProvider):
         )
 
     @hookimpl
-    def session_provider(self) -> ISessionProvider:
+    def session_provider(self) -> IHibernatingSessionProvider:
         """Supported session provider.
 
         Returns:
@@ -511,3 +511,69 @@ class RenkulabSessionProvider(ISessionProvider):
     def force_build_image(self, **kwargs) -> bool:
         """Whether we should force build the image directly or check for an existing image first."""
         return self._force_build
+
+    def session_pause(self, project_name: str, session_name: Optional[str], **_) -> SessionStopStatus:
+        """Pause all sessions (for the given project) or a specific interactive session."""
+
+        def pause(session_name: str):
+            result = self._send_renku_request(
+                "patch",
+                f"{self._notebooks_url()}/servers/{session_name}",
+                headers=self._auth_header(),
+                json={"state": "hibernated"},
+            )
+
+            self._wait_for_session_status(session_name, "hibernated")
+
+            return result
+
+        sessions = self.session_list(project_name=project_name)
+        n_sessions = len(sessions)
+
+        if n_sessions == 0:
+            return SessionStopStatus.NO_ACTIVE_SESSION
+
+        if session_name:
+            response = pause(session_name)
+        elif n_sessions == 1:
+            response = pause(sessions[0].name)
+        else:
+            return SessionStopStatus.NAME_NEEDED
+
+        return SessionStopStatus.SUCCESSFUL if response.status_code == 204 else SessionStopStatus.FAILED
+
+    def session_resume(self, project_name: str, session_name: Optional[str], **kwargs) -> bool:
+        """Resume a paused session.
+
+        Args:
+            project_name(str): Renku project name.
+            session_name(Optional[str]): The unique id of the interactive session.
+        """
+        sessions = self.session_list(project_name="")
+        system_config = SystemSSHConfig()
+        name = self._project_name_from_full_project_name(project_name)
+        ssh_prefix = f"{system_config.renku_host}-{name}-"
+
+        if not session_name:
+            if len(sessions) == 1:
+                session_name = sessions[0].name
+            else:
+                return False
+        else:
+            if session_name.startswith(ssh_prefix):
+                # NOTE: User passed in ssh connection name instead of session id by accident
+                session_name = session_name.replace(ssh_prefix, "", 1)
+
+            if not any(s.name == session_name for s in sessions):
+                return False
+
+        self._send_renku_request(
+            "patch",
+            f"{self._notebooks_url()}/servers/{session_name}",
+            headers=self._auth_header(),
+            json={"state": "running"},
+        )
+
+        self._wait_for_session_status(session_name, "running")
+
+        return True

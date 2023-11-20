@@ -30,7 +30,6 @@ from itertools import zip_longest
 from pathlib import Path
 from typing import (
     Any,
-    Callable,
     Dict,
     Generator,
     List,
@@ -1001,20 +1000,24 @@ class Repository(BaseRepository):
         branch: Optional[str] = None,
         recursive: bool = False,
         depth: Optional[int] = None,
-        progress: Optional[Callable] = None,
+        progress: Optional[git.RemoteProgress] = None,
         no_checkout: bool = False,
         env: Optional[dict] = None,
         clone_options: Optional[List[str]] = None,
     ) -> "Repository":
-        """Clone a remote repository and create an instance."""
+        """Clone a remote repository and create an instance.
+
+        Since this is just a thin wrapper around GitPython note that the branch parameter
+        can work and accept either a branch name or a tag. But it will not work with a commit SHA.
+        """
         try:
             repository = git.Repo.clone_from(
                 url=url,
                 to_path=path,
-                branch=branch,
+                branch=branch,  # NOTE: Git python will accept tag or branch here but not SHA
                 recursive=recursive,
                 depth=depth,
-                progress=progress,
+                progress=progress,  # type: ignore[arg-type]
                 no_checkout=no_checkout,
                 env=env,
                 multi_options=clone_options,
@@ -1283,10 +1286,13 @@ class DiffChangeType(Enum):
     """Type of change in a ``Diff``."""
 
     ADDED = "A"
+    COPIED = "C"
     DELETED = "D"
-    RENAMED = "R"
     MODIFIED = "M"
+    RENAMED = "R"
     TYPE_CHANGED = "T"
+    UNMERGED = "U"
+    UNKNOWN = "X"
 
 
 class Diff(NamedTuple):
@@ -1554,6 +1560,11 @@ class SymbolicReference(Reference):
         except (git.GitError, TypeError):
             return None
 
+    @property
+    def detached(self) -> bool:
+        """True if the reference is to a commit and not a branch."""
+        return self._reference.is_detached
+
 
 class RemoteReference(Reference):
     """A git remote reference."""
@@ -1681,8 +1692,11 @@ class Remote:
         _run_git_command(self._repository, "remote", "set-url", self.name, url)
 
     @property
-    def head(self) -> str:
+    def head(self) -> Optional[str]:
         """The head commit of the remote."""
+        if self._repository.head.is_detached:
+            return None
+
         self._remote.fetch()
         return _run_git_command(self._repository, "rev-parse", f"{self._remote.name}/{self._repository.active_branch}")
 
