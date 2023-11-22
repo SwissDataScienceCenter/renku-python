@@ -132,6 +132,10 @@ class LocalRepositoryCache(IRepositoryCache):
 
         if parsed_git_url.owner is None or parsed_git_url.name is None:
             raise ValidationError("Invalid `git_url`, missing owner or repository", "git_url")
+        if branch == "":
+            branch = None
+        if commit_sha == "":
+            commit_sha = None
 
         project_data = {
             "project_id": uuid.uuid4().hex,
