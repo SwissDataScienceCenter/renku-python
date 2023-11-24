@@ -40,7 +40,7 @@ def log(cloud_storages: List[CloudStorage], *, columns: Optional[str] = None):
         output.append(style_key("Id: ") + cloud_storage.storage_id)  # type: ignore
         output.append(style_key("Source Path: ") + cloud_storage.source_path)
         output.append(style_key("Target path: ") + cloud_storage.target_path)
-        output.append(style_key("Private: ") + "Yes" if cloud_storage.private else "No")
+        output.append(style_key("Private: ") + ("Yes" if cloud_storage.private else "No"))
         output.append(style_key("Configuration: \n") + json.dumps(cloud_storage.configuration, indent=4))
         output.append("")
     return "\n".join(output)

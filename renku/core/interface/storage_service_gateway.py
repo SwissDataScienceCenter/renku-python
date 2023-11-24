@@ -15,11 +15,12 @@
 # limitations under the License.
 """Interface for a remote storage service."""
 
-from typing import List, Optional, Protocol
+from typing import List, Optional, Protocol, runtime_checkable
 
 from renku.domain_model.cloud_storage import CloudStorage, CloudStorageWithSensitiveFields
 
 
+@runtime_checkable
 class IStorageService(Protocol):
     """Interface for a storage service."""
 
