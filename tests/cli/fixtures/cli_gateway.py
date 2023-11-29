@@ -25,6 +25,7 @@ from _pytest.monkeypatch import MonkeyPatch
 ENDPOINT = "renku.deployment.ch"
 ACCESS_TOKEN = "jwt-token"
 DEVICE_CODE = "valid-device-code"
+IMAGE_REGISTRY_HOST = "registry.renku.deployment.ch"
 
 
 @pytest.fixture(scope="module")
@@ -64,6 +65,12 @@ def mock_login():
 
                 return token_callback
 
+            def create_image_registry_host_callback(host):
+                def image_registry_host_callback(_):
+                    return 200, {"Content-Type": "application/json"}, json.dumps({"default": host})
+
+                return image_registry_host_callback
+
             requests_mock.add_passthru("https://pypi.org/")
 
             class RequestMockWrapper:
@@ -81,6 +88,15 @@ def mock_login():
                         callback=create_token_callback(token),
                     )
 
+                @staticmethod
+                def add_registry_image_host(endpoint, host):
+                    requests_mock.add_callback(
+                        responses.GET,
+                        f"https://{endpoint}/api/config/imageRegistries",
+                        callback=create_image_registry_host_callback(host),
+                    )
+
             RequestMockWrapper.add_device_auth(ENDPOINT, ACCESS_TOKEN)
+            RequestMockWrapper.add_registry_image_host(ENDPOINT, IMAGE_REGISTRY_HOST)
 
             yield RequestMockWrapper

@@ -295,6 +295,24 @@ from renku.domain_model.git import GitURL
             "owner": "renku-test",
             "env": "https://gitlab.example.com",
         },
+        {
+            "href": "https://dev.renku.ch/gitlab/group1/renku-test/test-2022-11-11-17-01-46.git",
+            "scheme": "https",
+            "hostname": "dev.renku.ch",
+            "name": "test-2022-11-11-17-01-46",
+            "path": "gitlab/group1/renku-test/test-2022-11-11-17-01-46.git",
+            "owner": "group1/renku-test",
+            "env": "https://dev.renku.ch/gitlab/",
+        },
+        {
+            "href": "https://gitlab.example.com/group1/group2/renku-test/test-2022-11-11-17-01-46.git",
+            "scheme": "https",
+            "hostname": "gitlab.example.com",
+            "name": "test-2022-11-11-17-01-46",
+            "path": "group1/group2/renku-test/test-2022-11-11-17-01-46.git",
+            "owner": "group1/group2/renku-test",
+            "env": "https://gitlab.example.com",
+        },
     ],
 )
 def test_valid_href(fields):

@@ -19,6 +19,7 @@ import pytest
 
 from renku.core import errors
 from renku.core.login import read_renku_token
+from renku.core.session.utils import get_image_repository_host
 from renku.core.util.contexts import chdir
 from renku.ui.cli import cli
 from tests.cli.fixtures.cli_gateway import ACCESS_TOKEN, ENDPOINT
@@ -143,7 +144,9 @@ def test_repeated_logout(runner, project, mock_login, with_injection):
 def test_login_to_multiple_endpoints(runner, project_with_remote, mock_login, with_injection):
     """Test login to multiple endpoints changes project's remote to the first endpoint."""
     second_endpoint, second_token = "second.endpoint", "second-token"
+    second_image_registry_host = "registry.second.endpoint"
     mock_login.add_device_auth(second_endpoint, second_token)
+    mock_login.add_registry_image_host(second_endpoint, second_image_registry_host)
     assert 0 == runner.invoke(cli, ["login", "--yes", ENDPOINT]).exit_code
 
     result = runner.invoke(cli, ["login", "--yes", second_endpoint])
@@ -156,6 +159,7 @@ def test_login_to_multiple_endpoints(runner, project_with_remote, mock_login, wi
     with with_injection():
         assert ACCESS_TOKEN == read_renku_token(ENDPOINT)
         assert second_token == read_renku_token(second_endpoint)
+        assert second_image_registry_host == get_image_repository_host()
         assert project_with_remote.repository.remotes["origin"].url.startswith(f"https://{second_endpoint}/repo")
 
 
