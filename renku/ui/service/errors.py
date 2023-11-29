@@ -121,7 +121,7 @@ class ServiceError(Exception):
                         sentry_target = sentry_url.netloc.split("@")[-1]
                         # NOTE: sentry doesn't support a global search. A proper link would require the specific org
                         sentry = f"{sentry_url.scheme }://{sentry_target}/organizations/sentry?query={sentry}"
-                    except Exception:
+                    except Exception:  # nosec
                         pass
             except KeyError as e:
                 sentry = f"Unexpected error while reporting to Sentry: {str(e)}"
@@ -343,6 +343,19 @@ class UserDatasetsUnlinkError(ServiceError):
     code = SVC_ERROR_USER + 132
     userMessage = "Please provide valid unlink parameter."
     devMessage = "Unlink parameters not valid."
+
+    def __init__(self, exception=None):
+        super().__init__(exception=exception)
+
+
+class UserDatasetsNotFoundError(ServiceError):
+    """Dataset couldn't be found in project."""
+
+    code = SVC_ERROR_USER + 133
+    userMessage = (
+        "The dataset doesn't exist in the project. Please check your inputs or create the target dataset first."
+    )
+    devMessage = "The dataset couldn't be found in the project."
 
     def __init__(self, exception=None):
         super().__init__(exception=exception)

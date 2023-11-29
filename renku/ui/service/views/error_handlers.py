@@ -28,6 +28,7 @@ from renku.core.errors import (
     AuthenticationError,
     DatasetExistsError,
     DatasetImageError,
+    DatasetNotFound,
     DockerfileUpdateError,
     GitCommandError,
     GitError,
@@ -65,6 +66,7 @@ from renku.ui.service.errors import (
     ProgramUpdateProjectError,
     ServiceError,
     UserDatasetsMultipleImagesError,
+    UserDatasetsNotFoundError,
     UserDatasetsUnlinkError,
     UserDatasetsUnreachableImageError,
     UserInvalidGenericFieldsError,
@@ -368,6 +370,8 @@ def handle_datasets_write_errors(f):
                 if "".join(value) == "Field may not be null.":
                     raise UserMissingFieldError(e, key)
             raise
+        except DatasetNotFound as e:
+            raise UserDatasetsNotFoundError(e)
         except DatasetExistsError as e:
             raise IntermittentDatasetExistsError(e)
         except RenkuException as e:
