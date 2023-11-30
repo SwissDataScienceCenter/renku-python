@@ -17,7 +17,7 @@
 
 from typing import Dict, Optional
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder.command import Command
 from renku.core import errors
@@ -41,7 +41,7 @@ def _split_section_and_key(key):
     return "renku", key
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def _update_multiple_config(
     values: Dict[str, Optional[str]], global_only: bool = False, commit_message: Optional[str] = None
 ):
@@ -70,7 +70,7 @@ def update_multiple_config():
     )
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def _update_config(
     key: str,
     *,
@@ -111,7 +111,7 @@ def update_config():
     )
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def _read_config(key: Optional[str], config_filter: ConfigFilter = ConfigFilter.ALL, as_string: bool = True):
     """Read configuration.
 
