@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,9 +19,11 @@ from marshmallow import Schema, ValidationError, fields, post_load
 from renku.domain_model.dataset import DatasetCreatorsJson as DatasetCreators
 from renku.domain_model.dataset import DatasetDetailsJson as DatasetDetails
 from renku.domain_model.dataset import ImageObjectJson as ImageObject
-from renku.domain_model.dataset import ImageObjectRequestJson as ImageObjectRequest
+from renku.domain_model.dataset import ImageObjectRequestJson
 from renku.ui.service.serializers.common import (
     AsyncSchema,
+    GitCommitSHA,
+    GitUrlResponseMixin,
     JobDetailsResponse,
     MigrateSchema,
     RemoteRepositorySchema,
@@ -31,16 +32,16 @@ from renku.ui.service.serializers.common import (
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
 
-class DatasetNameSchema(Schema):
-    """Schema for dataset name."""
+class DatasetSlugSchema(Schema):
+    """Schema for dataset slug."""
 
-    name = fields.String(metadata={"description": "Mandatory dataset name."}, required=True)
+    slug = fields.String(metadata={"description": "Mandatory dataset slug."}, required=True)
 
 
 class DatasetDetailsRequest(DatasetDetails):
     """Request schema with dataset image information."""
 
-    images = fields.List(fields.Nested(ImageObjectRequest))
+    images = fields.List(fields.Nested(ImageObjectRequestJson))
 
     custom_metadata: fields.Field = fields.Dict()
 
@@ -51,11 +52,11 @@ class DatasetCreateRequest(AsyncSchema, DatasetDetailsRequest, RemoteRepositoryS
     # NOTE: Override field in DatasetDetails
     data_directory = fields.String(  # type: ignore
         load_default=None,
-        metadata={"description": "Base dataset data directory. '<project.data_directory>/<dataset.name>' by default"},
+        metadata={"description": "Base dataset data directory. '<project.data_directory>/<dataset.slug>' by default"},
     )
 
 
-class DatasetCreateResponse(DatasetNameSchema, RenkuSyncSchema):
+class DatasetCreateResponse(DatasetSlugSchema, RenkuSyncSchema, GitUrlResponseMixin):
     """Response schema for a dataset create view."""
 
 
@@ -65,11 +66,11 @@ class DatasetCreateResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetCreateResponse)
 
 
-class DatasetRemoveRequest(AsyncSchema, DatasetNameSchema, RemoteRepositorySchema, MigrateSchema):
+class DatasetRemoveRequest(AsyncSchema, DatasetSlugSchema, RemoteRepositorySchema, MigrateSchema):
     """Request schema for a dataset remove."""
 
 
-class DatasetRemoveResponse(DatasetNameSchema, RenkuSyncSchema):
+class DatasetRemoveResponse(DatasetSlugSchema, RenkuSyncSchema, GitUrlResponseMixin):
     """Response schema for a dataset create view."""
 
 
@@ -88,7 +89,7 @@ class DatasetAddFile(Schema):
     job_id = fields.String()
 
 
-class DatasetAddRequest(AsyncSchema, DatasetNameSchema, RemoteRepositorySchema, MigrateSchema):
+class DatasetAddRequest(AsyncSchema, DatasetSlugSchema, RemoteRepositorySchema, MigrateSchema):
     """Request schema for a dataset add file view."""
 
     files = fields.List(fields.Nested(DatasetAddFile), required=True)
@@ -108,7 +109,7 @@ class DatasetAddRequest(AsyncSchema, DatasetNameSchema, RemoteRepositorySchema, 
         return data
 
 
-class DatasetAddResponse(DatasetNameSchema, RenkuSyncSchema):
+class DatasetAddResponse(DatasetSlugSchema, RenkuSyncSchema, GitUrlResponseMixin):
     """Response schema for a dataset add file view."""
 
     project_id = fields.String(required=True)
@@ -121,7 +122,7 @@ class DatasetAddResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetAddResponse)
 
 
-class DatasetListRequest(RemoteRepositorySchema):
+class DatasetListRequest(RemoteRepositorySchema, GitCommitSHA):
     """Request schema for dataset list view."""
 
 
@@ -131,7 +132,7 @@ class DatasetDetailsResponse(DatasetDetails):
     images = fields.List(fields.Nested(ImageObject))
 
 
-class DatasetListResponse(Schema):
+class DatasetListResponse(GitUrlResponseMixin):
     """Response schema for dataset list view."""
 
     datasets = fields.List(fields.Nested(DatasetDetailsResponse), required=True)
@@ -143,19 +144,20 @@ class DatasetListResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetListResponse)
 
 
-class DatasetFilesListRequest(DatasetNameSchema, RemoteRepositorySchema):
+class DatasetFilesListRequest(DatasetSlugSchema, RemoteRepositorySchema, GitCommitSHA):
     """Request schema for dataset files list view."""
 
 
-class DatasetFileDetails(DatasetNameSchema):
+class DatasetFileDetails(Schema):
     """Serialize dataset files to a response object."""
 
+    name = fields.String(metadata={"description": "Mandatory dataset file name."}, required=True)
     path = fields.String()
     created = fields.DateTime()
     added = fields.DateTime()
 
 
-class DatasetFilesListResponse(DatasetNameSchema):
+class DatasetFilesListResponse(DatasetSlugSchema, GitUrlResponseMixin):
     """Response schema for dataset files list view."""
 
     files = fields.List(fields.Nested(DatasetFileDetails), required=True)
@@ -171,12 +173,12 @@ class DatasetImportRequest(AsyncSchema, RemoteRepositorySchema, MigrateSchema):
     """Dataset import request."""
 
     dataset_uri = fields.String(required=True)
-    name = fields.String(metadata={"description": "Optional dataset name."})
+    slug = fields.String(metadata={"description": "Optional dataset slug."})
     extract = fields.Boolean()
     tag = fields.String(metadata={"description": "Dataset version to import."})
     data_directory = fields.String(
         load_default=None,
-        metadata={"description": "Base dataset data directory. '<project.data_directory>/<dataset.name>' by default"},
+        metadata={"description": "Base dataset data directory. '<project.data_directory>/<dataset.slug>' by default"},
     )
 
 
@@ -189,18 +191,18 @@ class DatasetImportResponseRPC(JsonRPCResponse):
 class DatasetEditRequest(
     AsyncSchema,
     DatasetDetailsRequest,
-    DatasetNameSchema,
+    DatasetSlugSchema,
     RemoteRepositorySchema,
     MigrateSchema,
 ):
     """Dataset edit metadata request."""
 
-    title = fields.String(metadata={"description": "New title of the dataset"})
+    name = fields.String(metadata={"description": "New name of the dataset"})
     description = fields.String(metadata={"description": "New description of the dataset"})
     creators = fields.List(fields.Nested(DatasetCreators), metadata={"description": "New creators of the dataset"})
     keywords = fields.List(fields.String(), allow_none=True, metadata={"description": "New keywords for the dataset"})
     images = fields.List(
-        fields.Nested(ImageObjectRequest), allow_none=True, metadata={"description": "New dataset images"}
+        fields.Nested(ImageObjectRequestJson), allow_none=True, metadata={"description": "New dataset images"}
     )
     custom_metadata = fields.List(
         fields.Dict(), metadata={"description": "New custom metadata for the dataset"}, allow_none=True
@@ -211,7 +213,7 @@ class DatasetEditRequest(
     )
 
 
-class DatasetEditResponse(RenkuSyncSchema):
+class DatasetEditResponse(RenkuSyncSchema, GitUrlResponseMixin):
     """Dataset edit metadata response."""
 
     edited = fields.Dict(required=True)
@@ -224,7 +226,7 @@ class DatasetEditResponseRPC(JsonRPCResponse):
     result = fields.Nested(DatasetEditResponse)
 
 
-class DatasetUnlinkRequest(AsyncSchema, DatasetNameSchema, RemoteRepositorySchema, MigrateSchema):
+class DatasetUnlinkRequest(AsyncSchema, DatasetSlugSchema, RemoteRepositorySchema, MigrateSchema):
     """Dataset unlink file request."""
 
     include_filters = fields.List(fields.String())
@@ -242,7 +244,7 @@ class DatasetUnlinkRequest(AsyncSchema, DatasetNameSchema, RemoteRepositorySchem
         return data
 
 
-class DatasetUnlinkResponse(RenkuSyncSchema):
+class DatasetUnlinkResponse(RenkuSyncSchema, GitUrlResponseMixin):
     """Dataset unlink files response."""
 
     unlinked = fields.List(fields.String())

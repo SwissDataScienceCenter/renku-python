@@ -37,7 +37,7 @@ class GitlabAPIProvider(IGitAPIProvider):
         target_folder: Folder to use to download the files.
         remote: Remote repository URL.
         token: User bearer token.
-        ref: optional reference to checkout,
+        ref: optional reference to check out,
     Raises:
         errors.ProjectNotFound: If the remote URL is not accessible.
         errors.AuthenticationError: If the bearer token is invalid in any way.

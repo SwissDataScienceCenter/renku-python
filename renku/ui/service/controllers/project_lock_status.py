@@ -1,6 +1,5 @@
-#
-# Copyright 2021 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +23,7 @@ from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
 from renku.ui.service.errors import IntermittentProjectIdError
 from renku.ui.service.serializers.project import ProjectLockStatusRequest, ProjectLockStatusResponseRPC
+from renku.ui.service.utils import normalize_git_url
 from renku.ui.service.views import result_response
 
 
@@ -38,6 +38,9 @@ class ProjectLockStatusCtrl(ServiceCtrl, RenkuOperationMixin):
         self.ctx = self.REQUEST_SERIALIZER.load(request_data)
 
         super().__init__(cache, user_data, request_data)
+
+        if "git_url" in self.ctx:
+            self.ctx["git_url"] = normalize_git_url(self.ctx["git_url"])
 
     @property
     def context(self):

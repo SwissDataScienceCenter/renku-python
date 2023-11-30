@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache project related models."""
+
 import os
 import shutil
 from datetime import datetime
@@ -30,6 +30,7 @@ from renku.ui.service.config import CACHE_PROJECTS_PATH
 MAX_CONCURRENT_PROJECT_REQUESTS = 10
 LOCK_TIMEOUT = 15
 NO_BRANCH_FOLDER = "__default_branch__"
+DETACHED_HEAD_FOLDER_PREFIX = "__detached_head_"
 
 
 class Project(Model):
@@ -54,14 +55,20 @@ class Project(Model):
     description = TextField()
     owner = TextField()
     initialized = BooleanField()
+    commit_sha = TextField()
 
     @property
     def abs_path(self) -> Path:
         """Full path of cached project."""
-        branch = self.branch
+        folder_name = self.branch
         if not self.branch:
-            branch = NO_BRANCH_FOLDER
-        return CACHE_PROJECTS_PATH / self.user_id / self.owner / self.slug / branch
+            if self.commit_sha:
+                # NOTE: Detached head state
+                folder_name = f"{DETACHED_HEAD_FOLDER_PREFIX}{self.commit_sha}"
+            else:
+                # NOTE: We are on the default branch (i.e. main)
+                folder_name = NO_BRANCH_FOLDER
+        return CACHE_PROJECTS_PATH / self.user_id / self.owner / self.slug / folder_name
 
     def read_lock(self, timeout: Optional[float] = None):
         """Shared read lock on the project."""

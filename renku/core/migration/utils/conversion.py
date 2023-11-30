@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,12 +27,12 @@ from renku.domain_model.dataset import (
     Dataset,
     DatasetFile,
     DatasetTag,
-    ImageObject,
     Language,
     RemoteEntity,
     Url,
-    is_dataset_name_valid,
+    is_dataset_slug_valid,
 )
+from renku.domain_model.image import ImageObject
 from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance import agent as new_agents
 
@@ -65,7 +64,7 @@ def _convert_image_object(image_object: Optional[old_datasets.ImageObject], data
     """Create from old ImageObject instance."""
     if not image_object:
         return
-    id = ImageObject.generate_id(dataset_id=dataset_id, position=image_object.position)
+    id = ImageObject.generate_id(owner_id=dataset_id, position=image_object.position)
     return ImageObject(content_url=image_object.content_url, position=image_object.position, id=id)
 
 
@@ -184,7 +183,7 @@ def convert_dataset(dataset: old_datasets.Dataset, revision: str) -> Tuple[Datas
         return str(license)
 
     tags = [_convert_dataset_tag(tag) for tag in (dataset.tags or [])]
-    name = get_slug(dataset.name) if not is_dataset_name_valid(dataset.name) else dataset.name
+    slug = get_slug(dataset.name) if not is_dataset_slug_valid(dataset.name) else dataset.name
 
     identifier = _convert_dataset_identifier(dataset.identifier)
     id = Dataset.generate_id(identifier=identifier)
@@ -205,11 +204,11 @@ def convert_dataset(dataset: old_datasets.Dataset, revision: str) -> Tuple[Datas
             in_language=_convert_language(dataset.in_language),
             keywords=dataset.keywords,
             license=convert_license(dataset.license),
-            name=name,
+            slug=slug,
             project_id=project_context.project.id,
             initial_identifier=_convert_dataset_identifier(dataset.initial_identifier),
             same_as=_convert_same_as(dataset.same_as),
-            title=dataset.title,
+            name=dataset.title,
             version=dataset.version,
         ),
         tags,

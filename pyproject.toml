@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +18,7 @@
 
 [tool.poetry]
 name = "renku"
-version = "0.0.0" # placeholder, see poetry-dynamic-versioning
+version = "2.7.0.dev34+g45772746-dirty" # placeholder, see poetry-dynamic-versioning
 description = "Python SDK and CLI for the Renku platform."
 license = "Apache License 2.0"
 keywords = ["Renku", "CLI"]
@@ -52,84 +50,85 @@ Changelog = "https://github.com/swissdatasciencecenter/renku-python/blob/master/
 
 [tool.poetry.dependencies]
 python = ">=3.8.1,<3.12"
-attrs = ">=21.1.0,<23.2.0"
-bashlex = ">=0.16,<0.17"
-calamus = ">=0.3.13,<0.5"
-click = ">=8.0,<8.1.4"
-click-option-group = "<0.6.0,>=0.5.2"
-click-plugins = "==1.1.1"
-coverage = { version = ">=4.5.3,<7.4", extras=["toml"], optional = true }
-cryptography = ">=38.0.0,<42.0.0"
-cwl-utils = ">=0.27,<0.28"
-cwltool = "==3.1.20230719185429"
-deal = ">=4.24.0,<5.0.0"
-deepdiff = ">=5.8,<7.0"
-deepmerge = "==1.0.1"
-docker = "<6,>=3.7.2"
-gitpython = "==3.1.32"
-grandalf = "==0.8"
-humanize = ">=3.0.0,<4.1.0"
-importlib-resources = ">=5.12.0,<5.13.0"
-inject = "<4.4.0,>=4.3.0"
-jinja2 = { version = ">=2.11.3,<3.1.3" }
-networkx = ">=2.6.0,<3.2"
-packaging = "<24.0,>=23.0"
-pathspec = "<1.0.0,>=0.8.0"
-patool = "==1.12"
-pluggy = "==1.0.0"
-portalocker = ">=2.2.1,<2.8"
-poetry-dynamic-versioning = "0.21.5"
-psutil = ">=5.4.7,<5.9.2"
-pydantic = "==1.10.7"
-pyjwt = ">=2.1.0,<2.5.0"
-pyld = "==2.0.3"
-pyshacl = ">=0.20.0,<0.24.0"
-python-dateutil = "<2.8.3,>=2.6.1"
-python-gitlab = ">=2.10.1,<3.8.2"
-pyyaml = "<6.1.0,>=5.4"
-rdflib = "<7.0,>=6.0.0"
-requests = ">=2.23.0,<2.31.1"
-rich = ">=9.3.0,<13.4.0"
-shellingham = "1.5.0.post1"
-tabulate = ">=0.7.7,<0.9.1"
-toil = "==5.10.0"
-tqdm = ">=4.48.1,<4.65.1"
-werkzeug = ">=1.0.0,<2.2.4"
-yagup = ">=0.1.1"
-yaspin = "==2.1.0"
-"zc.relation" = ">=1.1,<2.1"
-zodb = "==5.8.0"
-zstandard = ">=0.16.0,<0.22.0"
+attrs = "~23"
+bashlex = "^0.16"
+calamus = "^0.4"
+click = "~8.1"
+click-option-group = "^0.5.2"
+click-plugins = "~1.1.1"
+coverage = { version = "~7.3", extras=["toml"], optional = true }
+cryptography = "^41"
+cwl-utils = "^0.27"
+cwltool = "~3.1"
+deal = "~4.24"
+deepdiff = "~6.7"
+deepmerge = "~1.1"
+docker = "^5"
+gitpython = "~3.1"
+grandalf = "^0.8"
+humanize = "~4.9"
+importlib-resources = "~5.12"
+inject = "~4.3"
+jinja2 = "~3.1"
+networkx = "~3.1"
+packaging = "^23"
+pathspec = "^0.11"
+patool = "~1.12"
+pluggy = "~1.3"
+portalocker = "~2.7"
+poetry-dynamic-versioning = "^0.21"
+psutil = "~5.9"
+pydantic = "~2.5"
+pyjwt = "~2.4"
+pyld = "~2.0.3"
+pyshacl = "^0.25"
+python-dateutil = "~2.8"
+python-gitlab = "~4.2"
+pyyaml = "~6.0"
+rdflib = "^6"
+requests = "~2.31"
+rich = "^13"
+shellingham = "~1.5.1"
+tabulate = "^0.9"
+toil = "~5.12"
+tqdm = "~4.66"
+werkzeug = "~3.0"
+yagup = "^0.1"
+yaspin = "~2.5"
+"zc.relation" = "~2.0"
+zodb = "~5.8"
+zstandard = "^0.22"
 
 # service dependencies:
-apispec = { version = ">=6.3.0,<6.4.0", optional = true }
-apispec-oneofschema = { version = ">=3.0.0,<4.0.0", optional = true}
-apispec-webframeworks = { version = "<0.6,>=0.5.2", optional = true }
-circus = { version = "==0.18.0", optional = true }
-flask = { version = "==2.2.5", optional = true }
+apispec = { version = "~6.3", optional = true }
+apispec-oneofschema = { version = "^3", optional = true}
+apispec-webframeworks = { version = "^0.5", optional = true }
+circus = { version = "^0.18", optional = true }
+flask = { version = "^2", optional = true }
 gunicorn = { version = "*", optional = true }
-marshmallow = { version = ">=3.18.0,<3.20.0", optional = true }
-marshmallow-oneofschema = { version = ">=3.0.1,<4.0.0", optional = true }
-pillow = { version = ">=9.0.0,<9.6", optional = true }
-python-dotenv = { version = ">=0.19.0,<0.21.0", optional = true }
-redis = { version = ">=3.5.3,<4.6.0,!=4.5.5", optional = true }
-rq = { version = "==1.15.0", optional = true }
-sentry-sdk = { version = ">=1.5.11,<1.31.0", extras = ["flask"],  optional = true }
-walrus = { version = ">=0.8.2,<0.10.0", optional = true }
+marshmallow = { version = "~3.19", optional = true }
+marshmallow-oneofschema = { version = "^3.0.1", optional = true }
+pillow = { version = "^10", optional = true }
+python-dotenv = { version = "^0.20", optional = true }
+redis = { version = "~5.0", optional = true }
+rq = { version = "~1.15", optional = true }
+sentry-sdk = { version = "~1.38", extras = ["flask"],  optional = true }
+walrus = { version = "^0.9", optional = true }
+prometheus-flask-exporter = "^0.23"
 
 [tool.poetry.group.dev.dependencies]
-black = "==23.1.0"
-flake8 = ">=6.0.0,<7.0.0"
+black = "~23.1"
+flake8 = "^6"
 Flake8-pyproject = "==1.2.2"
-isort = "<5.10.2,>=5.3.2"
-mypy = ">=1.2.0,<2.0"
-poetry-lock-package = "^0.5.0"
-pre-commit = ">=2.20,<4.0"
-types-PyYAML = "<6.1.0,>=5.4"
+isort = "^5"
+mypy = "^1.2.0"
+poetry-lock-package = "^0.5"
+pre-commit = "^3"
+types-PyYAML = "~6.0"
 types-python-dateutil = "^2.8.10"
-types-redis = ">=3.5.3,<4.1.0"
-types-requests = ">=2.23.0,<2.28.12"
-types-tabulate = ">=0.7.7,<0.9.1"
+types-redis = "~4.0"
+types-requests = "~2.30"
+types-tabulate = "^0.9"
 
 [tool.poetry.group.tests]
 optional = true
@@ -222,7 +221,7 @@ use_parentheses = true
 line_length = 120
 
 [tool.poetry-dynamic-versioning]
-enable = true
+enable = false
 vcs = "git"
 dirty = true
 format-jinja = """
@@ -303,6 +302,7 @@ module = [
     "pexpect",
     "PIL",
     "pluggy",
+    "prometheus_flask_exporter.*",
     "psutil",
     "pyld",
     "pyshacl",

@@ -1,6 +1,5 @@
-#
-# Copyright 2020-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -75,7 +74,7 @@ def test_compare_manifests(svc_client_with_templates):
     assert {"result"} == set(response.json.keys())
     assert response.json["result"]["templates"]
 
-    templates_source = fetch_templates_source(source=template_params["url"], reference=template_params["branch"])
+    templates_source = fetch_templates_source(source=template_params["url"], reference=template_params["ref"])
     manifest_file = templates_source.path / TEMPLATE_MANIFEST
 
     manifest = TemplatesManifest.from_path(manifest_file).get_raw_content()
@@ -131,6 +130,10 @@ def test_create_project_from_template(svc_client_templates_creation, with_inject
     svc_client, headers, payload, rm_remote = svc_client_templates_creation
 
     payload["data_directory"] = "my-folder/"
+    payload["image"] = {
+        "content_url": "https://en.wikipedia.org/static/images/icons/wikipedia.png",
+        "mirror_locally": True,
+    }
 
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=headers)
 
@@ -162,6 +165,8 @@ def test_create_project_from_template(svc_client_templates_creation, with_inject
     old_metadata_path = project_path / ".renku/metadata.yml"
     assert old_metadata_path.exists()
     assert "'http://schema.org/schemaVersion': '9'" in old_metadata_path.read_text()
+
+    assert (project_path / ".renku" / "images" / "project" / "0.png").exists()
 
     # NOTE:  successfully re-use old name after cleanup
     assert rm_remote() is True
@@ -207,7 +212,7 @@ def test_create_project_from_template_failures(svc_client_templates_creation):
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
     assert UserProjectCreationError.code == response.json["error"]["code"], response.json
-    assert "git_url" in response.json["error"]["devMessage"]
+    assert "`project_repository`, `project_namespace`" in response.json["error"]["devMessage"]
 
     # NOTE: missing fields -- unlikely to happen. If that is the case, we should determine if it's a user error or not
     payload_missing_field = deepcopy(payload)

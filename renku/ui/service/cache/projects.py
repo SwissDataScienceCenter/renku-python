@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +30,7 @@ class ProjectManagementCache(BaseCache):
 
     project_schema = ProjectSchema()
 
-    def make_project(self, user, project_data, persist=True):
+    def make_project(self, user, project_data, persist=True) -> Project:
         """Store user project metadata."""
         project_data.update({"user_id": user.user_id})
 

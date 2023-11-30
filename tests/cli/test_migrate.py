@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -371,7 +370,7 @@ def test_commands_fail_on_old_repository(isolated_runner, old_repository_with_su
         ["doctor"],
         ["githooks", "install"],
         ["help"],
-        ["init", "-i", "1", "--force"],
+        ["init", "-t", "python-minimal", "--force"],
         ["storage", "check"],
     ],
 )

@@ -496,9 +496,7 @@ jobs:
           CLOUD_STORAGE_AZURE_KEY: ${{ secrets.CLOUD_STORAGE_AZURE_KEY }}
           CLOUD_STORAGE_S3_ACCESS_KEY_ID: ${{ secrets.CLOUD_STORAGE_S3_ACCESS_KEY_ID }}
           CLOUD_STORAGE_S3_SECRET_ACCESS_KEY: ${{ secrets.CLOUD_STORAGE_S3_SECRET_ACCESS_KEY }}
-        run: pytest -m "integration and not serial and not service" -v
-      - name: Start Redis
-        uses: supercharge/redis-github-action@1.6.0
+        run: pytest -m "integration and not serial and not service and not redis" -v
       - name: Test with pytest (serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -589,19 +587,16 @@ jobs:
         run: |
           echo "GIT_USER=Renku Bot" >> $GITHUB_ENV
           echo "GIT_EMAIL=renku@datascience.ch" >> $GITHUB_ENV
-      - name: Push chart and images
-        uses: SwissDataScienceCenter/renku-actions/publish-chart@v1.5.2
+      - name: Build and push images
+        uses: SwissDataScienceCenter/renku-actions/publish-chartpress-images@v1.7.0
         env:
-          CHART_NAME: renku-core
           GITHUB_TOKEN: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
           DOCKER_USERNAME: ${{ secrets.RENKU_DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.RENKU_DOCKER_PASSWORD }}
-      - name: Wait for chart to be available
-        run: sleep 120
       - name: Update component version
-        uses: SwissDataScienceCenter/renku-actions/update-component-version@v1.5.2
+        uses: SwissDataScienceCenter/renku-actions/update-component-version@v1.7.0
         env:
-          CHART_NAME: renku-core
+          COMPONENT_NAME: renku-core
           GITHUB_TOKEN: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
 
   coveralls-final:

@@ -356,6 +356,9 @@ class DockerSessionProvider(ISessionProvider):
                     environment["CHOWN_HOME"] = "yes"
                     environment["CHOWN_HOME_OPTS"] = "-R"
 
+                if "force_build" in kwargs:
+                    del kwargs["force_build"]
+
                 container = self.docker_client().containers.run(
                     image_name,
                     'jupyter notebook --NotebookApp.ip="0.0.0.0"'

@@ -38,30 +38,44 @@ from renku.ui.service.config import PROJECT_CLONE_DEPTH_DEFAULT
 from renku.ui.service.errors import IntermittentCacheError, IntermittentLockError
 from renku.ui.service.interfaces.repository_cache import IRepositoryCache
 from renku.ui.service.logger import service_log
+from renku.ui.service.utils import normalize_git_url
 
 
 class LocalRepositoryCache(IRepositoryCache):
     """Cache for project repos stored on local disk."""
 
     def get(
-        self, cache: ServiceCache, git_url: str, branch: Optional[str], user: User, shallow: bool = True
+        self,
+        cache: ServiceCache,
+        git_url: str,
+        branch: Optional[str],
+        user: User,
+        shallow: bool = True,
+        commit_sha: Optional[str] = None,
     ) -> Project:
         """Get a project from cache (clone if necessary)."""
         if git_url is None:
             raise ValidationError("Invalid `git_url`, URL is empty", "git_url")
+        # Note: walrus turns None into empty strings
+        branch = branch or ""
+        commit_sha = commit_sha or ""
 
+        git_url = normalize_git_url(git_url)
         try:
             project = Project.get(
-                (Project.user_id == user.user_id) & (Project.git_url == git_url) & (Project.branch == branch)
+                (Project.user_id == user.user_id)
+                & (Project.git_url == git_url)
+                & (Project.branch == branch)
+                & (Project.commit_sha == commit_sha)
             )
         except ValueError:
             # project not found in DB
-            return self._clone_project(cache, git_url, branch, user, shallow)
+            return self._clone_project(cache, git_url, branch, user, shallow, commit_sha)
 
         if not project.abs_path.exists():
             # cache folder doesn't exist anymore
             project.delete()
-            return self._clone_project(cache, git_url, branch, user, shallow)
+            return self._clone_project(cache, git_url, branch, user, shallow, commit_sha)
 
         if not shallow and project.is_shallow:
             self._unshallow_project(project, user)
@@ -98,9 +112,17 @@ class LocalRepositoryCache(IRepositoryCache):
         project.save()
 
     def _clone_project(
-        self, cache: ServiceCache, git_url: str, branch: Optional[str], user: User, shallow: bool = True
+        self,
+        cache: ServiceCache,
+        git_url: str,
+        branch: Optional[str],
+        user: User,
+        shallow: bool = True,
+        commit_sha: Optional[str] = None,
     ) -> Project:
         """Clone a project to cache."""
+        git_url = normalize_git_url(git_url)
+
         try:
             parsed_git_url = GitURL.parse(git_url)
         except UnicodeError as e:
@@ -110,6 +132,10 @@ class LocalRepositoryCache(IRepositoryCache):
 
         if parsed_git_url.owner is None or parsed_git_url.name is None:
             raise ValidationError("Invalid `git_url`, missing owner or repository", "git_url")
+        if branch == "":
+            branch = None
+        if commit_sha == "":
+            commit_sha = None
 
         project_data = {
             "project_id": uuid.uuid4().hex,
@@ -120,6 +146,7 @@ class LocalRepositoryCache(IRepositoryCache):
             "branch": branch,
             "git_url": git_url,
             "user_id": user.user_id,
+            "commit_sha": commit_sha,
         }
         project = cache.make_project(user, project_data, persist=False)
 
@@ -135,6 +162,7 @@ class LocalRepositoryCache(IRepositoryCache):
                         (Project.user_id == user.user_id)
                         & (Project.git_url == git_url)
                         & (Project.branch == branch)
+                        & (Project.commit_sha == commit_sha)
                         & (Project.project_id != project.project_id)
                     )
                 except ValueError:
@@ -166,7 +194,7 @@ class LocalRepositoryCache(IRepositoryCache):
                             "user.email": user.email,
                             "pull.rebase": False,
                         },
-                        checkout_revision=project.branch,
+                        checkout_revision=commit_sha or project.branch,
                     )
                 ).output
                 project.save()
@@ -182,6 +210,9 @@ class LocalRepositoryCache(IRepositoryCache):
 
     def _unshallow_project(self, project: Project, user: User):
         """Turn a shallow clone into a full clone."""
+        if project.commit_sha is not None:
+            # NOTE: A project in a detached head state at a specific commit SHA does not make sense to be unshallowed
+            return
         try:
             with project.write_lock(), Repository(project.abs_path) as repository:
                 try:
@@ -202,6 +233,10 @@ class LocalRepositoryCache(IRepositoryCache):
         from renku.ui.service.controllers.api.mixins import PROJECT_FETCH_TIME
 
         if project.fetch_age < PROJECT_FETCH_TIME:
+            return
+
+        if project.commit_sha is not None and project.commit_sha != "":
+            # NOTE: A project in a detached head state at a specific commit SHA cannot be updated
             return
 
         try:
@@ -228,7 +263,7 @@ class LocalRepositoryCache(IRepositoryCache):
 
 def git_url_with_auth(project: Project, user: User):
     """Format url with auth."""
-    git_url = urlparse(project.git_url)
+    git_url = urlparse(normalize_git_url(project.git_url))
 
     url = "oauth2:{}@{}".format(user.token, git_url.netloc)
     return git_url._replace(netloc=url).geturl()

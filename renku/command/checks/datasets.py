@@ -77,17 +77,17 @@ def check_missing_files(dataset_gateway: IDatasetGateway, **_):
             path = project_context.path / file_.entity.path
             file_exists = path.exists() or (file_.is_external and os.path.lexists(path))
             if not file_exists:
-                missing[dataset.name].append(file_.entity.path)
+                missing[dataset.slug].append(file_.entity.path)
 
     if not missing:
         return True, False, None
 
     problems = WARNING + "There are missing files in datasets."
 
-    for dataset_name, files in missing.items():
+    for dataset_slug, files in missing.items():
         problems += (
             "\n\t"
-            + click.style(dataset_name, fg="yellow")
+            + click.style(dataset_slug, fg="yellow")
             + ":\n\t  "
             + "\n\t  ".join(click.style(path, fg="red") for path in files)
         )
@@ -114,9 +114,9 @@ def check_invalid_datasets_derivation(fix, dataset_gateway: IDatasetGateway, **_
             dataset.unfreeze()
             dataset.derived_from = None
             dataset.freeze()
-            communication.info(f"Fixing dataset '{dataset.name}'")
+            communication.info(f"Fixing dataset '{dataset.slug}'")
         else:
-            invalid_datasets.append(dataset.name)
+            invalid_datasets.append(dataset.slug)
 
     for dataset in dataset_gateway.get_provenance_tails():
         while dataset.derived_from is not None and dataset.derived_from.url_id is not None:
@@ -137,7 +137,7 @@ def check_invalid_datasets_derivation(fix, dataset_gateway: IDatasetGateway, **_
         WARNING
         + "There are invalid dataset metadata in the project (use 'renku doctor --fix' to fix them):"
         + "\n\n\t"
-        + "\n\t".join(click.style(name, fg="yellow") for name in invalid_datasets)
+        + "\n\t".join(click.style(slug, fg="yellow") for slug in invalid_datasets)
         + "\n"
     )
 
@@ -177,12 +177,12 @@ def check_dataset_files_outside_datadir(fix, dataset_gateway: IDatasetGateway, *
             continue
 
         if fix:
-            communication.info(f"Fixing dataset '{dataset.name}' files.")
+            communication.info(f"Fixing dataset '{dataset.slug}' files.")
             dataset.unfreeze()
             for file in detected_files:
                 dataset.unlink_file(file.entity.path)
             dataset.freeze()
-            add_to_dataset(dataset.name, urls=[file.entity.path for file in detected_files], link=True)
+            add_to_dataset(dataset.slug, urls=[file.entity.path for file in detected_files], link=True)
         else:
             invalid_files.extend(detected_files)
 
@@ -220,7 +220,7 @@ def check_external_files(fix, dataset_gateway: IDatasetGateway, **_):
         for file in dataset.files:
             if file.is_external:
                 external_files.append(file.entity.path)
-                datasets[dataset.name].append(file)
+                datasets[dataset.slug].append(file)
 
     if not external_files:
         return True, False, None
@@ -240,7 +240,7 @@ def check_external_files(fix, dataset_gateway: IDatasetGateway, **_):
         f"dataset with an external storage backend:\n\t{external_files_str}"
     )
 
-    for name, files in datasets.items():
-        file_unlink(name=name, yes=True, dataset_files=files)
+    for slug, files in datasets.items():
+        file_unlink(slug=slug, yes=True, dataset_files=files)
 
     return True, False, None
