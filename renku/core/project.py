@@ -19,7 +19,7 @@ import os
 import shutil
 from typing import Dict, List, Optional, Union, cast
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder import inject
 from renku.command.view_model.project import ProjectViewModel
@@ -35,7 +35,7 @@ from renku.domain_model.provenance.agent import Person
 
 
 @inject.autoparams()
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def edit_project(
     description: Optional[Union[str, NoValueType]],
     creator: Union[Dict, str, NoValueType],

@@ -42,6 +42,8 @@ def project_metadata(project) -> Generator[Tuple["RenkuProject", Dict[str, Any]]
         "token": "awesome token",
         "git_url": "https://example.com/a/b.git",
         "initialized": True,
+        "branch": "",
+        "commit_sha": "",
     }
 
     yield project, metadata

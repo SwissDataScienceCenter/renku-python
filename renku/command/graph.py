@@ -18,7 +18,7 @@
 import json
 from typing import Dict, List, Optional, Set, Union
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder.command import Command, inject
 from renku.command.schema.activity import ActivitySchema, WorkflowFileActivityCollectionSchema
@@ -54,7 +54,7 @@ def export_graph_command():
     return Command().command(export_graph).with_database(write=False).require_migration()
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def export_graph(
     format: str = "json-ld", revision_or_range: Optional[str] = None, strict: bool = False
 ) -> GraphViewModel:
