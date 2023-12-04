@@ -19,13 +19,13 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
 from git.remote import RemoteProgress
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder.command import Command
 from renku.domain_model.project_context import project_context
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def _project_clone(
     url: str,
     path: Optional[Union[str, Path]] = None,

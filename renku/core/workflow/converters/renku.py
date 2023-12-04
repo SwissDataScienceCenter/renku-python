@@ -38,7 +38,7 @@ class RenkuWorkflowFileExporter(IWorkflowConverter):
         return self, ["renku"]
 
     @hookimpl
-    def workflow_convert(
+    def workflow_convert(  # type:ignore
         self,
         workflow: Union[CompositePlan, Plan],
         basedir: Path,
