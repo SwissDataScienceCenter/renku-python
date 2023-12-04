@@ -15,12 +15,13 @@
 # limitations under the License.
 """Renku project/dataset image management."""
 
-import imghdr
 import os
 import urllib
 from pathlib import Path
 from typing import List, Optional, Union, cast
 from urllib.request import urlretrieve
+
+import filetype
 
 from renku.core import errors
 from renku.core.constant import FILESYSTEM_ROOT
@@ -70,7 +71,7 @@ class ImageObjectRequest:
             if not os.path.exists(path):
                 raise errors.ImageError(f"Image with local path '{self.content_url}' not found")
             # NOTE: Prevent path traversal or usage of non-image files
-            elif (FILESYSTEM_ROOT in self.safe_image_paths and imghdr.what(path) is None) or not any(
+            elif (FILESYSTEM_ROOT in self.safe_image_paths and filetype.guess(path) is None) or not any(
                 is_subpath(path, base=p) for p in self.safe_image_paths
             ):
                 raise errors.ImageError(f"'{self.content_url}' isn't a valid image file")

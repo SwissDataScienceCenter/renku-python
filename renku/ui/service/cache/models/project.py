@@ -49,13 +49,13 @@ class Project(Model):
     clone_depth = IntegerField()
     git_url = TextField(index=True)
     branch = TextField(index=True)
+    commit_sha = TextField(index=True)
 
     name = TextField()
     slug = TextField()
     description = TextField()
     owner = TextField()
     initialized = BooleanField()
-    commit_sha = TextField()
 
     @property
     def abs_path(self) -> Path:

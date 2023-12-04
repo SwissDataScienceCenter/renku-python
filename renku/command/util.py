@@ -39,7 +39,7 @@ def echo_via_pager(*args, **kwargs):
             os.environ.pop("LESS", None)
 
 
-progressbar = functools.partial(
+progressbar = functools.partial(  # type: ignore
     click.progressbar, fill_char=click.style(" ", bg="green"), show_pos=True, item_show_func=lambda x: x
 )
 
