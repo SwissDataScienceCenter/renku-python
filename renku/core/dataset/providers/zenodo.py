@@ -335,7 +335,7 @@ class ZenodoExporter(ExporterApi):
 
     HEADERS = {
         "Content-Type": "application/json",
-        "Referer": f"https://{os.environ.get('RENKU_DOMAIN', 'renkulab.io')}",
+        "Referer": f"https://{os.environ.get('RENKU_DOMAIN', 'zenodo.org')}",
     }
 
     def __init__(self, dataset, publish, tag):
@@ -532,7 +532,8 @@ class ZenodoDeposition:
                 err_response = response.json()
                 if "errors" in err_response:
                     messages = [
-                        '"{}" failed with "{}"'.format(err["field"], err["message"]) for err in err_response["errors"]
+                        '"{}" failed with "{}"'.format(err["field"], ", ".join(err["messages"]))
+                        for err in err_response["errors"]
                     ]
                 elif "message" in err_response:
                     messages = [err_response["message"]]
@@ -543,6 +544,7 @@ class ZenodoDeposition:
                     "\n" + "\n".join(messages) + "\nSee `renku dataset edit -h` for details on how to edit" " metadata"
                 )
             else:
+                print(response.status_code)
                 raise errors.ExportError(response.content)
 
 

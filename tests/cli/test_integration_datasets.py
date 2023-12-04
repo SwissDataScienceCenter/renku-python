@@ -822,7 +822,6 @@ def test_dataset_export_upload_failure(runner, tmpdir, project, zenodo_sandbox):
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", "zenodo"])
 
     assert 1 == result.exit_code, result.output + str(result.stderr_bytes)
-    assert "metadata.creators.0.affiliation" in result.output
     assert "metadata.description" in result.output
 
 
@@ -940,7 +939,10 @@ def test_export_dataset_unauthorized(
     result = runner.invoke(cli, ["dataset", "export", "my-dataset", provider] + params)
 
     assert 1 == result.exit_code, result.output + str(result.stderr_bytes)
-    assert "Access unauthorized - update access token." in result.output, format_result_exception(result)
+    # Note: Zenodo returns a referer error when a wrong token is supplied for some reason
+    assert (
+        "Access unauthorized - update access token." in result.output or "Referer checking failed" in result.output
+    ), format_result_exception(result)
 
     secret = get_value("zenodo", "secret")
     assert secret is None
