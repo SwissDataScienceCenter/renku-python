@@ -397,29 +397,27 @@ def test_dataset_import_renku_provider_with_subgroups(runner, project, uri):
 @pytest.mark.vcr
 def test_dataset_import_renkulab_dataset_with_image(runner, project, with_injection):
     """Test dataset import from Renkulab projects."""
+    # dataset is https://dev.renku.ch/projects/renku-python-integration-tests/lego-datasets/datasets/colors/
     result = runner.invoke(
-        cli, ["dataset", "import", "https://dev.renku.ch/datasets/4f36f891bb7c4b2bab137633cc270a40"], input="y"
+        cli, ["dataset", "import", "https://dev.renku.ch/datasets/5952ea58de934fe188680a0e626a259c"], input="y"
     )
 
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391" in result.output
+    assert "158c016d7338e9874a2a70972ed62ca22e2ce7ae" in result.output
 
     assert "0" in result.output
     assert "OK" in result.output
 
     result = runner.invoke(cli, ["dataset", "ls-files"])
     assert 0 == result.exit_code, format_result_exception(result)
-    assert "bla" in result.output
+    assert "colors.csv" in result.output
 
     with with_injection():
         dataset = [d for d in DatasetGateway().get_all_active_datasets()][0]
-    assert 2 == len(dataset.images)
-    img1 = next(i for i in dataset.images if i.position == 1)
-    img2 = next(i for i in dataset.images if i.position == 2)
+    assert 1 == len(dataset.images)
+    img1 = next(i for i in dataset.images if i.position == 0)
 
-    assert img1.content_url == "https://example.com/image1.jpg"
-    assert img2.content_url.endswith("/2.png")
-    assert os.path.exists(project.path / img2.content_url)
+    assert img1.content_url == ".renku/dataset_images/41033ca2758944678718dde9140431f1/0.png"
 
 
 @pytest.mark.integration
