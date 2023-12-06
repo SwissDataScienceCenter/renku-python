@@ -41,7 +41,9 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
         """Construct migration check controller."""
         self.ctx = MigrationsCheckCtrl.REQUEST_SERIALIZER.load(request_data)
         super().__init__(cache, user_data, request_data)
-        self.git_api_provider = git_api_provider(token=self.user.token)
+        self.git_api_provider = None
+        if self.user:
+            self.git_api_provider = git_api_provider(token=self.user.token)
 
     @property
     def context(self):
@@ -53,7 +55,7 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
         if "git_url" not in self.context:
             raise RenkuException("context does not contain `git_url`")
 
-        token = self.user.token if hasattr(self, "user") else self.user_data.get("token")
+        token = self.user.token if self.user else self.user_data.get("token")
 
         if not token:
             # User isn't logged in, fast op doesn't work
