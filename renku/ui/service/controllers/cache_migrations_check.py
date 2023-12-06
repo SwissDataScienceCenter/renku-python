@@ -54,6 +54,8 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
         """Execute renku_op with only necessary files, without cloning the whole repo."""
         if "git_url" not in self.context:
             raise RenkuException("context does not contain `git_url`")
+        if not self.git_api_provider:
+            return None
 
         token = self.user.token if self.user else self.user_data.get("token")
 
