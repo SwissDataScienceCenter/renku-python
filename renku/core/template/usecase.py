@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Any, Dict, List, NamedTuple, Optional, Tuple, Union
 
 import click
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder.command import inject
 from renku.command.view_model.template import TemplateChangeViewModel, TemplateViewModel
@@ -112,7 +112,7 @@ def is_dockerfile_updated_by_user() -> bool:
     return False if does_dockerfile_contain_only_version_change() else True
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def list_templates(source: Optional[str], reference: Optional[str]) -> List[TemplateViewModel]:
     """Return available templates from a source."""
     templates_source = fetch_templates_source(source=source, reference=reference)
@@ -120,7 +120,7 @@ def list_templates(source: Optional[str], reference: Optional[str]) -> List[Temp
     return [TemplateViewModel.from_template(t) for t in templates_source.templates]
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def show_template(source: Optional[str], reference: Optional[str], id: Optional[str]) -> TemplateViewModel:
     """Show template details."""
     if source or id:
@@ -153,7 +153,7 @@ def check_for_template_update(project: Optional[Project]) -> Tuple[bool, bool, O
     return update_available, metadata.allow_update, metadata.reference, latest_reference
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def set_template(
     source: Optional[str],
     reference: Optional[str],
@@ -189,7 +189,7 @@ def set_template(
     return TemplateChangeViewModel.from_template(template=rendered_template, actions=actions)
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def update_template(force: bool, interactive: bool, dry_run: bool) -> Optional[TemplateChangeViewModel]:
     """Update project's template if possible. Return corresponding viewmodel if updated."""
     template_metadata = TemplateMetadata.from_project(project=project_context.project)
@@ -316,7 +316,7 @@ def select_template(templates_source: TemplatesSource, id: Optional[str] = None)
     return prompt_to_select_template()
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def validate_templates(
     source: Optional[str] = None, reference: Optional[str] = None
 ) -> Dict[str, Union[str, Dict[str, List[str]]]]:

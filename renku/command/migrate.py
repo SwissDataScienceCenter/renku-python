@@ -18,7 +18,7 @@
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder.command import Command
 from renku.core.errors import MinimumVersionError
@@ -294,7 +294,7 @@ def _check_project():
     return status | SUPPORTED_RENKU_PROJECT
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def _check_immutable_template_files(paths: List[str]):
     """Check paths and return a list of those that are marked immutable in the project template.
 

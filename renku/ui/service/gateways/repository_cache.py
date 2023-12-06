@@ -56,11 +56,17 @@ class LocalRepositoryCache(IRepositoryCache):
         """Get a project from cache (clone if necessary)."""
         if git_url is None:
             raise ValidationError("Invalid `git_url`, URL is empty", "git_url")
+        # Note: walrus turns None into empty strings
+        branch = branch or ""
+        commit_sha = commit_sha or ""
 
         git_url = normalize_git_url(git_url)
         try:
             project = Project.get(
-                (Project.user_id == user.user_id) & (Project.git_url == git_url) & (Project.branch == branch)
+                (Project.user_id == user.user_id)
+                & (Project.git_url == git_url)
+                & (Project.branch == branch)
+                & (Project.commit_sha == commit_sha)
             )
         except ValueError:
             # project not found in DB
@@ -126,6 +132,10 @@ class LocalRepositoryCache(IRepositoryCache):
 
         if parsed_git_url.owner is None or parsed_git_url.name is None:
             raise ValidationError("Invalid `git_url`, missing owner or repository", "git_url")
+        if branch == "":
+            branch = None
+        if commit_sha == "":
+            commit_sha = None
 
         project_data = {
             "project_id": uuid.uuid4().hex,
@@ -225,7 +235,7 @@ class LocalRepositoryCache(IRepositoryCache):
         if project.fetch_age < PROJECT_FETCH_TIME:
             return
 
-        if project.commit_sha is not None:
+        if project.commit_sha is not None and project.commit_sha != "":
             # NOTE: A project in a detached head state at a specific commit SHA cannot be updated
             return
 

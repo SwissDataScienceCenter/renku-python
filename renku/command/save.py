@@ -17,7 +17,7 @@
 
 from typing import List, Optional, Tuple
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder.command import Command
 from renku.core import errors
@@ -25,7 +25,7 @@ from renku.core.lfs import track_paths_in_storage
 from renku.domain_model.project_context import project_context
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def _save_and_push(
     message: Optional[str] = None, remote: Optional[str] = None, paths: Optional[List[str]] = None
 ) -> Tuple[List[str], str]:

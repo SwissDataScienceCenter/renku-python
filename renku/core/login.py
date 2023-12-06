@@ -21,7 +21,7 @@ import urllib
 import webbrowser
 from typing import TYPE_CHECKING, Optional, cast
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.core import errors
 from renku.core.config import get_value, remove_value, set_value
@@ -46,7 +46,7 @@ KEYCLOAK_REALM = "Renku"
 CLIENT_ID = "renku-cli"
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def login(endpoint: Optional[str], git_login: bool, yes: bool):
     """Log into a Renku deployment."""
     from renku.core.util import requests
@@ -220,7 +220,7 @@ def _read_renku_token_for_hostname(hostname):
     return get_value(section=CONFIG_SECTION, key=hostname, config_filter=ConfigFilter.GLOBAL_ONLY)
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def logout(endpoint: Optional[str]):
     """Log out from one or all Renku deployments."""
     if endpoint:
@@ -275,7 +275,7 @@ def has_credentials_for_hostname(hostname: str) -> bool:
     return bool(_read_renku_token_for_hostname(hostname))
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def credentials(command: str, hostname: Optional[str]):
     """Credentials helper for git."""
     if command != "get":
