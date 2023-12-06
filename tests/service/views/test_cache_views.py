@@ -956,7 +956,7 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_
 
     assert response
     assert 200 == response.status_code
-    assert {"slug", "remote_branch"} == set(response.json["result"].keys())
+    assert {"git_url", "slug", "remote_branch"} == set(response.json["result"].keys())
 
     remote_repo_checkout.pull()
 
