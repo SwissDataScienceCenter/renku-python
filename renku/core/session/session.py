@@ -21,7 +21,7 @@ import textwrap
 from pathlib import Path
 from typing import List, NamedTuple, Optional
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.core import errors
 from renku.core.config import get_value
@@ -48,7 +48,7 @@ class SessionList(NamedTuple):
     warning_messages: List[str]
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def search_sessions(name: str, provider: Optional[str] = None) -> List[str]:
     """Get all sessions that their name starts with the given name.
 
@@ -64,7 +64,7 @@ def search_sessions(name: str, provider: Optional[str] = None) -> List[str]:
     return [s.id for s in sessions if s.id.lower().startswith(name)]
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def search_session_providers(name: str) -> List[str]:
     """Get all session providers that their name starts with the given name.
 
@@ -80,7 +80,7 @@ def search_session_providers(name: str) -> List[str]:
     return [p.name for p in get_supported_session_providers() if p.name.lower().startswith(name)]
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def search_hibernating_session_providers(name: str) -> List[str]:
     """Get all session providers that support hibernation and their name starts with the given name.
 
@@ -96,7 +96,7 @@ def search_hibernating_session_providers(name: str) -> List[str]:
     return [p.name for p in get_supported_hibernating_session_providers() if p.name.lower().startswith(name)]
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def session_list(*, provider: Optional[str] = None) -> SessionList:
     """List interactive sessions.
 
@@ -134,7 +134,7 @@ def session_list(*, provider: Optional[str] = None) -> SessionList:
     return SessionList(all_sessions, all_local, warning_messages)
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def session_start(
     config_path: Optional[str],
     provider: str,
@@ -227,7 +227,7 @@ def session_start(
     communication.echo(provider_message)
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def session_stop(session_name: Optional[str], stop_all: bool = False, provider: Optional[str] = None):
     """Stop interactive session.
 
@@ -289,7 +289,7 @@ def session_stop(session_name: Optional[str], stop_all: bool = False, provider: 
         raise errors.ParameterError("Session name is missing")
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def session_open(session_name: Optional[str], provider: Optional[str] = None, **kwargs):
     """Open interactive session in the browser.
 
@@ -310,7 +310,7 @@ def session_open(session_name: Optional[str], provider: Optional[str] = None, **
         raise errors.ParameterError("Session name is missing")
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def ssh_setup(existing_key: Optional[Path] = None, force: bool = False):
     """Setup SSH keys for SSH connections to sessions.
 
@@ -385,7 +385,7 @@ def ssh_setup(existing_key: Optional[Path] = None, force: bool = False):
     )
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def session_pause(session_name: Optional[str], provider: Optional[str] = None, **kwargs):
     """Pause an interactive session.
 
@@ -444,7 +444,7 @@ def session_pause(session_name: Optional[str], provider: Optional[str] = None, *
         raise errors.ParameterError("Session name is missing")
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def session_resume(session_name: Optional[str], provider: Optional[str] = None, **kwargs):
     """Resume a paused session.
 

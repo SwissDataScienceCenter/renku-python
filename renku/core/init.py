@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from uuid import uuid4
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder.command import inject
 from renku.command.mergetool import setup_mergetool
@@ -96,7 +96,7 @@ def create_backup_branch(path):
     return branch_name
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def init_project(
     external_storage_requested: bool,
     path: str,
@@ -329,7 +329,7 @@ def create_from_template(
             set_value("renku", DATA_DIR_CONFIG_KEY, str(data_dir))
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def create_from_template_local(
     template_path: Path,
     name: str,
@@ -367,6 +367,7 @@ def create_from_template_local(
         description(Optional[str]): Project description (Default value = None).
         keywords(Optional[List[str]]): Project keywords (Default value = None).
         data_dir(Optional[str]): Project base data directory (Default value = None).
+        ssh_supported(Optional[bool]): Whether the project supports ssh (Default value = False).
         image_request(Optional[ImageObjectRequest]): Project's image (Default value = None).
     """
     metadata = metadata or {}

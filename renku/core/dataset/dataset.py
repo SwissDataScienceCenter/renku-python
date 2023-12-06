@@ -15,7 +15,6 @@
 # limitations under the License.
 """Dataset business logic."""
 
-import imghdr
 import os
 import shutil
 import urllib
@@ -23,8 +22,9 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
 
+import filetype
 import patoolib
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder.command import inject
 from renku.command.view_model.dataset import DatasetFileViewModel, DatasetViewModel
@@ -74,7 +74,7 @@ if TYPE_CHECKING:
     from renku.core.interface.storage import IStorage
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def search_datasets(slug: str) -> List[str]:
     """Get all the datasets whose slug starts with the given string.
 
@@ -104,7 +104,7 @@ def list_datasets():
     return list(datasets)
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def create_dataset(
     slug: str,
     name: Optional[str] = None,
@@ -194,7 +194,7 @@ def create_dataset(
     return dataset
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def edit_dataset(
     slug: str,
     name: Optional[Union[str, NoValueType]],
@@ -274,7 +274,7 @@ def edit_dataset(
     return updated
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def list_dataset_files(
     datasets: Optional[List[str]] = None,
     tag: Optional[str] = None,
@@ -315,7 +315,7 @@ def list_dataset_files(
     return records
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def file_unlink(
     slug: str,
     include: Optional[List[str]] = None,
@@ -395,7 +395,7 @@ def file_unlink(
     return records
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def remove_dataset(slug: str):
     """Delete a dataset.
 
@@ -407,7 +407,7 @@ def remove_dataset(slug: str):
     datasets_provenance.remove(dataset=dataset)
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def export_dataset(slug: str, provider_name: str, tag: Optional[str], **kwargs):
     """Export data to 3rd party provider.
 
@@ -470,7 +470,7 @@ def export_dataset(slug: str, provider_name: str, tag: Optional[str], **kwargs):
     communication.echo(f"Exported to: {destination}")
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def import_dataset(
     uri: str,
     slug: Optional[str] = "",
@@ -586,7 +586,7 @@ def import_dataset(
 
 
 @inject.autoparams()
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def update_datasets(
     slugs: List[str],
     creators: Optional[str],
@@ -800,7 +800,7 @@ def update_datasets(
     return imported_dataset_updates_view_models, dataset_files_view_models
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def show_dataset(slug: str, tag: Optional[str] = None):
     """Show detailed dataset information.
 
@@ -888,9 +888,9 @@ def set_dataset_images(dataset: Dataset, images: Optional[List[ImageObjectReques
         if not img_object.is_remote:
             # NOTE: only copy dataset image if it's not in .renku/datasets/<id>/images/ already
             if not path.startswith(str(image_folder)):
-                image_type = imghdr.what(path)
+                image_type = filetype.guess(path)
                 if image_type:
-                    ext = f".{image_type}"
+                    ext = f".{image_type.extension}"
                 else:
                     _, ext = os.path.splitext(path)
                 target_image_path: Union[Path, str] = image_folder / f"{img_object.position}{ext}"
@@ -1221,7 +1221,7 @@ def download_file(file: DatasetFile, storage: "IStorage") -> List[DatasetFile]:
     ]
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def pull_cloud_storage(slug: str, location: Optional[Path] = None) -> None:
     """Pull/copy data for a cloud storage to a dataset's data directory or a specified location.
 
@@ -1270,7 +1270,7 @@ def read_dataset_data_location(dataset: Dataset) -> Optional[str]:
     return get_value(section="dataset-locations", key=dataset.slug, config_filter=ConfigFilter.LOCAL_ONLY)
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def mount_cloud_storage(slug: str, existing: Optional[Path], yes: bool) -> None:
     """Mount a cloud storage to a dataset's data directory.
 
@@ -1307,7 +1307,7 @@ def mount_cloud_storage(slug: str, existing: Optional[Path], yes: bool) -> None:
         storage.mount(datadir)
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def unmount_cloud_storage(slug: str) -> None:
     """Mount a cloud storage to a dataset's data directory.
 
