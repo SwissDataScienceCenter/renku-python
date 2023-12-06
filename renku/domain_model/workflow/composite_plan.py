@@ -224,10 +224,10 @@ class CompositePlan(AbstractPlan):
 
             if existing:
                 _, existing_wfs = zip(*existing)
-                existing_wfs = ", ".join(w.name for w in existing_wfs)
+                existing_wfs_str = ", ".join(w.name for w in existing_wfs)
 
                 raise errors.ParameterLinkError(
-                    f"Parameter link to sink '{sink.name}' already exists in workflows: {existing_wfs}"
+                    f"Parameter link to sink '{sink.name}' already exists in workflows: {existing_wfs_str }"
                 )
 
         self.links.append(ParameterLink(source=source, sinks=sinks, id=ParameterLink.generate_id(self.id)))

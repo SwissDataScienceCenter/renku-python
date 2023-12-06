@@ -17,7 +17,7 @@
 
 from typing import List, Optional
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder.command import Command, inject
 from renku.core import errors
@@ -40,7 +40,7 @@ def rerun_command(skip_metadata_update: bool):
 
 
 @inject.autoparams()
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def _rerun(
     dry_run: bool,
     sources: List[str],
