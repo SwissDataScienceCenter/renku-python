@@ -453,7 +453,10 @@ class DockerSessionProvider(ISessionProvider):
 
     def session_url(self, session_name: Optional[str]) -> Optional[str]:
         """Get the URL of the interactive session."""
-        sessions = self.docker_client().containers.list()
+        try:
+            sessions = self.docker_client().containers.list()
+        except errors.DockerError:
+            return None
 
         for c in sessions:
             if (

@@ -29,7 +29,6 @@ class CloudStorage:
     source_path: str
     target_path: str
     configuration: Dict[str, Any]
-    private: bool
     storage_id: Optional[str] = None
     project_id: Optional[str] = None
     _storage_type: Optional[str] = None
@@ -39,6 +38,11 @@ class CloudStorage:
         """The type of storage e.g. S3."""
         return self._storage_type or self.configuration["type"]
 
+    @property
+    def private(self) -> bool:
+        """Whether the storage needs credentials or not."""
+        return any(v == "<sensitive>" for _, v in self.configuration.items())
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CloudStorage":
         """Instantiate from a dict."""
@@ -47,7 +51,6 @@ class CloudStorage:
             name=data["name"],
             source_path=data["source_path"],
             target_path=data["target_path"],
-            private=data["private"],
             configuration=data["configuration"],
             project_id=data.get("project_id"),
         )
