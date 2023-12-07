@@ -14,23 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service response json encoder."""
-from datetime import datetime
 
-from flask.json import JSONEncoder
-from marshmallow.utils import isoformat
+import orjson
+from flask.json.provider import JSONProvider
 
 
-class SvcJSONEncoder(JSONEncoder):
-    """Custom service json encoder."""
+class SvcJSONProvider(JSONProvider):
+    """Custom JSON provider that supports iso datetimes."""
 
-    def default(self, obj):
-        """Overrides default json encoder with datetime iso format."""
-        try:
-            if isinstance(obj, datetime):
-                return isoformat(obj)
-            iterable = iter(obj)
-        except TypeError:
-            pass
-        else:
-            return list(iterable)
-        return JSONEncoder.default(self, obj)
+    def dumps(self, obj, *, option=None, **kwargs):
+        """Dump JSON object to string."""
+        return orjson.dumps(obj, option=option)
+
+    def loads(self, s, **kwargs):
+        """Load JSON object from string."""
+        return orjson.loads(s)

@@ -5,3 +5,7 @@ global:
         image:
           repository: renku/renku-core
           tag: "v2.7.0"
+versions:
+  latest:
+    image:
+      tag: v2.8.0

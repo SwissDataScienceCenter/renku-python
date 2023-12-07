@@ -34,7 +34,6 @@ class DummyStorageService(IStorageService):
                     name="mystorage",
                     source_path="source",
                     target_path="target/path",
-                    private=False,
                     configuration={"type": "s3", "endpoint": "example.com"},
                     storage_id="ABCDEFG",
                     project_id="123456",

@@ -20,6 +20,7 @@ from marshmallow import ValidationError
 
 import renku
 from renku.command.migrate import migrations_check
+from renku.core.errors import MigrationRequired
 from renku.ui.service.controllers.utils.remote_project import RemoteProject
 from tests.utils import retry_failed
 
@@ -100,6 +101,6 @@ def test_remote_project_context():
         assert result.core_renku_version == renku.__version__
         assert result.project_renku_version == "pre-0.11.0"
         assert result.core_compatibility_status.migration_required is True
-        assert isinstance(result.template_status, ValueError)
+        assert isinstance(result.template_status, MigrationRequired)
         assert result.dockerfile_renku_status.automated_dockerfile_update is False
         assert result.project_supported is True

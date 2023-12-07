@@ -15,14 +15,14 @@
 # limitations under the License.
 """Functionality for interacting with cloud storage."""
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder import inject
 from renku.core.interface.storage_service_gateway import IStorageService
 
 
 @inject.autoparams()
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def list_storage(storage_service: IStorageService):
     """List configured cloud storage for project."""
     project_id = storage_service.project_id

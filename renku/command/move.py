@@ -19,7 +19,7 @@ import os
 from pathlib import Path
 from typing import List, Optional
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
@@ -39,7 +39,7 @@ def move_command():
     return Command().command(_move).require_migration().require_clean().with_database(write=True).with_commit()
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def _move(sources: List[str], destination: str, force: bool, verbose: bool, to_dataset: Optional[str]):
     """Move files and check repository for potential problems.
 

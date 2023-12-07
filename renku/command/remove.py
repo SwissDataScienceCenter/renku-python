@@ -20,7 +20,7 @@ from pathlib import Path
 from subprocess import run
 from typing import List, Protocol, runtime_checkable
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
@@ -44,7 +44,7 @@ class EditCommandCallable(Protocol):
 
 
 @inject.autoparams()
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def _remove(sources: List[str], edit_command: EditCommandCallable, dataset_gateway: IDatasetGateway):
     """Remove files and check repository for potential problems.
 

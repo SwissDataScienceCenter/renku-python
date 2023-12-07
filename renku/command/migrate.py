@@ -18,9 +18,10 @@
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder.command import Command
+from renku.core import errors
 from renku.core.errors import MinimumVersionError
 from renku.core.migration.migrate import SUPPORTED_PROJECT_VERSION
 from renku.domain_model.project_context import project_context
@@ -184,7 +185,11 @@ def _template_migration_check() -> TemplateStatusResult:
     from renku.core.config import get_value
     from renku.core.template.usecase import check_for_template_update
 
-    project = project_context.project
+    try:
+        project = project_context.project
+    except ValueError:
+        raise errors.MigrationRequired()
+
     template_source = project.template_metadata.template_source
     template_ref = project.template_metadata.template_ref
     template_id = project.template_metadata.template_id
@@ -294,7 +299,7 @@ def _check_project():
     return status | SUPPORTED_RENKU_PROJECT
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def _check_immutable_template_files(paths: List[str]):
     """Check paths and return a list of those that are marked immutable in the project template.
 

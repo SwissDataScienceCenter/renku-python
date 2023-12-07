@@ -24,7 +24,7 @@ from subprocess import call
 from typing import Dict, List, NamedTuple, Optional, Set, Union, cast
 
 import click
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder import inject
 from renku.command.view_model.plan import PlanViewModel
@@ -64,7 +64,7 @@ class StatusResult(NamedTuple):
     modified_hidden_inputs: Dict[str, Set[str]]
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def get_status(paths: Optional[List[Union[Path, str]]] = None, ignore_deleted: bool = False) -> StatusResult:
     """Return status of a project.
 
@@ -164,7 +164,7 @@ def get_valid_parameter_name(name: str) -> str:
 
 
 @inject.autoparams("activity_gateway", "plan_gateway")
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def run_command_line(
     name: Optional[str],
     description: Optional[str],
@@ -255,7 +255,7 @@ def run_command_line(
             if len(values) != len(set(values)):
                 raise errors.UsageError(f"Cannot specify the same explicit {type} value twice.")
 
-            names = [n for n in names if n]
+            names = [n for n in names if n]  # type: ignore
 
             if names and len(names) != len(set(names)):
                 raise errors.UsageError(f"Cannot specify the same explicit {type} name twice.")
