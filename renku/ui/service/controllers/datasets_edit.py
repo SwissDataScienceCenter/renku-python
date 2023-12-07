@@ -73,7 +73,7 @@ class DatasetsEditCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
         creators: Union[NoValueType, List[Person]]
         if "creators" in self.ctx:
-            creators, warnings = construct_creators(self.ctx.get("creators"))  # type: ignore
+            creators, warnings = construct_creators(self.ctx.get("creators"), ignore_email=True)  # type: ignore
         else:
             creators = NO_VALUE
 
