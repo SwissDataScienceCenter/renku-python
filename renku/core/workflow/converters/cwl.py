@@ -91,7 +91,7 @@ class CWLExporter(IWorkflowConverter):
         return (self, ["cwl"])
 
     @hookimpl
-    def workflow_convert(
+    def workflow_convert(  # type: ignore
         self,
         workflow: Union[CompositePlan, Plan],
         basedir: Path,

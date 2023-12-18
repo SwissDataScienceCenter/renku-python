@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import List, Optional, Union
 
 import networkx as nx
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder import inject
 from renku.core import errors
@@ -38,7 +38,7 @@ from renku.domain_model.workflow.workflow_file import WorkflowFileCompositePlan,
 
 
 @inject.params(plan_gateway=IPlanGateway)
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def run_workflow_file(
     path: Union[Path, str],
     steps: List[str],
