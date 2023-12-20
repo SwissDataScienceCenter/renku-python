@@ -18,6 +18,19 @@
 Changes
 =======
 
+`2.8.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.8.0...v2.8.1>`__ (2023-12-18)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **core:** adapt to Zenodo jsonld changes; send referrer on Zenodo request
+   (`#3643 <https://github.com/SwissDataScienceCenter/renku-python/issues/3643>`__)
+   (`41816d8 <https://github.com/SwissDataScienceCenter/renku-python/commit/41816d8178af0b057cca5bdd91330fbb265f9c03>`__)
+-  **service:** dataset import error
+   (`#3670 <https://github.com/SwissDataScienceCenter/renku-python/issues/3670>`__)
+   (`1795cde <https://github.com/SwissDataScienceCenter/renku-python/commit/1795cde3e1a0cd849618175251f8feab997fecfc>`__)
+
 `2.8.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.7.0...v2.8.0>`__ (2023-11-17)
 -------------------------------------------------------------------------------------------------------
 
