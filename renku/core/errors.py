@@ -252,8 +252,8 @@ class OutputsNotFound(RenkuException):
         msg = (
             "There are not any detected outputs in the repository. This can be due to your command not creating "
             "any new files or due to files that get created already existing before the command was run. In the "
-            "latter case, you can remove those files prior to running your command.\nIf you want to track the command"
-            "without outputs, use the use --no-output option.\nYou can also use the --output flag to track outputs"
+            "latter case, you can remove those files prior to running your command.\nIf you want to track the command "
+            "without outputs, use the use --no-output option.\nYou can also use the --output flag to track outputs "
             "manually."
         )
 
