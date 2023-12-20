@@ -88,8 +88,8 @@ def test_dataset_url_import_job(url, svc_client_with_repo):
 @pytest.mark.service
 @retry_failed
 @pytest.mark.vcr
-def test_dataset_import_job(doi, svc_client_with_repo):
-    """Test dataset import via doi."""
+def test_dataset_import_job_with_slug(doi, svc_client_with_repo):
+    """Test dataset import via doi and give it a slug."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
 
     user_id = encode_b64(secure_filename("9ab2fc80-3a5c-426d-ae78-56de01d214df"))
@@ -118,7 +118,14 @@ def test_dataset_import_job(doi, svc_client_with_repo):
     job_id = response.json["result"]["job_id"]
 
     commit_message = "service: import remote dataset"
-    dataset_import(user, job_id, project_id, doi, commit_message=commit_message)
+    dataset_import(
+        user=user,
+        user_job_id=job_id,
+        project_id=project_id,
+        dataset_uri=doi,
+        slug="dataset-slug",
+        commit_message=commit_message,
+    )
 
     new_commit = Repository(dest).head.commit
     assert old_commit.hexsha != new_commit.hexsha
@@ -279,7 +286,16 @@ def test_dataset_add_remote_file(url, svc_client_with_repo):
     job_id = response.json["result"]["files"][0]["job_id"]
     commit_message = "service: dataset add remote file"
 
-    dataset_add_remote_file(user, job_id, project_id, True, commit_message, payload["slug"], url)
+    # user, user_job_id, project_id, create_dataset, commit_message, slug, url
+    dataset_add_remote_file(
+        user=user,
+        user_job_id=job_id,
+        project_id=project_id,
+        create_dataset=True,
+        commit_message=commit_message,
+        slug=payload["slug"],
+        url=url,
+    )
 
     new_commit = Repository(dest).head.commit
 
