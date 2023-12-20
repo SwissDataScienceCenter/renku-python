@@ -48,7 +48,7 @@ class DatasetsImportCtrl(ServiceCtrl, RenkuOpSyncMixin):
         """Renku operation for the controller."""
         job = self.cache.make_job(
             self.user,
-            # NOTE: To support operation to be execute on remote project, this behaviour should be updated.
+            # NOTE: To support operation to be executed on remote project, this behaviour should be updated.
             project=self.ctx["project_id"],
             job_data={"renku_op": "dataset_import", "client_extras": self.ctx.get("client_extras")},
         )

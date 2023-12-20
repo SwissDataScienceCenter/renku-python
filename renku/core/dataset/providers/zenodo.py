@@ -179,7 +179,7 @@ class ZenodoImporter(RepositoryImporter):
             """Schema for Zenodo datasets."""
 
             @pre_load
-            def fix_data(self, data, **kwargs):
+            def fix_data(self, data, **_):
                 """Fix data that is received from Zenodo."""
                 # Fix context
                 context = data.get("@context")
@@ -236,7 +236,7 @@ class ZenodoImporter(RepositoryImporter):
 class ZenodoFileSerializer:
     """Zenodo record file."""
 
-    def __init__(self, *, id=None, checksum=None, links=None, key=None, size=None, **kwargs):
+    def __init__(self, *, id=None, checksum=None, links=None, key=None, size=None, **_):
         self.id = id
         self.checksum = checksum
         self.links = links
