@@ -179,9 +179,11 @@ def session_start(
     if image_name is None:
         tag = project_context.repository.head.commit.hexsha[:7]
         repo_host = get_image_repository_host()
-        image_name = f"{project_name}:{tag}"
+        image_name = f"{project_name.lower()}:{tag}"
         if repo_host:
             image_name = f"{repo_host}/{image_name}"
+    if image_name.lower() != image_name:
+        raise errors.SessionStartError(f"Image name '{image_name}' cannot contain upper-case letters.")
 
     force_build_image = provider_api.force_build_image(**kwargs)
 
