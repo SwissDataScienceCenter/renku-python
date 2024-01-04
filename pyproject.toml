@@ -314,6 +314,7 @@ module = [
     "ruamel",
     "rq",
     "shellingham",
+    "setuptools",
     "toil.*",
     "tqdm",
     "urllib3.*",
