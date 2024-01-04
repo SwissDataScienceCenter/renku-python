@@ -182,6 +182,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
                 data_dir=self.ctx.get("data_directory"),
                 ssh_supported=self.template.ssh_supported,
                 image_request=image,
+                keywords=self.ctx.get("project_keywords", []),
             )
 
         self.new_project_push(new_project_path)

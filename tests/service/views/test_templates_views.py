@@ -134,6 +134,7 @@ def test_create_project_from_template(svc_client_templates_creation, with_inject
         "content_url": "https://en.wikipedia.org/static/images/icons/wikipedia.png",
         "mirror_locally": True,
     }
+    payload["project_keywords"] = ["test", "ci"]
 
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=headers)
 
@@ -157,6 +158,7 @@ def test_create_project_from_template(svc_client_templates_creation, with_inject
         with with_injection():
             project = project_context.project
         assert project_context.datadir == "my-folder/"
+        assert project.keywords == ["test", "ci"]
 
     expected_id = f"/projects/{payload['project_namespace']}/{stripped_name}"
     assert expected_id == project.id
