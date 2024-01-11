@@ -91,6 +91,8 @@ class RenkuExceptionsHandler(click.Group):
         except errors.LockError:
             click.echo(
                 click.style("Unable to acquire lock.\n", fg=color.RED)
+                + traceback.format_exc()
+                + "\n"
                 + "Hint: Please wait for another renku process to finish and then try again."
             )
         except RenkuException as e:
