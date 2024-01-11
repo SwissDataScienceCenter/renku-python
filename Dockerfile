@@ -2,7 +2,7 @@ FROM python:3.9-slim as base
 
 # hadolint ignore=DL3008,DL3009,DL3013
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y git git-lfs=2.* python3-dev tini bash curl && \
+    apt-get install --no-install-recommends -y git git-lfs=3.* python3-dev tini bash curl && \
     pip install --no-cache-dir --upgrade pip
 
 FROM base as builder
@@ -15,7 +15,7 @@ RUN apt-get install --no-install-recommends -y build-essential && \
 # time the code changes
 # set the BUILD_CORE_SERVICE to non null to install additional service dependencies
 ARG BUILD_CORE_SERVICE
-COPY pyproject.toml poetry.lock README.rst CHANGES.rst Makefile /code/renku/
+COPY pyproject.toml poetry.lock README.rst CHANGES.rst Makefile gunicorn.conf.py /code/renku/
 COPY .git /code/renku/.git
 COPY renku /code/renku/renku
 WORKDIR /code/renku
@@ -46,6 +46,7 @@ RUN addgroup -gid 1000 shuhitsu && \
     if [ -n "${BUILD_CORE_SERVICE}" ]; then mkdir /svc && chown shuhitsu:shuhitsu /svc ; fi
 
 COPY --from=builder /code/renku /code/renku
+WORKDIR /code/renku
 ENV PATH="${PATH}:/code/renku/.venv/bin"
 
 # shuhitsu (執筆): The "secretary" of the renga, as it were, who is responsible for
@@ -55,5 +56,6 @@ USER shuhitsu
 ENV RENKU_SVC_NUM_WORKERS 4
 ENV RENKU_SVC_NUM_THREADS 8
 ENV RENKU_DISABLE_VERSION_CHECK=1
+ENV PROMETHEUS_MULTIPROC_DIR /tmp
 
 ENTRYPOINT ["tini", "-g", "--", "renku"]

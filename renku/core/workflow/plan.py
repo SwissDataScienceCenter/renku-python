@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,7 +21,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple, Union, cast, overload
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder import inject
 from renku.command.format.workflow import WORKFLOW_FORMATS
@@ -121,7 +120,7 @@ def get_derivative_chain(
 
 
 @inject.autoparams()
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def search_workflows(name: str, plan_gateway: IPlanGateway) -> List[str]:
     """Get all the workflows whose Plan.name start with the given name.
 
@@ -136,7 +135,7 @@ def search_workflows(name: str, plan_gateway: IPlanGateway) -> List[str]:
 
 
 @inject.autoparams()
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def list_workflows(plan_gateway: IPlanGateway, format: str, columns: str):
     """List or manage workflows with subcommands.
 
@@ -162,7 +161,7 @@ def list_workflows(plan_gateway: IPlanGateway, format: str, columns: str):
 
 
 @inject.autoparams("activity_gateway")
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def show_workflow(name_or_id_or_path: str, activity_gateway: IActivityGateway, with_metadata: bool = False):
     """Show the details of a workflow.
 
@@ -220,7 +219,7 @@ def show_workflow(name_or_id_or_path: str, activity_gateway: IActivityGateway, w
 
 
 @inject.autoparams("plan_gateway")
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def remove_plan(name_or_id: str, force: bool, plan_gateway: IPlanGateway):
     """Remove the workflow by its name or id.
 
@@ -266,7 +265,7 @@ def remove_plan(name_or_id: str, force: bool, plan_gateway: IPlanGateway):
 
 
 @inject.autoparams()
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def edit_workflow(
     name: str,
     new_name: Optional[str],
@@ -375,7 +374,7 @@ def edit_workflow(
 
 
 @inject.autoparams()
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def compose_workflow(
     name: str,
     description: Optional[str],
@@ -542,7 +541,7 @@ def compose_workflow(
 
 
 @inject.autoparams()
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def export_workflow(
     name_or_id,
     plan_gateway: IPlanGateway,
@@ -648,7 +647,7 @@ def _lookup_paths_in_paths(lookup_paths: List[str], target_paths: List[str]):
 
 
 @inject.autoparams()
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def visualize_graph(
     sources: List[str],
     targets: List[str],
@@ -690,7 +689,7 @@ def visualize_graph(
 
 
 @inject.autoparams()
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def workflow_inputs(activity_gateway: IActivityGateway, paths: Optional[List[str]] = None):
     """Get inputs used by workflows.
 
@@ -710,7 +709,7 @@ def workflow_inputs(activity_gateway: IActivityGateway, paths: Optional[List[str
 
 
 @inject.autoparams()
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def workflow_outputs(activity_gateway: IActivityGateway, paths: Optional[List[str]] = None):
     """Get inputs used by workflows.
 

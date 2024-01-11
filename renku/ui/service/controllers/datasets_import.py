@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +34,7 @@ class DatasetsImportCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def __init__(self, cache, user_data, request_data, migrate_project=False):
         """Construct a datasets import controller."""
-        self.ctx = DatasetsImportCtrl.REQUEST_SERIALIZER.load(request_data)
+        self.ctx = self.REQUEST_SERIALIZER.load(request_data)
         self.ctx["commit_message"] = f"{MESSAGE_PREFIX} dataset import of {self.ctx['dataset_uri']}"
 
         super().__init__(cache, user_data, request_data, migrate_project=migrate_project)
@@ -49,7 +48,7 @@ class DatasetsImportCtrl(ServiceCtrl, RenkuOpSyncMixin):
         """Renku operation for the controller."""
         job = self.cache.make_job(
             self.user,
-            # NOTE: To support operation to be execute on remote project, this behaviour should be updated.
+            # NOTE: To support operation to be executed on remote project, this behaviour should be updated.
             project=self.ctx["project_id"],
             job_data={"renku_op": "dataset_import", "client_extras": self.ctx.get("client_extras")},
         )
@@ -61,11 +60,13 @@ class DatasetsImportCtrl(ServiceCtrl, RenkuOpSyncMixin):
                 job.job_id,
                 self.ctx["project_id"],
                 self.ctx["dataset_uri"],
-                name=self.ctx.get("name"),
+                slug=self.ctx.get("slug"),
                 extract=self.ctx.get("extract", False),
                 tag=self.ctx.get("tag", None),
                 job_timeout=int(os.getenv("WORKER_DATASET_JOBS_TIMEOUT", 1800)),
                 result_ttl=int(os.getenv("WORKER_DATASET_JOBS_RESULT_TTL", 500)),
+                ttl=int(os.getenv("WORKER_DATASET_JOBS_TIMEOUT", 1800)),
+                failure_ttl=int(os.getenv("WORKER_DATASET_JOBS_RESULT_TTL", 500)),
                 commit_message=self.ctx["commit_message"],
                 data_directory=self.ctx.get("data_directory"),
             )
@@ -74,4 +75,4 @@ class DatasetsImportCtrl(ServiceCtrl, RenkuOpSyncMixin):
 
     def to_response(self):
         """Execute controller flow and serialize to service response."""
-        return result_response(DatasetsImportCtrl.RESPONSE_SERIALIZER, self.execute_op())
+        return result_response(self.RESPONSE_SERIALIZER, self.execute_op())

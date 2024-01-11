@@ -240,8 +240,8 @@ class OutputsNotFound(RenkuException):
         msg = (
             "There are not any detected outputs in the repository. This can be due to your command not creating "
             "any new files or due to files that get created already existing before the command was run. In the "
-            "latter case, you can remove those files prior to running your command.\nIf you want to track the command"
-            "without outputs, use the use --no-output option.\nYou can also use the --output flag to track outputs"
+            "latter case, you can remove those files prior to running your command.\nIf you want to track the command "
+            "without outputs, use the use --no-output option.\nYou can also use the --output flag to track outputs "
             "manually."
         )
 
@@ -271,12 +271,12 @@ class InvalidSuccessCode(RenkuException):
 class DatasetNotFound(DatasetException):
     """Raise when dataset is not found."""
 
-    def __init__(self, *, name=None, message=None):
+    def __init__(self, *, slug=None, message=None):
         """Build a custom message."""
         if message:
             msg = message
-        elif name:
-            msg = f"Dataset '{name}' is not found."
+        elif slug:
+            msg = f"Dataset '{slug}' is not found."
         else:
             msg = "Dataset is not found."
         super().__init__(msg)
@@ -512,7 +512,11 @@ class RenkuSaveError(RenkuException):
     """Raised when renku save doesn't work."""
 
 
-class DatasetImageError(DatasetException):
+class ImageError(RenkuException):
+    """Raised when an image for a project/dataset is not accessible."""
+
+
+class DatasetImageError(DatasetException, ImageError):
     """Raised when a local dataset image is not accessible."""
 
 

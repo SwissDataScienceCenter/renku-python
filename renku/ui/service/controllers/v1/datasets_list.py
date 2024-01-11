@@ -1,6 +1,5 @@
-#
-# Copyright 2021 Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,15 +13,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku service tests for scheduler management."""
-from rq import Queue
+"""Renku service datasets list controller."""
+
+from renku.ui.service.controllers.datasets_list import DatasetsListCtrl
+from renku.ui.service.serializers.datasets import DatasetListRequest
+from renku.ui.service.serializers.v1.datasets import DatasetListResponseRPC_2_1
 
 
-def test_enqueue_jobs(with_scheduler):
-    """Enqueue jobs at a interval."""
-    queues = Queue.all()
-    assert queues
+class DatasetsListCtrl_2_1(DatasetsListCtrl):
+    """Controller for datasets list endpoint."""
 
-    assert 2 == len(queues)
-    for q in queues:
-        assert 1 == q.count
+    REQUEST_SERIALIZER = DatasetListRequest()
+    RESPONSE_SERIALIZER = DatasetListResponseRPC_2_1()  # type: ignore

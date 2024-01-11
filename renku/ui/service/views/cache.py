@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,25 +14,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service cache views."""
-from flask import request
+from flask import jsonify, request
 
 from renku.ui.service.config import SERVICE_PREFIX
 from renku.ui.service.controllers.cache_files_delete_chunks import DeleteFileChunksCtrl
 from renku.ui.service.controllers.cache_files_upload import UploadFilesCtrl
-from renku.ui.service.controllers.cache_list_projects import ListProjectsCtrl
 from renku.ui.service.controllers.cache_list_uploaded import ListUploadedFilesCtrl
 from renku.ui.service.controllers.cache_migrate_project import MigrateProjectCtrl
 from renku.ui.service.controllers.cache_migrations_check import MigrationsCheckCtrl
-from renku.ui.service.controllers.cache_project_clone import ProjectCloneCtrl
 from renku.ui.service.gateways.gitlab_api_provider import GitlabAPIProvider
-from renku.ui.service.views.api_versions import ALL_VERSIONS, V2_0, VERSIONS_FROM_V1_1, VersionedBlueprint
+from renku.ui.service.gateways.repository_cache import LocalRepositoryCache
+from renku.ui.service.jobs.cleanup import cache_files_cleanup
+from renku.ui.service.views.api_versions import (
+    ALL_VERSIONS,
+    VERSIONS_FROM_V1_1,
+    VERSIONS_FROM_V2_0,
+    VERSIONS_FROM_V2_1,
+    VersionedBlueprint,
+)
 from renku.ui.service.views.decorators import accepts_json, optional_identity, requires_cache, requires_identity
 from renku.ui.service.views.error_handlers import (
     handle_common_except,
     handle_migration_read_errors,
     handle_migration_write_errors,
 )
-from renku.ui.service.views.v1.cache import add_v1_specific_endpoints
+from renku.ui.service.views.v1.cache import add_v1_specific_cache_endpoints
 
 CACHE_BLUEPRINT_TAG = "cache"
 cache_blueprint = VersionedBlueprint("cache", __name__, url_prefix=SERVICE_PREFIX)
@@ -126,58 +131,6 @@ def delete_file_chunks_view(user_data, cache):
     return DeleteFileChunksCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
-@cache_blueprint.route("/cache.project_clone", methods=["POST"], provide_automatic_options=False, versions=ALL_VERSIONS)
-@handle_common_except
-@accepts_json
-@requires_cache
-@requires_identity
-def project_clone_view(user_data, cache):
-    """
-    Clone a remote project.
-
-    ---
-    post:
-      description: Clone a remote project. If the project is cached already,
-        a new clone operation will override the old cache state.
-      requestBody:
-        content:
-          application/json:
-            schema: RepositoryCloneRequest
-      responses:
-        200:
-          description: Cloned project.
-          content:
-            application/json:
-              schema: ProjectCloneResponseRPC
-      tags:
-        - cache
-    """
-    return ProjectCloneCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
-
-
-@cache_blueprint.route("/cache.project_list", methods=["GET"], provide_automatic_options=False, versions=ALL_VERSIONS)
-@handle_common_except
-@requires_cache
-@requires_identity
-def list_projects_view(user_data, cache):
-    """
-    List cached projects.
-
-    ---
-    get:
-      description: List cached projects.
-      responses:
-        200:
-          description: List of cached projects.
-          content:
-            application/json:
-              schema: ProjectListResponseRPC
-      tags:
-        - cache
-    """
-    return ListProjectsCtrl(cache, user_data).to_response()
-
-
 @cache_blueprint.route("/cache.migrate", methods=["POST"], provide_automatic_options=False, versions=VERSIONS_FROM_V1_1)
 @handle_common_except
 @handle_migration_write_errors
@@ -207,7 +160,9 @@ def migrate_project_view(user_data, cache):
     return MigrateProjectCtrl(cache, user_data, dict(request.json)).to_response()  # type: ignore
 
 
-@cache_blueprint.route("/cache.migrations_check", methods=["GET"], provide_automatic_options=False, versions=[V2_0])
+@cache_blueprint.route(
+    "/cache.migrations_check", methods=["GET"], provide_automatic_options=False, versions=VERSIONS_FROM_V2_0
+)
 @handle_common_except
 @handle_migration_read_errors
 @requires_cache
@@ -234,4 +189,30 @@ def migration_check_project_view(user_data, cache):
     return MigrationsCheckCtrl(cache, user_data, dict(request.args), GitlabAPIProvider()).to_response()
 
 
-cache_blueprint = add_v1_specific_endpoints(cache_blueprint)
+@cache_blueprint.route("/cache.cleanup", methods=["GET"], provide_automatic_options=False, versions=VERSIONS_FROM_V2_1)
+@handle_common_except
+@handle_migration_read_errors
+@requires_cache
+@optional_identity
+def cache_cleanup(user_data, cache):
+    """
+    Cleanup local project cache.
+
+    ---
+    get:
+      description: Retrieve migration information for a project.
+      responses:
+        200:
+          description: Information about required migrations for the project.
+          content:
+            application/json:
+              schema: CacheCleanupResponseRPC
+      tags:
+        - cache
+    """
+    LocalRepositoryCache().evict_expired()
+    cache_files_cleanup()
+    return jsonify({"result": "ok"})
+
+
+cache_blueprint = add_v1_specific_cache_endpoints(cache_blueprint)

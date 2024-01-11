@@ -1,6 +1,5 @@
-#
-# Copyright 2019-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,8 +28,8 @@ from renku.core.util.os import normalize_to_ascii
 from renku.ui.service.errors import (
     IntermittentDatasetExistsError,
     IntermittentFileNotExistsError,
-    IntermittentProjectIdError,
     ProgramInvalidGenericFieldsError,
+    ProgramRepoUnknownError,
     UserAnonymousError,
     UserDatasetsMultipleImagesError,
     UserDatasetsUnlinkError,
@@ -71,18 +70,18 @@ def upload_file(svc_client, headers, filename) -> str:
 @retry_failed
 def test_create_dataset_view(svc_client_with_repo):
     """Create a new dataset successfully."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
+        "git_url": url_components.href,
+        "slug": uuid.uuid4().hex,
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response)
 
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
-    assert payload["name"] == response.json["result"]["name"]
+    assert {"slug", "remote_branch", "git_url"} == set(response.json["result"].keys())
+    assert payload["slug"] == response.json["result"]["slug"]
 
 
 @pytest.mark.service
@@ -90,23 +89,23 @@ def test_create_dataset_view(svc_client_with_repo):
 @retry_failed
 def test_create_dataset_view_with_datadir(svc_client_with_repo):
     """Create a new dataset successfully."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
-    payload = {"project_id": project_id, "name": uuid.uuid4().hex, "data_directory": "my-folder/"}
+    payload = {"git_url": url_components.href, "slug": uuid.uuid4().hex, "data_directory": "my-folder/"}
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response)
 
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
-    assert payload["name"] == response.json["result"]["name"]
+    assert {"slug", "remote_branch", "git_url"} == set(response.json["result"].keys())
+    assert payload["slug"] == response.json["result"]["slug"]
 
     params = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
 
     assert_rpc_response(response)
-    ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
+    ds = next(ds for ds in response.json["result"]["datasets"] if ds["slug"] == payload["slug"])
     assert ds["data_directory"] == "my-folder"
 
 
@@ -119,12 +118,12 @@ def test_remote_create_dataset_view(svc_client_cache, it_remote_repo_url):
 
     payload = {
         "git_url": it_remote_repo_url,
-        "name": f"{uuid.uuid4().hex}",
+        "slug": f"{uuid.uuid4().hex}",
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response)
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
+    assert {"slug", "remote_branch", "git_url"} == set(response.json["result"].keys())
 
 
 @pytest.mark.service
@@ -136,7 +135,7 @@ def test_delay_create_dataset_view(svc_client_cache, it_remote_repo_url):
 
     payload = {
         "git_url": it_remote_repo_url,
-        "name": f"{uuid.uuid4().hex}",
+        "slug": f"{uuid.uuid4().hex}",
         "is_delayed": True,
     }
 
@@ -153,13 +152,13 @@ def test_create_dataset_wrong_ref_view(svc_client_with_repo):
     svc_client, headers, _, _ = svc_client_with_repo
 
     payload = {
-        "project_id": "ref does not exist",
-        "name": uuid.uuid4().hex,
+        "git_url": "http://doesnotexistanywhere994455/a/b.git",
+        "slug": uuid.uuid4().hex,
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response, "error")
-    assert IntermittentProjectIdError.code == response.json["error"]["code"], response.json
+    assert ProgramRepoUnknownError.code == response.json["error"]["code"], response.json
 
 
 @pytest.mark.service
@@ -167,24 +166,24 @@ def test_create_dataset_wrong_ref_view(svc_client_with_repo):
 @retry_failed
 def test_remove_dataset_view(svc_client_with_repo):
     """Create a new dataset successfully."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
     payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
+        "git_url": url_components.href,
+        "slug": uuid.uuid4().hex,
     }
 
     svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
     response = svc_client.post("/datasets.remove", data=json.dumps(payload), headers=headers)
 
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
-    assert payload["name"] == response.json["result"]["name"]
+    assert {"slug", "remote_branch", "git_url"} == set(response.json["result"].keys())
+    assert payload["slug"] == response.json["result"]["slug"]
 
-    # NOTE: Ensure that dataset does not exists in this project anymore!
-    response = svc_client.get("/datasets.list", query_string={"project_id": project_id}, headers=headers)
+    # NOTE: Ensure that dataset does not exist in this project anymore!
+    response = svc_client.get("/datasets.list", query_string={"git_url": url_components.href}, headers=headers)
     assert_rpc_response(response)
-    datasets = [ds["name"] for ds in response.json["result"]["datasets"]]
-    assert payload["name"] not in datasets
+    datasets = [ds["slug"] for ds in response.json["result"]["datasets"]]
+    assert payload["slug"] not in datasets
 
 
 @pytest.mark.integration
@@ -194,7 +193,7 @@ def test_remote_remove_view(svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed remove."""
     response = svc_client.post(
         "/datasets.remove",
-        data=json.dumps(dict(git_url=it_remote_repo_url, is_delayed=True, name="mydata")),
+        data=json.dumps(dict(git_url=it_remote_repo_url, is_delayed=True, slug="mydata")),
         headers=identity_headers,
     )
 
@@ -208,12 +207,12 @@ def test_remote_remove_view(svc_client, it_remote_repo_url, identity_headers):
 @retry_failed
 def test_create_dataset_with_metadata(svc_client_with_repo):
     """Create a new dataset with metadata."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
-        "title": "my little dataset",
+        "git_url": url_components.href,
+        "slug": uuid.uuid4().hex,
+        "name": "my little dataset",
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
         "description": "my little description",
         "keywords": ["keyword1", "keyword2"],
@@ -222,18 +221,18 @@ def test_create_dataset_with_metadata(svc_client_with_repo):
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
-    assert payload["name"] == response.json["result"]["name"]
+    assert {"slug", "remote_branch", "git_url"} == set(response.json["result"].keys())
+    assert payload["slug"] == response.json["result"]["slug"]
 
     params = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
 
     assert_rpc_response(response)
-    ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
-    assert payload["title"] == ds["title"]
+    ds = next(ds for ds in response.json["result"]["datasets"] if ds["slug"] == payload["slug"])
     assert payload["name"] == ds["name"]
+    assert payload["slug"] == ds["slug"]
     assert payload["description"] == ds["description"]
     assert payload["creators"] == ds["creators"]
     assert payload["keywords"] == ds["keywords"]
@@ -244,12 +243,12 @@ def test_create_dataset_with_metadata(svc_client_with_repo):
 @retry_failed
 def test_create_dataset_with_images(svc_client_with_repo):
     """Create a new dataset with metadata."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
-        "title": "my little dataset",
+        "git_url": url_components.href,
+        "slug": uuid.uuid4().hex,
+        "name": "my little dataset",
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
         "description": "my little description",
         "images": [
@@ -263,9 +262,9 @@ def test_create_dataset_with_images(svc_client_with_repo):
     assert UserDatasetsMultipleImagesError.code == response.json["error"]["code"]
 
     payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
-        "title": "my little dataset",
+        "git_url": url_components.href,
+        "slug": uuid.uuid4().hex,
+        "name": "my little dataset",
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
         "description": "my little description",
         "images": [
@@ -277,19 +276,19 @@ def test_create_dataset_with_images(svc_client_with_repo):
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response)
 
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
-    assert payload["name"] == response.json["result"]["name"]
+    assert {"slug", "remote_branch", "git_url"} == set(response.json["result"].keys())
+    assert payload["slug"] == response.json["result"]["slug"]
 
     params = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
     assert_rpc_response(response)
 
-    ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
+    ds = next(ds for ds in response.json["result"]["datasets"] if ds["slug"] == payload["slug"])
 
-    assert payload["title"] == ds["title"]
     assert payload["name"] == ds["name"]
+    assert payload["slug"] == ds["slug"]
     assert payload["description"] == ds["description"]
     assert payload["creators"] == ds["creators"]
     assert len(ds["images"]) == 2
@@ -306,12 +305,12 @@ def test_create_dataset_with_images(svc_client_with_repo):
 @retry_failed
 def test_create_dataset_with_custom_metadata(svc_client_with_repo):
     """Create a new dataset with metadata."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
-        "title": "my little dataset",
+        "git_url": url_components.href,
+        "slug": uuid.uuid4().hex,
+        "name": "my little dataset",
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
         "description": "my little description",
         "custom_metadata": {
@@ -325,19 +324,19 @@ def test_create_dataset_with_custom_metadata(svc_client_with_repo):
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response)
 
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
-    assert payload["name"] == response.json["result"]["name"]
+    assert {"slug", "remote_branch", "git_url"} == set(response.json["result"].keys())
+    assert payload["slug"] == response.json["result"]["slug"]
 
     params = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
     assert_rpc_response(response)
 
-    ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
+    ds = next(ds for ds in response.json["result"]["datasets"] if ds["slug"] == payload["slug"])
 
-    assert payload["title"] == ds["title"]
     assert payload["name"] == ds["name"]
+    assert payload["slug"] == ds["slug"]
     assert payload["description"] == ds["description"]
     assert payload["creators"] == ds["creators"]
     assert payload["custom_metadata"] == ds["annotations"][0]["body"]
@@ -352,12 +351,12 @@ def test_create_dataset_with_custom_metadata(svc_client_with_repo):
 @retry_failed
 def test_create_dataset_with_image_download(svc_client_with_repo, img_url):
     """Create a new dataset with metadata."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
-        "title": "my little dataset",
+        "git_url": url_components.href,
+        "slug": uuid.uuid4().hex,
+        "name": "my little dataset",
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
         "description": "my little description",
         "images": [{"content_url": "https://renkulab.io/api/doesnt_exist.png", "position": 1, "mirror_locally": True}],
@@ -368,9 +367,9 @@ def test_create_dataset_with_image_download(svc_client_with_repo, img_url):
     assert UserDatasetsUnreachableImageError.code == response.json["error"]["code"]
 
     payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
-        "title": "my little dataset",
+        "git_url": url_components.href,
+        "slug": uuid.uuid4().hex,
+        "name": "my little dataset",
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
         "description": "my little description",
         "images": [{"content_url": img_url, "position": 1, "mirror_locally": True}],
@@ -378,16 +377,16 @@ def test_create_dataset_with_image_download(svc_client_with_repo, img_url):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response)
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
-    assert payload["name"] == response.json["result"]["name"]
+    assert {"slug", "remote_branch", "git_url"} == set(response.json["result"].keys())
+    assert payload["slug"] == response.json["result"]["slug"]
 
     params = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
     assert_rpc_response(response)
 
-    ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
+    ds = next(ds for ds in response.json["result"]["datasets"] if ds["slug"] == payload["slug"])
     assert len(ds["images"]) == 1
     img1 = next(img for img in ds["images"] if img["position"] == 1)
 
@@ -400,15 +399,15 @@ def test_create_dataset_with_image_download(svc_client_with_repo, img_url):
 @retry_failed
 def test_create_dataset_with_uploaded_images(svc_client_with_repo):
     """Create a new dataset with metadata."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     file_id1 = upload_file(svc_client, headers, "image1.jpg")
     file_id2 = upload_file(svc_client, headers, "image2.png")
 
     payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
-        "title": "my little dataset",
+        "git_url": url_components.href,
+        "slug": uuid.uuid4().hex,
+        "name": "my little dataset",
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
         "description": "my little description",
         "images": [{"file_id": file_id1, "position": 1}, {"file_id": file_id2, "position": 2}],
@@ -416,19 +415,19 @@ def test_create_dataset_with_uploaded_images(svc_client_with_repo):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response)
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
-    assert payload["name"] == response.json["result"]["name"]
+    assert {"slug", "remote_branch", "git_url"} == set(response.json["result"].keys())
+    assert payload["slug"] == response.json["result"]["slug"]
 
     params = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
     assert_rpc_response(response)
 
-    ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
+    ds = next(ds for ds in response.json["result"]["datasets"] if ds["slug"] == payload["slug"])
 
-    assert payload["title"] == ds["title"]
     assert payload["name"] == ds["name"]
+    assert payload["slug"] == ds["slug"]
     assert payload["description"] == ds["description"]
     assert payload["creators"] == ds["creators"]
     assert len(ds["images"]) == 2
@@ -446,12 +445,12 @@ def test_create_dataset_with_uploaded_images(svc_client_with_repo):
 @retry_failed
 def test_create_dataset_invalid_creator(svc_client_with_repo):
     """Create a new dataset with metadata."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
-        "title": "my little dataset",
+        "git_url": url_components.href,
+        "slug": uuid.uuid4().hex,
+        "name": "my little dataset",
         "creators": [{"name": None, "email": "name123@ethz.ch", "affiliation": "ethz"}],
         "description": "my little description",
     }
@@ -468,11 +467,11 @@ def test_create_dataset_invalid_creator(svc_client_with_repo):
 @retry_failed
 def test_create_dataset_view_dataset_exists(svc_client_with_repo):
     """Create a new dataset which already exists."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     payload = {
-        "project_id": project_id,
-        "name": "mydataset",
+        "git_url": url_components.href,
+        "slug": "mydataset",
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
@@ -488,10 +487,10 @@ def test_create_dataset_view_dataset_exists(svc_client_with_repo):
 @retry_failed
 def test_create_dataset_view_unknown_param(svc_client_with_repo):
     """Create new dataset by specifying unknown parameters."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     unknown_field = "remote_name"
-    payload = {"project_id": project_id, "name": "mydata", unknown_field: "origin"}
+    payload = {"git_url": url_components.href, "slug": "mydata", unknown_field: "origin"}
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response, "error")
@@ -504,11 +503,11 @@ def test_create_dataset_view_unknown_param(svc_client_with_repo):
 @retry_failed
 def test_create_dataset_with_no_identity(svc_client_with_repo):
     """Create a new dataset with no identification provided."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     payload = {
-        "project_id": project_id,
-        "name": "mydata",
+        "git_url": url_components.href,
+        "slug": "mydata",
         "remote_name": "origin",
     }
 
@@ -525,10 +524,10 @@ def test_create_dataset_with_no_identity(svc_client_with_repo):
 @retry_failed
 def test_add_file_view_with_no_identity(svc_client_with_repo):
     """Check identity error raise in dataset add."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
     payload = {
-        "project_id": project_id,
-        "name": "mydata",
+        "git_url": url_components.href,
+        "slug": "mydata",
         "remote_name": "origin",
     }
 
@@ -545,13 +544,13 @@ def test_add_file_view_with_no_identity(svc_client_with_repo):
 @retry_failed
 def test_add_file_view(svc_client_with_repo):
     """Check adding of uploaded file to dataset."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     file_id = upload_file(svc_client, headers, "datafile1.txt")
 
     payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
+        "git_url": url_components.href,
+        "slug": uuid.uuid4().hex,
         "create_dataset": True,
         "files": [{"file_id": file_id}],
     }
@@ -559,7 +558,7 @@ def test_add_file_view(svc_client_with_repo):
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"name", "project_id", "files", "remote_branch"} == set(response.json["result"].keys())
+    assert {"slug", "project_id", "files", "remote_branch", "git_url"} == set(response.json["result"].keys())
     assert 1 == len(response.json["result"]["files"])
     assert file_id == response.json["result"]["files"][0]["file_id"]
 
@@ -572,7 +571,7 @@ def test_remote_add_view(svc_client, it_remote_repo_url, identity_headers):
     response = svc_client.post(
         "/datasets.add",
         data=json.dumps(
-            dict(git_url=it_remote_repo_url, is_delayed=True, name="mydata", files=[{"file_path": "somefile.txt"}])
+            dict(git_url=it_remote_repo_url, is_delayed=True, slug="mydata", files=[{"file_path": "somefile.txt"}])
         ),
         headers=identity_headers,
     )
@@ -587,13 +586,13 @@ def test_remote_add_view(svc_client, it_remote_repo_url, identity_headers):
 @retry_failed
 def test_add_file_failure(svc_client_with_repo):
     """Check adding of uploaded file to dataset with non-existing file."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     file_id = upload_file(svc_client, headers, "datafile1.txt")
 
     payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
+        "git_url": url_components.href,
+        "slug": uuid.uuid4().hex,
         "create_dataset": True,
         "files": [{"file_id": file_id}, {"file_path": "my problem right here"}],
     }
@@ -608,15 +607,15 @@ def test_add_file_failure(svc_client_with_repo):
 @retry_failed
 def test_list_datasets_view(svc_client_with_repo):
     """Check listing of existing datasets."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     params = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
 
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
     assert_rpc_response(response)
-    assert {"datasets"} == set(response.json["result"].keys())
+    assert {"datasets", "git_url"} == set(response.json["result"].keys())
     assert 0 != len(response.json["result"]["datasets"])
     assert {
         "version",
@@ -624,8 +623,8 @@ def test_list_datasets_view(svc_client_with_repo):
         "identifier",
         "images",
         "created_at",
+        "slug",
         "name",
-        "title",
         "creators",
         "keywords",
         "annotations",
@@ -639,15 +638,7 @@ def test_list_datasets_view(svc_client_with_repo):
 @retry_failed
 def test_list_datasets_anonymous(svc_client_with_repo, it_remote_repo_url):
     """Check listing of existing datasets."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
-
-    params = {
-        "project_id": project_id,
-    }
-
-    response = svc_client.get("/datasets.list", query_string=params, headers={})
-    assert_rpc_response(response, "error")
-    assert UserAnonymousError.code == response.json["error"]["code"]
+    svc_client, _, _, _ = svc_client_with_repo
 
     params = {
         "git_url": it_remote_repo_url,
@@ -679,7 +670,7 @@ def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo_url):
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
 
     assert_rpc_response(response)
-    assert {"datasets"} == set(response.json["result"].keys())
+    assert {"datasets", "git_url"} == set(response.json["result"].keys())
     assert 0 != len(response.json["result"]["datasets"])
     assert {
         "version",
@@ -687,8 +678,8 @@ def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo_url):
         "identifier",
         "images",
         "created_at",
+        "slug",
         "name",
-        "title",
         "creators",
         "keywords",
         "annotations",
@@ -702,15 +693,15 @@ def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo_url):
 @retry_failed
 def test_list_datasets_view_no_auth(svc_client_with_repo):
     """Check listing of existing datasets with no auth."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     params = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
 
     response = svc_client.get("/datasets.list", query_string=params)
     assert_rpc_response(response, "error")
-    assert UserAnonymousError.code == response.json["error"]["code"]
+    assert UserRepoNoAccessError.code == response.json["error"]["code"]
 
 
 @pytest.mark.service
@@ -718,21 +709,15 @@ def test_list_datasets_view_no_auth(svc_client_with_repo):
 @retry_failed
 def test_list_dataset_files_anonymous(svc_client_with_repo, it_remote_repo_url):
     """Check listing of existing dataset files."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, _, _, _ = svc_client_with_repo
 
-    params = {"project_id": project_id, "name": "ds1"}
-
-    response = svc_client.get("/datasets.files_list", query_string=params, headers={})
-    assert_rpc_response(response, "error")
-    assert UserAnonymousError.code == response.json["error"]["code"]
-
-    params = {"git_url": it_remote_repo_url, "name": "ds1"}
+    params = {"git_url": it_remote_repo_url, "slug": "ds1"}
 
     response = svc_client.get("/datasets.files_list", query_string=params, headers={})
     assert_rpc_response(response, "error")
     assert UserRepoNoAccessError.code == response.json["error"]["code"]
 
-    params = {"git_url": "https://gitlab.dev.renku.ch/renku-python-integration-tests/no-renku", "name": "mydata"}
+    params = {"git_url": "https://gitlab.dev.renku.ch/renku-python-integration-tests/no-renku", "slug": "mydata"}
 
     response = svc_client.get("/datasets.files_list", query_string=params, headers={})
     assert_rpc_response(response, "error")
@@ -748,14 +733,14 @@ def test_list_datasets_files_remote(svc_client_with_repo, it_remote_repo_url):
     """Check listing of existing dataset files."""
     svc_client, headers, _, _ = svc_client_with_repo
 
-    params = dict(git_url=it_remote_repo_url, name="ds1")
+    params = dict(git_url=it_remote_repo_url, slug="ds1")
 
     response = svc_client.get("/datasets.files_list", query_string=params, headers=headers)
 
     assert_rpc_response(response)
-    assert {"files", "name"} == set(response.json["result"].keys())
+    assert {"files", "slug", "git_url"} == set(response.json["result"].keys())
     assert 0 != len(response.json["result"]["files"])
-    assert "ds1" == response.json["result"]["name"]
+    assert "ds1" == response.json["result"]["slug"]
 
 
 @pytest.mark.integration
@@ -765,7 +750,7 @@ def test_remote_create_view(svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed dataset create."""
     response = svc_client.post(
         "/datasets.create",
-        data=json.dumps(dict(git_url=it_remote_repo_url, is_delayed=True, name=uuid.uuid4().hex)),
+        data=json.dumps(dict(git_url=it_remote_repo_url, is_delayed=True, slug=uuid.uuid4().hex)),
         headers=identity_headers,
     )
 
@@ -779,33 +764,33 @@ def test_remote_create_view(svc_client, it_remote_repo_url, identity_headers):
 @retry_failed
 def test_create_and_list_datasets_view(svc_client_with_repo):
     """Create and list created dataset."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
+        "git_url": url_components.href,
+        "slug": uuid.uuid4().hex,
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response)
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
-    assert payload["name"] == response.json["result"]["name"]
+    assert {"slug", "remote_branch", "git_url"} == set(response.json["result"].keys())
+    assert payload["slug"] == response.json["result"]["slug"]
 
     params_list = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
 
     response = svc_client.get("/datasets.list", query_string=params_list, headers=headers)
     assert_rpc_response(response)
-    assert {"datasets"} == set(response.json["result"].keys())
+    assert {"datasets", "git_url"} == set(response.json["result"].keys())
     assert 0 != len(response.json["result"]["datasets"])
     assert {
         "creators",
-        "name",
+        "slug",
         "identifier",
         "images",
         "version",
-        "title",
+        "name",
         "description",
         "created_at",
         "keywords",
@@ -814,7 +799,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
         "data_directory",
     } == set(response.json["result"]["datasets"][0].keys())
 
-    assert payload["name"] in [ds["name"] for ds in response.json["result"]["datasets"]]
+    assert payload["slug"] in [ds["slug"] for ds in response.json["result"]["datasets"]]
 
 
 @pytest.mark.service
@@ -822,31 +807,31 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
 @retry_failed
 def test_list_dataset_files(svc_client_with_repo):
     """Check listing of dataset files."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     file_name = uuid.uuid4().hex
     file_id = upload_file(svc_client, headers, file_name)
 
     payload = {
-        "project_id": project_id,
-        "name": "mydata",
+        "git_url": url_components.href,
+        "slug": "mydata",
         "files": [{"file_id": file_id}],
     }
 
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response)
-    assert {"name", "files", "project_id", "remote_branch"} == set(response.json["result"].keys())
+    assert {"slug", "files", "project_id", "remote_branch", "git_url"} == set(response.json["result"].keys())
     assert file_id == response.json["result"]["files"][0]["file_id"]
 
     params = {
-        "project_id": project_id,
-        "name": "mydata",
+        "git_url": url_components.href,
+        "slug": "mydata",
     }
 
     response = svc_client.get("/datasets.files_list", query_string=params, headers=headers)
     assert_rpc_response(response)
-    assert {"name", "files"} == set(response.json["result"].keys())
-    assert params["name"] == response.json["result"]["name"]
+    assert {"slug", "files", "git_url"} == set(response.json["result"].keys())
+    assert params["slug"] == response.json["result"]["slug"]
     assert file_name in [file["name"] for file in response.json["result"]["files"]]
     assert {"name", "path", "added"} == response.json["result"]["files"][0].keys()
 
@@ -856,7 +841,7 @@ def test_list_dataset_files(svc_client_with_repo):
 @retry_failed
 def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
     """Upload archive and add it to a dataset."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
     content_type = headers.pop("Content-Type")
 
     response = svc_client.post(
@@ -879,33 +864,33 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
 
     file_ = mm["file2"]
     payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
+        "git_url": url_components.href,
+        "slug": uuid.uuid4().hex,
     }
 
     headers["Content-Type"] = content_type
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
-    assert payload["name"] == response.json["result"]["name"]
+    assert {"slug", "remote_branch", "git_url"} == set(response.json["result"].keys())
+    assert payload["slug"] == response.json["result"]["slug"]
 
-    payload = {"project_id": project_id, "name": payload["name"], "files": [{"file_id": file_["file_id"]}]}
+    payload = {"git_url": url_components.href, "slug": payload["slug"], "files": [{"file_id": file_["file_id"]}]}
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"name", "files", "project_id", "remote_branch"} == set(response.json["result"].keys())
+    assert {"slug", "files", "project_id", "remote_branch", "git_url"} == set(response.json["result"].keys())
     assert file_["file_id"] == response.json["result"]["files"][0]["file_id"]
 
     params = {
-        "project_id": project_id,
-        "name": payload["name"],
+        "git_url": url_components.href,
+        "slug": payload["slug"],
     }
     response = svc_client.get("/datasets.files_list", query_string=params, headers=headers)
 
     assert_rpc_response(response)
-    assert {"name", "files"} == set(response.json["result"].keys())
-    assert params["name"] == response.json["result"]["name"]
+    assert {"slug", "files", "git_url"} == set(response.json["result"].keys())
+    assert params["slug"] == response.json["result"]["slug"]
     assert file_["file_name"] in [file["name"] for file in response.json["result"]["files"]]
 
 
@@ -914,7 +899,7 @@ def test_add_with_unpacked_archive(datapack_zip, svc_client_with_repo):
 @retry_failed
 def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
     """Upload archive and add its contents to a dataset."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
     content_type = headers.pop("Content-Type")
 
     response = svc_client.post(
@@ -939,35 +924,35 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
     files = [{"file_id": file_["file_id"]} for file_ in response.json["result"]["files"]]
 
     payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
+        "git_url": url_components.href,
+        "slug": uuid.uuid4().hex,
     }
     headers["Content-Type"] = content_type
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
-    assert payload["name"] == response.json["result"]["name"]
+    assert {"slug", "remote_branch", "git_url"} == set(response.json["result"].keys())
+    assert payload["slug"] == response.json["result"]["slug"]
 
     payload = {
-        "project_id": project_id,
-        "name": payload["name"],
+        "git_url": url_components.href,
+        "slug": payload["slug"],
         "files": files,
     }
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"name", "files", "project_id", "remote_branch"} == set(response.json["result"].keys())
+    assert {"slug", "files", "project_id", "remote_branch", "git_url"} == set(response.json["result"].keys())
     assert files == response.json["result"]["files"]
 
     params = {
-        "project_id": project_id,
-        "name": payload["name"],
+        "git_url": url_components.href,
+        "slug": payload["slug"],
     }
     response = svc_client.get("/datasets.files_list", query_string=params, headers=headers)
     assert_rpc_response(response)
-    assert {"name", "files"} == set(response.json["result"].keys())
-    assert params["name"] == response.json["result"]["name"]
+    assert {"slug", "files", "git_url"} == set(response.json["result"].keys())
+    assert params["slug"] == response.json["result"]["slug"]
     assert file_["file_name"] in [file["name"] for file in response.json["result"]["files"]]
 
 
@@ -976,26 +961,26 @@ def test_add_with_unpacked_archive_all(datapack_zip, svc_client_with_repo):
 @retry_failed
 def test_add_existing_file(svc_client_with_repo):
     """Upload archive and add it to a dataset."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
     payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
+        "git_url": url_components.href,
+        "slug": uuid.uuid4().hex,
     }
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
-    assert payload["name"] == response.json["result"]["name"]
+    assert {"slug", "remote_branch", "git_url"} == set(response.json["result"].keys())
+    assert payload["slug"] == response.json["result"]["slug"]
 
     files = [{"file_path": "README.md"}]
     payload = {
-        "project_id": project_id,
-        "name": payload["name"],
+        "git_url": url_components.href,
+        "slug": payload["slug"],
         "files": files,
     }
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response)
-    assert {"name", "files", "project_id", "remote_branch"} == set(response.json["result"].keys())
+    assert {"slug", "files", "project_id", "remote_branch", "git_url"} == set(response.json["result"].keys())
     assert files == response.json["result"]["files"]
 
 
@@ -1028,7 +1013,7 @@ def test_cached_import_dataset_job(doi, svc_client_cache, project):
         "email": "my@email.com",
         "owner": "me",
         "token": "awesome token",
-        "git_url": "git@gitlab.com",
+        "git_url": "https://example.com/a/b.git",
         "initialized": True,
     }
 
@@ -1041,7 +1026,7 @@ def test_cached_import_dataset_job(doi, svc_client_cache, project):
 
     response = client.post(
         "/datasets.import",
-        data=json.dumps({"project_id": project_meta["project_id"], "dataset_uri": doi}),
+        data=json.dumps({"git_url": project_meta["git_url"], "dataset_uri": doi}),
         headers=headers,
     )
 
@@ -1094,11 +1079,11 @@ def test_dataset_add_remote(url, svc_client_cache, project_metadata):
     if not (project.path / dest).exists():
         shutil.copytree(project.path, dest)
 
-    payload = make_dataset_add_payload(project_meta["project_id"], [url])
+    payload = make_dataset_add_payload(project_meta["git_url"], [url])
     response = client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"files", "name", "project_id", "remote_branch"} == set(response.json["result"])
+    assert {"files", "slug", "project_id", "remote_branch", "git_url"} == set(response.json["result"])
     job_id = response.json["result"]["files"][0]["job_id"]
 
     user_job = cache.get_job(user, job_id)
@@ -1130,11 +1115,11 @@ def test_dataset_add_multiple_remote(svc_client_cache, project_metadata):
     if not (project.path / dest).exists():
         shutil.copytree(project.path, dest)
 
-    payload = make_dataset_add_payload(project_meta["project_id"], [url_gist, url_dbox])
+    payload = make_dataset_add_payload(project_meta["git_url"], [url_gist, url_dbox])
     response = client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"files", "name", "project_id", "remote_branch"} == set(response.json["result"])
+    assert {"files", "slug", "project_id", "remote_branch", "git_url"} == set(response.json["result"])
 
     for file in response.json["result"]["files"]:
         job_id = file["job_id"]
@@ -1154,15 +1139,16 @@ def test_dataset_add_multiple_remote(svc_client_cache, project_metadata):
 @retry_failed
 def test_add_remote_and_local_file(svc_client_with_repo):
     """Test dataset add remote and local files."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     payload = make_dataset_add_payload(
-        project_id, [("file_path", "README.md"), "https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3"]
+        url_components.href,
+        [("file_path", "README.md"), "https://gist.github.com/jsam/d957f306ed0fe4ff018e902df6a1c8e3"],
     )
     response = svc_client.post("/datasets.add", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"name", "files", "project_id", "remote_branch"} == set(response.json["result"].keys())
+    assert {"slug", "files", "project_id", "remote_branch", "git_url"} == set(response.json["result"].keys())
     for pair in zip(response.json["result"]["files"], payload["files"]):
         if "job_id" in pair[0]:
             assert pair[0].pop("job_id")
@@ -1202,31 +1188,31 @@ def test_add_remote_and_local_file(svc_client_with_repo):
 @retry_failed
 def test_edit_datasets_view(svc_client_with_repo, custom_metadata, custom_metadata_source):
     """Test editing dataset metadata."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
-    name = uuid.uuid4().hex
+    svc_client, headers, project_id, url_components = svc_client_with_repo
+    slug = uuid.uuid4().hex
 
     payload = {
-        "project_id": project_id,
-        "name": name,
+        "git_url": url_components.href,
+        "slug": slug,
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
-    assert payload["name"] == response.json["result"]["name"]
+    assert {"slug", "remote_branch", "git_url"} == set(response.json["result"].keys())
+    assert payload["slug"] == response.json["result"]["slug"]
 
     params_list = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
     response = svc_client.get("/datasets.list", query_string=params_list, headers=headers)
 
     assert_rpc_response(response)
 
     edit_payload = {
-        "project_id": project_id,
-        "name": name,
-        "title": "my new title",
+        "git_url": url_components.href,
+        "slug": slug,
+        "name": "my new name",
         "keywords": ["keyword1"],
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
         "custom_metadata": custom_metadata,
@@ -1235,9 +1221,9 @@ def test_edit_datasets_view(svc_client_with_repo, custom_metadata, custom_metada
         edit_payload["custom_metadata_source"] = custom_metadata_source
     response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
     assert_rpc_response(response)
-    assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
+    assert {"warnings", "edited", "remote_branch", "git_url"} == set(response.json["result"])
     assert {
-        "title": "my new title",
+        "name": "my new name",
         "keywords": ["keyword1"],
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
         "custom_metadata": custom_metadata,
@@ -1249,14 +1235,14 @@ def test_edit_datasets_view(svc_client_with_repo, custom_metadata, custom_metada
 @retry_failed
 def test_edit_datasets_view_without_modification(svc_client_with_repo):
     """Test editing dataset metadata."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
-    name = uuid.uuid4().hex
+    svc_client, headers, project_id, url_components = svc_client_with_repo
+    slug = uuid.uuid4().hex
 
     payload = {
-        "project_id": project_id,
-        "name": name,
+        "git_url": url_components.href,
+        "slug": slug,
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
-        "title": "my-title",
+        "name": "my-name",
         "description": "my description",
         "keywords": ["keywords"],
     }
@@ -1264,36 +1250,36 @@ def test_edit_datasets_view_without_modification(svc_client_with_repo):
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
-    assert payload["name"] == response.json["result"]["name"]
+    assert {"slug", "remote_branch", "git_url"} == set(response.json["result"].keys())
+    assert payload["slug"] == response.json["result"]["slug"]
 
     params_list = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
 
     response = svc_client.get("/datasets.list", query_string=params_list, headers=headers)
 
     assert_rpc_response(response)
     edit_payload = {
-        "project_id": project_id,
-        "name": name,
+        "git_url": url_components.href,
+        "slug": slug,
     }
     response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
+    assert {"warnings", "edited", "remote_branch", "git_url"} == set(response.json["result"])
     assert {} == response.json["result"]["edited"]
 
     params_list = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
 
     response = svc_client.get("/datasets.list", query_string=params_list, headers=headers)
 
     assert_rpc_response(response)
-    ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
-    assert payload["title"] == ds["title"]
+    ds = next(ds for ds in response.json["result"]["datasets"] if ds["slug"] == payload["slug"])
     assert payload["name"] == ds["name"]
+    assert payload["slug"] == ds["slug"]
     assert payload["description"] == ds["description"]
     assert payload["creators"] == ds["creators"]
     assert payload["keywords"] == ds["keywords"]
@@ -1304,14 +1290,14 @@ def test_edit_datasets_view_without_modification(svc_client_with_repo):
 @retry_failed
 def test_edit_datasets_view_unset_values(svc_client_with_repo):
     """Test editing dataset metadata."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
-    name = uuid.uuid4().hex
+    svc_client, headers, project_id, url_components = svc_client_with_repo
+    slug = uuid.uuid4().hex
 
     payload = {
-        "project_id": project_id,
-        "name": name,
+        "git_url": url_components.href,
+        "slug": slug,
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
-        "title": "my-title",
+        "name": "my-name",
         "description": "my description",
         "keywords": ["keywords"],
         "images": [
@@ -1322,19 +1308,19 @@ def test_edit_datasets_view_unset_values(svc_client_with_repo):
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
     assert_rpc_response(response)
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
-    assert payload["name"] == response.json["result"]["name"]
+    assert {"git_url", "slug", "remote_branch", "git_url"} == set(response.json["result"].keys())
+    assert payload["slug"] == response.json["result"]["slug"]
 
     params_list = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
 
     response = svc_client.get("/datasets.list", query_string=params_list, headers=headers)
 
     assert_rpc_response(response)
     edit_payload = {
-        "project_id": project_id,
-        "name": name,
+        "git_url": url_components.href,
+        "slug": slug,
         "keywords": None,
         "images": None,
         "custom_metadata": None,
@@ -1342,7 +1328,7 @@ def test_edit_datasets_view_unset_values(svc_client_with_repo):
     response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
+    assert {"warnings", "git_url", "edited", "remote_branch", "git_url"} == set(response.json["result"])
     assert {
         "keywords": [],
         "custom_metadata": None,
@@ -1352,14 +1338,14 @@ def test_edit_datasets_view_unset_values(svc_client_with_repo):
     ]["edited"]
 
     params_list = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
 
     response = svc_client.get("/datasets.list", query_string=params_list, headers=headers)
 
     assert_rpc_response(response)
-    ds = next(ds for ds in response.json["result"]["datasets"] if ds["name"] == payload["name"])
-    assert edit_payload["name"] == ds["name"]
+    ds = next(ds for ds in response.json["result"]["datasets"] if ds["slug"] == payload["slug"])
+    assert edit_payload["slug"] == ds["slug"]
     assert 0 == len(ds["keywords"])
     assert 0 == len(ds["annotations"])
     assert 0 == len(ds["images"])
@@ -1370,14 +1356,14 @@ def test_edit_datasets_view_unset_values(svc_client_with_repo):
 @retry_failed
 def test_edit_dataset_with_images(svc_client_with_repo):
     """Edit images of a dataset."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
-    name = uuid.uuid4().hex
+    slug = uuid.uuid4().hex
 
     payload = {
-        "project_id": project_id,
-        "name": name,
-        "title": "my little dataset",
+        "git_url": url_components.href,
+        "slug": slug,
+        "name": "my little dataset",
         "creators": [{"name": "name123", "email": "name123@ethz.ch", "affiliation": "ethz"}],
         "description": "my little description",
         "images": [
@@ -1389,11 +1375,11 @@ def test_edit_dataset_with_images(svc_client_with_repo):
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
-    assert payload["name"] == response.json["result"]["name"]
+    assert {"slug", "remote_branch", "git_url"} == set(response.json["result"].keys())
+    assert payload["slug"] == response.json["result"]["slug"]
 
     params = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
     response = svc_client.get("/datasets.list", query_string=params, headers=headers)
 
@@ -1402,8 +1388,8 @@ def test_edit_dataset_with_images(svc_client_with_repo):
 
     # NOTE: test edit reordering and add
     edit_payload = {
-        "project_id": project_id,
-        "name": name,
+        "git_url": url_components.href,
+        "slug": slug,
         "images": [
             {"content_url": "data/renku_logo.png", "position": 1},
             {"content_url": "https://example.com/image1.jpg", "position": 2},
@@ -1414,7 +1400,7 @@ def test_edit_dataset_with_images(svc_client_with_repo):
     response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
+    assert {"warnings", "edited", "remote_branch", "git_url"} == set(response.json["result"])
     assert {"images"} == response.json["result"]["edited"].keys()
 
     images = response.json["result"]["edited"]["images"]
@@ -1430,8 +1416,8 @@ def test_edit_dataset_with_images(svc_client_with_repo):
 
     # NOTE: test edit with duplicate position
     edit_payload = {
-        "project_id": project_id,
-        "name": name,
+        "git_url": url_components.href,
+        "slug": slug,
         "images": [
             {"content_url": "data/renku_logo.png", "position": 1},
             {"content_url": "https://example.com/image1.jpg", "position": 2},
@@ -1445,27 +1431,27 @@ def test_edit_dataset_with_images(svc_client_with_repo):
 
     # NOTE: test edit remove images
     edit_payload = {
-        "project_id": project_id,
-        "name": name,
+        "git_url": url_components.href,
+        "slug": slug,
         "images": [],
     }
     response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
+    assert {"warnings", "edited", "remote_branch", "git_url"} == set(response.json["result"])
     assert {"images"} == response.json["result"]["edited"].keys()
     assert 0 == len(response.json["result"]["edited"]["images"])
 
     # NOTE: test edit no change
     edit_payload = {
-        "project_id": project_id,
-        "name": name,
+        "git_url": url_components.href,
+        "slug": slug,
         "images": [],
     }
     response = svc_client.post("/datasets.edit", data=json.dumps(edit_payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"warnings", "edited", "remote_branch"} == set(response.json["result"])
+    assert {"warnings", "edited", "remote_branch", "git_url"} == set(response.json["result"])
     assert 0 == len(response.json["result"]["edited"].keys())
 
 
@@ -1476,7 +1462,7 @@ def test_remote_edit_view(svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed edit."""
     response = svc_client.post(
         "/datasets.edit",
-        data=json.dumps(dict(git_url=it_remote_repo_url, is_delayed=True, name="mydata")),
+        data=json.dumps(dict(git_url=it_remote_repo_url, is_delayed=True, slug="mydata")),
         headers=identity_headers,
     )
 
@@ -1491,11 +1477,11 @@ def test_remote_edit_view(svc_client, it_remote_repo_url, identity_headers):
 @retry_failed
 def test_protected_branch(svc_client_with_repo):
     """Test adding a file to protected branch."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
+        "git_url": url_components.href,
+        "slug": uuid.uuid4().hex,
     }
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=headers)
 
@@ -1513,7 +1499,7 @@ def test_unlink_file(unlink_file_setup):
     response = svc_client.post("/datasets.unlink", data=json.dumps(unlink_payload), headers=headers)
 
     assert_rpc_response(response)
-    assert {"unlinked", "remote_branch"} == set(response.json["result"].keys())
+    assert {"unlinked", "remote_branch", "git_url"} == set(response.json["result"].keys())
     assert any(p.endswith("README.md") for p in response.json["result"]["unlinked"])
 
 
@@ -1524,7 +1510,7 @@ def test_remote_unlink_view(svc_client, it_remote_repo_url, identity_headers):
     """Test creating a delayed unlink."""
     response = svc_client.post(
         "/datasets.unlink",
-        data=json.dumps(dict(git_url=it_remote_repo_url, is_delayed=True, name="mydata", include_filters=["data1"])),
+        data=json.dumps(dict(git_url=it_remote_repo_url, is_delayed=True, slug="mydata", include_filters=["data1"])),
         headers=identity_headers,
     )
 

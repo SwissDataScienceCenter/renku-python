@@ -228,7 +228,7 @@ class DataverseImporter(RepositoryImporter):
 
         from renku.command.schema.agent import PersonSchema
         from renku.core.dataset.providers.models import ProviderDataset, ProviderDatasetFile, ProviderDatasetSchema
-        from renku.domain_model.dataset import Url, generate_default_name
+        from renku.domain_model.dataset import Url, generate_default_slug
 
         class DataverseDatasetSchema(ProviderDatasetSchema):
             """Schema for Dataverse datasets."""
@@ -268,7 +268,7 @@ class DataverseImporter(RepositoryImporter):
         files = self.get_files()
         dataset = ProviderDataset.from_jsonld(data=self._json, schema_class=DataverseDatasetSchema)
         dataset.version = self.version
-        dataset.name = generate_default_name(title=dataset.title or "", version=dataset.version)
+        dataset.slug = generate_default_slug(name=dataset.name or "", version=dataset.version)
         dataset.same_as = (
             Url(url_str=get_doi_url(dataset.identifier))
             if is_doi(dataset.identifier)
@@ -391,7 +391,7 @@ class DataverseExporter(ExporterApi):
         keywords = self._get_keywords()
         metadata_template = Template(DATASET_METADATA_TEMPLATE)
         metadata = metadata_template.substitute(
-            name=_escape_json_string(self.dataset.title),
+            name=_escape_json_string(self.dataset.name),
             authors=json.dumps(authors),
             contacts=json.dumps(contacts),
             description=_escape_json_string(self.dataset.description),

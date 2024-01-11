@@ -1,6 +1,5 @@
-#
-# Copyright 2019-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,10 +28,12 @@ from tests.utils import assert_rpc_response
 @pytest.mark.remote_repo("old")
 def test_execute_migrations_1_0(svc_client_setup):
     """Check execution of all migrations."""
-    svc_client, headers, project_id, _, _ = svc_client_setup
+    svc_client, headers, project_id, url_components, _ = svc_client_setup
 
     response = svc_client.post(
-        "/1.0/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
+        "/1.0/cache.migrate",
+        data=json.dumps(dict(git_url=url_components.href, skip_docker_update=True)),
+        headers=headers,
     )
 
     assert 200 == response.status_code
@@ -48,9 +49,11 @@ def test_execute_migrations_1_0(svc_client_setup):
 @pytest.mark.integration
 def test_check_migrations_local_1_0(svc_client_setup):
     """Check if migrations are required for a local project."""
-    svc_client, headers, project_id, _, _ = svc_client_setup
+    svc_client, headers, project_id, url_components, _ = svc_client_setup
 
-    response = svc_client.get("/1.0/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get(
+        "/1.0/cache.migrations_check", query_string=dict(git_url=url_components.href), headers=headers
+    )
     assert 200 == response.status_code
 
     assert not response.json["result"]["core_compatibility_status"]["migration_required"]
@@ -69,7 +72,7 @@ def test_check_migrations_local_1_0(svc_client_setup):
 @pytest.mark.integration
 def test_migrate_wrong_template_source_1_0(svc_client_setup, monkeypatch):
     """Check if migrations gracefully fail when the project template is not available."""
-    svc_client, headers, project_id, _, _ = svc_client_setup
+    svc_client, headers, project_id, url_components, _ = svc_client_setup
 
     # NOTE: fake source
     with monkeypatch.context() as monkey:
@@ -80,7 +83,7 @@ def test_migrate_wrong_template_source_1_0(svc_client_setup, monkeypatch):
         )
 
         response = svc_client.get(
-            "/1.0/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers
+            "/1.0/cache.migrations_check", query_string=dict(git_url=url_components.href), headers=headers
         )
 
         assert_rpc_response(response, "error")

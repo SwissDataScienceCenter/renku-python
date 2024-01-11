@@ -46,4 +46,4 @@ runs:
         path: cassettes
         key: ${{ env.NETWORK_CACHE_PREFIX }}-${{ steps.year-week.outputs.date }}-${{ hashFiles('poetry.lock') }}-${{ github.job }}
       env:
-        NETWORK_CACHE_PREFIX: "v1"
+        NETWORK_CACHE_PREFIX: "20230929"

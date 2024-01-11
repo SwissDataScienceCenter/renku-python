@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -131,6 +130,15 @@ The detection might not work as expected if:
     command arguments are ignored unless they are in the explicit inputs list.
     This only affects files and directories; command options and flags are
     still treated as inputs.
+
+.. topic:: Disabling parameter detection (``--no-parameter-detection``)
+
+    Inputs that aren't files or directories are automatically detected as
+    parameters in ``renku run``. You can disable this feature by passing the
+    ``--no-parameter-detection`` flag, which completely ignores them on the
+    workflow. You can still manually specify parameters using ``--param``
+    arguments mentioned above or using the ``renku.api.Parameter`` class in
+    Python code.
 
 .. note:: ``renku run`` prints the generated plan after execution if you pass
     ``--verbose`` to it. You can check the generated plan to verify that the
@@ -498,6 +506,7 @@ from renku.ui.cli.utils.terminal import print_workflow_file
 @click.option("--no-output", is_flag=True, default=False, help="Allow command without output files.")
 @click.option("--no-input-detection", is_flag=True, default=False, help="Disable auto-detection of inputs.")
 @click.option("--no-output-detection", is_flag=True, default=False, help="Disable auto-detection of outputs.")
+@click.option("--no-parameter-detection", is_flag=True, default=False, help="Disable auto-detection of parameters.")
 @click.option(
     "--success-code",
     "success_codes",
@@ -537,6 +546,7 @@ def run(
     no_output,
     no_input_detection,
     no_output_detection,
+    no_parameter_detection,
     success_codes,
     isolation,
     file,
@@ -587,6 +597,7 @@ def run(
             or no_output
             or no_input_detection
             or no_output_detection
+            or no_parameter_detection
             or success_codes
             or isolation
             or creators
@@ -653,6 +664,7 @@ def run(
                 no_output=no_output,
                 no_input_detection=no_input_detection,
                 no_output_detection=no_output_detection,
+                no_parameter_detection=no_parameter_detection,
                 success_codes=success_codes,
                 command_line=command_line,
                 creators=creators,

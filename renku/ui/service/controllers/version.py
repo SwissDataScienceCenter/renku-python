@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service version controller."""
+import os
+
 from renku import __version__
 from renku.core.migration.migrate import SUPPORTED_PROJECT_VERSION
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
@@ -34,6 +35,7 @@ class VersionCtrl(ServiceCtrl):
             {
                 "latest_version": __version__,
                 "supported_project_version": SUPPORTED_PROJECT_VERSION,
+                "cli_version": os.environ.get("RENKU_PROJECT_DEFAULT_CLI_VERSION") or __version__,
                 "minimum_api_version": minimum_version.name,
                 "maximum_api_version": maximum_version.name,
             },

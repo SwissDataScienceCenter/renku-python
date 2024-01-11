@@ -1,5 +1,5 @@
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Renku service version controller."""
+"""Renku service version serializers."""
 from marshmallow import Schema, fields
 
 
@@ -21,7 +21,7 @@ class VersionResponse(Schema):
     """Version response schema."""
 
     latest_version = fields.String()
-    supported_project_version = fields.Number()
+    supported_project_version = fields.Integer()
     minimum_api_version = fields.String()
     maximum_api_version = fields.String()
 

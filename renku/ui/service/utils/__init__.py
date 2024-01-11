@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,18 +14,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service utility functions."""
+from typing import Optional, overload
 
-from renku.core.util.git import push_changes
 from renku.ui.service.config import CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH
 
 
 def make_project_path(user, project):
     """Construct full path for cached project."""
+    from renku.ui.service.cache.models.project import NO_BRANCH_FOLDER
+
     valid_user = user and "user_id" in user
     valid_project = project and "owner" in project and "name" in project and "project_id" in project
 
     if valid_user and valid_project:
-        return CACHE_PROJECTS_PATH / user["user_id"] / project["owner"] / project["slug"]
+        return (
+            CACHE_PROJECTS_PATH
+            / user["user_id"]
+            / project["owner"]
+            / project["slug"]
+            / project.get("branch", NO_BRANCH_FOLDER)
+        )
 
 
 def make_file_path(user, cached_file):
@@ -49,9 +56,33 @@ def valid_file(user, cached_file):
 
 def new_repo_push(repo_path, source_url, source_name="origin", source_branch="master"):
     """Push a new repo to origin."""
+    from renku.core.util.git import push_changes
     from renku.infrastructure.repository import Repository
 
     repository = Repository(repo_path)
     repository.remotes.add(source_name, source_url)
     branch = push_changes(repository, remote=source_name)
     return branch == source_branch
+
+
+@overload
+def normalize_git_url(git_url: None) -> None:
+    ...
+
+
+@overload
+def normalize_git_url(git_url: str) -> str:
+    ...
+
+
+def normalize_git_url(git_url: Optional[str]) -> Optional[str]:
+    """Remove ``.git`` postfix from a repository's url."""
+    if git_url is None:
+        return None
+
+    git_url = git_url.rstrip("/")
+
+    while git_url.lower().endswith(".git"):
+        git_url = git_url[: -len(".git")]
+
+    return git_url

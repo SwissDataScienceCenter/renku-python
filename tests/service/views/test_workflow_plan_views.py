@@ -1,6 +1,5 @@
-#
-# Copyright 2019-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,16 +28,16 @@ from tests.utils import assert_rpc_response, retry_failed, validate_cwl
 @retry_failed
 def test_list_workflow_plans_view(svc_client_with_repo):
     """Check listing of plans."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
     params = {
-        "project_id": project_id,
+        "git_url": url_components.href,
     }
 
     response = svc_client.get("/workflow_plans.list", query_string=params, headers=headers)
 
     assert_rpc_response(response)
-    assert {"plans"} == set(response.json["result"].keys())
+    assert {"plans", "git_url"} == set(response.json["result"].keys())
     assert 0 != len(response.json["result"]["plans"])
     assert {
         "children",
@@ -158,9 +157,9 @@ def test_list_workflow_plans_view(svc_client_with_repo):
 @retry_failed
 def test_show_workflow_plans_view(plan_id, expected_fields, executions, touches_files, latest, svc_client_with_repo):
     """Check showing of plans."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
-    params = {"project_id": project_id, "plan_id": plan_id}
+    params = {"git_url": url_components.href, "plan_id": plan_id}
 
     response = svc_client.get("/workflow_plans.show", query_string=params, headers=headers)
 
@@ -192,9 +191,9 @@ def test_show_workflow_plans_view(plan_id, expected_fields, executions, touches_
 @retry_failed
 def test_workflow_export(plan_id, svc_client_with_repo, tmp_path):
     """Check exporting of workflows."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
-    params = {"project_id": project_id, "plan_id": plan_id}
+    params = {"git_url": url_components.href, "plan_id": plan_id}
 
     response = svc_client.post("/workflow_plans.export", data=json.dumps(params), headers=headers)
 
@@ -249,9 +248,9 @@ def test_workflow_export(plan_id, svc_client_with_repo, tmp_path):
 @retry_failed
 def test_workflow_export_with_values(plan_id, values, expected_cwl_substrings, svc_client_with_repo, tmp_path):
     """Check exporting of workflows when values are passed."""
-    svc_client, headers, project_id, _ = svc_client_with_repo
+    svc_client, headers, project_id, url_components = svc_client_with_repo
 
-    params = {"project_id": project_id, "plan_id": plan_id, "values": values}
+    params = {"git_url": url_components.href, "plan_id": plan_id, "values": values}
 
     response = svc_client.post("/workflow_plans.export", data=json.dumps(params), headers=headers)
 

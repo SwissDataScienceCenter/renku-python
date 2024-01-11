@@ -20,7 +20,7 @@ import platform
 import webbrowser
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Tuple, Union, cast
 from uuid import uuid4
 
 import docker
@@ -29,8 +29,11 @@ from requests.exceptions import ReadTimeout
 from renku.core import errors
 from renku.core.config import get_value
 from renku.core.constant import ProviderPriority
+from renku.core.login import read_renku_token
 from renku.core.plugin import hookimpl
+from renku.core.session.utils import get_renku_url
 from renku.core.util import communication
+from renku.core.util.jwt import is_token_expired
 from renku.domain_model.project_context import project_context
 from renku.domain_model.session import ISessionProvider, Session, SessionStopStatus
 
@@ -67,11 +70,14 @@ class DockerSessionProvider(ISessionProvider):
         return self._docker_client
 
     @staticmethod
-    def _get_jupyter_urls(ports: Dict[str, Any], auth_token: str, jupyter_port: int = 8888) -> Iterable[str]:
+    def _get_jupyter_urls(ports: Dict[str, Any], auth_token: str, jupyter_port: int = 8888) -> Iterator[str]:
         port_key = f"{jupyter_port}/tcp"
         if port_key not in ports:
-            return list()
-        return map(lambda x: f"http://{x['HostIp']}:{x['HostPort']}/?token={auth_token}", ports[port_key])
+            return list()  # type: ignore
+        default_url = get_value("interactive", "default_url")
+        if not default_url:
+            default_url = "/lab"
+        return map(lambda x: f"http://{x['HostIp']}:{x['HostPort']}{default_url}?token={auth_token}", ports[port_key])
 
     def _get_docker_containers(self, project_name: str) -> List[docker.models.containers.Container]:
         return self.docker_client().containers.list(filters={"label": f"renku_project={project_name}"})
@@ -92,9 +98,22 @@ class DockerSessionProvider(ISessionProvider):
     def find_image(self, image_name: str, config: Optional[Dict[str, Any]]) -> bool:
         """Find the given container image."""
         with communication.busy(msg=f"Checking for image {image_name}"):
+            renku_url = get_renku_url()
+
+            # only search remote image if a user is logged in
+            find_remote = True
+            if renku_url is None:
+                find_remote = False
+            else:
+                token = read_renku_token(endpoint=renku_url)
+                if not token or is_token_expired(token):
+                    find_remote = False
+
             try:
                 self.docker_client().images.get(image_name)
             except docker.errors.ImageNotFound:
+                if not find_remote:
+                    return False
                 try:
                     self.docker_client().images.get_registry_data(image_name)
                 except docker.errors.APIError:
@@ -356,6 +375,9 @@ class DockerSessionProvider(ISessionProvider):
                     environment["CHOWN_HOME"] = "yes"
                     environment["CHOWN_HOME_OPTS"] = "-R"
 
+                if "force_build" in kwargs:
+                    del kwargs["force_build"]
+
                 container = self.docker_client().containers.run(
                     image_name,
                     'jupyter notebook --NotebookApp.ip="0.0.0.0"'
@@ -451,13 +473,23 @@ class DockerSessionProvider(ISessionProvider):
     def session_url(self, session_name: Optional[str]) -> Optional[str]:
         """Get the URL of the interactive session."""
         sessions = self.docker_client().containers.list()
+        default_url = get_value("interactive", "default_url")
+        if not default_url:
+            default_url = "/lab"
 
         for c in sessions:
             if (
                 c.short_id == session_name or (not session_name and len(sessions) == 1)
             ) and f"{DockerSessionProvider.JUPYTER_PORT}/tcp" in c.ports:
-                host = c.ports[f"{DockerSessionProvider.JUPYTER_PORT}/tcp"][0]
-                return f'http://{host["HostIp"]}:{host["HostPort"]}/?token={c.labels["jupyter_token"]}'
+                url = next(
+                    DockerSessionProvider._get_jupyter_urls(
+                        c.ports, c.labels["jupyter_token"], DockerSessionProvider.JUPYTER_PORT
+                    ),
+                    None,
+                )
+                if not url:
+                    continue
+                return url
         return None
 
     def force_build_image(self, force_build: bool = False, **kwargs) -> bool:

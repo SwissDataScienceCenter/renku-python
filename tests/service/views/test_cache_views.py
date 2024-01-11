@@ -1,6 +1,5 @@
-#
-# Copyright 2019-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +26,6 @@ import pytest
 
 from renku.core.dataset.context import DatasetContext
 from renku.core.util.git import with_commit
-from renku.domain_model.git import GitURL
 from renku.domain_model.project import Project
 from renku.domain_model.project_context import project_context
 from renku.domain_model.provenance.agent import Person
@@ -436,15 +434,13 @@ def test_clone_projects_no_auth(svc_client, identity_headers, it_remote_repo_url
         "git_url": it_remote_repo_url,
     }
 
-    response = svc_client.post(
-        "/cache.project_clone", data=json.dumps(payload), headers={"Content-Type": "application/json"}
-    )
+    response = svc_client.post("/project.show", data=json.dumps(payload), headers={"Content-Type": "application/json"})
 
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
     assert UserAnonymousError.code == response.json["error"]["code"]
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
+    response = svc_client.post("/project.show", data=json.dumps(payload), headers=identity_headers)
     assert 200 == response.status_code
     assert {"result"} == set(response.json.keys())
 
@@ -458,122 +454,11 @@ def test_clone_projects_with_auth(svc_client, identity_headers, it_remote_repo_u
         "git_url": it_remote_repo_url,
     }
 
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
+    response = svc_client.post("/project.show", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert {"result"} == set(response.json.keys())
-    assert response.json["result"]["initialized"]
-
-
-@pytest.mark.service
-@pytest.mark.integration
-@retry_failed
-def test_clone_projects_multiple(svc_client, identity_headers, it_remote_repo_url):
-    """Check multiple cloning of remote repository."""
-    project_ids = []
-
-    payload = {
-        "git_url": it_remote_repo_url,
-    }
-
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
-    assert response
-
-    assert {"result"} == set(response.json.keys())
-    project_ids.append(response.json["result"])
-
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
-
-    assert response
-    assert {"result"} == set(response.json.keys())
-    project_ids.append(response.json["result"])
-
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
-
-    assert response
-    assert {"result"} == set(response.json.keys())
-    project_ids.append(response.json["result"])
-
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
-
-    assert response
-    assert {"result"} == set(response.json.keys())
-    last_pid = response.json["result"]["project_id"]
-
-    response = svc_client.get("/cache.project_list", headers=identity_headers)
-
-    assert response
-    assert {"result"} == set(response.json.keys())
-
-    pids = [p["project_id"] for p in response.json["result"]["projects"]]
-    assert last_pid in pids
-    assert 1 == len(pids)
-
-    for inserted in project_ids:
-        assert inserted["project_id"] == last_pid
-
-
-@pytest.mark.service
-@pytest.mark.integration
-@retry_failed
-def test_clone_projects_list_view_errors(svc_client, identity_headers, it_remote_repo_url):
-    """Check cache state of cloned projects with no headers."""
-    payload = {
-        "git_url": it_remote_repo_url,
-    }
-
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
-    assert response
-    assert {"result"} == set(response.json.keys())
-
-    assert isinstance(uuid.UUID(response.json["result"]["project_id"]), uuid.UUID)
-
-    response = svc_client.get(
-        "/cache.project_list",
-        # no auth headers, expected error
-    )
-    assert 200 == response.status_code
-    assert {"error"} == set(response.json.keys())
-    assert UserAnonymousError.code == response.json["error"]["code"]
-
-    response = svc_client.get("/cache.project_list", headers=identity_headers)
-
-    assert response
-    assert {"result"} == set(response.json.keys())
-    assert 1 == len(response.json["result"]["projects"])
-
-    project = response.json["result"]["projects"][0]
-    assert isinstance(uuid.UUID(project["project_id"]), uuid.UUID)
-    assert isinstance(GitURL.parse(project["git_url"]), GitURL)
-
-
-@pytest.mark.service
-@pytest.mark.integration
-@retry_failed
-def test_clone_projects_invalid_headers(svc_client, identity_headers, it_remote_repo_url):
-    """Check cache state of cloned projects with invalid headers."""
-    payload = {
-        "git_url": it_remote_repo_url,
-    }
-
-    response = svc_client.post("/cache.project_clone", data=json.dumps(payload), headers=identity_headers)
-    assert response
-
-    assert {"result"} == set(response.json.keys())
-
-    response = svc_client.get(
-        "/cache.project_list",
-        # no auth headers, expected error
-    )
-    assert 200 == response.status_code
-    assert {"error"} == set(response.json.keys())
-    assert UserAnonymousError.code == response.json["error"]["code"]
-
-    response = svc_client.get("/cache.project_list", headers=identity_headers)
-
-    assert response
-    assert {"result"} == set(response.json.keys())
-    assert 1 == len(response.json["result"]["projects"])
+    assert response.json["result"]["name"] == "core-integration-test"
 
 
 @pytest.mark.service
@@ -803,10 +688,10 @@ def test_field_upload_resp_fields(datapack_tar, svc_client_with_repo):
 @pytest.mark.remote_repo("old")
 def test_execute_migrations(svc_client_setup):
     """Check execution of all migrations."""
-    svc_client, headers, project_id, _, _ = svc_client_setup
+    svc_client, headers, project_id, url_components, _ = svc_client_setup
 
     response = svc_client.post(
-        "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
+        "/cache.migrate", data=json.dumps(dict(git_url=url_components.href, skip_docker_update=True)), headers=headers
     )
 
     assert 200 == response.status_code
@@ -823,10 +708,10 @@ def test_execute_migrations(svc_client_setup):
 @pytest.mark.integration
 def test_execute_migrations_job(svc_client_setup):
     """Check execution of all migrations."""
-    svc_client, headers, project_id, _, _ = svc_client_setup
+    svc_client, headers, project_id, url_components, _ = svc_client_setup
 
     response = svc_client.post(
-        "/cache.migrate", data=json.dumps(dict(project_id=project_id, is_delayed=True)), headers=headers
+        "/cache.migrate", data=json.dumps(dict(git_url=url_components.href, is_delayed=True)), headers=headers
     )
 
     assert 200 == response.status_code
@@ -856,9 +741,11 @@ def test_execute_migrations_remote(svc_client, identity_headers, it_remote_old_r
 @pytest.mark.integration
 def test_check_migrations_local(svc_client_setup):
     """Check if migrations are required for a local project."""
-    svc_client, headers, project_id, _, _ = svc_client_setup
+    svc_client, headers, project_id, url_components, _ = svc_client_setup
 
-    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get(
+        "/cache.migrations_check", query_string=dict(git_url=url_components.href), headers=headers
+    )
     assert 200 == response.status_code
 
     assert not response.json["result"]["core_compatibility_status"]["migration_required"]
@@ -929,7 +816,7 @@ def test_check_migrations_remote_errors(
 @pytest.mark.integration
 def test_migrate_wrong_template_source(svc_client_setup, monkeypatch):
     """Check if migrations gracefully fail when the project template is not available."""
-    svc_client, headers, project_id, _, _ = svc_client_setup
+    svc_client, headers, project_id, url_components, _ = svc_client_setup
 
     # NOTE: fake source
     with monkeypatch.context() as monkey:
@@ -939,7 +826,9 @@ def test_migrate_wrong_template_source(svc_client_setup, monkeypatch):
             renku.core.template.usecase.TemplateMetadata, "source", property(MagicMock(return_value="https://FAKE_URL"))
         )
 
-        response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+        response = svc_client.get(
+            "/cache.migrations_check", query_string=dict(git_url=url_components.href), headers=headers
+        )
 
         assert_rpc_response(response)
 
@@ -953,7 +842,7 @@ def test_migrate_wrong_template_source(svc_client_setup, monkeypatch):
 @pytest.mark.integration
 def test_migrate_wrong_template_ref(svc_client_setup, template, monkeypatch):
     """Check if migrations gracefully fail when the project template points to a wrong ref."""
-    svc_client, headers, project_id, _, _ = svc_client_setup
+    svc_client, headers, project_id, url_components, _ = svc_client_setup
     # NOTE: fake reference
     with monkeypatch.context() as monkey:
         from renku.domain_model.template import TemplateMetadata
@@ -961,7 +850,9 @@ def test_migrate_wrong_template_ref(svc_client_setup, template, monkeypatch):
         monkey.setattr(TemplateMetadata, "source", property(MagicMock(return_value=template["url"])))
         monkey.setattr(TemplateMetadata, "reference", property(MagicMock(return_value="FAKE_REF")))
 
-        response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+        response = svc_client.get(
+            "/cache.migrations_check", query_string=dict(git_url=url_components.href), headers=headers
+        )
 
         assert_rpc_response(response)
 
@@ -977,7 +868,7 @@ def test_migrate_wrong_template_ref(svc_client_setup, template, monkeypatch):
 @retry_failed
 def test_cache_is_reset_after_failing_push(svc_protected_old_repo):
     """Check cache state is reset after pushing to a protected branch fails."""
-    svc_client, headers, project_id, cache, user = svc_protected_old_repo
+    svc_client, headers, project_id, cache, user, url = svc_protected_old_repo
 
     project = cache.get_project(user, project_id)
     repository = Repository(path=project.abs_path)
@@ -985,7 +876,7 @@ def test_cache_is_reset_after_failing_push(svc_protected_old_repo):
     active_branch_before = repository.active_branch.name
 
     response = svc_client.post(
-        "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
+        "/cache.migrate", data=json.dumps(dict(git_url=url, skip_docker_update=True)), headers=headers
     )
     assert 200 == response.status_code
     assert response.json["result"]["was_migrated"]
@@ -1003,14 +894,14 @@ def test_cache_is_reset_after_failing_push(svc_protected_old_repo):
 @retry_failed
 def test_migrating_protected_branch(svc_protected_old_repo):
     """Check migrating on a protected branch does not change cache state."""
-    svc_client, headers, project_id, _, _ = svc_protected_old_repo
+    svc_client, headers, project_id, _, _, url = svc_protected_old_repo
 
-    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get("/cache.migrations_check", query_string=dict(git_url=url), headers=headers)
     assert 200 == response.status_code
     assert response.json["result"]["core_compatibility_status"]["migration_required"]
 
     response = svc_client.post(
-        "/cache.migrate", data=json.dumps(dict(project_id=project_id, skip_docker_update=True)), headers=headers
+        "/cache.migrate", data=json.dumps(dict(git_url=url, skip_docker_update=True)), headers=headers
     )
 
     assert 200 == response.status_code
@@ -1019,7 +910,7 @@ def test_migrating_protected_branch(svc_protected_old_repo):
         m.startswith("Successfully applied") and m.endswith("migrations.") for m in response.json["result"]["messages"]
     )
 
-    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get("/cache.migrations_check", query_string=dict(git_url=url), headers=headers)
     assert 200 == response.status_code
     assert response.json["result"]["core_compatibility_status"]["migration_required"]
 
@@ -1032,7 +923,7 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_
     """Test that the cache stays synchronized with the remote repository."""
     from renku.domain_model.provenance.agent import Person
 
-    svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout = local_remote_repository
+    svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout, remote_url = local_remote_repository
 
     with project_context.with_path(remote_repo_checkout.path):
         with with_injection(remote_repo_checkout):
@@ -1041,31 +932,31 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_
                 transaction_id=project_context.transaction_id,
                 commit_message="Create dataset",
             ):
-                with DatasetContext(name="my_dataset", create=True, commit_database=True) as dataset:
+                with DatasetContext(slug="my_dataset", create=True, commit_database=True) as dataset:
                     dataset.creators = [Person(name="me", email="me@example.com", id="me_id")]
 
     remote_repo_checkout.push()
     params = {
-        "project_id": project_id,
+        "git_url": remote_url,
     }
 
     response = svc_client.get("/datasets.list", query_string=params, headers=identity_headers)
     assert response
     assert 200 == response.status_code
 
-    assert {"datasets"} == set(response.json["result"].keys()), response.json
+    assert {"datasets", "git_url"} == set(response.json["result"].keys()), response.json
     assert 1 == len(response.json["result"]["datasets"])
 
     payload = {
-        "project_id": project_id,
-        "name": uuid.uuid4().hex,
+        "git_url": remote_url,
+        "slug": uuid.uuid4().hex,
     }
 
     response = svc_client.post("/datasets.create", data=json.dumps(payload), headers=identity_headers)
 
     assert response
     assert 200 == response.status_code
-    assert {"name", "remote_branch"} == set(response.json["result"].keys())
+    assert {"git_url", "slug", "remote_branch"} == set(response.json["result"].keys())
 
     remote_repo_checkout.pull()
 
@@ -1073,8 +964,8 @@ def test_cache_gets_synchronized(local_remote_repository, directory_tree, quick_
         datasets = DatasetGateway().get_all_active_datasets()
         assert 2 == len(datasets)
 
-    assert any(d.name == "my_dataset" for d in datasets)
-    assert any(d.name == payload["name"] for d in datasets)
+    assert any(d.slug == "my_dataset" for d in datasets)
+    assert any(d.slug == payload["slug"] for d in datasets)
 
 
 @pytest.mark.service
@@ -1097,7 +988,7 @@ def test_check_migrations_local_minimum_version(svc_client_setup, mocker, monkey
     """Check if migrations are required for a local project."""
     monkeypatch.setenv("RENKU_SKIP_MIN_VERSION_CHECK", "0")
 
-    svc_client, headers, project_id, _, _ = svc_client_setup
+    svc_client, headers, project_id, url_components, _ = svc_client_setup
 
     def mock_database_project(project):
         def mocked_getter(self, key):
@@ -1112,7 +1003,9 @@ def test_check_migrations_local_minimum_version(svc_client_setup, mocker, monkey
     mocker.patch("renku.infrastructure.database.Database.__getitem__", mock_database_project(dummy_project))
     mocker.patch("renku.version.__version__", "1.0.0")
 
-    response = svc_client.get("/cache.migrations_check", query_string=dict(project_id=project_id), headers=headers)
+    response = svc_client.get(
+        "/cache.migrations_check", query_string=dict(git_url=url_components.href), headers=headers
+    )
     assert 200 == response.status_code
 
     assert response.json["result"]["core_compatibility_status"]

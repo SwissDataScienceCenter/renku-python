@@ -1,6 +1,5 @@
-#
-# Copyright 2022-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +28,7 @@ from renku.core.errors import (
     AuthenticationError,
     DatasetExistsError,
     DatasetImageError,
+    DatasetNotFound,
     DockerfileUpdateError,
     GitCommandError,
     GitError,
@@ -66,6 +66,7 @@ from renku.ui.service.errors import (
     ProgramUpdateProjectError,
     ServiceError,
     UserDatasetsMultipleImagesError,
+    UserDatasetsNotFoundError,
     UserDatasetsUnlinkError,
     UserDatasetsUnreachableImageError,
     UserInvalidGenericFieldsError,
@@ -108,12 +109,15 @@ def handle_validation_except(f):
         try:
             return f(*args, **kwargs)
         except ValidationError as e:
-            items = squash(e.messages).items()
-            reasons = []
-            for key, value in items:
-                if key == "project_id":
-                    raise IntermittentProjectIdError(e)
-                reasons.append(f"'{key}': {', '.join(value)}")
+            if isinstance(e.messages, dict):
+                items = squash(e.messages).items()
+                reasons = []
+                for key, value in items:
+                    if key == "project_id":
+                        raise IntermittentProjectIdError(e)
+                    reasons.append(f"'{key}': {', '.join(value)}")
+            else:
+                reasons = e.messages
 
             error_message = f"{'; '.join(reasons)}"
             if "Invalid `git_url`" in error_message:
@@ -176,7 +180,11 @@ def handle_git_except(f):
             error_message_safe = re.sub("^(.+oauth2:)[^@]+(@.+)$", r"\1<token-hidden>\2", error_message_safe)
             if "access denied" in error_message:
                 raise UserRepoNoAccessError(e, error_message_safe)
-            elif "is this a git repository?" in error_message or "not found" in error_message:
+            elif (
+                "is this a git repository?" in error_message
+                or "not found" in error_message
+                or "ailed to connect to" in error_message  # Sometimes the 'f' is capitalized, sometimes not
+            ):
                 raise UserRepoUrlInvalidError(e, error_message_safe)
             elif "connection timed out" in error_message:
                 raise IntermittentTimeoutError(e)
@@ -353,7 +361,7 @@ def handle_datasets_write_errors(f):
             error_message = str(e)
             if "Duplicate dataset image" in error_message:
                 raise UserDatasetsMultipleImagesError(e)
-            elif "couldn't be mirrored" in error_message:
+            elif "Cannot download image with url" in error_message:
                 raise UserDatasetsUnreachableImageError(e)
             raise
         except ValidationError as e:
@@ -362,6 +370,8 @@ def handle_datasets_write_errors(f):
                 if "".join(value) == "Field may not be null.":
                     raise UserMissingFieldError(e, key)
             raise
+        except DatasetNotFound as e:
+            raise UserDatasetsNotFoundError(e)
         except DatasetExistsError as e:
             raise IntermittentDatasetExistsError(e)
         except RenkuException as e:

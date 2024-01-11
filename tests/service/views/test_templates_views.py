@@ -1,6 +1,5 @@
-#
-# Copyright 2020-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -75,7 +74,7 @@ def test_compare_manifests(svc_client_with_templates):
     assert {"result"} == set(response.json.keys())
     assert response.json["result"]["templates"]
 
-    templates_source = fetch_templates_source(source=template_params["url"], reference=template_params["branch"])
+    templates_source = fetch_templates_source(source=template_params["url"], reference=template_params["ref"])
     manifest_file = templates_source.path / TEMPLATE_MANIFEST
 
     manifest = TemplatesManifest.from_path(manifest_file).get_raw_content()
@@ -124,12 +123,18 @@ def test_read_manifest_from_wrong_template(svc_client_with_templates, template_u
 @retry_failed
 def test_create_project_from_template(svc_client_templates_creation, with_injection):
     """Check creating project from a valid template."""
+    from renku.ui.service.cache.models.project import NO_BRANCH_FOLDER
     from renku.ui.service.serializers.headers import RenkuHeaders
     from renku.ui.service.utils import CACHE_PROJECTS_PATH
 
     svc_client, headers, payload, rm_remote = svc_client_templates_creation
 
     payload["data_directory"] = "my-folder/"
+    payload["image"] = {
+        "content_url": "https://en.wikipedia.org/static/images/icons/wikipedia.png",
+        "mirror_locally": True,
+    }
+    payload["project_keywords"] = ["test", "ci"]
 
     response = svc_client.post("/templates.create_project", data=json.dumps(payload), headers=headers)
 
@@ -142,7 +147,9 @@ def test_create_project_from_template(svc_client_templates_creation, with_inject
 
     # NOTE: assert correct git user is set on new project
     user_data = RenkuHeaders.decode_user(headers["Renku-User"])
-    project_path = CACHE_PROJECTS_PATH / user_data["user_id"] / payload["project_namespace"] / stripped_name
+    project_path = (
+        CACHE_PROJECTS_PATH / user_data["user_id"] / payload["project_namespace"] / stripped_name / NO_BRANCH_FOLDER
+    )
     reader = Repository(project_path).get_configuration()
     assert reader.get_value("user", "email") == user_data["email"]
     assert reader.get_value("user", "name") == user_data["name"]
@@ -151,6 +158,7 @@ def test_create_project_from_template(svc_client_templates_creation, with_inject
         with with_injection():
             project = project_context.project
         assert project_context.datadir == "my-folder/"
+        assert project.keywords == ["test", "ci"]
 
     expected_id = f"/projects/{payload['project_namespace']}/{stripped_name}"
     assert expected_id == project.id
@@ -159,6 +167,8 @@ def test_create_project_from_template(svc_client_templates_creation, with_inject
     old_metadata_path = project_path / ".renku/metadata.yml"
     assert old_metadata_path.exists()
     assert "'http://schema.org/schemaVersion': '9'" in old_metadata_path.read_text()
+
+    assert (project_path / ".renku" / "images" / "project" / "0.png").exists()
 
     # NOTE:  successfully re-use old name after cleanup
     assert rm_remote() is True
@@ -204,7 +214,7 @@ def test_create_project_from_template_failures(svc_client_templates_creation):
     assert 200 == response.status_code
     assert {"error"} == set(response.json.keys())
     assert UserProjectCreationError.code == response.json["error"]["code"], response.json
-    assert "git_url" in response.json["error"]["devMessage"]
+    assert "`project_repository`, `project_namespace`" in response.json["error"]["devMessage"]
 
     # NOTE: missing fields -- unlikely to happen. If that is the case, we should determine if it's a user error or not
     payload_missing_field = deepcopy(payload)

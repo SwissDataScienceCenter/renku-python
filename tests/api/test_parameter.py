@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -120,6 +119,8 @@ def test_parameters(project):
     p3 = Parameter("parameter_3", 42.42)
 
     assert (42, "42", 42.42) == (p1.value, p2.value, p3.value)
+
+    _ = Parameter("parameter_3", 42.42)
 
     data = read_indirect_parameters(project.path)
 

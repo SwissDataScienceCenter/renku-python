@@ -32,7 +32,7 @@ runs:
           renku/templates
         key: ${{ env.DEPENDENCY_CACHE_PREFIX }}-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('pyproject.toml') }}-${{ hashFiles('poetry.lock') }}-${{ hashFiles('Makefile') }}
       env:
-        DEPENDENCY_CACHE_PREFIX: "v1"
+        DEPENDENCY_CACHE_PREFIX: "20230929"
     - name: Install dependencies
       if: steps.dependency-cache.outputs.cache-hit != 'true' || 'refs/heads/master' == github.ref || 'refs/heads/develop' == github.ref || startsWith(github.ref, 'refs/tags/')
       env:
@@ -65,7 +65,7 @@ runs:
         path: cassettes
         key: ${{ env.NETWORK_CACHE_PREFIX }}-${{ steps.year-week.outputs.date }}-${{ hashFiles('poetry.lock') }}-${{ github.job }}
       env:
-        NETWORK_CACHE_PREFIX: "v1"
+        NETWORK_CACHE_PREFIX: "20230929"
     - name: Set coveralls path mapping
       shell: bash
       run: |

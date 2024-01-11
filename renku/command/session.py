@@ -17,10 +17,13 @@
 
 from renku.command.command_builder.command import Command
 from renku.core.session.session import (
+    search_hibernating_session_providers,
     search_session_providers,
     search_sessions,
     session_list,
     session_open,
+    session_pause,
+    session_resume,
     session_start,
     session_stop,
     ssh_setup,
@@ -37,9 +40,14 @@ def search_session_providers_command():
     return Command().command(search_session_providers).require_migration().with_database(write=False)
 
 
+def search_hibernating_session_providers_command():
+    """Get all the session provider names that support hibernation and match a pattern."""
+    return Command().command(search_hibernating_session_providers).require_migration().with_database(write=False)
+
+
 def session_list_command():
     """List all the running interactive sessions."""
-    return Command().command(session_list)
+    return Command().command(session_list).with_database(write=False)
 
 
 def session_start_command():
@@ -49,14 +57,24 @@ def session_start_command():
 
 def session_stop_command():
     """Stop a running an interactive session."""
-    return Command().command(session_stop)
+    return Command().command(session_stop).with_database(write=False)
 
 
 def session_open_command():
     """Open a running interactive session."""
-    return Command().command(session_open)
+    return Command().command(session_open).with_database(write=False)
 
 
 def ssh_setup_command():
     """Setup SSH keys for SSH connections to sessions."""
     return Command().command(ssh_setup)
+
+
+def session_pause_command():
+    """Pause a running interactive session."""
+    return Command().command(session_pause).with_database(write=False)
+
+
+def session_resume_command():
+    """Resume a paused session."""
+    return Command().command(session_resume).with_database(write=False)

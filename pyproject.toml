@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +18,7 @@
 
 [tool.poetry]
 name = "renku"
-version = "0.0.0" # placeholder, see poetry-dynamic-versioning
+version = "2.7.0.dev34+g45772746-dirty" # placeholder, see poetry-dynamic-versioning
 description = "Python SDK and CLI for the Renku platform."
 license = "Apache License 2.0"
 keywords = ["Renku", "CLI"]
@@ -52,122 +50,120 @@ Changelog = "https://github.com/swissdatasciencecenter/renku-python/blob/master/
 
 [tool.poetry.dependencies]
 python = ">=3.8.1,<3.12"
-appdirs = "<=1.4.4,>=1.4.3"
-attrs = ">=21.1.0,<23.2.0"
-bashlex = ">=0.16,<0.17"
-calamus = ">=0.3.13,<0.5"
-click = ">=8.0,<8.1.4"
-click-option-group = "<0.6.0,>=0.5.2"
-click-plugins = "==1.1.1"
-coverage = { version = "<6.5,>=4.5.3", extras=["toml"], optional = true }
-cryptography = ">=38.0.0,<41.0.0"
-cwl-utils = ">=0.27,<0.28"
-cwltool = "==3.1.20230425144158"
-deal = ">=4.24.0,<5.0.0"
-deepdiff = ">=5.8,<7.0"
-deepmerge = "==1.0.1"
-docker = "<6,>=3.7.2"
-filelock = ">=3.3.0,<3.12.1"
-gitpython = "==3.1.27"
-grandalf = "==0.8"
-humanize = ">=3.0.0,<4.1.0"
-importlib-resources = ">=5.12.0,<5.13.0"
-inject = "<4.4.0,>=4.3.0"
-jinja2 = { version = ">=2.11.3,<3.1.3" }
-networkx = ">=2.6.0,<3.2"
-packaging = "<24.0,>=23.0"
-pathspec = "<1.0.0,>=0.8.0"
-patool = "==1.12"
-pluggy = "==1.0.0"
-portalocker = ">=2.2.1,<2.8"
-poetry-dynamic-versioning = "0.21.5"
-psutil = ">=5.4.7,<5.9.2"
-pydantic = "==1.10.7"
-pyjwt = ">=2.1.0,<2.5.0"
-pyld = "==2.0.3"
-pyopenssl = ">=19.0.0,<22.1.0"
-pyshacl = ">=0.17.2,<0.19.2"
-python-dateutil = "<2.8.3,>=2.6.1"
-python-editor = "==1.0.4"
-python-gitlab = ">=2.10.1,<3.8.2"
-pyyaml = "<6.1.0,>=5.4"
-rdflib = "<7.0,>=6.0.0"
-requests = ">=2.23.0,<2.31.1"
-rich = ">=9.3.0,<13.4.0"
-shellingham = "1.5.0.post1"
-tabulate = ">=0.7.7,<0.9.1"
-toil = "==5.10.0"
-tqdm = "<4.62.4,>=4.48.1"
-werkzeug = ">=1.0.0,<2.2.4"
-yagup = ">=0.1.1"
-yaspin = "==2.1.0"
-"zc.relation" = ">=1.1,<2.1"
-zodb = "==5.8.0"
-zstandard = ">=0.16.0,<0.22.0"
+attrs = "^23.1.0"
+bashlex = "^0.16"
+calamus = "^0.4"
+click = "~8.1.7"
+click-option-group = "^0.5.2"
+click-plugins = "~1.1.1"
+coverage = { version = "^6.0", extras=["toml"], optional = true }
+cryptography = "^41.0.7"
+cwl-utils = "^0.27"
+cwltool = "==3.1.20230601100705"
+deal = "~4.24.3"
+deepdiff = "~6.7.1"
+deepmerge = "~1.1.0"
+docker = "^5.0.3"
+gitpython = "~3.1.40"
+grandalf = "^0.8"
+humanize = "~4.9.0"
+importlib-resources = "~5.12.0"
+inject = "~4.3.1"
+jinja2 = "~3.1.2"
+networkx = "~3.1"
+packaging = "^23.2"
+pathspec = "^0.11"
+patool = "~1.12"
+pluggy = "~1.3.0"
+portalocker = "~2.7.0"
+poetry-dynamic-versioning = "^0.21"
+psutil = "~5.9.6"
+pydantic = "~2.5.2"
+pyjwt = "~2.4.0"
+pyld = "~2.0.3"
+pyshacl = "^0.25"
+python-dateutil = "~2.8.2"
+python-gitlab = "~4.2.0"
+pyyaml = "~6.0.1"
+rdflib = "^6.3.2"
+requests = "~2.31.0"
+rich = "^13.7.0"
+shellingham = "~1.5.4"
+tabulate = "^0.9"
+toil = "~5.12.0"
+tqdm = "~4.66.1"
+werkzeug = "~3.0.1"
+yagup = "^0.1"
+yaspin = "~2.5.0"
+"zc.relation" = "~2.0"
+zodb = "~5.8.1"
+zstandard = "^0.22"
 
 # service dependencies:
-apispec = { version = ">=6.3.0,<6.4.0", optional = true }
-apispec-oneofschema = { version = ">=3.0.0,<4.0.0", optional = true}
-apispec-webframeworks = { version = "<0.6,>=0.5.2", optional = true }
-circus = { version = "==0.18.0", optional = true }
-flask = { version = "==2.2.5", optional = true }
+apispec = { version = "~6.3.0", optional = true }
+apispec-oneofschema = { version = "^3.0.0", optional = true}
+apispec-webframeworks = { version = "^0.5", optional = true }
+circus = { version = "^0.18", optional = true }
+flask = { version = "^2.3.3", optional = true }
 gunicorn = { version = "*", optional = true }
-marshmallow = { version = ">=3.18.0,<3.20.0", optional = true }
-marshmallow-oneofschema = { version = ">=3.0.1,<4.0.0", optional = true }
-pillow = { version = ">=9.0.0,<9.6", optional = true }
-python-dotenv = { version = ">=0.19.0,<0.21.0", optional = true }
-redis = { version = ">=3.5.3,<4.6.0", optional = true }
-rq = { version = "==1.14.1", optional = true }
-rq-scheduler = { version = "==0.13.1", optional = true }
-sentry-sdk = { version = ">=1.5.11,<1.24.0", extras = ["flask"],  optional = true }
-walrus = { version = ">=0.8.2,<0.10.0", optional = true }
+marshmallow = { version = "~3.19.0", optional = true }
+marshmallow-oneofschema = { version = "^3.0.1", optional = true }
+pillow = { version = "^10.1.0", optional = true }
+python-dotenv = { version = "^0.20", optional = true }
+redis = { version = "~5.0.1", optional = true }
+rq = { version = "~1.15.1", optional = true }
+sentry-sdk = { version = "~1.38.0", extras = ["flask"],  optional = true }
+walrus = { version = "^0.9", optional = true }
+prometheus-flask-exporter = "^0.23"
+filetype = "^1.2.0"
+orjson = "^3.9.10"
 
 [tool.poetry.group.dev.dependencies]
-black = "==23.1.0"
-flake8 = ">=6.0.0,<7.0.0"
+black = "~23.1.0"
+flake8 = "^6.1.0"
 Flake8-pyproject = "==1.2.2"
-isort = "<5.10.2,>=5.3.2"
-mypy = ">=1.2.0,<2.0"
-poetry-lock-package = "^0.5.0"
-pre-commit = ">=2.20,<4.0"
-types-PyYAML = "<6.1.0,>=5.4"
-types-python-dateutil = "^2.8.10"
-types-redis = ">=3.5.3,<4.1.0"
-types-requests = ">=2.23.0,<2.28.12"
-types-tabulate = ">=0.7.7,<0.9.1"
+isort = "^5.12.0"
+mypy = "^1.7.1"
+poetry-lock-package = "^0.5"
+pre-commit = "^3.5.0"
+types-PyYAML = "~6.0.12.12"
+types-python-dateutil = "^2.8.19.14"
+types-redis = "~4.0.6"
+types-requests = "~2.30.0.0"
+types-tabulate = "^0.9"
 
 [tool.poetry.group.tests]
 optional = true
 
 [tool.poetry.group.tests.dependencies]
-coverage = { version = "<6.5,>=4.5.3", extras=["toml"] }
-fakeredis = { version = ">=1.4.1,<2.11.2", extras = ["lua"]}
-flaky = "==3.7.0"
-pexpect = "<4.9.0,>=4.8.0"
-pydocstyle = "<6.1.2,>=4.0.1"
-pyte = ">=0.8.0,<0.9.0"
-pytest = ">=4.0.0,<7.1.4"
-pytest-black = "<0.3.13,>=0.3.10"
-pytest-cache = "==1.0"
-pytest-cov = "<3.1.0,>=2.5.1"
-pytest-flake8 = ">=1.0.6,<1.1.2"
-pytest-lazy-fixture = ">=0.6.3,<0.7.0"
-pytest-mock = ">=3.2.0,<3.11.0"
-pytest-pep8 = "==1.0.6"
-pytest-recording = "==0.12.2"
-pytest-timeout = "==2.1.0"
-pytest-xdist = ">=1.34.0,<3.4.0"
-responses = ">=0.22.0,<0.24.0"
+coverage = { version = "^6.0", extras=["toml"] }
+fakeredis = { version = "~2.20", extras = ["lua"]}
+flaky = "~3.7.0"
+pexpect = "~4.9"
+pydocstyle = "~6.3"
+pyte = "^0.8"
+pytest = "~7.4"
+pytest-black = "^0.3"
+pytest-cache = "~1.0"
+pytest-cov = "~4.1"
+pytest-flake8 = "~1.1"
+pytest-lazy-fixture = "^0.6"
+pytest-mock = "~3.12"
+pytest-pep8 = "~1.0"
+pytest-recording = "^0.13"
+pytest-timeout = "~2.2"
+pytest-xdist = "~3.5"
+responses = "^0.24"
 
 [tool.poetry.group.docs]
 optional = true
 
 [tool.poetry.group.docs.dependencies]
 plantweb = ">=1.2.1,<1.3.0"
-renku-sphinx-theme = ">=0.2.0"
+renku-sphinx-theme = "^0.4"
 sphinx-click = "^4.3.0"
-sphinx-rtd-theme = "<1.1,>=0.5.0"
-sphinx-tabs = "==3.2.0"
+sphinx-rtd-theme = "~1.3"
+sphinx-tabs = "==3.4.1"
 sphinxcontrib-spelling = ">=7,<9"
 
 [tool.poetry.extras]
@@ -184,7 +180,6 @@ service = [
     "python-dotenv",
     "redis",
     "rq",
-    "rq-scheduler",
     "sentry-sdk",
     "walrus"
 ]
@@ -219,6 +214,7 @@ add_ignore = ["D105", "D107", "D202", "D401"]
 
 [tool.bandit]
 skips = ["B101", "B603", "B607", "B404"]
+exclude_dirs = ["tests"]
 
 [tool.isort]
 multi_line_output = 3
@@ -228,7 +224,7 @@ use_parentheses = true
 line_length = 120
 
 [tool.poetry-dynamic-versioning]
-enable = true
+enable = false
 vcs = "git"
 dirty = true
 format-jinja = """
@@ -245,7 +241,7 @@ pattern = """(?x)                                          (?# ignore whitespace
 """
 
 [tool.pytest.ini_options]
-addopts = "--doctest-glob=\"*.rst\" --doctest-modules --cov --cov-report=term-missing --ignore=docs/cheatsheet/"
+addopts = "--doctest-glob=\"*.rst\" --doctest-modules --cov --cov-report=term-missing --ignore=docs/cheatsheet/ --tb=line"
 doctest_optionflags = "ALLOW_UNICODE"
 flake8-ignore = ["*.py", "E121", "E126", "E203", "E226", "E231", "W503", "W504", "docs/conf.py", "docs/cheatsheet/conf.py", "ALL"]
 flake8-max-line-length = 120
@@ -297,6 +293,7 @@ module = [
     "circus",
     "fakeredis",
     "flaky",
+    "filetype.*",
     "grandalf.*",
     "gunicorn.*",
     "humanize",
@@ -309,14 +306,15 @@ module = [
     "pexpect",
     "PIL",
     "pluggy",
+    "prometheus_flask_exporter.*",
     "psutil",
     "pyld",
     "pyshacl",
     "pyte",
     "ruamel",
     "rq",
-    "rq_scheduler",
     "shellingham",
+    "setuptools",
     "toil.*",
     "tqdm",
     "urllib3.*",
@@ -349,5 +347,5 @@ exclude = ["docs"]
 
 
 [build-system]
-requires = ["poetry-core>=1.3.0<1.7.0", "poetry-dynamic-versioning==0.21.5", "gitpython==3.1.24"]
+requires = ["poetry-core>=1.3.0,<1.7.0", "poetry-dynamic-versioning==0.21.5", "gitpython==3.1.24"]
 build-backend = "poetry_dynamic_versioning.backend"

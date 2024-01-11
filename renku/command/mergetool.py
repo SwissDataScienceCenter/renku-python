@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +17,7 @@
 
 from pathlib import Path
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder.command import Command
 from renku.domain_model.project_context import project_context
@@ -29,7 +28,7 @@ def mergetool_command():
     return Command().command(_mergetool).require_migration().with_database()
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def _mergetool(local: Path, remote: Path, base: Path) -> None:
     """Merge renku metadata files.
 
@@ -50,7 +49,7 @@ def mergetool_install_command():
     return Command().command(setup_mergetool)
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def setup_mergetool(with_attributes: bool = True):
     """Setup renku custom mergetool."""
     repository = project_context.repository

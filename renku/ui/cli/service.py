@@ -1,6 +1,5 @@
-#
-# Copyright 2021 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +32,7 @@ from renku.command.util import ERROR
 RENKU_DAEMON_LOG_FILE = "renku.log"
 RENKU_DAEMON_ERR_FILE = "renku.err"
 
-SERVICE_COMPONENT_TAGS = ["api", "scheduler", "worker"]
+SERVICE_COMPONENT_TAGS = ["api", "worker"]
 
 
 def run_api(addr="0.0.0.0", port=8080, timeout=600):
@@ -51,6 +50,8 @@ def run_api(addr="0.0.0.0", port=8080, timeout=600):
         "gunicorn",
         "renku.ui.service.entrypoint:app",
         loading_opt,
+        "-c",
+        "gunicorn.conf.py",
         "-b",
         f"{addr}:{port}",
         "--timeout",
@@ -235,14 +236,6 @@ def api_start(addr, port, timeout):
     run_api(addr, port, timeout)
 
 
-@service.command(name="scheduler")
-def scheduler_start():
-    """Start service scheduler in active shell session."""
-    from renku.ui.service.scheduler import start_scheduler
-
-    start_scheduler()
-
-
 @service.command(name="worker")
 @click.option("-q", "--queue", multiple=True)
 def worker_start(queue):
@@ -283,14 +276,6 @@ def all_start(ctx, daemon, runtime_dir):
             "name": "RenkuCoreService",
             "cmd": "renku",
             "args": ["service", "api"],
-            "numprocesses": 1,
-            "env": os.environ.copy(),
-            "shell": True,
-        },
-        {
-            "name": "RenkuCoreScheduler",
-            "cmd": "renku",
-            "args": ["service", "scheduler"],
             "numprocesses": 1,
             "env": os.environ.copy(),
             "shell": True,

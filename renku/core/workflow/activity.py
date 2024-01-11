@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +22,7 @@ from pathlib import Path
 from typing import Dict, FrozenSet, Iterable, List, NamedTuple, Optional, Set, Tuple
 
 import networkx
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder import inject
 from renku.core import errors
@@ -451,7 +450,7 @@ def get_latest_activity_before(activities: Iterable[Activity], activity: Activit
 
 
 @inject.autoparams("activity_gateway")
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def revert_activity(
     *, activity_gateway: IActivityGateway, activity_id: str, delete_plan: bool, force: bool, metadata_only: bool
 ) -> Activity:

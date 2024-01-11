@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright 2018-2022- Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +18,7 @@
 from pathlib import Path
 from typing import List, Optional
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.core import errors
 from renku.core.errors import ParameterError
@@ -36,7 +34,7 @@ from renku.core.workflow.model.concrete_execution_graph import ExecutionGraph
 from renku.domain_model.project_context import project_context
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def update(
     update_all: bool,
     dry_run: bool,

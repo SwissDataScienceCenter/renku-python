@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from uuid import uuid4
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder.command import inject
 from renku.command.mergetool import setup_mergetool
@@ -30,8 +30,10 @@ from renku.core.config import set_value
 from renku.core.constant import DATA_DIR_CONFIG_KEY, RENKU_HOME
 from renku.core.git import with_worktree
 from renku.core.githooks import install_githooks
+from renku.core.image import ImageObjectRequest
 from renku.core.interface.database_gateway import IDatabaseGateway
 from renku.core.migration.utils import OLD_METADATA_PATH
+from renku.core.project import set_project_image
 from renku.core.storage import init_external_storage, storage_installed
 from renku.core.template.template import (
     FileAction,
@@ -94,13 +96,14 @@ def create_backup_branch(path):
     return branch_name
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def init_project(
     external_storage_requested: bool,
     path: str,
     name: Optional[str],
     description: Optional[str],
     keywords: Optional[List[str]],
+    image_request: Optional[ImageObjectRequest],
     template_id: Optional[str],
     template_source: Optional[str],
     template_ref: Optional[str],
@@ -114,11 +117,12 @@ def init_project(
     """Initialize a renku project.
 
     Args:
-        external_storage_requested: Whether or not external storage should be used.
+        external_storage_requested: Whether external storage should be used.
         path: Path to initialize repository at.
         name: Name of the project.
         description: Description of the project.
         keywords: keywords for the project.
+        image_request(Optional[ImageObjectRequest]): Project's image.
         template_id: id of the template to use.
         template_source: Source to get the template from.
         template_ref: Reference to use to get the template.
@@ -211,6 +215,7 @@ def init_project(
                 description=description,
                 keywords=keywords,
                 install_mergetool=install_mergetool,
+                image_request=image_request,
             )
         except FileExistsError as e:
             raise errors.InvalidFileOperation(e)
@@ -264,6 +269,7 @@ def create_from_template(
     commit_message: Optional[str] = None,
     description: Optional[str] = None,
     keywords: Optional[List[str]] = None,
+    image_request: Optional[ImageObjectRequest] = None,
     install_mergetool: bool = False,
 ):
     """Initialize a new project from a template.
@@ -278,7 +284,8 @@ def create_from_template(
         commit_message(Optional[str]): Message for initial commit (Default value = None).
         description(Optional[str]): Description of the project (Default value = None).
         keywords(Optional[List[str]]): Keywords for project (Default value = None).
-        install_mergetool(bool): Whether to setup renku metadata mergetool (Default value = False).
+        image_request(Optional[ImageObjectRequest]): Project's image (Default value = None).
+        install_mergetool(bool): Whether to set up renku metadata mergetool (Default value = False).
     """
     commit_only = [f"{RENKU_HOME}/", str(project_context.template_checksums_path)] + list(rendered_template.get_files())
 
@@ -312,6 +319,9 @@ def create_from_template(
         ) as project:
             copy_template_to_project(rendered_template=rendered_template, project=project, actions=actions)
 
+            # NOTE: Copy image to project
+            set_project_image(image_request=image_request)
+
         if install_mergetool:
             setup_mergetool()
 
@@ -319,7 +329,7 @@ def create_from_template(
             set_value("renku", DATA_DIR_CONFIG_KEY, str(data_dir))
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def create_from_template_local(
     template_path: Path,
     name: str,
@@ -337,6 +347,7 @@ def create_from_template_local(
     keywords: Optional[List[str]] = None,
     data_dir: Optional[str] = None,
     ssh_supported: bool = False,
+    image_request: Optional[ImageObjectRequest] = None,
 ):
     """Initialize a new project from a template.
 
@@ -356,6 +367,8 @@ def create_from_template_local(
         description(Optional[str]): Project description (Default value = None).
         keywords(Optional[List[str]]): Project keywords (Default value = None).
         data_dir(Optional[str]): Project base data directory (Default value = None).
+        ssh_supported(Optional[bool]): Whether the project supports ssh (Default value = False).
+        image_request(Optional[ImageObjectRequest]): Project's image (Default value = None).
     """
     metadata = metadata or {}
     default_metadata = default_metadata or {}
@@ -410,4 +423,5 @@ def create_from_template_local(
         description=description,
         keywords=keywords,
         data_dir=data_dir,
+        image_request=image_request,
     )

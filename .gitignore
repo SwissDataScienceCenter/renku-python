@@ -35,6 +35,7 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+.python-version
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -55,6 +56,7 @@ htmlcov/
 nosetests.xml
 coverage.xml
 *,cover
+.hypothesis
 
 # Translations
 *.mo

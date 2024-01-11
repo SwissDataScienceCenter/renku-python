@@ -5,9 +5,11 @@ Amalthea
 analytics
 api
 app
+aqs
 args
 argv
 ascii
+astroquery
 async
 attrs
 auditability
@@ -80,6 +82,7 @@ extraEnvFrom
 filesystem
 FilterFlights
 findable
+formatter
 Fortran
 gapped
 git-lfs
@@ -164,6 +167,7 @@ online
 OpenID
 openssl
 papermill
+parallelize
 param
 parameterizable
 parametrization
@@ -173,6 +177,7 @@ params
 PIDs
 pipenv
 PNG
+png
 Postgresql
 powerline
 pre
@@ -182,6 +187,7 @@ prepending
 preprocessed
 preprocessing
 programmatically
+prometheus
 py
 pyshacl
 rclone
@@ -296,6 +302,7 @@ versioning
 Versioning
 vertices
 viewmodel
+vis
 vm
 wasDerivedFrom
 webhook

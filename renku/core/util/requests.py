@@ -78,6 +78,11 @@ def put(url, *, data=None, files=None, headers=None, params=None):
     return _request("put", url=url, data=data, files=files, headers=headers, params=params)
 
 
+def patch(url, *, json=None, files=None, headers=None, params=None):
+    """Send a PATCH request."""
+    return _request("patch", url=url, json=json, files=files, headers=headers, params=params)
+
+
 def _request(verb: str, url: str, *, allow_redirects=True, data=None, files=None, headers=None, json=None, params=None):
     try:
         with _retry() as session:

@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,12 +61,21 @@ V1_2 = ApiVersion("1.2")
 V1_3 = ApiVersion("1.3")
 V1_4 = ApiVersion("1.4")
 V1_5 = ApiVersion("1.5")
-V2_0 = ApiVersion("2.0", is_base_version=True)
+V2_0 = ApiVersion("2.0")
+V2_1 = ApiVersion("2.1")
+V2_2 = ApiVersion("2.2", is_base_version=True)
 
-VERSIONS_FROM_V1_5 = [V1_5, V2_0]
+VERSIONS_FROM_V2_2 = [V2_2]
+VERSIONS_FROM_V2_1 = [V2_1] + VERSIONS_FROM_V2_2
+VERSIONS_FROM_V2_0 = [V2_0] + VERSIONS_FROM_V2_1
+VERSIONS_FROM_V1_5 = [V1_5] + VERSIONS_FROM_V2_0
 VERSIONS_FROM_V1_4 = [V1_4] + VERSIONS_FROM_V1_5
 VERSIONS_FROM_V1_1 = [V1_1, V1_2, V1_3] + VERSIONS_FROM_V1_4
 ALL_VERSIONS = [V1_0] + VERSIONS_FROM_V1_1
 
+VERSIONS_BEFORE_1_1 = [V1_0]
+VERSIONS_BEFORE_2_0 = [V1_1, V1_2, V1_3, V1_4, V1_5] + VERSIONS_BEFORE_1_1
+VERSIONS_BEFORE_2_2 = [V2_0, V2_1] + VERSIONS_BEFORE_2_0
+
 MINIMUM_VERSION = V1_0
-MAXIMUM_VERSION = V2_0
+MAXIMUM_VERSION = V2_2

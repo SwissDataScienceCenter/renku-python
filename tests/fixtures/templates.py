@@ -1,6 +1,5 @@
-#
-# Copyright 2021 Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,7 +58,7 @@ def template(template_metadata):
         "url": "https://github.com/SwissDataScienceCenter/renku-project-template",
         "id": "python-minimal",
         "index": 1,
-        "branch": "master",
+        "ref": "master",
         # TODO: Add template parameters here once parameters are added to the template.
         "metadata": {},
         "default_metadata": template_metadata,
@@ -84,7 +83,7 @@ def project_init(template):
         "init_custom": [
             "init",
             "--template-ref",
-            template["branch"],
+            template["ref"],
             "--template-id",
             "python-minimal",
             data["test_project"],
@@ -92,7 +91,7 @@ def project_init(template):
         "init_custom_template": (
             "https://gitlab.dev.renku.ch/renku-python-integration-tests/core-it-template-variable-test-project"
         ),
-        "remote": ["--template-source", template["url"], "--template-ref", template["branch"]],
+        "remote": ["--template-source", template["url"], "--template-ref", template["ref"]],
         "id": ["--template-id", template["id"]],
         "force": ["--force"],
         "parameters": ["--parameter", "p1=v1", "--parameter", "p2=v2"],

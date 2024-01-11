@@ -1,6 +1,5 @@
-#
-# Copyright 2021 Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,8 +40,10 @@ def project_metadata(project) -> Generator[Tuple["RenkuProject", Dict[str, Any]]
         "email": "my@email.com",
         "owner": "me",
         "token": "awesome token",
-        "git_url": "git@gitlab.com",
+        "git_url": "https://example.com/a/b.git",
         "initialized": True,
+        "branch": "",
+        "commit_sha": "",
     }
 
     yield project, metadata

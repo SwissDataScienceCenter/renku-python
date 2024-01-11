@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +31,7 @@ from renku.ui.service.serializers.common import (
     AsyncSchema,
     ErrorResponse,
     FileDetailsSchema,
-    LocalRepositorySchema,
+    GitUrlResponseMixin,
     RemoteRepositorySchema,
     RenkuSyncSchema,
 )
@@ -233,7 +232,7 @@ class ProjectListResponseRPC(JsonRPCResponse):
     result = fields.Nested(ProjectListResponse)
 
 
-class ProjectMigrateRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySchema):
+class ProjectMigrateRequest(AsyncSchema, RemoteRepositorySchema):
     """Request schema for project migrate."""
 
     force_template_update = fields.Boolean(dump_default=False)
@@ -242,7 +241,7 @@ class ProjectMigrateRequest(AsyncSchema, LocalRepositorySchema, RemoteRepository
     skip_migrations = fields.Boolean(dump_default=False)
 
 
-class ProjectMigrateResponse(RenkuSyncSchema):
+class ProjectMigrateResponse(RenkuSyncSchema, GitUrlResponseMixin):
     """Response schema for project migrate."""
 
     was_migrated = fields.Boolean()
@@ -259,7 +258,7 @@ class ProjectMigrateResponseRPC(JsonRPCResponse):
     result = fields.Nested(ProjectMigrateResponse)
 
 
-class ProjectMigrationCheckRequest(LocalRepositorySchema, RemoteRepositorySchema):
+class ProjectMigrationCheckRequest(RemoteRepositorySchema):
     """Request schema for project migration check."""
 
 
@@ -275,12 +274,6 @@ class ProjectCompatibilityResponseDetail(Schema):
     migration_required = fields.Boolean(
         metadata={"description": "Whether or not a metadata migration is required to be compatible with this service."}
     )
-    fixes_available = fields.Boolean(
-        metadata={
-            "description": "Whether automated fixes of metadata (beyond those done during migration) are available."
-        }
-    )
-    issues_found = fields.List(fields.Str, metadata={"description": "Metadata issues found on project."})
 
 
 class ProjectCompatibilityResponse(OneOfSchema):
@@ -383,7 +376,7 @@ class TemplateStatusResponse(OneOfSchema):
         return "error"
 
 
-class ProjectMigrationCheckResponse(Schema):
+class ProjectMigrationCheckResponse(GitUrlResponseMixin):
     """Response schema for project migration check."""
 
     project_supported = fields.Boolean(

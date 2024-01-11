@@ -1,7 +1,7 @@
 :orphan:
 
 ..
-    Copyright 2017-2023 - Swiss Data Science Center (SDSC)
+    Copyright Swiss Data Science Center (SDSC).
     A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
     Eidgenössische Technische Hochschule Zürich (ETHZ).
 

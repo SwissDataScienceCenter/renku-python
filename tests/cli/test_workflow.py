@@ -648,7 +648,7 @@ def test_workflow_execute_command(
         workflow_name = workflows[0][0]
 
     def _flatten_dict(obj, key_string=""):
-        if type(obj) == dict:
+        if isinstance(obj, dict):
             key_string = key_string + "." if key_string else key_string
             for key in obj:
                 yield from _flatten_dict(obj[key], key_string + str(key))

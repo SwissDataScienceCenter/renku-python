@@ -1,6 +1,5 @@
-#
-# Copyright 2018-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +39,7 @@ def echo_via_pager(*args, **kwargs):
             os.environ.pop("LESS", None)
 
 
-progressbar = functools.partial(
+progressbar = functools.partial(  # type: ignore
     click.progressbar, fill_char=click.style(" ", bg="green"), show_pos=True, item_show_func=lambda x: x
 )
 

@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,10 +26,10 @@ class UserManagementCache(BaseCache):
 
     def ensure_user(self, user_data):
         """Ensure user data registered in a cache."""
-        user_obj = self.user_schema.load(user_data)
+        user_obj: User = self.user_schema.load(user_data)
 
         try:
-            User.get(User.user_id == user_obj.user_id)
+            user_obj = User.get(User.user_id == user_obj.user_id and User.token == user_obj.token)
         except ValueError:
             user_obj.save()
 

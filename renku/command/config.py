@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +17,7 @@
 
 from typing import Dict, Optional
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder.command import Command
 from renku.core import errors
@@ -42,7 +41,7 @@ def _split_section_and_key(key):
     return "renku", key
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def _update_multiple_config(
     values: Dict[str, Optional[str]], global_only: bool = False, commit_message: Optional[str] = None
 ):
@@ -71,7 +70,7 @@ def update_multiple_config():
     )
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def _update_config(
     key: str,
     *,
@@ -95,12 +94,10 @@ def _update_config(
     """
     section, section_key = _split_section_and_key(key)
     if remove:
-        value = remove_value(section, section_key, global_only=global_only)
-        if value is None:
-            raise errors.ParameterError(f'Key "{key}" not found.')
+        remove_value(section, section_key, global_only=global_only)
     else:
         set_value(section, section_key, value, global_only=global_only)
-        return value
+    return value
 
 
 def update_config():
@@ -114,7 +111,7 @@ def update_config():
     )
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def _read_config(key: Optional[str], config_filter: ConfigFilter = ConfigFilter.ALL, as_string: bool = True):
     """Read configuration.
 

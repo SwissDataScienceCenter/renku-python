@@ -1,6 +1,5 @@
-#
-# Copyright 2017-2023 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,7 +19,7 @@ import os
 from pathlib import Path
 from typing import List, Optional
 
-from pydantic import validate_arguments
+from pydantic import ConfigDict, validate_call
 
 from renku.command.command_builder import inject
 from renku.command.command_builder.command import Command
@@ -40,7 +39,7 @@ def move_command():
     return Command().command(_move).require_migration().require_clean().with_database(write=True).with_commit()
 
 
-@validate_arguments(config=dict(arbitrary_types_allowed=True))
+@validate_call(config=ConfigDict(arbitrary_types_allowed=True))
 def _move(sources: List[str], destination: str, force: bool, verbose: bool, to_dataset: Optional[str]):
     """Move files and check repository for potential problems.
 
@@ -57,7 +56,7 @@ def _move(sources: List[str], destination: str, force: bool, verbose: bool, to_d
     absolute_sources = [_get_absolute_path(src) for src in sources]
 
     if to_dataset:
-        target_dataset = DatasetsProvenance().get_by_name(to_dataset, strict=True)
+        target_dataset = DatasetsProvenance().get_by_slug(to_dataset, strict=True)
         if not is_subpath(absolute_destination, _get_absolute_path(target_dataset.get_datadir())):
             raise errors.ParameterError(
                 f"Destination {destination} must be in {target_dataset.get_datadir()} when moving to a dataset."
@@ -112,7 +111,7 @@ def _move(sources: List[str], destination: str, force: bool, verbose: bool, to_d
     # NOTE: Force-add to include possible ignored files
     repository.add(*files.values(), force=True)
 
-    move_files(files=files, to_dataset_name=to_dataset)
+    move_files(files=files, to_dataset_slug=to_dataset)
 
     if verbose:
         _show_moved_files(project_context.path, files)

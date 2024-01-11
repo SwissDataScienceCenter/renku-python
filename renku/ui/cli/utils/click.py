@@ -71,6 +71,18 @@ def shell_complete_session_providers(ctx, param, incomplete) -> List[str]:
         return result.output
 
 
+def shell_complete_hibernating_session_providers(ctx, param, incomplete) -> List[str]:
+    """Shell completion for session providers names that support hibernation."""
+    from renku.command.session import search_hibernating_session_providers_command
+
+    try:
+        result = search_hibernating_session_providers_command().build().execute(name=incomplete)
+    except Exception:
+        return []
+    else:
+        return result.output
+
+
 class CaseInsensitiveChoice(click.Choice):
     """Case-insensitive click choice.
 
@@ -93,7 +105,7 @@ class MutuallyExclusiveOption(click.Option):
         self.mutually_exclusive_names = []
 
         for mutex in mutually_exclusive:
-            if type(mutex) == tuple:
+            if isinstance(mutex, tuple):
                 self.mutually_exclusive.add(mutex[0])
                 self.mutually_exclusive_names.append(mutex[1])
             else:

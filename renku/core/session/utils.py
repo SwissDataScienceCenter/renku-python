@@ -18,7 +18,9 @@ import os
 import urllib
 from typing import Optional
 
+from renku.core.login import read_renku_token
 from renku.core.util.git import get_remote
+from renku.core.util.jwt import is_token_expired
 from renku.core.util.urls import parse_authentication_endpoint
 from renku.domain_model.project_context import project_context
 
@@ -53,5 +55,9 @@ def get_image_repository_host() -> Optional[str]:
         return os.environ["RENKU_IMAGE_REGISTRY"]
     renku_url = get_renku_url()
     if not renku_url:
+        return None
+    token = read_renku_token(endpoint=renku_url)
+    if not token or is_token_expired(token):
+        # only guess host if user is logged in
         return None
     return "registry." + urllib.parse.urlparse(renku_url).netloc

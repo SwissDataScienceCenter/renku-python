@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,9 +18,10 @@ from marshmallow import fields
 from marshmallow.schema import Schema
 
 from renku.domain_model.dataset import DatasetCreatorsJson as DatasetCreators
+from renku.domain_model.dataset import ImageObjectRequestJson
 from renku.ui.service.serializers.common import (
     AsyncSchema,
-    LocalRepositorySchema,
+    GitCommitSHA,
     MigrateSchema,
     RemoteRepositoryBaseSchema,
     RemoteRepositorySchema,
@@ -30,7 +30,7 @@ from renku.ui.service.serializers.common import (
 from renku.ui.service.serializers.rpc import JsonRPCResponse
 
 
-class ProjectShowRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema):
+class ProjectShowRequest(AsyncSchema, RemoteRepositorySchema, MigrateSchema, GitCommitSHA):
     """Project show metadata request."""
 
 
@@ -66,7 +66,7 @@ class ProjectShowResponseRPC(RenkuSyncSchema):
     result = fields.Nested(ProjectShowResponse)
 
 
-class ProjectEditRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySchema, MigrateSchema):
+class ProjectEditRequest(AsyncSchema, RemoteRepositorySchema, MigrateSchema):
     """Project edit metadata request."""
 
     description = fields.String(metadata={"description": "New description for the project"})
@@ -79,6 +79,7 @@ class ProjectEditRequest(AsyncSchema, LocalRepositorySchema, RemoteRepositorySch
         metadata={"description": "The source for the JSON-LD metadata"},
     )
     keywords = fields.List(fields.String(), allow_none=True, metadata={"description": "New keyword(s) for the project"})
+    image = fields.Nested(ImageObjectRequestJson, allow_none=True, metadata={"description": "Image for the project"})
 
 
 class ProjectEditResponse(RenkuSyncSchema):
@@ -94,7 +95,7 @@ class ProjectEditResponseRPC(JsonRPCResponse):
     result = fields.Nested(ProjectEditResponse)
 
 
-class ProjectLockStatusRequest(LocalRepositorySchema, RemoteRepositoryBaseSchema):
+class ProjectLockStatusRequest(RemoteRepositoryBaseSchema):
     """Project lock status request."""
 
     timeout = fields.Float(

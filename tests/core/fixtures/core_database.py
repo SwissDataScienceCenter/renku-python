@@ -1,6 +1,5 @@
-#
-# Copyright 2021 Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -78,7 +77,7 @@ def database() -> Iterator[Tuple["Database", DummyStorage]]:
 
 @pytest.fixture
 def with_injection():
-    """Factory fixture for test injections manager."""
+    """Factory fixture for test injection manager."""
     from renku.command.command_builder.command import inject, remove_injector
     from renku.domain_model.project_context import project_context
 

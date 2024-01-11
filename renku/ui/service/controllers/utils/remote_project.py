@@ -1,6 +1,5 @@
-#
-# Copyright 2020 - Swiss Data Science Center (SDSC)
-# A partnership between École Polytechnique Fédérale de Lausanne (EPFL) and
+# Copyright Swiss Data Science Center (SDSC). A partnership between
+# École Polytechnique Fédérale de Lausanne (EPFL) and
 # Eidgenössische Technische Hochschule Zürich (ETHZ).
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +25,7 @@ from renku.core import errors
 from renku.core.util.contexts import renku_project_context
 from renku.infrastructure.repository import Repository
 from renku.ui.service.serializers.cache import ProjectCloneContext
+from renku.ui.service.utils import normalize_git_url
 
 ANONYMOUS_SESSION = "anonymous"
 
@@ -44,7 +44,7 @@ class RemoteProject:
 
         self.ctx = ProjectCloneContext().load({**user_data, **request_data}, unknown=EXCLUDE)
 
-        self.git_url = self.ctx["url_with_auth"]
+        self.git_url = normalize_git_url(self.ctx["url_with_auth"])
         self.branch = self.ctx["branch"]
 
     @property

@@ -46,7 +46,7 @@ jobs:
   style-check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v3.6.0
       - name: Install dependencies
         uses: ./.github/actions/install-linux
         with:
@@ -66,7 +66,7 @@ jobs:
   docs-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v3.6.0
       - name: Install dependencies
         uses: ./.github/actions/install-linux
       - name: Test docs
@@ -78,7 +78,7 @@ jobs:
   mypy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v3.6.0
         with:
           fetch-depth: 0
       - name: Install dependencies
@@ -91,7 +91,7 @@ jobs:
   test-distro:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v3.6.0
         with:
           fetch-depth: 0
       - name: Install dependencies
@@ -110,7 +110,7 @@ jobs:
       max-parallel: 3
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v3.6.0
         with:
           fetch-depth: 0
       - name: Install dependencies
@@ -140,7 +140,7 @@ jobs:
       max-parallel: 3
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v3.6.0
         with:
           fetch-depth: 0
       - name: Install dependencies
@@ -176,7 +176,7 @@ jobs:
       max-parallel: 3
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v3.6.0
         with:
           fetch-depth: 0
       - name: Install dependencies
@@ -212,7 +212,7 @@ jobs:
       max-parallel: 3
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v3.6.0
         with:
           fetch-depth: 0
       - name: Install dependencies
@@ -242,7 +242,7 @@ jobs:
       max-parallel: 3
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v3.6.0
         with:
           fetch-depth: 0
       - name: Install dependencies
@@ -264,7 +264,7 @@ jobs:
           CLOUD_STORAGE_S3_SECRET_ACCESS_KEY: ${{ secrets.CLOUD_STORAGE_S3_SECRET_ACCESS_KEY }}
         run: pytest -m "integration and not shaky and not service and not serial" -v --timeout=600 -n auto
       - name: Start Redis
-        uses: supercharge/redis-github-action@1.5.0
+        uses: supercharge/redis-github-action@1.6.0
       - name: Test with pytest (serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -293,7 +293,7 @@ jobs:
       max-parallel: 3
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v3.6.0
         with:
           fetch-depth: 0
       - name: Install dependencies
@@ -315,7 +315,7 @@ jobs:
           CLOUD_STORAGE_S3_SECRET_ACCESS_KEY: ${{ secrets.CLOUD_STORAGE_S3_SECRET_ACCESS_KEY }}
         run: pytest -m "integration and shaky and not service and not serial" -v --timeout=600 -n auto
       - name: Start Redis
-        uses: supercharge/redis-github-action@1.5.0
+        uses: supercharge/redis-github-action@1.6.0
       - name: Test with pytest (serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -347,7 +347,7 @@ jobs:
       max-parallel: 3
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v3.6.0
         with:
           fetch-depth: 0
       - name: Install dependencies
@@ -393,7 +393,7 @@ jobs:
       max-parallel: 3
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v3.6.0
         with:
           fetch-depth: 0
       - name: Install dependencies
@@ -415,7 +415,7 @@ jobs:
       max-parallel: 3
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v3.6.0
         with:
           fetch-depth: 0
       - name: Install dependencies
@@ -444,7 +444,7 @@ jobs:
       max-parallel: 3
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v3.6.0
         with:
           fetch-depth: 0
       - name: Install dependencies
@@ -473,7 +473,7 @@ jobs:
       matrix: ${{ fromJson(needs.set-matrix.outputs.matrix) }}
     if: "startsWith(github.ref, 'refs/tags/') || endsWith(github.ref, github.event.repository.default_branch)"
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v3.6.0
         with:
           fetch-depth: 0
       - name: Install dependencies
@@ -497,9 +497,7 @@ jobs:
           CLOUD_STORAGE_AZURE_KEY: ${{ secrets.CLOUD_STORAGE_AZURE_KEY }}
           CLOUD_STORAGE_S3_ACCESS_KEY_ID: ${{ secrets.CLOUD_STORAGE_S3_ACCESS_KEY_ID }}
           CLOUD_STORAGE_S3_SECRET_ACCESS_KEY: ${{ secrets.CLOUD_STORAGE_S3_SECRET_ACCESS_KEY }}
-        run: pytest -m "integration and not serial and not service" -v
-      - name: Start Redis
-        uses: supercharge/redis-github-action@1.5.0
+        run: pytest -m "integration and not serial and not service and not redis" -v
       - name: Test with pytest (serial)
         env:
           POETRY_VIRTUALENVS_CREATE: false
@@ -516,7 +514,7 @@ jobs:
     runs-on: ubuntu-latest
     if: "startsWith(github.ref, 'refs/tags/')"
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v3.6.0
         with:
           fetch-depth: 0
       - name: Install dependencies
@@ -554,7 +552,7 @@ jobs:
         test-macos-core,
       ]
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v3.6.0
         with:
           fetch-depth: 0
       - name: Build images
@@ -583,26 +581,23 @@ jobs:
       ]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - uses: actions/checkout@v3.5.2
+      - uses: actions/checkout@v3.6.0
         with:
           fetch-depth: 0
       - name: Set up environment variables
         run: |
           echo "GIT_USER=Renku Bot" >> $GITHUB_ENV
           echo "GIT_EMAIL=renku@datascience.ch" >> $GITHUB_ENV
-      - name: Push chart and images
-        uses: SwissDataScienceCenter/renku-actions/publish-chart@v1.4.5
+      - name: Build and push images
+        uses: SwissDataScienceCenter/renku-actions/publish-chartpress-images@v1.7.0
         env:
-          CHART_NAME: renku-core
           GITHUB_TOKEN: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
           DOCKER_USERNAME: ${{ secrets.RENKU_DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.RENKU_DOCKER_PASSWORD }}
-      - name: Wait for chart to be available
-        run: sleep 120
       - name: Update component version
-        uses: SwissDataScienceCenter/renku-actions/update-component-version@v1.4.5
+        uses: SwissDataScienceCenter/renku-actions/update-component-version@v1.7.0
         env:
-          CHART_NAME: renku-core
+          COMPONENT_NAME: renku-core
           GITHUB_TOKEN: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
 
   coveralls-final:

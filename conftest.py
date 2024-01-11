@@ -58,7 +58,6 @@ SERVICE_FIXTURE_LOCATIONS = [
     "tests.service.fixtures.service_integration",
     "tests.service.fixtures.service_jobs",
     "tests.service.fixtures.service_projects",
-    "tests.service.fixtures.service_scheduler",
 ]
 
 INCLUDE_FIXTURES = GLOBAL_FIXTURE_LOCATIONS + CORE_FIXTURE_LOCATIONS + CLI_FIXTURE_LOCATIONS + SERVICE_FIXTURE_LOCATIONS

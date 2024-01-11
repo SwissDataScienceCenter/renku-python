@@ -19,6 +19,9 @@ import os
 from enum import IntEnum
 from pathlib import Path
 
+FILESYSTEM_ROOT = os.path.abspath(os.sep)
+"""Path to the root of the filesystem."""
+
 APP_NAME = "Renku"
 """Application name for storing configuration."""
 
@@ -40,6 +43,9 @@ DATABASE_PATH: str = "metadata"
 
 DATASET_IMAGES = "dataset_images"
 """Directory for dataset images."""
+
+IMAGES = "images"
+"""Path for images/icons."""
 
 DEFAULT_DATA_DIR = "data"
 
@@ -77,6 +83,11 @@ RENKU_PROTECTED_PATHS = [
 
 DATABASE_METADATA_PATH = [
     Path(RENKU_HOME) / DATABASE_PATH,
+]
+
+PROJECT_METADATA_PATH = [
+    Path(RENKU_HOME) / DATABASE_PATH,
+    Path(RENKU_HOME) / IMAGES,
 ]
 
 DATASET_METADATA_PATHS = [
