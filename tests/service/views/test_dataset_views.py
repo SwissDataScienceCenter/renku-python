@@ -630,6 +630,7 @@ def test_list_datasets_view(svc_client_with_repo):
         "annotations",
         "storage",
         "data_directory",
+        "date_published",
     } == set(response.json["result"]["datasets"][0].keys())
 
 
@@ -678,6 +679,7 @@ def test_list_datasets_view_remote(svc_client_with_repo, it_remote_repo_url):
         "identifier",
         "images",
         "created_at",
+        "date_published",
         "slug",
         "name",
         "creators",
@@ -797,6 +799,7 @@ def test_create_and_list_datasets_view(svc_client_with_repo):
         "annotations",
         "storage",
         "data_directory",
+        "date_published",
     } == set(response.json["result"]["datasets"][0].keys())
 
     assert payload["slug"] in [ds["slug"] for ds in response.json["result"]["datasets"]]

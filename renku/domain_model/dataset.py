@@ -738,6 +738,7 @@ class DatasetDetailsJson(marshmallow.Schema):
     slug = marshmallow.fields.String(required=True)
     version = marshmallow.fields.String(allow_none=True)
     created_at = marshmallow.fields.String(allow_none=True, attribute="date_created")
+    date_published = marshmallow.fields.String(allow_none=True)
 
     name = marshmallow.fields.String()
     creators = marshmallow.fields.List(marshmallow.fields.Nested(DatasetCreatorsJson))
