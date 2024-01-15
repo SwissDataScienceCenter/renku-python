@@ -142,7 +142,7 @@ class LocalRepositoryCache(IRepositoryCache):
             "owner": parsed_git_url.owner,
             "name": parsed_git_url.name,
             "slug": normalize_to_ascii(parsed_git_url.name),
-            "depth": PROJECT_CLONE_DEPTH_DEFAULT if shallow else None,
+            "clone_depth": PROJECT_CLONE_DEPTH_DEFAULT if shallow else None,
             "branch": branch,
             "git_url": git_url,
             "user_id": user.user_id,

@@ -98,12 +98,8 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
             "name": self.ctx["project_name"],
             "slug": self.ctx["project_name_stripped"],
             "description": self.ctx["project_description"],
-            "fullname": self.ctx["fullname"],
-            "email": self.ctx["email"],
             "owner": self.ctx["project_namespace"],
-            "token": self.ctx["token"],
             "initialized": True,
-            "image": self.ctx["image"],
         }
         project = self.cache.make_project(self.user, new_project_data)
 
@@ -182,6 +178,7 @@ class TemplatesCreateProjectCtrl(ServiceCtrl, RenkuOperationMixin):
                 data_dir=self.ctx.get("data_directory"),
                 ssh_supported=self.template.ssh_supported,
                 image_request=image,
+                keywords=self.ctx.get("project_keywords", []),
             )
 
         self.new_project_push(new_project_path)

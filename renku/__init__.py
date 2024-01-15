@@ -23,6 +23,14 @@ import warnings
 
 from renku.version import __template_version__, __version__
 
+# distutils is deprecated and fully replaced by setuptools. we don't depend on either, but some of our
+# dependencies do and if distutils gets imported before setuptools, we get an annoying warning.
+# By forcing the import here first, we prevent that warning and ensure the setuptools version is used.
+try:
+    import setuptools  # noqa: F401 # type: ignore
+except ImportError:
+    pass
+
 
 class LoaderWrapper(importlib.abc.Loader):
     """Wrap an importlib loader and add the loaded module to sys.modules with an additional name."""
