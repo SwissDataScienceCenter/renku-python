@@ -253,11 +253,8 @@ def test_service_cache_make_project(svc_client_cache):
     project_data = {
         "name": "renku-project-template",
         "slug": "renku-project-template.git",
-        "depth": 1,
+        "clone_depth": 1,
         "git_url": "https://github.com/SwissDataScienceCenter/renku-project-template.git",
-        "email": "contact@renkulab.io",
-        "fullname": "renku the frog",
-        "token": "None",
         "owner": "SwissDataScienceCenter",
     }
     project = cache.make_project(user, project_data)
