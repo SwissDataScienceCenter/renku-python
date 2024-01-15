@@ -16,7 +16,7 @@
 """Renku service project cache management."""
 from typing import cast
 
-from marshmallow import EXCLUDE
+from marshmallow import RAISE
 
 from renku.ui.service.cache.base import BaseCache
 from renku.ui.service.cache.models.project import Project
@@ -34,7 +34,7 @@ class ProjectManagementCache(BaseCache):
         """Store user project metadata."""
         project_data.update({"user_id": user.user_id})
 
-        project_obj: Project = cast(Project, self.project_schema.load(project_data, unknown=EXCLUDE))
+        project_obj: Project = cast(Project, self.project_schema.load(project_data, unknown=RAISE))
 
         if persist:
             project_obj.save()

@@ -31,7 +31,7 @@ class ProjectSchema(CreationSchema, AccessSchema, MandatoryUserSchema):
 
     project_id = fields.String(load_default=lambda: uuid.uuid4().hex)
 
-    clone_depth = fields.Integer()
+    clone_depth = fields.Integer(allow_none=True)
     git_url = fields.String()
 
     name = fields.String(required=True)

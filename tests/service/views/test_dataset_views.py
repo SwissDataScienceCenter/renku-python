@@ -1012,10 +1012,7 @@ def test_cached_import_dataset_job(doi, svc_client_cache, project):
         "project_id": uuid.uuid4().hex,
         "name": name,
         "slug": normalize_to_ascii(name),
-        "fullname": "full project name",
-        "email": "my@email.com",
         "owner": "me",
-        "token": "awesome token",
         "git_url": "https://example.com/a/b.git",
         "initialized": True,
     }
