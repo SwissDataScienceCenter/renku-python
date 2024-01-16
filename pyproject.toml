@@ -224,7 +224,7 @@ use_parentheses = true
 line_length = 120
 
 [tool.poetry-dynamic-versioning]
-enable = false
+enable = true
 vcs = "git"
 dirty = true
 format-jinja = """
