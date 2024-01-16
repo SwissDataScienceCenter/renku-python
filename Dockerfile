@@ -31,7 +31,7 @@ ENV POETRY_HOME=/opt/poetry
 RUN if [ -n "${BUILD_CORE_SERVICE}" ]; then export EXT_BUILD="-E service" ; fi && \
     mkdir -p /opt/poetry && \
     curl -sSL https://install.python-poetry.org | POETRY_VERSION=1.3.1 python3 - && \
-    pip3 install --no-cache-dir poetry-dynamic-versioning==0.21.2 && \
+    pip3 install --no-cache-dir poetry-dynamic-versioning==1.2.0 && \
     /opt/poetry/bin/poetry config virtualenvs.in-project true  && \
     /opt/poetry/bin/poetry config virtualenvs.options.no-setuptools true && \
     /opt/poetry/bin/poetry config virtualenvs.options.no-pip true  && \
