@@ -18,7 +18,7 @@
 
 [tool.poetry]
 name = "renku"
-version = "2.7.0.dev34+g45772746-dirty" # placeholder, see poetry-dynamic-versioning
+version = "0.0.0" # placeholder, see poetry-dynamic-versioning
 description = "Python SDK and CLI for the Renku platform."
 license = "Apache License 2.0"
 keywords = ["Renku", "CLI"]
@@ -76,7 +76,7 @@ pathspec = "^0.11"
 patool = "~1.12"
 pluggy = "~1.3.0"
 portalocker = "~2.7.0"
-poetry-dynamic-versioning = "^0.21"
+poetry-dynamic-versioning = "^1.2.0"
 psutil = "~5.9.6"
 pydantic = "~2.5.2"
 pyjwt = "~2.4.0"
@@ -224,7 +224,7 @@ use_parentheses = true
 line_length = 120
 
 [tool.poetry-dynamic-versioning]
-enable = false
+enable = true
 vcs = "git"
 dirty = true
 format-jinja = """
@@ -347,5 +347,5 @@ exclude = ["docs"]
 
 
 [build-system]
-requires = ["poetry-core>=1.3.0,<1.7.0", "poetry-dynamic-versioning==0.21.5", "gitpython==3.1.41"]
+requires = ["poetry-core>=1.3.0,<1.7.0", "poetry-dynamic-versioning==1.2.0", "gitpython==3.1.41"]
 build-backend = "poetry_dynamic_versioning.backend"
