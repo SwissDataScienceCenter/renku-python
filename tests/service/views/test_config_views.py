@@ -15,7 +15,9 @@
 # limitations under the License.
 """Renku service config view tests."""
 
+import configparser
 import json
+import uuid
 
 import pytest
 
@@ -41,6 +43,78 @@ def test_config_view_show(svc_client_with_repo):
     assert keys == set(response.json["result"]["config"].keys())
     assert keys == set(response.json["result"]["default"].keys())
     assert 200 == response.status_code
+
+
+@pytest.mark.service
+@pytest.mark.integration
+@retry_failed
+@pytest.mark.remote_repo("public")
+@pytest.mark.parametrize("anonymous", [False, True])
+def test_config_view_show_with_branch(svc_client_setup, anonymous):
+    """Check config show view in a different branch."""
+    svc_client, headers, project_id, url_components, repository = svc_client_setup
+
+    if anonymous:
+        headers = {}
+
+    config_filepath = repository.path / ".renku" / "renku.ini"
+    current_branch = repository.active_branch.name
+    new_branch = uuid.uuid4().hex
+
+    # Write a default config value
+    config = configparser.ConfigParser()
+    config.add_section("interactive")
+    config["interactive"]["default_url"] = "/lab"
+    config.add_section("renku")
+    config["renku"]["test-config"] = "current-branch"
+    with open(config_filepath, "w") as f:
+        config.write(f)
+
+    repository.add(all=True)
+    repository.commit("master config")
+    repository.push(remote="origin", refspec=current_branch)
+    current_commit_sha = repository.active_branch.commit.hexsha
+
+    # Create a new branch and a modified config
+    repository.branches.add(new_branch)
+    repository.checkout(new_branch)
+    config["renku"]["test-config"] = "new-branch"
+    with open(config_filepath, "w") as f:
+        config.write(f)
+
+    repository.add(all=True)
+    repository.commit("new config")
+    repository.push(remote="origin", refspec=new_branch)
+
+    params = {
+        "git_url": url_components.href,
+        "branch": current_branch,
+    }
+
+    response = svc_client.get("/config.show", query_string=params, headers=headers)
+
+    assert 200 == response.status_code
+    assert "current-branch" == response.json["result"]["config"].get("renku.test-config")
+
+    params = {
+        "git_url": url_components.href,
+        "branch": new_branch,
+    }
+
+    response = svc_client.get("/config.show", query_string=params, headers=headers)
+
+    assert 200 == response.status_code
+    assert "new-branch" == response.json["result"]["config"].get("renku.test-config")
+
+    params = {
+        "git_url": url_components.href,
+        "branch": current_commit_sha,
+    }
+
+    response = svc_client.get("/config.show", query_string=params, headers=headers)
+
+    assert 200 == response.status_code
+    assert "current-branch" == response.json["result"]["config"].get("renku.test-config")
 
 
 @pytest.mark.service
@@ -133,7 +207,7 @@ def test_config_view_set(svc_client_with_repo):
 @pytest.mark.service
 @pytest.mark.integration
 @retry_failed
-def test_config_view_set_nonexising_key_removal(svc_client_with_repo):
+def test_config_view_set_non_existing_key_removal(svc_client_with_repo):
     """Check that removing a non-existing key (i.e. setting to None) is allowed."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
 
@@ -160,7 +234,7 @@ def test_config_view_set_and_show_failures(svc_client_with_repo):
     """Check errors triggered while invoking config set."""
     svc_client, headers, project_id, url_components = svc_client_with_repo
 
-    # NOTE: use sections with wrong chars introduces a readin error. Should we handle it at write time?
+    # NOTE: use sections with wrong chars introduces a reading error. Should we handle it at write time?
     payload = {
         "git_url": url_components.href,
         "config": {".NON_EXISTING": "test"},

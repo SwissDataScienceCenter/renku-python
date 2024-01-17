@@ -132,6 +132,7 @@ class RepositoryCloneRequest(RemoteRepositorySchema):
     """Request schema for repository clone."""
 
     depth = fields.Integer(metadata={"description": "Git fetch depth"}, load_default=PROJECT_CLONE_DEPTH_DEFAULT)
+    commit_sha = fields.String(required=False, load_default=None, dump_default=None)
 
 
 class ProjectCloneContext(RepositoryCloneRequest):
