@@ -32,7 +32,7 @@ from tests.utils import format_result_exception, retry_failed
 @pytest.mark.parametrize("url", ["https://gitlab.dev.renku.ch/renku-testing/project-9"])
 def test_clone(runner, monkeypatch, url):
     """Test cloning of a Renku repo and existence of required settings."""
-    import renku.core.storage
+    import renku.core.lfs
 
     with runner.isolated_filesystem() as project_path:
         result = runner.invoke(cli, ["clone", url, project_path])
@@ -50,7 +50,7 @@ def test_clone(runner, monkeypatch, url):
         # Check Git LFS is enabled
         with monkeypatch.context() as monkey:
             # Pretend that git-lfs is not installed.
-            monkey.setattr(renku.core.storage, "storage_installed", lambda: False)
+            monkey.setattr(renku.core.lfs, "storage_installed", lambda: False)
             # Repo is using external storage but it's not installed.
             result = runner.invoke(cli, ["run", "touch", "output"])
 

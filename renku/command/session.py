@@ -52,7 +52,7 @@ def session_list_command():
 
 def session_start_command():
     """Start an interactive session."""
-    return Command().command(session_start).with_database().require_migration()
+    return Command().command(session_start).with_database().require_migration().with_gitlab_api().with_storage_api()
 
 
 def session_stop_command():

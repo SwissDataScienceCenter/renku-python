@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any, Optional, Tuple, Type
 
 from renku.core import errors
-from renku.core.storage import checkout_paths_from_storage
+from renku.core.lfs import checkout_paths_from_storage
 from renku.core.util.contexts import Isolation
 from renku.core.util.git import get_dirty_paths
 from renku.core.util.os import get_absolute_path

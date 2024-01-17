@@ -23,9 +23,9 @@ from typing import Generator, List, Optional, Union
 import gitlab
 
 from renku.core import errors
+from renku.core.interface.git_api_provider import IGitAPIProvider
 from renku.core.util.os import delete_dataset_file
 from renku.domain_model.git import GitURL
-from renku.ui.service.interfaces.git_api_provider import IGitAPIProvider
 from renku.ui.service.logger import service_log
 
 
@@ -43,13 +43,16 @@ class GitlabAPIProvider(IGitAPIProvider):
         errors.AuthenticationError: If the bearer token is invalid in any way.
     """
 
+    def __init__(self, token: str):
+        """Init gitlab provider."""
+        self.token = token
+
     def download_files_from_api(
         self,
         files: List[Union[Path, str]],
         folders: List[Union[Path, str]],
         target_folder: Union[Path, str],
         remote: str,
-        token: str,
         branch: Optional[str] = None,
     ):
         """Download files through a remote Git API.
@@ -59,7 +62,6 @@ class GitlabAPIProvider(IGitAPIProvider):
             folders(List[Union[Path, str]]): Folders to download.
             target_folder(Union[Path, str]): Destination to save downloads to.
             remote(str): Git remote URL.
-            token(str): Gitlab API token.
             branch(Optional[str]): Git reference (Default value = None).
         """
         if not branch:
@@ -68,30 +70,11 @@ class GitlabAPIProvider(IGitAPIProvider):
         target_folder = Path(target_folder)
 
         git_data = GitURL.parse(remote)
-        try:
-            gl = gitlab.Gitlab(git_data.instance_url, oauth_token=token)
-            project = gl.projects.get(f"{git_data.owner}/{git_data.name}")
-        except gitlab.GitlabAuthenticationError:
-            # NOTE: Invalid or expired tokens fail even on public projects. Let's give it a try without tokens
-            try:
-                gl = gitlab.Gitlab(git_data.instance_url)
-                project = gl.projects.get(f"{git_data.owner}/{git_data.name}")
-            except gitlab.GitlabAuthenticationError as e:
-                raise errors.AuthenticationError from e
-            except gitlab.GitlabGetError as e:
-                # NOTE: better to re-raise this as a core error since it's a common case
-                service_log.warn(f"fast project clone didn't work: {e}", exc_info=e)
-                if "project not found" in getattr(e, "error_message", "").lower():
-                    raise errors.ProjectNotFound from e
-                else:
-                    raise
-        except gitlab.GitlabGetError as e:
-            # NOTE: better to re-raise this as a core error since it's a common case
-            service_log.warn(f"fast project clone didn't work: {e}", exc_info=e)
-            if "project not found" in getattr(e, "error_message", "").lower():
-                raise errors.ProjectNotFound from e
-            else:
-                raise
+
+        if git_data.name is None:
+            raise errors.InvalidGitURL("Couldn't parse repo name from git url")
+
+        project = self._get_project(git_data.instance_url, git_data.owner, git_data.name)
 
         for file in files:
             full_path = target_folder / file
@@ -112,6 +95,41 @@ class GitlabAPIProvider(IGitAPIProvider):
                 f.seek(0)
                 with tarfile.open(fileobj=f) as archive:
                     archive.extractall(path=target_folder, members=tar_members_without_top_folder(archive, 1))
+
+    def get_project_id(self, gitlab_url: str, namespace: str, name: str) -> Optional[str]:
+        """Get a gitlab project id from namespace/name."""
+        project = self._get_project(gitlab_url, namespace, name)
+        if not project:
+            return None
+        return project.id
+
+    def _get_project(self, gitlab_url: str, namespace: str, name: str):
+        """Get a gitlab project."""
+        try:
+            gl = gitlab.Gitlab(gitlab_url, oauth_token=self.token)
+            project = gl.projects.get(f"{namespace}/{name}")
+        except gitlab.GitlabAuthenticationError:
+            # NOTE: Invalid or expired tokens fail even on public projects. Let's give it a try without tokens
+            try:
+                gl = gitlab.Gitlab(gitlab_url)
+                project = gl.projects.get(f"{namespace}/{name}")
+            except gitlab.GitlabAuthenticationError as e:
+                raise errors.AuthenticationError from e
+            except gitlab.GitlabGetError as e:
+                # NOTE: better to re-raise this as a core error since it's a common case
+                service_log.warn(f"fast project clone didn't work: {e}", exc_info=e)
+                if "project not found" in getattr(e, "error_message", "").lower():
+                    raise errors.ProjectNotFound from e
+                else:
+                    raise
+        except gitlab.GitlabGetError as e:
+            # NOTE: better to re-raise this as a core error since it's a common case
+            service_log.warn(f"fast project clone didn't work: {e}", exc_info=e)
+            if "project not found" in getattr(e, "error_message", "").lower():
+                raise errors.ProjectNotFound from e
+            else:
+                raise
+        return project
 
 
 def tar_members_without_top_folder(tar: tarfile.TarFile, strip: int) -> Generator[tarfile.TarInfo, None, None]:

@@ -53,7 +53,7 @@ def local_identity(method):
     @wraps(method)
     def _impl(self, *method_args, **method_kwargs):
         """Implementation of method wrapper."""
-        if not hasattr(self, "user") and not isinstance(getattr(self, "user", None), User):
+        if not self.user or not isinstance(self.user, User):
             raise UserAnonymousError()
 
         return method(self, *method_args, **method_kwargs)
@@ -82,6 +82,8 @@ class RenkuOperationMixin(metaclass=ABCMeta):
         """Read operation mixin for controllers."""
         if user_data and "user_id" in user_data and cache is not None:
             self.user = cache.ensure_user(user_data)
+        else:
+            self.user = None
 
         self.is_write = False
         self.migrate_project = migrate_project
@@ -183,12 +185,12 @@ class RenkuOperationMixin(metaclass=ABCMeta):
             raise ProgramRenkuError(error)
 
         project = LocalRepositoryCache().get(
-            self.cache,
-            self.request_data["git_url"],
-            self.request_data.get("branch"),
-            self.user,
-            self.clone_depth is not None,
-            self.request_data.get("commit_sha"),
+            cache=self.cache,
+            git_url=self.request_data["git_url"],
+            branch=self.request_data.get("branch"),
+            user=self.user,
+            shallow=self.clone_depth is not None,
+            commit_sha=self.request_data.get("commit_sha"),
         )
 
         self.context["project_id"] = project.project_id
