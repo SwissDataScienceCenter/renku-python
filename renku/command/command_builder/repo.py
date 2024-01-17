@@ -21,6 +21,7 @@ from typing import List, Optional, Union
 from renku.command.command_builder.command import Command, CommandResult, check_finalized
 from renku.core import errors
 from renku.core.git import ensure_clean
+from renku.core.login import ensure_login
 from renku.domain_model.project_context import project_context
 
 
@@ -42,6 +43,7 @@ class Commit(Command):
         """__init__ of Commit.
 
         Args:
+            builder(Command): The current ``CommandBuilder``.
             message (str): The commit message. Auto-generated if left empty (Default value = None).
             commit_if_empty (bool): Whether to commit if there are no modified files (Default value = None).
             raise_if_empty (bool): Whether to raise an exception if there are no modified files (Default value = None).
@@ -151,6 +153,39 @@ class RequireClean(Command):
             raise ValueError("Commit builder needs a ProjectContext to be set.")
 
         ensure_clean(ignore_std_streams=not builder._track_std_streams)
+
+    @check_finalized
+    def build(self) -> Command:
+        """Build the command.
+
+        Returns:
+            Command: Finalized version of this command.
+        """
+        self._builder.add_pre_hook(self.HOOK_ORDER, self._pre_hook)
+
+        return self._builder.build()
+
+
+class RequireLogin(Command):
+    """Builder to check if a user is logged in."""
+
+    HOOK_ORDER = 4
+
+    def __init__(self, builder: Command) -> None:
+        """__init__ of RequireLogin."""
+        self._builder = builder
+
+    def _pre_hook(self, builder: Command, context: dict, *args, **kwargs) -> None:
+        """Check if the user is logged in.
+
+        Args:
+            builder(Command): Current ``CommandBuilder``.
+            context(dict): Current context.
+        """
+        if not project_context.has_context():
+            raise ValueError("RequireLogin builder needs a ProjectContext to be set.")
+
+        ensure_login()
 
     @check_finalized
     def build(self) -> Command:

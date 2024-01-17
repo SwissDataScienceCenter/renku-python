@@ -19,9 +19,9 @@ from dataclasses import asdict
 from flask import request
 
 from renku.core.errors import AuthenticationError, ProjectNotFound
+from renku.infrastructure.gitlab_api_provider import GitlabAPIProvider
 from renku.ui.service.controllers.cache_migrate_project import MigrateProjectCtrl
 from renku.ui.service.controllers.cache_migrations_check import MigrationsCheckCtrl
-from renku.ui.service.gateways.gitlab_api_provider import GitlabAPIProvider
 from renku.ui.service.serializers.v1.cache import ProjectMigrateResponseRPC_1_0, ProjectMigrationCheckResponseRPC_1_5
 from renku.ui.service.views import result_response
 from renku.ui.service.views.api_versions import VERSIONS_BEFORE_1_1, VERSIONS_BEFORE_2_0
@@ -92,7 +92,7 @@ def migration_check_project_view_1_5(user_data, cache):
     from renku.ui.service.serializers.rpc import JsonRPCResponse
     from renku.ui.service.views.error_handlers import pretty_print_error
 
-    ctrl = MigrationsCheckCtrl(cache, user_data, dict(request.args), GitlabAPIProvider())
+    ctrl = MigrationsCheckCtrl(cache, user_data, dict(request.args), GitlabAPIProvider)
 
     if "project_id" in ctrl.context:  # type: ignore
         result = ctrl.execute_op()

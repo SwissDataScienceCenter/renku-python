@@ -35,7 +35,7 @@ from renku.core.dataset.providers.dataverse import DataverseProvider
 from renku.core.dataset.providers.factory import ProviderFactory
 from renku.core.dataset.providers.zenodo import ZenodoProvider
 from renku.core.interface.storage import FileHash
-from renku.core.storage import track_paths_in_storage
+from renku.core.lfs import track_paths_in_storage
 from renku.core.util.git import get_dirty_paths
 from renku.core.util.urls import get_slug
 from renku.domain_model.dataset import Dataset

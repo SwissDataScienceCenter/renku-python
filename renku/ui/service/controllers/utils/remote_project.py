@@ -15,6 +15,7 @@
 # limitations under the License.
 """Utilities for renku service controllers."""
 
+import os
 import tempfile
 from contextlib import contextmanager
 from urllib.parse import urlparse
@@ -66,6 +67,7 @@ class RemoteProject:
         """Retrieve project metadata."""
         with tempfile.TemporaryDirectory() as td:
             try:
+                os.environ["GIT_LFS_SKIP_SMUDGE"] = "1"
                 clone_renku_repository(
                     url=self.remote_url.geturl(),
                     path=td,

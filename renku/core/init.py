@@ -32,9 +32,9 @@ from renku.core.git import with_worktree
 from renku.core.githooks import install_githooks
 from renku.core.image import ImageObjectRequest
 from renku.core.interface.database_gateway import IDatabaseGateway
+from renku.core.lfs import init_external_storage, storage_installed
 from renku.core.migration.utils import OLD_METADATA_PATH
 from renku.core.project import set_project_image
-from renku.core.storage import init_external_storage, storage_installed
 from renku.core.template.template import (
     FileAction,
     RenderedTemplate,

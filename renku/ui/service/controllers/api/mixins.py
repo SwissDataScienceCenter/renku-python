@@ -53,7 +53,7 @@ def local_identity(method):
     @wraps(method)
     def _impl(self, *method_args, **method_kwargs):
         """Implementation of method wrapper."""
-        if not hasattr(self, "user") and not isinstance(getattr(self, "user", None), User):
+        if not self.user or not isinstance(self.user, User):
             raise UserAnonymousError()
 
         return method(self, *method_args, **method_kwargs)
@@ -82,6 +82,8 @@ class RenkuOperationMixin(metaclass=ABCMeta):
         """Read operation mixin for controllers."""
         if user_data and "user_id" in user_data and cache is not None:
             self.user = cache.ensure_user(user_data)
+        else:
+            self.user = None
 
         self.is_write = False
         self.migrate_project = migrate_project

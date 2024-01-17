@@ -19,7 +19,7 @@ import re
 
 import pytest
 
-from renku.core.storage import get_lfs_migrate_filters, track_paths_in_storage
+from renku.core.lfs import get_lfs_migrate_filters, track_paths_in_storage
 from renku.domain_model.project_context import project_context
 
 

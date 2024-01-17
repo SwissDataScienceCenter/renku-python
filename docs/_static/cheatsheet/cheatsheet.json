@@ -441,7 +441,7 @@
           ]
         },
         {
-          "command": "$ renku storage pull <path>...",
+          "command": "$ renku lfs pull <path>...",
           "description": "Pull <path>'s from external storage (LFS).",
           "target": [
             "rp"

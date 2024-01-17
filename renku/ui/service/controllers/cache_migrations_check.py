@@ -18,13 +18,14 @@
 import tempfile
 from dataclasses import asdict
 from pathlib import Path
+from typing import Type
 
 from renku.command.migrate import MigrationCheckResult, migrations_check
 from renku.core.errors import AuthenticationError, MinimumVersionError, ProjectNotFound, RenkuException
+from renku.core.interface.git_api_provider import IGitAPIProvider
 from renku.core.util.contexts import renku_project_context
 from renku.ui.service.controllers.api.abstract import ServiceCtrl
 from renku.ui.service.controllers.api.mixins import RenkuOperationMixin
-from renku.ui.service.interfaces.git_api_provider import IGitAPIProvider
 from renku.ui.service.logger import service_log
 from renku.ui.service.serializers.cache import ProjectMigrationCheckRequest, ProjectMigrationCheckResponseRPC
 from renku.ui.service.views import result_response
@@ -36,11 +37,13 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
     REQUEST_SERIALIZER = ProjectMigrationCheckRequest()
     RESPONSE_SERIALIZER = ProjectMigrationCheckResponseRPC()
 
-    def __init__(self, cache, user_data, request_data, git_api_provider: IGitAPIProvider):
+    def __init__(self, cache, user_data, request_data, git_api_provider: Type[IGitAPIProvider]):
         """Construct migration check controller."""
         self.ctx = MigrationsCheckCtrl.REQUEST_SERIALIZER.load(request_data)
-        self.git_api_provider = git_api_provider
         super().__init__(cache, user_data, request_data)
+        self.git_api_provider = None
+        if self.user:
+            self.git_api_provider = git_api_provider(token=self.user.token)
 
     @property
     def context(self):
@@ -51,8 +54,10 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
         """Execute renku_op with only necessary files, without cloning the whole repo."""
         if "git_url" not in self.context:
             raise RenkuException("context does not contain `git_url`")
+        if not self.git_api_provider:
+            return None
 
-        token = self.user.token if hasattr(self, "user") else self.user_data.get("token")
+        token = self.user.token if self.user else self.user_data.get("token")
 
         if not token:
             # User isn't logged in, fast op doesn't work
@@ -68,7 +73,6 @@ class MigrationsCheckCtrl(ServiceCtrl, RenkuOperationMixin):
                 target_folder=tempdir_path,
                 remote=self.ctx["git_url"],
                 branch=self.request_data.get("branch", None),
-                token=self.user.token,
             )
             with renku_project_context(tempdir_path):
                 self.project_path = tempdir_path

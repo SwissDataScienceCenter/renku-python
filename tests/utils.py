@@ -165,11 +165,13 @@ def get_test_bindings() -> Tuple[Dict, Dict[Type, Callable[[], Any]]]:
     from renku.core.interface.dataset_gateway import IDatasetGateway
     from renku.core.interface.plan_gateway import IPlanGateway
     from renku.core.interface.project_gateway import IProjectGateway
+    from renku.core.interface.storage_service_gateway import IStorageService
     from renku.infrastructure.gateway.activity_gateway import ActivityGateway
     from renku.infrastructure.gateway.database_gateway import DatabaseGateway
     from renku.infrastructure.gateway.dataset_gateway import DatasetGateway
     from renku.infrastructure.gateway.plan_gateway import PlanGateway
     from renku.infrastructure.gateway.project_gateway import ProjectGateway
+    from tests.fixtures.storage import DummyStorageService
 
     constructor_bindings = {
         IPlanGateway: lambda: PlanGateway(),
@@ -177,6 +179,7 @@ def get_test_bindings() -> Tuple[Dict, Dict[Type, Callable[[], Any]]]:
         IDatabaseGateway: lambda: DatabaseGateway(),
         IDatasetGateway: lambda: DatasetGateway(),
         IProjectGateway: lambda: ProjectGateway(),
+        IStorageService: lambda: DummyStorageService(),
     }
 
     return {}, constructor_bindings

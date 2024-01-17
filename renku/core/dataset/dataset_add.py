@@ -33,7 +33,7 @@ from renku.core.dataset.providers.local import LocalProvider
 from renku.core.dataset.providers.models import DatasetAddAction, DatasetAddMetadata
 from renku.core.interface.dataset_gateway import IDatasetGateway
 from renku.core.interface.storage import IStorage
-from renku.core.storage import check_external_storage, track_paths_in_storage
+from renku.core.lfs import check_external_storage, track_paths_in_storage
 from renku.core.util import communication, requests
 from renku.core.util.git import get_git_user
 from renku.core.util.os import get_absolute_path, get_file_size, get_files, get_relative_path, hash_file, is_subpath

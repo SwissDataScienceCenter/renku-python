@@ -30,7 +30,7 @@ from renku.core.dataset.providers.api import (
     ProviderApi,
     ProviderPriority,
 )
-from renku.core.storage import check_external_storage, track_paths_in_storage
+from renku.core.lfs import check_external_storage, track_paths_in_storage
 from renku.core.util import communication
 from renku.core.util.metadata import is_protected_path
 from renku.core.util.os import get_absolute_path, get_safe_relative_path, is_path_empty, is_subpath

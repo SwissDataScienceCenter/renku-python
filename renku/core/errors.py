@@ -59,6 +59,14 @@ class NotFound(RenkuException):
     """Raise when an object is not found in KG."""
 
 
+class NotLoggedIn(RenkuException):
+    """Raised when a user is not logged in to a Renku platform."""
+
+
+class ExecutableNotFound(RenkuException):
+    """Raised when an executable wasn't found on the system."""
+
+
 class ParameterError(RenkuException):
     """Raise in case of invalid parameter."""
 
@@ -159,11 +167,15 @@ class ProtectedFiles(RenkuException):
 class MigrationRequired(RenkuException):
     """Raise when migration is required."""
 
-    def __init__(self):
+    def __init__(self, msg: Optional[str] = None):
         """Build a custom message."""
-        super().__init__(
-            "Project version is outdated and a migration is required.\n" "Run `renku migrate` command to fix the issue."
-        )
+        if not msg:
+            msg = (
+                "Project version is outdated and a migration is required.\n"
+                "Run `renku migrate` command to fix the issue."
+            )
+
+        super().__init__(msg)
 
 
 class ProjectNotSupported(RenkuException):

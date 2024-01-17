@@ -241,7 +241,7 @@ pattern = """(?x)                                          (?# ignore whitespace
 """
 
 [tool.pytest.ini_options]
-addopts = "--doctest-glob=\"*.rst\" --doctest-modules --cov --cov-report=term-missing --ignore=docs/cheatsheet/ --tb=line"
+addopts = "--doctest-glob=\"*.rst\" --doctest-modules --cov --cov-report=term-missing --ignore=docs/cheatsheet/ -ra"
 doctest_optionflags = "ALLOW_UNICODE"
 flake8-ignore = ["*.py", "E121", "E126", "E203", "E226", "E231", "W503", "W504", "docs/conf.py", "docs/cheatsheet/conf.py", "ALL"]
 flake8-max-line-length = 120

@@ -16,13 +16,13 @@
 """Renku service cache views."""
 from flask import jsonify, request
 
+from renku.infrastructure.gitlab_api_provider import GitlabAPIProvider
 from renku.ui.service.config import SERVICE_PREFIX
 from renku.ui.service.controllers.cache_files_delete_chunks import DeleteFileChunksCtrl
 from renku.ui.service.controllers.cache_files_upload import UploadFilesCtrl
 from renku.ui.service.controllers.cache_list_uploaded import ListUploadedFilesCtrl
 from renku.ui.service.controllers.cache_migrate_project import MigrateProjectCtrl
 from renku.ui.service.controllers.cache_migrations_check import MigrationsCheckCtrl
-from renku.ui.service.gateways.gitlab_api_provider import GitlabAPIProvider
 from renku.ui.service.gateways.repository_cache import LocalRepositoryCache
 from renku.ui.service.jobs.cleanup import cache_files_cleanup
 from renku.ui.service.views.api_versions import (
@@ -186,7 +186,7 @@ def migration_check_project_view(user_data, cache):
       tags:
         - cache
     """
-    return MigrationsCheckCtrl(cache, user_data, dict(request.args), GitlabAPIProvider()).to_response()
+    return MigrationsCheckCtrl(cache, user_data, dict(request.args), GitlabAPIProvider).to_response()
 
 
 @cache_blueprint.route("/cache.cleanup", methods=["GET"], provide_automatic_options=False, versions=VERSIONS_FROM_V2_1)

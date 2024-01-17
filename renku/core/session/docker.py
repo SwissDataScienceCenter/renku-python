@@ -472,7 +472,10 @@ class DockerSessionProvider(ISessionProvider):
 
     def session_url(self, session_name: Optional[str]) -> Optional[str]:
         """Get the URL of the interactive session."""
-        sessions = self.docker_client().containers.list()
+        try:
+            sessions = self.docker_client().containers.list()
+        except errors.DockerError:
+            return None
         default_url = get_value("interactive", "default_url")
         if not default_url:
             default_url = "/lab"
