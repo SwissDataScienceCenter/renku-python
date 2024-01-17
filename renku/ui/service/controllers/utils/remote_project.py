@@ -24,7 +24,7 @@ from marshmallow import EXCLUDE
 
 from renku.core import errors
 from renku.core.util.contexts import renku_project_context
-from renku.infrastructure.repository import Repository
+from renku.core.util.git import clone_renku_repository
 from renku.ui.service.serializers.cache import ProjectCloneContext
 from renku.ui.service.utils import normalize_git_url
 
@@ -47,6 +47,7 @@ class RemoteProject:
 
         self.git_url = normalize_git_url(self.ctx["url_with_auth"])
         self.branch = self.ctx["branch"]
+        self.commit_sha = self.ctx["commit_sha"] or ""
 
     @property
     def remote_url(self):
@@ -67,7 +68,14 @@ class RemoteProject:
         with tempfile.TemporaryDirectory() as td:
             try:
                 os.environ["GIT_LFS_SKIP_SMUDGE"] = "1"
-                Repository.clone_from(self.remote_url.geturl(), td, branch=self.branch, depth=1)
+                clone_renku_repository(
+                    url=self.remote_url.geturl(),
+                    path=td,
+                    install_lfs=False,
+                    depth=None if self.branch or self.commit_sha else 1,
+                    checkout_revision=self.commit_sha or self.branch,
+                    raise_git_except=True,
+                )
             except errors.GitCommandError as e:
                 msg = str(e)
                 if "is not a commit and a branch" in msg and "cannot be created from it" in msg:

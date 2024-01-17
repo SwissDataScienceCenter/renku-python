@@ -185,12 +185,12 @@ class RenkuOperationMixin(metaclass=ABCMeta):
             raise ProgramRenkuError(error)
 
         project = LocalRepositoryCache().get(
-            self.cache,
-            self.request_data["git_url"],
-            self.request_data.get("branch"),
-            self.user,
-            self.clone_depth is not None,
-            self.request_data.get("commit_sha"),
+            cache=self.cache,
+            git_url=self.request_data["git_url"],
+            branch=self.request_data.get("branch"),
+            user=self.user,
+            shallow=self.clone_depth is not None,
+            commit_sha=self.request_data.get("commit_sha"),
         )
 
         self.context["project_id"] = project.project_id

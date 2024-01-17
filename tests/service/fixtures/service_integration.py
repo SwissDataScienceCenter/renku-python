@@ -97,6 +97,7 @@ def integration_lifecycle(
     it_protected_repo_url,
     it_workflow_repo_url,
     it_remote_old_repo_url,
+    it_remote_public_repo_url,
     request,
 ):
     """Setup and teardown steps for integration tests."""
@@ -115,6 +116,8 @@ def integration_lifecycle(
         remote_repo = it_workflow_repo_url
     elif marker.args[0] == "old":
         remote_repo = it_remote_old_repo_url
+    elif marker.args[0] == "public":
+        remote_repo = it_remote_public_repo_url
     else:
         raise ValueError(f"Couldn't get remote repo for marker {marker.args[0]}")
 
