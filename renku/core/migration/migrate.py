@@ -142,7 +142,12 @@ def migrate_project(
         except Exception as e:
             raise TemplateUpdateError("Couldn't update from template.") from e
 
-    if not skip_docker_update:
+    if (
+        not skip_docker_update
+        and project
+        and hasattr(project, "template_metadata")
+        and isinstance(project.template_metadata, ProjectTemplateMetadata)
+    ):
         try:
             docker_updated, _, _ = update_dockerfile()
         except DockerfileUpdateError:
