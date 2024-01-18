@@ -30,13 +30,27 @@ def execute_migration(
     project_path, force_template_update, skip_template_update, skip_docker_update, skip_migrations, commit_message
 ):
     """Execute project migrations."""
-    from renku.command.migrate import migrate_project_command
+    from renku.command.migrate import (
+        AUTOMATED_TEMPLATE_UPDATE_SUPPORTED,
+        DOCKERFILE_UPDATE_POSSIBLE,
+        TEMPLATE_UPDATE_POSSIBLE,
+        check_project,
+        migrate_project_command,
+    )
 
     worker_log.debug(f"migrating {project_path}")
 
     communicator = ServiceCallback()
 
     with renku_project_context(project_path):
+        status = check_project().build().execute().output
+
+        template_update_possible = status & TEMPLATE_UPDATE_POSSIBLE and status & AUTOMATED_TEMPLATE_UPDATE_SUPPORTED
+        docker_update_possible = status & DOCKERFILE_UPDATE_POSSIBLE
+
+        skip_docker_update = skip_docker_update or not docker_update_possible
+        skip_template_update = skip_template_update or not template_update_possible
+
         result = (
             migrate_project_command()
             .with_commit(message=commit_message)

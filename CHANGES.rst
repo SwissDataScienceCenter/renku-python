@@ -18,6 +18,17 @@
 Changes
 =======
 
+`2.9.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.9.0...v2.9.1>`__ (2024-01-18)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **svc:** fix migration not working with old template metadata
+   (`#3687 <https://github.com/SwissDataScienceCenter/renku-python/issues/3687>`__)
+   (`398ec2e <https://github.com/SwissDataScienceCenter/renku-python/commit/398ec2ef35ec296aa55f3cdd568e35eaa360cd89>`__)
+
+
 `2.9.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.8.2...v2.9.0>`__ (2024-01-17)
 -------------------------------------------------------------------------------------------------------
 
