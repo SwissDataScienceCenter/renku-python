@@ -18,6 +18,20 @@
 Changes
 =======
 
+`2.9.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.8.2...v2.9.0>`__ (2024-01-17)
+-------------------------------------------------------------------------------------------------------
+
+
+Features
+~~~~~~~~
+
+-  add cloud storage support for session start
+   (`#3629 <https://github.com/SwissDataScienceCenter/renku-python/issues/3629>`__)
+   (`ec3173a <https://github.com/SwissDataScienceCenter/renku-python/commit/ec3173a8601d8dbf93626778b3da0bdce68e9060>`__)
+-  **service:** date_published in datasets.list response
+   (`#3648 <https://github.com/SwissDataScienceCenter/renku-python/issues/3648>`__)
+   (`a7f4a22 <https://github.com/SwissDataScienceCenter/renku-python/commit/a7f4a224a1cc2108c3b091b751187bf03ebb83e4>`__)
+
 `2.8.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.8.1...v2.8.2>`__ (2024-01-15)
 -------------------------------------------------------------------------------------------------------
 
