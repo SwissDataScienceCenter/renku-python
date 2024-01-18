@@ -18,6 +18,52 @@
 Changes
 =======
 
+`2.9.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.9.0...v2.9.1>`__ (2024-01-18)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** output proper session link and only check registry if logged
+   in
+   (`#3660 <https://github.com/SwissDataScienceCenter/renku-python/issues/3660>`__)
+   (`12469f9 <https://github.com/SwissDataScienceCenter/renku-python/commit/12469f913d4a80662c2b7e2fe2e3f9f594900078>`__)
+-  **cli:** use lower case image names for sessions in upper-case
+   projects
+   (`#3666 <https://github.com/SwissDataScienceCenter/renku-python/issues/3666>`__)
+   (`ec1e282 <https://github.com/SwissDataScienceCenter/renku-python/commit/ec1e2824e6604cd82e677fdfb5e70d3491b7df68>`__)
+-  prevent distutils warning
+   (`#3663 <https://github.com/SwissDataScienceCenter/renku-python/issues/3663>`__)
+   (`5954aac <https://github.com/SwissDataScienceCenter/renku-python/commit/5954aacac6ab724a14458957ccc6e64137632592>`__)
+-  **service:** accept commit-sha in config.show
+   (`#3685 <https://github.com/SwissDataScienceCenter/renku-python/issues/3685>`__)
+   (`00da768 <https://github.com/SwissDataScienceCenter/renku-python/commit/00da76851e5c263c89d168b0cd6e57d71244c446>`__)
+-  **service:** add proper error if a dataset can’t be found
+   (`#3661 <https://github.com/SwissDataScienceCenter/renku-python/issues/3661>`__)
+   (`8afaedd <https://github.com/SwissDataScienceCenter/renku-python/commit/8afaedddba248a34a0bb175189f04cf1119034e6>`__)
+-  **service:** allow editing datasets without creator email
+   (`#3664 <https://github.com/SwissDataScienceCenter/renku-python/issues/3664>`__)
+   (`d74cc72 <https://github.com/SwissDataScienceCenter/renku-python/commit/d74cc72467ce10d9330e4080aa3540697e6a2869>`__)
+-  **service:** allow setting keywords on project creation
+   (`#3665 <https://github.com/SwissDataScienceCenter/renku-python/issues/3665>`__)
+   (`9377ac4 <https://github.com/SwissDataScienceCenter/renku-python/commit/9377ac4ab55f778c4ef1b505f4baeb0bc2378ebd>`__)
+-  **service:** fix clone depth not being respected
+   (`#3678 <https://github.com/SwissDataScienceCenter/renku-python/issues/3678>`__)
+   (`0c523fa <https://github.com/SwissDataScienceCenter/renku-python/commit/0c523facd2647e04285430b4a5fc64c912df1b1f>`__)
+-  **svc:** fix migration not working with old template metadata
+   (`#3687 <https://github.com/SwissDataScienceCenter/renku-python/issues/3687>`__)
+   (`398ec2e <https://github.com/SwissDataScienceCenter/renku-python/commit/398ec2ef35ec296aa55f3cdd568e35eaa360cd89>`__)
+
+Features
+~~~~~~~~
+
+-  add cloud storage support for session start
+   (`#3629 <https://github.com/SwissDataScienceCenter/renku-python/issues/3629>`__)
+   (`ec3173a <https://github.com/SwissDataScienceCenter/renku-python/commit/ec3173a8601d8dbf93626778b3da0bdce68e9060>`__)
+-  **service:** date_published in datasets.list response
+   (`#3648 <https://github.com/SwissDataScienceCenter/renku-python/issues/3648>`__)
+   (`a7f4a22 <https://github.com/SwissDataScienceCenter/renku-python/commit/a7f4a224a1cc2108c3b091b751187bf03ebb83e4>`__)
+
 `2.9.0 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.8.2...v2.9.0>`__ (2024-01-17)
 -------------------------------------------------------------------------------------------------------
 
