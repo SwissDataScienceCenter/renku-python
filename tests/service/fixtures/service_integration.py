@@ -25,7 +25,7 @@ import pytest
 
 from renku.core import errors
 from renku.infrastructure.repository import Repository
-from tests.utils import format_result_exception, modified_environ
+from tests.utils import clone_compressed_repository, format_result_exception, modified_environ
 
 
 @contextlib.contextmanager
@@ -255,6 +255,57 @@ def local_remote_repository(svc_client, tmp_path, mock_redis, identity_headers, 
             project = LocalRepositoryCache().get(redis_cache, remote_url, branch=None, user=user, shallow=False)
 
             project_id = project.project_id
+
+    try:
+        yield svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout, remote_url
+    finally:
+        git.GitURL.parse = original_giturl_parse
+
+        try:
+            shutil.rmtree(remote_repo_path)
+        except OSError:
+            pass
+
+        try:
+            shutil.rmtree(remote_repo_checkout_path)
+        except OSError:
+            pass
+
+
+@pytest.fixture
+def old_local_remote_project(request, svc_client, tmp_path, mock_redis, identity_headers, real_sync):
+    """Fixture for testing service with project tarfiles containing old projects."""
+    from renku.domain_model import git
+    from renku.ui.service.cache import cache as redis_cache
+    from renku.ui.service.gateways.repository_cache import LocalRepositoryCache
+    from renku.ui.service.serializers.headers import RequiredIdentityHeaders
+
+    name = request.param
+    remote_repo_path = tmp_path / name
+    remote_repo = clone_compressed_repository(base_path=tmp_path, name=name)
+    remote_repo_path = remote_repo_path / "repository"
+    remote_repo_checkout_path = tmp_path / "remote_repo_checkout"
+    remote_repo_checkout_path.mkdir()
+
+    remote_repo_checkout = Repository.clone_from(url=remote_repo_path, path=remote_repo_checkout_path)
+
+    # NOTE: Mock GitURL parsing for local URL
+    def _parse(href):
+        return git.GitURL(href=href, regex="", owner="dummy", name="project", slug="project", path=remote_repo_path)
+
+    original_giturl_parse = git.GitURL.parse
+    git.GitURL.parse = _parse
+
+    home = tmp_path / "user_home"
+    home.mkdir()
+
+    user_data = RequiredIdentityHeaders().load(identity_headers)
+    user = redis_cache.ensure_user(user_data)
+    remote_url = f"file://{remote_repo_path}"
+
+    project = LocalRepositoryCache().get(redis_cache, remote_url, branch=None, user=user, shallow=False)
+
+    project_id = project.project_id
 
     try:
         yield svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout, remote_url
