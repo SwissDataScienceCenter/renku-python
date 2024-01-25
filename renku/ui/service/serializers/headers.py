@@ -21,7 +21,7 @@ from typing import cast
 
 import jwt
 from flask import current_app
-from marshmallow import EXCLUDE, Schema, ValidationError, fields, post_load, pre_load
+from marshmallow import INCLUDE, Schema, ValidationError, fields, post_load, pre_load
 from werkzeug.utils import secure_filename
 
 JWT_TOKEN_SECRET = os.getenv("RENKU_JWT_TOKEN_SECRET", "bW9menZ3cnh6cWpkcHVuZ3F5aWJycmJn")
@@ -48,36 +48,12 @@ class UserIdentityToken(Schema):
     """User identity token schema."""
 
     class Meta:
-        unknown = EXCLUDE
+        unknown = INCLUDE
 
-    jti = fields.String()
-    exp = fields.Integer()
-    nbf = fields.Integer()
-    iat = fields.Integer()
-    iss = fields.String()
-    aud = fields.List(fields.String())
-    sub = fields.String()
-    typ = fields.String()
-    azp = fields.String()
-    nonce = fields.String()
-    auth_time = fields.Integer()
-    session_state = fields.String()
-    acr = fields.String()
-    email_verified = fields.Boolean()
-    preferred_username = fields.String()
-    given_name = fields.String()
-    family_name = fields.String()
-
+    sub = fields.String(required=True)
     email = fields.String(required=True)
     name = fields.String(required=True)
     user_id = fields.String()  # INFO: Generated post load.
-
-    @pre_load
-    def make_audience_list(self, data, **kwargs):
-        """The aud claim in a token can be a list or a string if it is a single value."""
-        aud = data.get("aud")
-        if aud is not None and isinstance(data.get("aud"), str):
-            data["aud"] = [data["aud"]]
 
     @post_load
     def set_user_id(self, data, **kwargs):
