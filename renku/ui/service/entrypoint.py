@@ -40,8 +40,8 @@ from renku.ui.service.errors import (
 )
 from renku.ui.service.logger import service_log
 from renku.ui.service.serializers.headers import JWT_TOKEN_SECRET
-from renku.ui.service.utils.json_encoder import SvcJSONProvider
 from renku.ui.service.utils import jwk_client
+from renku.ui.service.utils.json_encoder import SvcJSONProvider
 from renku.ui.service.views import error_response
 from renku.ui.service.views.apispec import apispec_blueprint
 from renku.ui.service.views.cache import cache_blueprint

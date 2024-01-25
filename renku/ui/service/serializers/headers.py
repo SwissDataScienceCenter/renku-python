@@ -20,8 +20,8 @@ import os
 from typing import cast
 
 import jwt
-from flask import app
-from marshmallow import Schema, ValidationError, fields, post_load
+from flask import current_app
+from marshmallow import EXCLUDE, Schema, ValidationError, fields, post_load, pre_load
 from werkzeug.utils import secure_filename
 
 JWT_TOKEN_SECRET = os.getenv("RENKU_JWT_TOKEN_SECRET", "bW9menZ3cnh6cWpkcHVuZ3F5aWJycmJn")
@@ -47,6 +47,9 @@ def encode_b64(value):
 class UserIdentityToken(Schema):
     """User identity token schema."""
 
+    class Meta:
+        unknown = EXCLUDE
+
     jti = fields.String()
     exp = fields.Integer()
     nbf = fields.Integer()
@@ -68,6 +71,13 @@ class UserIdentityToken(Schema):
     email = fields.String(required=True)
     name = fields.String(required=True)
     user_id = fields.String()  # INFO: Generated post load.
+
+    @pre_load
+    def make_audience_list(self, data, **kwargs):
+        """The aud claim in a token can be a list or a string if it is a single value."""
+        aud = data.get("aud")
+        if aud is not None and isinstance(data.get("aud"), str):
+            data["aud"] = [data["aud"]]
 
     @post_load
     def set_user_id(self, data, **kwargs):
@@ -96,9 +106,9 @@ class RenkuHeaders:
     def decode_user(data):
         """Extract renku user from the Keycloak ID token which is a JWT."""
         try:
-            jwk = cast(jwt.PyJWKClient, app.config["KEYCLOAK_JWK_CLIENT"])
+            jwk = cast(jwt.PyJWKClient, current_app.config["KEYCLOAK_JWK_CLIENT"])
             key = jwk.get_signing_key_from_jwt(data)
-            decoded = jwt.decode(data, key=key, algorithms=["RS256"], audience="renku")
+            decoded = jwt.decode(data, key=key.key, algorithms=["RS256"], audience="renku")
         except jwt.PyJWTError:
             # NOTE: older tokens used to be signed with HS256 so use this as a backup if the validation with RS256
             # above fails. We used to need HS256 because a step that is now removed was generating an ID token and
@@ -109,6 +119,24 @@ class RenkuHeaders:
 
 class IdentityHeaders(Schema):
     """User identity schema."""
+
+    @pre_load
+    def lowercase_required_headers(self, data, **kwargs):
+        # NOTE: App flask headers are immutable and raise an error when modified so we copy them here
+        output = {}
+        if "Authorization" in data:
+            output["authorization"] = data["Authorization"]
+        elif "authorization" in data:
+            output["authorization"] = data["authorization"]
+
+        if "Renku-User" in data:
+            output["renku-user"] = data["Renku-User"]
+        elif "Renku-user" in data:
+            output["renku-user"] = data["Renku-user"]
+        elif "renku-user":
+            output["renku-user"] = data["renku-user"]
+
+        return output
 
     @post_load
     def set_user(self, data, **kwargs):
