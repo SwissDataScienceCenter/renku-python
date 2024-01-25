@@ -17,9 +17,11 @@
 import base64
 import binascii
 import os
+from typing import cast
 
 import jwt
-from marshmallow import Schema, ValidationError, fields, post_load, pre_load
+from flask import app
+from marshmallow import Schema, ValidationError, fields, post_load
 from werkzeug.utils import secure_filename
 
 JWT_TOKEN_SECRET = os.getenv("RENKU_JWT_TOKEN_SECRET", "bW9menZ3cnh6cWpkcHVuZ3F5aWJycmJn")
@@ -79,7 +81,7 @@ class RenkuHeaders:
 
     @staticmethod
     def decode_token(token):
-        """Extract authorization token."""
+        """Extract the Gitlab access token form a bearer authorization header value."""
         components = token.split(" ")
 
         rfc_compliant = token.lower().startswith("bearer")
@@ -92,44 +94,21 @@ class RenkuHeaders:
 
     @staticmethod
     def decode_user(data):
-        """Extract renku user from a JWT."""
-        decoded = jwt.decode(data, JWT_TOKEN_SECRET, algorithms=["HS256"], audience="renku")
+        """Extract renku user from the Keycloak ID token which is a JWT."""
+        try:
+            jwk = cast(jwt.PyJWKClient, app.config["KEYCLOAK_JWK_CLIENT"])
+            key = jwk.get_signing_key_from_jwt(data)
+            decoded = jwt.decode(data, key=key, algorithms=["RS256"], audience="renku")
+        except jwt.PyJWTError:
+            # NOTE: older tokens used to be signed with HS256 so use this as a backup if the validation with RS256
+            # above fails. We used to need HS256 because a step that is now removed was generating an ID token and
+            # signing it from data passed in individual header fields.
+            decoded = jwt.decode(data, JWT_TOKEN_SECRET, algorithms=["HS256"], audience="renku")
         return UserIdentityToken().load(decoded)
-
-    @staticmethod
-    def reset_old_headers(data):
-        """Process old version of old headers."""
-        # TODO: This should be removed once support for them is phased out.
-        if "renku-user-id" in data:
-            data.pop("renku-user-id")
-
-        if "renku-user-fullname" in data and "renku-user-email" in data:
-            renku_user = {
-                "aud": ["renku"],
-                "name": decode_b64(data.pop("renku-user-fullname")),
-                "email": decode_b64(data.pop("renku-user-email")),
-            }
-            renku_user["sub"] = renku_user["email"]
-            data["renku-user"] = jwt.encode(renku_user, JWT_TOKEN_SECRET, algorithm="HS256")
-
-        return data
 
 
 class IdentityHeaders(Schema):
     """User identity schema."""
-
-    @pre_load
-    def set_fields(self, data, **kwargs):
-        """Set fields for serialization."""
-        # NOTE: We don't process headers which are not meant for determining identity.
-        # TODO: Remove old headers support once support for them is phased out.
-        old_keys = ["renku-user-id", "renku-user-fullname", "renku-user-email"]
-        expected_keys = old_keys + [field.data_key for field in self.fields.values()]
-
-        data = {key.lower(): value for key, value in data.items() if key.lower() in expected_keys}
-        data = RenkuHeaders.reset_old_headers(data)
-
-        return data
 
     @post_load
     def set_user(self, data, **kwargs):
@@ -151,12 +130,12 @@ class IdentityHeaders(Schema):
 class RequiredIdentityHeaders(IdentityHeaders):
     """Identity schema for required headers."""
 
-    user_token = fields.String(required=True, data_key="renku-user")
-    auth_token = fields.String(required=True, data_key="authorization")
+    user_token = fields.String(required=True, data_key="renku-user")  # Keycloak ID token
+    auth_token = fields.String(required=True, data_key="authorization")  # Gitlab access token
 
 
 class OptionalIdentityHeaders(IdentityHeaders):
     """Identity schema for optional headers."""
 
-    user_token = fields.String(data_key="renku-user")
-    auth_token = fields.String(data_key="authorization")
+    user_token = fields.String(data_key="renku-user")  # Keycloak ID token
+    auth_token = fields.String(data_key="authorization")  # Gitlab access token

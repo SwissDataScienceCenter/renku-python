@@ -14,9 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Renku service utility functions."""
-from typing import Optional, overload
+from time import sleep
+from typing import Any, Dict, Optional, overload
 
-from renku.ui.service.config import CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH
+import requests
+import urllib
+from jwt import PyJWKClient
+
+from renku.ui.service.config import CACHE_PROJECTS_PATH, CACHE_UPLOADS_PATH, OIDC_URL
+from renku.ui.service.errors import ProgramInternalError
+from renku.ui.service.logger import service_log
+from renku.core.util.requests import get
 
 
 def make_project_path(user, project):
@@ -86,3 +94,35 @@ def normalize_git_url(git_url: Optional[str]) -> Optional[str]:
         git_url = git_url[: -len(".git")]
 
     return git_url
+
+
+def oidc_discovery() -> Dict[str, Any]:
+    """Query the OIDC discovery endpoint from Keycloak with retries, parse the result with JSON and it."""
+    retries = 0
+    max_retries = 30
+    sleep_seconds = 2
+    while True:
+        retries += 1
+        try:
+            res: requests.Response = get(OIDC_URL)
+        except (requests.exceptions.HTTPError, urllib.error.HTTPError) as e:
+            if not retries < max_retries:
+                service_log.error("Failed to get OIDC discovery data after all retries - the server cannot start.")
+                raise e
+            service_log.info(
+                f"Failed to get OIDC discovery data from {OIDC_URL}, sleeping for {sleep_seconds} seconds and retrying"
+            )
+            sleep(sleep_seconds)
+        else:
+            service_log.info(f"Successfully fetched OIDC discovery data from {OIDC_URL}")
+            return res.json()
+
+
+def jwk_client() -> PyJWKClient:
+    """Return a JWK client for Keycloak that can be used to provide JWT keys for JWT signature validation"""
+    oidc_data = oidc_discovery()
+    jwks_uri = oidc_data.get("jwks_uri")
+    if not jwks_uri:
+        raise ProgramInternalError(error_message="Could not find JWK URI in the OIDC discovery data")
+    jwk = PyJWKClient(jwks_uri)
+    return jwk
