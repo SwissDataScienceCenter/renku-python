@@ -485,11 +485,11 @@ class TemplateError(RenkuException):
 
 
 class InvalidTemplateError(TemplateError):
-    """Raised when using a non-valid template."""
+    """Raised when using an invalid template."""
 
 
 class TemplateMissingReferenceError(TemplateError):
-    """Raised when using a non-valid template."""
+    """Raised when a reference cannot be found in the template's repository."""
 
 
 class TemplateUpdateError(TemplateError):
