@@ -104,7 +104,7 @@ apispec = { version = "~6.3.0", optional = true }
 apispec-oneofschema = { version = "^3.0.0", optional = true}
 apispec-webframeworks = { version = "^0.5", optional = true }
 circus = { version = "^0.18", optional = true }
-flask = { version = "^2.3.3", optional = true }
+flask = { version = ">=2.3.3,<4.0.0", optional = true }
 gunicorn = { version = "*", optional = true }
 marshmallow = { version = "~3.19.0", optional = true }
 marshmallow-oneofschema = { version = "^3.0.1", optional = true }
