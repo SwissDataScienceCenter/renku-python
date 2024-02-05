@@ -28,6 +28,7 @@ import yaml
 
 from renku.core import errors
 from renku.core.constant import RENKU_HOME
+from renku.core.util import communication
 from renku.core.util.os import get_safe_relative_path, hash_file, hash_string
 from renku.core.util.util import to_string
 
@@ -343,7 +344,7 @@ class Template:
             if subpath.is_file():
                 yield str(subpath.relative_to(self.path))
 
-    def render(self, metadata: "TemplateMetadata") -> "RenderedTemplate":
+    def render(self, metadata: "TemplateMetadata", ignore_template_errors: bool = False) -> "RenderedTemplate":
         """Render template files in a new directory."""
         if self.path is None:
             raise ValueError("Template path not set")
@@ -351,8 +352,15 @@ class Template:
         render_base = Path(tempfile.mkdtemp())
 
         for relative_path in self.get_files():
-            # NOTE: The path could contain template variables, we need to template it
-            rendered_relative_path = jinja2.Template(relative_path).render(metadata.metadata)
+            try:
+                # NOTE: The path could contain template variables, we need to template it
+                rendered_relative_path = jinja2.Template(relative_path).render(metadata.metadata)
+            except jinja2.TemplateError as e:
+                if ignore_template_errors:
+                    rendered_relative_path = relative_path
+                    communication.warn(f"Ignoring template error when rendering path '{relative_path}'")
+                else:
+                    raise errors.InvalidTemplateError(f"Cannot render template file path '{relative_path}': {e}")
 
             destination = render_base / rendered_relative_path
             destination.parent.mkdir(parents=True, exist_ok=True)
@@ -365,9 +373,20 @@ class Template:
                 content_bytes = source.read_bytes()
                 destination.write_bytes(content_bytes)
             else:
-                template = jinja2.Template(content, keep_trailing_newline=True)
-                rendered_content = template.render(metadata.metadata)
-                destination.write_text(rendered_content)
+                try:
+                    rendered_content = jinja2.Template(content, keep_trailing_newline=True).render(metadata.metadata)
+                except jinja2.TemplateError as e:
+                    if ignore_template_errors:
+                        destination.write_text(content)
+                        communication.warn(
+                            f"Ignoring template rendering error when creating '{rendered_relative_path}'"
+                        )
+                    else:
+                        raise errors.InvalidTemplateError(
+                            f"Cannot render template file '{rendered_relative_path}': {e}"
+                        )
+                else:
+                    destination.write_text(rendered_content)
 
         return RenderedTemplate(path=render_base, template=self, metadata=metadata.metadata)
 
@@ -432,8 +451,8 @@ class TemplateParameter:
     @property
     def has_default(self) -> bool:
         """Return True if a default value is set."""
-        # NOTE: ``None`` cannot be used as the default value but it's ok since no variable type accepts it and it's not
-        # a valid value anyways
+        # NOTE: ``None`` cannot be used as the default value, but it's ok since no variable type accepts it, and it's
+        # not a valid value anyway
         return self.default is not None
 
     def validate(self, raise_errors: bool = True) -> List[str]:
