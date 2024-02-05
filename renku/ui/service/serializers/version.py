@@ -21,6 +21,7 @@ class VersionResponse(Schema):
     """Version response schema."""
 
     latest_version = fields.String()
+    cli_version = fields.String()
     supported_project_version = fields.Integer()
     minimum_api_version = fields.String()
     maximum_api_version = fields.String()
