@@ -98,6 +98,7 @@ def migrate(check, skip_template_update, skip_docker_update, strict, preserve_id
 
     template_update_possible = status & TEMPLATE_UPDATE_POSSIBLE and status & AUTOMATED_TEMPLATE_UPDATE_SUPPORTED
     docker_update_possible = status & DOCKERFILE_UPDATE_POSSIBLE
+    migration_required = status & MIGRATION_REQUIRED
 
     if check:
         if template_update_possible:
@@ -113,7 +114,7 @@ def migrate(check, skip_template_update, skip_docker_update, strict, preserve_id
                 + "using 'renku migrate'."
             )
 
-        if status & MIGRATION_REQUIRED:
+        if migration_required:
             raise MigrationRequired
 
     if status & UNSUPPORTED_PROJECT:
@@ -125,7 +126,9 @@ def migrate(check, skip_template_update, skip_docker_update, strict, preserve_id
     if check:
         return
 
-    skip_docker_update = skip_docker_update or not docker_update_possible
+    # In case where a migration is required, we can't tell if a dockerupdate is possible, as the metadata for deciding
+    # might not be there yet. We'll check this again after the migration
+    skip_docker_update = skip_docker_update or (not migration_required and not docker_update_possible)
     skip_template_update = skip_template_update or not template_update_possible
 
     communicator = ClickCallback()

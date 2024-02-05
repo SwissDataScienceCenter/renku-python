@@ -123,6 +123,42 @@ def migrate_project(
     if not is_renku_project():
         return False, template_updated, docker_updated
 
+    n_migrations_executed = 0
+
+    if not skip_migrations:
+        project_version = project_version or get_project_version()
+
+        migration_context = MigrationContext(
+            strict=strict, type=migration_type, preserve_identifiers=preserve_identifiers
+        )
+
+        version = 1
+        for version, path in get_migrations():
+            if max_version and version > max_version:
+                break
+            if version > project_version:
+                module = importlib.import_module(path)
+                module_name = module.__name__.split(".")[-1]
+                communication.echo(f"Applying migration {module_name}...")
+                try:
+                    module.migrate(migration_context)
+                except (Exception, BaseException) as e:
+                    raise MigrationError("Couldn't execute migration") from e
+                n_migrations_executed += 1
+
+        if not is_using_temporary_datasets_path():
+            if n_migrations_executed > 0:
+                project_context.project.version = str(version)
+                project_gateway.update_project(project_context.project)
+
+                communication.echo(f"Successfully applied {n_migrations_executed} migrations.")
+
+            _remove_untracked_renku_files(metadata_path=project_context.metadata_path)
+
+        # we might not have been able to tell if a docker update is possible due to outstanding migrations.
+        # so we need to check again here.
+        skip_docker_update |= not is_docker_update_possible()
+
     try:
         project = project_context.project
     except ValueError:
@@ -154,36 +190,6 @@ def migrate_project(
             raise
         except Exception as e:
             raise DockerfileUpdateError("Couldn't update renku version in Dockerfile.") from e
-
-    if skip_migrations:
-        return False, template_updated, docker_updated
-
-    project_version = project_version or get_project_version()
-    n_migrations_executed = 0
-
-    migration_context = MigrationContext(strict=strict, type=migration_type, preserve_identifiers=preserve_identifiers)
-
-    version = 1
-    for version, path in get_migrations():
-        if max_version and version > max_version:
-            break
-        if version > project_version:
-            module = importlib.import_module(path)
-            module_name = module.__name__.split(".")[-1]
-            communication.echo(f"Applying migration {module_name}...")
-            try:
-                module.migrate(migration_context)
-            except (Exception, BaseException) as e:
-                raise MigrationError("Couldn't execute migration") from e
-            n_migrations_executed += 1
-    if not is_using_temporary_datasets_path():
-        if n_migrations_executed > 0:
-            project_context.project.version = str(version)
-            project_gateway.update_project(project_context.project)
-
-            communication.echo(f"Successfully applied {n_migrations_executed} migrations.")
-
-        _remove_untracked_renku_files(metadata_path=project_context.metadata_path)
 
     return n_migrations_executed != 0, template_updated, docker_updated
 
