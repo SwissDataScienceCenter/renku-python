@@ -8,4 +8,4 @@ global:
 versions:
   latest:
     image:
-      tag: v2.9.1
+      tag: v2.9.2
