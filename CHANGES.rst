@@ -25,7 +25,7 @@ Bug Fixes
 ~~~~~~~~~
 
 -  **cli:** don’t fail on workflows without inputs/outputs and print
-   approriate warnings
+   appropriate warnings
    (`#3694 <https://github.com/SwissDataScienceCenter/renku-python/issues/3694>`__)
    (`33a29aa <https://github.com/SwissDataScienceCenter/renku-python/commit/33a29aa3ff1257ec41e35a36674bf53c8050cdea>`__)
 -  **core:** migrate Dockerfile after metadata
