@@ -33,6 +33,7 @@ def execute_migration(
     from renku.command.migrate import (
         AUTOMATED_TEMPLATE_UPDATE_SUPPORTED,
         DOCKERFILE_UPDATE_POSSIBLE,
+        MIGRATION_REQUIRED,
         TEMPLATE_UPDATE_POSSIBLE,
         check_project,
         migrate_project_command,
@@ -47,8 +48,9 @@ def execute_migration(
 
         template_update_possible = status & TEMPLATE_UPDATE_POSSIBLE and status & AUTOMATED_TEMPLATE_UPDATE_SUPPORTED
         docker_update_possible = status & DOCKERFILE_UPDATE_POSSIBLE
+        migration_required = status & MIGRATION_REQUIRED
 
-        skip_docker_update = skip_docker_update or not docker_update_possible
+        skip_docker_update = skip_docker_update or (not migration_required and not docker_update_possible)
         skip_template_update = skip_template_update or not template_update_possible
 
         result = (

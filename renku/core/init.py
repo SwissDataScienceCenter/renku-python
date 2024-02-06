@@ -110,6 +110,7 @@ def init_project(
     input_parameters: Dict[str, str],
     custom_metadata: Optional[Dict[str, Any]],
     force: bool,
+    ignore_template_errors: bool,
     data_dir: Optional[Path],
     initial_branch: Optional[str],
     install_mergetool: bool,
@@ -129,6 +130,7 @@ def init_project(
         input_parameters: Template parameters.
         custom_metadata: Custom JSON-LD metadata for project.
         force: Whether to overwrite existing files and delete existing metadata.
+        ignore_template_errors: Create project anyway even if template rendering fails.
         data_dir: Where to store dataset data.
         initial_branch: Default git branch.
         install_mergetool(bool): Whether to set up the renku metadata mergetool in the created project.
@@ -181,7 +183,7 @@ def init_project(
     # TODO: Validate input_parameters to make sure they don't contain __\w+__ keys
     set_template_parameters(template=template, template_metadata=template_metadata, input_parameters=input_parameters)
 
-    rendered_template = template.render(metadata=template_metadata)
+    rendered_template = template.render(metadata=template_metadata, ignore_template_errors=ignore_template_errors)
     actions = get_file_actions(
         rendered_template=rendered_template, template_action=TemplateAction.INITIALIZE, interactive=False
     )

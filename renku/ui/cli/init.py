@@ -53,6 +53,10 @@ provide it to the ``init`` command by specifying the target template repository
 source ``--template-source`` (both local path and remote url are supported) and
 the reference ``--template-ref`` (branch, tag or commit).
 
+If the template contains an error that prevents it from being rendered, you can
+ignore this error by passing ``--ignore-template-errors`` to the ``init``
+command.
+
 You can take inspiration from the
 `official Renku template repository
 <https://github.com/SwissDataScienceCenter/renku-project-template>`_
@@ -259,6 +263,7 @@ def resolve_data_directory(data_dir, path):
 @click.option("-l", "--list-templates", is_flag=True, help="List templates available in the template-source.")
 @click.option("-d", "--describe", is_flag=True, help="Show description for templates and parameters")
 @click.option("--force", is_flag=True, help="Override target path.")
+@click.option("--ignore-template-errors", is_flag=True, help="Ignore template rendering errors.")
 @click.option("--initial-branch", help="Initial git branch to create.")
 @option_external_storage_requested
 @click.pass_context
@@ -277,6 +282,7 @@ def init(
     metadata,
     list_templates,
     force,
+    ignore_template_errors,
     describe,
     datadir,
     initial_branch,
@@ -319,6 +325,7 @@ def init(
         input_parameters=parameters,
         custom_metadata=custom_metadata,
         force=force,
+        ignore_template_errors=ignore_template_errors,
         data_dir=datadir,
         initial_branch=initial_branch,
         install_mergetool=True,

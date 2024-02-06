@@ -18,6 +18,29 @@
 Changes
 =======
 
+`2.9.2 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.9.1...v2.9.2>`__ (2024-02-06)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  **cli:** don’t fail on workflows without inputs/outputs and print appropriate warnings
+   (`#3694 <https://github.com/SwissDataScienceCenter/renku-python/issues/3694>`__)
+   (`33a29aa <https://github.com/SwissDataScienceCenter/renku-python/commit/33a29aa3ff1257ec41e35a36674bf53c8050cdea>`__)
+-  **core:** fix Dockerfile migration
+   (`#3690 <https://github.com/SwissDataScienceCenter/renku-python/issues/3690>`__)
+   (`e98f112 <https://github.com/SwissDataScienceCenter/renku-python/commit/e98f112284a7d9cecf5c16d03ac7db0cc5e88077>`__)
+-  **service:** properly return cli_version in api version
+   (`#3699 <https://github.com/SwissDataScienceCenter/renku-python/issues/3699>`__)
+   (`50e20e1 <https://github.com/SwissDataScienceCenter/renku-python/commit/50e20e1d2f4d077ae3528351964d5f15b3d35d9b>`__)
+
+Features
+~~~~~~~~
+
+-  **cli:** allow ignoring template rendering errors
+   (`#3697 <https://github.com/SwissDataScienceCenter/renku-python/issues/3697>`__)
+   (`088ce15 <https://github.com/SwissDataScienceCenter/renku-python/commit/088ce1543bc093ec462193e07f2d1d06e4a7cb68>`__)
+
 `2.9.1 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.9.0...v2.9.1>`__ (2024-01-18)
 -------------------------------------------------------------------------------------------------------
 

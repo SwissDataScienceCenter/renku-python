@@ -23,6 +23,7 @@ import networkx as nx
 from networkx.algorithms.cycles import simple_cycles
 
 from renku.core.errors import ParameterError
+from renku.core.util import communication
 from renku.core.util.os import are_paths_related
 from renku.domain_model.workflow import composite_plan, parameter, plan
 
@@ -65,6 +66,9 @@ class ExecutionGraph:
             else:
                 if not virtual_links:
                     continue
+                if not workflow.inputs and not workflow.outputs:
+                    communication.warn(f"Workflow {workflow.name} has no inputs and outputs.")
+                    self.graph.add_node(workflow)
 
                 for input in workflow.inputs:
                     inputs[input.actual_value].append(input)
