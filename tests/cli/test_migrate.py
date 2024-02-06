@@ -54,6 +54,27 @@ def test_migrate_project(isolated_runner, old_project, with_injection):
 
 
 @pytest.mark.migration
+@pytest.mark.parametrize(
+    "old_project",
+    [
+        "v9-migration-docker-version-change.git",
+        "v9-migration-docker-mult-changes.git",
+    ],
+    indirect=["old_project"],
+)
+def test_migrate_old_project_with_docker_change(isolated_runner, old_project, with_injection):
+    """Test migrating projects with changes to the Dockerfile."""
+    result = isolated_runner.invoke(cli, ["migrate", "--strict"])
+    assert 0 == result.exit_code, format_result_exception(result)
+    assert not old_project.repository.is_dirty()
+    assert "Updated dockerfile" in result.output
+
+    with project_context.with_path(old_project.path), with_injection():
+        assert project_context.project
+        assert project_context.project.name
+
+
+@pytest.mark.migration
 @pytest.mark.serial
 def test_migration_check(isolated_runner, project):
     """Test migrate on old repository."""

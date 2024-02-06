@@ -705,6 +705,25 @@ def test_execute_migrations(svc_client_setup):
 
 
 @pytest.mark.service
+@pytest.mark.parametrize(
+    "old_local_remote_project",
+    [
+        "v9-migration-docker-version-change.git",
+        "v9-migration-docker-mult-changes.git",
+    ],
+    indirect=["old_local_remote_project"],
+)
+def test_migrate_old_project(old_local_remote_project):
+    """Test migrating old projects with docker file changes."""
+    svc_client, identity_headers, project_id, remote_repo, remote_repo_checkout, remote_url = old_local_remote_project
+
+    response = svc_client.post("/cache.migrate", data=json.dumps(dict(git_url=remote_url)), headers=identity_headers)
+    assert response
+    assert 200 == response.status_code
+    assert response.json.get("result", {}).get("docker_migrated", False)
+
+
+@pytest.mark.service
 @pytest.mark.integration
 def test_execute_migrations_job(svc_client_setup):
     """Check execution of all migrations."""

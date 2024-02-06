@@ -27,6 +27,7 @@ import marshmallow
 from werkzeug.utils import secure_filename
 
 from renku.core import errors
+from renku.core.util import communication
 from renku.core.util.datetime8601 import local_now
 from renku.domain_model.provenance.agent import Person
 from renku.domain_model.provenance.annotation import Annotation
@@ -195,6 +196,11 @@ class Plan(AbstractPlan):
     ):
         self.annotations: List[Annotation] = annotations or []
         self.command: str = command
+        cmd = self.command.split(" ", 1)[0]
+        if cmd == "renku" or cmd.endswith("/renku"):
+            communication.error(
+                f"Calling the 'renku' executable in workflows is not supported. Occurred in workflow {name}."
+            )
         self.hidden_inputs: List[HiddenInput] = hidden_inputs or []
         self.inputs: List[CommandInput] = inputs or []
         self.outputs: List[CommandOutput] = outputs or []
