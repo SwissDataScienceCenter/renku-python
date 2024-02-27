@@ -100,7 +100,7 @@ zodb = "~5.8.1"
 zstandard = "^0.22"
 
 # service dependencies:
-apispec = { version = "~6.3.0", optional = true }
+apispec = { version = ">=6.3,<6.6", optional = true }
 apispec-oneofschema = { version = "^3.0.0", optional = true}
 apispec-webframeworks = { version = "^0.5", optional = true }
 circus = { version = "^0.18", optional = true }
