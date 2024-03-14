@@ -19,7 +19,7 @@ from renku.ui.cli import cli
 from tests.utils import format_result_exception
 
 
-def test_rollback(runner, project):
+def test_rollback(runner, project, cache_test_project):
     """Test renku rollback."""
     result = runner.invoke(cli, ["run", "--name", "run1", "touch", "foo"])
     assert 0 == result.exit_code, format_result_exception(result)

@@ -16,6 +16,7 @@
 """Renku common fixtures."""
 
 import os
+import shutil
 from pathlib import Path
 from typing import Generator, List
 
@@ -82,8 +83,69 @@ def large_file(tmp_path):
 
 
 @pytest.fixture
+def enable_precommit_hook():
+    """Enable running precommit hooks for the test."""
+    os.environ["RENKU_SKIP_HOOK_CHECKS"] = "0"
+    yield
+    os.environ["RENKU_SKIP_HOOK_CHECKS"] = "1"
+
+
+@pytest.fixture
 def transaction_id(project) -> Generator[str, None, None]:
     """Return current transaction ID."""
     from renku.domain_model.project_context import project_context
 
     yield project_context.transaction_id
+
+
+@pytest.fixture
+def cache_test_project(request, project):
+    """Caches a renku project repository for reuse between tests."""
+    marker = request.node.get_closest_marker("project_cache_name")
+
+    if marker:
+        cache_name = marker.args[0]
+    else:
+        cache_name = "".join(x if x.isalnum() or x in "-_." else "_" for x in request.node.name)
+
+    class _ProjectRepoCache:
+        def __init__(self, cache_name: str) -> None:
+            self.set_name(cache_name)
+
+        def set_name(self, cache_name: str) -> None:
+            """Change the name of the cache."""
+            self.cache_name = cache_name
+            self.cache_dir = Path(request.config.rootdir) / Path(
+                os.environ.get("RENKU_TEST_PROJECT_CACHE_DIR", "tests/data/repo-cache")
+            )
+            self.cache_dir.mkdir(exist_ok=True)
+            self.filename = self.cache_dir / f"{self.cache_name}.tar.gz"
+
+        def delete_project_contents(self) -> None:
+            """Delete the contents of the project directory."""
+            subdir_paths = [str(project.path / p) for p in ["some", "some/sub", "some/sub/directory"]]
+            for root, dirs, files in os.walk(project.path):
+                for f in files:
+                    os.unlink(os.path.join(root, f))
+                for d in dirs:
+                    path = os.path.join(root, d)
+                    # NOTE: Don't delete `subdirectory` fixture dir
+                    if path not in subdir_paths:
+                        shutil.rmtree(path)
+
+        def save(self):
+            """Save state of the project directory."""
+            self.filename.unlink(missing_ok=True)
+            shutil.make_archive(str(self.cache_dir / self.cache_name), "gztar", project.path)
+
+        def setup(self) -> bool:
+            """Recreate state of project directory from previous test, if applicable."""
+            if not self.filename.exists() or os.environ.get("RENKU_TEST_RECREATE_CACHE", "0") == "1":
+                return False
+
+            self.delete_project_contents()
+            shutil.unpack_archive(self.filename, project.path, "gztar")
+            return True
+
+    assert cache_name is not None
+    return _ProjectRepoCache(cache_name)

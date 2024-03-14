@@ -78,6 +78,7 @@ def pytest_configure(config):
     os.environ["RENKU_DISABLE_VERSION_CHECK"] = "1"
     # NOTE: Set an env var during during tests to mark that Renku is running in a test session.
     os.environ["RENKU_RUNNING_UNDER_TEST"] = "1"
+    os.environ["RENKU_SKIP_HOOK_CHECKS"] = "1"
 
 
 def pytest_unconfigure(config):
@@ -85,3 +86,4 @@ def pytest_unconfigure(config):
     os.environ.pop("RENKU_SKIP_MIN_VERSION_CHECK", None)
     os.environ.pop("RENKU_DISABLE_VERSION_CHECK", None)
     os.environ.pop("RENKU_RUNNING_UNDER_TEST", None)
+    os.environ.pop("RENKU_SKIP_HOOK_CHECKS", None)

@@ -17,21 +17,40 @@
 
 import pytest
 
+from renku.ui.cli import cli
+
 
 @pytest.fixture
-def workflow_graph(run_shell, project):
+def workflow_graph(run_shell, project, cache_test_project):
     """Setup a project with a workflow graph."""
+    cache_test_project.set_name("workflow_graph_fixture")
+    if not cache_test_project.setup():
 
-    def _run_workflow(name, command, extra_args=""):
-        output = run_shell(f"renku run --name {name} {extra_args} -- {command}")
-        # Assert not allocated stderr.
-        assert output[1] is None
+        def _run_workflow(name, command, extra_args=""):
+            output = run_shell(f"renku run --name {name} {extra_args} -- {command}")
+            # Assert not allocated stderr.
+            assert output[1] is None
 
-    _run_workflow("r1", "echo 'test' > A")
-    _run_workflow("r2", "tee B C < A")
-    _run_workflow("r3", "cp A Z")
-    _run_workflow("r4", "cp B X")
-    _run_workflow("r5", "cat C Z > Y")
-    _run_workflow("r6", "bash -c 'cat X Y | tee R S'", extra_args="--input X --input Y --output R --output S")
-    _run_workflow("r7", "echo 'other' > H")
-    _run_workflow("r8", "tee I J < H")
+        _run_workflow("r1", "echo 'test' > A")
+        _run_workflow("r2", "tee B C < A")
+        _run_workflow("r3", "cp A Z")
+        _run_workflow("r4", "cp B X")
+        _run_workflow("r5", "cat C Z > Y")
+        _run_workflow("r6", "bash -c 'cat X Y | tee R S'", extra_args="--input X --input Y --output R --output S")
+        _run_workflow("r7", "echo 'other' > H")
+        _run_workflow("r8", "tee I J < H")
+        cache_test_project.save()
+
+
+@pytest.fixture
+def project_with_dataset_and_workflows(runner, run_shell, project, directory_tree, cache_test_project):
+    """Project with a dataset and some workflows."""
+    if not cache_test_project.setup():
+        assert 0 == runner.invoke(cli, ["dataset", "create", "my-data"]).exit_code
+        assert 0 == runner.invoke(cli, ["dataset", "add", "--copy", "my-data", str(directory_tree)]).exit_code
+
+        assert run_shell('renku run --name run1 echo "my input string" > my_output_file')[1] is None
+        assert run_shell("renku run --name run2 cp my_output_file my_output_file2")[1] is None
+        assert run_shell("renku workflow compose my-composite-plan run1 run2")[1] is None
+        cache_test_project.save()
+    yield project

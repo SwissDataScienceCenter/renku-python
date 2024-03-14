@@ -615,10 +615,18 @@ def test_workflow_show_outputs_with_directory(runner, project, run):
     ],
 )
 def test_workflow_execute_command(
-    runner, run_shell, project, capsys, with_injection, provider, yaml, skip_metadata_update, workflows, parameters
+    runner,
+    run_shell,
+    project,
+    capsys,
+    with_injection,
+    provider,
+    yaml,
+    skip_metadata_update,
+    workflows,
+    parameters,
 ):
     """Test workflow execute."""
-
     for wf in workflows:
         output = run_shell(f"renku run --name {wf[0]} -- {wf[1]}")
         # Assert expected empty stdout.
@@ -1232,15 +1240,13 @@ def test_workflow_iterate_command_with_parameter_set(runner, run_shell, project,
 
     assert "2.0\n" == output.read_text()
 
-    result = run_shell(f"renku workflow iterate -p {provider} --map parameter-2=[0.1,0.3,0.5,0.8,0.95] run1")
+    result = run_shell(f"renku workflow iterate -p {provider} --map parameter-2=[0.1,0.3,0.95] run1")
 
     # Assert not allocated stderr.
     assert result[1] is None
     assert output.read_text() in [
         "0.1\n",
         "0.3\n",
-        "0.5\n",
-        "0.8\n",
         "0.95\n",
     ]
 

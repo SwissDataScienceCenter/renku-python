@@ -36,11 +36,11 @@ def test_remove_dataset_file(isolated_runner, project, tmpdir, subdirectory, dat
     result = isolated_runner.invoke(cli, ["dataset", "add", "--copy", "testing", source.strpath])
     assert 0 == result.exit_code, format_result_exception(result)
 
-    path = project.path / datadir / "remove_dataset.file"
-    assert path.exists()
-
     result = isolated_runner.invoke(cli, ["doctor"])
     assert 0 == result.exit_code, format_result_exception(result)
+
+    path = project.path / datadir / "remove_dataset.file"
+    assert path.exists()
 
     result = isolated_runner.invoke(cli, ["rm", str(project.path / datadir)])
     assert 0 == result.exit_code, format_result_exception(result)
