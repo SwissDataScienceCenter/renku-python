@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Checks needed to determine integrity of workflows."""
+
 from datetime import timedelta
 from typing import List, Optional, Tuple, cast
 
@@ -163,6 +164,7 @@ def check_plan_id(fix, plan_gateway: IPlanGateway, **_) -> Tuple[bool, bool, Opt
     for plan in to_be_processed:
         plan.unfreeze()
         plan.id = plan.id.replace("//plans/", "/")
+        plan.reassign_oid()
         plan.freeze()
     project_context.database.commit()
     communication.info("Workflow IDs were fixed")
