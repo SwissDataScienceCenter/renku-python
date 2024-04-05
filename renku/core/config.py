@@ -18,6 +18,7 @@
 import configparser
 import os
 from io import StringIO
+from pathlib import Path
 
 from renku.core.constant import DATA_DIR_CONFIG_KEY
 from renku.domain_model.enums import ConfigFilter
@@ -28,12 +29,20 @@ def global_config_read_lock():
     """Create a user-level config read lock."""
     from renku.core.util.contexts import Lock
 
+    lock_path = os.environ.get("RENKU_LOCK_PATH")
+    if lock_path is not None:
+        return Lock(Path(lock_path))
+
     return Lock(project_context.global_config_path)
 
 
 def global_config_write_lock():
     """Create a user-level config write lock."""
     from renku.core.util.contexts import Lock
+
+    lock_path = os.environ.get("RENKU_LOCK_PATH")
+    if lock_path is not None:
+        return Lock(Path(lock_path), mode="exclusive")
 
     return Lock(project_context.global_config_path, mode="exclusive")
 
@@ -112,7 +121,10 @@ def load_config(config_filter=ConfigFilter.ALL):
     elif config_filter == ConfigFilter.GLOBAL_ONLY:
         config_files += [project_context.global_config_path]
     elif config_filter == ConfigFilter.ALL:
-        config_files += [project_context.global_config_path, project_context.local_config_path]
+        config_files += [
+            project_context.global_config_path,
+            project_context.local_config_path,
+        ]
 
     if config_filter != ConfigFilter.LOCAL_ONLY:
         with global_config_read_lock():
