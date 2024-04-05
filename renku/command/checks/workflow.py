@@ -165,6 +165,7 @@ def check_plan_id(fix, plan_gateway: IPlanGateway, **_) -> Tuple[bool, bool, Opt
         plan.unfreeze()
         plan.id = plan.id.replace("//plans/", "/")
         plan.reassign_oid()
+        plan._p_changed = True
         plan.freeze()
     project_context.database.commit()
     communication.info("Workflow IDs were fixed")
