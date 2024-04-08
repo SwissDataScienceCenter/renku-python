@@ -146,14 +146,17 @@ def check_plan_id(fix, plan_gateway: IPlanGateway, **_) -> Tuple[bool, bool, Opt
     plans: List[AbstractPlan] = plan_gateway.get_all_plans()
 
     to_be_processed = []
+    to_be_processed_derived = []
     for plan in plans:
         if isinstance(plan.id, str) and plan.id.startswith("/plans//plans"):
             to_be_processed.append(plan)
+        if isinstance(plan.derived_from, str) and plan.derived_from.startswith("/plans//plans"):
+            to_be_processed_derived.append(plan)
 
-    if not to_be_processed:
+    if not to_be_processed and not to_be_processed_derived:
         return True, False, None
     if not fix:
-        ids = [plan.id for plan in to_be_processed]
+        ids = [plan.id for plan in to_be_processed + to_be_processed_derived]
         message = (
             WARNING
             + "The following workflows have incorrect IDs (use 'renku doctor --fix' to fix them):\n\t"
@@ -167,6 +170,14 @@ def check_plan_id(fix, plan_gateway: IPlanGateway, **_) -> Tuple[bool, bool, Opt
         plan.reassign_oid()
         plan._p_changed = True
         plan.freeze()
+
+    for plan in to_be_processed_derived:
+        if plan.derived_from is not None:
+            plan.unfreeze()
+            plan.derived_from = plan.derived_from.replace("//plans/", "/")
+            plan._p_changed = True
+            plan.freeze()
+
     project_context.database.commit()
     communication.info("Workflow IDs were fixed")
 
