@@ -58,7 +58,7 @@ click-option-group = "^0.5.2"
 click-plugins = "~1.1.1"
 coverage = { version = "^6.0", extras=["toml"], optional = true }
 cryptography = "^41.0.7"
-cwl-utils = "^0.27"
+cwl-utils = ">=0.27,<0.34"
 cwltool = "==3.1.20230601100705"
 deal = "~4.24.3"
 deepdiff = "~6.7.1"
