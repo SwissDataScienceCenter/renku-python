@@ -19,6 +19,10 @@
 # RENKU HOOK. DO NOT REMOVE OR MODIFY.
 ######################################
 
+if [ "$RENKU_SKIP_HOOK_CHECKS" == "1" ]; then
+  exit 0
+fi
+
 # Find all modified or added files, and do nothing if there aren't any.
 export RENKU_DISABLE_VERSION_CHECK=true
 

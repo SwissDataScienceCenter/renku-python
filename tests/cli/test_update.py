@@ -484,7 +484,15 @@ def test_update_with_execute(runner, project, renku_cli, provider):
     assert (
         0
         == renku_cli(
-            "workflow", "execute", "-p", provider, "--set", f"input-2={source2}", "--set", f"output-3={output2}", "test"
+            "workflow",
+            "execute",
+            "-p",
+            provider,
+            "--set",
+            f"input-2={source2}",
+            "--set",
+            f"output-3={output2}",
+            "test",
         ).exit_code
     )
 

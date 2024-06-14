@@ -1790,7 +1790,7 @@ def test_pull_data_from_lfs(runner, project, tmpdir, subdirectory, no_lfs_size_l
     assert 0 == result.exit_code, format_result_exception(result)
 
 
-def test_lfs_hook(project_with_injection, subdirectory, large_file):
+def test_lfs_hook(project_with_injection, subdirectory, large_file, enable_precommit_hook):
     """Test committing large files to Git."""
     filenames = {"large-file", "large file with whitespace", "large*file?with wildcards"}
 
@@ -1819,7 +1819,7 @@ def test_lfs_hook(project_with_injection, subdirectory, large_file):
 
 
 @pytest.mark.parametrize("use_env_var", [False, True])
-def test_lfs_hook_autocommit(runner, project, subdirectory, large_file, use_env_var):
+def test_lfs_hook_autocommit(runner, project, subdirectory, large_file, use_env_var, enable_precommit_hook):
     """Test committing large files to Git gets automatically added to lfs."""
     if use_env_var:
         os.environ["AUTOCOMMIT_LFS"] = "true"
@@ -1851,7 +1851,7 @@ def test_lfs_hook_autocommit(runner, project, subdirectory, large_file, use_env_
     assert filenames == tracked_lfs_files
 
 
-def test_lfs_hook_can_be_avoided(runner, project, subdirectory, large_file):
+def test_lfs_hook_can_be_avoided(runner, project, subdirectory, large_file, enable_precommit_hook):
     """Test committing large files to Git."""
     result = runner.invoke(
         cli, ["--no-external-storage", "dataset", "add", "--copy", "-c", "my-dataset", str(large_file)]
@@ -1860,7 +1860,7 @@ def test_lfs_hook_can_be_avoided(runner, project, subdirectory, large_file):
     assert "OK" in result.output
 
 
-def test_datadir_hook(runner, project, subdirectory):
+def test_datadir_hook(runner, project, subdirectory, enable_precommit_hook):
     """Test pre-commit hook fir checking datadir files."""
     set_value(section="renku", key="check_datadir_files", value="true", global_only=True)
 

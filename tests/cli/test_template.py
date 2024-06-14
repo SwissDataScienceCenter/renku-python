@@ -305,7 +305,7 @@ def test_template_update_dry_run(runner, project):
     assert commit_sha_before == project.repository.head.commit.hexsha
 
 
-def test_git_hook_for_modified_immutable_template_files(runner, project_with_template):
+def test_git_hook_for_modified_immutable_template_files(runner, project_with_template, enable_precommit_hook):
     """Test check for modified immutable template files."""
     (project_with_template.path / "immutable.file").write_text("Locally modified immutable files")
 
