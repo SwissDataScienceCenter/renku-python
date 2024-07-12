@@ -116,7 +116,9 @@ class RenkulabSessionProvider(IHibernatingSessionProvider):
         start = monotonic()
         while monotonic() - start < self.DEFAULT_TIMEOUT_SECONDS:
             res = self._send_renku_request(
-                "get", f"{self._notebooks_url()}/servers/{name}", headers=self._auth_header()
+                "get",
+                f"{self._notebooks_url()}/servers/{name}",
+                headers=self._auth_header(),
             )
             if res.status_code == 404 and status == "stopping":
                 return
@@ -266,10 +268,15 @@ class RenkulabSessionProvider(IHibernatingSessionProvider):
     def get_cloudstorage(self):
         """Get cloudstorage configured for the project."""
         storage_service = cast(IStorageService, inject.instance(IStorageService))
-        project_id = storage_service.project_id
+
+        try:
+            project_id = storage_service.project_id
+        except errors.ProjectNotFound:
+            project_id = None
+
         if project_id is None:
-            communication.warn("Couldn't get project ID from Gitlab, skipping mounting cloudstorage")
-            return
+            communication.warn("Skipping cloud storage mounting as project couldn't be loaded from gitlab.")
+            return []
 
         storages = storage_service.list(project_id)
 
@@ -291,7 +298,12 @@ class RenkulabSessionProvider(IHibernatingSessionProvider):
                     secret = communication.prompt(f"{field['help']}\nPlease provide a value for secret '{name}'")
                     storage.configuration[name] = secret
 
-            storages_to_mount.append({"storage_id": storage.storage_id, "configuration": storage.configuration})
+            storages_to_mount.append(
+                {
+                    "storage_id": storage.storage_id,
+                    "configuration": storage.configuration,
+                }
+            )
 
         return storages_to_mount
 
@@ -447,21 +459,27 @@ class RenkulabSessionProvider(IHibernatingSessionProvider):
             for session in sessions:
                 responses.append(
                     self._send_renku_request(
-                        "delete", f"{self._notebooks_url()}/servers/{session.id}", headers=self._auth_header()
+                        "delete",
+                        f"{self._notebooks_url()}/servers/{session.id}",
+                        headers=self._auth_header(),
                     )
                 )
                 self._wait_for_session_status(session.id, "stopping")
         elif session_name:
             responses.append(
                 self._send_renku_request(
-                    "delete", f"{self._notebooks_url()}/servers/{session_name}", headers=self._auth_header()
+                    "delete",
+                    f"{self._notebooks_url()}/servers/{session_name}",
+                    headers=self._auth_header(),
                 )
             )
             self._wait_for_session_status(session_name, "stopping")
         elif n_sessions == 1:
             responses.append(
                 self._send_renku_request(
-                    "delete", f"{self._notebooks_url()}/servers/{sessions[0].id}", headers=self._auth_header()
+                    "delete",
+                    f"{self._notebooks_url()}/servers/{sessions[0].id}",
+                    headers=self._auth_header(),
                 )
             )
             self._wait_for_session_status(sessions[0].id, "stopping")
@@ -474,7 +492,13 @@ class RenkulabSessionProvider(IHibernatingSessionProvider):
 
         return SessionStopStatus.SUCCESSFUL if n_successfully_stopped == n_sessions else SessionStopStatus.FAILED
 
-    def session_open(self, project_name: str, session_name: Optional[str], ssh: bool = False, **kwargs) -> bool:
+    def session_open(
+        self,
+        project_name: str,
+        session_name: Optional[str],
+        ssh: bool = False,
+        **kwargs,
+    ) -> bool:
         """Open a given interactive session.
 
         Args:
