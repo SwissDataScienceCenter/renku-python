@@ -272,6 +272,10 @@ def _index_activity(activity: Activity, database: Database):
 
 def _unindex_activity(activity: Activity, database: Database):
     """Add an activity to database indexes and create its up/downstream relations."""
+    # there are cases where the activity catalog can be corrupt and removing activities doesn't actually remove them
+    # here we reindex them so removal works as expected
+    reindex_catalog(database)
+
     upstreams = set()
     downstreams = set()
 
