@@ -18,6 +18,19 @@
 Changes
 =======
 
+`2.9.4 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.9.3...v2.9.4>`__ (2024-07-12)
+-------------------------------------------------------------------------------------------------------
+
+Bug Fixes
+~~~~~~~~~
+
+-  make doctor fix for workflow ids also update oid and derived_from
+   (`#3723 <https://github.com/SwissDataScienceCenter/renku-python/issues/3723>`__)
+   (`050ed61 <https://github.com/SwissDataScienceCenter/renku-python/commit/050ed61bf13264b2b446e054e6071a5932280290>`__)
+-  properly remove activities in workflow remove if catalog is corrupt
+   (`#3729 <https://github.com/SwissDataScienceCenter/renku-python/issues/3729>`__)
+   (`b2418a1 <https://github.com/SwissDataScienceCenter/renku-python/commit/b2418a15c89e16e4442a1ecf11f703f4e15922e8>`__)
+
 `2.9.3 <https://github.com/SwissDataScienceCenter/renku-python/compare/v2.9.2...v2.9.3>`__ (2024-04-08)
 -------------------------------------------------------------------------------------------------------
 
