@@ -26,7 +26,7 @@ jobs:
           fetch-depth: 0
           token: "${{ secrets.RENKUBOT_GITHUB_TOKEN }}"
           ref: '${{ github.event.inputs.ref }}'
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
       - name: Create Branch
         run: git checkout -b "release/v${{ github.event.inputs.version }}"
       - name: Merge Target
