@@ -67,7 +67,7 @@ jobs:
           name: "v${{ github.event.inputs.version }}"
           commit: "${{ github.event.inputs.target_branch }}"
       - name: Create Pull Request
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           token: ${{ secrets.RENKUBOT_GITHUB_TOKEN }}
           script: |
